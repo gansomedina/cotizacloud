@@ -271,19 +271,17 @@ ob_start();
             <div class="sh-lbl">Nombre completo <span style="color:var(--danger)">*</span></div>
             <input class="sh-input" type="text" id="cli-nombre" placeholder="Nombre del cliente" autocomplete="name">
         </div>
-        <div class="sh-field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div>
-                <div class="sh-lbl">Teléfono <span style="color:var(--danger)">*</span></div>
-                <input class="sh-input" type="tel" id="cli-telefono" placeholder="662 000 0000" style="font-family:var(--num);">
-            </div>
-            <div>
-                <div class="sh-lbl">Email (opcional)</div>
-                <input class="sh-input" type="email" id="cli-email" placeholder="correo@ejemplo.com">
-            </div>
+        <div class="sh-field">
+            <div class="sh-lbl">Teléfono <span style="color:var(--danger)">*</span></div>
+            <input class="sh-input" type="tel" id="cli-telefono" placeholder="662 000 0000" style="font-family:var(--num);">
+        </div>
+        <div class="sh-field">
+            <div class="sh-lbl">Dirección (opcional)</div>
+            <input class="sh-input" type="text" id="cli-direccion" placeholder="Calle, colonia, ciudad…">
         </div>
         <div class="sh-field" style="border-bottom:none;">
             <div class="sh-lbl">Nota (opcional)</div>
-            <textarea class="sh-input" id="cli-nota" style="min-height:70px;resize:none;" placeholder="Referencias, dirección, observaciones…"></textarea>
+            <textarea class="sh-input" id="cli-nota" style="min-height:60px;resize:none;" placeholder="Referencias u observaciones…"></textarea>
         </div>
     </div>
     <div class="sh-footer">
@@ -297,10 +295,20 @@ ob_start();
 const CSRF_TOKEN = '<?= csrf_token() ?>';
 
 // ─── Sheet ───────────────────────────────────────────────
-function openSheet(id) {
+function openSheet(id, data) {
+    if (id === 'shCliente') {
+        document.getElementById('cli-id').value       = data?.id       ?? '';
+        document.getElementById('cli-nombre').value   = data?.nombre   ?? '';
+        document.getElementById('cli-telefono').value = data?.telefono ?? '';
+        document.getElementById('cli-direccion').value= data?.direccion ?? '';
+        document.getElementById('cli-nota').value     = data?.nota     ?? '';
+        document.getElementById('shCliente-title').textContent = data?.id ? 'Editar cliente' : 'Nuevo cliente';
+    }
     document.getElementById('ov-' + id).classList.add('open');
     document.getElementById(id).classList.add('open');
     document.body.style.overflow = 'hidden';
+    // Focus primer campo
+    setTimeout(() => document.querySelector('#' + id + ' input:not([type=hidden])').focus(), 100);
 }
 function closeSheet(id) {
     document.getElementById('ov-' + id).classList.remove('open');
@@ -310,11 +318,11 @@ function closeSheet(id) {
 
 // ─── Guardar cliente ─────────────────────────────────────
 async function guardarCliente() {
-    const id       = document.getElementById('cli-id').value;
-    const nombre   = document.getElementById('cli-nombre').value.trim();
-    const telefono = document.getElementById('cli-telefono').value.trim();
-    const email    = document.getElementById('cli-email').value.trim();
-    const nota     = document.getElementById('cli-nota').value.trim();
+    const id        = document.getElementById('cli-id').value;
+    const nombre    = document.getElementById('cli-nombre').value.trim();
+    const telefono  = document.getElementById('cli-telefono').value.trim();
+    const direccion = document.getElementById('cli-direccion').value.trim();
+    const nota      = document.getElementById('cli-nota').value.trim();
 
     if (!nombre)   { alert('El nombre es requerido'); return; }
     if (!telefono) { alert('El teléfono es requerido'); return; }
@@ -327,7 +335,7 @@ async function guardarCliente() {
         const r   = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ nombre, telefono, email, nota })
+            body: JSON.stringify({ nombre, telefono, direccion, nota })
         });
         const d = await r.json();
         if (!d.ok) { alert(d.error || 'Error al guardar'); btn.disabled=false; btn.textContent='Guardar cliente'; return; }

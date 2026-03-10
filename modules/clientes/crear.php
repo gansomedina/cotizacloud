@@ -16,16 +16,15 @@ $body = json_decode(file_get_contents('php://input'), true);
 if (!$body) json_error('Payload inválido', 400);
 
 // ─── Validar ─────────────────────────────────────────────
-$nombre   = trim($body['nombre']   ?? '');
-$telefono = trim($body['telefono'] ?? '');
-$email    = trim($body['email']    ?? '');
-$nota     = trim($body['nota']     ?? '');
+$nombre    = trim($body['nombre']    ?? '');
+$telefono  = trim($body['telefono']  ?? '');
+$direccion = trim($body['direccion'] ?? '');
+$nota      = trim($body['nota']      ?? '');
 
 if (empty($nombre))   json_error('El nombre es requerido');
 if (empty($telefono)) json_error('El teléfono es requerido');
 if (strlen($nombre)   > 150) json_error('Nombre muy largo');
 if (strlen($telefono) > 30)  json_error('Teléfono muy largo');
-if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Email inválido');
 
 // ─── Duplicado por teléfono ──────────────────────────────
 $existe = DB::val(
@@ -37,15 +36,15 @@ if ($existe) json_error('Ya existe un cliente con ese teléfono', 409);
 // ─── Insertar ────────────────────────────────────────────
 try {
     $id = DB::insert(
-        "INSERT INTO clientes (empresa_id, usuario_id, nombre, telefono, email, nota)
+        "INSERT INTO clientes (empresa_id, usuario_id, nombre, telefono, direccion, nota)
          VALUES (?, ?, ?, ?, ?, ?)",
         [
             $empresa_id,
             Auth::id(),
             $nombre,
             $telefono,
-            $email   ?: null,
-            $nota    ?: null,
+            $direccion ?: null,
+            $nota      ?: null,
         ]
     );
 } catch (Exception $e) {
