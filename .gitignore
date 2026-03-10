@@ -1,0 +1,13 @@
+# Archivo de configuración con credenciales (CRÍTICO)
+config.php
+
+# Logs de errores (según tu línea 53)
+/logs/error.log
+
+# Subidas de archivos (según tu línea 42)
+/public/assets/uploads/*
+!/public/assets/uploads/.gitkeep
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
