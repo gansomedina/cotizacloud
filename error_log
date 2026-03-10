@@ -1,0 +1,294 @@
+[10-Mar-2026 09:45:26 America/Hermosillo] PHP Fatal error:  Uncaught Error: Undefined constant PDO::MYSQL_ATTR_INIT_COMMAND in /home/cotizacl/public_html/core/DB.php:29
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): DB::connect()
+#1 /home/cotizacl/public_html/modules/auth/registro_post.php(51): DB::val('SELECT id FROM ...', Array)
+#2 /home/cotizacl/public_html/core/Router.php(196): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(83): Router::load('auth', 'registro_post')
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}(Array)
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 29
+[10-Mar-2026 10:06:26 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: could not find driver in /home/cotizacl/public_html/core/DB.php:33
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(33): PDO->__construct('mysql:host=127....', 'cotizacl_cotiza...', Object(SensitiveParameterValue), Array)
+#1 /home/cotizacl/public_html/core/DB.php(65): DB::connect()
+#2 /home/cotizacl/public_html/modules/auth/registro_post.php(47): DB::val('SELECT id FROM ...', Array)
+#3 /home/cotizacl/public_html/core/Router.php(196): require('/home/cotizacl/...')
+#4 /home/cotizacl/public_html/core/Router.php(83): Router::load('auth', 'registro_post')
+#5 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}(Array)
+#6 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#7 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 33
+[10-Mar-2026 10:11:06 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: could not find driver in /home/cotizacl/public_html/core/DB.php:33
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(33): PDO->__construct('mysql:host=loca...', 'cotizacl_cotiza...', Object(SensitiveParameterValue), Array)
+#1 /home/cotizacl/public_html/core/DB.php(65): DB::connect()
+#2 /home/cotizacl/public_html/modules/auth/registro_post.php(47): DB::val('SELECT id FROM ...', Array)
+#3 /home/cotizacl/public_html/core/Router.php(196): require('/home/cotizacl/...')
+#4 /home/cotizacl/public_html/core/Router.php(83): Router::load('auth', 'registro_post')
+#5 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}(Array)
+#6 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#7 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 33
+[10-Mar-2026 10:51:10 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'aceptada_at' in 'field list' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(147): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:53:52 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:53:54 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:53:58 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:56:03 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:57:19 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:57:58 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:58:02 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:58:05 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:58:33 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:59:49 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:59:52 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 10:59:57 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 11:00:23 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'descuento_auto_amt' in 'where clause' in /home/cotizacl/public_html/core/DB.php:65
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(65): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(164): DB::val()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 65
+[10-Mar-2026 11:05:44 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'v.numero' in 'field list' in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(182): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[10-Mar-2026 11:05:48 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'v.numero' in 'field list' in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(182): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[10-Mar-2026 11:06:02 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'v.numero' in 'field list' in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/dashboard/index.php(182): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[10-Mar-2026 11:08:33 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'orden' in 'order clause' in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/config/index.php(20): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(145): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[10-Mar-2026 11:08:42 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'cl.usuario_id' in 'on clause' in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/clientes/lista.php(46): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(116): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[10-Mar-2026 11:09:03 America/Hermosillo] PHP Fatal error:  Uncaught Error: Call to undefined function apcu_fetch() in /home/cotizacl/public_html/modules/radar/index.php:30
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(222): require()
+#1 /home/cotizacl/public_html/core/Router.php(132): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/radar/index.php on line 30
+[10-Mar-2026 11:09:15 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'orden' in 'order clause' in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/config/index.php(20): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(145): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[10-Mar-2026 11:09:25 America/Hermosillo] PHP Fatal error:  Uncaught Error: Call to undefined function apcu_fetch() in /home/cotizacl/public_html/modules/radar/index.php:30
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(222): require()
+#1 /home/cotizacl/public_html/core/Router.php(132): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/radar/index.php on line 30
+[10-Mar-2026 11:09:28 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'cl.usuario_id' in 'on clause' in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/clientes/lista.php(46): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(116): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[10-Mar-2026 11:09:41 America/Hermosillo] PHP Fatal error:  Uncaught Error: Call to undefined function apcu_fetch() in /home/cotizacl/public_html/modules/radar/index.php:30
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(222): require()
+#1 /home/cotizacl/public_html/core/Router.php(132): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/radar/index.php on line 30
+[10-Mar-2026 11:09:53 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'orden' in 'order clause' in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/config/index.php(20): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(145): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[10-Mar-2026 11:14:29 America/Hermosillo] PHP Warning:  Undefined array key "notif_email_acepta" in /home/cotizacl/public_html/modules/config/index.php on line 393
+[10-Mar-2026 11:14:29 America/Hermosillo] PHP Warning:  Undefined array key "notif_email_rechaza" in /home/cotizacl/public_html/modules/config/index.php on line 403
+[10-Mar-2026 11:14:29 America/Hermosillo] PHP Warning:  Undefined array key "cot_vigencia_dias" in /home/cotizacl/public_html/modules/config/index.php on line 420
+[10-Mar-2026 11:14:29 America/Hermosillo] PHP Warning:  Undefined array key "allow_precio_edit" in /home/cotizacl/public_html/modules/config/index.php on line 430
+[10-Mar-2026 11:21:30 America/Hermosillo] PHP Warning:  Undefined array key "notif_email_acepta" in /home/cotizacl/public_html/modules/config/index.php on line 393
+[10-Mar-2026 11:21:30 America/Hermosillo] PHP Warning:  Undefined array key "notif_email_rechaza" in /home/cotizacl/public_html/modules/config/index.php on line 403
+[10-Mar-2026 11:21:30 America/Hermosillo] PHP Warning:  Undefined array key "cot_vigencia_dias" in /home/cotizacl/public_html/modules/config/index.php on line 420
+[10-Mar-2026 11:21:30 America/Hermosillo] PHP Warning:  Undefined array key "allow_precio_edit" in /home/cotizacl/public_html/modules/config/index.php on line 430
+[10-Mar-2026 11:23:30 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'direccion' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/config/guardar_empresa.php(22): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(147): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
