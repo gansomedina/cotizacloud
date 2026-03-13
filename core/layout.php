@@ -92,8 +92,7 @@ foreach ($mas_rutas as $r) {
         }
 
         *,*::before,*::after{box-sizing:border-box}
-        html{overflow-y:scroll;overscroll-behavior-y:none}
-        body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;font-size:14px;line-height:1.5;overscroll-behavior-y:none}
+        body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;font-size:14px;line-height:1.5}
 
         /* ── SIDEBAR ── */
         #sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:200;transition:transform .22s cubic-bezier(.4,0,.2,1)}
@@ -201,10 +200,11 @@ foreach ($mas_rutas as $r) {
 
         /* ── MOBILE ── */
         @media(max-width:768px){
-            body{font-size:15px}
+            html{height:100%;overflow:hidden}
+            body{height:100%;overflow:hidden;font-size:15px}
             #sidebar{transform:translateX(-100%);width:80vw;max-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.13)}
             #sidebar.open{transform:translateX(0)}
-            #main{margin-left:0}
+            #main{margin-left:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
             #topbar{padding:0 14px;height:52px}
             #topbar-hamburger{display:flex;align-items:center;justify-content:center}
             .topbar-user span{display:none}
@@ -221,13 +221,6 @@ foreach ($mas_rutas as $r) {
                 border-top:1px solid var(--border);
                 z-index:600;
                 box-shadow:0 -2px 12px rgba(0,0,0,.08);
-                isolation:isolate;
-            }
-            /* Extend background below safe area to prevent content peeking */
-            #bottom-nav::after{
-                content:'';position:fixed;bottom:0;left:0;right:0;
-                height:env(safe-area-inset-bottom,0px);
-                background:var(--white);z-index:-1;
             }
             .bn-item{
                 flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
