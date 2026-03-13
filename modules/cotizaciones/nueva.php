@@ -307,6 +307,7 @@ $page_title = 'Nueva cotización';
 </head>
 <body>
 
+<div id="app-main">
 <!-- TOPBAR -->
 <div class="topbar">
     <div class="topbar-inner">
@@ -1154,13 +1155,16 @@ function toggleMob(hdr)   { hdr.closest('.mob-section').classList.toggle('open')
                 Volver al listado
             </a>
         </div>
+</div><!-- /app-main -->
 
 <!-- ══ BOTTOM NAV MOBILE ══════════════════════════════════ -->
 <style>
 #app-bottom-nav{display:none}
 @media(max-width:768px){
+  html,body{height:100%;overflow:hidden}
+  #app-main{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
   body.sheet-open #app-bottom-nav{display:none!important}
-  #app-bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;height:64px;background:#fff;border-top:1px solid #e2e2dc;z-index:600;box-shadow:0 -2px 12px rgba(0,0,0,.08);padding-bottom:env(safe-area-inset-bottom)}
+  #app-bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;height:calc(60px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:#fff;border-top:1px solid #e2e2dc;z-index:600;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
   .app-bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;color:#6a6a64;font-size:10.5px;font-weight:500;padding:6px 4px;border:none;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;position:relative}
   .app-bn-item svg{width:22px;height:22px}
   .app-bn-item.active{color:#1a5c38}
