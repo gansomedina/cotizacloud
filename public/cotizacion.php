@@ -503,10 +503,10 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <div class="pf-left">
     <div class="pf-emp"><?= e($cot['emp_nombre']) ?></div>
     <div class="pf-sub">
-      <?php if ($cot['emp_tel']): ?><?= e($cot['emp_tel']) ?> &nbsp;·&nbsp; <?php endif; ?>
-      <?php if ($cot['emp_email']): ?><?= e($cot['emp_email']) ?><br><?php endif; ?>
-      <?php if ($cot['emp_web']): ?><?= e(preg_replace('#^https?://#','',$cot['emp_web'])) ?><br><?php endif; ?>
-      <?php if ($cot['emp_ciudad']): ?><?= e($cot['emp_ciudad']) ?><?php endif; ?>
+      <?php if (!empty($cot['emp_tel'])): ?><?= e($cot['emp_tel']) ?> &nbsp;·&nbsp; <?php endif; ?>
+      <?php if (!empty($cot['emp_email'])): ?><?= e($cot['emp_email']) ?><br><?php endif; ?>
+      <?php if (!empty($cot['emp_web'])): ?><?= e(preg_replace('#^https?://#','',$cot['emp_web'])) ?><br><?php endif; ?>
+      <?php if (!empty($cot['emp_ciudad'])): ?><?= e($cot['emp_ciudad']) ?><?php endif; ?>
     </div>
   </div>
   <div class="pf-right">
@@ -1281,9 +1281,9 @@ calc();
   <div style="margin-bottom:5pt"><?= nl2br(e($cot['cot_footer'])) ?></div>
   <?php endif; ?>
   <?= e($cot['emp_nombre']) ?>
-  <?php if ($cot['emp_tel']): ?> · <?= e($cot['emp_tel']) ?><?php endif; ?>
-  <?php if ($cot['emp_email']): ?> · <?= e($cot['emp_email']) ?><?php endif; ?>
-  <?php if ($cot['emp_web']): ?> · <?= e(preg_replace('#^https?://#','',$cot['emp_web'])) ?><?php endif; ?><br>
+  <?php if (!empty($cot['emp_tel'])): ?> · <?= e($cot['emp_tel']) ?><?php endif; ?>
+  <?php if (!empty($cot['emp_email'])): ?> · <?= e($cot['emp_email']) ?><?php endif; ?>
+  <?php if (!empty($cot['emp_web'])): ?> · <?= e(preg_replace('#^https?://#','',$cot['emp_web'])) ?><?php endif; ?><br>
   Cotización <?= e($cot['numero']) ?> generada en cotiza.cloud
 </div>
 </body>
