@@ -78,11 +78,11 @@ ob_start();
 ?>
 <style>
 /* ─── Tabs ───────────────────────────────────────────────── */
-.cfg-tabs-wrap{background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:56px;z-index:90;overflow-x:auto;scrollbar-width:none;margin:-20px 0 24px}
-@media(max-width:768px){.cfg-tabs-wrap{top:52px;margin:0 -14px 20px;z-index:105}}
+.cfg-tabs-wrap{background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:56px;z-index:90;overflow-x:auto;scrollbar-width:none;margin:-20px 0 24px;-webkit-overflow-scrolling:touch}
+@media(max-width:768px){.cfg-tabs-wrap{top:52px;margin:0 -14px 20px;z-index:105;padding:0 14px}}
 .cfg-tabs-wrap::-webkit-scrollbar{display:none}
 .cfg-tabs{display:flex;max-width:var(--max);margin:0 auto}
-.cfg-tab{padding:13px 16px;font:600 13px var(--body);color:var(--t3);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;display:flex;align-items:center;gap:6px}
+.cfg-tab{padding:13px 16px;font:600 13px var(--body);color:var(--t3);text-decoration:none;border-bottom:2.5px solid transparent;white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:6px;-webkit-tap-highlight-color:rgba(0,0,0,.05)}
 .cfg-tab:hover{color:var(--t2)}
 .cfg-tab.on{color:var(--g);border-bottom-color:var(--g)}
 .tab-panel{display:none}.tab-panel.on{display:block}
@@ -277,12 +277,12 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 <!-- Tabs -->
 <div class="cfg-tabs-wrap">
   <div class="cfg-tabs">
-    <button type="button" class="cfg-tab <?= $tab_activo==='empresa'   ?'on':'' ?>" data-tab="empresa">Empresa</button>
-    <button type="button" class="cfg-tab <?= $tab_activo==='catalogo'  ?'on':'' ?>" data-tab="catalogo">Catálogo</button>
-    <button type="button" class="cfg-tab <?= $tab_activo==='clientes'  ?'on':'' ?>" data-tab="clientes">Clientes</button>
-    <button type="button" class="cfg-tab <?= $tab_activo==='cupones'   ?'on':'' ?>" data-tab="cupones">Cupones</button>
-    <button type="button" class="cfg-tab <?= $tab_activo==='usuarios'  ?'on':'' ?>" data-tab="usuarios">Usuarios</button>
-    <button type="button" class="cfg-tab <?= $tab_activo==='radar'     ?'on':'' ?>" data-tab="radar">Radar</button>
+    <a class="cfg-tab <?= $tab_activo==='empresa'   ?'on':'' ?>" href="/config?tab=empresa">Empresa</a>
+    <a class="cfg-tab <?= $tab_activo==='catalogo'  ?'on':'' ?>" href="/config?tab=catalogo">Catálogo</a>
+    <a class="cfg-tab <?= $tab_activo==='clientes'  ?'on':'' ?>" href="/config?tab=clientes">Clientes</a>
+    <a class="cfg-tab <?= $tab_activo==='cupones'   ?'on':'' ?>" href="/config?tab=cupones">Cupones</a>
+    <a class="cfg-tab <?= $tab_activo==='usuarios'  ?'on':'' ?>" href="/config?tab=usuarios">Usuarios</a>
+    <a class="cfg-tab <?= $tab_activo==='radar'     ?'on':'' ?>" href="/config?tab=radar">Radar</a>
   </div>
 </div>
 
@@ -1041,25 +1041,6 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 </div>
 
 <script>
-// ── Tabs (event delegation — robusto) ───────────────────────
-function cfgTab(id, el) {
-    document.querySelectorAll('.cfg-tab').forEach(t => t.classList.remove('on'));
-    el.classList.add('on');
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('on'));
-    var panel = document.getElementById('panel-' + id);
-    if (panel) panel.classList.add('on');
-    var btn = document.getElementById('btnGuardarEmpresa');
-    if (btn) btn.style.display = id === 'empresa' ? 'block' : 'none';
-    try { history.replaceState(null,'','/config?tab=' + id); } catch(e){}
-}
-// Event delegation en el contenedor de tabs
-document.querySelector('.cfg-tabs')?.addEventListener('click', function(e) {
-    var btn = e.target.closest('.cfg-tab');
-    if (!btn) return;
-    var tab = btn.getAttribute('data-tab');
-    if (tab) cfgTab(tab, btn);
-});
-
 // ── Sheets ──────────────────────────────────────────────────
 function openSheet(id) {
     const ov = document.getElementById('ov-' + id);
