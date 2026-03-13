@@ -1123,7 +1123,7 @@ async function subirLogo(input) {
             }
             flashOk('Logo subido correctamente');
         } else alert(d.error || 'Error al subir el logo.');
-    } catch { alert('Error de conexión.'); }
+    } catch(e) { alert('Error de conexión.'); }
 }
 async function quitarLogo() {
     if (!confirm('¿Quitar el logo?')) return;
@@ -1132,7 +1132,7 @@ async function quitarLogo() {
         const d = await r.json();
         if (d.ok) { document.getElementById('logoPreview').innerHTML = '🏠'; flashOk('Logo eliminado'); }
         else alert(d.error || 'Error.');
-    } catch { alert('Error de conexión.'); }
+    } catch(e) { alert('Error de conexión.'); }
 }
 
 // ── Guardar empresa ──────────────────────────────────────────
@@ -1169,7 +1169,7 @@ async function guardarEmpresa() {
         const d = await r.json();
         if (d.ok) flashOk('Cambios guardados');
         else alert(d.error || 'Error al guardar.');
-    } catch { alert('Error de conexión.'); }
+    } catch(e) { alert('Error de conexión.'); }
 }
 
 // ── Guardar radar ────────────────────────────────────────────
@@ -1193,7 +1193,7 @@ async function guardarRadar() {
         const d = await r.json();
         if (d.ok) flashOk('Radar guardado');
         else alert(d.error || 'Error al guardar.');
-    } catch { alert('Error de conexión.'); }
+    } catch(e) { alert('Error de conexión.'); }
 }
 
 // ── Recalibrar FIT ───────────────────────────────────────────
@@ -1205,7 +1205,7 @@ async function recalibrarFit() {
         const d = await r.json();
         if (d.ok) { flashOk('Calibración completada'); setTimeout(()=>location.reload(), 800); }
         else { alert(d.error || 'Error al calibrar.'); btn.disabled=false; btn.textContent='Recalibrar ahora'; }
-    } catch { alert('Error de conexión.'); btn.disabled=false; btn.textContent='Recalibrar ahora'; }
+    } catch(e) { alert('Error de conexión.'); btn.disabled=false; btn.textContent='Recalibrar ahora'; }
 }
 
 // ── Flash mensaje ────────────────────────────────────────────
@@ -1249,7 +1249,7 @@ async function guardarArticulo() {
         const d = await r.json();
         if (d.ok) { closeSheet('shArt'); location.reload(); }
         else alert(d.error || 'Error.');
-    } catch { alert('Error de conexión.'); }
+    } catch(e) { alert('Error de conexión.'); }
 }
 async function eliminarArticulo(id, btn) {
     if (!confirm('¿Eliminar este artículo del catálogo?')) return;
@@ -1258,7 +1258,7 @@ async function eliminarArticulo(id, btn) {
         const d = await r.json();
         if (d.ok) btn.closest('tr')?.remove();
         else alert(d.error || 'Error.');
-    } catch { alert('Error de conexión.'); }
+    } catch(e) { alert('Error de conexión.'); }
 }
 
 // ── Cliente ──────────────────────────────────────────────────
@@ -1290,7 +1290,7 @@ async function guardarCliente() {
         const d = await r.json();
         if (d.ok) { closeSheet('shCli'); location.reload(); }
         else alert(d.error || 'Error.');
-    } catch { alert('Error de conexión.'); }
+    } catch(e) { alert('Error de conexión.'); }
 }
 
 // ── Cupón ────────────────────────────────────────────────────
@@ -1341,15 +1341,7 @@ async function guardarCupon() {
         const d = await r.json();
         if (d.ok) { closeSheet('shCup'); location.reload(); }
         else alert(d.error || 'Error.');
-    } catch { alert('Error de conexión.'); }
-}
-    const url = id ? '/config/cupon/' + id : '/config/cupon';
-    try {
-        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({codigo,porcentaje:pct,descripcion:desc,activo}) });
-        const d = await r.json();
-        if (d.ok) { closeSheet('shCup'); location.reload(); }
-        else alert(d.error || 'Error.');
-    } catch { alert('Error de conexión.'); }
+    } catch(e) { alert('Error de conexión.'); }
 }
 async function eliminarCupon(id, btn) {
     if (!confirm('¿Eliminar este cupón?')) return;
@@ -1358,7 +1350,7 @@ async function eliminarCupon(id, btn) {
         const d = await r.json();
         if (d.ok) btn.closest('tr')?.remove();
         else alert(d.error || 'Error.');
-    } catch { alert('Error de conexión.'); }
+    } catch(e) { alert('Error de conexión.'); }
 }
 
 // ── Usuario ──────────────────────────────────────────────────
@@ -1428,7 +1420,7 @@ async function guardarUsuario() {
         const d = await r.json();
         if (d.ok) { closeSheet('shUsr'); location.reload(); }
         else alert(d.error || 'Error.');
-    } catch { alert('Error de conexión.'); }
+    } catch(e) { alert('Error de conexión.'); }
 }
 </script>
 
