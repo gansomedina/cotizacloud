@@ -92,7 +92,8 @@ foreach ($mas_rutas as $r) {
         }
 
         *,*::before,*::after{box-sizing:border-box}
-        body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;font-size:14px;line-height:1.5}
+        html{overflow-y:scroll;overscroll-behavior-y:none}
+        body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;font-size:14px;line-height:1.5;overscroll-behavior-y:none}
 
         /* ── SIDEBAR ── */
         #sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:200;transition:transform .22s cubic-bezier(.4,0,.2,1)}
@@ -207,19 +208,26 @@ foreach ($mas_rutas as $r) {
             #topbar{padding:0 14px;height:52px}
             #topbar-hamburger{display:flex;align-items:center;justify-content:center}
             .topbar-user span{display:none}
-            /* padding-bottom = altura nav + margen para que el último elemento no quede tapado */
-            #content{padding:14px 14px calc(var(--nav-h) + 20px)}
+            /* padding-bottom = altura nav + safe area + margen */
+            #content{padding:14px 14px calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 20px)}
 
             /* Bottom nav visible */
             #bottom-nav{
                 display:flex;
                 position:fixed;bottom:0;left:0;right:0;
-                height:calc(var(--nav-h) + env(safe-area-inset-bottom));
+                height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));
+                padding-bottom:env(safe-area-inset-bottom,0px);
                 background:var(--white);
                 border-top:1px solid var(--border);
                 z-index:600;
                 box-shadow:0 -2px 12px rgba(0,0,0,.08);
                 isolation:isolate;
+            }
+            /* Extend background below safe area to prevent content peeking */
+            #bottom-nav::after{
+                content:'';position:fixed;bottom:0;left:0;right:0;
+                height:env(safe-area-inset-bottom,0px);
+                background:var(--white);z-index:-1;
             }
             .bn-item{
                 flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
