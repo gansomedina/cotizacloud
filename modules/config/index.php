@@ -221,8 +221,9 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 /* ─── Sheets ─────────────────────────────────────────────── */
 .sh-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
 .sh-overlay.open{opacity:1;pointer-events:auto}
-.bottom-sheet{position:fixed;bottom:0;left:0;right:0;z-index:201;background:var(--white);border-radius:20px 20px 0 0;max-height:92vh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,0,.15,1);box-shadow:0 -8px 32px rgba(0,0,0,.1);max-width:640px;margin:0 auto;pointer-events:none}
-.bottom-sheet.open{transform:translateY(0);pointer-events:auto}
+.bottom-sheet{display:none;position:fixed;bottom:0;left:0;right:0;z-index:201;background:var(--white);border-radius:20px 20px 0 0;max-height:92vh;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.1);max-width:640px;margin:0 auto;pointer-events:none}
+.bottom-sheet.open{display:flex;pointer-events:auto;animation:sheetUp .3s cubic-bezier(.32,0,.15,1)}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .sh-handle{width:34px;height:4px;border-radius:2px;background:var(--border2);margin:12px auto 0;flex-shrink:0}
 .sh-header{padding:14px 18px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid var(--border)}
 .sh-title{font:800 17px var(--body)}
@@ -276,12 +277,12 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 <!-- Tabs -->
 <div class="cfg-tabs-wrap">
   <div class="cfg-tabs">
-    <button class="cfg-tab <?= $tab_activo==='empresa'   ?'on':'' ?>" onclick="cfgTab('empresa',this)">Empresa</button>
-    <button class="cfg-tab <?= $tab_activo==='catalogo'  ?'on':'' ?>" onclick="cfgTab('catalogo',this)">Catálogo</button>
-    <button class="cfg-tab <?= $tab_activo==='clientes'  ?'on':'' ?>" onclick="cfgTab('clientes',this)">Clientes</button>
-    <button class="cfg-tab <?= $tab_activo==='cupones'   ?'on':'' ?>" onclick="cfgTab('cupones',this)">Cupones</button>
-    <button class="cfg-tab <?= $tab_activo==='usuarios'  ?'on':'' ?>" onclick="cfgTab('usuarios',this)">Usuarios</button>
-    <button class="cfg-tab <?= $tab_activo==='radar'     ?'on':'' ?>" onclick="cfgTab('radar',this)">Radar</button>
+    <button type="button" class="cfg-tab <?= $tab_activo==='empresa'   ?'on':'' ?>" data-tab="empresa">Empresa</button>
+    <button type="button" class="cfg-tab <?= $tab_activo==='catalogo'  ?'on':'' ?>" data-tab="catalogo">Catálogo</button>
+    <button type="button" class="cfg-tab <?= $tab_activo==='clientes'  ?'on':'' ?>" data-tab="clientes">Clientes</button>
+    <button type="button" class="cfg-tab <?= $tab_activo==='cupones'   ?'on':'' ?>" data-tab="cupones">Cupones</button>
+    <button type="button" class="cfg-tab <?= $tab_activo==='usuarios'  ?'on':'' ?>" data-tab="usuarios">Usuarios</button>
+    <button type="button" class="cfg-tab <?= $tab_activo==='radar'     ?'on':'' ?>" data-tab="radar">Radar</button>
   </div>
 </div>
 
@@ -1040,15 +1041,24 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 </div>
 
 <script>
-// ── Tabs ────────────────────────────────────────────────────
+// ── Tabs (event delegation — robusto) ───────────────────────
 function cfgTab(id, el) {
     document.querySelectorAll('.cfg-tab').forEach(t => t.classList.remove('on'));
     el.classList.add('on');
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('on'));
-    document.getElementById('panel-' + id)?.classList.add('on');
-    document.getElementById('btnGuardarEmpresa').style.display = id === 'empresa' ? 'block' : 'none';
-    history.replaceState(null,'','/config?tab=' + id);
+    var panel = document.getElementById('panel-' + id);
+    if (panel) panel.classList.add('on');
+    var btn = document.getElementById('btnGuardarEmpresa');
+    if (btn) btn.style.display = id === 'empresa' ? 'block' : 'none';
+    try { history.replaceState(null,'','/config?tab=' + id); } catch(e){}
 }
+// Event delegation en el contenedor de tabs
+document.querySelector('.cfg-tabs')?.addEventListener('click', function(e) {
+    var btn = e.target.closest('.cfg-tab');
+    if (!btn) return;
+    var tab = btn.getAttribute('data-tab');
+    if (tab) cfgTab(tab, btn);
+});
 
 // ── Sheets ──────────────────────────────────────────────────
 function openSheet(id) {
