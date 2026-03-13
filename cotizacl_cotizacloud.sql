@@ -189,6 +189,7 @@ CREATE TABLE `cotizacion_archivos` (
 CREATE TABLE `cotizacion_lineas` (
   `id` int(10) UNSIGNED NOT NULL,
   `cotizacion_id` int(10) UNSIGNED NOT NULL,
+  `venta_id` int(10) UNSIGNED DEFAULT NULL,
   `articulo_id` int(10) UNSIGNED DEFAULT NULL,
   `orden` smallint(6) NOT NULL DEFAULT 0,
   `titulo` varchar(255) NOT NULL,
@@ -309,7 +310,8 @@ CREATE TABLE `empresas` (
   `cot_footer` text DEFAULT NULL,
   `vta_terminos` text DEFAULT NULL,
   `vta_footer` text DEFAULT NULL,
-  `cot_prefijo` varchar(10) NOT NULL DEFAULT 'COT'
+  `cot_prefijo` varchar(10) NOT NULL DEFAULT 'COT',
+  `vta_prefijo` varchar(10) NOT NULL DEFAULT 'VTA'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -600,6 +602,9 @@ CREATE TABLE `recibos` (
   `numero` varchar(30) NOT NULL,
   `concepto` varchar(255) DEFAULT NULL,
   `monto` decimal(12,2) NOT NULL,
+  `tipo` enum('abono','cancelacion') NOT NULL DEFAULT 'abono',
+  `pagado_antes` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `saldo_despues` decimal(12,2) NOT NULL DEFAULT 0.00,
   `fecha` date NOT NULL,
   `token` char(64) NOT NULL,
   `cancelado` tinyint(1) NOT NULL DEFAULT 0,
@@ -725,7 +730,8 @@ CREATE TABLE `ventas` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `descuento_auto_amt` decimal(12,2) NOT NULL DEFAULT 0.00,
-  `cupon_monto` decimal(12,2) NOT NULL DEFAULT 0.00
+  `cupon_monto` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `notas_internas` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -824,6 +830,7 @@ ALTER TABLE `cotizacion_archivos`
 ALTER TABLE `cotizacion_lineas`
   ADD PRIMARY KEY (`id`),
   ADD KEY `cotizacion_id` (`cotizacion_id`),
+  ADD KEY `venta_id` (`venta_id`),
   ADD KEY `articulo_id` (`articulo_id`);
 
 --
@@ -1118,7 +1125,8 @@ ALTER TABLE `cotizacion_archivos`
 --
 ALTER TABLE `cotizacion_lineas`
   ADD CONSTRAINT `cotizacion_lineas_ibfk_1` FOREIGN KEY (`cotizacion_id`) REFERENCES `cotizaciones` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `cotizacion_lineas_ibfk_2` FOREIGN KEY (`articulo_id`) REFERENCES `articulos` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `cotizacion_lineas_ibfk_2` FOREIGN KEY (`articulo_id`) REFERENCES `articulos` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `cotizacion_lineas_ibfk_3` FOREIGN KEY (`venta_id`) REFERENCES `ventas` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `cotizacion_log`
