@@ -1,6 +1,13 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/cotizacl/public_html/cotizacloud/
+    - export DEPLOYPATH=/home/cotizacl/public_html/
     - /bin/mkdir -p $DEPLOYPATH
-    - /bin/cp -R * $DEPLOYPATH
+    - /bin/cp index.php $DEPLOYPATH
+    - /bin/cp config.php $DEPLOYPATH
+    - /bin/cp respaldoconfig.php $DEPLOYPATH
+    - /bin/cp -R api $DEPLOYPATH
+    - /bin/cp -R core $DEPLOYPATH
+    - /bin/cp -R modules $DEPLOYPATH
+    - /bin/cp -R public $DEPLOYPATH
+    - /bin/cp -R tools $DEPLOYPATH
