@@ -176,6 +176,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 </head>
 <body>
 
+<div id="app-main">
 <!-- TOPBAR -->
 <div class="topbar">
     <div class="topbar-inner">
@@ -728,22 +729,21 @@ function closeUrlOverlay(){
     ov.style.pointerEvents = 'none';
 }
 </script>
+</div><!-- /app-main -->
 
 <!-- ══ BOTTOM NAV MOBILE ══════════════════════════════════ -->
 <style>
 #app-bottom-nav{display:none}
 @media(max-width:768px){
+  html,body{height:100%;overflow:hidden}
+  #app-main{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
   body.sheet-open #app-bottom-nav{display:none!important}
   #app-bottom-nav{
     display:flex;position:fixed;bottom:0;left:0;right:0;
-    height:60px;background:#fff;border-top:1px solid #e2e2dc;
-    height:calc(60px + env(safe-area-inset-bottom));
+    height:calc(60px + env(safe-area-inset-bottom,0px));
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    background:#fff;border-top:1px solid #e2e2dc;
     z-index:600;box-shadow:0 -2px 12px rgba(0,0,0,.08);
-    -webkit-transform:translateZ(0);
-    transform:translateZ(0);
-    will-change:transform;
-    -webkit-backface-visibility:hidden;
-    backface-visibility:hidden;
   }
   .app-bn-item{
     flex:1;display:flex;flex-direction:column;align-items:center;
