@@ -14,7 +14,7 @@ $venta = DB::row(
     "SELECT v.*,
             e.nombre AS emp_nombre, e.ciudad AS emp_ciudad,
             e.telefono AS emp_tel, e.email AS emp_email,
-            e.moneda, e.vta_terminos AS terminos,
+            e.moneda, e.logo_url AS emp_logo, e.vta_terminos AS terminos,
             cl.nombre AS cliente_nombre, cl.telefono AS cli_tel,
 
             c.numero  AS cot_numero,
@@ -308,7 +308,11 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 <div class="empresa-header">
   <div class="empresa-inner">
+    <?php if (!empty($venta['emp_logo'])): ?>
+    <div class="empresa-logo" style="background:none"><img src="<?= e($venta['emp_logo']) ?>" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
+    <?php else: ?>
     <div class="empresa-logo"><?= e($ini_emp) ?></div>
+    <?php endif; ?>
     <div class="empresa-nombre"><?= e($venta['emp_nombre']) ?></div>
     <div class="empresa-contacto">
       <?php if ($venta['emp_tel']): ?>
@@ -629,7 +633,11 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     </div>
     <div class="rec-body">
       <div class="rec-emp-row">
+        <?php if (!empty($venta['emp_logo'])): ?>
+        <img src="<?= e($venta['emp_logo']) ?>" alt="Logo" style="height:36px;object-fit:contain">
+        <?php else: ?>
         <div style="font:700 18px var(--body)"><?= e($ini_emp) ?></div>
+        <?php endif; ?>
         <div style="text-align:right">
           <div class="rec-emp-name"><?= e($venta['emp_nombre']) ?></div>
           <div class="rec-emp-sub"><?= e($venta['emp_ciudad']??'') ?><?php if($venta['emp_tel']): ?> · <?= e($venta['emp_tel']) ?><?php endif; ?></div>

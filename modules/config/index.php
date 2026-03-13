@@ -303,13 +303,13 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <?php endif; ?>
         </div>
         <div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div id="logoBtns" style="display:flex;gap:8px;flex-wrap:wrap">
             <label class="logo-btn" style="cursor:pointer">
               Subir logo
               <input type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" style="display:none" onchange="subirLogo(this)">
             </label>
             <?php if ($empresa['logo_url']): ?>
-            <button class="logo-btn danger" onclick="quitarLogo()">Quitar logo</button>
+            <button class="logo-btn danger" id="btnQuitarLogo" onclick="quitarLogo()">Quitar logo</button>
             <?php endif; ?>
           </div>
           <div class="logo-hint">PNG, SVG o WEBP · máx. 2 MB · fondo transparente recomendado</div>
@@ -1121,6 +1121,7 @@ async function subirLogo(input) {
                 b.onclick = quitarLogo;
                 btns.appendChild(b);
             }
+            flashOk('Logo subido correctamente');
         } else alert(d.error || 'Error al subir el logo.');
     } catch { alert('Error de conexión.'); }
 }
@@ -1129,7 +1130,7 @@ async function quitarLogo() {
     try {
         const r = await fetch('/config/logo/quitar', { method: 'POST' });
         const d = await r.json();
-        if (d.ok) { document.getElementById('logoPreview').innerHTML = '🏠'; }
+        if (d.ok) { document.getElementById('logoPreview').innerHTML = '🏠'; flashOk('Logo eliminado'); }
         else alert(d.error || 'Error.');
     } catch { alert('Error de conexión.'); }
 }

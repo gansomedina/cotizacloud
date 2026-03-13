@@ -13,7 +13,7 @@ if (!$slug) { http_response_code(404); die('No encontrado'); }
 $cot = DB::row(
     "SELECT c.*, e.nombre AS emp_nombre, e.ciudad AS emp_ciudad,
             e.telefono AS emp_tel, e.email AS emp_email,
-            e.moneda,
+            e.moneda, e.logo_url AS emp_logo,
             e.impuesto_modo, e.impuesto_pct, e.impuesto_nombre AS impuesto_label,
             e.cot_terminos AS terminos, e.cot_footer,
             e.texto_aceptar, e.texto_rechazar,
@@ -471,7 +471,11 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-inner">
+    <?php if (!empty($cot['emp_logo'])): ?>
+    <div class="hdr-logo" style="background:none"><img src="<?= e($cot['emp_logo']) ?>" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
+    <?php else: ?>
     <div class="hdr-logo"><?= e($ini_emp) ?></div>
+    <?php endif; ?>
     <div class="hdr-co"><?= e($cot['emp_nombre']) ?></div>
     <?php if ($cot['emp_ciudad']): ?>
     <div class="hdr-tag"><?= e($cot['emp_ciudad']) ?></div>
@@ -753,7 +757,11 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 <!-- FOOTER -->
 <div class="footer">
   <div class="footer-inner">
+    <?php if (!empty($cot['emp_logo'])): ?>
+    <div class="flogo" style="background:none"><img src="<?= e($cot['emp_logo']) ?>" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
+    <?php else: ?>
     <div class="flogo"><?= e($ini_emp) ?></div>
+    <?php endif; ?>
     <div class="fname2"><?= e($cot['emp_nombre']) ?></div>
     <?php if ($cot['emp_ciudad']): ?><div class="fsub"><?= e($cot['emp_ciudad']) ?></div><?php endif; ?>
     <?php if (!empty($cot['cot_footer'])): ?>
