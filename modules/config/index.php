@@ -1343,14 +1343,6 @@ async function guardarCupon() {
         else alert(d.error || 'Error.');
     } catch(e) { alert('Error de conexión.'); }
 }
-    const url = id ? '/config/cupon/' + id : '/config/cupon';
-    try {
-        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({codigo,porcentaje:pct,descripcion:desc,activo}) });
-        const d = await r.json();
-        if (d.ok) { closeSheet('shCup'); location.reload(); }
-        else alert(d.error || 'Error.');
-    } catch(e) { alert('Error de conexión.'); }
-}
 async function eliminarCupon(id, btn) {
     if (!confirm('¿Eliminar este cupón?')) return;
     try {
