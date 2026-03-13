@@ -13,7 +13,7 @@ if (!$slug) { http_response_code(404); die('No encontrado'); }
 $cot = DB::row(
     "SELECT c.*, e.nombre AS emp_nombre, e.ciudad AS emp_ciudad,
             e.telefono AS emp_tel, e.email AS emp_email,
-            e.moneda, e.logo_url AS emp_logo,
+            e.website AS emp_web, e.moneda, e.logo_url AS emp_logo,
             e.impuesto_modo, e.impuesto_pct, e.impuesto_nombre AS impuesto_label,
             e.cot_terminos AS terminos, e.cot_footer,
             e.texto_aceptar, e.texto_rechazar,
@@ -1277,6 +1277,9 @@ calc();
 
 <!-- PRINT: Pie de página -->
 <div class="print-footer" style="display:none">
+  <?php if (!empty($cot['cot_footer'])): ?>
+  <div style="margin-bottom:5pt"><?= nl2br(e($cot['cot_footer'])) ?></div>
+  <?php endif; ?>
   <?= e($cot['emp_nombre']) ?>
   <?php if ($cot['emp_tel']): ?> · <?= e($cot['emp_tel']) ?><?php endif; ?>
   <?php if ($cot['emp_email']): ?> · <?= e($cot['emp_email']) ?><?php endif; ?>
