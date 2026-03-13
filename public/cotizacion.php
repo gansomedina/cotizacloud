@@ -488,7 +488,6 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     </div>
     <div class="tabs">
         <button class="tab on" onclick="go('d',this)">Cotización</button>
-        <?php if ($cot['terminos']): ?><button class="tab" onclick="go('t',this)">Términos</button><?php endif; ?>
     </div>
   </div>
 </div>
@@ -712,17 +711,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   </div>
   <?php endif; ?>
 
-  <!-- NOTAS PÚBLICAS -->
-  <?php if ($cot['cot_footer'] ?? null): ?>
-  <div class="slbl">Notas del proyecto</div>
-  <div class="notes"><?= nl2br(e($cot['cot_footer'] ?? null)) ?></div>
-  <?php endif; ?>
-
-  <div style="height:10px"></div>
-</div><!-- /tab-d -->
-
-<!-- ══ TAB TÉRMINOS ══ -->
-<div id="tab-t" style="display:none">
+  <!-- TÉRMINOS Y CONDICIONES -->
   <?php if ($cot['terminos']): ?>
   <div class="slbl">Términos y condiciones</div>
   <div class="terms">
@@ -740,8 +729,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     ?>
   </div>
   <?php endif; ?>
+
   <div style="height:10px"></div>
-</div>
+</div><!-- /tab-d -->
 
 </div><!-- /wrap -->
 </div><!-- /body -->
