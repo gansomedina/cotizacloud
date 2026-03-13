@@ -7,6 +7,10 @@ config.php
 # Subidas de archivos (según tu línea 42)
 /public/assets/uploads/*
 !/public/assets/uploads/.gitkeep
+/uploads/logos/*
+!/uploads/logos/.gitkeep
+/public/uploads/logos/*
+!/public/uploads/logos/.gitkeep
 
 # Archivos del sistema
 .DS_Store

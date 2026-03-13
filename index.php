@@ -9,16 +9,23 @@ define('COTIZAAPP', true);
 // ─── Servir archivos estáticos de /uploads/ ─────────────────
 $req_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 if (preg_match('#^/uploads/(.+)$#', $req_uri, $m)) {
-    $file = __DIR__ . '/public/uploads/' . $m[1];
-    // Seguridad: no permitir path traversal
-    $real = realpath($file);
-    $base = realpath(__DIR__ . '/public/uploads');
-    if ($real && $base && str_starts_with($real, $base) && is_file($real)) {
-        $mime = mime_content_type($real);
-        header('Content-Type: ' . $mime);
-        header('Cache-Control: public, max-age=31536000');
-        readfile($real);
-        exit;
+    // Buscar primero en ROOT/uploads/, luego en ROOT/public/uploads/
+    $candidates = [
+        __DIR__ . '/uploads/' . $m[1],
+        __DIR__ . '/public/uploads/' . $m[1],
+    ];
+    foreach ($candidates as $file) {
+        $real = realpath($file);
+        $base1 = realpath(__DIR__ . '/uploads');
+        $base2 = realpath(__DIR__ . '/public/uploads');
+        if ($real && is_file($real) &&
+            (($base1 && str_starts_with($real, $base1)) || ($base2 && str_starts_with($real, $base2)))) {
+            $mime = mime_content_type($real);
+            header('Content-Type: ' . $mime);
+            header('Cache-Control: public, max-age=31536000');
+            readfile($real);
+            exit;
+        }
     }
 }
 

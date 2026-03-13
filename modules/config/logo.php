@@ -15,8 +15,11 @@ $accion = $accion ?? 'subir'; // inyectado por Router
 if ($accion === 'quitar') {
     $emp = DB::row("SELECT logo_url FROM empresas WHERE id=?", [$eid]);
     if ($emp['logo_url']) {
-        $path = ROOT_PATH . '/public' . parse_url($emp['logo_url'], PHP_URL_PATH);
+        $path = ROOT_PATH . parse_url($emp['logo_url'], PHP_URL_PATH);
         if (file_exists($path)) @unlink($path);
+        // Fallback: buscar en public/ por logos antiguos
+        $path2 = ROOT_PATH . '/public' . parse_url($emp['logo_url'], PHP_URL_PATH);
+        if (file_exists($path2)) @unlink($path2);
     }
     DB::execute("UPDATE empresas SET logo_url=NULL WHERE id=?", [$eid]);
     echo json_encode(['ok' => true]);
@@ -42,7 +45,7 @@ if (!in_array($mime, $allowed)) {
 }
 
 $ext  = match($mime) { 'image/png'=>'png','image/svg+xml'=>'svg','image/jpeg'=>'jpg','image/webp'=>'webp', default=>'png' };
-$dir  = ROOT_PATH . '/public/uploads/logos/';
+$dir  = ROOT_PATH . '/uploads/logos/';
 if (!is_dir($dir)) mkdir($dir, 0755, true);
 
 $filename = 'logo_' . $eid . '_' . time() . '.' . $ext;
@@ -55,8 +58,11 @@ if (!move_uploaded_file($file['tmp_name'], $dest)) {
 // Borrar logo anterior si existe
 $emp = DB::row("SELECT logo_url FROM empresas WHERE id=?", [$eid]);
 if ($emp['logo_url']) {
-    $old = ROOT_PATH . '/public' . parse_url($emp['logo_url'], PHP_URL_PATH);
+    $old = ROOT_PATH . parse_url($emp['logo_url'], PHP_URL_PATH);
     if (file_exists($old)) @unlink($old);
+    // Fallback: buscar en public/ por logos antiguos
+    $old2 = ROOT_PATH . '/public' . parse_url($emp['logo_url'], PHP_URL_PATH);
+    if (file_exists($old2)) @unlink($old2);
 }
 
 $url = '/uploads/logos/' . $filename;
