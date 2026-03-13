@@ -1,7 +1,7 @@
 <?php
 // ============================================================
 //  CotizaApp — index.php
-//  Entry point único — todo pasa por aquí ...prueba de deply
+//  Entry point único — todo pasa por aquí
 // ============================================================
 
 define('COTIZAAPP', true);
