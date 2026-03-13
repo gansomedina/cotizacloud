@@ -120,8 +120,8 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 
 /* ─── Logo ───────────────────────────────────────────────── */
 .logo-wrap{padding:16px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border)}
-.logo-preview{width:80px;height:80px;border-radius:var(--r);border:1.5px dashed var(--border2);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:30px;overflow:hidden;flex-shrink:0}
-.logo-preview img{width:100%;height:100%;object-fit:contain}
+.logo-preview{width:80px;height:80px;border-radius:var(--r);border:1.5px solid var(--border2);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:30px;overflow:hidden;flex-shrink:0}
+.logo-preview img{width:100%;height:100%;object-fit:contain;padding:4px}
 .logo-btn{padding:7px 13px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--white);font:600 12px var(--body);color:var(--t2);cursor:pointer;transition:all .12s}
 .logo-btn:hover{border-color:var(--g);color:var(--g)}
 .logo-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
