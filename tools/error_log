@@ -1,0 +1,10 @@
+[11-Mar-2026 16:59:05 UTC] PHP Warning:  require(/home/cotizacl/public_html/bootstrap.php): Failed to open stream: No such file or directory in /home/cotizacl/public_html/tools/fix_fechas_web.php on line 6
+[11-Mar-2026 16:59:05 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/cotizacl/public_html/bootstrap.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/cotizacl/public_html/tools/fix_fechas_web.php:6
+Stack trace:
+#0 {main}
+  thrown in /home/cotizacl/public_html/tools/fix_fechas_web.php on line 6
+[11-Mar-2026 16:59:33 UTC] PHP Warning:  require(/home/cotizacl/public_html/bootstrap.php): Failed to open stream: No such file or directory in /home/cotizacl/public_html/tools/fix_fechas_web.php on line 6
+[11-Mar-2026 16:59:33 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/cotizacl/public_html/bootstrap.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/cotizacl/public_html/tools/fix_fechas_web.php:6
+Stack trace:
+#0 {main}
+  thrown in /home/cotizacl/public_html/tools/fix_fechas_web.php on line 6

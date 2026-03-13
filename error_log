@@ -292,3 +292,532 @@ Stack trace:
 #5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
 #6 {main}
   thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[10-Mar-2026 11:35:16 America/Hermosillo] PHP Warning:  Undefined array key "usos" in /home/cotizacl/public_html/modules/config/index.php on line 612
+[10-Mar-2026 11:37:13 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'nota' in 'field list' in /home/cotizacl/public_html/core/DB.php:81
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(81): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/clientes/crear.php(39): DB::insert()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(117): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 81
+[10-Mar-2026 13:02:51 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'cotizacl_cotizacloud.folios' doesn't exist in /home/cotizacl/public_html/core/DB.php:113
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(113): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(142): DB::siguiente_folio()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 113
+[10-Mar-2026 13:04:24 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'cotizacl_cotizacloud.folios' doesn't exist in /home/cotizacl/public_html/core/DB.php:113
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(113): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(142): DB::siguiente_folio()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 113
+[10-Mar-2026 13:04:48 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'cotizacl_cotizacloud.folios' doesn't exist in /home/cotizacl/public_html/core/DB.php:113
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(113): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(142): DB::siguiente_folio()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 113
+[10-Mar-2026 13:04:53 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'cotizacl_cotizacloud.folios' doesn't exist in /home/cotizacl/public_html/core/DB.php:113
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(113): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(142): DB::siguiente_folio()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 113
+[10-Mar-2026 14:26:56 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'cotizacl_cotizacloud.folios' doesn't exist in /home/cotizacl/public_html/core/DB.php:113
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(113): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(142): DB::siguiente_folio()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 113
+[10-Mar-2026 14:27:06 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'cotizacl_cotizacloud.folios' doesn't exist in /home/cotizacl/public_html/core/DB.php:113
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(113): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(142): DB::siguiente_folio()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 113
+[10-Mar-2026 14:34:22 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'accion' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(185): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[10-Mar-2026 14:34:24 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'accion' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(185): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[10-Mar-2026 14:34:54 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'accion' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(185): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[10-Mar-2026 14:38:59 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'accion' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(185): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[10-Mar-2026 14:39:06 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'accion' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(185): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[10-Mar-2026 14:39:28 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'accion' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(185): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[10-Mar-2026 14:39:49 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'accion' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(185): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[10-Mar-2026 14:40:21 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'accion' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(185): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[10-Mar-2026 14:42:09 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'accion' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/crear.php(185): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(109): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[10-Mar-2026 14:47:23 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'cotizacl_cotizacloud.quote_session_summary' doesn't exist in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/cotizaciones/ver.php(54): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(110): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[10-Mar-2026 16:33:22 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'e.sitio_web' in 'field list' in /home/cotizacl/public_html/core/DB.php:56
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(56): PDO->prepare()
+#1 /home/cotizacl/public_html/public/cotizacion.php(13): DB::row()
+#2 /home/cotizacl/public_html/core/Router.php(178): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(90): Router::load_public()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 56
+[10-Mar-2026 16:33:40 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'e.sitio_web' in 'field list' in /home/cotizacl/public_html/core/DB.php:56
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(56): PDO->prepare()
+#1 /home/cotizacl/public_html/public/cotizacion.php(13): DB::row()
+#2 /home/cotizacl/public_html/core/Router.php(178): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(90): Router::load_public()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 56
+[10-Mar-2026 17:01:55 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'e.sitio_web' in 'field list' in /home/cotizacl/public_html/core/DB.php:56
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(56): PDO->prepare()
+#1 /home/cotizacl/public_html/public/cotizacion.php(13): DB::row()
+#2 /home/cotizacl/public_html/core/Router.php(178): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(90): Router::load_public()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 56
+[10-Mar-2026 17:21:47 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'pct_descuento' in 'field list' in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/public/cotizacion.php(57): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(178): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(90): Router::load_public()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[10-Mar-2026 19:33:53 America/Hermosillo] PHP Parse error:  syntax error, unexpected token "<", expecting end of file in /home/cotizacl/public_html/modules/cotizaciones/lista.php on line 129
+[10-Mar-2026 19:41:13 America/Hermosillo] PHP Parse error:  syntax error, unexpected token "<", expecting end of file in /home/cotizacl/public_html/modules/cotizaciones/lista.php on line 129
+[10-Mar-2026 19:42:34 America/Hermosillo] PHP Parse error:  syntax error, unexpected token "endif", expecting end of file in /home/cotizacl/public_html/modules/cotizaciones/lista.php on line 520
+[11-Mar-2026 08:07:05 America/Hermosillo] PHP Fatal error:  Uncaught Error: Call to undefined function vence_html() in /home/cotizacl/public_html/public/cotizacion.php:555
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(178): require()
+#1 /home/cotizacl/public_html/core/Router.php(90): Router::load_public()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/public/cotizacion.php on line 555
+[11-Mar-2026 10:33:34 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'aceptada_nombre' in 'field list' in /home/cotizacl/public_html/core/DB.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(73): PDO->prepare()
+#1 /home/cotizacl/public_html/api/quote_action.php(61): DB::execute()
+#2 /home/cotizacl/public_html/core/Router.php(188): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(96): Router::load_api()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 73
+[11-Mar-2026 11:03:41 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'e.emp_web' in 'field list' in /home/cotizacl/public_html/core/DB.php:56
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(56): PDO->prepare()
+#1 /home/cotizacl/public_html/public/cotizacion.php(13): DB::row()
+#2 /home/cotizacl/public_html/core/Router.php(178): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(90): Router::load_public()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 56
+[11-Mar-2026 11:09:34 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 483
+[11-Mar-2026 11:09:34 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 505
+[11-Mar-2026 11:09:34 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 1275
+[11-Mar-2026 11:10:07 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'vta_prefijo' in 'field list' in /home/cotizacl/public_html/core/DB.php:56
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(56): PDO->prepare()
+#1 /home/cotizacl/public_html/api/quote_action.php(86): DB::row()
+#2 /home/cotizacl/public_html/core/Router.php(188): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(96): Router::load_api()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 56
+[11-Mar-2026 11:16:31 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 505
+[11-Mar-2026 11:16:31 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 1285
+[11-Mar-2026 11:16:39 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 505
+[11-Mar-2026 11:16:39 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 1285
+[11-Mar-2026 11:17:07 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'r.tipo' in 'where clause' in /home/cotizacl/public_html/core/DB.php:48
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(48): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/ventas/ver.php(40): DB::query()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 48
+[11-Mar-2026 11:18:23 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'e.sitio_web' in 'field list' in /home/cotizacl/public_html/core/DB.php:56
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(56): PDO->prepare()
+#1 /home/cotizacl/public_html/public/venta.php(13): DB::row()
+#2 /home/cotizacl/public_html/core/Router.php(178): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(91): Router::load_public()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 56
+[11-Mar-2026 11:49:31 America/Hermosillo] PHP Fatal error:  Uncaught Error: Call to undefined function urlencod() in /home/cotizacl/public_html/modules/ventas/ver.php:542
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(222): require()
+#1 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/ventas/ver.php on line 542
+[11-Mar-2026 11:49:42 America/Hermosillo] PHP Fatal error:  Uncaught Error: Call to undefined function urlencod() in /home/cotizacl/public_html/modules/ventas/ver.php:542
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(222): require()
+#1 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/ventas/ver.php on line 542
+[11-Mar-2026 11:50:20 America/Hermosillo] PHP Fatal error:  Uncaught Error: Call to undefined function urlencod() in /home/cotizacl/public_html/modules/ventas/ver.php:542
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(222): require()
+#1 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/ventas/ver.php on line 542
+[11-Mar-2026 12:20:14 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 505
+[11-Mar-2026 12:20:14 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 1285
+[11-Mar-2026 13:39:43 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 505
+[11-Mar-2026 13:39:43 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 1285
+[11-Mar-2026 14:25:33 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 505
+[11-Mar-2026 14:25:33 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 1285
+[11-Mar-2026 14:49:08 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'c.impuesto_nombre' in 'field list' in /home/cotizacl/public_html/core/DB.php:56
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(56): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/ventas/ver.php(15): DB::row()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 56
+[11-Mar-2026 14:49:14 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'c.impuesto_nombre' in 'field list' in /home/cotizacl/public_html/core/DB.php:56
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(56): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/ventas/ver.php(15): DB::row()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 56
+[11-Mar-2026 14:50:55 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'c.impuesto_nombre' in 'field list' in /home/cotizacl/public_html/core/DB.php:56
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(56): PDO->prepare()
+#1 /home/cotizacl/public_html/modules/ventas/ver.php(15): DB::row()
+#2 /home/cotizacl/public_html/core/Router.php(222): require('/home/cotizacl/...')
+#3 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#4 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#5 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#6 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 56
+[11-Mar-2026 14:57:12 America/Hermosillo] PHP Warning:  Undefined variable $puede_items in /home/cotizacl/public_html/modules/ventas/ver.php on line 459
+[11-Mar-2026 15:40:31 America/Hermosillo] PHP Fatal error:  Uncaught Error: Call to undefined function fmt_v() in /home/cotizacl/public_html/modules/ventas/ver.php:513
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(222): require()
+#1 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/ventas/ver.php on line 513
+[11-Mar-2026 15:40:33 America/Hermosillo] PHP Fatal error:  Uncaught Error: Call to undefined function fmt_v() in /home/cotizacl/public_html/modules/ventas/ver.php:513
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(222): require()
+#1 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/ventas/ver.php on line 513
+[11-Mar-2026 15:41:01 America/Hermosillo] PHP Fatal error:  Uncaught Error: Call to undefined function fmt_v() in /home/cotizacl/public_html/modules/ventas/ver.php:513
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(222): require()
+#1 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/ventas/ver.php on line 513
+[11-Mar-2026 15:57:57 America/Hermosillo] PHP Parse error:  syntax error, unexpected token "endif", expecting end of file in /home/cotizacl/public_html/modules/ventas/ver.php on line 357
+[11-Mar-2026 16:00:29 America/Hermosillo] PHP Warning:  Undefined variable $subtotal_v in /home/cotizacl/public_html/modules/ventas/ver.php on line 557
+[11-Mar-2026 16:00:29 America/Hermosillo] PHP Fatal error:  Uncaught TypeError: format_money(): Argument #1 ($monto) must be of type string|int|float, null given, called in /home/cotizacl/public_html/modules/ventas/ver.php on line 557 and defined in /home/cotizacl/public_html/core/Helpers.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/modules/ventas/ver.php(557): format_money()
+#1 /home/cotizacl/public_html/core/Router.php(226): require('/home/cotizacl/...')
+#2 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#3 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#4 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#5 {main}
+  thrown in /home/cotizacl/public_html/core/Helpers.php on line 73
+[11-Mar-2026 16:00:32 America/Hermosillo] PHP Warning:  Undefined variable $subtotal_v in /home/cotizacl/public_html/modules/ventas/ver.php on line 557
+[11-Mar-2026 16:00:32 America/Hermosillo] PHP Fatal error:  Uncaught TypeError: format_money(): Argument #1 ($monto) must be of type string|int|float, null given, called in /home/cotizacl/public_html/modules/ventas/ver.php on line 557 and defined in /home/cotizacl/public_html/core/Helpers.php:73
+Stack trace:
+#0 /home/cotizacl/public_html/modules/ventas/ver.php(557): format_money()
+#1 /home/cotizacl/public_html/core/Router.php(226): require('/home/cotizacl/...')
+#2 /home/cotizacl/public_html/core/Router.php(125): Router::app()
+#3 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#4 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#5 {main}
+  thrown in /home/cotizacl/public_html/core/Helpers.php on line 73
+[11-Mar-2026 16:12:47 America/Hermosillo] PHP Warning:  Undefined array key "tipo" in /home/cotizacl/public_html/public/venta.php on line 440
+[11-Mar-2026 16:12:47 America/Hermosillo] PHP Warning:  Undefined array key "referencia" in /home/cotizacl/public_html/public/venta.php on line 451
+[11-Mar-2026 16:12:47 America/Hermosillo] PHP Warning:  Undefined array key "referencia" in /home/cotizacl/public_html/public/venta.php on line 484
+[11-Mar-2026 16:12:47 America/Hermosillo] PHP Warning:  Undefined array key "referencia" in /home/cotizacl/public_html/public/venta.php on line 583
+[11-Mar-2026 16:20:25 America/Hermosillo] PHP Warning:  Undefined array key "tipo" in /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php on line 31
+[11-Mar-2026 16:20:26 America/Hermosillo] PHP Warning:  Undefined array key "tipo" in /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php on line 31
+[11-Mar-2026 16:20:27 America/Hermosillo] PHP Warning:  Undefined array key "tipo" in /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php on line 31
+[11-Mar-2026 16:20:27 America/Hermosillo] PHP Warning:  Undefined array key "tipo" in /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php on line 31
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 466
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 467
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 472
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 477
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 490
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 491
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 466
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 467
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 472
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 477
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 490
+[11-Mar-2026 16:26:01 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 491
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 466
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 467
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 472
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 477
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 490
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 491
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 466
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 467
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 472
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 477
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 490
+[11-Mar-2026 16:26:05 America/Hermosillo] PHP Warning:  Undefined variable $es_cancelacion in /home/cotizacl/public_html/public/venta.php on line 491
+[11-Mar-2026 16:26:54 America/Hermosillo] PHP Warning:  Undefined array key "tipo" in /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php on line 31
+[11-Mar-2026 19:20:54 America/Hermosillo] PHP Warning:  Undefined variable $notas in /home/cotizacl/public_html/modules/ventas/abono.php on line 97
+[11-Mar-2026 19:21:02 America/Hermosillo] PHP Warning:  Undefined variable $notas in /home/cotizacl/public_html/modules/ventas/abono.php on line 97
+[11-Mar-2026 19:24:03 America/Hermosillo] PHP Warning:  Undefined variable $venta_id in /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php on line 76
+[11-Mar-2026 19:24:03 America/Hermosillo] PHP Fatal error:  Uncaught TypeError: VentaLog::registrar(): Argument #1 ($venta_id) must be of type int, null given, called in /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php on line 75 and defined in /home/cotizacl/public_html/core/VentaLog.php:13
+Stack trace:
+#0 /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php(75): VentaLog::registrar()
+#1 /home/cotizacl/public_html/core/Router.php(227): require('/home/cotizacl/...')
+#2 /home/cotizacl/public_html/core/Router.php(124): Router::app()
+#3 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#4 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#5 {main}
+  thrown in /home/cotizacl/public_html/core/VentaLog.php on line 13
+[11-Mar-2026 19:24:27 America/Hermosillo] PHP Warning:  Undefined variable $venta_id in /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php on line 76
+[11-Mar-2026 19:24:27 America/Hermosillo] PHP Fatal error:  Uncaught TypeError: VentaLog::registrar(): Argument #1 ($venta_id) must be of type int, null given, called in /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php on line 75 and defined in /home/cotizacl/public_html/core/VentaLog.php:13
+Stack trace:
+#0 /home/cotizacl/public_html/modules/ventas/cancelar_recibo.php(75): VentaLog::registrar()
+#1 /home/cotizacl/public_html/core/Router.php(227): require('/home/cotizacl/...')
+#2 /home/cotizacl/public_html/core/Router.php(124): Router::app()
+#3 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#4 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#5 {main}
+  thrown in /home/cotizacl/public_html/core/VentaLog.php on line 13
+[11-Mar-2026 19:25:29 America/Hermosillo] PHP Warning:  Undefined variable $notas in /home/cotizacl/public_html/modules/ventas/abono.php on line 97
+[11-Mar-2026 19:47:47 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 737
+[11-Mar-2026 19:47:47 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 738
+[11-Mar-2026 19:47:50 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 737
+[11-Mar-2026 19:47:50 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 738
+[11-Mar-2026 19:48:08 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 737
+[11-Mar-2026 19:48:08 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 738
+[11-Mar-2026 19:48:20 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 737
+[11-Mar-2026 19:48:20 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 738
+[11-Mar-2026 19:48:23 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 737
+[11-Mar-2026 19:48:23 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 738
+[11-Mar-2026 19:49:06 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 737
+[11-Mar-2026 19:49:06 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 738
+[11-Mar-2026 19:51:35 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 736
+[11-Mar-2026 19:51:35 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 737
+[11-Mar-2026 19:52:00 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 736
+[11-Mar-2026 19:52:00 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 737
+[11-Mar-2026 19:53:05 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 736
+[11-Mar-2026 19:53:05 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 737
+[11-Mar-2026 19:53:24 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 736
+[11-Mar-2026 19:53:24 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 737
+[11-Mar-2026 19:56:39 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 731
+[11-Mar-2026 19:56:39 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 732
+[11-Mar-2026 19:56:43 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 731
+[11-Mar-2026 19:56:43 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 732
+[11-Mar-2026 19:57:13 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 731
+[11-Mar-2026 19:57:13 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 732
+[11-Mar-2026 20:01:37 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 715
+[11-Mar-2026 20:01:37 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 716
+[11-Mar-2026 20:01:44 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 715
+[11-Mar-2026 20:01:44 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 716
+[11-Mar-2026 20:01:53 America/Hermosillo] PHP Warning:  Undefined variable $periodo in /home/cotizacl/public_html/modules/costos/index.php on line 715
+[11-Mar-2026 20:01:53 America/Hermosillo] PHP Warning:  Undefined variable $margen_f in /home/cotizacl/public_html/modules/costos/index.php on line 716
+[11-Mar-2026 21:35:20 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [2002] Can't connect to MySQL server on '127.0.0.1' (115) in /home/cotizacl/public_html/core/DB.php:33
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(33): PDO->__construct()
+#1 /home/cotizacl/public_html/core/DB.php(56): DB::connect()
+#2 /home/cotizacl/public_html/core/Auth.php(34): DB::row()
+#3 /home/cotizacl/public_html/index.php(12): Auth::init()
+#4 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 33
+[11-Mar-2026 21:35:22 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [2002] Can't connect to MySQL server on '127.0.0.1' (115) in /home/cotizacl/public_html/core/DB.php:33
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(33): PDO->__construct()
+#1 /home/cotizacl/public_html/core/DB.php(56): DB::connect()
+#2 /home/cotizacl/public_html/core/Auth.php(34): DB::row()
+#3 /home/cotizacl/public_html/index.php(12): Auth::init()
+#4 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 33
+[11-Mar-2026 21:35:32 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [2002] Can't connect to MySQL server on '127.0.0.1' (115) in /home/cotizacl/public_html/core/DB.php:33
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(33): PDO->__construct()
+#1 /home/cotizacl/public_html/core/DB.php(56): DB::connect()
+#2 /home/cotizacl/public_html/core/Auth.php(34): DB::row()
+#3 /home/cotizacl/public_html/index.php(12): Auth::init()
+#4 {main}
+  thrown in /home/cotizacl/public_html/core/DB.php on line 33
+[11-Mar-2026 21:35:34 America/Hermosillo] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [2002] Can't connect to MySQL server on '127.0.0.1' (115) in /home/cotizacl/public_html/core/DB.php:33
+Stack trace:
+#0 /home/cotizacl/public_html/core/DB.php(33): PDO->__construct()
+#1 [12-Mar-2026 11:47:52 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 505
+[12-Mar-2026 11:47:52 America/Hermosillo] PHP Warning:  Undefined array key "emp_web" in /home/cotizacl/public_html/public/cotizacion.php on line 1285
+[12-Mar-2026 16:49:45 America/Hermosillo] PHP Warning:  require(/home/cotizacl/public_html/core/layout.php): Failed to open stream: No such file or directory in /home/cotizacl/public_html/modules/dashboard/index.php on line 855
+[12-Mar-2026 16:49:45 America/Hermosillo] PHP Fatal error:  Uncaught Error: Failed opening required '/home/cotizacl/public_html/core/layout.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/cotizacl/public_html/modules/dashboard/index.php:855
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(227): require()
+#1 /home/cotizacl/public_html/core/Router.php(104): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/dashboard/index.php on line 855
+[12-Mar-2026 16:49:54 America/Hermosillo] PHP Warning:  require(/home/cotizacl/public_html/core/layout.php): Failed to open stream: No such file or directory in /home/cotizacl/public_html/modules/cotizaciones/lista.php on line 519
+[12-Mar-2026 16:49:54 America/Hermosillo] PHP Fatal error:  Uncaught Error: Failed opening required '/home/cotizacl/public_html/core/layout.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/cotizacl/public_html/modules/cotizaciones/lista.php:519
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(227): require()
+#1 /home/cotizacl/public_html/core/Router.php(107): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/cotizaciones/lista.php on line 519
+[12-Mar-2026 16:49:57 America/Hermosillo] PHP Warning:  require(/home/cotizacl/public_html/core/layout.php): Failed to open stream: No such file or directory in /home/cotizacl/public_html/modules/cotizaciones/lista.php on line 519
+[12-Mar-2026 16:49:57 America/Hermosillo] PHP Fatal error:  Uncaught Error: Failed opening required '/home/cotizacl/public_html/core/layout.php' (include_path='.:/opt/alt/php83/usr/share/pear:/opt/alt/php83/usr/share/php:/usr/share/pear:/usr/share/php') in /home/cotizacl/public_html/modules/cotizaciones/lista.php:519
+Stack trace:
+#0 /home/cotizacl/public_html/core/Router.php(227): require()
+#1 /home/cotizacl/public_html/core/Router.php(107): Router::app()
+#2 /home/cotizacl/public_html/core/Router.php(44): Router::{closure}()
+#3 /home/cotizacl/public_html/index.php(18): Router::dispatch()
+#4 {main}
+  thrown in /home/cotizacl/public_html/modules/cotizaciones/lista.php on line 519

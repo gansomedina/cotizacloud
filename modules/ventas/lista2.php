@@ -1,0 +1,322 @@
+<?php
+// ============================================================
+//  CotizaApp — modules/ventas/lista.php
+//  GET /ventas
+// ============================================================
+
+defined('COTIZAAPP') or die;
+
+$empresa_id = EMPRESA_ID;
+$empresa    = Auth::empresa();
+
+$estado   = $_GET['estado'] ?? 'todas';
+$busqueda = trim($_GET['q'] ?? '');
+$orden    = $_GET['orden']  ?? 'reciente';
+
+$estados_validos = ['todas','pendiente','parcial','pagada','entregada','cancelada'];
+if (!in_array($estado, $estados_validos)) $estado = 'todas';
+
+$solo_propias = !Auth::puede('ver_todas_ventas');
+
+// ─── Conteos ─────────────────────────────────────────────
+$cnt_w = ["v.empresa_id = ?"];
+$cnt_p = [$empresa_id];
+if ($solo_propias) { $cnt_w[] = "v.usuario_id = ?"; $cnt_p[] = Auth::id(); }
+
+$conteos = ['todas' => 0];
+foreach (DB::query("SELECT estado, COUNT(*) n FROM ventas v WHERE " . implode(' AND ', $cnt_w) . " GROUP BY estado", $cnt_p) as $r) {
+    $conteos[$r['estado']] = (int)$r['n'];
+    $conteos['todas'] += (int)$r['n'];
+}
+
+// ─── Query principal ─────────────────────────────────────
+$where  = ["v.empresa_id = ?"];
+$params = [$empresa_id];
+if ($estado !== 'todas') { $where[] = "v.estado = ?"; $params[] = $estado; }
+if ($solo_propias)       { $where[] = "v.usuario_id = ?"; $params[] = Auth::id(); }
+if ($busqueda !== '') {
+    $where[] = "(v.titulo LIKE ? OR v.numero LIKE ? OR cl.nombre LIKE ? OR cl.telefono LIKE ?)";
+    $like    = '%' . $busqueda . '%';
+    $params  = array_merge($params, [$like, $like, $like, $like]);
+}
+$where_sql = implode(' AND ', $where);
+$order_sql = match($orden) {
+    'antigua'    => 'v.created_at ASC',
+    'monto_desc' => 'v.total DESC',
+    'monto_asc'  => 'v.total ASC',
+    default      => 'v.created_at DESC',
+};
+
+$ventas = DB::query(
+    "SELECT v.id, v.numero, v.titulo, v.slug, v.estado,
+            v.total, v.pagado, v.saldo, v.created_at,
+            cl.nombre AS cnombre, cl.telefono AS ctel,
+            (SELECT COUNT(*) FROM recibos r WHERE r.venta_id=v.id AND r.cancelado=0) AS num_pagos
+     FROM ventas v
+     LEFT JOIN clientes cl ON cl.id = v.cliente_id
+     WHERE $where_sql ORDER BY $order_sql LIMIT 100",
+    $params
+);
+
+// ─── Helper badge ─────────────────────────────────────────
+function vst_badge(string $estado): string {
+    $map = [
+        'pendiente' => ['s-pendiente','Pendiente'],
+        'parcial'   => ['s-parcial',  'Parcial'],
+        'pagada'    => ['s-pagada',   'Pagada'],
+        'entregada' => ['s-entregada','Entregada'],
+        'cancelada' => ['s-cancelada','Cancelada'],
+    ];
+    [$cls, $lbl] = $map[$estado] ?? ['s-pendiente', ucfirst($estado)];
+    return "<span class=\"status $cls\"><span class=\"status-dot\"></span>$lbl</span>";
+}
+
+$page_title = 'Ventas';
+ob_start();
+?>
+<style>
+/* STATUS */
+.status{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font:700 12px var(--body);letter-spacing:.02em}
+.status-dot{width:6px;height:6px;border-radius:3px;flex-shrink:0}
+.s-pendiente{background:#f1f5f9;color:#475569}.s-pendiente .status-dot{background:#94a3b8}
+.s-parcial{background:var(--amb-bg);color:var(--amb)}.s-parcial .status-dot{background:#f59e0b}
+.s-pagada{background:var(--g-bg);color:var(--g)}.s-pagada .status-dot{background:var(--g)}
+.s-entregada{background:var(--blue-bg);color:var(--blue)}.s-entregada .status-dot{background:var(--blue)}
+.s-cancelada{background:var(--danger-bg);color:var(--danger)}.s-cancelada .status-dot{background:var(--danger)}
+
+/* FILTROS */
+.filter-bar{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.filter-bar::-webkit-scrollbar{display:none}
+.filter-chip{padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:var(--white);font:600 12px var(--body);color:var(--t2);cursor:pointer;white-space:nowrap;transition:all .12s;flex-shrink:0;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.filter-chip:hover{border-color:var(--g);color:var(--g)}
+.filter-chip.active{background:var(--g);border-color:var(--g);color:#fff}
+.fc-n{font:700 10px var(--body);background:rgba(0,0,0,.1);padding:1px 5px;border-radius:10px}
+.filter-chip.active .fc-n{background:rgba(255,255,255,.25)}
+
+/* TABLA WRAP */
+.vt-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+
+/* SEARCH */
+.search-bar{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:12px;box-shadow:var(--sh)}
+.search-bar input{flex:1;background:transparent;border:none;outline:none;font:400 14px var(--body);color:var(--text)}
+.search-bar input::placeholder{color:var(--t3)}
+
+/* TABLA DESKTOP */
+.vtbl-header{display:none}
+
+/* FILA — mobile por defecto */
+.venta-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;color:inherit}
+.venta-row:last-child{border-bottom:none}
+.venta-row:hover{background:#fafaf8}
+
+/* Mobile: avatar + info + derecha */
+.venta-av{width:36px;height:36px;border-radius:9px;background:var(--g);display:flex;align-items:center;justify-content:center;font:700 13px var(--body);color:#fff;flex-shrink:0}
+.venta-info{flex:1;min-width:0}
+.venta-num{font:600 12px var(--num);color:var(--t3)}
+.venta-title{font:600 14px var(--body);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.venta-client{font:400 13px var(--body);color:var(--t3);margin-top:1px}
+.progress-wrap{margin-top:5px}
+.progress-bar{height:3px;border-radius:2px;background:var(--border);overflow:hidden}
+.progress-fill{height:100%;border-radius:2px;background:var(--g)}
+.venta-r{text-align:right;flex-shrink:0}
+.venta-total{font:700 14px var(--num);color:var(--text)}
+.venta-saldo{font-size:12px;margin-top:2px}
+.saldo-ok{color:var(--g)}
+.saldo-pend{color:var(--amb)}
+/* Botones de acción: cuadrados chicos inline */
+.act-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--white);font-size:12px;cursor:pointer;text-decoration:none;color:var(--t2);transition:all .12s;flex-shrink:0}
+.act-btn:hover{border-color:var(--g);background:var(--g-bg)}
+.act-danger:hover{border-color:var(--danger)!important;background:var(--danger-bg)!important;color:var(--danger)!important}
+
+/* DESKTOP grid — 5 columnas */
+@media(min-width:761px){
+  .vtbl-header{
+    display:grid;
+    grid-template-columns:minmax(0,2fr) 140px 88px minmax(100px,1fr) 96px;
+    align-items:center;padding:7px 16px;
+    border-bottom:2px solid var(--border);background:var(--bg)
+  }
+  .vtbl-header span{font:700 11px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+
+  .venta-row{
+    display:grid;
+    grid-template-columns:minmax(0,2fr) 140px 88px minmax(100px,1fr) 96px;
+    align-items:center;gap:0;padding:10px 16px
+  }
+
+
+  /* Col 1: folio+título — sin avatar */
+  .venta-av{display:none}
+  .venta-info{min-width:0;padding-right:12px}
+  .venta-num{font-size:11px}
+  .venta-title{font-size:13px;margin-top:1px}
+  .venta-client{display:none}
+  .progress-wrap{display:none}
+
+  /* Col 2: cliente */
+  .venta-col-cliente{min-width:0;padding-right:10px}
+  .venta-col-cliente .vc-nombre{font:500 13px var(--body);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .venta-col-cliente .vc-fecha{font:400 11px var(--num);color:var(--t3);margin-top:2px}
+
+  /* Col 3: estatus */
+  .venta-col-status{}
+
+  /* Col 4: monto+saldo+barra */
+  .venta-col-monto{padding-right:8px}
+
+  /* Col 5: acciones — en la misma línea, alineadas a la derecha */
+  .venta-col-accion{display:flex!important;justify-content:flex-end;align-items:center;gap:3px}
+
+  /* Ocultar mobile */
+  .venta-r{display:none!important}
+
+  /* Cols desktop: mostrar */
+  .venta-col-cliente,.venta-col-status,.venta-col-monto{display:block}
+}
+
+@media(max-width:760px){
+  .venta-col-cliente,.venta-col-status,
+  .venta-col-monto,.venta-col-accion{display:none}
+  .venta-title{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+}
+</style>
+
+<!-- ENCABEZADO -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+  <div>
+    <h1 style="font:800 20px var(--body);letter-spacing:-.02em;margin:0">Ventas</h1>
+    <p style="font:400 12px var(--body);color:var(--t3);margin:2px 0 0"><?= number_format($conteos['todas']) ?> en total</p>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div class="filter-bar">
+<?php
+$elabels = ['todas'=>'Todas','pendiente'=>'Pendiente','parcial'=>'Parcial','pagada'=>'Pagada','entregada'=>'Entregada','cancelada'=>'Cancelada'];
+foreach ($elabels as $k => $lbl):
+    $n = $conteos[$k] ?? 0;
+    if ($k !== 'todas' && $n === 0) continue;
+    $qs = http_build_query(['estado'=>$k,'q'=>$busqueda,'orden'=>$orden]);
+?>
+<a href="/ventas?<?= $qs ?>" class="filter-chip <?= $estado===$k?'active':'' ?>"><?= $lbl ?> <span class="fc-n"><?= $n ?></span></a>
+<?php endforeach; ?>
+</div>
+
+<!-- SEARCH + ORDEN -->
+<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+  <div class="search-bar" style="flex:1;min-width:180px;margin-bottom:0">
+    <span style="color:var(--t3)">🔍</span>
+    <input type="text" id="srch" value="<?= e($busqueda) ?>" placeholder="Buscar venta, cliente, folio…" oninput="dbs(this.value)">
+  </div>
+  <select onchange="fil('orden',this.value)" style="padding:9px 12px;border-radius:var(--r-sm);border:1px solid var(--border);font:500 13px var(--body);color:var(--t2);background:var(--white)">
+    <option value="reciente"   <?= $orden==='reciente'  ?'selected':''?>>Más recientes</option>
+    <option value="antigua"    <?= $orden==='antigua'   ?'selected':''?>>Más antiguas</option>
+    <option value="monto_desc" <?= $orden==='monto_desc'?'selected':''?>>Mayor monto</option>
+    <option value="monto_asc"  <?= $orden==='monto_asc' ?'selected':''?>>Menor monto</option>
+  </select>
+</div>
+
+<!-- TABLA -->
+<div class="vt-wrap">
+
+<?php if (empty($ventas)): ?>
+<div style="text-align:center;padding:60px 20px;color:var(--t3)">
+  <div style="font:700 16px var(--body);color:var(--t2);margin-bottom:6px"><?= $busqueda ? 'Sin resultados' : 'No hay ventas' ?></div>
+  <div style="font:400 13px var(--body)"><?= $busqueda ? 'Prueba otro término' : 'Las ventas se crean automáticamente al aceptar una cotización.' ?></div>
+</div>
+<?php else: ?>
+
+<div class="vtbl-header">
+  <span>Proyecto / Folio</span>
+  <span>Cliente</span>
+  <span>Estatus</span>
+  <span>Total / Saldo</span>
+  <span style="text-align:right">Acciones</span>
+</div>
+
+<?php foreach ($ventas as $v):
+  $pct      = $v['total'] > 0 ? min(100, round($v['pagado'] / $v['total'] * 100)) : 0;
+  $total_f  = format_money($v['total'], $empresa['moneda']);
+  $saldo_f  = format_money($v['saldo'], $empresa['moneda']);
+  $url_vta  = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/v/' . $v['slug'];
+  $ini      = strtoupper(substr($v['cnombre'] ?? $v['titulo'], 0, 2));
+  $fecha_f  = fecha_humana($v['created_at']);
+?>
+<div class="venta-row" onclick="window.location='/ventas/<?= (int)$v['id'] ?>'">
+
+  <!-- mobile: avatar -->
+  <div class="venta-av"><?= $ini ?></div>
+
+  <!-- Col 1: folio + título -->
+  <div class="venta-info">
+    <div class="venta-num"><?= e($v['numero'] ?? 'VTA-'.$v['id']) ?></div>
+    <div class="venta-title"><?= e($v['titulo']) ?></div>
+    <div class="venta-client"><?= e($v['cnombre'] ?? '—') ?> · <?= $fecha_f ?></div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" style="width:<?= $pct ?>%"></div></div>
+    </div>
+  </div>
+
+  <!-- Col 2: cliente (desktop) -->
+  <div class="venta-col-cliente">
+    <div class="vc-nombre"><?= e($v['cnombre'] ?? '—') ?></div>
+    <div class="vc-fecha"><?= $fecha_f ?></div>
+  </div>
+
+  <!-- Col 3: estatus (desktop) -->
+  <div class="venta-col-status"><?= vst_badge($v['estado']) ?></div>
+
+  <!-- Col 4: monto + saldo (desktop) -->
+  <div class="venta-col-monto">
+    <div style="font:600 14px var(--num)"><?= $total_f ?></div>
+    <div style="font:400 12px var(--body);margin-top:2px">
+      <?php if ($v['saldo'] <= 0): ?>
+        <span class="saldo-ok">✓ Pagado</span>
+      <?php else: ?>
+        <span class="saldo-pend"><?= $saldo_f ?> pendiente</span>
+      <?php endif ?>
+    </div>
+    <div class="progress-bar" style="margin-top:4px"><div class="progress-fill" style="width:<?= $pct ?>%"></div></div>
+  </div>
+
+  <!-- Col 5: acciones -->
+  <div class="venta-col-accion" onclick="event.stopPropagation()">
+    <a href="/ventas/<?= (int)$v['id'] ?>" class="act-btn" title="Editar">✏️</a>
+    <a href="<?= e($url_vta) ?>" target="_blank" class="act-btn" title="Ver liga pública">🔗</a>
+    <?php if ($v['estado'] !== 'cancelada' && (float)$v['pagado'] <= 0): ?>
+    <button class="act-btn act-danger" title="Cancelar venta"
+      onclick="cancelarVenta(<?= (int)$v['id'] ?>)">✕</button>
+    <?php endif ?>
+  </div>
+
+  <!-- mobile derecha -->
+  <div class="venta-r">
+    <div class="venta-total"><?= $total_f ?></div>
+    <div class="venta-saldo <?= $v['saldo'] <= 0 ? 'saldo-ok' : 'saldo-pend' ?>">
+      <?= $v['saldo'] <= 0 ? 'Pagado ✓' : $saldo_f . ' pendiente' ?>
+    </div>
+    <div style="margin-top:5px"><?= vst_badge($v['estado']) ?></div>
+    <a href="<?= e($url_vta) ?>" target="_blank" onclick="event.stopPropagation()" class="liga-btn" style="margin-top:5px">🔗 Liga</a>
+  </div>
+
+</div>
+<?php endforeach ?>
+<?php endif ?>
+</div>
+
+<script>
+async function cancelarVenta(id){
+  const motivo = prompt('Motivo de cancelación:');
+  if (!motivo) return;
+  const r = await fetch('/ventas/'+id+'/cancelar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:JSON.stringify({motivo})});
+  const d = await r.json();
+  if(d.ok) location.reload();
+  else alert(d.error||'Error al cancelar');
+}
+let _t=null;
+function dbs(v){clearTimeout(_t);_t=setTimeout(()=>fil('q',v),350)}
+function fil(k,v){const p=new URLSearchParams(window.location.search);p.set(k,v);if(k!=='p')p.delete('p');window.location='/ventas?'+p.toString()}
+</script>
+<?php
+$content = ob_get_clean();
+require ROOT_PATH . '/core/layout.php';

@@ -1,0 +1,267 @@
+<?php
+// ============================================================
+//  CotizaApp — core/Router.php
+//  Routing simple por path → módulos
+// ============================================================
+
+defined('COTIZAAPP') or die;
+
+class Router
+{
+    private static $routes = [];
+    private static $path   = '';
+
+    // ─── Registrar rutas ─────────────────────────────────────
+    public static function get(string $pattern, callable $handler): void
+    {
+        self::$routes[] = ['GET', $pattern, $handler];
+    }
+
+    public static function post(string $pattern, callable $handler): void
+    {
+        self::$routes[] = ['POST', $pattern, $handler];
+    }
+
+    public static function any(string $pattern, callable $handler): void
+    {
+        self::$routes[] = ['ANY', $pattern, $handler];
+    }
+
+    // ─── Despachar ───────────────────────────────────────────
+    public static function dispatch(): void
+    {
+        self::$path   = '/' . trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+        $method       = $_SERVER['REQUEST_METHOD'];
+
+        foreach (self::$routes as [$rMethod, $pattern, $handler]) {
+            if ($rMethod !== 'ANY' && $rMethod !== $method) {
+                continue;
+            }
+
+            $params = self::match_pattern($pattern, self::$path);
+
+            if ($params !== null) {
+                call_user_func($handler, $params);
+                return;
+            }
+        }
+
+        // 404
+        self::not_found();
+    }
+
+    // ─── Match de patrón ─────────────────────────────────────
+    // Convierte /cotizaciones/:id a regex y extrae parámetros
+    private static function match_pattern(string $pattern, string $path): ?array
+    {
+        // Escape y convertir :param a grupo captura
+        $regex = preg_replace('/\/:([a-zA-Z_]+)/', '/(?P<$1>[^/]+)', $pattern);
+        $regex = '#^' . $regex . '$#';
+
+        if (!preg_match($regex, $path, $matches)) {
+            return null;
+        }
+
+        // Solo los keys de string (named groups)
+        $params = [];
+        foreach ($matches as $k => $v) {
+            if (is_string($k)) {
+                $params[$k] = $v;
+            }
+        }
+
+        return $params;
+    }
+
+    // ─── Rutas del sistema ───────────────────────────────────
+    public static function register_all(): void
+    {
+        // ── Sitio público (sin subdominio) ───────────────────
+        if (EMPRESA_ID === 0) {
+            self::get('/',         fn() => self::load('auth', 'landing'));
+            self::get('/registro', fn() => self::load('auth', 'registro'));
+            self::post('/registro', fn() => self::load('auth', 'registro_post'));
+            self::not_found_handler(fn() => redirect(BASE_URL));
+            return;
+        }
+
+        // ── Vistas públicas de cotización / venta ────────────
+        // (No requieren login)
+        self::get('/c/:slug', fn($p) => self::load_public('cotizacion', $p));
+        self::get('/v/:slug', fn($p) => self::load_public('venta',      $p));
+        self::get('/r/:token', fn($p) => self::load_public('recibo',    $p));
+
+        // ── API pública ──────────────────────────────────────
+        self::post('/api/track',        fn() => self::load_api('track'));
+        self::post('/api/quote-action', fn() => self::load_api('quote_action'));
+
+        // ── Auth ─────────────────────────────────────────────
+        self::get('/login',   fn() => self::load('auth', 'login'));
+        self::post('/login',  fn() => self::load('auth', 'login_post'));
+        self::get('/logout',  fn() => self::load('auth', 'logout'));
+
+        // ── App (requiere login) ─────────────────────────────
+        self::get('/',                        fn()  => self::app('dashboard',    'index'));
+        self::get('/dashboard',               fn()  => self::app('dashboard',    'index'));
+
+        self::get('/cotizaciones',            fn()  => self::app('cotizaciones', 'lista'));
+        self::get('/cotizaciones/nueva',      fn()  => self::app('cotizaciones', 'nueva'));
+        self::post('/cotizaciones/nueva',     fn()  => self::app('cotizaciones', 'crear'));
+        self::get('/cotizaciones/:id',        fn($p)=> self::app('cotizaciones', 'ver',    $p));
+        self::post('/cotizaciones/:id',       fn($p)=> self::app('cotizaciones', 'guardar', $p));
+        self::post('/cotizaciones/:id/enviar',fn($p)=> self::app('cotizaciones', 'enviar',  $p));
+        self::post('/cotizaciones/:id/convertir', fn($p) => self::app('cotizaciones', 'convertir', $p));
+        self::post('/cotizaciones/:id/eliminar',  fn($p) => self::app('cotizaciones', 'eliminar',  $p));
+
+        self::get('/clientes',               fn()   => self::app('clientes', 'lista'));
+        self::post('/clientes',              fn()   => self::app('clientes', 'crear'));
+        self::get('/clientes/:id',           fn($p) => self::app('clientes', 'ver',      $p));
+        self::post('/clientes/:id',          fn($p) => self::app('clientes', 'guardar',  $p));
+        self::post('/clientes/:id/eliminar', fn($p) => self::app('clientes', 'eliminar', $p));
+
+        self::get('/ventas',                          fn()   => self::app('ventas', 'lista'));
+        self::get('/ventas/recibos/:id',              fn($p) => self::app('ventas', 'recibo',         $p));
+        self::post('/ventas/recibos/:id/cancelar',    fn($p) => self::app('ventas', 'cancelar_recibo',$p));
+        self::get('/ventas/:id',                      fn($p) => self::app('ventas', 'ver',            $p));
+        self::post('/ventas/:id/abono',               fn($p) => self::app('ventas', 'abono',          $p));
+        self::post('/ventas/:id/estado',              fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'estado']));
+        self::post('/ventas/:id/cancelar',            fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'cancelar']));
+        self::post('/ventas/:id/agregar-item',        fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'agregar-item']));
+        self::post('/ventas/:id/notas',               fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'notas']));
+        self::post('/ventas/:id/descuento',           fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'descuento']));
+        self::post('/ventas/:id/agregar-item',        fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'agregar-item']));
+        self::post('/ventas/:id/editar-linea',        fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'editar-linea']));
+        self::post('/ventas/:id/cliente',             fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'cliente']));
+        self::post('/ventas/:id/guardar',             fn($p) => self::app_extra('ventas', 'guardar', $p));
+
+        self::get('/radar',                  fn()   => self::app('radar',       'index'));
+
+        self::get('/costos',                             fn()   => self::app('costos', 'index'));
+        self::get('/costos/:id',                         fn($p) => self::app('costos', 'ver',            $p));
+        self::post('/costos/gasto',                      fn()   => self::app('costos', 'nuevo_gasto'));
+        self::post('/costos/gasto/:id',                  fn($p) => self::app('costos', 'nuevo_gasto',    $p));
+        self::post('/costos/gasto/:id/eliminar',         fn($p) => self::app('costos', 'eliminar_gasto', $p));
+        self::post('/costos/categoria',                  fn()   => self::app('costos', 'categoria'));
+        self::post('/costos/categoria/:id',              fn($p) => self::app('costos', 'categoria',      $p));
+        self::post('/costos/categoria/:id/toggle',       fn($p) => self::app_extra('costos', 'categoria', $p, ['accion'=>'toggle']));
+
+        self::get('/reportes',               fn()   => self::app('reportes',    'index'));
+
+        self::get('/config',                              fn()   => self::app('config', 'index'));
+        // Empresa
+        self::post('/config/empresa',                     fn()   => self::app('config', 'guardar_empresa'));
+        self::post('/config/logo',                        fn()   => self::app_extra('config', 'logo', [], ['accion'=>'subir']));
+        self::post('/config/logo/quitar',                 fn()   => self::app_extra('config', 'logo', [], ['accion'=>'quitar']));
+        // Artículo
+        self::post('/config/articulo',                    fn()   => self::app('config', 'articulo'));
+        self::post('/config/articulo/:id',                fn($p) => self::app('config', 'articulo', $p));
+        self::post('/config/articulo/:id/eliminar',       fn($p) => self::app_extra('config', 'articulo', $p, ['accion'=>'eliminar']));
+        // Cupón
+        self::post('/config/cupon',                       fn()   => self::app('config', 'cupon'));
+        self::post('/config/cupon/:id',                   fn($p) => self::app('config', 'cupon', $p));
+        self::post('/config/cupon/:id/eliminar',          fn($p) => self::app_extra('config', 'cupon', $p, ['accion'=>'eliminar']));
+        // Usuario
+        self::post('/config/usuario',                     fn()   => self::app('config', 'usuario'));
+        self::post('/config/usuario/:id',                 fn($p) => self::app('config', 'usuario', $p));
+        // Radar
+        self::post('/config/radar',                       fn()   => self::app('config', 'guardar_radar'));
+        self::post('/config/radar/calibrar',              fn()   => self::app('config', 'calibrar_radar'));
+        // IPs internas
+        self::post('/config/ip-interna',                  fn()   => self::app_extra('config', 'ip_interna', [],  ['accion'=>'crear']));
+        self::post('/config/ip-interna/:id/eliminar',     fn($p) => self::app_extra('config', 'ip_interna', $p, ['accion'=>'eliminar']));
+    }
+
+    // ─── Loaders ─────────────────────────────────────────────
+
+    // Vista pública (sin login)
+    private static function load_public(string $modulo, array $params = []): void
+    {
+        $file = PUBLIC_PATH . '/' . $modulo . '.php';
+        if (!file_exists($file)) self::not_found();
+        // Pasar params como variables
+        extract($params);
+        require $file;
+    }
+
+    // API endpoint
+    private static function load_api(string $endpoint): void
+    {
+        $file = ROOT_PATH . '/api/' . $endpoint . '.php';
+        if (!file_exists($file)) {
+            json_error('Endpoint no encontrado', 404);
+        }
+        require $file;
+    }
+
+    // Módulo auth (no requiere login)
+    private static function load(string $modulo, string $accion): void
+    {
+        $file = MODULES_PATH . '/' . $modulo . '/' . $accion . '.php';
+        if (!file_exists($file)) self::not_found();
+        require $file;
+    }
+
+    // Módulo de app con variables extra (ej: accion)
+    private static function app_extra(string $modulo, string $archivo, array $params = [], array $extra = []): void
+    {
+        Auth::requerir_login('/login');
+
+        $file = MODULES_PATH . '/' . $modulo . '/' . $archivo . '.php';
+        if (!file_exists($file)) self::not_found();
+
+        extract($params);
+        extract($extra);
+        require $file;
+    }
+
+    // Módulo de app (requiere login)
+    private static function app(string $modulo, string $accion, array $params = []): void
+    {
+        Auth::requerir_login('/login');
+
+        $file = MODULES_PATH . '/' . $modulo . '/' . $accion . '.php';
+        if (!file_exists($file)) self::not_found();
+
+        // Pasar params al módulo
+        extract($params);
+        require $file;
+    }
+
+    // ─── 404 ─────────────────────────────────────────────────
+    private static $not_found_cb = null;
+
+    public static function not_found_handler(callable $cb): void
+    {
+        self::$not_found_cb = $cb;
+    }
+
+    private static function not_found(): void
+    {
+        if (self::$not_found_cb) {
+            call_user_func(self::$not_found_cb);
+        }
+
+        http_response_code(404);
+        // TODO: render vista 404 del sistema
+        die('Página no encontrada');
+    }
+
+    // ─── URL helper ──────────────────────────────────────────
+    public static function url(string $path = ''): string
+    {
+        if (EMPRESA_ID > 0) {
+            return 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/' . ltrim($path, '/');
+        }
+        return BASE_URL . '/' . ltrim($path, '/');
+    }
+
+    public static function path(): string
+    {
+        return self::$path;
+    }
+
+    public static function is(string $pattern): bool
+    {
+        return self::match_pattern($pattern, self::$path) !== null;
+    }
+}

@@ -86,6 +86,5 @@ function detectar_empresa_slug(): ?string
 require_once ROOT_PATH . '/core/DB.php';
 require_once ROOT_PATH . '/core/Helpers.php';
 require_once ROOT_PATH . '/core/Auth.php';
-require_once ROOT_PATH . '/core/VentaLog.php';
 require_once ROOT_PATH . '/core/Router.php';
 require_once ROOT_PATH . '/modules/radar/Radar.php';
