@@ -378,7 +378,24 @@ class Radar
         }
 
         if ($sessions <= 0) {
-            return ['score'=>0,'fit_pct'=>0.0,'priority_pct'=>0.0,'bucket'=>null,'buckets'=>[],'senales'=>[],'debug'=>[]];
+            // ── Detectar "no abierta" ──────────────────────────
+            $cot_meta_early = DB::row("SELECT created_at, estado FROM cotizaciones WHERE id=?", [$cotizacion_id]);
+            $created_early  = $cot_meta_early ? strtotime($cot_meta_early['created_at']) : $now;
+            $age_h_early    = ($now - $created_early) / 3600.0;
+            $accepted_early = ($cot_meta_early['estado'] ?? '') === 'aceptada';
+            $has_js = ($es['opens'] > 0 || $es['closes'] > 0 || $es['tot_views'] > 0 ||
+                       $es['tot_rev'] > 0 || $es['loops'] > 0 || $es['coupons'] > 0 ||
+                       $es['scroll_any'] > 0 || $es['vis_max'] > 0 || $es['uniq_v'] > 0);
+            $no_abierta_age_ok = ($age_h_early >= 24 && ($now - $created_early) <= 7 * 86400);
+            if (!$accepted_early && $no_abierta_age_ok && !$has_js) {
+                return [
+                    'score'=>0,'fit_pct'=>0.0,'priority_pct'=>0.0,
+                    'bucket'=>'no_abierta','buckets'=>['no_abierta'],
+                    'senales'=>[],'debug'=>['no_abierta'=>true],
+                    'icons' => ['not_opened'=>true],
+                ];
+            }
+            return ['score'=>0,'fit_pct'=>0.0,'priority_pct'=>0.0,'bucket'=>null,'buckets'=>[],'senales'=>[],'debug'=>[],'icons'=>[]];
         }
 
         // IPs post primer guest (para multi-persona)
@@ -717,12 +734,33 @@ class Radar
         elseif ($is_cooling)  $buckets[] = 'enfriandose';
 
         // ── Bucket principal (orden de prioridad fijo) ────────
+        // ── 18. No abierta ─────────────────────────────────
+        // Cotización creada en los últimos 7 días, con más de 24h de antigüedad,
+        // sin evidencia de apertura (ni sesiones externas ni eventos JS)
+        $has_js_open = ($es['opens'] > 0 || $es['closes'] > 0 || $es['tot_views'] > 0 ||
+                        $es['tot_rev'] > 0 || $es['loops'] > 0 || $es['coupons'] > 0 ||
+                        $es['scroll_any'] > 0 || $es['vis_max'] > 0 || $es['uniq_v'] > 0);
+        $no_abierta_age_ok = ($age_hours >= 24 && ($now - $created_ts) <= 7 * 86400);
+        $is_not_opened = (!$accepted && $no_abierta_age_ok && $sessions <= 0 && !$has_js_open);
+        if ($is_not_opened) {
+            $buckets[] = 'no_abierta';
+        }
+
+        // ── Iconos para la UI (mismos que el radar original) ─
+        $icons = [];
+        if ($e_coupons > 0) $icons['coupon'] = true;
+        if ($es['promo'] > 0) $icons['promo'] = true;
+        if ($pss >= 3.0) $icons['price'] = true;
+        if ($e_sv_price) $icons['sv_price'] = true;
+        if ($e_mv_price) $icons['mv_price'] = true;
+        if ($is_not_opened) $icons['not_opened'] = true;
+
         static $PRIORIDAD = [
             'onfire','inminente','validando_precio','prediccion_alta',
             'alto_importe','decision_activa','re_enganche','multi_persona',
             'revision_profunda','probable_cierre','vistas_multiples',
             'hesitacion','sobre_analisis','revivio',
-            'regreso','comparando','enfriandose',
+            'regreso','comparando','enfriandose','no_abierta',
         ];
         $bucket_main = null;
         foreach ($PRIORIDAD as $b) {
@@ -745,6 +783,7 @@ class Radar
             'buckets'      => $buckets,
             'cooling_price_touched' => $cooling_price_touched,
             'cooling_reason'        => $cooling_reason,
+            'icons'        => $icons,
             'senales'      => self::_senales(
                 $sessions, $uniq_ips_total, $views24, $views48,
                 $gap_days, $fit_pct, $pss, $has_loop, $has_tot_rev,
@@ -891,7 +930,7 @@ class Radar
             [
                 $r['score'],
                 $r['bucket'],
-                json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug']]),
+                json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? []]),
                 $cotizacion_id,
             ]
         );

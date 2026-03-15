@@ -72,7 +72,7 @@ $rows = DB::query(
             END AS estado,
             c.estado AS estado_real,
             c.total, c.created_at, c.valida_hasta, c.visitas,
-            c.radar_bucket, c.radar_score,
+            c.radar_bucket, c.radar_score, c.radar_senales,
             cl.nombre AS cnombre, cl.telefono AS ctel,
             u.nombre AS asesor
      FROM cotizaciones c
@@ -100,6 +100,7 @@ function radar_badge(?string $bucket, ?int $score, int $vistas = 0): string {
         'sobre_analisis'   => ['⚪','#64748b','#f1f5f9'],
         'enfriandose'      => ['🔘','#94a3b8','#f1f5f9'],
         'comparando'       => ['🔘','#94a3b8','#f1f5f9'],
+        'no_abierta'       => ['❌','#dc2626','#fef2f2'],
     ];
     [$ico,$color,$bg] = $map[$bucket] ?? ['⬜','#64748b','#f1f5f9'];
     $lbl = ucwords(str_replace('_',' ',$bucket));
@@ -354,6 +355,16 @@ foreach ($chips as $k => $lbl):
     $vis_txt = $vistas > 0 ? '👁 '.$vistas : '—';
     $radar  = radar_badge($c['radar_bucket'], (int)($c['radar_score'] ?? 0), $vistas);
     $ed_url = '/cotizaciones/'.(int)$c['id'];
+    // Extraer iconos de señales del JSON radar_senales
+    $senales_json = json_decode($c['radar_senales'] ?? '{}', true) ?: [];
+    $icons = $senales_json['icons'] ?? [];
+    $title_icons = '';
+    if (!empty($icons['coupon']))     $title_icons .= '🎟️';
+    if (!empty($icons['promo']))      $title_icons .= '💣';
+    if (!empty($icons['price']))      $title_icons .= '💸';
+    if (!empty($icons['sv_price']))   $title_icons .= '👤';
+    if (!empty($icons['mv_price']))   $title_icons .= '👥';
+    if (!empty($icons['not_opened'])) $title_icons .= '❌';
   ?>
   <div class="cot-row" id="row-<?= (int)$c['id'] ?>" onclick="toggleCot(<?= (int)$c['id'] ?>,event)">
 
@@ -362,7 +373,7 @@ foreach ($chips as $k => $lbl):
       <!-- col1 desktop: número encima del título; mobile: título+badge en una línea -->
       <span class="cot-numero-desk"><?= e($c['numero']) ?></span>
       <div class="mob-l1">
-        <div class="cot-titulo"><?= e($c['titulo']) ?></div>
+        <div class="cot-titulo"><?= $title_icons ? $title_icons . ' ' : '' ?><?= e($c['titulo']) ?></div>
         <?= st_badge($c['estado']) ?>
       </div>
       <!-- MOBILE: línea 2 — cliente · tel -->
