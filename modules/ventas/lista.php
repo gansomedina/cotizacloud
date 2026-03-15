@@ -207,7 +207,7 @@ foreach ($elabels as $k => $lbl):
   <div class="search-bar" style="flex:1;min-width:180px;margin-bottom:0">
     <span style="color:var(--t3)">🔍</span>
     <input type="text" id="srch" value="<?= e($busqueda) ?>" placeholder="Buscar venta, cliente, folio…" onkeydown="if(event.key==='Enter')fil('q',this.value)">
-    <?php if ($busqueda !== ''): ?><button onclick="fil('q','')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--t3);padding:0 4px" title="Limpiar búsqueda">✕</button><?php endif; ?>
+    <button onclick="fil('q',document.getElementById('srch').value)" style="padding:6px 14px;border-radius:var(--r-sm);border:1px solid var(--g);background:var(--g);color:#fff;font:600 13px var(--body);cursor:pointer">Buscar</button>
   </div>
   <select onchange="fil('orden',this.value)" style="padding:9px 12px;border-radius:var(--r-sm);border:1px solid var(--border);font:500 13px var(--body);color:var(--t2);background:var(--white)">
     <option value="reciente"   <?= $orden==='reciente'  ?'selected':''?>>Más recientes</option>
@@ -306,6 +306,7 @@ foreach ($elabels as $k => $lbl):
 </div>
 
 <script>
+const CSRF_TOKEN='<?= csrf_token() ?>';
 async function cancelarVenta(id){
   const motivo = prompt('Motivo de cancelación:');
   if (!motivo) return;
