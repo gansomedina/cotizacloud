@@ -189,6 +189,7 @@ class Auth
             'editar_precios',
             'aplicar_descuentos',
             'ver_todas_cots',
+            'ver_todas_ventas',
             'eliminar_items_venta',
             'cancelar_recibos',
         ];

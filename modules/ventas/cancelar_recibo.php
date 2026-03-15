@@ -11,7 +11,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 csrf_check();
 
-if (!Auth::es_admin()) json_error('Sin permiso', 403);
+if (!Auth::es_admin() && !Auth::puede('cancelar_recibos')) json_error('Sin permiso', 403);
 
 $empresa_id = EMPRESA_ID;
 $recibo_id  = (int)($id ?? 0);
