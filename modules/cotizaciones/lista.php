@@ -131,6 +131,7 @@ ob_start();
 /* TOOLBAR */
 .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
 .search-wrap{flex:1;min-width:200px;position:relative}
+.search-wrap{display:flex;align-items:center;gap:8px}
 .search-wrap input{width:100%;background:var(--white);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 14px 10px 38px;font:400 14px var(--body);color:var(--text);outline:none;transition:border-color .15s;box-shadow:var(--sh)}
 .search-wrap input:focus{border-color:var(--g)}
 .search-wrap input::placeholder{color:var(--t3)}
@@ -299,7 +300,7 @@ ob_start();
     <span class="search-ico">🔍</span>
     <input type="text" id="srchCot" placeholder="Buscar por cliente, teléfono, título, número…"
            value="<?= e($busqueda) ?>" onkeydown="if(event.key==='Enter')filtrar('q',this.value)">
-    <?php if ($busqueda !== ''): ?><button onclick="filtrar('q','')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--t3);padding:0 4px" title="Limpiar búsqueda">✕</button><?php endif; ?>
+    <button onclick="filtrar('q',document.getElementById('srchCot').value)" style="padding:6px 14px;border-radius:var(--r-sm);border:1px solid var(--g);background:var(--g);color:#fff;font:600 13px var(--body);cursor:pointer;flex-shrink:0">Buscar</button>
   </div>
   <select class="sort-select" onchange="filtrar('orden',this.value)">
     <option value="reciente"   <?= $orden==='reciente'   ?'selected':'' ?>>Más recientes</option>
