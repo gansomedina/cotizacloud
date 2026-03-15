@@ -795,6 +795,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
 <script>
 const SUB   = <?= (float)$subtotal ?>;
+const TAX   = {modo:'<?= $cot['impuesto_modo'] ?>',pct:<?= (float)$cot['impuesto_pct'] ?>};
 const AUTO  = {on:<?= $adc_on?'true':'false' ?>,pct:<?= (float)$adc_pct ?>,exp:new Date(<?= $adc_exp ? ($adc_exp * 1000) : 0 ?>)};
 const COUPONS = <?= json_encode(array_map(fn($c) => [
     'code' => $c['codigo'],
@@ -898,6 +899,11 @@ function calc(){
         document.getElementById('tCV').textContent = '-'+fmt(ca);
     } else cr.style.display = 'none';
 
+    // Sumar IVA si el modo es "suma"
+    if (TAX.modo === 'suma') {
+        tot += tot * TAX.pct / 100;
+    }
+
     document.getElementById('tTot').textContent = fmt(tot);
     return {tot, aa, ca};
 }
@@ -906,9 +912,14 @@ function calc(){
 function openM(id){
     if (id === 'acceptOv') {
         const {tot,aa,ca} = calc();
+        let base = SUB - aa - ca;
         let h = '<div class="sr"><span>Subtotal</span><span>'+fmt(SUB)+'</span></div>';
         if (aa) h += '<div class="sr" style="color:var(--amb)"><span>Descuento especial</span><span>-'+fmt(aa)+'</span></div>';
         if (ca && applied) h += '<div class="sr" style="color:var(--amb)"><span>Cupón '+applied.code+'</span><span>-'+fmt(ca)+'</span></div>';
+        if (TAX.modo === 'suma') {
+            let taxAmt = base * TAX.pct / 100;
+            h += '<div class="sr"><span><?= e($cot['impuesto_label'] ?: 'IVA') ?> ('+TAX.pct+'%)</span><span>'+fmt(taxAmt)+'</span></div>';
+        }
         h += '<div class="sr tot"><span>Total</span><span>'+fmt(tot)+'</span></div>';
         // Mostrar texto_aceptar de config si existe, nada hardcodeado
         if (EMPRESA.texto_aceptar) {
