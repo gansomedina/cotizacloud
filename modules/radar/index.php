@@ -38,8 +38,20 @@ if (!$ult || $ult < date('Y-m-d H:i:s', time()-60)) {
     try { Radar::check_auto_calibrar($empresa_id); Radar::recalcular_empresa($empresa_id); } catch(Throwable $e){}
 }
 
-// Cargar cotizaciones
+// Stats globales (sin LIMIT)
 $uw = $uid_filtro ? "AND c.usuario_id=$uid_filtro" : '';
+$stats = DB::row(
+    "SELECT COUNT(*) AS total,
+            SUM(c.estado='aceptada') AS aceptadas
+     FROM cotizaciones c
+     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada','rechazada') $uw",
+    [$empresa_id]
+);
+$stat_total     = (int)($stats['total'] ?? 0);
+$stat_aceptadas = (int)($stats['aceptadas'] ?? 0);
+$stat_cierre    = $stat_total > 0 ? round(100 * $stat_aceptadas / $stat_total, 2) : 0;
+
+// Cargar cotizaciones
 $raw = DB::query(
     "SELECT c.id, c.titulo, c.numero, c.slug, c.total, c.estado,
             c.radar_score, c.radar_bucket, c.radar_senales, c.radar_updated_at,
@@ -166,7 +178,7 @@ rsort_arr($activos48,$sort,$dir);
 $rows_all = array_slice($rows_all,0,$limit);
 
 $cnt_urgentes = count($buckets['onfire'])+count($buckets['inminente'])+count($buckets['probable_cierre']);
-$cierre_pct   = $total_all>0 ? round(100*$total_aceptadas/$total_all,2) : 0;
+$cierre_pct   = $stat_cierre;
 
 // Config + IPs internas
 $config = Radar::config($empresa_id);
@@ -284,7 +296,7 @@ ob_start();
   <div>
     <h1 style="font:800 22px var(--body);letter-spacing:-.02em">📡 Radar</h1>
     <p style="font:400 13px var(--body);color:var(--t3);margin-top:3px">
-      Total: <?= $total_all ?> · Aceptadas: <?= $total_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
+      Total: <?= $stat_total ?> · Aceptadas: <?= $stat_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
     </p>
   </div>
   <?php if ($debug_mode): ?><span style="padding:4px 10px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font:700 11px var(--body);color:#92400e">DEBUG ON</span><?php endif; ?>
@@ -301,7 +313,7 @@ ob_start();
     <div class="rdr-sl">⏱ Activos 48h</div>
   </div>
   <div class="card" style="padding:12px 16px">
-    <div class="rdr-sv"><?= $total_aceptadas ?></div>
+    <div class="rdr-sv"><?= $stat_aceptadas ?></div>
     <div class="rdr-sl">✅ Aceptadas</div>
   </div>
   <div class="card" style="padding:12px 16px">
@@ -436,7 +448,7 @@ render_bkt('🟡 Activos 48h (todos los activos)',
 <div class="rbk">
   <div class="rbk-hd">
     <span class="rbk-tit">Ranking general — <?= count($rows_all) ?> cotizaciones (orden: <b>Prioridad%</b>)</span>
-    <span class="rbk-n"><?= $total_all ?> total</span>
+    <span class="rbk-n"><?= $stat_total ?> total</span>
   </div>
   <div class="rdrs"><table class="rdrt">
     <thead><tr>
