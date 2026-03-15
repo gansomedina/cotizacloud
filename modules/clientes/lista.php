@@ -176,7 +176,8 @@ ob_start();
         <input type="text" id="search-input"
                value="<?= e($busqueda) ?>"
                placeholder="Buscar por nombre, teléfono, email…"
-               oninput="debounceSearch(this.value)">
+               onkeydown="if(event.key==='Enter')filtrar('q',this.value)">
+        <?php if ($busqueda !== ''): ?><button onclick="filtrar('q','')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--t3);padding:0 4px" title="Limpiar búsqueda">✕</button><?php endif; ?>
     </div>
     <select onchange="filtrar('orden', this.value)"
             style="padding:10px 12px;border-radius:var(--r-sm);border:1.5px solid var(--border);font:500 13px var(--body);color:var(--t2);background:var(--white);box-shadow:var(--sh);">
@@ -365,12 +366,11 @@ async function guardarCliente() {
     }
 }
 
-// ─── Búsqueda debounce ───────────────────────────────────
-let _st = null;
-function debounceSearch(v) { clearTimeout(_st); _st = setTimeout(() => filtrar('q', v), 350); }
+// ─── Búsqueda ────────────────────────────────────────────
 function filtrar(k, v) {
     const p = new URLSearchParams(window.location.search);
-    p.set(k, v); if (k !== 'p') p.delete('p');
+    if (v) p.set(k, v); else p.delete(k);
+    if (k !== 'p') p.delete('p');
     window.location.href = '/clientes?' + p.toString();
 }
 
