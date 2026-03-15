@@ -1009,20 +1009,45 @@ class Radar
         $rate_ips  = $to_rate($bk_ips,  $base);
         $rate_gap  = $to_rate($bk_gap,  $base);
 
-        // Bandas por monto (para UI de calibración)
+        // Bandas por monto — auto-calculadas por percentiles de cada empresa
         $bandas = [];
-        foreach ([
-            ['min'=>0,'max'=>50000,'label'=>'$0–50K'],
-            ['min'=>50000,'max'=>100000,'label'=>'$50K–100K'],
-            ['min'=>100000,'max'=>200000,'label'=>'$100K–200K'],
-            ['min'=>200000,'max'=>500000,'label'=>'$200K–500K'],
-            ['min'=>500000,'max'=>null,'label'=>'$500K+'],
-        ] as $b) {
+        $totales = array_map(fn($c) => (float)$c['total'], $cots);
+        sort($totales);
+        $n = count($totales);
+        if ($n >= 5) {
+            $pcts = [0, 0.2, 0.4, 0.6, 0.8, 1.0];
+            $cortes = [];
+            foreach ($pcts as $p) {
+                $idx = min((int)floor($p * ($n - 1)), $n - 1);
+                $cortes[] = $totales[$idx];
+            }
+            // Eliminar duplicados y redondear a miles
+            $cortes = array_values(array_unique(array_map(fn($v) => round($v / 1000) * 1000, $cortes)));
+            // Construir bandas entre cada corte
+            for ($i = 0; $i < count($cortes) - 1; $i++) {
+                $mn = $cortes[$i];
+                $mx = $cortes[$i + 1];
+                if ($mn === $mx) continue;
+                $lbl = '$' . number_format($mn / 1000, 0) . 'K–$' . number_format($mx / 1000, 0) . 'K';
+                $bandas[] = ['min' => $mn, 'max' => $mx, 'label' => $lbl];
+            }
+            // Última banda abierta
+            $last = end($cortes);
+            $bandas[] = ['min' => $last, 'max' => null, 'label' => '$' . number_format($last / 1000, 0) . 'K+'];
+        } else {
+            // Menos de 5 cotizaciones: una sola banda
+            $bandas[] = ['min' => 0, 'max' => null, 'label' => 'Todas'];
+        }
+        // Calcular tasa de cierre por banda
+        foreach ($bandas as &$b) {
             $mc = $b['max'] !== null ? "AND c.total < {$b['max']}" : '';
             $bt = (int)DB::val("SELECT COUNT(*) FROM cotizaciones c WHERE c.empresa_id=? AND c.total>={$b['min']} $mc AND estado NOT IN ('borrador')", [$empresa_id]);
             $bc = (int)DB::val("SELECT COUNT(*) FROM cotizaciones c WHERE c.empresa_id=? AND c.total>={$b['min']} $mc AND estado IN ('aceptada','convertida')", [$empresa_id]);
-            $bandas[] = array_merge($b, ['total'=>$bt,'cerradas'=>$bc,'tasa_cierre'=>$bt>0?round($bc/$bt,4):$base]);
+            $b['total'] = $bt;
+            $b['cerradas'] = $bc;
+            $b['tasa_cierre'] = $bt > 0 ? round($bc / $bt, 4) : $base;
         }
+        unset($b);
 
         DB::execute("UPDATE radar_fit_calibracion SET activa=0 WHERE empresa_id=?", [$empresa_id]);
         DB::execute(
