@@ -206,7 +206,8 @@ foreach ($elabels as $k => $lbl):
 <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
   <div class="search-bar" style="flex:1;min-width:180px;margin-bottom:0">
     <span style="color:var(--t3)">🔍</span>
-    <input type="text" id="srch" value="<?= e($busqueda) ?>" placeholder="Buscar venta, cliente, folio…" oninput="dbs(this.value)">
+    <input type="text" id="srch" value="<?= e($busqueda) ?>" placeholder="Buscar venta, cliente, folio…" onkeydown="if(event.key==='Enter')fil('q',this.value)">
+    <?php if ($busqueda !== ''): ?><button onclick="fil('q','')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--t3);padding:0 4px" title="Limpiar búsqueda">✕</button><?php endif; ?>
   </div>
   <select onchange="fil('orden',this.value)" style="padding:9px 12px;border-radius:var(--r-sm);border:1px solid var(--border);font:500 13px var(--body);color:var(--t2);background:var(--white)">
     <option value="reciente"   <?= $orden==='reciente'  ?'selected':''?>>Más recientes</option>
@@ -313,9 +314,7 @@ async function cancelarVenta(id){
   if(d.ok) location.reload();
   else alert(d.error||'Error al cancelar');
 }
-let _t=null;
-function dbs(v){clearTimeout(_t);_t=setTimeout(()=>fil('q',v),350)}
-function fil(k,v){const p=new URLSearchParams(window.location.search);p.set(k,v);if(k!=='p')p.delete('p');window.location='/ventas?'+p.toString()}
+function fil(k,v){const p=new URLSearchParams(window.location.search);if(v)p.set(k,v);else p.delete(k);if(k!=='p')p.delete('p');window.location='/ventas?'+p.toString()}
 </script>
 <?php
 $content = ob_get_clean();

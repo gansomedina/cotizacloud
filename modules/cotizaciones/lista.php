@@ -297,8 +297,9 @@ ob_start();
 <div class="toolbar">
   <div class="search-wrap">
     <span class="search-ico">🔍</span>
-    <input type="text" placeholder="Buscar por cliente, teléfono, título, número…"
-           value="<?= e($busqueda) ?>" oninput="debounceSearch(this.value)">
+    <input type="text" id="srchCot" placeholder="Buscar por cliente, teléfono, título, número…"
+           value="<?= e($busqueda) ?>" onkeydown="if(event.key==='Enter')filtrar('q',this.value)">
+    <?php if ($busqueda !== ''): ?><button onclick="filtrar('q','')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--t3);padding:0 4px" title="Limpiar búsqueda">✕</button><?php endif; ?>
   </div>
   <select class="sort-select" onchange="filtrar('orden',this.value)">
     <option value="reciente"   <?= $orden==='reciente'   ?'selected':'' ?>>Más recientes</option>
@@ -467,9 +468,7 @@ foreach ($chips as $k => $lbl):
 <?php endif ?>
 
 <script>
-let _t=null;
-function debounceSearch(v){clearTimeout(_t);_t=setTimeout(()=>filtrar('q',v),350)}
-function filtrar(k,v){const p=new URLSearchParams(window.location.search);p.set(k,v);if(k!=='p')p.delete('p');window.location='/cotizaciones?'+p.toString()}
+function filtrar(k,v){const p=new URLSearchParams(window.location.search);if(v)p.set(k,v);else p.delete(k);if(k!=='p')p.delete('p');window.location='/cotizaciones?'+p.toString()}
 const CSRF_TOKEN='<?= csrf_token() ?>';
 
 function toggleCot(id, e) {
