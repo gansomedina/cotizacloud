@@ -32,9 +32,13 @@ $debug_mode = $es_admin && (($_GET['debug'] ?? '') === '1');
 $range_secs = ['all'=>0,'48h'=>48*3600,'4h'=>4*3600,'30m'=>30*60];
 $min_last   = ($range !== 'all' && isset($range_secs[$range])) ? time() - $range_secs[$range] : 0;
 
-// Recalcular si >1 min
+// Recalcular si >1 min o si faltan icons (migración one-time)
 $ult = DB::val("SELECT MAX(radar_updated_at) FROM cotizaciones WHERE empresa_id=?", [$empresa_id]);
-if (!$ult || $ult < date('Y-m-d H:i:s', time()-60)) {
+$_icons_missing = (int)DB::val(
+    "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND radar_bucket IS NOT NULL AND (radar_senales IS NULL OR radar_senales NOT LIKE '%\"icons\"%')",
+    [$empresa_id]
+);
+if (!$ult || $ult < date('Y-m-d H:i:s', time()-60) || $_icons_missing > 0) {
     try { Radar::check_auto_calibrar($empresa_id); Radar::recalcular_empresa($empresa_id); } catch(Throwable $e){}
 }
 
@@ -447,6 +451,10 @@ render_bkt('🔵 Enfriándose (señal exclusiva)',
     'Tuvo 4+ vistas históricas pero no se ha visto en 48h. Distingue si ya había foco en precio o no.',
     $cooling,$sort,$dir,false,true);
 
+render_bkt('❌ No abierta',
+    'Cotizaciones creadas en los últimos 7 días (con más de 24h) sin evidencia de apertura por el cliente — ni vistas externas ni eventos JS.',
+    $buckets['no_abierta'] ?? [],$sort,$dir);
+
 render_bkt('🟡 Activos 48h (todos los activos)',
     'Lista completa de todo lo visto en las últimas 48 horas',
     $activos48,$sort,$dir);
@@ -478,7 +486,17 @@ render_bkt('🟡 Activos 48h (todos los activos)',
       $ab=$r['accepted']?"<span class='bok'>ACCEPTED</span>":"<span class='bno'>".$r['estado']."</span>";
     ?>
     <tr class="<?= $rc ?>" onclick="window.location='/cotizaciones/<?= (int)$r['id'] ?>'">
-      <td><div class="rtit"><?= e($r['titulo']) ?></div><div class="rsub"><?= e($r['cliente']) ?></div></td>
+      <?php
+        $rg_icons = $r['senales']['icons'] ?? [];
+        $rg_ico = '';
+        if (!empty($rg_icons['coupon']))     $rg_ico .= '🎟️';
+        if (!empty($rg_icons['promo']))      $rg_ico .= '💣';
+        if (!empty($rg_icons['price']))      $rg_ico .= '💸';
+        if (!empty($rg_icons['sv_price']))   $rg_ico .= '👤';
+        if (!empty($rg_icons['mv_price']))   $rg_ico .= '👥';
+        if (!empty($rg_icons['not_opened'])) $rg_ico .= '❌';
+      ?>
+      <td><div class="rtit"><?= $rg_ico ? $rg_ico.' ' : '' ?><?= e($r['titulo']) ?></div><div class="rsub"><?= e($r['cliente']) ?></div></td>
       <td class="tc"><?= $ab ?></td>
       <td class="tr"><b><?= number_format($r['fit_pct'],1) ?>%</b></td>
       <td class="tr"><b><?= number_format($r['priority_pct'],1) ?>%</b></td>
