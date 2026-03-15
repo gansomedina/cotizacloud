@@ -1026,9 +1026,9 @@ class Radar
 
         DB::execute("UPDATE radar_fit_calibracion SET activa=0 WHERE empresa_id=?", [$empresa_id]);
         DB::execute(
-            "INSERT INTO radar_fit_calibracion (empresa_id, tasa_base, global_rate, bandas_json, rate_sess_json, rate_ips_json, rate_gap_json, num_cotizaciones, num_ventas, activa)
-             VALUES (?,?,?,?,?,?,?,?,?,1)",
-            [$empresa_id, round($base,4), round($base,4), json_encode($bandas), json_encode($rate_sess), json_encode($rate_ips), json_encode($rate_gap), $total, $cerr]
+            "INSERT INTO radar_fit_calibracion (empresa_id, global_rate, bandas_json, rate_sess_json, rate_ips_json, rate_gap_json, cotizaciones, ventas_cerradas, activa)
+             VALUES (?,?,?,?,?,?,?,?,1)",
+            [$empresa_id, round($base,4), json_encode($bandas), json_encode($rate_sess), json_encode($rate_ips), json_encode($rate_gap), $total, $cerr]
         );
 
         return ['ok'=>true,'global_rate'=>round($base*100,2),'rate_sess'=>$rate_sess,'rate_ips'=>$rate_ips,'rate_gap'=>$rate_gap,'bandas'=>$bandas,'total'=>$total,'cierres'=>$cerr];
@@ -1038,7 +1038,7 @@ class Radar
     {
         // Auto-calibrar cada 10 nuevos cierres (ventas + aceptadas)
         if (!($this_cfg = self::config($empresa_id))['calibracion_auto']) return;
-        $ultima   = (int)(DB::val("SELECT num_ventas FROM radar_fit_calibracion WHERE empresa_id=? AND activa=1 LIMIT 1", [$empresa_id]) ?? 0);
+        $ultima   = (int)(DB::val("SELECT ventas_cerradas FROM radar_fit_calibracion WHERE empresa_id=? AND activa=1 LIMIT 1", [$empresa_id]) ?? 0);
         $actuales = (int)DB::val("SELECT COUNT(*) FROM ventas WHERE empresa_id=? AND estado != 'cancelada'", [$empresa_id]);
         if (($actuales - $ultima) >= 10) self::calibrar($empresa_id);
     }
