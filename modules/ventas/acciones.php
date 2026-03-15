@@ -156,7 +156,7 @@ elseif ($accion === 'notas') {
 //  DESCUENTO MANUAL
 // ════════════════════════════════════════════════════════════
 elseif ($accion === 'descuento') {
-    if (!Auth::es_admin()) json_error('Sin permiso', 403);
+    if (!Auth::es_admin() && !Auth::puede('aplicar_descuentos')) json_error('Sin permiso', 403);
     if ($venta['estado'] === 'cancelada') json_error('Venta cancelada', 422);
 
     $desc_amt = max(0, (float)($body['descuento_manual_amt'] ?? 0));
@@ -201,11 +201,18 @@ elseif ($accion === 'descuento') {
 //  EDITAR / ELIMINAR LÍNEA DE COTIZACIÓN
 // ════════════════════════════════════════════════════════════
 elseif ($accion === 'editar-linea') {
-    if (!Auth::es_admin()) json_error('Solo administradores', 403);
     if ($venta['estado'] === 'cancelada') json_error('Venta cancelada', 422);
 
     $linea_id = (int)($body['linea_id'] ?? 0);
     if (!$linea_id) json_error('linea_id requerido');
+
+    // Verificar permisos: eliminar requiere puede_eliminar_items_venta, editar requiere admin o editar_precios
+    $es_eliminar = !empty($body['eliminar']);
+    if ($es_eliminar) {
+        if (!Auth::es_admin() && !Auth::puede('eliminar_items_venta')) json_error('Sin permiso para eliminar', 403);
+    } else {
+        if (!Auth::es_admin() && !Auth::puede('editar_precios')) json_error('Sin permiso para editar', 403);
+    }
 
     // Verificar que la línea pertenece a la cotización de esta venta
     $linea = DB::row(
@@ -219,7 +226,7 @@ elseif ($accion === 'editar-linea') {
 
     DB::beginTransaction();
     try {
-        if (!empty($body['eliminar'])) {
+        if ($es_eliminar) {
             // Eliminar línea
             $subtotal_viejo = (float)$linea['subtotal'];
             DB::execute("DELETE FROM cotizacion_lineas WHERE id=?", [$linea_id]);
