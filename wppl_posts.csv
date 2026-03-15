@@ -1,0 +1,831 @@
+"wp_id","post_title","post_date","post_status","numero","cliente_wp_id","created_ts","total_fmt","tax_pct","descuento","invoice_id","last_view_ts","first_view_ts"
+"1282","Maria Mercedes Apodaca Rodriguez Huitzilopoxtli 32 colonia los alamos 5216441973559","2026-03-14 12:36:05","publish","QUO-950","2","1773516965","$20,600.00","0",NULL,NULL,NULL,NULL
+"1273","Nicole fierros Calle vito #63D col. Praga 6623611609","2026-03-13 13:49:55","publish","QUO-949","2","1773434995","$28,000.00","0",NULL,NULL,NULL,NULL
+"1272","Jaqueline LORDMENDEZ CALLE SEDELLA # 1, Fracc. STANZA MALAGA, Manzana 089 Lote 0041 - 5217228391190","2026-03-12 10:57:26","publish","QUO-948","2","1773338246","$16,500.00","0",NULL,NULL,NULL,NULL
+"1271","alexis 5216625260182","2026-03-12 10:50:06","publish","QUO-947","2","1773337806","$16,500.00","0",NULL,NULL,NULL,NULL
+"1270","Fernanda Díaz Cerrada cruceiros, colonia Stanza florenS Stanza florenza 6444084388","2026-03-12 08:57:21","publish","QUO-946","2","1773331041","$16,500.00","0",NULL,NULL,NULL,NULL
+"1269","sofia acevedo alpina #30, monterosa residencial 6621611050","2026-03-11 11:27:11","publish","QUO-945","2","1773253631","$53,500.00","0",NULL,NULL,NULL,NULL
+"1266","Mario Ibarra M. Calle Arboretum #13, Residencial Bonaterra 5216621915913","2026-03-10 12:19:03","publish","QUO-944","2","1773170343","$67,700.00","0",NULL,"1275",NULL,NULL
+"1265","Raquel García Jordán Calle tres #234 5216621575753","2026-03-10 12:11:36","publish","QUO-943","2","1773169896","$17,000.00","0",NULL,NULL,NULL,NULL
+"1264","Manuel Torres Altaria Residencial, Coto vizenzio #107 5213312284191","2026-03-10 09:57:55","publish","QUO-942","2","1773161875","$62,000.00","0",NULL,NULL,NULL,NULL
+"1262","Citlali Sierra 6621490992","2026-03-09 17:54:09","publish","QUO-941","2","1773104049","$34,000.00","0",NULL,NULL,NULL,NULL
+"1261","sergio soria 5216623270652","2026-03-09 16:04:37","publish","QUO-940","2","1773097477","$75,200.00","0",NULL,NULL,NULL,NULL
+"1260","Merari 6621122269","2026-03-09 10:33:44","publish","QUO-939","2","1773077624","$76,700.00","0",NULL,NULL,NULL,NULL
+"1259","Fernando Quiroz Avenida Benjamín Muñoz 219, Balderrama 6681946622","2026-03-09 09:54:59","publish","QUO-938","2","1773075299","$24,600.00","0",NULL,NULL,NULL,NULL
+"1258","Elsa Margarita Aguayo Trujilllon Paseo de los Álamos 160 6621370244","2026-03-09 09:03:56","publish","QUO-937","2","1773072236","$64,000.00","0",NULL,NULL,NULL,NULL
+"1256","Gerardo Garcés colonia Urbi villa del cedro Izote 69 6621747661","2026-03-07 10:42:48","publish","QUO-936","2","1772905368","$39,000.00","0",NULL,NULL,NULL,NULL
+"1255","Cintya Sánchez  Romances norte 40 paseo del cid 5216622268213","2026-03-07 10:40:07","publish","QUO-935","2","1772905207","$26,000.00","0",NULL,NULL,NULL,NULL
+"1254","Noemí Valle del marqués calle Tezcatlipoca 6624485651","2026-03-07 10:34:25","publish","QUO-934","2","1772904865","$25,400.00","0",NULL,"1257",NULL,NULL
+"1253","Victor Manuel Hernandez Lopez Acacia colorida 160 en Acacias 5216311831713","2026-03-07 10:26:39","publish","QUO-933","2","1772904399","$43,500.00","0",NULL,NULL,NULL,NULL
+"1250","Jessica Flores 6622564080","2026-03-05 12:59:20","publish","QUO-932","2","1772740760","$32,000.00","0",NULL,NULL,NULL,NULL
+"1248","Abigail Reyna C. Divisaderos 277 López Portillo 6441937654","2026-03-03 17:38:28","publish","QUO-931","2","1772584708","$15,000.00","0",NULL,NULL,NULL,NULL
+"1246","alex Alborada mza 164 lote 07 Villalcazar residencial 6622763219","2026-03-03 10:06:06","publish","QUO-930","2","1772557566","$84,000.00","0",NULL,NULL,NULL,NULL
+"1245","Nallely Holguín 6624807214","2026-03-03 09:59:40","publish","QUO-929","2","1772557180","$26,600.00","0",NULL,NULL,NULL,NULL
+"1244","Gerardo Ibarra Angel Arreola 90, Colonia Valle Dorado 6622759816","2026-03-03 09:21:19","publish","QUO-928","2","1772554879","$19,400.00","0",NULL,NULL,NULL,NULL
+"1242","Gabriela Guevara 6621566776","2026-03-03 09:08:45","publish","QUO-927","2","1772554125","$21,400.00","0",NULL,NULL,NULL,NULL
+"1241","Anny Rodríguez 6625100280","2026-03-02 16:12:41","publish","QUO-926","2","1772493161","$36,000.00","0",NULL,NULL,NULL,NULL
+"1240","Anny Rodríguez 6625100280","2026-03-02 16:12:08","draft",,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+"1237","Estreberto Grijalva Arvizu Calle Petrarca Número 3, Lomas del Sur 5216622562170","2026-03-02 10:12:26","publish","QUO-925","2","1772471546","$21,400.00","0",NULL,"1251",NULL,NULL
+"1236","Miguel Cruz Fraccionamiento Monteregio, Vernaccia 36 6621609041","2026-03-02 09:56:43","publish","QUO-924","2","1772470603","$48,800.00","0",NULL,"1249",NULL,NULL
+"1234","Yara López Oasis del Sol, Palo Azul 86 6531457212","2026-03-02 09:05:49","publish","QUO-923","2","1772467549","$16,000.00","0",NULL,NULL,NULL,NULL
+"1233","Liz Arechiga Calle Díaz Miron, col periodista 51c 6622040738","2026-02-28 10:50:57","publish","QUO-922","2","1772301057","$16,000.00","0",NULL,NULL,NULL,NULL
+"1231","Beatriz Guerrero Jimenez 5216622251632 Zonata 25 , Agaves","2026-02-27 14:08:11","publish","QUO-921","2","1772226491","$16,000.00","0",NULL,NULL,NULL,NULL
+"1229","Sergio Ojeda Trinidad #21, Fraccionamiento, cerrada de la capilla 6624655979","2026-02-27 09:02:03","publish","QUO-920","2","1772208123","$17,400.00","0",NULL,NULL,NULL,NULL
+"1228","Lucia Villalobos contreras Alejandro García 367 6624334746","2026-02-26 08:58:11","publish","QUO-919","2","1772121491","$18,450.00","0",NULL,NULL,NULL,NULL
+"1224","Artemisa 6341082151","2026-02-24 16:25:26","publish","QUO-918","2","1771975526","$31,000.00","0",NULL,NULL,NULL,NULL
+"1223","Julio Álvarez 6623716442 Ave 11 # 186","2026-02-24 15:14:39","publish","QUO-917","2","1771971279","$13,500.00","0",NULL,NULL,NULL,NULL
+"1221","Daniela Figueroa Retorno Dolomita 139 6622335259","2026-02-23 15:28:04","publish","QUO-916","2","1771885684","$15,400.00","0",NULL,NULL,NULL,NULL
+"1220","Ruth Isela Salomón Alvarez Horizonte dorado #76 Fracc. El Encanto 6621733456","2026-02-23 15:09:54","publish","QUO-915","2","1771884594","$15,000.00","0",NULL,"1225",NULL,NULL
+"1219","Patricia Salazar Alatorre #123 6621730157","2026-02-23 11:55:11","publish","QUO-914","2","1771872911","$18,000.00","0",NULL,NULL,NULL,NULL
+"1218","Reyna Quintero 6624618324","2026-02-23 10:00:58","publish","QUO-913","2","1771866058","$15,000.00","0",NULL,NULL,NULL,NULL
+"1217","Edith Espinoza 6621530124","2026-02-23 09:41:12","publish","QUO-912","2","1771864872","$20,500.00","0",NULL,NULL,NULL,NULL
+"1216","Ana Lourdes León Campillo 108 6624223314","2026-02-23 09:30:12","publish","QUO-911","2","1771864212","$18,600.00","0",NULL,"1232",NULL,NULL
+"1215","Magdeliza Apodaca 6621697081","2026-02-23 09:13:06","publish","QUO-910","2","1771863186","$15,500.00","0",NULL,NULL,NULL,NULL
+"1214","Jose quijada Paseo de la capilla 16 6621743541","2026-02-20 09:33:06","publish","QUO-909","2","1771605186","$15,000.00","0",NULL,NULL,NULL,NULL
+"1213","Alejandro Aguayo Borgoño 68, Campo grande residencial 6624119316","2026-02-19 09:13:07","publish","QUO-908","2","1771517587","$65,000.00","0",NULL,NULL,NULL,NULL
+"1212","Jorge Leon Montecarlo, Privada Corcega 10 6621050805","2026-02-18 09:55:43","publish","QUO-907","2","1771433743","$13,500.00","0",NULL,NULL,NULL,NULL
+"1211","Mario Isla san Marcos 5 6621745359","2026-02-18 09:51:29","publish","QUO-906","2","1771433489","$16,000.00","0",NULL,NULL,NULL,NULL
+"1209","Jorge Luis Olivarría 6621710171","2026-02-17 15:39:41","publish","QUO-905","2","1771367981","$30,600.00","0",NULL,NULL,NULL,NULL
+"1208","Ofelia Vilches 6622950758","2026-02-17 15:15:56","publish","QUO-904","2","1771366556","$16,600.00","0",NULL,NULL,NULL,NULL
+"1207","Ofelia Bernal 6621158000","2026-02-17 09:28:22","publish","QUO-903","2","1771345702","$49,000.00","0",NULL,NULL,NULL,NULL
+"1206","Rade Juarez","2026-02-17 09:19:48","publish","QUO-902","2","1771345188","$27,000.00","0",NULL,NULL,NULL,NULL
+"1204","Mario 6622789237","2026-02-16 17:26:17","publish","QUO-901","2","1771287977","$22,600.00","0",NULL,NULL,NULL,NULL
+"1203","Ricardo Robles Caleria 21 puerta real","2026-02-16 11:34:31","publish","QUO-900","2","1771266871","$26,750.00","0",NULL,NULL,NULL,NULL
+"1202","Jesús Parra  6421143689","2026-02-16 09:38:11","publish","QUO-899","2","1771259891","$66,000.00","0",NULL,"1267",NULL,NULL
+"1201","Ana Karen Servín Morgana 77, Bonaterra residencial 6442357616","2026-02-16 09:20:36","publish","QUO-898","2","1771258836","$80,000.00","0",NULL,NULL,NULL,NULL
+"1200","Francisco Ramon Tapiz Osornio Puerta Real 6622759917","2026-02-16 09:12:16","publish","QUO-897","2","1771258336","$15,000.00","0",NULL,NULL,NULL,NULL
+"1199","Cecilia Rodriguez Nuño de Guzmán Num 783 col plaza real 6622957757","2026-02-16 09:04:15","publish","QUO-896","2","1771257855","$19,000.00","0",NULL,NULL,NULL,NULL
+"1196","brisa galvez","2026-02-14 11:35:57","publish","QUO-895","2","1771094157","$18,600.00","0",NULL,NULL,NULL,NULL
+"1195","Estreberto Grijalva Arvizu Calle Petrarca Número 3, Lomas del Sur 5216622562170","2026-02-14 10:43:23","publish","QUO-894","2","1771091003","$73,600.00","0",NULL,"1197",NULL,NULL
+"1192","Erik Fregoso Privada sahara #10 colonia las Lomas sección almendros 6451105652","2026-02-13 13:13:44","publish","QUO-893","2","1771013624","$50,500.00","0",NULL,"1198",NULL,NULL
+"1189","Jesus Rosas Pimeria alta 30 col el apache","2026-02-10 09:02:24","publish","QUO-892","2","1770739344","$69,000.00","0",NULL,NULL,NULL,NULL
+"1187","David Ruiz san Nazario 188 paseo san ángel 6621214842","2026-02-10 08:45:08","publish","QUO-891","2","1770738308","$17,800.00","0",NULL,NULL,NULL,NULL
+"1186","Jorge Heiras 6424830614","2026-02-09 15:04:34","publish","QUO-890","2","1770674674","$20,000.00","0",NULL,NULL,NULL,NULL
+"1185","Faustino Solano Ramírez Calzada de los Ángeles 190 los portales 6622565386","2026-02-09 10:07:12","publish","QUO-889","2","1770656832","$48,000.00","0",NULL,NULL,NULL,NULL
+"1184","Ignacio Montoya Residencial Málaga #26 6621147202","2026-02-09 09:48:06","publish","QUO-888","2","1770655686","$17,200.00","0",NULL,NULL,NULL,NULL
+"1183","Gloria Valencia Circuito higos #36 Natura 6421364706","2026-02-09 09:39:53","publish","QUO-887","2","1770655193","$17,000.00","0",NULL,NULL,NULL,NULL
+"1182","Jesús Gomez Cerrada Belcanto, Circuito de Ocarina 78 6621782059","2026-02-09 09:32:23","publish","QUO-886","2","1770654743","$18,400.00","0",NULL,NULL,NULL,NULL
+"1181","José Pedro Rios Campo verde 87 Solidaridad","2026-02-07 11:18:42","publish","QUO-885","2","1770488322","$22,000.00","0",NULL,NULL,NULL,NULL
+"1180","Guadalupe Dihort Sexta 88-A, Palo Verde 5216621906381","2026-02-07 11:13:55","publish","QUO-884","2","1770488035","$22,800.00","0",NULL,NULL,NULL,NULL
+"1179","Ruben Lopez","2026-02-07 11:09:18","publish","QUO-883","2","1770487758","$20,000.00","0",NULL,NULL,NULL,NULL
+"1178","Claudia 6622796851","2026-02-07 11:01:24","publish","QUO-882","2","1770487284","$30,200.00","0",NULL,NULL,NULL,NULL
+"1177","Jesús Fierro 6621284093","2026-02-07 10:57:07","publish","QUO-881","2","1770487027","$17,400.00","0",NULL,NULL,NULL,NULL
+"1175","Jimena Coronado Crisoles 18, Torreplata 5216622448027","2026-02-06 14:29:25","publish","QUO-880","2","1770413365","$17,400.00","0",NULL,NULL,NULL,NULL
+"1174","Francisca Guerrero 6624015965","2026-02-06 14:21:09","publish","QUO-879","2","1770412869","$20,800.00","0",NULL,NULL,NULL,NULL
+"1173","Lupita 6621803091","2026-02-06 10:09:24","publish","QUO-878","2","1770397764","$29,600.00","0",NULL,NULL,NULL,NULL
+"1172","Cuauhtémoc Acuña Ocejo Borbon 7, Puerta Real 6624308968","2026-02-06 09:15:29","publish","QUO-877","2","1770394529","$18,000.00","0",NULL,NULL,NULL,NULL
+"1171","Javier Zarate 6621917638","2026-02-05 17:21:14","publish","QUO-876","2","1770337274","$18,200.00","0",NULL,NULL,NULL,NULL
+"1170","Danna Esquer 5610172702","2026-02-05 13:22:15","publish","QUO-875","2","1770322935","$18,600.00","0",NULL,NULL,NULL,NULL
+"1168","Martin Pacheco San Martín 8, Paseo San Angel 6621288511","2026-02-05 08:59:23","publish","QUO-874","2","1770307163","$30,000.00","0",NULL,NULL,NULL,NULL
+"1167","Martha Maldonado Cerrada Belmonte, calle araba 54 6621469238","2026-02-04 14:42:16","publish","QUO-873","2","1770241336","$20,400.00","0",NULL,NULL,NULL,NULL
+"1166","Cesar Valenzuela 6621310531 Basuari 2 Fraccionamiento Bilbao","2026-02-03 12:26:29","publish","QUO-872","2","1770146789","$45,000.00","0",NULL,NULL,NULL,NULL
+"1165","Daniel Ibarra Alpandeire #15 6629483162","2026-02-03 11:30:54","publish","QUO-871","2","1770143454","$30,000.00","0",NULL,NULL,NULL,NULL
+"1162","Berenice Miranda Castillo Romano 50 puerta real 5216623713691","2026-02-03 10:28:02","publish","QUO-869","2","1770139682","$18,000.00","0",NULL,NULL,NULL,NULL
+"1161","Jesús Torres Calle de los Salix 39, Fracc. Villa Sauces 5216451043974","2026-02-03 10:19:49","publish","QUO-868","2","1770139189","$19,600.00","0",NULL,NULL,NULL,NULL
+"1160","Rosa Encinas Ave. Supervisores 103, altares","2026-02-03 09:35:46","publish","QUO-867","2","1770136546","$55,400.00","0",NULL,NULL,NULL,NULL
+"1159","Ana Luisa Romo Apasible 24, Nueva Galicia 6622332809","2026-02-03 09:12:26","publish","QUO-866","2","1770135146","$21,000.00","0",NULL,"1227",NULL,NULL
+"1157","Karina 6621807648","2026-01-31 12:03:11","publish","QUO-865","2","1769886191","$35,000.00","0",NULL,NULL,NULL,NULL
+"1156","Juan Molina 6623405156","2026-01-31 11:56:57","publish","QUO-864","2","1769885817","$17,000.00","0",NULL,NULL,NULL,NULL
+"1154","Paloma Benitez cerrada santo domingo colonia san marcos 6621025504","2026-01-30 14:09:08","publish","QUO-863","2","1769807348","$28,400.00","0",NULL,NULL,NULL,NULL
+"1153","Juan Castillo Fernández San Hiram 66, fracc San Bosco 6623770526","2026-01-30 13:13:14","publish","QUO-862","2","1769803994","$17,200.00","0",NULL,NULL,NULL,NULL
+"1152","Jared Valdez moreno Av sierra obscura 156, Col. Solidaridad 6623730420","2026-01-28 09:13:50","publish","QUO-861","2","1769616830","$136,000.00","0",NULL,NULL,NULL,NULL
+"1151","Luz Delia Galaz Laborin Fraccionamiento natura, privada mandioca, calle mandioca #4 6632948735","2026-01-27 17:00:45","publish","QUO-860","2","1769558445","$17,500.00","0",NULL,NULL,NULL,NULL
+"1150","Viridiana Arvizu Urías Cerrada de la República 22 Soleil Residencial 5216622060972","2026-01-26 14:21:07","publish","QUO-859","2","1769462467","$40,000.00","0",NULL,NULL,NULL,NULL
+"1149","Laura Valenzuela Adamas #24 Cerrada Diamante 5216624757503","2026-01-26 14:13:41","publish","QUO-858","2","1769462021","$36,000.00","0",NULL,NULL,NULL,NULL
+"1148","Rodolfo Villa Enriquez burruel #77, Col Altares 5216629483269","2026-01-26 12:50:23","publish","QUO-857","2","1769457023","$19,500.00","0",NULL,NULL,NULL,NULL
+"1147","Christian Alejandro Rascón Alcantar Burinut #2, Quinta Esmeralda 5216624571464","2026-01-26 12:34:43","publish","QUO-856","2","1769456083","$98,100.00","0",NULL,NULL,NULL,NULL
+"1145","Alejandro soltero lopez Bramante 29, Renaceres 5216623802957","2026-01-24 11:37:38","publish","QUO-855","2","1769279858","$26,000.00","0",NULL,NULL,NULL,NULL
+"1144","Maricela 6671932244","2026-01-23 12:44:24","publish","QUO-854","2","1769197464","$22,400.00","0",NULL,NULL,NULL,NULL
+"1143","Adan martinez Lirio 36, Adolfo Lopez mateos 5216621272465","2026-01-23 08:43:04","publish","QUO-853","2","1769182984","$22,500.00","0",NULL,NULL,NULL,NULL
+"1142","Rocio Sandoval 6623 260756","2026-01-22 14:05:21","publish","QUO-852","2","1769115921","$34,000.00","0",NULL,NULL,NULL,NULL
+"1141","Juan Ornelas santa rocio 4 san german 5216622886445","2026-01-22 10:26:58","publish","QUO-851","2","1769102818","$14,800.00","0",NULL,NULL,NULL,NULL
+"1140","Karime Onavas 21, Colonia mariachi 5216371134348","2026-01-22 10:15:25","publish","QUO-850","2","1769102125","$22,400.00","0",NULL,NULL,NULL,NULL
+"1139","Alberto Álvarez Privada Carsoli 11, Villa Bonita 6628474329","2026-01-22 08:56:07","publish","QUO-849","2","1769097367","$38,500.00","0",NULL,"1193",NULL,NULL
+"1138","JUAN PABLO MALDONADO C. 6623078830","2026-01-21 14:36:20","publish","QUO-848","2","1769031380","$18,200.00","0",NULL,NULL,NULL,NULL
+"1137","Rubí Valencia Caye mina toca roja #13 privada pilares 6621613206","2026-01-21 14:19:08","publish","QUO-847","2","1769030348","$32,000.00","0",NULL,NULL,NULL,NULL
+"1135","Beatriz Guerrero Jimenez 5216622251632 Zonata 25 , Agaves","2026-01-21 09:42:10","publish","QUO-846","2","1769013730","$16,400.00","0",NULL,"1226",NULL,NULL
+"1134","Juan carlos","2026-01-21 09:28:11","publish","QUO-845","2","1769012891","$15,400.00","0",NULL,NULL,NULL,NULL
+"1133","Sarahi Elizalde Sierra alpina 190 valle de agualurca 6624258390","2026-01-20 08:58:55","publish","QUO-844","2","1768924735","$23,400.00","0",NULL,NULL,NULL,NULL
+"1132","Gabriel Martínez 6221018470 Murada 98, Stanza Albaterra","2026-01-19 12:24:16","publish","QUO-843","2","1768850656","$20,000.00","0",NULL,NULL,NULL,NULL
+"1131","Vanessa Ramirez Morineau Fresnos Residencial, Retorno árbol de abetuna 10 6531305170","2026-01-19 10:33:02","publish","QUO-842","2","1768843982","$34,800.00","0",NULL,NULL,NULL,NULL
+"1130","Gpe Godoy cerrada de los cafetales y del amareto número 2b villas del real 6622873781","2026-01-19 10:11:46","publish","QUO-841","2","1768842706","$21,600.00","0",NULL,NULL,NULL,NULL
+"1129","Daniel 5216622879551","2026-01-19 10:04:45","publish","QUO-840","2","1768842285","$60,000.00","0",NULL,NULL,NULL,NULL
+"1127","Ketzel Espinoza San Elías 27, Santa María Finca Residencial 5216623777965","2026-01-19 09:50:18","publish","QUO-839","2","1768841418","$16,600.00","0",NULL,NULL,NULL,NULL
+"1126","Myriam Itzel Valenzuela Lerici 24 5216623622298","2026-01-19 08:54:24","publish","QUO-838","2","1768838064","$16,200.00","0",NULL,NULL,NULL,NULL
+"1123","Carmen Camacho Gabriel Zaid #33 col urbi villa de cedro 5216621075248","2026-01-17 10:38:24","publish","QUO-837","2","1768671504","$21,400.00","0",NULL,NULL,NULL,NULL
+"1122","Bianca Arellano 5216622251822","2026-01-16 14:40:18","publish","QUO-836","2","1768599618","$13,500.00","0",NULL,NULL,NULL,NULL
+"1121","Jesus Cabrera cerrada barberini 75 6624760807","2026-01-16 13:13:44","publish","QUO-835","2","1768594424","$23,000.00","0",NULL,NULL,NULL,NULL
+"1119","Gabriela 6624142193","2026-01-16 10:45:23","publish","QUO-834","2","1768585523","$25,500.00","0",NULL,NULL,NULL,NULL
+"1117","Luisa García 6622760773 San Xavier 171, Pueblitos","2026-01-15 10:53:15","publish","QUO-833","2","1768499595","$16,400.00","0",NULL,NULL,NULL,NULL
+"1116","Rodolfo Carlón Alcántar Paladio 20 en áurea residencial 6121364745","2026-01-14 16:40:57","publish","QUO-832","2","1768434057","$68,500.00","0",NULL,NULL,NULL,NULL
+"1115","Gloria Campillo Paseo Margaritas 25 norte 5216621492668","2026-01-14 09:03:47","publish","QUO-831","2","1768406627","$24,500.00","0",NULL,NULL,NULL,NULL
+"1114","Omar Ramírez Ernesto Damy #3, Las Lomas Real del Parque 5216622988005","2026-01-14 08:59:00","publish","QUO-830","2","1768406340","$22,000.00","0",NULL,NULL,NULL,NULL
+"1112","Erika Celaya Retorno Campo Grande número 3 7223102726","2026-01-13 14:45:56","publish","QUO-829","2","1768340756","$44,600.00","0",NULL,NULL,NULL,NULL
+"1111","Fernanda Alvarado torre de mora 42, Col torre de piedra 5216221457218","2026-01-12 16:56:07","publish","QUO-828","2","1768262167","$17,900.00","0",NULL,NULL,NULL,NULL
+"1110","Edrulfo soto parra 6621280810 Calle belgrado36 las lomas sección bonita 1","2026-01-12 15:43:13","publish","QUO-827","2","1768257793","$37,600.00","0",NULL,NULL,NULL,NULL
+"1109","Santos López 6621153633","2026-01-12 15:37:45","publish","QUO-826","2","1768257465","$16,800.00","0",NULL,NULL,NULL,NULL
+"1108","Laura Inés Ríos López Puerta real, Tercera etapa, #8 5216621871597","2026-01-12 15:32:31","publish","QUO-825","2","1768257151","$13,500.00","0",NULL,NULL,NULL,NULL
+"1107","Agustina Rodríguez 8112697571 Estoy en Quinta Esmeralda","2026-01-12 15:26:10","publish","QUO-824","2","1768256770","$14,000.00","0",NULL,NULL,NULL,NULL
+"1106","Alejandra Chacón Árbol de Cercis 60 Altaria sección Valencia 5216622794812","2026-01-12 15:08:03","publish","QUO-823","2","1768255683","$32,000.00","0",NULL,NULL,NULL,NULL
+"1105","Blanca 6629486790","2026-01-12 15:02:47","publish","QUO-822","2","1768255367","$21,000.00","0",NULL,NULL,NULL,NULL
+"1103","Dinorah Vega 6629348912","2026-01-12 14:57:15","publish","QUO-821","2","1768255035","$17,900.00","0",NULL,NULL,NULL,NULL
+"1102","Lorenia López 5216622971671","2026-01-12 14:39:35","publish","QUO-820","2","1768253975","$16,800.00","0",NULL,NULL,NULL,NULL
+"1101","Blanca Leocadio Salcedo 1138 esquina con Guatemala col Álvaro Obregón 5216629486790","2026-01-12 14:36:16","publish","QUO-819","2","1768253776","$23,000.00","0",NULL,NULL,NULL,NULL
+"1100","Rodrigo nogales 6621021433","2026-01-12 14:22:41","publish","QUO-818","2","1768252961","$26,000.00","0",NULL,NULL,NULL,NULL
+"1099","David García Cortez Paseo Árbol de Lima 12, Altaria Resiencial Secc. Nápoles 6621385065","2026-01-12 14:08:04","publish","QUO-817","2","1768252084","$31,300.00","0",NULL,NULL,NULL,NULL
+"1098","Carmen elisa preciado cuevas 6622005684","2026-01-12 12:47:20","publish","QUO-816","2","1768247240","$26,000.00","0",NULL,NULL,NULL,NULL
+"1097","Veronica Valencia Privada Modica 17 villa bonita 5216624228385","2026-01-12 12:36:45","publish","QUO-815","2","1768246605","$22,000.00","0",NULL,NULL,NULL,NULL
+"1096","Yahel Morales Ruiz 6621113601","2026-01-12 12:32:10","publish","QUO-814","2","1768246330","$23,900.00","0",NULL,NULL,NULL,NULL
+"1095","Martha Aide Urias Ave.Once 54 Sacramento Residencial 6621400648","2026-01-12 12:23:45","publish","QUO-813","2","1768245825","$24,400.00","0",NULL,NULL,NULL,NULL
+"1077","Jades Aguilar Castillo Privada del Razo núm 17, Col Casa Blanca 5216622050063","2026-01-10 10:36:16","publish",,"2","1768066576","$57,350.00","0",NULL,"1082","2026-01-10 23:25:19","2026-01-10 23:24:48"
+"1072","Samir Ochoa 6621391597","2026-01-09 09:24:15","publish","QUO-810","2","1767975855","$37,150.00","0",NULL,"1118",NULL,NULL
+"1070","Jades Aguilar Castillo Privada del Razo núm 17, Col Casa Blanca 5216622050063","2026-01-09 09:16:47","publish","QUO-809","2","1767975407","$57,350.00","0",NULL,"1073",NULL,NULL
+"1068","Zulema Avechuco Ignacio hernandez 428, col olivares 6621469635","2026-01-08 17:02:05","publish","QUO-808","2","1767916925","$50,800.00","0",NULL,NULL,NULL,NULL
+"1066","Soitza Lucia urquijo Armenta Bulevar perisur #27 entre campesinos y Tehuantepec colonia perisur 6623551892","2026-01-08 16:42:45","publish","QUO-807","2","1767915765","$15,000.00","0",NULL,"1067",NULL,NULL
+"1065","Guada Meza 6623426189","2026-01-08 16:38:20","publish","QUO-806","2","1767915500","$17,900.00","0",NULL,NULL,NULL,NULL
+"1064","Cesar A Ortiz Higuera Del pasillo número 54 real de Quiroga sección Madrigal 5216623147180","2026-01-08 12:38:04","publish","QUO-805","2","1767901084","$29,000.00","0",NULL,NULL,NULL,NULL
+"1063","Martha Aide Urias 5216621400648 Ave.Once 54 Sacramento Residencial","2026-01-08 09:51:32","draft",,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+"1062","Patricia Rendón 5216624703656 5ta privada de monteverde 308, ISSSTESON norte","2026-01-08 09:47:03","publish","QUO-804","2","1767890823","$16,800.00","0",NULL,NULL,NULL,NULL
+"1061","Yesenia Cadena Garnacha 4, Villas Merlot 5216383844962","2026-01-07 11:57:57","publish","QUO-803","2","1767812277","$50,000.00","0",NULL,NULL,NULL,NULL
+"1060","Estefanía Nava Bravo José Maria Mendoza 1823, Col. Nuevo Sahuaro 5215544531453","2026-01-07 11:52:35","publish","QUO-802","2","1767811955","$18,500.00","0",NULL,NULL,NULL,NULL
+"1059","David Corrales 6624124711","2026-01-07 11:43:07","publish","QUO-801","2","1767811387","$20,500.00","0",NULL,NULL,NULL,NULL
+"1057","Oscar Robles Laderas 15, Col. Praderas 6623463262","2026-01-06 09:14:49","publish","QUO-800","2","1767716089","$16,800.00","0",NULL,NULL,NULL,NULL
+"1056","Lizeth Toledo 6621379134","2026-01-06 09:00:30","publish","QUO-799","2","1767715230","$28,500.00","0",NULL,NULL,NULL,NULL
+"1055","Alejandro Horizonte 83 6624198416","2026-01-06 08:54:27","publish","QUO-798","2","1767714867","$13,500.00","0",NULL,NULL,NULL,NULL
+"1054","Juan Diego Castro López casa bonita cerrada Farayon # 1 6621011227","2026-01-05 12:42:18","publish","QUO-797","2","1767642138","$16,000.00","0",NULL,NULL,NULL,NULL
+"1053","Carlos Rentería Siqueiros villa bugambilia #740, villa del real 6621694886","2026-01-05 12:21:22","publish","QUO-796","2","1767640882","$32,800.00","0",NULL,NULL,NULL,NULL
+"1052","Paola Valenzuela De León 20 Montesinos 6621838125","2026-01-05 11:51:01","publish","QUO-795","2","1767639061","$18,600.00","0",NULL,NULL,NULL,NULL
+"1051","Ariana Rivera 6624633654","2026-01-05 11:43:08","publish","QUO-794","2","1767638588","$13,800.00","0",NULL,NULL,NULL,NULL
+"1049","Roberto Burboa 6622222233","2026-01-05 10:59:05","publish","QUO-793","2","1767635945","$15,000.00","0",NULL,NULL,NULL,NULL
+"1048","Jose Garcia Peñuñuri 6624765979","2026-01-05 10:47:00","publish","QUO-792","2","1767635220","$17,900.00","0",NULL,NULL,NULL,NULL
+"1047","Ricardo Velazquez la atravesada # 22 col. gala privada Ruby 6621273994","2026-01-05 10:34:47","publish","QUO-791","2","1767634487","$21,000.00","0",NULL,NULL,NULL,NULL
+"1046","Paola 6622008557","2026-01-05 10:26:22","publish","QUO-790","2","1767633982","$26,000.00","0",NULL,NULL,NULL,NULL
+"1045","Carlos Rentería Siqueiros villa bugambilia #740, villa del real 6621694886","2026-01-05 10:18:55","publish","QUO-789","2","1767633535","$26,500.00","0",NULL,NULL,NULL,NULL
+"1043","Carlos Rosas Del Obsequio 11, El Secreto 6623264839","2026-01-05 09:59:21","publish","QUO-788","2","1767632361","$15,250.00","0",NULL,"1044",NULL,NULL
+"1042","Erika Pohls 6624479854","2026-01-05 09:39:18","publish","QUO-787","2","1767631158","$17,900.00","0",NULL,NULL,NULL,NULL
+"1041","Irene ríos 6623298681","2026-01-05 09:31:28","publish","QUO-786","2","1767630688","$16,900.00","0",NULL,NULL,NULL,NULL
+"1040","Mario Bermudez 6622331591","2026-01-05 09:07:16","publish","QUO-785","2","1767629236","$16,000.00","0",NULL,NULL,NULL,NULL
+"1039","Lucia Urquijo","2026-01-05 08:54:31","publish","QUO-784","2","1767628471","$16,800.00","0",NULL,NULL,NULL,NULL
+"1035","Roberto Ley Av del colom 42 fraccionamiento montesinos 6688363388","2025-12-31 09:27:48","publish","QUO-783","2","1767198468","$28,000.00","0",NULL,NULL,NULL,NULL
+"1034","Fco Gerardo Téllez Soleil 1 cerrada Monet #94 6621830127","2025-12-31 08:42:58","publish","QUO-782","2","1767195778","$22,000.00","0",NULL,NULL,NULL,NULL
+"1033","Fidel Jimenez Cerrada Jerusalén # 86 San Marcos Residencial 6621428934","2025-12-30 12:57:41","publish","QUO-781","2","1767124661","$24,500.00","0",NULL,NULL,NULL,NULL
+"1032","Martha Casas Bacobampo 1519 colonia sahuaro 6622009217","2025-12-30 11:53:05","publish","QUO-780","2","1767120785","$24,500.00","0",NULL,NULL,NULL,NULL
+"1031","Antonio Espinoza Vallarta #57 entre Villa Fontana y Hernán Cortez, colonia Villa Fontana 6371221831","2025-12-29 17:25:05","publish","QUO-779","2","1767054305","$22,000.00","0",NULL,NULL,NULL,NULL
+"1030","Felipe Federico Valle 6623946546","2025-12-29 17:17:41","publish","QUO-778","2","1767053861","$29,000.00","0",NULL,NULL,NULL,NULL
+"1029","Vazquez Mendez Armando 6624475046","2025-12-29 17:13:17","publish","QUO-777","2","1767053597","$22,000.00","0",NULL,NULL,NULL,NULL
+"1028","Marcelo Gutiérrez Rebeico 285 entre Reforma y Gpe Victoria Col. Heberto Castillo 6621553581","2025-12-29 17:07:41","publish","QUO-776","2","1767053261","$53,800.00","0",NULL,NULL,NULL,NULL
+"1027","Nereyda Ruiz 6621573980","2025-12-29 15:21:05","publish","QUO-775","2","1767046865","$16,800.00","0",NULL,NULL,NULL,NULL
+"1026","Paulo Campoy Arbol de melia no.42 6622573581","2025-12-29 15:17:34","publish","QUO-774","2","1767046654","$24,500.00","0",NULL,NULL,NULL,NULL
+"1025","Lucio Alday 6621810818","2025-12-29 15:01:12","publish","QUO-773","2","1767045672","$196,000.00","0",NULL,NULL,NULL,NULL
+"1024","Rafaela Castañeda Jiménez Aguila real 5 entre bulevar arrendario Colonia altares","2025-12-29 14:44:32","publish","QUO-772","2","1767044672","$22,000.00","0",NULL,NULL,NULL,NULL
+"1023","Julio Contreras 6621397830","2025-12-29 14:34:11","publish","QUO-771","2","1767044051","$13,800.00","0",NULL,NULL,NULL,NULL
+"1022","Paloma Apodaca Ángel García Aburto 1211 colonia Álvaro Obregón 6679770959","2025-12-29 14:19:26","publish","QUO-770","2","1767043166","$44,500.00","0",NULL,NULL,NULL,NULL
+"1021","Luis Quiroz 6621150333","2025-12-29 12:54:05","publish","QUO-769","2","1767038045","$32,200.00","0",NULL,NULL,NULL,NULL
+"1020","Blademir Mange 6621341334","2025-12-29 12:46:19","publish","QUO-768","2","1767037579","$15,000.00","0",NULL,NULL,NULL,NULL
+"1019","Félix Hernández","2025-12-29 12:40:15","publish","QUO-767","2","1767037215","$29,500.00","0",NULL,NULL,NULL,NULL
+"1018","Manuel Aguirre cataros 11 puerta real V 6692694686","2025-12-29 11:21:42","publish","QUO-766","2","1767032502","$16,000.00","0",NULL,NULL,NULL,NULL
+"1017","Pablo Ruíz Villa María 7 colonia Villa sol 6621692913 closet en melamina - ancho 300 cms","2025-12-29 11:15:15","publish","QUO-765","2","1767032115","$31,000.00","0",NULL,NULL,NULL,NULL
+"1015","Sashenka Natasha Olais Navarro Circuito misterio 77, El Secreto 6624297134","2025-12-29 10:07:59","publish","QUO-764","2","1767028079","$21,000.00","0",NULL,NULL,NULL,NULL
+"1014","Joel Ernesto Lopez saracco Lary 6 , stanza solares 6621140869","2025-12-29 09:48:57","publish","QUO-763","2","1767026937","$14,000.00","0",NULL,NULL,NULL,NULL
+"1013","Ibel Agramond Privada Texcoco 4 Fracc Perisur Hermosillo 6623722093","2025-12-29 09:39:12","publish","QUO-762","2","1767026352","$17,900.00","0",NULL,"1037",NULL,NULL
+"1012","Juan Pablo.Ortiz calle Aquitania no 8 Colonia Villa Lourdes 6621137183","2025-12-29 09:06:20","publish","QUO-761","2","1767024380","$22,000.00","0",NULL,NULL,NULL,NULL
+"1011","Susana Vilches Argento 35 6441371362","2025-12-29 08:56:55","publish","QUO-760","2","1767023815","$44,500.00","0",NULL,NULL,NULL,NULL
+"1009","José 5216624182721","2025-12-20 12:04:09","publish","QUO-759","2","1766257449","$15,000.00","0",NULL,NULL,NULL,NULL
+"1008","Blanca 6451109978","2025-12-19 12:47:17","publish","QUO-758","2","1766173637","$14,000.00","0",NULL,NULL,NULL,NULL
+"1006","Nora Gastelum Argento 7 Aurea Residencial, Camino del seri 6625220240","2025-12-18 09:16:42","publish","QUO-757","2","1766074602","$46,300.00","0",NULL,NULL,NULL,NULL
+"1005","Fabian Barcelo CASSATT 27 monet residencial 6622011822","2025-12-18 08:57:55","publish","QUO-756","2","1766073475","$18,500.00","0",NULL,NULL,NULL,NULL
+"1004","Lara Medina Admin Gonzalo Cerrada Villa Juarez #24 col. Villas del Sur 6623978133","2025-12-17 09:20:57","publish","QUO-755","2","1765988457","$48,000.00","0",NULL,NULL,NULL,NULL
+"1002","Adrián del Bosque Juárez y Roberto Romero, Jesús García 6629487400","2025-12-16 10:05:55","publish","QUO-754","2","1765904755","$18,000.00","0",NULL,NULL,NULL,NULL
+"1001","Orlando Gutiérrez 6622333561 retorno angel #6, San Francisco Valle Residencial","2025-12-16 08:38:47","publish","QUO-753","2","1765899527","$16,800.00","0",NULL,NULL,NULL,NULL
+"1000","Feliz Hernandez Acedo Av. Taimuco 70, Residencial Río Grande 6622056066","2025-12-15 11:14:54","publish","QUO-752","2","1765822494","$17,900.00","0",NULL,NULL,NULL,NULL
+"999","Argel Arelis Moreno Gutiérrez flor de nardo, El Tazajal 6621943069","2025-12-15 11:06:57","publish","QUO-751","2","1765822017","$29,900.00","0",NULL,NULL,NULL,NULL
+"998","Gabriel Pérez Colonia Agaves 6623251923","2025-12-15 09:25:24","publish","QUO-750","2","1765815924","$30,000.00","0",NULL,NULL,NULL,NULL
+"997","Thania franco Fuente magna 101 col fuente de piedra 6624744064","2025-12-15 09:17:00","publish","QUO-749","2","1765815420","$34,200.00","0",NULL,NULL,NULL,NULL
+"996","María Aguilar Cordova sufragio efectivo 141 col. Villa de seris 6625375686","2025-12-15 08:55:05","publish","QUO-748","2","1765814105","$26,500.00","0",NULL,NULL,NULL,NULL
+"995","Luis Contreras Crevillente 108 6622262764","2025-12-15 08:42:34","publish","QUO-747","2","1765813354","$27,000.00","0",NULL,NULL,NULL,NULL
+"994","Fernanda Molina Garrobo Cda Soller 112 Mallorca 6629343868","2025-12-12 17:27:01","publish","QUO-746","2","1765585621","$17,900.00","0",NULL,NULL,NULL,NULL
+"992","Rebeca Aguilar Del razo #17 col. Casa Blanca 6623559779","2025-12-12 09:20:20","publish","QUO-745","2","1765556420","$65,500.00","0",NULL,NULL,NULL,NULL
+"990","Carlos Alvarez Prof. Adolfo López Miranda 57, Altares 6621863530","2025-12-10 17:19:53","publish","QUO-744","2","1765412393","$16,800.00","0",NULL,NULL,NULL,NULL
+"989","Karla Muñoz Miguel Alemán #24, Colonia ISSSTE 6623425929","2025-12-10 16:47:27","publish","QUO-743","2","1765410447","$19,500.00","0",NULL,"1210",NULL,NULL
+"988","Manuel Espinoza Retorno barinas7 Recidencial canteras","2025-12-10 16:38:31","publish","QUO-742","2","1765409911","$16,800.00","0",NULL,NULL,NULL,NULL
+"987","Isabel Carrillo Cerrada del Marquez, Verona (por el camino del seri y Blvd san Pedro y san Pablo) 6621040387","2025-12-10 12:13:41","publish","QUO-741","2","1765394021","$14,000.00","0",NULL,NULL,NULL,NULL
+"986","Edel Miranda Belcanto residencial Melodia 7 6621579543","2025-12-09 14:19:03","publish","QUO-740","2","1765315143","$39,200.00","0",NULL,NULL,NULL,NULL
+"984","Daena lucia Zaragoza Molina Paseo alhami 11 puerta real VI ETAPA 6624656986","2025-12-09 12:48:15","publish","QUO-739","2","1765309695","$43,800.00","0",NULL,NULL,NULL,NULL
+"983","Carlos Alberto Cortés Maldonado Capellín #18 Murano residencial 6621574811","2025-12-09 12:42:42","publish","QUO-738","2","1765309362","$21,000.00","0",NULL,NULL,NULL,NULL
+"982","Silvia esperanza Leyva Inzunza Granadinos 36 granada recidencial 6624256436","2025-12-09 12:35:43","publish","QUO-737","2","1765308943","$15,000.00","0",NULL,NULL,NULL,NULL
+"981","Luz Salaza Calle Moldava 10b, Praga Residencial 6221576530","2025-12-09 09:33:08","publish","QUO-736","2","1765297988","$44,000.00","0",NULL,NULL,NULL,NULL
+"980","Ana Calle 20 #54, Colonia Altares 6624133575","2025-12-08 09:51:25","publish","QUO-735","2","1765212685","$17,900.00","0",NULL,NULL,NULL,NULL
+"979","Cesar Valle cerrada del lago 26 colonia Portal del lago 6621533900","2025-12-08 09:17:09","publish","QUO-734","2","1765210629","$17,900.00","0",NULL,NULL,NULL,NULL
+"977","Diego Cardenas Yanez Nacori Grande 526. Eusebio alino 6624292289","2025-12-08 09:07:10","publish","QUO-733","2","1765210030","$88,000.00","0",NULL,NULL,NULL,NULL
+"976","Renata Rosas Valencia Acacia amarilla 52 B residencial las acacias 6624045324","2025-12-08 08:53:28","publish","QUO-732","2","1765209208","$16,800.00","0",NULL,NULL,NULL,NULL
+"974","María José Acacia amarilla 54A, Acacia residencial 6628472020","2025-12-05 16:45:37","publish","QUO-731","2","1764978337","$20,500.00","0",NULL,NULL,NULL,NULL
+"973","Rogelio Flores Palmi 15, Villa Bonita 6621130090","2025-12-05 15:17:54","publish","QUO-730","2","1764973074","$24,500.00","0",NULL,NULL,NULL,NULL
+"972","Alberto Álvarez Privada Carsoli 11, Villa Bonita 6628474329","2025-12-05 10:30:58","publish","QUO-729","2","1764955858","$33,900.00","0",NULL,"1016",NULL,NULL
+"971","Angelica Ochoa cerrada Senserina #5 puerta real 4 etapa 662457207","2025-12-05 10:13:56","publish","QUO-728","2","1764954836","$14,000.00","0",NULL,NULL,NULL,NULL
+"969","David Rivera Cerrada Peñaranda 5 Salamanca Residencial 6621940551","2025-12-04 09:23:01","publish","QUO-727","2","1764865381","$39,700.00","0",NULL,NULL,NULL,NULL
+"968","Ruben quijada Calle tercera 128 colonia Palo verde 6621895153","2025-12-04 09:13:57","publish","QUO-726","2","1764864837","$21,000.00","0",NULL,NULL,NULL,NULL
+"965","Aracely Romero Avenida 5 218 6624307579","2025-12-03 14:52:30","publish","QUO-725","2","1764798750","$25,800.00","0",NULL,"966",NULL,NULL
+"960","Aracely Romero Avenida 5 #218 6624307579","2025-12-03 11:13:37","publish",,"2","1764785617","$25,800.00","0",NULL,"964",NULL,NULL
+"958","Edgar martinez Marquez 06 villa merlot 6622229299","2025-12-03 08:45:55","publish","QUO-723","2","1764776755","$16,800.00","0",NULL,NULL,NULL,NULL
+"957","Sandra Martínez Divisaderos 109, Lomas de Lindavista 6621409816","2025-12-02 10:47:28","publish","QUO-722","2","1764697648","$16,000.00","0",NULL,"1058",NULL,NULL
+"956","Alma Patricia Rodríguez Oceguera Circuito Cárpatos 145 La Cima segunda etapa 5216621678324","2025-12-01 14:52:24","publish","QUO-721","2","1764625944","$19,600.00","0",NULL,NULL,NULL,NULL
+"955","Beatriz Limon departamentos kyoupdate, domingo olivares 520, interior 502 5213316999464","2025-12-01 14:38:25","publish","QUO-720","2","1764625105","$16,800.00","0",NULL,NULL,NULL,NULL
+"954","Freddy colonia San angel 6621151190","2025-12-01 14:28:16","publish","QUO-719","2","1764624496","$32,000.00","0",NULL,NULL,NULL,NULL
+"953","Julissa López San Francisco Valle Residencial 6621076656","2025-12-01 14:20:04","publish","QUO-718","2","1764624004","$15,600.00","0",NULL,"970",NULL,NULL
+"952","Gabriela Longoria Flores eusebio kino, palo fierro #21 6221619751","2025-12-01 14:13:27","publish","QUO-717","2","1764623607","$17,900.00","0",NULL,NULL,NULL,NULL
+"951","Kaly campa Plan de agua prieta N 105 -a 6621931868","2025-12-01 12:52:16","publish","QUO-716","2","1764618736","$37,500.00","0",NULL,NULL,NULL,NULL
+"950","Priscila Zepeda Colonia villas del real 6622980399","2025-12-01 08:55:05","publish","QUO-715","2","1764604505","$16,800.00","0",NULL,NULL,NULL,NULL
+"949","Alan Efren Fimbres Navarro cerrada manancor 24b en mallorca 6623074733","2025-11-28 14:22:30","publish","QUO-714","2","1764364950","$35,500.00","0",NULL,NULL,NULL,NULL
+"947","Beatriz Galaviz Arredondo Alce 176 altares 6623567770","2025-11-28 11:39:43","publish","QUO-713","2","1764355183","$17,900.00","0",NULL,"948",NULL,NULL
+"946","Natalia Zúñiga Tepache #293, López Portillo 6623252888","2025-11-28 09:58:55","publish","QUO-712","2","1764349135","$42,400.00","0",NULL,NULL,NULL,NULL
+"945","osé Maria Silva Colom 5 colonia Montesinos sección crevillente 6622951919","2025-11-28 08:41:05","publish","QUO-711","2","1764344465","$31,500.00","0",NULL,NULL,NULL,NULL
+"944","Karen terrazas Calle flor de mayo #8 el Alamo residencial 6624766869","2025-11-27 17:40:07","publish","QUO-710","2","1764290407","$17,900.00","0",NULL,NULL,NULL,NULL
+"943","Ana Murrieta Joaquín Durán 95 col. Ladrilleras 6621643405","2025-11-27 17:30:02","publish","QUO-709","2","1764289802","$27,000.00","0",NULL,NULL,NULL,NULL
+"939","Beatriz Galaviz Arredondo Alce 176 altares 6623567770","2025-11-27 08:59:24","publish","QUO-708","2","1764259164","$22,000.00","0",NULL,"940",NULL,NULL
+"933","jazmin gonzalez rodriguez 476 santa isabel 6421121859","2025-11-26 21:31:48","publish",,"2","1764217908","$27,200.00","0",NULL,"937",NULL,NULL
+"926","Mariana Camou 6622062037 San Alberto 68. Colonia San Angel.","2025-11-26 16:20:39","publish","QUO-706","2","1764199239","$43,000.00","0",NULL,NULL,NULL,NULL
+"925","Martha Chocoza Girasoles oriente #32 Col. Floresta etapa Villa Ceiba 6623267632","2025-11-26 16:11:47","publish","QUO-705","2","1764198707","$17,500.00","0",NULL,NULL,NULL,NULL
+"924","gloria asucenne rochin gran Canaria 3 col Montesinos 6621724371","2025-11-26 16:05:55","publish","QUO-704","2","1764198355","$18,500.00","0",NULL,NULL,NULL,NULL
+"923","Jorge Galaviz Fracc Real de Sevilla 6861960663","2025-11-26 15:42:26","publish","QUO-703","2","1764196946","$19,500.00","0",NULL,"941",NULL,NULL
+"922","Frida Resendiz Alegranza residencial, Calle palmarola #1 6311734558","2025-11-26 11:33:00","publish","QUO-702","2","1764181980","$24,000.00","0",NULL,NULL,NULL,NULL
+"921","edith quijada","2025-11-26 08:49:23","publish","QUO-701","2","1764172163","$16,500.00","0",NULL,NULL,NULL,NULL
+"918","Arnoldo Quintana Retorno Gamboa 54 6629371751","2025-11-25 09:54:04","publish","QUO-700","2","1764089644","$16,000.00","0",NULL,NULL,NULL,NULL
+"917","Yadira Osuna poder Legislativo #178 6221201373","2025-11-25 09:39:55","publish","QUO-699","2","1764088795","$16,000.00","0",NULL,NULL,NULL,NULL
+"916","Leonel Enríquez 6621285152 Colonia las placitas por el camino del seri","2025-11-24 16:31:07","publish","QUO-698","2","1764027067","$20,500.00","0",NULL,NULL,NULL,NULL
+"915","Jose Marquez Ignacio Altamirano 595 Col Benito Juárez 6624222442","2025-11-24 16:10:03","publish","QUO-697","2","1764025803","$45,100.00","0",NULL,NULL,NULL,NULL
+"914","Martina Beatriz Amparano Meza Calle Manzanillo 712, Colonia Villa Fontana 6442619740","2025-11-24 15:51:25","publish","QUO-696","2","1764024685","$15,000.00","0",NULL,NULL,NULL,NULL
+"913","Leilani Ximena Barraza Languré Chachamol #55 Col. Urbivilla del Cedro 6621459932","2025-11-24 15:45:47","publish","QUO-695","2","1764024347","$13,500.00","0",NULL,NULL,NULL,NULL
+"912","Maria Icela Silva Netzahualcoyotl 190, Col. Valle del marquez 6623079375","2025-11-24 15:40:59","publish","QUO-694","2","1764024059","$33,200.00","0",NULL,NULL,NULL,NULL
+"911","Maria Icela Silva Netzahualcoyotl 190, Col. Valle del marquez 6623079375","2025-11-24 10:00:42","publish","QUO-693","2","1764003642","$28,500.00","0",NULL,NULL,NULL,NULL
+"910","Fabian Ramírez Puliques #3, Puerta Real Etapa 6 6621714360","2025-11-24 09:37:06","publish","QUO-692","2","1764002226","$16,000.00","0",NULL,NULL,NULL,NULL
+"909","Sabrina Monteverde Andrade Monrovia 7 Los Ángeles 6624004504","2025-11-24 09:29:39","publish","QUO-691","2","1764001779","$29,600.00","0",NULL,NULL,NULL,NULL
+"908","annya rios Sabinos 1 Fuentes del mezquital 6621500572","2025-11-24 09:03:50","publish","QUO-690","2","1764000230","$51,000.00","0",NULL,NULL,NULL,NULL
+"907","Brenda Araceli Garcia Soto 5219991009187 puerta real","2025-11-21 11:09:53","publish","QUO-689","2","1763748593","$16,800.00","0",NULL,"1113",NULL,NULL
+"906","Paulina Carmelo 6623863532 Navojoa 1293. Col camino real","2025-11-20 11:41:56","publish","QUO-688","2","1763664116","$24,200.00","0",NULL,NULL,NULL,NULL
+"904","Cristian Tomas Osuna Tellechea  Euros 95, stanza florenza  6624517746","2025-11-19 17:29:12","publish","QUO-687","2","1763598552","$32,200.00","0",NULL,NULL,NULL,NULL
+"903","Ana Navarrete","2025-11-19 09:06:15","publish","QUO-686","2","1763568375","$71,400.00","0",NULL,NULL,NULL,NULL
+"902","José Alfredo Mendivil Valenzuela Corzo 13 valle natura 6621486646","2025-11-18 17:55:24","publish","QUO-685","2","1763513724","$13,500.00","0",NULL,NULL,NULL,NULL
+"901","Leoncio Córdova 6622963595 Miguel Negrete 740 col Virreyes","2025-11-18 17:47:19","publish","QUO-684","2","1763513239","$40,500.00","0",NULL,NULL,NULL,NULL
+"900","Marisela Soto Luz Valencia 344 6624461085","2025-11-18 17:40:51","publish","QUO-683","2","1763512851","$61,500.00","0",NULL,NULL,NULL,NULL
+"899","Rubén Edgardo Fimbres 6331232143","2025-11-18 12:45:16","publish","QUO-682","2","1763495116","$26,000.00","0",NULL,NULL,NULL,NULL
+"898","Anahi Ramos 6622218617 Cerrada cezanne 121","2025-11-18 09:33:37","publish","QUO-681","2","1763483617","$13,500.00","0",NULL,NULL,NULL,NULL
+"897","Julián Alejandro Batiz Vazquez Árbol de lima 25 6629485958","2025-11-18 08:55:59","publish","QUO-680","2","1763481359","$16,000.00","0",NULL,NULL,NULL,NULL
+"896","Manuela Olivia Colores 6621566679 almenas 11, colonia puerta del rey","2025-11-14 16:12:45","publish","QUO-679","2","1763161965","$26,500.00","0",NULL,NULL,NULL,NULL
+"895","Mariana Moreno Retorno Francisco Meneses Fierro 31 Fracc. Altares","2025-11-14 16:05:21","publish","QUO-678","2","1763161521","$22,000.00","0",NULL,NULL,NULL,NULL
+"894","Rafael centeno Helenicos #31 misión de lirios 6621135747","2025-11-14 15:54:14","publish","QUO-677","2","1763160854","$21,000.00","0",NULL,NULL,NULL,NULL
+"893","Maria de la Luz Díaz 6221018000 PRAGA RESIDENCIAL","2025-11-14 15:06:08","publish","QUO-676","2","1763157968","$43,400.00","0",NULL,NULL,NULL,NULL
+"892","Daniela Jiménez La mirada 54, Los Ángeles 6622961488","2025-11-14 09:18:32","publish","QUO-675","2","1763137112","$18,500.00","0",NULL,NULL,NULL,NULL
+"891","María González Privada 2 de agustinos 4 C Semianrio 6622824455","2025-11-14 09:05:18","publish","QUO-674","2","1763136318","$16,800.00","0",NULL,NULL,NULL,NULL
+"890","Angel meza Arcillas #21, tierra colorada 6621463909","2025-11-14 08:58:47","publish","QUO-673","2","1763135927","$29,500.00","0",NULL,NULL,NULL,NULL
+"889","gnacio Montoya Es en circuito carpatos 89, la cima 2 Cel 6621147202","2025-11-14 08:56:17","publish","QUO-672","2","1763135777","$16,000.00","0",NULL,NULL,NULL,NULL
+"888","Rubi Ortiz Azusa 33, California residencial 6624279417","2025-11-13 17:39:58","publish","QUO-671","2","1763080798","$16,000.00","0",NULL,NULL,NULL,NULL
+"887","Sheyla Coronado Villena 32 Montesinos 6629367400","2025-11-13 09:02:32","publish","QUO-670","2","1763049752","$17,900.00","0",NULL,NULL,NULL,NULL
+"886","Carolina Torres Calle Pueblo Bonito 21, Hermosillo, son. 6621544741","2025-11-13 08:56:43","publish","QUO-669","2","1763049403","$15,000.00","0",NULL,NULL,NULL,NULL
+"885","Joyce Figueroa Del emperador 94, paseo real 6624020831","2025-11-12 14:58:47","publish","QUO-668","2","1762984727","$23,900.00","0",NULL,NULL,NULL,NULL
+"884","Martha Azucena Lopez Lucas alaman 446 jardines 6622034344","2025-11-12 12:35:21","publish","QUO-667","2","1762976121","$16,000.00","0",NULL,NULL,NULL,NULL
+"883","Jesús Faustino Morán Moreno Enrique Michel #15 col. universitaria 6621143963","2025-11-12 09:33:12","publish","QUO-666","2","1762965192","$14,000.00","0",NULL,NULL,NULL,NULL
+"882","Lydia Morales Cuarta privada perimetral #7 colonia modelo 6621141452","2025-11-11 09:57:23","publish","QUO-665","2","1762880243","$32,500.00","0",NULL,NULL,NULL,NULL
+"881","Ruben bustamante Adalberto Sotelo 45, Col. Revolución uno 6622692808","2025-11-11 09:50:41","publish","QUO-664","2","1762879841","$31,200.00","0",NULL,NULL,NULL,NULL
+"880","Armando del castillo Cocorit 1206 camino real 6621394311","2025-11-11 08:47:52","publish","QUO-663","2","1762876072","$26,000.00","0",NULL,NULL,NULL,NULL
+"879","Araceli Hernández Moran Márquez de Murrieta 24 villa Merlot 6622270346","2025-11-10 11:12:59","publish","QUO-662","2","1762798379","$21,000.00","0",NULL,NULL,NULL,NULL
+"876","Enrique Tapia 6624701361","2025-11-08 12:39:19","publish","QUO-661","2","1762630759","$17,900.00","0",NULL,"877",NULL,NULL
+"874","Miguel Ángel Sánchez Cerrada Realeza 31, Paseo Real Residencial 6441118340","2025-11-08 12:32:39","publish","QUO-660","2","1762630359","$15,500.00","0",NULL,"878",NULL,NULL
+"873","Elena Naranjo Blvd Reynoso Dávila 195, Villa bonita 8125762014","2025-11-07 13:54:46","publish","QUO-659","2","1762548886","$17,900.00","0",NULL,NULL,NULL,NULL
+"872","Manuel Parra Cerrada Cruceiros 18; Fracc. Stanza Florenza 662 445 5504","2025-11-07 13:48:54","publish","QUO-658","2","1762548534","$15,000.00","0",NULL,NULL,NULL,NULL
+"871","Alfonso Dominguez Mendez Mario morua #26 col. el mirador 6621140801","2025-11-07 10:27:05","publish","QUO-657","2","1762536425","$30,300.00","0",NULL,NULL,NULL,NULL
+"870","Ildelfonso escobedo Calle san Gregorio 24, Paseo san ángel 6692151361","2025-11-06 11:24:50","publish","QUO-656","2","1762453490","$29,000.00","0",NULL,NULL,NULL,NULL
+"869","Cesar Alejandro Rodríguez Sánchez Larraga 9, Col puerta del rey sección Castilla 6621901132","2025-11-06 10:53:52","publish","QUO-655","2","1762451632","$21,000.00","0",NULL,NULL,NULL,NULL
+"867","Enrique Tapia Chavez Palermo residencial 6624701361","2025-11-06 10:37:01","publish","QUO-654","2","1762450621","$23,000.00","0",NULL,NULL,NULL,NULL
+"866","Jacobo Rendón Av airon 164, Col altares ll 6622562608","2025-11-06 09:46:18","publish","QUO-653","2","1762447578","$23,900.00","0",NULL,NULL,NULL,NULL
+"865","Yanet Col las praderas Hermosillo sonora 6525700981","2025-11-06 09:14:32","publish","QUO-652","2","1762445672","$14,000.00","0",NULL,NULL,NULL,NULL
+"864","Paola Samaniego Julia clary 42, encinos 1 etapa 1 6622977606","2025-11-06 08:59:22","publish","QUO-651","2","1762444762","$59,500.00","0",NULL,NULL,NULL,NULL
+"862","Antonio Bañuelos República de Cuba 574 Machi López 6622222123","2025-11-05 16:45:47","publish","QUO-650","2","1762386347","$22,100.00","0",NULL,NULL,NULL,NULL
+"861","Jesus enrique mora av. manglar 10 col.las villas 6228558198","2025-11-04 15:15:11","publish","QUO-649","2","1762294511","$37,300.00","0",NULL,NULL,NULL,NULL
+"860","Jazmín González Rodríguez 476 Col. Santa Isabel Hermosillo 6421121859","2025-11-04 13:13:42","publish",,"2","1762287222","$27,200.00","0",NULL,"932",NULL,NULL
+"859","Jocelyne Veronica Cota Ochoa Leocadio Salcedo 587 6624602002","2025-11-04 08:57:58","publish","QUO-647","2","1762271878","$26,500.00","0",NULL,NULL,NULL,NULL
+"857","martín rubalcava santa rosa 270 villa guadalupe 6622886033","2025-11-03 09:01:44","publish","QUO-646","2","1762185704","$25,500.00","0",NULL,NULL,NULL,NULL
+"856","César Ruiz Cannes 8 fraccionamiento Montecarlo 6621419692","2025-11-03 08:44:02","publish","QUO-645","2","1762184642","$40,500.00","0",NULL,NULL,NULL,NULL
+"855","isaac martinez espinoza Jose Gonzalez 487 col Benito Juárez 6624192743","2025-11-01 12:52:09","publish","QUO-644","2","1762026729","$22,000.00","0",NULL,"858",NULL,NULL
+"854","Margarita tapia saucedo Cerrada alhami 8","2025-11-01 12:47:30","publish","QUO-643","2","1762026450","$15,000.00","0",NULL,NULL,NULL,NULL
+"853","Lupita Avila vendimias 557 la verbena 6621156973","2025-10-31 17:40:32","publish","QUO-642","2","1761957632","$21,000.00","0",NULL,NULL,NULL,NULL
+"851","Esmeralda Vidal Gastón Cano Avila 25 6623853317","2025-10-31 10:01:05","publish","QUO-641","2","1761930065","$57,000.00","0",NULL,NULL,NULL,NULL
+"850","Francisco Manuel Burruel Espinoza 6621697939","2025-10-31 09:17:54","publish","QUO-640","2","1761927474","$26,000.00","0",NULL,NULL,NULL,NULL
+"849","Teresita Garcia tierra nueva prima etapa desierto sur 46a 6622288424","2025-10-30 16:10:34","publish","QUO-639","2","1761865834","$16,800.00","0",NULL,NULL,NULL,NULL
+"848","Fabiola Ruiz, Colonia Santa Isabel, 6621719732","2025-10-30 10:33:02","publish","QUO-638","2","1761845582","$20,500.00","0",NULL,NULL,NULL,NULL
+"847","Esteban Vásquez Sánchez Simón bley 171 colonia Olivares 6621887213","2025-10-30 08:45:10","publish","QUO-637","2","1761839110","$17,900.00","0",NULL,NULL,NULL,NULL
+"845","Francisca valenzuela Cuernavaca 221 col. Balderrama 6624027580","2025-10-27 15:33:47","publish","QUO-636","2","1761604427","$19,500.00","0",NULL,NULL,NULL,NULL
+"843","Jesus hector monge ramirez Esteros 9 col sonajero 6624584171","2025-10-27 15:11:56","publish","QUO-635","2","1761603116","$16,800.00","0",NULL,NULL,NULL,NULL
+"841","Gabriel Montoya otaria 12, mar de plata 6623174171 - copy","2025-09-11 09:11:30","publish","QUO-634","2","1757607090","$32,000.00","0",NULL,"842",NULL,NULL
+"838","Andres Rembao Navarrete Av baca Calderón 872 6621539341","2025-10-27 10:27:23","publish","QUO-633","2","1761586043","$13,800.00","0",NULL,NULL,NULL,NULL
+"837","Daniela yocupicio En Granados 111 col insurgentes 6421129156","2025-10-27 09:07:46","publish","QUO-632","2","1761581266","$27,300.00","0",NULL,NULL,NULL,NULL
+"836","Gloria Fierros Moreno Gondolas 10 esquina galeras torreplata 6623608107","2025-10-25 10:42:45","publish","QUO-631","2","1761414165","$16,900.00","0",NULL,NULL,NULL,NULL
+"834","David Romero Peralta Villa San Sebastián 15, colonia Villa mercedes 6624282484","2025-10-25 10:39:34","publish","QUO-630","2","1761413974","$15,000.00","0",NULL,NULL,NULL,NULL
+"833","carlos balandrano roccanova 35, rivello, Hermosillo 8110487331","2025-10-25 10:28:33","publish","QUO-629","2","1761413313","$84,250.00","0",NULL,NULL,NULL,NULL
+"832","Fernanda Navarro 6621841113","2025-10-23 11:40:27","publish","QUO-628","2","1761244827","$16,000.00","0",NULL,NULL,NULL,NULL
+"830","Carlos Acosta 6323275525","2025-10-22 08:52:31","publish","QUO-627","2","1761148351","$20,500.00","0",NULL,NULL,NULL,NULL
+"829","Elvira Gil Marquez amarillas num 7 col. residencial de anza 6621464061","2025-10-21 09:16:02","publish","QUO-626","2","1761063362","$32,000.00","0",NULL,NULL,NULL,NULL
+"826","Gissel Felix Ocarina Belcanto Residencial 6623488724","2025-10-20 12:57:46","publish","QUO-625","2","1760990266","$16,000.00","0",NULL,"846",NULL,NULL
+"825","manuel Calle Monet 82, soleil residencia 6623150762","2025-10-20 12:44:35","publish","QUO-624","2","1760989475","$38,900.00","0",NULL,"828",NULL,NULL
+"824","Rubén Dario Armenta moreno Vernae #18 col Agavez residencial 6621027761","2025-10-20 12:05:53","publish","QUO-623","2","1760987153","$47,000.00","0",NULL,NULL,NULL,NULL
+"823","Marycruz Peñuñuri Alvarez Ramiro 3ro No. 25 Encinos 1 Etapa 3 6621893202","2025-10-20 08:53:33","publish","QUO-622","2","1760975613","$17,900.00","0",NULL,NULL,NULL,NULL
+"822","Axel Jesús Carrillo Árbol de sasafrás 23 Fresnos residencial 6624326474","2025-10-17 09:03:46","publish","QUO-621","2","1760717026","$16,000.00","0",NULL,NULL,NULL,NULL
+"820","Norma Ojeda 6641880061","2025-10-16 12:46:47","publish","QUO-620","2","1760644007","$16,000.00","0",NULL,NULL,NULL,NULL
+"819","Norma Alicia Pérez Ruelas 6623359593","2025-10-15 17:12:10","publish","QUO-619","2","1760573530","$30,000.00","0",NULL,NULL,NULL,NULL
+"818","Maria Dolores Col. Mártires de Cananea #659  6622819420","2025-10-15 13:27:31","publish","QUO-618","2","1760560051","$17,900.00","0",NULL,NULL,NULL,NULL
+"817","Emma Patricia Espinoza Bujanda circuito Villeda 52 Montesinos 6622217264","2025-10-14 14:51:03","publish","QUO-617","2","1760478663","$30,500.00","0",NULL,NULL,NULL,NULL
+"816","Gregorio Verdugo Morales Pimeria Baja #28 entres Pápagos y Esmeralda, Colonia Tirocapes 6621638563","2025-10-13 14:37:35","publish","QUO-616","2","1760391455","$26,500.00","0",NULL,NULL,NULL,NULL
+"815","Esther Munguía Quiroz Ave. Campos Elíseos, privada San Sarres #23, montecarlo 6621909821","2025-10-13 12:08:48","publish","QUO-615","2","1760382528","$55,500.00","0",NULL,NULL,NULL,NULL
+"813","Ramón Rubio San Valerio 17 col Las placitas 6621209705","2025-10-13 09:16:55","publish","QUO-614","2","1760372215","$68,500.00","0",NULL,NULL,NULL,NULL
+"812","Karla Silva Gavilan 27, Colonia nuevo Hermosillo 6625099055","2025-10-11 09:35:43","publish","QUO-613","2","1760200543","$15,000.00","0",NULL,NULL,NULL,NULL
+"811","Aracely Romero Avenida 5 #218 6624307579","2025-10-10 11:09:14","publish","QUO-612","2","1760119754","$25,800.00","0",NULL,"959",NULL,NULL
+"809","Manuel Acedo 6623410872 Emiliano Zapata 408. Colonia Villa Hermosa","2025-10-09 15:47:34","publish","QUO-611","2","1760050054","$20,500.00","0",NULL,NULL,NULL,NULL
+"808","Natalia Aranda 6621718828 Paseo del Algodon #701, col. san javier","2025-10-09 12:59:42","publish","QUO-610","2","1760039982","$16,000.00","0",NULL,"810",NULL,NULL
+"807","Viridiana Alvarado Encinas 6621408762 Cerrada del oro 89","2025-10-08 12:46:00","publish","QUO-609","2","1759952760","$36,500.00","0",NULL,NULL,NULL,NULL
+"806","Natalia Aranda 5216621718828","2025-10-08 09:48:11","publish","QUO-608","2","1759942091","$16,800.00","0",NULL,"1239",NULL,NULL
+"805","Alejandro Vega Santa Rosa 5216451044161","2025-10-08 09:30:58","publish","QUO-607","2","1759941058","$35,800.00","0",NULL,NULL,NULL,NULL
+"804","Sonia Cerrada borgoño #1, Campo grande 6622981798","2025-10-07 17:39:37","publish","QUO-606","2","1759883977","$20,500.00","0",NULL,"821",NULL,NULL
+"803","Crystal hernandez Retorno baracaldo 19, Bilbao residencial 6622049045","2025-10-07 17:26:27","publish","QUO-605","2","1759883187","$96,500.00","0",NULL,NULL,NULL,NULL
+"802","Casandra Abigail Salcido López 6624522074 Romero #14 Cerrada Mandioca Fraccionamiento Natura","2025-10-07 11:21:05","publish","QUO-604","2","1759861265","$19,500.00","0",NULL,NULL,NULL,NULL
+"801","Arturo Contreras Hermosillo","2025-10-06 14:52:00","publish","QUO-603","2","1759787520","$180,500.00","0",NULL,NULL,NULL,NULL
+"800","Félix Quintana Barakaldo 17 col Banús 2299161422","2025-10-06 14:40:54","publish","QUO-602","2","1759786854","$26,500.00","0",NULL,NULL,NULL,NULL
+"799","Jesús Abraham Cerecer bucefalo 15 sección ardenes colonia corceles 6622760541","2025-10-06 11:39:06","publish","QUO-601","2","1759775946","$16,000.00","0",NULL,NULL,NULL,NULL
+"798","Miguel Ortiz 6621380898","2025-10-06 09:44:39","publish","QUO-600","2","1759769079","$15,000.00","0",NULL,NULL,NULL,NULL
+"797","Fernanda Contreras 6624672673 Alameda #25, colinas del sol","2025-10-06 09:31:38","publish","QUO-599","2","1759768298","$19,500.00","0",NULL,NULL,NULL,NULL
+"795","Esthela carolina pompa encinas Santa Martha 92, san Marcos 2 6622293718","2025-10-06 08:44:31","publish","QUO-598","2","1759765471","$36,800.00","0",NULL,NULL,NULL,NULL
+"794","alma ruth","2025-10-03 14:36:36","publish","QUO-597","2","1759527396","$19,500.00","0",NULL,NULL,NULL,NULL
+"793","Isabel Andrade S. Maderos 1 sierra bonita 6621003300","2025-10-03 12:05:53","publish","QUO-596","2","1759518353","$38,500.00","0",NULL,NULL,NULL,NULL
+"792","Axel Fernando paseos del pedregal calle milonita 6625011627","2025-10-01 08:42:35","publish","QUO-595","2","1759333355","$18,500.00","0",NULL,NULL,NULL,NULL
+"791","Melisa Mendivil Normandia 3 col. Montecarlo 6623288237","2025-09-30 12:50:57","publish","QUO-594","2","1759261857","$49,500.00","0",NULL,NULL,NULL,NULL
+"789","Karla Selene Almanza Rodríguez Casalta residencial, Cerrada peñones #52 6623720815","2025-09-29 14:50:34","publish","QUO-593","2","1759182634","$16,000.00","0",NULL,NULL,NULL,NULL
+"787","Faviola Moreno 6 de abril 157, Ley 57 6621885926","2025-09-29 09:34:37","publish","QUO-591","2","1759163677","$21,900.00","0",NULL,NULL,NULL,NULL
+"784","Alma Rodriguez Colonia Cortijo calle aguasalada número 12 6622811885","2025-09-27 10:26:46","publish","QUO-590","2","1758994006","$16,000.00","0",NULL,NULL,NULL,NULL
+"780","Francisco Javier Caraveo Rincón Privada Jerago 10, Villa Bonita 6221081255","2025-09-26 16:14:03","publish","QUO-589","2","1758928443","$29,900.00","0",NULL,NULL,NULL,NULL
+"778","Abelina Bustamante Campo verde #276, esq. c/ cierra colorada 6623970504","2025-09-26 14:19:15","publish","QUO-587","2","1758921555","$35,500.00","0",NULL,NULL,NULL,NULL
+"777","Jassiel Orlando Valenzuela Villanueva 6421028260","2025-09-26 09:17:36","publish","QUO-586","2","1758903456","$13,500.00","0",NULL,NULL,NULL,NULL
+"776","Mauricio Pérez Liguria 15, villa bonita 6624124521","2025-09-26 09:02:41","publish","QUO-585","2","1758902561","$25,500.00","0",NULL,NULL,NULL,NULL
+"775","FERNANDO VALDEZ GAMBOA PRIMERA DE BRETON NUMERO 16, FRACCTO. SOLEIL RESIDENCIAL 6622266020","2025-09-25 17:48:08","publish","QUO-584","2","1758847688","$33,900.00","0",NULL,NULL,NULL,NULL
+"773","Rocío Garcia Monreale 19 villa bonita 5522515796","2025-09-25 10:26:27","publish","QUO-583","2","1758821187","$23,900.00","0",NULL,NULL,NULL,NULL
+"772","Saraih Cruz 6624718810 César gandara 577","2025-09-25 09:31:54","publish","QUO-582","2","1758817914","$17,900.00","0",NULL,NULL,NULL,NULL
+"771","Kimberly Vega Carabelas 72 6621690289","2025-09-24 13:42:20","publish","QUO-581","2","1758746540","$18,500.00","0",NULL,NULL,NULL,NULL
+"770","Francisca Perez fonseca bulevar luz valencia número 1103B 6622446029","2025-09-23 17:46:46","publish","QUO-580","2","1758674806","$51,500.00","0",NULL,NULL,NULL,NULL
+"769","Guadalupe villa FACUNDO BERNAL 1473 6621807994","2025-09-23 10:00:13","publish","QUO-579","2","1758646813","$16,000.00","0",NULL,"786",NULL,NULL
+"768","Ramona Cota","2025-09-22 14:02:08","publish","QUO-578","2","1758574928","$15,000.00","0",NULL,NULL,NULL,NULL
+"767","Alicia Preciado Cajeme 13, col valle sol 6621283104","2025-09-22 11:31:19","publish","QUO-577","2","1758565879","$23,000.00","0",NULL,NULL,NULL,NULL
+"764","Manuel Caro Pasamonte 48, Santa Fe 6675038922","2025-09-22 10:43:18","publish","QUO-576","2","1758562998","$19,500.00","0",NULL,NULL,NULL,NULL
+"762","Mauricio moreno garcia Av adolfo lopez mateo #202 los hoyos 6341087752","2025-09-22 09:17:39","publish","QUO-574","2","1758557859","$19,500.00","0",NULL,NULL,NULL,NULL
+"761","Rosa María Bohórquez Azuaga 23 en privada Montebello 6629487000","2025-09-22 08:55:43","publish","QUO-573","2","1758556543","$27,500.00","0",NULL,NULL,NULL,NULL
+"759","arla Zarate, Julio Verne no.36, las lomas","2025-09-20 10:55:29","publish","QUO-572","2","1758390929","$16,800.00","0",NULL,NULL,NULL,NULL
+"756","Paloma Benitez cerrada santo domingo colonia san marcos 6621025504","2025-09-19 11:27:54","publish","QUO-571","2","1758306474","$14,000.00","0",NULL,"1069",NULL,NULL
+"755","Gabriela Martínez Colonia Praga, calle vito, departamento 44-D planta alta 6624716618","2025-09-19 09:12:56","publish","QUO-570","2","1758298376","$29,500.00","0",NULL,NULL,NULL,NULL
+"752","Alma Rodríguez 6621741957","2025-09-17 15:20:08","publish","QUO-569","2","1758147608","$43,900.00","0",NULL,"760",NULL,NULL
+"751","Victoria Grijalva Montecilli 101 Alta firenze norte 6623582995","2025-09-17 14:12:57","publish","QUO-568","2","1758143577","$28,000.00","0",NULL,NULL,NULL,NULL
+"750","Gabriela Barnes Anona durazno 65 Urbi villa del cedro 6623603890","2025-09-17 10:37:00","publish","QUO-567","2","1758130620","$27,000.00","0",NULL,NULL,NULL,NULL
+"748","Andres Martinez Sauces 37 col. Los sauces 6622026273","2025-09-16 09:35:18","publish","QUO-566","2","1758040518","$16,000.00","0",NULL,NULL,NULL,NULL
+"747","sergio ojeda quintana arbol de cercis 72 altaria seccion valencia 6221082837","2025-09-16 09:22:26","publish","QUO-565","2","1758039746","$17,900.00","0",NULL,NULL,NULL,NULL
+"746","Noé Oloño 6621110224 Bacanora #58","2025-09-13 12:01:58","publish","QUO-564","2","1757790118","$20,500.00","0",NULL,"753",NULL,NULL
+"745","Alfredo Cabrera Acacia Florida 56, colonia Acacia Alicante 6626303800","2025-09-13 10:27:24","publish","QUO-563","2","1757784444","$15,000.00","0",NULL,"749",NULL,NULL
+"744","Ana Sofia Garcia 6622259252 Cerrada de la sierra #7, hacienda residencial","2025-09-12 14:11:01","publish","QUO-562","2","1757711461","$21,000.00","0",NULL,NULL,NULL,NULL
+"743","Blanca Garcìa Colonia Nacameri 6621538751","2025-09-12 08:47:03","publish","QUO-561","2","1757692023","$20,500.00","0",NULL,NULL,NULL,NULL
+"741","Gabriel Montoya otaria 12, mar de plata 6623174171","2025-09-11 09:11:30","publish",,"2","1757607090","$58,500.00","0",NULL,"839",NULL,NULL
+"740","av. cinco 203, col. Apolo","2025-09-11 08:23:14","publish","QUO-559","2","1757604194","$35,000.00","0",NULL,"742",NULL,NULL
+"739","Delia Rodríguez Jorge Valdez Muñoz 144, Col Jesús García 6623365450","2025-09-09 17:06:30","publish","QUO-558","2","1757462790","$19,500.00","0",NULL,NULL,NULL,NULL
+"737","Lorenzo campa Caobas # 1, Fuentes del mezquital 6622763120","2025-09-09 10:08:31","publish","QUO-557","2","1757437711","$36,000.00","0",NULL,NULL,NULL,NULL
+"736","Alberto Martínez Monte Umbral 12, Monte de Calabria Residencial 6622688883","2025-09-09 09:59:44","publish","QUO-556","2","1757437184","$55,500.00","0",NULL,NULL,NULL,NULL
+"735","Luis padilla 6626001360","2025-09-09 09:54:05","publish","QUO-555","2","1757436845","$22,000.00","0",NULL,NULL,NULL,NULL
+"728","Aracely Romero Avenida 5 #218 6624307579 - PRNCPL.WLKIN","2025-08-22 14:34:33","publish","QUO-554","2","1755898473","$27,500.00","0",NULL,"731",NULL,NULL
+"725","Aracely Romero Avenida 5 #218 6624307579 - R.PNCPL","2025-08-22 14:34:33","publish",,"2","1755898473","$21,300.00","0",NULL,"730",NULL,NULL
+"720","Yolanda partida 6621127402 Pedro Ascencio 459","2025-09-06 10:23:40","publish","QUO-552","2","1757179420","$16,000.00","0",NULL,NULL,NULL,NULL
+"719","Jorge Gil 6623883644 Col.Belcanto","2025-09-06 10:17:25","publish","QUO-551","2","1757179045","$15,000.00","0",NULL,"721",NULL,NULL
+"718","Jesús Ibarra Casarez calle Bisenzio 13 col stanza solare","2025-09-05 09:23:55","publish","QUO-550","2","1757089435","$15,000.00","0",NULL,"722",NULL,NULL
+"716","Javier Vega Tzotzil residencial bonanza 6621963764","2025-09-05 09:10:14","publish","QUO-549","2","1757088614","$26,000.00","0",NULL,NULL,NULL,NULL
+"715","Cristobal Federico Granillo Sierpe 20 Salvatierra 6621400298","2025-09-04 09:30:32","publish","QUO-548","2","1757003432","$35,800.00","0",NULL,NULL,NULL,NULL
+"712","Ernesto López 6624466445","2025-09-03 14:06:25","publish","QUO-547","2","1756933585","$23,000.00","0",NULL,NULL,NULL,NULL
+"711","Abril Padres Calle Amalia Camou Abril 30 6621678983","2025-09-03 12:03:10","publish","QUO-546","2","1756926190","$43,400.00","0",NULL,NULL,NULL,NULL
+"710","Cynthia Sechslingloff Maracena 59. Granada residencial 6622753347","2025-09-02 10:26:48","publish","QUO-545","2","1756834008","$14,000.00","0",NULL,NULL,NULL,NULL
+"709","Mía Ibarra Beilis Stanza solare, bisenzio #13 6622907526","2025-09-02 10:10:37","publish","QUO-544","2","1756833037","$14,000.00","0",NULL,NULL,NULL,NULL
+"707","Aracely Romero Avenida 5 #218 6624307579 - cpy","2025-08-22 14:34:33","publish","QUO-543","2","1755898473","$91,000.00","0",NULL,"708",NULL,NULL
+"705","Noel Alexis Montoya Hernández Tepatitlan 44 col café combate 5216622811779","2025-09-02 09:01:39","publish","QUO-542","2","1756828899","$17,900.00","0",NULL,NULL,NULL,NULL
+"703","Angel luna Aguatinta 31 - 6682054332","2025-09-01 14:23:25","publish","QUO-541","2","1756761805","$16,000.00","0",NULL,"704",NULL,NULL
+"702","Elisa Gaspar Luken acacia florida 9371597531","2025-09-01 09:00:29","publish","QUO-540","2","1756742429","$30,000.00","0",NULL,NULL,NULL,NULL
+"701","Blanca Veronica mendivil Stanza Albaterra cerrada denia, #25 calle Orihuela 6421402124","2025-08-30 12:57:28","publish","QUO-539","2","1756583848","$27,400.00","0",NULL,NULL,NULL,NULL
+"700","Miguel Ángel Sánchez Cerrada Realeza 31, Paseo Real Residencial 6441118340","2025-08-30 12:32:00","publish","QUO-538","2","1756582320","$32,000.00","0",NULL,"758",NULL,NULL
+"699","Patricia Diaz Col. Villa Colonial 526623385531","2025-08-29 16:27:23","publish","QUO-537","2","1756510043","$26,000.00","0",NULL,NULL,NULL,NULL
+"698","Karla Santoyo San Servando 6 Residencial Real de Toledo 6441150823","2025-08-28 14:30:09","publish","QUO-536","2","1756416609","$19,500.00","0",NULL,NULL,NULL,NULL
+"697","Má Luisa Téllez 6621544472","2025-08-28 09:13:59","publish","QUO-535","2","1756397639","$24,000.00","0",NULL,NULL,NULL,NULL
+"696","Naomy Pérez Facheca #9 col. Albaterra Recidencial 6629361610","2025-08-27 09:31:31","publish","QUO-534","2","1756312291","$15,000.00","0",NULL,NULL,NULL,NULL
+"695","Patricia soto Alondras residencial 662100909","2025-08-26 17:51:41","publish","QUO-533","2","1756255901","$17,900.00","0",NULL,NULL,NULL,NULL
+"694","Ana paula ornelas 6622567077 Nueva galicia","2025-08-26 16:13:27","publish","QUO-532","2","1756250007","$16,800.00","0",NULL,NULL,NULL,NULL
+"692","Roberto dabdoud Calle las haciendas #49 6449988713","2025-08-26 15:23:50","publish","QUO-531","2","1756247030","$147,500.00","0",NULL,NULL,NULL,NULL
+"691","Gerardo Reyes villa bonita, privada placencia #4 6333506400","2025-08-26 09:00:02","publish","QUO-530","2","1756224002","$15,000.00","0",NULL,NULL,NULL,NULL
+"690","Ana Gloria Robles Egurrola Cedro 79 6623367162","2025-08-25 11:12:51","publish","QUO-529","2","1756145571","$44,500.00","0",NULL,NULL,NULL,NULL
+"688","Celeste González Santa Rosalía 201-A, col. Villa Sonora 6621936780","2025-08-25 08:51:50","publish","QUO-528","2","1756137110","$15,000.00","0",NULL,NULL,NULL,NULL
+"687","Mauricio Viveros Rafaela Morera de Romero #6, 5 de mayo 6621563935","2025-08-25 08:47:29","publish","QUO-527","2","1756136849","$26,000.00","0",NULL,NULL,NULL,NULL
+"684","Abigail Vargas Rocoso 17, Torre de piedra 6621484328","2025-08-23 11:33:20","publish","QUO-526","2","1755974000","$16,000.00","0",NULL,NULL,NULL,NULL
+"682","Juan Carlos Ureta Sánchez  Gordelina #46 Fracc. Urbi Villas del Cedro  6731007973","2025-08-23 11:09:29","publish","QUO-525","2","1755972569","$4,500.00","0",NULL,"685",NULL,NULL
+"681","Dania Gomez Bonanza Residencial 6621768382","2025-08-23 10:33:47","publish","QUO-524","2","1755970427","$16,800.00","0",NULL,NULL,NULL,NULL
+"680","Aracely Romero Avenida 5 #218 6624307579","2025-08-22 14:34:33","publish","QUO-523","2","1755898473","$91,000.00","0",NULL,NULL,NULL,NULL
+"678","Francisca López Babuca Privada Santa Clara, Napa 7 5216624001211","2025-08-22 13:42:04","publish","QUO-522","2","1755895324","$18,000.00","0",NULL,NULL,NULL,NULL
+"677","Angel col.paloverde 6621138052","2025-08-22 10:48:27","publish","QUO-521","2","1755884907","$42,500.00","0",NULL,NULL,NULL,NULL
+"671","Guadalupe villa 6621807994","2025-08-22 08:56:24","publish","QUO-515","2","1755878184","$16,000.00","0",NULL,"686",NULL,NULL
+"670","Abigail Vargas Torre de piedra 526621484328","2025-08-21 08:46:51","publish","QUO-514","2","1755791211","$16,000.00","0",NULL,NULL,NULL,NULL
+"661","Ana Gloria Robles Egurrola Cedro 79 5216623367162","2025-08-20 17:39:48","publish","QUO-513","2","1755736788","$29,600.00","0",NULL,NULL,NULL,NULL
+"649","Gabriela Jiménez Col Las Placitas 5216621940350","2025-08-20 16:16:45","publish","QUO-512","2","1755731805","$25,000.00","0",NULL,NULL,NULL,NULL
+"648","Alejandro Arbayo Jesús López 21 6622907150","2025-08-20 16:16:11","publish","QUO-511","2","1755731771","$16,900.00","0",NULL,NULL,NULL,NULL
+"646","Aracely Ayón Monte de calabria 6621007575","2025-08-20 10:09:58","publish","QUO-510","2","1755709798","$19,900.00","0",NULL,NULL,NULL,NULL
+"645","Petra Gonzales Col san Luis hillo son Av. Lampazos 221 6621124374","2025-08-18 11:31:35","publish","QUO-509","2","1755541895","$18,000.00","0",NULL,NULL,NULL,NULL
+"644","María Elena Vazquez En la colonia altares 6621425912","2025-08-18 11:31:00","publish","QUO-508","2","1755541860","$23,000.00","0",NULL,NULL,NULL,NULL
+"643","Luis Flores Cazarez 28 Villa Merlot 6624335595","2025-08-18 11:29:38","publish","QUO-507","2","1755541778","$29,500.00","0",NULL,NULL,NULL,NULL
+"642","Alma Lorenia Coronado Col. Villa de Seris 6621203670","2025-08-18 11:28:47","publish","QUO-506","2","1755541727","$25,000.00","0",NULL,"647",NULL,NULL
+"641","Oswaldo Sánchez Villa merlot, Av sierra del sur, 425 6371005310","2025-08-18 11:27:06","publish","QUO-505","2","1755541626","$38,000.00","0",NULL,NULL,NULL,NULL
+"640","Juan garxia Puerto rico 14 6629361419","2025-08-18 11:26:25","publish","QUO-504","2","1755541585","$16,000.00","0",NULL,NULL,NULL,NULL
+"639","Manuel Castañeda Avenida Culiacán 1501 colonia internacional 6621738047","2025-08-18 11:25:35","publish","QUO-503","2","1755541535","$13,500.00","0",NULL,NULL,NULL,NULL
+"638","Luis Neri Calle huepac 247 col. López Portillo","2025-08-15 14:12:16","publish","QUO-502","2","1755292336","$33,200.00","0",NULL,NULL,NULL,NULL
+"636","Maria Espinoza Palo verde 6621709014","2025-08-14 09:09:41","publish","QUO-501","2","1755187781","$29,500.00","0",NULL,NULL,NULL,NULL
+"635","Biviana Guadalupe real dominguez Real de palmas, #22 6231067231","2025-08-14 07:37:21","publish","QUO-500","2","1755182241","$25,500.00","0",NULL,NULL,NULL,NULL
+"633","Hibisco #72, Floresta Villa ciruelos","2025-08-13 15:56:39","publish","QUO-499","2","1755125799","$22,800.00","0",NULL,"637",NULL,NULL
+"631","Rosa María Martínez","2025-08-13 14:37:40","publish","QUO-498","2","1755121060","$16,000.00","0",NULL,"632",NULL,NULL
+"630","Guadalupe Alejandra Vallejo esparza","2025-08-12 14:48:28","publish","QUO-497","2","1755035308","$15,200.00","0",NULL,NULL,NULL,NULL
+"629","Agavez, Salida a Guaymas","2025-08-12 14:45:50","publish","QUO-496","2","1755035150","$33,800.00","0",NULL,NULL,NULL,NULL
+"628","Emilce Guadalupe Duran Silva San Francisco, mision en la calle Portola 13 6621453724","2025-08-12 09:28:09","publish","QUO-495","2","1755016089","$17,500.00","0",NULL,NULL,NULL,NULL
+"627","Diana Laura Laguna Sedona residencial , calle montaña 21","2025-08-12 09:27:24","publish","QUO-494","2","1755016044","$49,000.00","0",NULL,NULL,NULL,NULL
+"626","Claudia Alfaro Villas del mediterraneo 6621110960","2025-08-11 09:24:48","publish","QUO-493","2","1754929488","$78,500.00","0",NULL,NULL,NULL,NULL
+"625","Rosario Esthela Vecinas Cota Retorno de los acantos numero 12, Arandanos 6624282174","2025-08-11 09:12:40","publish","QUO-492","2","1754928760","$24,500.00","0",NULL,NULL,NULL,NULL
+"624","Anabel Moreno Retornó Narcea 30, stanza torralba 3318506953","2025-08-11 09:10:08","publish","QUO-491","2","1754928608","$13,900.00","0",NULL,NULL,NULL,NULL
+"622","Odette Torres Cerrada de las gravas #89 Tierra colorada 6623727126","2025-08-07 13:06:23","publish","QUO-490","2","1754597183","$27,500.00","0",NULL,NULL,NULL,NULL
+"621","Marisela Salamanca 6624005264","2025-08-06 17:55:45","publish","QUO-489","2","1754528145","$29,000.00","0",NULL,NULL,NULL,NULL
+"620","Francisco Javier Caraveo Rincón Jerago 10, Villa Bonita 6221081255","2025-08-06 09:39:44","publish","QUO-488","2","1754498384","$18,500.00","0",NULL,NULL,NULL,NULL
+"618","Ramon trujillo bracamonte Edmund Aztezarain y Luis encinas #24  la victoria 6622048208","2025-08-05 13:18:13","publish","QUO-487","2","1754425093","$31,500.00","0",NULL,NULL,NULL,NULL
+"617","Reyna chavez Col. Palo verde 6621443309","2025-08-05 13:17:23","publish","QUO-486","2","1754425043","$25,000.00","0",NULL,NULL,NULL,NULL
+"616","Carlos Iván Rojas – Luesia 4 stanza Torralba 2 – 6442000471","2025-06-21 09:29:52","publish","QUO-485","2","1750523392","$17,100.00","0",NULL,"623",NULL,NULL
+"615","Tania Cano Real de Castilla 6621288507","2025-08-05 09:59:50","publish","QUO-484","2","1754413190","$64,500.00","0",NULL,NULL,NULL,NULL
+"614","Mariel Huerta Valle San Francisco 6621030641","2025-08-04 16:47:22","publish","QUO-483","2","1754351242","$16,500.00","0",NULL,NULL,NULL,NULL
+"613","Míriam islas Huehuetl 160, valle del marquez 6442750537","2025-08-04 14:05:03","publish","QUO-482","2","1754341503","$16,500.00","0",NULL,NULL,NULL,NULL
+"612","Samir liobardo rubio castro Juan de grijalva 709, Col. progresista 6624247457","2025-08-04 09:40:45","publish","QUO-481","2","1754325645","$21,000.00","0",NULL,NULL,NULL,NULL
+"611","Elizabeth Medina San Carlos 6442221931","2025-08-04 09:39:37","publish","QUO-480","2","1754325577","$42,000.00","0",NULL,NULL,NULL,NULL
+"610","Luis 6621430168 Corceles","2025-08-04 09:38:50","publish","QUO-479","2","1754325530","$33,800.00","0",NULL,NULL,NULL,NULL
+"609","Ana Larrañaga Fireze 42 6621816168","2025-08-04 09:37:39","publish","QUO-478","2","1754325459","$19,500.00","0",NULL,NULL,NULL,NULL
+"608","Damian Garcias San Emilion 10 villa merlot 6622250436","2025-07-31 13:48:07","publish","QUO-477","2","1753994887","$16,500.00","0",NULL,NULL,NULL,NULL
+"607","Viviana Frías Residencial la cima 1 6311069520","2025-07-31 13:29:28","publish","QUO-476","2","1753993768","$33,000.00","0",NULL,NULL,NULL,NULL
+"606","Juanita Jiménez Alcaraz Cerrada Pablo Moncayo, colonia las Lomas 6623064122","2025-07-30 18:15:23","publish","QUO-475","2","1753924523","$26,500.00","0",NULL,NULL,NULL,NULL
+"605","Francisco Javier Tiscareño Zayas De las sirenas #13, Sorento Residencial 6441191695","2025-07-30 16:33:48","publish","QUO-474","2","1753918428","$19,000.00","0",NULL,NULL,NULL,NULL
+"604","Francisco Javier Tiscareño Zayas De las sirenas #13, Sorento Residencial 6441191695","2025-07-30 16:33:02","publish","QUO-473","2","1753918382","$18,000.00","0",NULL,NULL,NULL,NULL
+"603","Francisco Javier Tiscareño Zayas De las sirenas #13, Sorento Residencial 6441191695","2025-07-30 16:31:02","publish","QUO-472","2","1753918262","$35,000.00","0",NULL,NULL,NULL,NULL
+"602","Francisco Javier Tiscareño Zayas Paseo Real de Toledo #24 6441191695","2025-07-30 16:30:22","publish","QUO-471","2","1753918222","$18,000.00","0",NULL,NULL,NULL,NULL
+"601","Francisco Javier Tiscareño Zayas Paseo Real de Toledo #24 6441191695","2025-07-30 16:29:14","publish","QUO-470","2","1753918154","$18,000.00","0",NULL,NULL,NULL,NULL
+"596","Mabel Romero Ayon Ignacio Salazar 609 6622040880","2025-07-30 10:10:00","publish","QUO-468","2","1753895400","$30,000.00","0",NULL,NULL,NULL,NULL
+"594","Francisco Javier Tiscareño Zayas Paseo Real de Toledo 24 6441191695","2025-07-29 11:35:02","publish","QUO-467","2","1753814102","$18,000.00","0",NULL,NULL,NULL,NULL
+"593","Edgar Alonso Melgoza González Poder legislativo 418, colonia ley 57 6623375495","2025-07-29 11:21:34","publish","QUO-466","2","1753813294","$15,000.00","0",NULL,"597",NULL,NULL
+"592","Cynthia Duarte Calle Chanate 125 hacienda de la flor 6621630688","2025-07-28 20:19:00","publish","QUO-465","2","1753759140","$40,000.00","0",NULL,NULL,NULL,NULL
+"591","Eduardo Martínez Acacia residencial","2025-07-26 19:05:27","publish","QUO-464","2","1753581927","$69,000.00","0",NULL,NULL,NULL,NULL
+"590","Javier Quintanar- 6621240756 - Villas del mediterraneo","2025-07-26 18:31:38","publish","QUO-463","2","1753579898","$17,500.00","0",NULL,NULL,NULL,NULL
+"589","Othón Almada 524 A esquina con suaqui , col Pimentel","2025-07-26 18:30:08","publish","QUO-462","2","1753579808","$14,500.00","0",NULL,NULL,NULL,NULL
+"588","Joel López - Stanza Solare","2025-07-26 12:07:48","publish","QUO-461","2","1753556868","$14,500.00","0",NULL,NULL,NULL,NULL
+"587","Paseo Sierra Bonita Norte #6 Fracc. Sierra Blanca","2025-07-26 12:06:28","publish","QUO-460","2","1753556788","$19,000.00","0",NULL,NULL,NULL,NULL
+"586","Sierra del cajon #186 col solidaridad","2025-07-26 12:05:21","publish","QUO-459","2","1753556721","$21,000.00","0",NULL,NULL,NULL,NULL
+"585","ROBERTO CARO ACACIA MORENA 42 SECCION ALICANTE 5554786654","2025-07-25 12:50:23","publish","QUO-458","2","1753473023","$40,000.00","0",NULL,NULL,NULL,NULL
+"584","Silvia Miranda 6622878675 - La verbena","2025-07-25 07:50:55","publish","QUO-457","2","1753455055","$22,500.00","0",NULL,NULL,NULL,NULL
+"583","Elizabeth Gutiérrez - Ignacio Manuel Altamirano 678 - 6622231187","2025-07-25 07:45:44","publish","QUO-456","2","1753454744","$13,500.00","0",NULL,NULL,NULL,NULL
+"582","Anel Solano Bringas Chilpancingo 1253 A Buenaventura 662141930","2025-07-23 11:39:38","publish","QUO-455","2","1753295978","$19,000.00","0",NULL,NULL,NULL,NULL
+"581","Carlos Juanz Torre Upday 6624711186","2025-07-23 11:39:01","publish","QUO-454","2","1753295941","$18,500.00","0",NULL,NULL,NULL,NULL
+"579","Maria Gaxiola Rafael Campoy 305, Col Pitic 6621031045","2025-07-22 15:48:19","publish","QUO-453","2","1753224499","$29,000.00","0",NULL,NULL,NULL,NULL
+"578","Leonardo Fuentes Da Vinci 40 , soleil residencial 6621826103","2025-07-22 12:39:59","publish","QUO-452","2","1753213199","$30,000.00","0",NULL,NULL,NULL,NULL
+"577","Fernando Navarro Mendez 6622684494 Francisco Pizarro 775","2025-07-22 12:39:28","publish","QUO-451","2","1753213168","$17,500.00","0",NULL,NULL,NULL,NULL
+"576","Carlos Armando Wong 6621058125","2025-07-22 12:39:02","publish","QUO-450","2","1753213142","$25,000.00","0",NULL,NULL,NULL,NULL
+"575","Julissa Cruz montaño 6621241277 Venice #28","2025-07-21 17:41:12","publish","QUO-449","2","1753144872","$13,500.00","0",NULL,NULL,NULL,NULL
+"574","Francisco Ramón Sau Miranda 6623274935 Callejon Tabasco 31, Col. Olivares","2025-07-21 17:36:28","publish","QUO-448","2","1753144588","$42,500.00","0",NULL,NULL,NULL,NULL
+"573","Lupita ruiz 6624766377 Pueblo del oro","2025-07-21 17:35:39","publish","QUO-447","2","1753144539","$15,000.00","0",NULL,NULL,NULL,NULL
+"572","Adrian Garcia 6621370820 residencial cantabria","2025-07-21 17:33:42","publish","QUO-446","2","1753144422","$15,000.00","0",NULL,NULL,NULL,NULL
+"571","Norman Alejandro Acosta Álvarez Zoila Reyna de Palafox 134 6623598807","2025-07-19 12:37:54","publish","QUO-445","2","1752953874","$27,000.00","0",NULL,NULL,NULL,NULL
+"570","Luis Fernando Lugo Lam Orihuela 3, Stanza Albaterra 6621481373","2025-07-19 12:36:30","publish","QUO-444","2","1752953790","$58,500.00","0","4000",NULL,NULL,NULL
+"569","María Fernanda Ibarra Córdova 6621439756 Caseda 51 col puerta del rey","2025-07-18 10:02:33","publish","QUO-443","2","1752858153","$21,000.00","0",NULL,NULL,NULL,NULL
+"568","Miriam Lara 6621208780 Las Lomas","2025-07-17 17:03:52","publish","QUO-442","2","1752797032","$14,500.00","0",NULL,NULL,NULL,NULL
+"567","Francelya Navarro 6622050573 Las Quintas","2025-07-17 16:54:48","publish","QUO-441","2","1752796488","$18,000.00","0",NULL,NULL,NULL,NULL
+"566","Jesica Coronado Inamori 17. Col quinta esmeralda 6621278741","2025-07-17 16:53:28","publish","QUO-440","2","1752796408","$13,500.00","0",NULL,NULL,NULL,NULL
+"565","Jesús López Cantabria  6623437066","2025-07-17 16:51:53","publish","QUO-439","2","1752796313","$15,500.00","0",NULL,NULL,NULL,NULL
+"564","Veronica Diaz 6621230106 colonia Miguel Hidalgo","2025-07-16 14:56:50","publish","QUO-438","2","1752703010","$35,000.00","0",NULL,NULL,NULL,NULL
+"563","Alberto Suárez 6621830352 Calle Leandro Valle #523 Col. Los jardines","2025-07-16 14:48:10","publish","QUO-437","2","1752702490","$28,500.00","0",NULL,NULL,NULL,NULL
+"561","Franky Santos 6624763666 sara thompson 117, col. cortijos","2025-07-15 22:43:28","publish","QUO-436","2","1752644608","$15,000.00","0",NULL,NULL,NULL,NULL
+"560","Jesús López Cantabria 6623437066","2025-07-15 22:42:38","publish","QUO-435","2","1752644558","$15,000.00","0",NULL,NULL,NULL,NULL
+"559","Carla Gastélum 6621410285 Vía Paloma real #31","2025-07-15 10:54:04","publish","QUO-434","2","1752602044","$31,500.00","0",NULL,NULL,NULL,NULL
+"558","Manuel Galván Don manuel Aldecoa no 16, la Candelaria Residencial 6622881349","2025-07-15 09:03:14","publish","QUO-433","2","1752595394","$28,500.00","0",NULL,NULL,NULL,NULL
+"557","Joaquín moreno Melfi 61 Castello residencial 6621910704","2025-07-14 16:38:03","publish","QUO-432","2","1752536283","$55,900.00","0",NULL,NULL,NULL,NULL
+"556","Esthela Carolina pompa Encinas Santa Martha 92 6622293718","2025-07-14 10:09:42","publish","QUO-431","2","1752512982","$35,000.00","0",NULL,"814",NULL,NULL
+"555","Francisco González Coahuila número 49 colonia centro 6621736333","2025-07-14 10:07:58","publish","QUO-430","2","1752512878","$29,000.00","0",NULL,NULL,NULL,NULL
+"554","Alberto Durán calle leandro valle 523, colonia los jardines 6621 83 0352","2025-07-14 10:07:01","publish","QUO-429","2","1752512821","$28,500.00","0",NULL,NULL,NULL,NULL
+"553","José Francisco Villa Privada FALERNA 10 6413215243","2025-07-14 10:05:54","publish","QUO-428","2","1752512754","$22,500.00","0",NULL,NULL,NULL,NULL
+"551","Luis Zavala González - Pintores #9 Adolfo de la huerta - 6621487145","2025-07-10 08:36:42","publish","QUO-427","2","1752161802","$16,000.00","0",NULL,NULL,NULL,NULL
+"550","Lupita López - 6623493745 - Renato Girón #58","2025-07-09 16:29:02","publish","QUO-426","2","1752103742","$16,300.00","0",NULL,"552",NULL,NULL
+"547","Bahia Kino 24, Miramar, Guaymas - Muebles WC","2025-07-04 16:37:20","publish","QUO-425","2","1751672240","$20,000.00","0","2000","548",NULL,NULL
+"546","Doris Ruiz  - Costa de marfil #63 colonia san juan - 6023489405","2025-07-02 14:41:42","publish","QUO-424","2","1751492502","$29,000.00","0",NULL,NULL,NULL,NULL
+"544","Janeth Coronel  - 6623290852 -  Col Montecarlo","2025-07-01 20:53:21","publish","QUO-423","2","1751428401","$15,600.00","0",NULL,NULL,NULL,NULL
+"543","Carlos Carmona - 6622983410 - Fraccionamiento Torre de piedra","2025-07-01 19:07:25","publish","QUO-422","2","1751422045","$31,000.00","0","2800",NULL,NULL,NULL
+"541","Norma Asis Arana - Himalaya 33 Privada vistas de Miramar - 6621200854","2025-06-30 17:07:27","publish","QUO-421","2","1751328447","$37,000.00","0",NULL,NULL,NULL,NULL
+"540","Carlos Silva - retorno villarobledo 04 alcala residencial - 6622560353","2025-06-28 11:05:13","publish","QUO-420","2","1751133913","$25,000.00","0",NULL,NULL,NULL,NULL
+"538","Joel Vázquez Favila #5 los encinos 1, etapa 3 6621508845","2025-06-25 19:35:20","publish","QUO-419","2","1750905320","$169,500.00","0",NULL,NULL,NULL,NULL
+"537","Jesus Guzman - Sirenas 93, fracc sorento - 6623290470","2025-06-25 15:34:37","publish","QUO-418","2","1750890877","$83,000.00","0","5090",NULL,NULL,NULL
+"536","Omar Mora, cel. 6623159684. fraccionamiento las provincias","2025-06-25 14:53:52","publish","QUO-417","2","1750888432","$15,500.00","0",NULL,NULL,NULL,NULL
+"535","Irvin felix stanza albaterra la murada 22 - 6311108215","2025-06-25 12:56:39","publish","QUO-416","2","1750881399","$28,000.00","0","2100",NULL,NULL,NULL
+"533","Cruz Delia molino de camou # 127 entre Israel Gonzales col. Insurgentes","2025-06-25 07:44:18","publish","QUO-415","2","1750862658","$12,000.00","0",NULL,"539",NULL,NULL
+"531","Sergio Jesús Medina torres  Árbol de Alciro 5, residencial Altaria sección Provenza .  6624291711","2025-06-23 17:14:04","publish","QUO-414","2","1750724044","$38,500.00","0",NULL,NULL,NULL,NULL
+"530","David Ruiz Cervera Corteza 33 6622403979","2025-06-23 16:32:48","publish","QUO-413","2","1750721568","$10,500.00","0",NULL,NULL,NULL,NULL
+"529","Rodolfo León Montecarlo, san servan #28  6311574113","2025-06-23 15:37:29","publish","QUO-412","2","1750718249","$27,000.00","0",NULL,"532",NULL,NULL
+"528","Retorno Villarobledo 04. Alcalá Residencial","2025-06-23 15:16:07","publish","QUO-411","2","1750716967","$29,500.00","0",NULL,NULL,NULL,NULL
+"527","Alejandra Cortez Col Gomez Morin 6624205116","2025-06-22 12:12:29","publish","QUO-410","2","1750619549","$19,000.00","0",NULL,NULL,NULL,NULL
+"526","Genesis Arvayo Botello  6621893536 Nahua 51 Residencial Bonanza","2025-06-21 14:53:17","publish","QUO-409","2","1750542797","$51,400.00","0","1900",NULL,NULL,NULL
+"525","Erika Barragán  Calle Novillo #1, col. Terranova,  6621236487","2025-06-21 14:47:36","publish","QUO-408","2","1750542456","$19,000.00","0",NULL,NULL,NULL,NULL
+"524","Carlos Iván Rojas – Luesia 4 stanza Torralba 2 – 6442000471","2025-06-21 09:29:52","publish","QUO-407","2","1750523392","$37,000.00","0",NULL,NULL,NULL,NULL
+"523","L6 M5 Calle Oscar Ulloa, col petrolera. Guaymas","2025-06-18 08:52:26","publish","QUO-406","2","1750261946","$58,500.00","0",NULL,NULL,NULL,NULL
+"520","Jonathan salido Moroyoqui - Stanza torralba etapa 3, Retorno Guadalquivir -10 6442603032","2025-06-14 08:35:18","publish","QUO-405","2","1749915318","$15,000.00","0",NULL,"521",NULL,NULL
+"517","Navarra 24 puerta real etapa 1","2025-05-27 11:09:55","publish","QUO-404","2","1748369395","$16,900.00","0",NULL,"518",NULL,NULL
+"516","Paloma Miranda - Mérida 1447 col nueva Palmira - 6621505501","2025-06-11 20:01:36","publish","QUO-403","2","1749697296","$17,500.00","0",NULL,"542",NULL,NULL
+"514","Bahia de kino 24, Vista Miramar, Guaymas","2025-06-10 16:11:07","publish","QUO-402","2","1749597067","$120,000.00","0",NULL,NULL,NULL,NULL
+"512","Guasave 68 col. Emiliano zapata - 6622331858","2025-06-07 09:26:22","publish","QUO-400","2","1749313582","$18,900.00","0",NULL,"515",NULL,NULL
+"505","primera privada de bugambilias 55 entre calle uno y dos","2025-05-31 09:30:46","publish","QUO-399","2","1748709046","$15,900.00","0",NULL,"507",NULL,NULL
+"504","Villa del Horizonte 194, Milan Residencial","2025-05-29 12:41:39","publish","QUO-398","2","1748547699","$136,000.00","0",NULL,NULL,NULL,NULL
+"503","Christian Rodriguez - Av. Albericoque 5 - 6621890566","2025-05-28 07:28:26","publish","QUO-397","2","1748442506","$18,500.00","0",NULL,NULL,NULL,NULL
+"500","Maritza Ávila - Árbol de alcanfor 14 - 6453315190","2025-05-27 16:32:20","publish","QUO-396","2","1748388740","$19,800.00","0",NULL,"501",NULL,NULL
+"499","Navarra 24 puerta real etapa 1","2025-05-27 11:09:55","publish","QUO-395","2","1748369395","$17,500.00","0",NULL,NULL,NULL,NULL
+"498","Quinta Alegre 17 col. Las Quintas","2025-05-27 10:52:38","publish","QUO-394","2","1748368358","$17,500.00","0",NULL,NULL,NULL,NULL
+"497","Mayra Duran Duarte - Carpoliveri 10 stanza solare - 6621817682","2025-05-26 15:52:35","publish","QUO-393","2","1748299955","$14,500.00","0",NULL,NULL,NULL,NULL
+"496","Daniel - Quintas del Sol - 662124451","2025-05-26 15:51:21","publish","QUO-392","2","1748299881","$12,000.00","0",NULL,NULL,NULL,NULL
+"494","Brenda - Espiridion Ahumada 107 villa de seris - 6623775944","2025-05-26 12:43:33","publish","QUO-391","2","1748288613","$16,500.00","0",NULL,"495",NULL,NULL
+"493","Ismael Rubal - Romero romances norte no.71  paseo del cid residencial","2025-05-26 12:40:48","publish","QUO-390","2","1748288448","$24,500.00","0",NULL,NULL,NULL,NULL
+"489","Bahía de kino n.24, Vista miramar , Guaymas, Son","2025-05-16 07:40:08","publish","QUO-389","2","1747406408","$124,000.00","0","5000","490",NULL,NULL
+"488","Carlos Iván Rojas - Luesia 4 stanza Torralba 2  - 6442000471","2025-05-22 19:27:14","publish","QUO-388","2","1747967234","$28,800.00","0",NULL,"491",NULL,NULL
+"484","Alfonso Cisneros - Real del 14 - 6621245997","2025-05-19 13:09:05","publish","QUO-387","2","1747685345","$29,800.00","0",NULL,"487",NULL,NULL
+"483","Costa de Marfil 60 - Closet","2025-05-19 11:20:09","publish","QUO-386","2","1747678809","$11,500.00","0",NULL,"485",NULL,NULL
+"480","Bahía de kino n.24, Vista miramar , Guaymas, Son","2025-05-16 07:40:08","publish","QUO-385","2","1747406408","$124,000.00","0","5000",NULL,NULL,NULL
+"479","Paseos del pedregal cerrada diamante","2025-05-13 15:55:20","publish","QUO-384","2","1747176920","$28,900.00","0","1500",NULL,NULL,NULL
+"478","Rafael Alán Peñúñuri Quijada - Mendoza 1784 jerez del valle","2025-05-13 09:03:54","publish","QUO-383","2","1747152234","$15,500.00","0",NULL,NULL,NULL,NULL
+"477","Erika lopez - Villa Azueta 196 villas del sur - 6624754155","2025-05-12 11:33:17","publish",,"2","1747074797","$15,000.00","0",NULL,"486",NULL,NULL
+"476","De las Moras 14, Altaria, Sección Provenza","2025-05-12 08:10:26","publish","QUO-381","2","1747062626","$100,500.00","0",NULL,NULL,NULL,NULL
+"475","Jonathan Ramirez  -Paseo milonita 278, colonia Paseos del Pedregal","2025-05-11 08:48:13","publish","QUO-380","2","1746978493","$31,000.00","0",NULL,NULL,NULL,NULL
+"474","Carolina -  jardines","2025-05-09 19:41:39","publish","QUO-379","2","1746844899","$17,000.00","0",NULL,NULL,NULL,NULL
+"472","Fernanda Gaxiola - Salvatierra tortolero 16","2025-05-07 09:31:14","publish","QUO-378","2","1746635474","$21,500.00","0",NULL,NULL,NULL,NULL
+"471","Monica Martens Fontes - Melilla 1 Granada Residencial","2025-05-07 09:30:24","publish","QUO-377","2","1746635424","$17,000.00","0",NULL,NULL,NULL,NULL
+"470","Carmen Sánchez - Villa bonita","2025-05-05 12:48:10","publish","QUO-376","2","1746474490","$16,000.00","0",NULL,NULL,NULL,NULL
+"469","Gloria Peralta - Tabasco 324 col. Olivares","2025-05-05 12:47:26","publish","QUO-375","2","1746474446","$15,500.00","0",NULL,NULL,NULL,NULL
+"468","Diana Aguilar - Bacadehuachi 197, Lomas de linda vista","2025-05-05 12:46:31","publish","QUO-374","2","1746474391","$17,800.00","0",NULL,NULL,NULL,NULL
+"467","Verónica Lira - Misión sta. Isabel 24","2025-05-03 10:39:09","publish","QUO-373","2","1746293949","$37,300.00","0",NULL,NULL,NULL,NULL
+"465","Valeria Osuna - Blvd. Libertar 380","2025-04-23 16:55:21","publish","QUO-372","2","1745452521","$15,000.00","0",NULL,NULL,NULL,NULL
+"464","Alamos 98, col. fuentes del mezquital","2025-04-23 15:55:41","publish","QUO-371","2","1745448941","$19,500.00","0",NULL,NULL,NULL,NULL
+"463","Calle Carmen Alicia 18, Campo Grande","2025-04-23 15:54:54","publish","QUO-370","2","1745448894","$16,500.00","0",NULL,NULL,NULL,NULL
+"461","Zapoteca 20, Bonanza Residencial","2025-04-21 14:55:04","publish","QUO-369","2","1745272504","$26,000.00","0",NULL,NULL,NULL,NULL
+"460","Calle de las Trillas 52, la Verbena","2025-04-21 07:45:16","publish","QUO-368","2","1745246716","$29,000.00","0",NULL,NULL,NULL,NULL
+"459","Vista buena 17, Misión de Anda Lucia","2025-04-21 07:44:13","publish","QUO-367","2","1745246653","$34,100.00","0",NULL,NULL,NULL,NULL
+"456","Consuelo Bustamante Nieblas - Crevillente 23, Montesinos secc. crevillente","2025-04-14 16:34:52","publish","QUO-366","2","1744673692","$17,000.00","0",NULL,"457",NULL,NULL
+"455","Oliver Marquez Hernandez - Av. corralitos 7, sonacer","2025-04-14 16:33:52","publish","QUO-365","2","1744673632","$17,000.00","0",NULL,NULL,NULL,NULL
+"454","San dolmasio 18 Lomas del norte","2025-04-09 15:41:58","publish","QUO-364","2","1744238518","$27,000.00","0",NULL,NULL,NULL,NULL
+"453","Aaron Baeza - Berillo 13 Col. Canteras","2025-04-09 15:41:07","publish","QUO-363","2","1744238467","$13,500.00","0",NULL,NULL,NULL,NULL
+"450","Cande Barraza - Las granjas","2025-04-02 20:58:32","publish","QUO-362","2","1743652712","$16,000.00","0",NULL,NULL,NULL,NULL
+"449","Tezozomoc 104, Col. Cuauhtemoc","2025-04-02 14:06:24","publish","QUO-361","2","1743627984","$18,000.00","0",NULL,NULL,NULL,NULL
+"448","Caldetes 71, Salamanca Residencial","2025-04-01 16:05:05","publish","QUO-360","2","1743548705","$14,000.00","0",NULL,NULL,NULL,NULL
+"446","Jesus Garcia 12","2025-03-31 16:35:34","publish","QUO-359","2","1743464134","$27,000.00","0",NULL,NULL,NULL,NULL
+"445","Lopez del Castillo 127","2025-03-31 16:34:28","publish","QUO-358","2","1743464068","$21,000.00","0",NULL,NULL,NULL,NULL
+"444","Sarahi Acosta - Las provincias","2025-03-27 17:27:30","publish","QUO-357","2","1743121650","$14,500.00","0",NULL,NULL,NULL,NULL
+"443","Alejandra Villa - Fresnos Residencial","2025-03-27 17:26:21","publish","QUO-356","2","1743121581","$12,500.00","0",NULL,NULL,NULL,NULL
+"439","Cerrada Escribanos 11, Real del Quiroga","2025-03-20 17:21:11","publish","QUO-355","2","1742516471","$34,500.00","0",NULL,NULL,NULL,NULL
+"438","Genaro Araujo - Solei","2025-03-20 10:34:06","publish","QUO-354","2","1742492046","$22,500.00","0",NULL,NULL,NULL,NULL
+"437","Santiny 93B, Mallorca","2025-03-18 13:01:56","publish","QUO-353","2","1742328116","$18,000.00","0",NULL,NULL,NULL,NULL
+"436","Gibraltar 45, san Sebastián","2025-03-18 10:37:41","publish","QUO-352","2","1742319461","$15,300.00","0",NULL,NULL,NULL,NULL
+"435","Maria Romero - Puerta Real","2025-03-18 10:36:53","publish","QUO-351","2","1742319413","$22,500.00","0",NULL,NULL,NULL,NULL
+"434","Alarifes 51, California Residencial","2025-03-18 10:03:16","publish","QUO-350","2","1742317396","$17,500.00","0",NULL,NULL,NULL,NULL
+"432","Fresnos 22, col. Los Sauces","2025-03-14 17:37:05","publish","QUO-349","2","1741999025","$33,000.00","0",NULL,NULL,NULL,NULL
+"431","Pascal 62, col. Las Lomas","2025-03-14 17:36:01","publish","QUO-348","2","1741998961","$15,600.00","0",NULL,NULL,NULL,NULL
+"430","Yocupicio 1210, col. Loma Linda","2025-03-14 17:34:39","publish","QUO-347","2","1741998879","$16,500.00","0",NULL,NULL,NULL,NULL
+"429","Av. Caldetes 20, Salamanca Residencial","2025-03-14 17:33:13","publish","QUO-346","2","1741998793","$27,000.00","0",NULL,NULL,NULL,NULL
+"428","priv. Parterno 5, Villa Bonita","2025-03-12 16:25:35","publish","QUO-345","2","1741821935","$18,000.00","0",NULL,NULL,NULL,NULL
+"427","san Atalo 26, col. Los Angeles","2025-03-10 12:00:44","publish","QUO-344","2","1741633244","$26,400.00","0",NULL,NULL,NULL,NULL
+"425","calle 5 de mayo 31, villa de seris","2025-03-07 11:27:40","publish","QUO-343","2","1741372060","$62,000.00","0",NULL,NULL,NULL,NULL
+"423","calle 5 de mayo 31, villa de seris","2025-03-05 11:46:41","publish","QUO-342","2","1741200401","$67,000.00","0",NULL,NULL,NULL,NULL
+"422","Ivan Parra - Bilbao Residencial","2025-03-05 11:41:27","publish","QUO-341","2","1741200087","$91,500.00","0",NULL,NULL,NULL,NULL
+"420","del mirador 87, santa barbara del mirador","2025-03-05 11:39:36","publish","QUO-340","2","1741199976","$40,500.00","0",NULL,NULL,NULL,NULL
+"419","Ilse Porchas - Villa Bonita","2025-02-28 13:36:36","publish","QUO-339","2","1740774996","$16,200.00","0",NULL,NULL,NULL,NULL
+"418","opodepe 80 col. insurgentes","2025-02-28 08:17:38","publish","QUO-338","2","1740755858","$20,000.00","0",NULL,NULL,NULL,NULL
+"415","villa del canal 101 col las villas","2025-02-22 11:27:22","publish","QUO-337","2","1740248842","$14,000.00","0",NULL,NULL,NULL,NULL
+"414","cerrada del marquez, col paseo real","2025-02-22 11:26:32","publish","QUO-336","2","1740248792","$30,600.00","0",NULL,"416",NULL,NULL
+"348","Nerva 24, Real de Sevilla","2025-02-21 14:30:02","publish","QUO-335","2","1740173402","$18,900.00","0",NULL,"426",NULL,NULL
+"347","san raymundo 17, santa marta","2025-02-20 15:46:31","publish","QUO-334","2","1740091591","$32,900.00","0",NULL,NULL,NULL,NULL
+"344","Maria yolanda santoyo - San pedro de la conquista 29, piedra bola","2025-02-11 16:28:31","publish","QUO-333","2","1739316511","$53,200.00","0",NULL,"345",NULL,NULL
+"343","Denisse Davila - Avenida 9 137. prados del sol","2025-02-11 16:31:48","publish","QUO-332","2","1739316708","$18,000.00","0",NULL,NULL,NULL,NULL
+"342","Oscar Espinoza - Mesa del serí 423","2025-02-11 16:30:59","publish","QUO-331","2","1739316659","$18,500.00","0",NULL,NULL,NULL,NULL
+"341","Karely Guevara - Escorpión dorado 27","2025-02-11 16:29:58","publish","QUO-330","2","1739316598","$16,500.00","0",NULL,NULL,NULL,NULL
+"340","Maria yolanda santoyo - San pedro de la conquista 29, piedra bola","2025-02-11 16:28:31","publish","QUO-329","2","1739316511","$53,200.00","0",NULL,NULL,NULL,NULL
+"338","Berenice Córdova - San Marcos","2025-02-06 20:15:59","publish","QUO-328","2","1738898159","$21,000.00","0",NULL,NULL,NULL,NULL
+"337","Saharai Encinas - Romances sur 6,Paseo del Cid","2025-02-06 15:33:47","publish","QUO-327","2","1738881227","$25,000.00","0",NULL,NULL,NULL,NULL
+"336","Fernanda - Pericos 14","2025-02-06 15:31:37","publish","QUO-326","2","1738881097","$30,500.00","0",NULL,NULL,NULL,NULL
+"335","Andrés Yáñez - Paloma 118","2025-02-06 12:40:25","publish","QUO-325","2","1738870825","$15,300.00","0",NULL,NULL,NULL,NULL
+"334","Leticia Maytorena fraccionamiento esplendor 1","2025-02-04 17:50:02","publish","QUO-324","2","1738716602","$18,000.00","0",NULL,"447",NULL,NULL
+"333","Andrea Acacia fiera 17, Las acacias","2025-02-04 17:49:10","publish","QUO-323","2","1738716550","$13,500.00","0",NULL,NULL,NULL,NULL
+"332","René Covarrubias - Acacias residencial","2025-02-04 17:48:11","publish","QUO-322","2","1738716491","$18,500.00","0",NULL,NULL,NULL,NULL
+"329","Francisco Magdiel Ramos Lopez - Quinta vinata sur 49","2025-01-31 23:19:21","publish","QUO-321","2","1738390761","$43,500.00","0",NULL,NULL,NULL,NULL
+"328","Jose Antonio Patlan - Rerorno Magallanes Campo grande residencial","2025-01-28 17:31:36","publish","QUO-320","2","1738110696","$27,000.00","0",NULL,NULL,NULL,NULL
+"327","Hilda Luz - Nicosia 1, villas del mediterraneo","2025-01-28 17:30:15","publish","QUO-319","2","1738110615","$36,000.00","0",NULL,NULL,NULL,NULL
+"326","Gabriela urias - Dr villa robledo 27, villa sol","2025-01-27 09:41:47","publish","QUO-318","2","1737996107","$17,500.00","0",NULL,"330",NULL,NULL
+"324","Verónica carrasco - Facundo Bernal 1289, Sahuaro","2025-01-22 07:26:03","publish","QUO-317","2","1737555963","$18,000.00","0",NULL,NULL,NULL,NULL
+"323","Circulto del misterio 99","2025-01-20 16:06:27","publish","QUO-316","2","1737414387","$16,800.00","0",NULL,NULL,NULL,NULL
+"322","Ángel López - Betzabet 494 Olivos","2025-01-17 15:42:30","publish","QUO-315","2","1737153750","$32,000.00","0",NULL,NULL,NULL,NULL
+"321","Sonia Fontes - Atessa 12, VillaBonita","2025-01-17 15:41:51","publish","QUO-314","2","1737153711","$9,000.00","0",NULL,NULL,NULL,NULL
+"320","Yessica Córdova - Lomas del sur","2025-01-17 15:41:11","publish","QUO-313","2","1737153671","$21,000.00","0",NULL,NULL,NULL,NULL
+"318","Erika Lizeth Acuña - Villa Hermosa 1456, nueva Palmira","2025-01-14 08:09:50","publish","QUO-312","2","1736867390","$22,000.00","0",NULL,NULL,NULL,NULL
+"317","Irene Symonds - Articulo 123 no.41 privada Victoria","2025-01-14 08:08:28","publish","QUO-311","2","1736867308","$34,200.00","0",NULL,NULL,NULL,NULL
+"316","Nuño de Guzmán 631, Progresista","2025-01-14 08:06:23","publish","QUO-310","2","1736867183","$24,900.00","0",NULL,NULL,NULL,NULL
+"315","Manuel Pacheco - Olneya 32. Jardin Real, Villas del Real","2025-01-10 10:14:23","publish","QUO-309","2","1736529263","$46,500.00","0","3000",NULL,NULL,NULL
+"313","Daniel Aello Blvd. JARDA 84 VILLA BONITA","2025-01-10 08:48:53","publish","QUO-308","2","1736524133","$22,500.00","0",NULL,NULL,NULL,NULL
+"311","Daniel Aello Blvd. JARDA 84 VILLA BONITA","2025-01-09 15:17:19","publish","QUO-307","2","1736461039","$22,500.00","0",NULL,"312",NULL,NULL
+"306","Mirna Meza - Villa Morelos 58","2025-01-07 09:42:39","publish","QUO-306","2","1736268159","$18,000.00","0",NULL,NULL,NULL,NULL
+"305","Lizbet - Villas del real","2025-01-06 16:45:20","publish","QUO-305","2","1736207120","$10,000.00","0",NULL,NULL,NULL,NULL
+"304","Valeria Favela - Av Cupertino 8, California","2025-01-06 16:44:14","publish","QUO-304","2","1736207054","$15,000.00","0",NULL,NULL,NULL,NULL
+"301","Gerardo Gutiérrez - Romances Norte 67, Paseo Del Cid Residencial","2025-01-03 10:15:39","publish","QUO-303","2","1735924539","$25,000.00","0",NULL,NULL,NULL,NULL
+"300","Estefany Rodríguez - Abrojo 9, Urbivilla del cedro","2025-01-03 09:56:25","publish","QUO-302","2","1735923385","$22,000.00","0",NULL,NULL,NULL,NULL
+"299","Jesús hernandez - San Atalo 26, Los Ángeles","2025-01-02 15:26:20","publish","QUO-301","2","1735856780","$25,000.00","0",NULL,NULL,NULL,NULL
+"298","Luisa Gonzales - Quinta privada modelo","2025-01-02 10:12:04","publish","QUO-300","2","1735837924","$25,000.00","0",NULL,NULL,NULL,NULL
+"297","Juan Leonardo Moreno - Aburto 1490 buena vista","2025-01-02 09:16:51","publish","QUO-299","2","1735834611","$15,500.00","0",NULL,NULL,NULL,NULL
+"296","Fernando Dominguez Gastelum - Caldetes 39A Residencial Salamanca","2024-12-31 10:51:26","publish","QUO-298","2","1735667486","$14,000.00","0",NULL,NULL,NULL,NULL
+"295","Carla Valadez - Llanura costera 77, Ondaterra, Banus","2024-12-31 09:36:39","publish","QUO-297","2","1735662999","$8,000.00","0",NULL,"302",NULL,NULL
+"293","Blanca Zamorano - Alegranza Residencial","2024-12-31 09:26:31","publish","QUO-296","2","1735662391","$39,000.00","0",NULL,NULL,NULL,NULL
+"292","Christian Alpuche - Amapolas","2024-12-31 09:25:05","publish","QUO-295","2","1735662305","$25,000.00","0",NULL,NULL,NULL,NULL
+"289","Marco Osornio Nicolas III 5, Urbivilla del rey","2024-12-23 16:52:50","publish","QUO-294","2","1734997970","$17,000.00","0",NULL,NULL,NULL,NULL
+"288","Hilary castillo - Tinetto 77, Alegranza residencial","2024-12-23 11:12:08","publish","QUO-293","2","1734977528","$20,500.00","0",NULL,NULL,NULL,NULL
+"287","Rocio - Algeciras 36, Real de Castilla","2024-12-21 10:33:06","publish","QUO-292","2","1734802386","$65,500.00","0",NULL,NULL,NULL,NULL
+"286","Manuel Alvarez - Jesus Siqueiros 1471, Buena Vista","2024-12-21 10:32:16","publish","QUO-291","2","1734802336","$17,800.00","0",NULL,"290",NULL,NULL
+"284","Carmen casillas chavez - Avenida siete 256, Jesus Garcia","2024-12-16 17:38:43","publish","QUO-290","2","1734395923","$30,000.00","0",NULL,NULL,NULL,NULL
+"282","Angelica Gocobachi - Bonete 9 Monte de Calabria","2024-12-09 11:30:59","publish","QUO-289","2","1733769059","$18,500.00","0",NULL,NULL,NULL,NULL
+"281","Elsa león - 6622786131","2024-12-09 11:30:22","publish","QUO-288","2","1733769022","$11,000.00","0",NULL,NULL,NULL,NULL
+"280","Alexis matas - De las Misiones 52 dep 15","2024-12-09 11:28:16","publish","QUO-287","2","1733768896","$53,000.00","0",NULL,NULL,NULL,NULL
+"277","Blanca Robles - Portal del Pitic","2024-12-05 08:48:35","publish","QUO-286","2","1733413715","$25,000.00","0",NULL,NULL,NULL,NULL
+"276","Noe corrales Gorostegui  - Cabo San Antonio 595 colonia dunas","2024-12-04 09:47:27","publish","QUO-285","2","1733330847","$23,500.00","0",NULL,"278",NULL,NULL
+"275","Daniela King Dominguez  - Syrah32, Villa Merlot","2024-12-04 09:46:23","publish","QUO-284","2","1733330783","$17,500.00","0",NULL,NULL,NULL,NULL
+"273","Villa bonita residencial - Héctor Sanchez","2024-12-02 11:47:23","publish","QUO-283","2","1733165243","$15,500.00","0",NULL,NULL,NULL,NULL
+"272","Angelica Gocobachi - Bonete 9 Monte de Calabria","2024-12-02 11:45:20","publish","QUO-282","2","1733165120","$74,000.00","0",NULL,NULL,NULL,NULL
+"271","EMMA GUADALUPE RODRIGUEZ MOLINA - VICAM NO. 1, MODELO.","2024-12-02 09:02:11","publish","QUO-281","2","1733155331","$11,000.00","0",NULL,"279",NULL,NULL
+"270","Angelica Gocobachi - Bonete 9 Monte de Calabria","2024-11-28 07:21:17","publish","QUO-280","2","1732803677","$50,500.00","0",NULL,"310",NULL,NULL
+"269","Luz elena yanes valenzuela - Calle trigo 19 retorno de la mision","2024-11-28 07:20:04","publish","QUO-279","2","1732803604","$30,500.00","0",NULL,NULL,NULL,NULL
+"267","Luz Medrano - Ramón corona 714, Virreyes","2024-11-27 08:44:55","publish","QUO-278","2","1732722295","$12,000.00","0",NULL,NULL,NULL,NULL
+"266","Tania Silva - Stanza ALBATERRA","2024-11-26 12:24:09","publish","QUO-277","2","1732649049","$29,500.00","0",NULL,NULL,NULL,NULL
+"265","Francisco Gallego Alegría -  Castellana 42, Las Granjas","2024-11-26 12:20:26","publish","QUO-276","2","1732648826","$36,500.00","0",NULL,NULL,NULL,NULL
+"264","Carlos Valencia Dorame -  Ramón Noriega 362 B, Villa hermosa","2024-11-26 12:18:57","publish","QUO-275","2","1732648737","$21,000.00","0",NULL,NULL,NULL,NULL
+"262","Angélica Galavez - Retorno giorgione 41 villa bonita","2024-11-26 12:18:21","publish","QUO-274","2","1732648701","$25,000.00","0",NULL,NULL,NULL,NULL
+"259","William Edgardo Fimbres Morales - Colinas 16, San Francisco Valle recidencial, cerrada Balboa","2024-11-25 11:29:10","publish","QUO-273","2","1732559350","$25,000.00","0",NULL,"260",NULL,NULL
+"257","Yaneth Romero - Cerrada Kikapu 33, Pueblitos","2024-11-22 14:39:12","publish","QUO-272","2","1732311552","$16,000.00","0",NULL,"258",NULL,NULL
+"256","Carla Valadez - Llanura costera 77, Ondaterra, Banus","2024-11-22 14:37:16","publish","QUO-271","2","1732311436","$57,000.00","0",NULL,"303",NULL,NULL
+"255","Norma Alicia Mercado - San Luis obispo 37 Capistrano etapa 1","2024-11-20 11:12:08","publish","QUO-270","2","1732126328","$47,500.00","0",NULL,NULL,NULL,NULL
+"254","Karla Selene almanza - Casalta residencial 52, Cerrada PEÑONES","2024-11-19 17:17:43","publish","QUO-269","2","1732061863","$16,000.00","0",NULL,NULL,NULL,NULL
+"251","Eduardo Vargas - lomas del bosque 96","2024-11-13 16:17:59","publish","QUO-268","2","1731539879","$15,200.00","0",NULL,NULL,NULL,NULL
+"250","Cristian Enrique Sánchez valdez - Biarritz, 9, Banus","2024-11-13 15:09:30","publish","QUO-267","2","1731535770","$38,000.00","0",NULL,NULL,NULL,NULL
+"249","Jessica Watson Lugo - Los encinos 1 Cristina de amburgo 23","2024-11-12 14:58:36","publish","QUO-266","2","1731448716","$14,500.00","0",NULL,"252",NULL,NULL
+"248","Luis armando Valenzuela - Avenida de los misterios número 93, El Secreto residencial","2024-11-11 09:46:05","publish","QUO-265","2","1731343565","$25,000.00","0",NULL,NULL,NULL,NULL
+"245","Susana Ruiz - Costa de Marfil","2024-11-08 14:48:07","publish","QUO-264","2","1731102487","$12,000.00","0",NULL,NULL,NULL,NULL
+"244","Circuito del encinar oriente 32, La Campiña Sección Girasoles","2024-11-07 09:46:19","publish","QUO-263","2","1730997979","$15,500.00","0",NULL,"246",NULL,NULL
+"241","Zeila Urías San rafael 223 a, villa sonora","2024-11-05 16:19:57","publish","QUO-262","2","1730848797","$25,000.00","0",NULL,NULL,NULL,NULL
+"239","Leonor Rodriguez - San Simon 53, Paseo San Angel","2024-11-05 15:31:28","publish","QUO-261","2","1730845888","$25,000.00","0",NULL,"243",NULL,NULL
+"238","Hector tellez - San simón 47 paseo san angel","2024-11-05 15:29:41","publish","QUO-260","2","1730845781","$55,500.00","0",NULL,NULL,NULL,NULL
+"237","Susana Ruiz - Costa de Marfil","2024-11-05 15:27:03","publish","QUO-259","2","1730845623","$17,500.00","0",NULL,"242",NULL,NULL
+"236","Ebelin contreras - Aurea residencial","2024-11-04 14:58:13","publish","QUO-258","2","1730757493","$61,700.00","0",NULL,NULL,NULL,NULL
+"235","Gisele Malagon cota - Serra 11, San Francisco","2024-11-04 14:55:30","publish","QUO-257","2","1730757330","$19,800.00","0",NULL,NULL,NULL,NULL
+"234","Brenda Castro  Avenida ley 57 120, Prados de bugambilias","2024-11-04 07:44:15","publish","QUO-256","2","1730731455","$64,000.00","0",NULL,NULL,NULL,NULL
+"232","Zeila Urías San rafael 223 a, villa sonora","2024-10-31 15:45:20","publish","QUO-255","2","1730414720","$17,000.00","0",NULL,NULL,NULL,NULL
+"231","Catalina Magaña - Adrano 28, Catania","2024-10-29 17:27:24","publish","QUO-254","2","1730248044","$38,000.00","0",NULL,NULL,NULL,NULL
+"230","Guadalupe Madrid - Cocorit 1190 col misión","2024-10-28 12:03:20","publish","QUO-253","2","1730142200","$11,000.00","0",NULL,NULL,NULL,NULL
+"227","Marco Antonio Lugo Aguilar - Pirules 8, Fuentes del Mezquital","2024-10-22 09:38:54","publish","QUO-252","2","1729615134","$19,500.00","0",NULL,NULL,NULL,NULL
+"226","Farid Arballo - Torre de piedra","2024-10-21 09:53:44","publish","QUO-251","2","1729529624","$18,500.00","0",NULL,NULL,NULL,NULL
+"225","Guadalupe Moraga - Arcos de la Frontera #43","2024-10-21 09:29:21","publish","QUO-250","2","1729528161","$66,000.00","0",NULL,NULL,NULL,NULL
+"224","Cerrada de Bastida 30, El Conquistador Residencial","2024-10-18 11:01:17","publish","QUO-249","2","1729274477","$18,500.00","0",NULL,NULL,NULL,NULL
+"223","Fernanda Torrescano  - Ghirardelly 13 san Fco","2024-10-16 14:59:03","publish","QUO-248","2","1729115943","$62,000.00","0",NULL,NULL,NULL,NULL
+"221","Carolina Ballesteros -  Del vigía 35","2024-10-15 14:56:39","publish","QUO-247","2","1729029399","$38,000.00","0",NULL,NULL,NULL,NULL
+"219","Mizraim salas  -  1258, Camino Real","2024-10-11 18:19:43","publish","QUO-246","2","1728695983","$21,000.00","0",NULL,NULL,NULL,NULL
+"218","Judith Madonia Fimbres - Segunda de Periferico 365, Luis Encinas","2024-10-09 15:41:57","publish","QUO-245","2","1728513717","$38,500.00","0",NULL,NULL,NULL,NULL
+"217","Karla Molina - Retorno Ponferrada en Alcalá","2024-10-09 15:38:52","publish","QUO-244","2","1728513532","$18,000.00","0",NULL,NULL,NULL,NULL
+"216","Laura Dionisio Valencia - Matemáticos 1, Staus","2024-10-09 10:47:25","publish","QUO-243","2","1728496045","$15,000.00","0",NULL,NULL,NULL,NULL
+"214","Leticia Romero Dávila - Colonizadores 34, residencial de Anzá","2024-10-08 16:16:56","publish","QUO-242","2","1728429416","$36,500.00","0",NULL,NULL,NULL,NULL
+"213","María de Jesús Méndez  - Gustavo Díaz Ordaz 451 colonia Santa isabel","2024-10-08 16:15:29","publish","QUO-241","2","1728429329","$13,500.00","0",NULL,NULL,NULL,NULL
+"212","BEATRIZ ADRIANA ENCINAS - BENITO JUAREZ 393, VILLA HERMOSA","2024-10-07 16:31:20","publish","QUO-240","2","1728343880","$17,500.00","0",NULL,"220",NULL,NULL
+"211","Blanca Isela Morghen - Brasil y lopez Portillo","2024-10-04 15:10:00","publish","QUO-239","2","1728079800","$25,000.00","0",NULL,NULL,NULL,NULL
+"210","Sara Salgado - Dr. Aguilar 129, Prados del Centenario","2024-10-02 08:06:44","publish","QUO-238","2","1727881604","$25,000.00","0",NULL,NULL,NULL,NULL
+"208","María Soto - Puerta Real","2024-10-02 08:05:16","publish","QUO-237","2","1727881516","$25,000.00","0",NULL,NULL,NULL,NULL
+"206","Elvira Acosta - Acantilado 39, Casa bonita","2024-09-28 12:12:24","publish","QUO-236","2","1727550744","$15,500.00","0",NULL,NULL,NULL,NULL
+"204","Torre de Mica 37 Fraccionamiento Torre de Piedra","2024-09-27 14:52:40","publish","QUO-235","2","1727473960","$49,500.00","0",NULL,NULL,NULL,NULL
+"203","María de Jesús Gallego Morales - Pueblo del Sol norte sección Ocaso","2024-09-24 15:36:26","publish","QUO-234","2","1727217386","$26,500.00","0",NULL,NULL,NULL,NULL
+"202","María del Carmen Grijalva - Juan José Aguirre 361, Balderrama","2024-09-24 15:35:21","publish","QUO-233","2","1727217321","$35,000.00","0",NULL,NULL,NULL,NULL
+"201","Sandra Luz Gonzales - Artículo tercero 80","2024-09-24 15:34:24","publish","QUO-232","2","1727217264","$21,000.00","0",NULL,NULL,NULL,NULL
+"200","Juan Antonio Sánchez - Calle De las Moras 3, Altaria Residencial.","2024-09-24 15:33:23","publish","QUO-231","2","1727217203","$14,000.00","0",NULL,NULL,NULL,NULL
+"199","Claudia angulo  - Germania 8 Los Portales","2024-09-24 15:32:29","publish","QUO-230","2","1727217149","$24,000.00","0",NULL,NULL,NULL,NULL
+"197","Arroyo del Tigre 24","2024-09-21 11:24:07","publish","QUO-229","2","1726943047","$27,000.00","0",NULL,NULL,NULL,NULL
+"196","Retorno de los Penachos 138, Bicentenario","2024-09-21 11:23:24","publish","QUO-228","2","1726943004","$14,000.00","0",NULL,NULL,NULL,NULL
+"195","Manuel leon, Las isabeles","2024-09-21 11:22:38","publish","QUO-227","2","1726942958","$17,000.00","0",NULL,NULL,NULL,NULL
+"194","Pequeno nocturno 13, concordia","2024-09-21 10:53:15","publish","QUO-226","2","1726941195","$20,000.00","0",NULL,NULL,NULL,NULL
+"193","Moctezuma 9, Fraccionamiento Perisur","2024-09-18 19:43:15","publish","QUO-225","2","1726713795","$46,500.00","0",NULL,NULL,NULL,NULL
+"192","Joel Salas Siembras 586, La Verbena","2024-09-17 14:59:09","publish","QUO-224","2","1726610349","$17,000.00","0",NULL,NULL,NULL,NULL
+"191","Olga Alicia Guzmán - Col Universidad","2024-09-17 14:58:23","publish","QUO-223","2","1726610303","$14,000.00","0",NULL,NULL,NULL,NULL
+"190","Francisco Lizarraga - Portonovo 9","2024-09-17 14:55:17","publish","QUO-222","2","1726610117","$91,500.00","0",NULL,NULL,NULL,NULL
+"187","Miguel Díaz  Fco. Javier Mina, Pedregal de la Villa","2024-09-11 12:53:51","publish","QUO-221","2","1726084431","$20,000.00","0",NULL,NULL,NULL,NULL
+"185","Martin Ramses Del Sol Saavedra - Cerrada guarijios, Pueblitos","2024-09-11 08:07:38","publish","QUO-220","2","1726067258","$16,200.00","0",NULL,NULL,NULL,NULL
+"184","Orissa oriente 3, Tosali residencial","2024-09-10 14:21:41","publish","QUO-219","2","1726003301","$24,500.00","0",NULL,"186",NULL,NULL
+"183","Sierra obscura 404, Manuel Gomez Morín","2024-09-06 10:37:39","publish","QUO-218","2","1725644259","$35,000.00","0",NULL,NULL,NULL,NULL
+"181","C. Boticelli 10, col las lomas","2024-09-03 08:20:50","publish","QUO-217","2","1725376850","$18,000.00","0",NULL,NULL,NULL,NULL
+"180","Juan Antonio Molina Beltrán - Carlos Tapia Tellez 78, Altares","2024-09-03 08:19:57","publish","QUO-216","2","1725376797","$15,500.00","0",NULL,NULL,NULL,NULL
+"179","Ricardo Diaz Cancio Calle de la Fresa 10, Villa California","2024-09-02 14:52:15","publish","QUO-215","2","1725313935","$22,200.00","0",NULL,NULL,NULL,NULL
+"178","Italia liliana real Carpio  - Manuel Rivera Zamudio 44, Altares","2024-09-02 11:19:07","publish","QUO-214","2","1725301147","$16,500.00","0",NULL,NULL,NULL,NULL
+"177","Nohelia Haro - Agavez","2024-09-02 11:18:25","publish","QUO-213","2","1725301105","$16,900.00","0",NULL,NULL,NULL,NULL
+"176","Israel Germán - Colonizadores 101 Col. Las Quintas","2024-08-29 15:45:45","publish","QUO-212","2","1724971545","$40,000.00","0",NULL,NULL,NULL,NULL
+"175","Margarita Moreno Vicente - Las Minitas","2024-08-29 09:35:22","publish","QUO-211","2","1724949322","$25,000.00","0",NULL,NULL,NULL,NULL
+"174","Benjamin Yánez  Cruceiros 21","2024-08-28 15:39:59","publish","QUO-210","2","1724884799","$29,500.00","0",NULL,NULL,NULL,NULL
+"172","Alejandro García  Numero 4, Villa Bonita","2024-08-26 14:59:14","publish","QUO-209","2","1724709554","$16,000.00","0",NULL,NULL,NULL,NULL
+"171","Evangelina Ramirez Cerrada - Nazareth 104 San Marcos","2024-08-26 14:58:26","publish","QUO-208","2","1724709506","$24,500.00","0",NULL,NULL,NULL,NULL
+"170","Arbol de Picea 11. Alameda Los Fresnos","2024-08-26 11:47:03","publish","QUO-207","2","1724698023","$14,000.00","0",NULL,NULL,NULL,NULL
+"169","Gladys Josefina Campoy Gallardo - Cerrada Jerusalén san Marcos","2024-08-24 12:22:25","publish","QUO-206","2","1724527345","$14,500.00","0",NULL,NULL,NULL,NULL
+"168","Jesús García delgado - De la Mandarina 10, Villa California","2024-08-20 12:01:27","publish","QUO-205","2","1724180487","$26,000.00","0",NULL,NULL,NULL,NULL
+"167","Lizeth Arvayo  - Azores residencial","2024-08-20 10:52:59","publish","QUO-204","2","1724176379","$46,500.00","0",NULL,NULL,NULL,NULL
+"166","Erick Hernández Amaya - Fraccionamiento Real de Castilla","2024-08-20 10:51:34","publish","QUO-203","2","1724176294","$54,500.00","0",NULL,NULL,NULL,NULL
+"164","Daniel Tanori - Las Lomas","2024-08-19 10:16:06","publish","QUO-202","2","1724087766","$16,000.00","0",NULL,NULL,NULL,NULL
+"163","Anahy ibarra - Alegranza residéncial","2024-08-16 15:35:06","publish","QUO-201","2","1723847706","$32,500.00","0",NULL,NULL,NULL,NULL
+"161","BEATRIZ ADRIANA ENCINAS - BENITO JUAREZ 393, VILLA HERMOSA","2024-08-15 16:04:01","publish","QUO-200","2","1723763041","$35,500.00","0",NULL,NULL,NULL,NULL
+"160","Maria de los Angeles Apodaca - Villa del Ciprés 18, Villa del Real","2024-08-15 15:39:32","publish","QUO-199","2","1723761572","$28,000.00","0",NULL,NULL,NULL,NULL
+"159","Dorian Orendain - Trajano 7 colonia puerta real residencial","2024-08-13 15:48:05","publish","QUO-198","2","1723589285","$13,000.00","0",NULL,NULL,NULL,NULL
+"157","José Daniel - Mesta de la  Paseo malaquita 92","2024-08-12 15:30:48","publish","QUO-197","2","1723501848","$16,500.00","0",NULL,NULL,NULL,NULL
+"156","Omar Hernandez - Av Radotin 39C fracc. Praga","2024-08-12 15:29:35","publish","QUO-196","2","1723501775","$40,000.00","0",NULL,NULL,NULL,NULL
+"154","Nelva Martínez - Puerta Real","2024-08-12 11:15:07","publish","QUO-195","2","1723486507","$38,000.00","0",NULL,"155",NULL,NULL
+"153","Ana María Rosa Felix - Santa Elena 19, Villa Mercedes","2024-08-08 12:56:56","publish","QUO-194","2","1723147016","$16,500.00","0",NULL,NULL,NULL,NULL
+"152","Jorge Luis Yanez Romero - Grevillia #21","2024-08-07 13:47:17","publish","QUO-193","2","1723063637","$13,000.00","0",NULL,NULL,NULL,NULL
+"151","Retorno mellon #11,stanza torralba etapa III","2024-08-07 13:45:39","publish","QUO-192","2","1723063539","$27,000.00","0",NULL,NULL,NULL,NULL
+"150","Francisco Pizarro 757, Plaza Real","2024-08-07 13:33:48","publish","QUO-191","2","1723062828","$12,500.00","0",NULL,NULL,NULL,NULL
+"149","Geovana Romandia - Abuyacab 5, Puerta Real, 7ma etapa","2024-08-07 13:32:58","publish","QUO-190","2","1723062778","$17,500.00","0",NULL,"162",NULL,NULL
+"146","Circuito del Misterio #84","2024-08-02 11:43:19","publish","QUO-189","2","1722624199","$56,500.00","0","1000","148",NULL,NULL
+"145","Gricelda rendon navarro - Paseo san isidro 14 col paseo san Angel","2024-08-06 12:20:39","publish","QUO-188","2","1722972039","$16,000.00","0",NULL,NULL,NULL,NULL
+"143","Alejandro Durazo - Banamichi 251 colonia Lopez Portillo","2024-08-05 10:03:30","publish","QUO-187","2","1722877410","$32,000.00","0",NULL,NULL,NULL,NULL
+"142","Geovana Romandia - Abuyacab 5, Puerta Real, 7ma etapa","2024-08-02 17:30:46","publish","QUO-186","2","1722645046","$25,000.00","0",NULL,NULL,NULL,NULL
+"141","Circuito del Misterio #84","2024-08-02 11:43:19","publish","QUO-185","2","1722624199","$89,000.00","0","3500","228",NULL,NULL
+"140","José Manuel - Senlis 5, Montecarlo","2024-08-02 11:42:32","publish","QUO-184","2","1722624152","$20,700.00","0",NULL,NULL,NULL,NULL
+"139","Pueblo alegre sur 217","2024-07-31 15:35:35","publish","QUO-183","2","1722465335","$68,000.00","0",NULL,NULL,NULL,NULL
+"137","Cirio elegante 46, Nuevo Hermosillo","2024-07-27 11:02:01","publish","QUO-182","2","1722103321","$13,500.00","0",NULL,NULL,NULL,NULL
+"134","Av. Tercera del periférico 496","2024-07-24 16:34:31","publish","QUO-181","2","1721864071","$23,500.00","0",NULL,NULL,NULL,NULL
+"133","Silvia Acosta - Olivares #286 col las granjas","2024-07-24 14:57:28","publish","QUO-180","2","1721858248","$14,500.00","0",NULL,"135",NULL,NULL
+"132","Cynthia Marisol Duarte García Tigrina 8 Fracc agaves","2024-07-23 08:21:19","publish","QUO-179","2","1721748079","$13,500.00","0",NULL,NULL,NULL,NULL
+"128","Alma castro - Etchojoa 1070 Misión del arco","2024-07-20 12:56:56","publish","QUO-178","2","1721505416","$42,000.00","0","3500","129",NULL,NULL
+"127","Guadalupe Leticia morales - Col valle del portal","2024-07-20 11:51:01","publish","QUO-177","2","1721501461","$15,300.00","0",NULL,NULL,NULL,NULL
+"126","Sr millan - Circuito Almar 29","2024-07-19 16:03:58","publish","QUO-176","2","1721430238","$30,000.00","0",NULL,NULL,NULL,NULL
+"125","Paloma Castillo - Argento 89 Aurea residencial","2024-07-19 15:59:12","publish","QUO-175","2","1721429952","$70,500.00","0",NULL,NULL,NULL,NULL
+"124","Benito juarez 393, Col villa hermosa","2024-07-19 15:57:22","publish","QUO-174","2","1721429842","$18,500.00","0",NULL,"131",NULL,NULL
+"122","Brenda lemas alonso Av Elda Urbi Villa campestre","2024-07-16 17:20:28","publish","QUO-173","2","1721175628","$14,500.00","0",NULL,NULL,NULL,NULL
+"120","Beatriz Adriana Encinas Benito juarez 393, Col villa hermosa","2024-07-16 07:55:47","publish","QUO-172","2","1721141747","$19,500.00","0",NULL,NULL,NULL,NULL
+"119","Gabriela medina campillo Pechita 8 col renacimiento","2024-07-16 07:55:00","publish","QUO-171","2","1721141700","$24,500.00","0",NULL,NULL,NULL,NULL
+"118","Dulce Carolina Vásquez Ramírez Tuscania #32 Villa Bonita","2024-07-16 07:54:01","publish","QUO-170","2","1721141641","$23,000.00","0",NULL,NULL,NULL,NULL
+"117","Paseo san isidro 14 col paseo san Angel - copy - copy","2024-06-24 10:44:07","publish","QUO-169","2","1719251047","$18,400.00","0",NULL,"121",NULL,NULL
+"116","Paseo san isidro 14 col paseo san Angel - copy","2024-06-24 10:44:07","publish","QUO-168","2","1719251047","$21,000.00","0",NULL,NULL,NULL,NULL
+"113","Raquel Munguia - Constitucion 216 col ley 57","2024-07-11 12:33:33","publish","QUO-167","2","1720726413","$16,000.00","0",NULL,NULL,NULL,NULL
+"112","Johnny Sañudo - Divisaderos 97 entre perimetral y calle 3 col. Lomas de linda vista","2024-07-11 12:32:11","publish","QUO-166","2","1720726331","$27,000.00","0",NULL,NULL,NULL,NULL
+"111","Andrea contreras - Jose carmelo #228 col. balderrama","2024-07-10 11:44:42","publish","QUO-165","2","1720637082","$23,000.00","0",NULL,NULL,NULL,NULL
+"110","Mónica Chávez - Almendras 52,villa del Real","2024-07-09 13:22:54","publish","QUO-164","2","1720556574","$15,500.00","0",NULL,NULL,NULL,NULL
+"109","Rafael Valencia felix - Acacia Residencial","2024-07-09 09:20:41","publish","QUO-163","2","1720542041","$17,000.00","0",NULL,NULL,NULL,NULL
+"108","Renato Leduc 7 Los Encinos 2 Etapa 2","2024-07-08 11:59:34","publish","QUO-162","2","1720465174","$42,500.00","0",NULL,"188",NULL,NULL
+"107","xiomara vega - torralba sección 3","2024-07-06 07:57:39","publish","QUO-161","2","1720277859","$19,200.00","0",NULL,NULL,NULL,NULL
+"105","Santo Tomas 11, San Angel","2024-07-01 14:16:12","publish","QUO-160","2","1719868572","$30,000.00","0",NULL,NULL,NULL,NULL
+"102","Rita coronado - Av de los saúcos #28  fraccionamiento:arándanos","2024-06-28 11:11:37","publish","QUO-159","2","1719598297","$28,800.00","0",NULL,NULL,NULL,NULL
+"101","Paseo san isidro 14 col paseo san Angel - VENTANA","2024-06-27 12:08:43","publish","QUO-158","2","1719515323","$28,500.00","0",NULL,NULL,NULL,NULL
+"100","xiomara vega - torralba sección 3","2024-06-27 12:07:50","publish","QUO-157","2","1719515270","$27,000.00","0",NULL,NULL,NULL,NULL
+"99","Palma Takil 9","2024-06-27 12:05:01","publish","QUO-156","2","1719515101","$39,500.00","0",NULL,"103",NULL,NULL
+"98","Uriel Prado - Acacia residencial","2024-06-26 12:11:06","publish","QUO-155","2","1719429066","$35,200.00","0",NULL,NULL,NULL,NULL
+"97","Calle cuple # 1 Belcanto Residencial","2024-06-25 15:08:44","publish","QUO-154","2","1719353324","$32,500.00","0",NULL,NULL,NULL,NULL
+"96","Los cantaros 12 Col Portal del Pitic","2024-06-25 10:48:29","publish","QUO-153","2","1719337709","$16,500.00","0",NULL,NULL,NULL,NULL
+"94","Malaga 16 A, Lomas","2024-06-24 11:59:00","publish","QUO-152","2","1719255540","$18,000.00","0",NULL,NULL,NULL,NULL
+"93","Paseo san isidro 14 col paseo san Angel","2024-06-24 10:44:07","publish","QUO-151","2","1719251047","$27,300.00","0",NULL,NULL,NULL,NULL
+"92","Paseo del Cid residencial","2024-06-24 09:57:33","draft",,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+"91","Av, Bazille 29 Col Monet","2024-06-24 09:56:21","publish","QUO-150","2","1719248181","$17,100.00","0",NULL,NULL,NULL,NULL
+"89","Martirez de Cananea 18","2024-06-20 14:53:59","publish","QUO-149","2","1718920439","$42,000.00","0",NULL,NULL,NULL,NULL
+"88","Calle Calafia col. VILLA Merlot","2024-06-20 09:52:27","publish","QUO-148","2","1718902347","$16,200.00","0",NULL,NULL,NULL,NULL
+"87","Roseta 2, Aurea - EXTRAS - copy","2024-06-18 12:14:41","publish","147","2","1713390798","$64,500.00","0",NULL,NULL,NULL,NULL
+"84","Jesus Montijo - Real del Carmen","2024-06-11 15:28:39","publish","QUO-146","2","1718144919","$15,300.00","0",NULL,NULL,NULL,NULL
+"83","Aldama no.4 entre san luis potosi y zacatecas","2024-06-11 15:26:55","publish","QUO-145","2","1718144815","$26,200.00","0",NULL,NULL,NULL,NULL
+"82","Cataleya Sanchez - Calle Rodas. Residencial Peñasco","2024-06-11 07:32:02","publish","QUO-144","2","1718116322","$20,500.00","0",NULL,NULL,NULL,NULL
+"81","Sostenes Rocha 782 colonia virreyes","2024-06-08 11:45:36","publish","QUO-143","2","1717872336","$25,000.00","0",NULL,NULL,NULL,NULL
+"80","Bacerac 172 entre reyes y yañez,  Lopez portillo","2024-06-07 15:06:08","publish","QUO-142","2","1717797968","$18,000.00","0",NULL,NULL,NULL,NULL
+"79","Hacienda de la flor  Arturo Molina #16 ávenida de campo","2024-06-06 14:29:31","publish","QUO-141","2","1717709371","$25,000.00","0",NULL,NULL,NULL,NULL
+"77","Altaria Residencial , Sec Valencia","2024-06-05 16:31:14","publish","QUO-140","2","1717630274","$20,500.00","0",NULL,NULL,NULL,NULL
+"75","Rancho Viejo 785","2024-06-04 12:36:00","publish","QUO-139","2","1717529760","$40,000.00","0",NULL,NULL,NULL,NULL
+"74","Cerrada de las avellanas 41 b villa del Real","2024-06-04 12:20:02","publish","QUO-138","2","1717528802","$25,000.00","0",NULL,NULL,NULL,NULL
+"73","Circuito carpatos #161 en la Cima 2da sección","2024-06-03 10:35:53","publish","QUO-137","2","1717436153","$40,500.00","0",NULL,NULL,NULL,NULL
+"72","Circuito carpatos #161 en la Cima 2da sección","2024-06-03 10:14:29","publish","QUO-136","2","1717434869","$82,000.00","0",NULL,NULL,NULL,NULL
+"71","Misterio 77 col. El secreto","2024-06-03 10:13:18","publish","QUO-135","2","1717434798","$16,500.00","0",NULL,NULL,NULL,NULL
+"69","Arcelia Moraga 96 col villas de Cortés","2024-06-03 10:12:28","publish","QUO-134","2","1717434748","$25,000.00","0",NULL,NULL,NULL,NULL
+"68","Ixchel Flores San Francisco residencial","2024-05-31 14:41:22","publish","QUO-133","2","1717191682","$26,500.00","0",NULL,NULL,NULL,NULL
+"67","Raul Verduzco - Campo Grande","2024-05-31 14:40:14","publish","QUO-132","2","1717191614","$26,500.00","0",NULL,NULL,NULL,NULL
+"66","Nicole Garzon ortega - mision del sol","2024-05-31 14:39:23","publish","QUO-131","2","1717191563","$28,000.00","0",NULL,NULL,NULL,NULL
+"65","Milpas viejas #26 Colonia nuevo Hermosillo","2024-05-31 14:38:22","publish","QUO-130","2","1717191502","$14,000.00","0",NULL,NULL,NULL,NULL
+"64","Cuarta de periférico #352 hillo, Sonora","2024-05-31 14:37:12","publish","QUO-129","2","1717191432","$35,500.00","0",NULL,NULL,NULL,NULL
+"63","Circuito carpatos #161 en la Cima 2da sección","2024-05-30 15:30:48","publish","QUO-128","2","1717108248","$59,500.00","0",NULL,NULL,NULL,NULL
+"62","Massarossa pte 10, Villa Bonita","2024-05-30 12:42:17","publish","QUO-127","2","1717098137","$23,500.00","0",NULL,NULL,NULL,NULL
+"61","Hermenegildo Peña 119, Colonia Hacienda de la flor","2024-05-30 10:08:04","publish","QUO-126","2","1717088884","$15,300.00","0",NULL,NULL,NULL,NULL
+"60","Cerrada Sucillo #13, Puerta Real, Séptima etapa","2024-05-29 15:40:32","publish","QUO-125","2","1717022432","$16,000.00","0",NULL,NULL,NULL,NULL
+"59","Privada Royan No. 6 Montecarlo Residencial","2024-05-29 15:34:43","publish","QUO-124","2","1717022083","$25,000.00","0",NULL,NULL,NULL,NULL
+"58","Caridad esquina con san marcial Colonia San Luis","2024-05-29 11:42:01","publish","QUO-123","2","1717008121","$22,000.00","0",NULL,NULL,NULL,NULL
+"55","Tonatiuh #295 col. Valle del marquez","2024-05-28 11:23:01","publish","QUO-122","2","1716920581","$25,000.00","0",NULL,"56",NULL,NULL
+"54","Rosina 3 col Áurea","2024-05-23 14:41:05","publish","QUO-121","2","1716500465","$42,000.00","0",NULL,NULL,NULL,NULL
+"29","Strozzi 63, Villa Bonita","2024-04-30 15:02:57","publish","QUO-119","2","1714514577","$60,200.00","0",NULL,NULL,NULL,NULL
+"27","Privada Rocarraso 4, Villa Bonita","2024-04-26 16:02:54","publish","QUO-118","2","1714172574","$27,300.00","0",NULL,"30",NULL,NULL
+"26","Cosala 56, Emiliano Zapata","2024-04-25 17:25:16","publish","QUO-117","2","1714091116","$32,800.00","0",NULL,"123",NULL,NULL
+"25","Carbonia 14, Villa Bonita","2024-04-24 06:56:06","publish","QUO-116","2","1713966966","$34,500.00","0",NULL,NULL,NULL,NULL
+"20","Roseta 2, Aurea - EXTRAS","2024-04-17 14:53:18","publish","QUO-115","2","1713390798","$64,500.00","0",NULL,NULL,NULL,NULL
+"19","Roseta 2, Aurea","2024-04-17 14:40:53","publish","QUO-114","2","1713390053","$53,000.00","0",NULL,"31",NULL,NULL
+"17","San Felipe 175A","2024-04-13 08:11:26","publish","QUO-113","2","1713021086","$87,000.00","0",NULL,NULL,NULL,NULL
+"10","prueba 2","2024-03-13 10:51:45","publish","QUO-112","2","1710352305","$17,325.00","10",NULL,NULL,NULL,NULL
+"8","prueba","2024-03-13 09:57:52","publish","QUO-0111","2","1710349072","$99.00","10",NULL,NULL,NULL,NULL
