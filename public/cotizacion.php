@@ -633,7 +633,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <?php if ($cot['impuesto_modo'] !== 'ninguno'): ?>
     <div class="tr"><span class="tl"><?= e($cot['impuesto_label'] ?: ($cot['emp_impuesto_label'] ?? 'IVA')) ?> (<?= (float)$cot['impuesto_pct'] ?>%)</span><span class="tv"><?= fmt_pub($impuesto_amt) ?></span></div>
     <?php endif; ?>
-    <div class="tr tf"><span class="tl">Total</span><span class="tv" id="tTot"><?= fmt_pub($cot['total']) ?></span></div>
+    <div class="tr tf"><span class="tl">Total</span><span class="tv" id="tTot"><?= fmt_pub($total_base) ?></span></div>
   </div>
 
   <!-- CRONÓMETRO descuento automático -->
@@ -645,7 +645,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
         <div>
           <div class="adc-ey">Oferta por tiempo limitado</div>
           <div class="adc-or" id="adcOr"><?= fmt_pub($subtotal) ?></div>
-          <div class="adc-nw" id="adcNw"><?= fmt_pub($cot['total']) ?></div>
+          <div class="adc-nw" id="adcNw"><?= fmt_pub($total_base) ?></div>
         </div>
         <div class="adc-pc" id="adcPc">-<?= number_format($adc_pct,0) ?>%</div>
       </div>
