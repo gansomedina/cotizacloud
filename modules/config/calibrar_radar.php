@@ -8,20 +8,28 @@ defined('COTIZAAPP') or die;
 Auth::requerir_admin();
 require_once MODULES_PATH . '/radar/Radar.php';
 
-header('Content-Type: application/json');
+ob_start();
+header('Content-Type: application/json; charset=utf-8');
 
-$resultado = Radar::calibrar(EMPRESA_ID);
-if (!$resultado['ok']) {
-    echo json_encode(['ok' => false, 'error' => $resultado['msg']]);
-    exit;
+try {
+    $resultado = Radar::calibrar(EMPRESA_ID);
+    if (!$resultado['ok']) {
+        ob_end_clean();
+        echo json_encode(['ok' => false, 'error' => $resultado['msg']]);
+        exit;
+    }
+
+    // Recalcular scores con nueva calibración
+    Radar::recalcular_empresa(EMPRESA_ID);
+
+    ob_end_clean();
+    echo json_encode([
+        'ok'              => true,
+        'tasa_base'       => $resultado['global_rate'] ?? 0,
+        'total_cots'      => $resultado['total'] ?? 0,
+        'ventas_cerradas' => $resultado['cierres'] ?? 0,
+    ]);
+} catch (Throwable $e) {
+    ob_end_clean();
+    echo json_encode(['ok' => false, 'error' => DEBUG ? $e->getMessage() : 'Error al calibrar']);
 }
-
-// Recalcular scores con nueva calibración
-Radar::recalcular_empresa(EMPRESA_ID);
-
-echo json_encode([
-    'ok'            => true,
-    'tasa_base'     => $resultado['tasa_base'],
-    'total_cots'    => $resultado['total_cots'],
-    'ventas_cerradas'=> $resultado['ventas_cerradas'],
-]);
