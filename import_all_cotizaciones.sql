@@ -1,6 +1,6 @@
 -- ============================================================
 -- CotizaCloud: import cotizaciones from WordPress
--- Generated: 2026-03-15 19:55:58
+-- Generated: 2026-03-15 19:58:20
 -- Rows: 830  (accepted: 113, drafts: 3, enviada: 714)
 -- ============================================================
 
@@ -149,7 +149,7 @@ INSERT IGNORE INTO `cotizaciones` (`numero`, `empresa_id`, `cliente_id`, `usuari
 INSERT IGNORE INTO `cotizaciones` (`numero`, `empresa_id`, `cliente_id`, `usuario_id`, `cupon_id`, `titulo`, `slug`, `token`, `descripcion`, `notas_internas`, `notas_cliente`, `subtotal`, `cupon_pct`, `cupon_codigo`, `cupon_amt`, `impuesto_pct`, `impuesto_modo`, `impuesto_amt`, `total`, `estado`, `motivo_rechazo`, `enviada_at`, `vista_at`, `accion_at`, `aceptada_at`, `rechazada_at`, `rechazada_motivo`, `valida_hasta`, `ultima_vista_at`, `radar_bucket`, `radar_score`, `radar_senales`, `radar_updated_at`, `created_at`, `updated_at`, `visitas`, `descuento_auto_activo`, `descuento_auto_pct`, `descuento_auto_dias`, `descuento_auto_expira`, `descuento_auto_amt`, `cupon_monto`) VALUES ('QUO-815', 2, 2, 2, NULL, 'Veronica Valencia Privada Modica 17 villa bonita 5216624228385', 'imp-quo-815-1097', '94113b36d6db4e7c1561e9c8309b6ea07086fddf90a224f1cde789a8816cf4e3', NULL, NULL, NULL, 22000, 0, NULL, 0, 0, 'ninguno', 0, 22000, 'enviada', NULL, '2026-01-12 12:36:45', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-12 12:36:45', '2026-01-12 12:36:45', 0, 0, 0, 3, NULL, 0, 0);
 INSERT IGNORE INTO `cotizaciones` (`numero`, `empresa_id`, `cliente_id`, `usuario_id`, `cupon_id`, `titulo`, `slug`, `token`, `descripcion`, `notas_internas`, `notas_cliente`, `subtotal`, `cupon_pct`, `cupon_codigo`, `cupon_amt`, `impuesto_pct`, `impuesto_modo`, `impuesto_amt`, `total`, `estado`, `motivo_rechazo`, `enviada_at`, `vista_at`, `accion_at`, `aceptada_at`, `rechazada_at`, `rechazada_motivo`, `valida_hasta`, `ultima_vista_at`, `radar_bucket`, `radar_score`, `radar_senales`, `radar_updated_at`, `created_at`, `updated_at`, `visitas`, `descuento_auto_activo`, `descuento_auto_pct`, `descuento_auto_dias`, `descuento_auto_expira`, `descuento_auto_amt`, `cupon_monto`) VALUES ('QUO-814', 2, 2, 2, NULL, 'Yahel Morales Ruiz 6621113601', 'imp-quo-814-1096', '1fae874ce10387a410176b6c069311bc53a7491821e9485fd40626b75953daa1', NULL, NULL, NULL, 23900, 0, NULL, 0, 0, 'ninguno', 0, 23900, 'enviada', NULL, '2026-01-12 12:32:10', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-12 12:32:10', '2026-01-12 12:32:10', 0, 0, 0, 3, NULL, 0, 0);
 INSERT IGNORE INTO `cotizaciones` (`numero`, `empresa_id`, `cliente_id`, `usuario_id`, `cupon_id`, `titulo`, `slug`, `token`, `descripcion`, `notas_internas`, `notas_cliente`, `subtotal`, `cupon_pct`, `cupon_codigo`, `cupon_amt`, `impuesto_pct`, `impuesto_modo`, `impuesto_amt`, `total`, `estado`, `motivo_rechazo`, `enviada_at`, `vista_at`, `accion_at`, `aceptada_at`, `rechazada_at`, `rechazada_motivo`, `valida_hasta`, `ultima_vista_at`, `radar_bucket`, `radar_score`, `radar_senales`, `radar_updated_at`, `created_at`, `updated_at`, `visitas`, `descuento_auto_activo`, `descuento_auto_pct`, `descuento_auto_dias`, `descuento_auto_expira`, `descuento_auto_amt`, `cupon_monto`) VALUES ('QUO-813', 2, 2, 2, NULL, 'Martha Aide Urias Ave.Once 54 Sacramento Residencial 6621400648', 'imp-quo-813-1095', '5b07839e2cc1aff1c91627d88afe24f2ffa1090ccff0da22674f97332b7b1653', NULL, NULL, NULL, 24400, 0, NULL, 0, 0, 'ninguno', 0, 24400, 'enviada', NULL, '2026-01-12 12:23:45', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-12 12:23:45', '2026-01-12 12:23:45', 0, 0, 0, 3, NULL, 0, 0);
-INSERT IGNORE INTO `cotizaciones` (`numero`, `empresa_id`, `cliente_id`, `usuario_id`, `cupon_id`, `titulo`, `slug`, `token`, `descripcion`, `notas_internas`, `notas_cliente`, `subtotal`, `cupon_pct`, `cupon_codigo`, `cupon_amt`, `impuesto_pct`, `impuesto_modo`, `impuesto_amt`, `total`, `estado`, `motivo_rechazo`, `enviada_at`, `vista_at`, `accion_at`, `aceptada_at`, `rechazada_at`, `rechazada_motivo`, `valida_hasta`, `ultima_vista_at`, `radar_bucket`, `radar_score`, `radar_senales`, `radar_updated_at`, `created_at`, `updated_at`, `visitas`, `descuento_auto_activo`, `descuento_auto_pct`, `descuento_auto_dias`, `descuento_auto_expira`, `descuento_auto_amt`, `cupon_monto`) VALUES ('QUO-WP-1077', 2, 2, 2, NULL, 'Jades Aguilar Castillo Privada del Razo núm 17, Col Casa Blanca 5216622050063', 'imp-quo-wp-1077-1077', '03fac268fa5cf5df55eea2d498d4293a723d71babd70dab198b35ce57a26cda5', NULL, NULL, NULL, 57350, 0, NULL, 0, 0, 'ninguno', 0, 57350, 'aceptada', NULL, '2026-01-10 10:36:16', '1970-01-01 00:33:46', '2026-01-10 10:36:16', '2026-01-10 10:36:16', NULL, NULL, NULL, '1970-01-01 00:33:46', NULL, NULL, NULL, NULL, '2026-01-10 10:36:16', '2026-01-10 10:36:16', 0, 0, 0, 3, NULL, 0, 0);
+INSERT IGNORE INTO `cotizaciones` (`numero`, `empresa_id`, `cliente_id`, `usuario_id`, `cupon_id`, `titulo`, `slug`, `token`, `descripcion`, `notas_internas`, `notas_cliente`, `subtotal`, `cupon_pct`, `cupon_codigo`, `cupon_amt`, `impuesto_pct`, `impuesto_modo`, `impuesto_amt`, `total`, `estado`, `motivo_rechazo`, `enviada_at`, `vista_at`, `accion_at`, `aceptada_at`, `rechazada_at`, `rechazada_motivo`, `valida_hasta`, `ultima_vista_at`, `radar_bucket`, `radar_score`, `radar_senales`, `radar_updated_at`, `created_at`, `updated_at`, `visitas`, `descuento_auto_activo`, `descuento_auto_pct`, `descuento_auto_dias`, `descuento_auto_expira`, `descuento_auto_amt`, `cupon_monto`) VALUES ('QUO-WP-1077', 2, 2, 2, NULL, 'Jades Aguilar Castillo Privada del Razo núm 17, Col Casa Blanca 5216622050063', 'imp-quo-wp-1077-1077', '03fac268fa5cf5df55eea2d498d4293a723d71babd70dab198b35ce57a26cda5', NULL, NULL, NULL, 57350, 0, NULL, 0, 0, 'ninguno', 0, 57350, 'aceptada', NULL, '2026-01-10 10:36:16', '2026-01-10 23:24:48', '2026-01-10 10:36:16', '2026-01-10 10:36:16', NULL, NULL, NULL, '2026-01-10 23:25:19', NULL, NULL, NULL, NULL, '2026-01-10 10:36:16', '2026-01-10 10:36:16', 0, 0, 0, 3, NULL, 0, 0);
 INSERT IGNORE INTO `cotizaciones` (`numero`, `empresa_id`, `cliente_id`, `usuario_id`, `cupon_id`, `titulo`, `slug`, `token`, `descripcion`, `notas_internas`, `notas_cliente`, `subtotal`, `cupon_pct`, `cupon_codigo`, `cupon_amt`, `impuesto_pct`, `impuesto_modo`, `impuesto_amt`, `total`, `estado`, `motivo_rechazo`, `enviada_at`, `vista_at`, `accion_at`, `aceptada_at`, `rechazada_at`, `rechazada_motivo`, `valida_hasta`, `ultima_vista_at`, `radar_bucket`, `radar_score`, `radar_senales`, `radar_updated_at`, `created_at`, `updated_at`, `visitas`, `descuento_auto_activo`, `descuento_auto_pct`, `descuento_auto_dias`, `descuento_auto_expira`, `descuento_auto_amt`, `cupon_monto`) VALUES ('QUO-810', 2, 2, 2, NULL, 'Samir Ochoa 6621391597', 'imp-quo-810-1072', 'b64accf2e3d583d9f8bca1d0cc70819785aa64ee3f18e83d32b1293317667444', NULL, NULL, NULL, 37150, 0, NULL, 0, 0, 'ninguno', 0, 37150, 'aceptada', NULL, '2026-01-09 09:24:15', NULL, '2026-01-09 09:24:15', '2026-01-09 09:24:15', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-09 09:24:15', '2026-01-09 09:24:15', 0, 0, 0, 3, NULL, 0, 0);
 INSERT IGNORE INTO `cotizaciones` (`numero`, `empresa_id`, `cliente_id`, `usuario_id`, `cupon_id`, `titulo`, `slug`, `token`, `descripcion`, `notas_internas`, `notas_cliente`, `subtotal`, `cupon_pct`, `cupon_codigo`, `cupon_amt`, `impuesto_pct`, `impuesto_modo`, `impuesto_amt`, `total`, `estado`, `motivo_rechazo`, `enviada_at`, `vista_at`, `accion_at`, `aceptada_at`, `rechazada_at`, `rechazada_motivo`, `valida_hasta`, `ultima_vista_at`, `radar_bucket`, `radar_score`, `radar_senales`, `radar_updated_at`, `created_at`, `updated_at`, `visitas`, `descuento_auto_activo`, `descuento_auto_pct`, `descuento_auto_dias`, `descuento_auto_expira`, `descuento_auto_amt`, `cupon_monto`) VALUES ('QUO-809', 2, 2, 2, NULL, 'Jades Aguilar Castillo Privada del Razo núm 17, Col Casa Blanca 5216622050063', 'imp-quo-809-1070', '2c4f5f80114330fd36cf1137a30a3a993c4c849b0bb6458ba84f05d4aa25c3e8', NULL, NULL, NULL, 57350, 0, NULL, 0, 0, 'ninguno', 0, 57350, 'aceptada', NULL, '2026-01-09 09:16:47', NULL, '2026-01-09 09:16:47', '2026-01-09 09:16:47', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-09 09:16:47', '2026-01-09 09:16:47', 0, 0, 0, 3, NULL, 0, 0);
 INSERT IGNORE INTO `cotizaciones` (`numero`, `empresa_id`, `cliente_id`, `usuario_id`, `cupon_id`, `titulo`, `slug`, `token`, `descripcion`, `notas_internas`, `notas_cliente`, `subtotal`, `cupon_pct`, `cupon_codigo`, `cupon_amt`, `impuesto_pct`, `impuesto_modo`, `impuesto_amt`, `total`, `estado`, `motivo_rechazo`, `enviada_at`, `vista_at`, `accion_at`, `aceptada_at`, `rechazada_at`, `rechazada_motivo`, `valida_hasta`, `ultima_vista_at`, `radar_bucket`, `radar_score`, `radar_senales`, `radar_updated_at`, `created_at`, `updated_at`, `visitas`, `descuento_auto_activo`, `descuento_auto_pct`, `descuento_auto_dias`, `descuento_auto_expira`, `descuento_auto_amt`, `cupon_monto`) VALUES ('QUO-808', 2, 2, 2, NULL, 'Zulema Avechuco Ignacio hernandez 428, col olivares 6621469635', 'imp-quo-808-1068', '65f84bf8b56261b0ce3e62d2b3ad9a08d03f56a65e7d14916147942ca112d91f', NULL, NULL, NULL, 50800, 0, NULL, 0, 0, 'ninguno', 0, 50800, 'enviada', NULL, '2026-01-08 17:02:05', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-01-08 17:02:05', '2026-01-08 17:02:05', 0, 0, 0, 3, NULL, 0, 0);
@@ -844,12 +844,54 @@ INSERT IGNORE INTO `cotizaciones` (`numero`, `empresa_id`, `cliente_id`, `usuari
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- Summary: 830 rows imported.
--- NOTE: 113 rows marked 'aceptada' (had invoice_id in WP).
--- The remaining ~711 published quotes are marked 'enviada'.
--- If you have the list of WP IDs that were truly 'Accepted' or 'Declined'
--- from wp_term_relationships, update them with:
---   UPDATE cotizaciones SET estado='aceptada', aceptada_at=created_at
---     WHERE slug IN ('imp-quo-XXX-YYY', ...);
---   UPDATE cotizaciones SET estado='rechazada', rechazada_at=created_at
---     WHERE slug IN ('imp-quo-XXX-YYY', ...);
+-- Summary: 830 rows imported (all initially as 'enviada').
+-- Then UPDATE sets 111 as 'aceptada' and 5 as 'rechazada' per WP term_relationships.
+-- Expected result: 111 aceptada + 5 rechazada + 714 enviada = 830 total.
+-- Target close rate: ~13% (111/830).
+-- ============================================================
+-- UPDATE estados from wp_term_relationships (111 accepted, 5 declined)
+-- ============================================================
+
+-- First: reset all imported cotizaciones to 'enviada' (some INSERTs had 'aceptada' from invoice_id,
+-- but the authoritative source is wp_term_relationships)
+UPDATE cotizaciones SET estado='enviada', aceptada_at=NULL
+WHERE empresa_id=2 AND slug LIKE 'imp-quo-%';
+
+-- 111 Accepted → estado='aceptada'
+UPDATE cotizaciones SET estado='aceptada', aceptada_at=COALESCE(aceptada_at, created_at)
+WHERE empresa_id=2 AND slug IN (
+  'imp-quo-114-19','imp-quo-117-26','imp-quo-118-27','imp-quo-122-55',
+  'imp-quo-156-99','imp-quo-162-108','imp-quo-169-117','imp-quo-174-124',
+  'imp-quo-178-128','imp-quo-180-133','imp-quo-185-141','imp-quo-189-146',
+  'imp-quo-190-149','imp-quo-195-154','imp-quo-219-184','imp-quo-240-212',
+  'imp-quo-259-237','imp-quo-261-239','imp-quo-263-244','imp-quo-266-249',
+  'imp-quo-271-256','imp-quo-272-257','imp-quo-273-259','imp-quo-280-270',
+  'imp-quo-281-271','imp-quo-285-276','imp-quo-291-286','imp-quo-297-295',
+  'imp-quo-307-311','imp-quo-318-326','imp-quo-324-334','imp-quo-333-344',
+  'imp-quo-335-348','imp-quo-336-414','imp-quo-366-456','imp-quo-84-477',
+  'imp-quo-386-483','imp-quo-387-484','imp-quo-388-488','imp-quo-391-494',
+  'imp-quo-396-500','imp-quo-399-505','imp-quo-400-512','imp-quo-403-516',
+  'imp-quo-404-517','imp-quo-405-520','imp-quo-412-529','imp-quo-415-533',
+  'imp-quo-425-547','imp-quo-426-550','imp-quo-431-556','imp-quo-466-593',
+  'imp-quo-485-616','imp-quo-498-631','imp-quo-499-633','imp-quo-506-642',
+  'imp-quo-515-671','imp-quo-525-682','imp-quo-538-700','imp-quo-541-703',
+  'imp-quo-543-707','imp-quo-550-718','imp-quo-551-719','imp-quo-170-725',
+  'imp-quo-554-728','imp-quo-559-740','imp-quo-563-745','imp-quo-564-746',
+  'imp-quo-569-752','imp-quo-571-756','imp-quo-579-769','imp-quo-606-804',
+  'imp-quo-608-806','imp-quo-610-808','imp-quo-612-811','imp-quo-624-825',
+  'imp-quo-625-826','imp-quo-634-841','imp-quo-644-855','imp-quo-216-860',
+  'imp-quo-660-874','imp-quo-661-876','imp-quo-689-907','imp-quo-703-923',
+  'imp-quo-243-933','imp-quo-708-939','imp-quo-713-947','imp-quo-718-953',
+  'imp-quo-722-957','imp-quo-256-960','imp-quo-725-965','imp-quo-729-972',
+  'imp-quo-743-989','imp-quo-762-1013','imp-quo-788-1043','imp-quo-807-1066',
+  'imp-quo-809-1070','imp-quo-810-1072','imp-quo-302-1077','imp-quo-846-1135',
+  'imp-quo-849-1139','imp-quo-866-1159','imp-quo-893-1192','imp-quo-894-1195',
+  'imp-quo-899-1202','imp-quo-911-1216','imp-quo-915-1220','imp-quo-924-1236',
+  'imp-quo-925-1237','imp-quo-934-1254','imp-quo-944-1266'
+);
+
+-- 5 Declined → estado='rechazada'
+UPDATE cotizaciones SET estado='rechazada', rechazada_at=COALESCE(rechazada_at, created_at)
+WHERE empresa_id=2 AND slug IN (
+  'imp-quo-173-122','imp-quo-199-160','imp-quo-290-284','imp-quo-738-983','imp-quo-884-1180'
+);

@@ -112,14 +112,14 @@ foreach ($rows as $r) {
     $enviada_at = ($estado !== 'borrador') ? $post_date : null;
     $aceptada_at = ($estado === 'aceptada') ? $post_date : null;
 
-    // last_view_ts / first_view_ts are Unix timestamps or "NULL"
+    // last_view_ts / first_view_ts are datetime strings or "NULL"
     $ultima_vista = null;
     if ($last_view !== 'NULL' && $last_view !== '' && $last_view !== null) {
-        $ultima_vista = date('Y-m-d H:i:s', intval($last_view));
+        $ultima_vista = $last_view;  // already "Y-m-d H:i:s"
     }
     $vista_at = null;
     if ($first_view !== 'NULL' && $first_view !== '' && $first_view !== null) {
-        $vista_at = date('Y-m-d H:i:s', intval($first_view));
+        $vista_at = $first_view;     // already "Y-m-d H:i:s"
     }
 
     // --- Build INSERT ---
