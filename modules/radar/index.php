@@ -46,13 +46,15 @@ if (!$ult || $ult < date('Y-m-d H:i:s', time()-60) || $_icons_missing > 0) {
 $uw = $uid_filtro ? "AND c.usuario_id=$uid_filtro" : '';
 $stats = DB::row(
     "SELECT COUNT(*) AS total,
-            SUM(c.estado='aceptada') AS aceptadas
+            SUM(c.estado IN ('aceptada','convertida')) AS aceptadas,
+            (SELECT COUNT(*) FROM ventas v WHERE v.empresa_id=c.empresa_id AND v.estado != 'cancelada') AS ventas
      FROM cotizaciones c
-     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada','rechazada') $uw",
+     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada','rechazada','convertida','aceptada_cliente') $uw",
     [$empresa_id]
 );
 $stat_total     = (int)($stats['total'] ?? 0);
-$stat_aceptadas = (int)($stats['aceptadas'] ?? 0);
+$stat_ventas    = (int)($stats['ventas'] ?? 0);
+$stat_aceptadas = max((int)($stats['aceptadas'] ?? 0), $stat_ventas);
 $stat_cierre    = $stat_total > 0 ? round(100 * $stat_aceptadas / $stat_total, 2) : 0;
 
 // Cargar cotizaciones
@@ -310,7 +312,7 @@ ob_start();
   <div>
     <h1 style="font:800 22px var(--body);letter-spacing:-.02em">📡 Radar</h1>
     <p style="font:400 13px var(--body);color:var(--t3);margin-top:3px">
-      Total: <?= $stat_total ?> · Aceptadas: <?= $stat_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
+      Total: <?= $stat_total ?> · Ventas: <?= $stat_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
     </p>
   </div>
   <?php if ($debug_mode): ?><span style="padding:4px 10px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font:700 11px var(--body);color:#92400e">DEBUG ON</span><?php endif; ?>
@@ -328,7 +330,7 @@ ob_start();
   </div>
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv"><?= $stat_aceptadas ?></div>
-    <div class="rdr-sl">✅ Aceptadas</div>
+    <div class="rdr-sl">✅ Ventas</div>
   </div>
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv"><?= $cierre_pct ?>%</div>
