@@ -561,11 +561,11 @@ function rTab(id,btn){
 function setModo(modo,el){
   document.querySelectorAll('.modo-opt').forEach(e=>e.classList.remove('sel'));
   el.classList.add('sel');
-  fetch('/radar/config',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_R},body:JSON.stringify({sensibilidad:modo})})
+  fetch('/config/radar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_R},body:JSON.stringify({sensibilidad:modo})})
     .then(()=>location.reload());
 }
 function togCfg(k,v){
-  fetch('/radar/config',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_R},body:JSON.stringify({[k]:v})});
+  fetch('/config/radar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_R},body:JSON.stringify({[k]:v})});
 }
 async function delIp(id,btn){
   if(!confirm('¿Quitar esta IP?')) return;
