@@ -106,6 +106,7 @@ $BM = [
     'regreso'          => ['🟣','#6d28d9','#ede9fe','Regreso'],
     'comparando'       => ['🔘','#94a3b8','#f1f5f9','Comparando'],
     'enfriandose'      => ['🔵','#0284c7','#e0f2fe','Enfriándose'],
+    'no_abierta'       => ['❌','#dc2626','#fef2f2','No abierta'],
 ];
 function rbadge(?string $b,?int $sc,array $BM): string {
     if(!$b) return '<span style="color:var(--t3);font-size:11px">—</span>';
@@ -118,7 +119,7 @@ function rbadge(?string $b,?int $sc,array $BM): string {
 $PRIO = ['onfire','inminente','probable_cierre','decision_activa','validando_precio',
          'prediccion_alta','re_enganche','multi_persona','revision_profunda',
          'alto_importe','vistas_multiples','hesitacion','sobre_analisis',
-         'revivio','regreso','comparando','enfriandose'];
+         'revivio','regreso','comparando','enfriandose','no_abierta'];
 
 $buckets = array_fill_keys($PRIO, []);
 $activos48 = [];
@@ -207,7 +208,16 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $rc = $ago<1800?'hot30':($ago<14400?'hot4h':'');
         $ab = $r['accepted']?"<span class='bok'>ACCEPTED</span>":"<span class='bno'>".$r['estado']."</span>";
         echo "<tr class='$rc'>";
-        echo "<td><div class='rtit'>".htmlspecialchars($r['titulo'])."</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></td>";
+        $r_icons = $r['senales']['icons'] ?? [];
+        $r_ico_str = '';
+        if (!empty($r_icons['coupon']))     $r_ico_str .= '🎟️';
+        if (!empty($r_icons['promo']))      $r_ico_str .= '💣';
+        if (!empty($r_icons['price']))      $r_ico_str .= '💸';
+        if (!empty($r_icons['sv_price']))   $r_ico_str .= '👤';
+        if (!empty($r_icons['mv_price']))   $r_ico_str .= '👥';
+        if (!empty($r_icons['not_opened'])) $r_ico_str .= '❌';
+        $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo']);
+        echo "<td><div class='rtit'>{$r_title_show}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></td>";
         if ($motivo) echo "<td><span class='rmot'>".htmlspecialchars($r['reason']??'')."</span></td>";
         echo "<td class='tc'>$ab</td>";
         echo "<td class='tr'><b>".number_format($r['fit_pct'],1)."%</b></td>";
