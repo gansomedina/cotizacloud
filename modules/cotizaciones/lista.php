@@ -8,6 +8,16 @@ $usuario    = Auth::usuario();
 $empresa    = Auth::empresa();
 $empresa_id = EMPRESA_ID;
 
+// Recalcular radar si los datos no tienen icons (migración one-time) o >5 min sin actualizar
+require_once MODULES_PATH . '/radar/Radar.php';
+$_radar_needs_update = (int)DB::val(
+    "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND radar_bucket IS NOT NULL AND (radar_senales IS NULL OR radar_senales NOT LIKE '%icons%')",
+    [$empresa_id]
+);
+if ($_radar_needs_update > 0) {
+    try { Radar::recalcular_empresa($empresa_id); } catch (Throwable $e) {}
+}
+
 $estado   = $_GET['estado']  ?? 'todas';
 $busqueda = trim($_GET['q']  ?? '');
 $orden    = $_GET['orden']   ?? 'reciente';
