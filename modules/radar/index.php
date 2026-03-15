@@ -43,7 +43,11 @@ $uw = $uid_filtro ? "AND c.usuario_id=$uid_filtro" : '';
 $raw = DB::query(
     "SELECT c.id, c.titulo, c.numero, c.slug, c.total, c.estado,
             c.radar_score, c.radar_bucket, c.radar_senales, c.radar_updated_at,
-            c.visitas, c.ultima_vista_at, c.created_at,
+            c.visitas,
+            COALESCE(c.ultima_vista_at,
+                     (SELECT FROM_UNIXTIME(MAX(qe.ts_unix)) FROM quote_events qe WHERE qe.cotizacion_id=c.id),
+                     c.created_at) AS ultima_vista_at,
+            c.created_at,
             cl.nombre AS cnombre, cl.telefono AS ctel,
             u.nombre  AS asesor
      FROM cotizaciones c
@@ -110,8 +114,7 @@ $rows_all  = [];
 $total_all = $total_aceptadas = 0;
 
 foreach ($raw as $c) {
-    $last_ts = $c['ultima_vista_at'] ? strtotime($c['ultima_vista_at']) : 0;
-    if (!$last_ts) continue;
+    $last_ts = $c['ultima_vista_at'] ? strtotime($c['ultima_vista_at']) : strtotime($c['created_at']);
     if ($min_last && $last_ts < $min_last) continue;
 
     $score    = (int)($c['radar_score'] ?? 0);
