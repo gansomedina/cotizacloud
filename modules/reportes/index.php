@@ -130,27 +130,40 @@ $por_asesor = [];
 if ($es_admin) {
     $por_asesor = DB::query(
         "SELECT u.nombre AS asesor, u.id AS usr_id,
-                COUNT(DISTINCT v.id)                          AS num_ventas,
-                COALESCE(SUM(v.total), 0)                     AS ingresos,
-                COUNT(DISTINCT c.id)                          AS num_cots,
-                SUM(CASE WHEN c.estado IN ('aceptada','convertida') THEN 1 ELSE 0 END) AS aceptadas,
-                COALESCE(SUM(COALESCE(gv.total_gasto,0)), 0)  AS costos
+                COALESCE(sv.num_ventas, 0)  AS num_ventas,
+                COALESCE(sv.ingresos, 0)    AS ingresos,
+                COALESCE(sv.costos, 0)      AS costos,
+                COALESCE(sc.num_cots, 0)    AS num_cots,
+                COALESCE(sc.aceptadas, 0)   AS aceptadas
          FROM usuarios u
-         LEFT JOIN ventas v ON v.usuario_id=u.id AND v.empresa_id=?
-                             AND v.estado != 'cancelada'
-                             AND v.created_at BETWEEN ? AND ?
-         LEFT JOIN cotizaciones c ON c.usuario_id=u.id AND c.empresa_id=?
-                             AND c.created_at BETWEEN ? AND ?
          LEFT JOIN (
-             SELECT venta_id, SUM(importe) AS total_gasto
-             FROM gastos_venta WHERE empresa_id=? GROUP BY venta_id
-         ) gv ON gv.venta_id = v.id
+             SELECT v.usuario_id,
+                    COUNT(*)              AS num_ventas,
+                    SUM(v.total)          AS ingresos,
+                    COALESCE(SUM(gv.total_gasto), 0) AS costos
+             FROM ventas v
+             LEFT JOIN (
+                 SELECT venta_id, SUM(importe) AS total_gasto
+                 FROM gastos_venta WHERE empresa_id=?
+                 GROUP BY venta_id
+             ) gv ON gv.venta_id = v.id
+             WHERE v.empresa_id=? AND v.estado != 'cancelada'
+               AND v.created_at BETWEEN ? AND ?
+             GROUP BY v.usuario_id
+         ) sv ON sv.usuario_id = u.id
+         LEFT JOIN (
+             SELECT c.usuario_id,
+                    COUNT(*)              AS num_cots,
+                    SUM(CASE WHEN c.estado IN ('aceptada','convertida') THEN 1 ELSE 0 END) AS aceptadas
+             FROM cotizaciones c
+             WHERE c.empresa_id=? AND c.created_at BETWEEN ? AND ?
+             GROUP BY c.usuario_id
+         ) sc ON sc.usuario_id = u.id
          WHERE u.empresa_id=? AND u.activo=1
-         GROUP BY u.id, u.nombre
          ORDER BY ingresos DESC",
-        [$empresa_id, $f_ini_dt, $f_fin_dt,
+        [$empresa_id, $empresa_id, $f_ini_dt, $f_fin_dt,
          $empresa_id, $f_ini_dt, $f_fin_dt,
-         $empresa_id, $empresa_id]
+         $empresa_id]
     );
 }
 
