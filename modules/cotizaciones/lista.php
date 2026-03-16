@@ -8,16 +8,6 @@ $usuario    = Auth::usuario();
 $empresa    = Auth::empresa();
 $empresa_id = EMPRESA_ID;
 
-// Recalcular radar si los datos no tienen icons (migración one-time) o >5 min sin actualizar
-require_once MODULES_PATH . '/radar/Radar.php';
-$_radar_needs_update = (int)DB::val(
-    "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND radar_bucket IS NOT NULL AND (radar_senales IS NULL OR radar_senales NOT LIKE '%icons%')",
-    [$empresa_id]
-);
-if ($_radar_needs_update > 0) {
-    try { Radar::recalcular_empresa($empresa_id); } catch (Throwable $e) {}
-}
-
 $estado   = $_GET['estado']  ?? 'todas';
 $busqueda = trim($_GET['q']  ?? '');
 $orden    = $_GET['orden']   ?? 'reciente';
@@ -82,7 +72,7 @@ $rows = DB::query(
             END AS estado,
             c.estado AS estado_real,
             c.total, c.created_at, c.valida_hasta, c.visitas,
-            c.radar_bucket, c.radar_score, c.radar_senales,
+            c.radar_bucket, c.radar_score,
             cl.nombre AS cnombre, cl.telefono AS ctel,
             u.nombre AS asesor
      FROM cotizaciones c
@@ -365,16 +355,6 @@ foreach ($chips as $k => $lbl):
     $vis_txt = $vistas > 0 ? '👁 '.$vistas : '—';
     $radar  = radar_badge($c['radar_bucket'], (int)($c['radar_score'] ?? 0), $vistas);
     $ed_url = '/cotizaciones/'.(int)$c['id'];
-    // Extraer iconos de señales del JSON radar_senales
-    $senales_json = json_decode($c['radar_senales'] ?? '{}', true) ?: [];
-    $icons = $senales_json['icons'] ?? [];
-    $title_icons = '';
-    if (!empty($icons['coupon']))     $title_icons .= '🎟️';
-    if (!empty($icons['promo']))      $title_icons .= '💣';
-    if (!empty($icons['price']))      $title_icons .= '💸';
-    if (!empty($icons['sv_price']))   $title_icons .= '👤';
-    if (!empty($icons['mv_price']))   $title_icons .= '👥';
-    if (!empty($icons['not_opened'])) $title_icons .= '❌';
   ?>
   <div class="cot-row" id="row-<?= (int)$c['id'] ?>" onclick="toggleCot(<?= (int)$c['id'] ?>,event)">
 
@@ -383,7 +363,7 @@ foreach ($chips as $k => $lbl):
       <!-- col1 desktop: número encima del título; mobile: título+badge en una línea -->
       <span class="cot-numero-desk"><?= e($c['numero']) ?></span>
       <div class="mob-l1">
-        <div class="cot-titulo"><?= $title_icons ? $title_icons . ' ' : '' ?><?= e($c['titulo']) ?></div>
+        <div class="cot-titulo"><?= e($c['titulo']) ?></div>
         <?= st_badge($c['estado']) ?>
       </div>
       <!-- MOBILE: línea 2 — cliente · tel -->

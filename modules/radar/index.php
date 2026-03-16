@@ -32,9 +32,13 @@ $debug_mode = $es_admin && (($_GET['debug'] ?? '') === '1');
 $range_secs = ['all'=>0,'48h'=>48*3600,'4h'=>4*3600,'30m'=>30*60];
 $min_last   = ($range !== 'all' && isset($range_secs[$range])) ? time() - $range_secs[$range] : 0;
 
-// Recalcular si >1 min
+// Recalcular si >1 min o si faltan icons (migración one-time)
 $ult = DB::val("SELECT MAX(radar_updated_at) FROM cotizaciones WHERE empresa_id=?", [$empresa_id]);
-if (!$ult || $ult < date('Y-m-d H:i:s', time()-60)) {
+$_icons_missing = (int)DB::val(
+    "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND radar_bucket IS NOT NULL AND (radar_senales IS NULL OR radar_senales NOT LIKE '%\"icons\"%')",
+    [$empresa_id]
+);
+if (!$ult || $ult < date('Y-m-d H:i:s', time()-60) || $_icons_missing > 0) {
     try { Radar::check_auto_calibrar($empresa_id); Radar::recalcular_empresa($empresa_id); } catch(Throwable $e){}
 }
 
@@ -42,13 +46,15 @@ if (!$ult || $ult < date('Y-m-d H:i:s', time()-60)) {
 $uw = $uid_filtro ? "AND c.usuario_id=$uid_filtro" : '';
 $stats = DB::row(
     "SELECT COUNT(*) AS total,
-            SUM(c.estado='aceptada') AS aceptadas
+            SUM(c.estado IN ('aceptada','convertida')) AS aceptadas,
+            (SELECT COUNT(*) FROM ventas v WHERE v.empresa_id=c.empresa_id AND v.estado != 'cancelada') AS ventas
      FROM cotizaciones c
-     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada','rechazada') $uw",
+     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada','rechazada','convertida','aceptada_cliente') $uw",
     [$empresa_id]
 );
 $stat_total     = (int)($stats['total'] ?? 0);
-$stat_aceptadas = (int)($stats['aceptadas'] ?? 0);
+$stat_ventas    = (int)($stats['ventas'] ?? 0);
+$stat_aceptadas = max((int)($stats['aceptadas'] ?? 0), $stat_ventas);
 $stat_cierre    = $stat_total > 0 ? round(100 * $stat_aceptadas / $stat_total, 2) : 0;
 
 // Cargar cotizaciones
@@ -306,7 +312,7 @@ ob_start();
   <div>
     <h1 style="font:800 22px var(--body);letter-spacing:-.02em">📡 Radar</h1>
     <p style="font:400 13px var(--body);color:var(--t3);margin-top:3px">
-      Total: <?= $stat_total ?> · Aceptadas: <?= $stat_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
+      Total: <?= $stat_total ?> · Ventas: <?= $stat_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
     </p>
   </div>
   <?php if ($debug_mode): ?><span style="padding:4px 10px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font:700 11px var(--body);color:#92400e">DEBUG ON</span><?php endif; ?>
@@ -324,7 +330,7 @@ ob_start();
   </div>
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv"><?= $stat_aceptadas ?></div>
-    <div class="rdr-sl">✅ Aceptadas</div>
+    <div class="rdr-sl">✅ Ventas</div>
   </div>
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv"><?= $cierre_pct ?>%</div>
@@ -447,6 +453,10 @@ render_bkt('🔵 Enfriándose (señal exclusiva)',
     'Tuvo 4+ vistas históricas pero no se ha visto en 48h. Distingue si ya había foco en precio o no.',
     $cooling,$sort,$dir,false,true);
 
+render_bkt('❌ No abierta',
+    'Cotizaciones creadas en los últimos 7 días (con más de 24h) sin evidencia de apertura por el cliente — ni vistas externas ni eventos JS.',
+    $buckets['no_abierta'] ?? [],$sort,$dir);
+
 render_bkt('🟡 Activos 48h (todos los activos)',
     'Lista completa de todo lo visto en las últimas 48 horas',
     $activos48,$sort,$dir);
@@ -478,7 +488,17 @@ render_bkt('🟡 Activos 48h (todos los activos)',
       $ab=$r['accepted']?"<span class='bok'>ACCEPTED</span>":"<span class='bno'>".$r['estado']."</span>";
     ?>
     <tr class="<?= $rc ?>" onclick="window.location='/cotizaciones/<?= (int)$r['id'] ?>'">
-      <td><div class="rtit"><?= e($r['titulo']) ?></div><div class="rsub"><?= e($r['cliente']) ?></div></td>
+      <?php
+        $rg_icons = $r['senales']['icons'] ?? [];
+        $rg_ico = '';
+        if (!empty($rg_icons['coupon']))     $rg_ico .= '🎟️';
+        if (!empty($rg_icons['promo']))      $rg_ico .= '💣';
+        if (!empty($rg_icons['price']))      $rg_ico .= '💸';
+        if (!empty($rg_icons['sv_price']))   $rg_ico .= '👤';
+        if (!empty($rg_icons['mv_price']))   $rg_ico .= '👥';
+        if (!empty($rg_icons['not_opened'])) $rg_ico .= '❌';
+      ?>
+      <td><div class="rtit"><?= $rg_ico ? $rg_ico.' ' : '' ?><?= e($r['titulo']) ?></div><div class="rsub"><?= e($r['cliente']) ?></div></td>
       <td class="tc"><?= $ab ?></td>
       <td class="tr"><b><?= number_format($r['fit_pct'],1) ?>%</b></td>
       <td class="tr"><b><?= number_format($r['priority_pct'],1) ?>%</b></td>
