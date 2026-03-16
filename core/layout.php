@@ -14,8 +14,8 @@ $path    = Router::path();
 // Menú principal (sidebar desktop)
 $menu = [
     ['href' => '/',             'icon' => 'home',          'label' => 'Inicio'],
-    ['href' => '/cotizaciones', 'icon' => 'file-text',     'label' => 'Cotizaciones'],
     ['href' => '/clientes',     'icon' => 'users',         'label' => 'Clientes'],
+    ['href' => '/cotizaciones', 'icon' => 'file-text',     'label' => 'Cotizaciones'],
     ['href' => '/ventas',       'icon' => 'shopping-bag',  'label' => 'Ventas'],
     ['href' => '/costos',       'icon' => 'trending-down', 'label' => 'Costos'],
     ['href' => '/radar',        'icon' => 'activity',      'label' => 'Radar'],
