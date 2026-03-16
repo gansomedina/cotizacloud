@@ -1,6 +1,6 @@
 -- ============================================================
 --  CotizaCloud — Import cotizacion_lineas from WordPress
---  Generated: 2026-03-15 20:29:00
+--  Generated: 2026-03-16 17:55:18
 --  Total: 1106 items from 827 cotizaciones
 -- ============================================================
 
@@ -1670,11 +1670,6 @@ INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titu
 SELECT c.id, NULL, NULL, 2, 'REC 2: CLOSET MELAMINA STANDARD', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 19500, 19500
 FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-381-476';
 
--- WP ID: 477 / slug: imp-quo-84-477 (1 items)
-INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
-SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 15000, 15000
-FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-84-477';
-
 -- WP ID: 478 / slug: imp-quo-383-478 (1 items)
 INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
 SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 15500, 15500
@@ -2724,11 +2719,6 @@ INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titu
 SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD - 178 CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 16000, 16000
 FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-552-720';
 
--- WP ID: 725 / slug: imp-quo-170-725 (1 items)
-INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
-SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD 2 - 230CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas CIERRE LENTO (8), Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros. +', NULL, 1, 21300, 21300
-FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-170-725';
-
 -- WP ID: 728 / slug: imp-quo-554-728 (1 items)
 INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
 SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA WALK IN VESTIDOR SIN PUERTAS', 'FRENTES, BASES Y CARGADORES. (SIN PUERTAS EN MALETERO) UNA TORRE CON HASTA 5 CAJONES, PUERTA COSMETIQUERA Y REPISA INTERIOR + UNA TORRE CON REPISAS FIJAS (5) KIT DE HERRAJES Y BISAGRAS BIDIRECCIONALES, RIELES DE EXTENSION 18\" REFORZADOS, JALADERAS DE NUESTRO CATALOGO. PROFUNDIDAD STANDARD 60 CMS APROX. CAJON ADICIONAL $450. REPISAS O DISEÑO ADICIONALES, TORRES ADICIONALES, NO INCLUYE FORRO DE AREA DE PARED, SE COBRAN POR SEPARADO.', NULL, 1, 27500, 27500
@@ -3236,11 +3226,6 @@ INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titu
 SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD - 246 CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅2 Torres Cajoneras de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 26500, 26500
 FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-647-859';
 
--- WP ID: 860 / slug: imp-quo-216-860 (1 items)
-INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
-SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD - 298 CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros. + 2 Repisas Zapateras', NULL, 1, 27200, 27200
-FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-216-860';
-
 -- WP ID: 861 / slug: imp-quo-649-861 (2 items)
 INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
 SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD - 229 CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 20500, 20500
@@ -3558,11 +3543,6 @@ INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titu
 SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD EN U 200 X 300 X 200 CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 43000, 43000
 FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-706-926';
 
--- WP ID: 933 / slug: imp-quo-243-933 (1 items)
-INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
-SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD 298 CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 27200, 27200
-FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-243-933';
-
 -- WP ID: 939 / slug: imp-quo-708-939 (1 items)
 INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
 SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD - 250 CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 22000, 22000
@@ -3651,11 +3631,6 @@ FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-722-957';
 INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
 SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD - 183 CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 16800, 16800
 FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-723-958';
-
--- WP ID: 960 / slug: imp-quo-256-960 (1 items)
-INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
-SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD - 247 CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros. + Vista superior a medida + Bisagras Cierre Lento (8)', NULL, 1, 25800, 25800
-FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-256-960';
 
 -- WP ID: 965 / slug: imp-quo-725-965 (1 items)
 INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
@@ -4143,14 +4118,6 @@ FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-809-1070';
 INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
 SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD- 194 CMS + CAJON EXTRA + 1 PUERTA CADA LADO', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye:✅Closet Empotrado✅Torre Cajonera de 5 cajones ancho máximo 60 cms✅Puertas Principales ancho máximo 60 cms.✅Puertas en Maletero ancho máximo 60 cms.✅Closet Profundidad Standard 62 cms máximo.✅Altura máxima 270 cms.✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo.✅Base y Zoclo (no se ve el piso).✅No incluye forro de muros.', NULL, 1, 18350, 18350
 FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-810-1072';
-
--- WP ID: 1077 / slug: imp-quo-302-1077 (2 items)
-INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
-SELECT c.id, NULL, NULL, 0, 'CLOSET MELAMINA STANDARD - 245 CMS', 'FRENTES, PUERTAS Y UNA TORRE CON HASTA 3 CAJONES, NICHOS. BASE, ZOCLO Y MALETERO (NO INCLUYE FORRADO DE FONDOS EN PAREDES) KIT DE HERRAJES, RIELES DE EXTENSION 18\" Y BISAGRAS REFORZADAS, JALADERAS DE NUESTRO CATALOGO, TUBOS Y SOPORTES. PROFUNDIDAD STANDARD 60 CMS Y ANCHO MAXIMO DE CADA MODULO 60 CMS. ELEMENTOS ADICIONALES, TORRES, REPISAS, DIVISORES, SE COTIZAN POR SEPARADO. CAMBIOS Y AJUSTES ALTERAN EL PRECIO COTIZADO.', NULL, 1, 29500, 29500
-FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-302-1077';
-INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
-SELECT c.id, NULL, NULL, 1, 'CLOSET MELAMINA STANDARD - 272 CMS', 'Closet en Melamina 👗👔👜 Catálogo Standard. Incluye: ✅Closet Empotrado ✅Torre Cajonera de 5 cajones + Torre de repisas fijas (5) ancho máximo 60 cms ✅Puertas Principales ancho máximo 60 cms. ✅Puertas en Maletero ancho máximo 60 cms. ✅Closet Profundidad Standard 62 cms máximo. ✅Altura máxima 270 cms. ✅Bisagras Reforzadas, Tubos y Jaladera estilo Contemporaneo. ✅Base y Zoclo (no se ve el piso). ✅No incluye forro de muros. + 1 Repisa en area de tubo ($350)', NULL, 1, 27850, 27850
-FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-302-1077';
 
 -- WP ID: 1095 / slug: imp-quo-813-1095 (1 items)
 INSERT INTO cotizacion_lineas (cotizacion_id, venta_id, articulo_id, orden, titulo, descripcion, sku, cantidad, precio_unit, subtotal)
@@ -4975,4 +4942,4 @@ FROM cotizaciones c WHERE c.empresa_id = 2 AND c.slug = 'imp-quo-950-1282';
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- Summary: 1106 items from 827 cotizaciones
--- SKIPPED (no slug match): WP IDs 741
+-- SKIPPED (no slug match): WP IDs 477, 725, 741, 860, 933, 960, 1077
