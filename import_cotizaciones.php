@@ -126,7 +126,7 @@ foreach ($rows as $r) {
     $inserts[] = buildInsert([
         'numero'         => $numero,
         'empresa_id'     => 2,
-        'cliente_id'     => 2,
+        'cliente_id'     => 3,
         'usuario_id'     => 2,
         'cupon_id'       => null,
         'titulo'         => $titulo,
