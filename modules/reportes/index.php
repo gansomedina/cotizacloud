@@ -14,7 +14,7 @@ $es_admin   = Auth::es_admin();
 
 // ── Período ──────────────────────────────────────────────────
 $periodo_val  = $_GET['periodo'] ?? 'mes_actual';
-$periodos_ok  = ['mes_actual','mes_ant','30_dias','90_dias','anio','anio_ant'];
+$periodos_ok  = ['mes_actual','mes_ant','30_dias','90_dias','anio','anio_ant','rango'];
 if (!in_array($periodo_val, $periodos_ok)) $periodo_val = 'mes_actual';
 
 $now = new DateTimeImmutable('now', new DateTimeZone('America/Hermosillo'));
@@ -39,6 +39,13 @@ switch ($periodo_val) {
         $y     = (int)$now->format('Y') - 1;
         $f_ini = "$y-01-01";
         $f_fin = "$y-12-31";
+        break;
+    case 'rango':
+        $f_ini = $_GET['f_ini'] ?? $now->format('Y-m') . '-01';
+        $f_fin = $_GET['f_fin'] ?? $now->format('Y-m-d');
+        // Validar formato de fecha
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $f_ini)) $f_ini = $now->format('Y-m') . '-01';
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $f_fin)) $f_fin = $now->format('Y-m-d');
         break;
     default: // mes_actual
         $f_ini = $now->format('Y-m') . '-01';
@@ -272,6 +279,10 @@ ob_start();
 .periodo-lbl{font:700 11px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
 .periodo-select{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:8px 14px;font:600 13px var(--body);color:var(--text);outline:none;cursor:pointer;box-shadow:var(--sh)}
 .periodo-select:focus{border-color:var(--g)}
+.periodo-date{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:6px 10px;font:600 13px var(--num);color:var(--text);outline:none;box-shadow:var(--sh)}
+.periodo-date:focus{border-color:var(--g)}
+.periodo-apply{padding:6px 14px;border-radius:var(--r-sm);border:none;background:var(--g);color:#fff;font:700 12px var(--body);cursor:pointer}
+.periodo-apply:hover{opacity:.9}
 .export-btn{margin-left:auto;padding:8px 16px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--white);font:600 12px var(--body);color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .12s;box-shadow:var(--sh)}
 .export-btn:hover{border-color:var(--g);color:var(--g)}
 
@@ -388,15 +399,22 @@ ob_start();
   <input type="hidden" name="tab" id="hTab" value="<?= e($tab) ?>">
   <div class="periodo-wrap">
     <span class="periodo-lbl">Período</span>
-    <select name="periodo" class="periodo-select" onchange="this.form.submit()">
+    <select name="periodo" class="periodo-select" onchange="toggleRango(this.value)">
       <option value="mes_actual" <?= $periodo_val==='mes_actual'?'selected':'' ?>>Este mes</option>
       <option value="mes_ant"    <?= $periodo_val==='mes_ant'   ?'selected':'' ?>>Mes anterior</option>
       <option value="30_dias"    <?= $periodo_val==='30_dias'   ?'selected':'' ?>>Últimos 30 días</option>
       <option value="90_dias"    <?= $periodo_val==='90_dias'   ?'selected':'' ?>>Últimos 90 días</option>
       <option value="anio"       <?= $periodo_val==='anio'      ?'selected':'' ?>>Este año</option>
       <option value="anio_ant"   <?= $periodo_val==='anio_ant'  ?'selected':'' ?>>Año anterior</option>
+      <option value="rango"      <?= $periodo_val==='rango'     ?'selected':'' ?>>Rango de fechas</option>
     </select>
-    <span style="font:400 12px var(--body);color:var(--t3)">
+    <span id="rangoFechas" style="display:<?= $periodo_val==='rango' ? 'flex' : 'none' ?>;align-items:center;gap:6px">
+      <input type="date" name="f_ini" value="<?= e($f_ini) ?>" class="periodo-date">
+      <span style="color:var(--t3)">—</span>
+      <input type="date" name="f_fin" value="<?= e($f_fin) ?>" class="periodo-date">
+      <button type="submit" class="periodo-apply">Aplicar</button>
+    </span>
+    <span id="rangoLabel" style="font:400 12px var(--body);color:var(--t3);<?= $periodo_val==='rango' ? 'display:none' : '' ?>">
       <?= date('d M Y', strtotime($f_ini)) ?> — <?= date('d M Y', strtotime($f_fin)) ?>
     </span>
     <button type="button" class="export-btn" onclick="exportarCSV()">
@@ -863,6 +881,20 @@ ob_start();
 
 
 <script>
+// ── Rango de fechas ─────────────────────────────────────────
+function toggleRango(val) {
+    var rango = document.getElementById('rangoFechas');
+    var label = document.getElementById('rangoLabel');
+    if (val === 'rango') {
+        rango.style.display = 'flex';
+        if (label) label.style.display = 'none';
+    } else {
+        rango.style.display = 'none';
+        if (label) label.style.display = '';
+        document.getElementById('fPeriodo').submit();
+    }
+}
+
 // ── Tabs ────────────────────────────────────────────────────
 function repTab(id, el) {
     document.querySelectorAll('.rep-tab').forEach(t => t.classList.remove('on'));

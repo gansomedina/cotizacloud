@@ -364,12 +364,6 @@ ob_start();
     <!-- ACCIONES -->
     <button class="action-btn primary" onclick="openEditSheet()">Editar cliente</button>
 
-    <?php if ($cliente['telefono']): ?>
-    <a href="https://wa.me/52<?= preg_replace('/\D/', '', $cliente['telefono']) ?>"
-       target="_blank" class="action-btn">
-       WhatsApp
-    </a>
-    <?php endif; ?>
 
     <a href="/cotizaciones/nueva?cliente_id=<?= $cliente_id ?>" class="action-btn">
         + Nueva cotización

@@ -247,7 +247,7 @@ ob_start();
             <?= $total_c ?>
         </div>
         <div class="cli-col-accion">
-            <button class="act-btn" onclick="event.preventDefault();">Ver</button>
+            <button class="act-btn" onclick="window.location.href='/clientes/<?= (int)$cl['id'] ?>';">Ver</button>
         </div>
 
         <!-- Mobile right -->
