@@ -44,15 +44,16 @@ if (!$ult || $ult < date('Y-m-d H:i:s', time()-60) || $_icons_missing > 0) {
 
 // Stats globales (sin LIMIT)
 $uw = $uid_filtro ? "AND c.usuario_id=$uid_filtro" : '';
-$stats = DB::row(
-    "SELECT COUNT(*) AS total,
-            SUM(c.estado IN ('aceptada','convertida')) AS aceptadas
-     FROM cotizaciones c
+$stat_total = (int)DB::val(
+    "SELECT COUNT(*) FROM cotizaciones c
      WHERE c.empresa_id=? AND c.estado NOT IN ('borrador') $uw",
     [$empresa_id]
 );
-$stat_total     = (int)($stats['total'] ?? 0);
-$stat_aceptadas = (int)($stats['aceptadas'] ?? 0);
+$stat_aceptadas = (int)DB::val(
+    "SELECT COUNT(*) FROM ventas
+     WHERE empresa_id=? AND estado != 'cancelada'",
+    [$empresa_id]
+);
 $stat_cierre    = $stat_total > 0 ? round(100 * $stat_aceptadas / $stat_total, 2) : 0;
 
 // Cargar cotizaciones
