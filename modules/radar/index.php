@@ -46,9 +46,9 @@ if (!$ult || $ult < date('Y-m-d H:i:s', time()-60) || $_icons_missing > 0) {
 $uw = $uid_filtro ? "AND c.usuario_id=$uid_filtro" : '';
 $stats = DB::row(
     "SELECT COUNT(*) AS total,
-            SUM(c.estado IN ('aceptada','convertida')) AS aceptadas
+            SUM(c.estado IN ('aceptada')) AS aceptadas
      FROM cotizaciones c
-     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada','rechazada','convertida') $uw",
+     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada','rechazada') $uw",
     [$empresa_id]
 );
 $stat_total     = (int)($stats['total'] ?? 0);
