@@ -80,7 +80,6 @@ class Radar
         'reeng_recent_hours'         => [240,   168,   120  ],
         'reeng_min_guest_24h'        => [1,     1,     1    ],
         'reeng_min_views24'          => [1,     1,     2    ],
-        'reeng_min_fit_pct'          => [3.0,   5.0,   7.0  ],
 
         // ── Bucket 8: Multi-persona ──────────────────────────
         'multip_recent_hours'        => [96,    72,    48   ],
@@ -453,7 +452,7 @@ class Radar
         $e_main_pev   = (int)($es['main_pev']  ?? 0);     // price events del visitor principal
 
         $has_tot_view = $e_tot_views > 0;
-        $has_tot_rev  = $e_tot_rev   >= 2; // ≥2 para no activar con un único scroll-back casual
+        $has_tot_rev  = $e_tot_rev   > 0;
         $has_loop     = $e_loops     > 0;
         $has_promo    = $e_promo     > 0;
 
@@ -595,7 +594,7 @@ class Radar
             $guest_sessions >= 1 &&
             ($guest_sessions >= 2 || $e_sv_price || $e_mv_price) &&
             ($pv_read || $e_sv_price || $e_mv_price || $e_main_pev >= 2) &&
-            ($has_loop || $has_tot_rev || $e_tot_views >= 3)
+            ($has_loop || $has_tot_rev || $e_tot_views >= 2 || $e_sv_price || $e_mv_price)
         ) {
             $buckets[] = 'validando_precio';
         }
@@ -644,7 +643,7 @@ class Radar
             $last_ts >= $now - (int)self::u('multip_recent_hours', $modo) * 3600 &&
             $guest_sessions >= (int)self::u('multip_min_guest_total', $modo) &&
             (
-                ($e_uniq_v >= 3 || ($e_uniq_v >= 2 && $e_mv_price)) ||
+                ($e_uniq_v >= 2 && ($e_mv_price || $e_sv_sess)) ||
                 $ips_post_guest_count >= (int)self::u('multip_min_ips_post_guest', $modo) ||
                 ($ips_post_guest_count >= max(2, (int)self::u('multip_min_ips_post_guest', $modo) - 1) && $multip_boost)
             )
