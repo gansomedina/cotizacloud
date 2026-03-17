@@ -62,9 +62,21 @@ ob_start();
 .badge-cancelacion { background:var(--purple-bg); color:var(--purple); padding:3px 9px; border-radius:5px; font:700 12px var(--body); }
 
 @media print {
-    .recibo-actions, .topbar, .sidebar, .layout-sidebar { display:none !important; }
+    @page { margin:10mm 14mm; size:letter portrait; }
+    .recibo-actions, .topbar, .sidebar, .layout-sidebar, .bottom-nav { display:none !important; }
     body { background:#fff; }
-    .recibo-preview { box-shadow:none; border:none; max-width:100%; }
+    .recibo-preview { box-shadow:none; border:none; max-width:100%; padding:0; }
+    .rp-header { margin-bottom:10px; }
+    .rp-title { font-size:18px; }
+    .rp-num { margin-bottom:8px; }
+    .rp-divider { margin:8px 0; }
+    .rp-row { padding:3px 0; font-size:12px; }
+    .rp-val { font-size:12px; }
+    .rp-monto-big { margin-top:8px; padding:10px 14px; }
+    .rp-monto-val { font-size:20px; }
+    .rp-footer { margin-top:8px; font-size:11px; }
+    .rp-sello { margin-top:6px; padding:5px; font-size:10px; }
+    .rp-row-proyecto { display:none !important; }
 }
 </style>
 
@@ -118,7 +130,7 @@ ob_start();
         <span class="rp-lbl">Venta</span>
         <span class="rp-val" style="color:var(--g);"><?= e($recibo['venta_numero']) ?></span>
     </div>
-    <div class="rp-row">
+    <div class="rp-row rp-row-proyecto">
         <span class="rp-lbl">Proyecto</span>
         <span class="rp-val"><?= e($recibo['venta_titulo']) ?></span>
     </div>
