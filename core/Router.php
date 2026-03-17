@@ -100,10 +100,10 @@ class Router
         self::get('/registro', fn() => self::load('auth', 'registro'));
         self::post('/registro', fn() => self::load('auth', 'registro_post'));
 
-        // Landing: redirigir a login o dashboard
+        // Landing: página informativa o dashboard si ya logueado
         self::get('/', fn() => Auth::logueado()
             ? redirect('/dashboard')
-            : redirect('/login')
+            : self::load('auth', 'landing')
         );
 
         // ── App (requiere login) ───────────────────────────
