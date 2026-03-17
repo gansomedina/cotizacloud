@@ -266,9 +266,7 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
   .item-add-btn,.add-row-btn,.abono-btn,.sec-lbl,
   nav,#nav-lateral,.detail-layout{display:none!important}
   .venta-print-only{display:block!important}
-  .recibo-print-only{display:none!important}
-  .recibo-print-only.rp-active{display:block!important}
-  .venta-print-only.rp-hidden{display:none!important}
+  #recibo-print-tpl{display:none!important}
   body{background:#fff}
   .fac,#recibo-print-tpl{font-size:10pt}
   /* Estilos del recibo individual */
@@ -1352,14 +1350,19 @@ function imprimirRecibo(d){
     <div class="rp-foot">${escHtml(d.empresa)} · gracias por su preferencia</div>
     <div class="rp-sello">✓ ${escHtml(d.numero)} · ${escHtml(d.fecha)}</div>
   `;
-  // Ocultar venta, mostrar solo recibo
+  // Ocultar venta y mostrar recibo con inline styles (máxima prioridad)
   const ventaEl = document.querySelector('.venta-print-only');
-  if(ventaEl) ventaEl.classList.add('rp-hidden');
-  el.classList.add('rp-active');
-  window.print();
-  // Restaurar
-  if(ventaEl) ventaEl.classList.remove('rp-hidden');
-  el.classList.remove('rp-active');
+  if(ventaEl) ventaEl.style.setProperty('display','none','important');
+  el.style.setProperty('display','block','important');
+  // Esperar repaint antes de imprimir
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.print();
+      // Restaurar después de imprimir
+      if(ventaEl) ventaEl.style.removeProperty('display');
+      el.style.removeProperty('display');
+    });
+  });
 }
 
 // ── Init ──
