@@ -93,20 +93,32 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .flow-arrow{display:flex;align-items:flex-start;padding-top:22px;color:var(--g-border)}
 .flow-arrow svg{width:20px;height:20px;stroke:var(--border2);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
 
+/* AUDIENCE / PARA QUIEN */
+.audience{max-width:1100px;margin:0 auto;padding:80px 24px 0}
+.audience-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.aud-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:28px 22px;text-align:center;transition:all .25s;position:relative;overflow:hidden}
+.aud-card:hover{border-color:var(--g-border);box-shadow:var(--sh-lg);transform:translateY(-3px)}
+.aud-card-ico{font-size:36px;margin-bottom:14px;line-height:1}
+.aud-card-title{font:700 15px var(--body);color:var(--text);margin-bottom:6px;letter-spacing:-.01em}
+.aud-card-desc{font:400 13px var(--body);color:var(--t3);line-height:1.55}
+.aud-card-example{font:500 11.5px var(--body);color:var(--g);margin-top:10px;opacity:.85}
+@media(max-width:768px){.audience-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.audience-grid{grid-template-columns:1fr}}
+
 /* ACCELERATORS */
 .accel{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.accel-inner{background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 50%,#fff7ed 100%);border:1px solid #fde68a;border-radius:20px;padding:48px 40px;position:relative;overflow:hidden}
-.accel-inner::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(251,191,36,.15) 0%,transparent 70%);border-radius:50%}
-.accel-sparkle{position:absolute;top:16px;right:20px;font:600 11px var(--body);color:#92400e;background:rgba(255,255,255,.7);padding:4px 12px;border-radius:20px;letter-spacing:.04em}
-.accel-label{font:700 11px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#b45309;margin-bottom:12px}
-.accel-title{font:800 clamp(22px,3vw,30px)/1.15 var(--body);letter-spacing:-.02em;color:#78350f;margin-bottom:10px}
-.accel-sub{font:400 15px var(--body);color:#92400e;line-height:1.6;margin-bottom:32px;max-width:560px}
+.accel-inner{background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 40%,#f0fdfa 100%);border:1px solid rgba(26,92,56,.12);border-radius:20px;padding:48px 40px;position:relative;overflow:hidden}
+.accel-inner::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(26,92,56,.08) 0%,transparent 70%);border-radius:50%}
+.accel-sparkle{position:absolute;top:16px;right:20px;font:700 10px var(--body);color:#fff;background:var(--g);padding:4px 12px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase}
+.accel-label{font:700 11px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--g);margin-bottom:12px}
+.accel-title{font:800 clamp(22px,3vw,30px)/1.15 var(--body);letter-spacing:-.02em;color:var(--text);margin-bottom:10px}
+.accel-sub{font:400 15px var(--body);color:var(--t3);line-height:1.6;margin-bottom:32px;max-width:580px}
 .accel-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-.accel-item{background:rgba(255,255,255,.75);border:1px solid rgba(251,191,36,.25);border-radius:14px;padding:20px 18px;text-align:center;transition:all .2s}
-.accel-item:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(251,191,36,.15)}
-.accel-item-ico{font-size:28px;margin-bottom:10px;line-height:1}
-.accel-item-name{font:700 13.5px var(--body);color:#78350f;margin-bottom:4px}
-.accel-item-desc{font:400 12px var(--body);color:#92400e;line-height:1.45}
+.accel-item{background:rgba(255,255,255,.8);border:1px solid rgba(26,92,56,.1);border-radius:14px;padding:22px 18px;text-align:center;transition:all .2s}
+.accel-item:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(26,92,56,.1);border-color:var(--g-border)}
+.accel-item-ico{font-size:30px;margin-bottom:10px;line-height:1}
+.accel-item-name{font:700 13.5px var(--body);color:var(--text);margin-bottom:5px}
+.accel-item-desc{font:400 12.5px var(--body);color:var(--t3);line-height:1.5}
 @media(max-width:768px){.accel-grid{grid-template-columns:repeat(2,1fr)}.accel-inner{padding:32px 24px}}
 @media(max-width:480px){.accel-grid{grid-template-columns:1fr}}
 
@@ -299,38 +311,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   </div>
 </section>
 
-<!-- ACCELERATORS - Sales psychology tools -->
-<section class="accel">
-  <div class="accel-inner">
-    <div class="accel-sparkle">Nuevo</div>
-    <div class="accel-label">Acelera el cierre</div>
-    <div class="accel-title">Gatillos de venta integrados en cada cotizacion</div>
-    <div class="accel-sub">Aplica las mismas tecnicas que usan Amazon, Booking y las mejores tiendas en linea. Urgencia, escasez y precio especial — directamente en tus cotizaciones, sin instalar nada.</div>
-    <div class="accel-grid">
-      <div class="accel-item">
-        <div class="accel-item-ico">&#9200;</div>
-        <div class="accel-item-name">Cuenta regresiva</div>
-        <div class="accel-item-desc">Un cronometro visible que genera urgencia real. Tu cliente sabe que el precio tiene fecha limite.</div>
-      </div>
-      <div class="accel-item">
-        <div class="accel-item-ico">&#127915;</div>
-        <div class="accel-item-name">Cupones de descuento</div>
-        <div class="accel-item-desc">Codigos exclusivos que tu cliente aplica al aceptar. Le das el poder de "ganar" su descuento.</div>
-      </div>
-      <div class="accel-item">
-        <div class="accel-item-ico">&#128176;</div>
-        <div class="accel-item-name">Precios promocionales</div>
-        <div class="accel-item-desc">Muestra el precio original tachado junto al precio especial. El ancla visual acelera la decision.</div>
-      </div>
-      <div class="accel-item">
-        <div class="accel-item-ico">&#128165;</div>
-        <div class="accel-item-name">Oferta por tiempo limitado</div>
-        <div class="accel-item-desc">Combina descuento + cronometro. La oferta desaparece y tu cliente lo sabe desde que abre la cotizacion.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- PREDICTIVE -->
 <section class="predictive">
   <div class="pred-card">
@@ -426,6 +406,40 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   </div>
 </section>
 
+<!-- AUDIENCE -->
+<section class="audience">
+  <span class="section-label">Para quien es Cotiza.cloud</span>
+  <div class="section-title">Si cotizas para vender, esto es para ti</div>
+  <p class="section-sub">Profesionales de todos los giros ya usan inteligencia de cotizaciones para cerrar mas ventas.</p>
+
+  <div class="audience-grid">
+    <div class="aud-card">
+      <div class="aud-card-ico">&#128208;</div>
+      <div class="aud-card-title">Arquitectos y Despachos</div>
+      <div class="aud-card-desc">Proyectos de remodelacion, obra nueva, interiorismo. Cotizaciones de alto valor donde el seguimiento lo es todo.</div>
+      <div class="aud-card-example">"Sabia exactamente cuando mi cliente reviso el presupuesto"</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-ico">&#127959;</div>
+      <div class="aud-card-title">Constructoras</div>
+      <div class="aud-card-desc">Obras civiles, desarrollos, mantenimiento industrial. Multiples cotizaciones activas donde perder una cuesta caro.</div>
+      <div class="aud-card-example">"De 40 cotizaciones al mes, ahora se cuales van en serio"</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-ico">&#128736;</div>
+      <div class="aud-card-title">Fabricantes y Talleres</div>
+      <div class="aud-card-desc">Muebles, closets, herreria, carpinteria, señalizacion. Productos a la medida con precios que hay que defender.</div>
+      <div class="aud-card-example">"Mis clientes ya no me regatean — ven una cotizacion profesional"</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-ico">&#128187;</div>
+      <div class="aud-card-title">Freelancers y Consultores</div>
+      <div class="aud-card-desc">Diseno, marketing, TI, consultoria. Servicios profesionales donde tu imagen y tu tiempo son tu capital.</div>
+      <div class="aud-card-example">"Deje de perseguir clientes — ahora llamo cuando se que estan listos"</div>
+    </div>
+  </div>
+</section>
+
 <!-- EXTRA TOOLS -->
 <section class="tools">
   <span class="section-label">Y ademas</span>
@@ -467,6 +481,38 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div>
         <div class="tool-title">Notas y comunicacion</div>
         <div class="tool-desc">Agrega notas internas a cada cotizacion. Contexto que tu equipo necesita para dar seguimiento efectivo.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACCELERATORS - Sales psychology tools -->
+<section class="accel">
+  <div class="accel-inner">
+    <div class="accel-sparkle">Incluido</div>
+    <div class="accel-label">Acelera el cierre</div>
+    <div class="accel-title">Gatillos de venta que convierten interes en decision</div>
+    <div class="accel-sub">Las mismas tecnicas que usan Amazon, Booking y Mercado Libre para que la gente compre ahora y no "despues". Urgencia, escasez y precio especial — integradas en cada cotizacion.</div>
+    <div class="accel-grid">
+      <div class="accel-item">
+        <div class="accel-item-ico">&#9200;</div>
+        <div class="accel-item-name">Cuenta regresiva</div>
+        <div class="accel-item-desc">Un cronometro visible en tu cotizacion. Tu cliente sabe que el precio tiene fecha limite.</div>
+      </div>
+      <div class="accel-item">
+        <div class="accel-item-ico">&#127915;</div>
+        <div class="accel-item-name">Cupones de descuento</div>
+        <div class="accel-item-desc">Codigos exclusivos que tu cliente aplica al aceptar. Le das el poder de "ganar" su descuento.</div>
+      </div>
+      <div class="accel-item">
+        <div class="accel-item-ico">&#128184;</div>
+        <div class="accel-item-name">Precio tachado</div>
+        <div class="accel-item-desc">Muestra el precio original junto al precio especial. El ancla visual que acelera la decision de compra.</div>
+      </div>
+      <div class="accel-item">
+        <div class="accel-item-ico">&#128165;</div>
+        <div class="accel-item-name">Oferta por tiempo limitado</div>
+        <div class="accel-item-desc">Descuento + cronometro. La oferta desaparece y tu cliente lo sabe desde que abre la cotizacion.</div>
       </div>
     </div>
   </div>
