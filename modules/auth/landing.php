@@ -11,7 +11,12 @@ defined('COTIZAAPP') or die;
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cotiza.cloud — El secreto mejor guardado del profesional</title>
+<title>Cotiza.cloud — Cotizaciones con inteligencia de ventas</title>
+<meta name="description" content="Genera cotizaciones profesionales, detecta cuando tu cliente las revisa y sabe quien esta listo para cerrar. Radar inteligente para vender mas.">
+<meta property="og:title" content="Cotiza.cloud — Cotizaciones con inteligencia de ventas">
+<meta property="og:description" content="Genera cotizaciones, detecta el interes real de tu cliente y cierra mas ventas. El radar que todo profesional necesita.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://cotiza.cloud">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
