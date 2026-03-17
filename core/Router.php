@@ -2,6 +2,7 @@
 // ============================================================
 //  CotizaApp — core/Router.php
 //  Routing simple por path → módulos
+//  v2: Panel centralizado en dominio raíz + subdominios para URLs públicas
 // ============================================================
 
 defined('COTIZAAPP') or die;
@@ -51,10 +52,8 @@ class Router
     }
 
     // ─── Match de patrón ─────────────────────────────────────
-    // Convierte /cotizaciones/:id a regex y extrae parámetros
     private static function match_pattern(string $pattern, string $path): ?array
     {
-        // Escape y convertir :param a grupo captura
         $regex = preg_replace('/\/:([a-zA-Z_]+)/', '/(?P<$1>[^/]+)', $pattern);
         $regex = '#^' . $regex . '$#';
 
@@ -62,7 +61,6 @@ class Router
             return null;
         }
 
-        // Solo los keys de string (named groups)
         $params = [];
         foreach ($matches as $k => $v) {
             if (is_string($k)) {
@@ -76,32 +74,39 @@ class Router
     // ─── Rutas del sistema ───────────────────────────────────
     public static function register_all(): void
     {
-        // ── Sitio público (sin subdominio) ───────────────────
-        if (EMPRESA_ID === 0) {
-            self::get('/',         fn() => self::load('auth', 'landing'));
-            self::get('/registro', fn() => self::load('auth', 'registro'));
-            self::post('/registro', fn() => self::load('auth', 'registro_post'));
+        if (IS_SUBDOMAIN) {
+            // ══ SUBDOMINIO: solo URLs públicas + API ══════════════
+            self::get('/c/:slug',  fn($p) => self::load_public('cotizacion', $p));
+            self::get('/v/:slug',  fn($p) => self::load_public('venta',      $p));
+            self::get('/r/:token', fn($p) => self::load_public('recibo',     $p));
+
+            self::post('/api/track',        fn() => self::load_api('track'));
+            self::post('/api/quote-action', fn() => self::load_api('quote_action'));
+
+            // Backward compat: si alguien accede al subdominio, redirigir al login centralizado
+            self::get('/login', fn() => redirect(BASE_URL . '/login'));
+            self::get('/',      fn() => redirect(BASE_URL . '/login'));
+
             self::not_found_handler(fn() => redirect(BASE_URL));
             return;
         }
 
-        // ── Vistas públicas de cotización / venta ────────────
-        // (No requieren login)
-        self::get('/c/:slug', fn($p) => self::load_public('cotizacion', $p));
-        self::get('/v/:slug', fn($p) => self::load_public('venta',      $p));
-        self::get('/r/:token', fn($p) => self::load_public('recibo',    $p));
+        // ══ DOMINIO RAÍZ: login + registro + panel ═══════════
 
-        // ── API pública ──────────────────────────────────────
-        self::post('/api/track',        fn() => self::load_api('track'));
-        self::post('/api/quote-action', fn() => self::load_api('quote_action'));
+        // ── Auth (público) ─────────────────────────────────
+        self::get('/login',    fn() => self::load('auth', 'login'));
+        self::post('/login',   fn() => self::load('auth', 'login_post'));
+        self::get('/logout',   fn() => self::load('auth', 'logout'));
+        self::get('/registro', fn() => self::load('auth', 'registro'));
+        self::post('/registro', fn() => self::load('auth', 'registro_post'));
 
-        // ── Auth ─────────────────────────────────────────────
-        self::get('/login',   fn() => self::load('auth', 'login'));
-        self::post('/login',  fn() => self::load('auth', 'login_post'));
-        self::get('/logout',  fn() => self::load('auth', 'logout'));
+        // Landing: redirigir a login o dashboard
+        self::get('/', fn() => Auth::logueado()
+            ? redirect('/dashboard')
+            : redirect('/login')
+        );
 
-        // ── App (requiere login) ─────────────────────────────
-        self::get('/',                        fn()  => self::app('dashboard',    'index'));
+        // ── App (requiere login) ───────────────────────────
         self::get('/dashboard',               fn()  => self::app('dashboard',    'index'));
 
         self::get('/cotizaciones',            fn()  => self::app('cotizaciones', 'lista'));
@@ -148,25 +153,19 @@ class Router
         self::get('/reportes',               fn()   => self::app('reportes',    'index'));
 
         self::get('/config',                              fn()   => self::app('config', 'index'));
-        // Empresa
         self::post('/config/empresa',                     fn()   => self::app('config', 'guardar_empresa'));
         self::post('/config/logo',                        fn()   => self::app_extra('config', 'logo', [], ['accion'=>'subir']));
         self::post('/config/logo/quitar',                 fn()   => self::app_extra('config', 'logo', [], ['accion'=>'quitar']));
-        // Artículo
         self::post('/config/articulo',                    fn()   => self::app('config', 'articulo'));
         self::post('/config/articulo/:id',                fn($p) => self::app('config', 'articulo', $p));
         self::post('/config/articulo/:id/eliminar',       fn($p) => self::app_extra('config', 'articulo', $p, ['accion'=>'eliminar']));
-        // Cupón
         self::post('/config/cupon',                       fn()   => self::app('config', 'cupon'));
         self::post('/config/cupon/:id',                   fn($p) => self::app('config', 'cupon', $p));
         self::post('/config/cupon/:id/eliminar',          fn($p) => self::app_extra('config', 'cupon', $p, ['accion'=>'eliminar']));
-        // Usuario
         self::post('/config/usuario',                     fn()   => self::app('config', 'usuario'));
         self::post('/config/usuario/:id',                 fn($p) => self::app('config', 'usuario', $p));
-        // Radar
         self::post('/config/radar',                       fn()   => self::app('config', 'guardar_radar'));
         self::post('/config/radar/calibrar',              fn()   => self::app('config', 'calibrar_radar'));
-        // IPs internas
         self::post('/config/ip-interna',                  fn()   => self::app_extra('config', 'ip_interna', [],  ['accion'=>'crear']));
         self::post('/config/ip-interna/:id/eliminar',     fn($p) => self::app_extra('config', 'ip_interna', $p, ['accion'=>'eliminar']));
     }
@@ -178,7 +177,6 @@ class Router
     {
         $file = PUBLIC_PATH . '/' . $modulo . '.php';
         if (!file_exists($file)) self::not_found();
-        // Pasar params como variables
         extract($params);
         require $file;
     }
@@ -222,7 +220,6 @@ class Router
         $file = MODULES_PATH . '/' . $modulo . '/' . $accion . '.php';
         if (!file_exists($file)) self::not_found();
 
-        // Pasar params al módulo
         extract($params);
         require $file;
     }
@@ -242,14 +239,20 @@ class Router
         }
 
         http_response_code(404);
-        // TODO: render vista 404 del sistema
         die('Página no encontrada');
     }
 
     // ─── URL helper ──────────────────────────────────────────
     public static function url(string $path = ''): string
     {
-        if (EMPRESA_ID > 0) {
+        // Siempre usa dominio raíz para el panel
+        return BASE_URL . '/' . ltrim($path, '/');
+    }
+
+    // URL pública de cotización (usa subdominio)
+    public static function url_publica(string $path = ''): string
+    {
+        if (EMPRESA_ID > 0 && EMPRESA_SLUG !== '') {
             return 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/' . ltrim($path, '/');
         }
         return BASE_URL . '/' . ltrim($path, '/');

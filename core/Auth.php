@@ -2,6 +2,7 @@
 // ============================================================
 //  CotizaApp — core/Auth.php
 //  Sesión en DB, login, permisos, middleware
+//  v2: Login centralizado — empresa por sesión, no por subdominio
 // ============================================================
 
 defined('COTIZAAPP') or die;
@@ -27,62 +28,81 @@ class Auth
             session_start();
         }
 
-        // Cargar empresa por subdominio
+        // Detectar si estamos en un subdominio
         $slug_empresa = detectar_empresa_slug();
+        define('IS_SUBDOMAIN', $slug_empresa !== null);
 
-        if ($slug_empresa !== null) {
+        if (IS_SUBDOMAIN) {
+            // ── Subdominio: cargar empresa por host (URLs públicas /c/, /v/, /r/) ──
             self::$empresa = DB::row(
                 "SELECT * FROM empresas WHERE slug = ? AND activa = 1",
                 [$slug_empresa]
             );
 
             if (!self::$empresa) {
-                // Subdominio no existe o licencia suspendida
                 self::empresa_inactiva($slug_empresa);
             }
 
             define('EMPRESA_ID',   (int) self::$empresa['id']);
             define('EMPRESA_SLUG', self::$empresa['slug']);
-        } else {
-            // Dominio raíz — sitio público / registro
-            define('EMPRESA_ID',   0);
-            define('EMPRESA_SLUG', '');
-        }
 
-        // Cargar usuario si hay token en cookie
-        $token = $_COOKIE[SESSION_NAME] ?? null;
-        if ($token && EMPRESA_ID > 0) {
-            self::cargar_usuario_por_token($token);
+            // Cargar usuario si tiene cookie
+            $token = $_COOKIE[SESSION_NAME] ?? null;
+            if ($token) {
+                self::cargar_usuario_por_token($token, EMPRESA_ID);
+            }
+        } else {
+            // ── Dominio raíz: cargar empresa desde sesión del usuario ──
+            $token = $_COOKIE[SESSION_NAME] ?? null;
+            if ($token) {
+                self::cargar_usuario_desde_token_completo($token);
+            }
+
+            if (!defined('EMPRESA_ID')) {
+                define('EMPRESA_ID',   0);
+                define('EMPRESA_SLUG', '');
+            }
         }
     }
 
-    // ─── Login ───────────────────────────────────────────────
-    public static function login(string $usuario_str, string $password): array
+    // ─── Login (centralizado: recibe slug de empresa) ───────
+    public static function login(string $empresa_slug, string $email, string $password, bool $recordar = false): array
     {
-        if (EMPRESA_ID === 0) {
-            return ['ok' => false, 'error' => 'Empresa no identificada'];
+        // Buscar empresa por slug
+        $empresa = DB::row(
+            "SELECT * FROM empresas WHERE slug = ? AND activa = 1",
+            [trim($empresa_slug)]
+        );
+
+        if (!$empresa) {
+            return ['ok' => false, 'error' => 'Empresa no encontrada'];
         }
+
+        $empresa_id = (int) $empresa['id'];
 
         $usuario = DB::row(
             "SELECT * FROM usuarios
              WHERE empresa_id = ? AND email = ? AND activo = 1",
-            [EMPRESA_ID, trim($usuario_str)]
+            [$empresa_id, trim($email)]
         );
 
         if (!$usuario || !password_verify($password, $usuario['password_hash'])) {
             return ['ok' => false, 'error' => 'Usuario o contraseña incorrectos'];
         }
 
+        // Duración: 30 días si "Recordarme", 8 horas normal
+        $duracion = $recordar ? (60 * 60 * 24 * 30) : SESSION_LIFETIME;
+
         // Crear sesión en DB
-        $token     = generar_token(32);
-        $expira    = date('Y-m-d H:i:s', time() + SESSION_LIFETIME);
-        $ip        = ip_real();
-        $ua        = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $token  = generar_token(32);
+        $expira = date('Y-m-d H:i:s', time() + $duracion);
+        $ip     = ip_real();
+        $ua     = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
         DB::insert(
             "INSERT INTO user_sessions (usuario_id, empresa_id, token, ip, user_agent, expires_at)
              VALUES (?, ?, ?, ?, ?, ?)",
-            [$usuario['id'], EMPRESA_ID, $token, $ip, $ua, $expira]
+            [$usuario['id'], $empresa_id, $token, $ip, $ua, $expira]
         );
 
         // Actualizar ultimo_login
@@ -93,7 +113,7 @@ class Auth
 
         // Setear cookie
         setcookie(SESSION_NAME, $token, [
-            'expires'  => time() + SESSION_LIFETIME,
+            'expires'  => time() + $duracion,
             'path'     => '/',
             'domain'   => '.' . BASE_DOMAIN,
             'secure'   => !DEBUG,
@@ -102,8 +122,9 @@ class Auth
         ]);
 
         self::$usuario = $usuario;
+        self::$empresa = $empresa;
 
-        return ['ok' => true, 'usuario' => $usuario];
+        return ['ok' => true, 'usuario' => $usuario, 'empresa' => $empresa];
     }
 
     // ─── Logout ──────────────────────────────────────────────
@@ -124,11 +145,12 @@ class Auth
         ]);
 
         self::$usuario = null;
+        self::$empresa = null;
         session_destroy();
     }
 
-    // ─── Cargar usuario por token ────────────────────────────
-    private static function cargar_usuario_por_token(string $token): void
+    // ─── Cargar usuario por token (con empresa_id conocido) ──
+    private static function cargar_usuario_por_token(string $token, int $empresa_id): void
     {
         $sesion = DB::row(
             "SELECT s.*, u.*
@@ -138,11 +160,44 @@ class Auth
                AND s.empresa_id = ?
                AND s.expires_at > NOW()
                AND u.activo = 1",
-            [$token, EMPRESA_ID]
+            [$token, $empresa_id]
         );
 
         if ($sesion) {
             self::$usuario = $sesion;
+        }
+    }
+
+    // ─── Cargar usuario + empresa desde token (dominio raíz) ──
+    private static function cargar_usuario_desde_token_completo(string $token): void
+    {
+        $sesion = DB::row(
+            "SELECT s.usuario_id, s.empresa_id, s.expires_at,
+                    u.id, u.nombre, u.email, u.usuario, u.rol, u.activo,
+                    u.puede_editar_precios, u.puede_aplicar_descuentos,
+                    u.puede_ver_todas_cots, u.puede_ver_todas_ventas,
+                    u.puede_eliminar_items_venta, u.puede_cancelar_recibos,
+                    u.ultimo_login, u.password_hash
+             FROM user_sessions s
+             JOIN usuarios u ON u.id = s.usuario_id
+             WHERE s.token = ?
+               AND s.expires_at > NOW()
+               AND u.activo = 1",
+            [$token]
+        );
+
+        if ($sesion) {
+            $empresa_id = (int) $sesion['empresa_id'];
+            self::$empresa = DB::row(
+                "SELECT * FROM empresas WHERE id = ? AND activa = 1",
+                [$empresa_id]
+            );
+
+            if (self::$empresa) {
+                self::$usuario = $sesion;
+                define('EMPRESA_ID',   $empresa_id);
+                define('EMPRESA_SLUG', self::$empresa['slug']);
+            }
         }
     }
 
@@ -213,7 +268,6 @@ class Auth
         self::requerir_login();
         if (!self::es_admin()) {
             http_response_code(403);
-            // TODO: renderizar vista 403
             die('Acceso denegado');
         }
     }
@@ -314,13 +368,11 @@ class Auth
 
         if ($existe === null) {
             http_response_code(404);
-            // TODO: render 404 bonito
             die('Empresa no encontrada');
         }
 
         // Existe pero inactiva
         http_response_code(402);
-        // TODO: render vista "licencia suspendida"
         die('Licencia suspendida. Contacta a soporte.');
     }
 

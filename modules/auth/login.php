@@ -1,42 +1,35 @@
 <?php
 // ============================================================
 //  CotizaApp — modules/auth/login.php
-//  GET /login — Formulario de acceso
+//  GET /login — Login centralizado con campo de empresa
 // ============================================================
 
 defined('COTIZAAPP') or die;
 
 // Si ya está logueado, redirigir al dashboard
 if (Auth::logueado()) {
-    redirect('/');
+    redirect('/dashboard');
 }
 
-// Si no hay empresa activa en este subdominio, no debería llegar aquí
-// (Auth::init() ya maneja ese caso), pero por si acaso:
-if (EMPRESA_ID === 0) {
-    redirect(BASE_URL . '/registro');
-}
-
-$empresa = Auth::empresa();
 $error   = $_GET['error'] ?? null;
-
-// Mensajes de error desde query string
 $errores = [
     'credenciales' => 'Usuario o contraseña incorrectos.',
+    'empresa'      => 'Empresa no encontrada. Verifica tu subdominio.',
     'inactivo'     => 'Tu cuenta está desactivada. Contacta al administrador.',
     'sesion'       => 'Tu sesión expiró. Ingresa de nuevo.',
 ];
 
-$msg_error  = $error && isset($errores[$error]) ? $errores[$error] : null;
+$msg_error    = $error && isset($errores[$error]) ? $errores[$error] : null;
 $cuenta_nueva = isset($_GET['nuevo']) && $_GET['nuevo'] === '1';
 $usuario_nuevo = e($_GET['u'] ?? '');
+$empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Ingresar — <?= e($empresa['nombre']) ?></title>
+    <title>Ingresar — CotizaApp</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -89,18 +82,6 @@ $usuario_nuevo = e($_GET['u'] ?? '');
         .card-title { font: 800 20px var(--body); letter-spacing: -.01em; margin-bottom: 4px; }
         .card-sub   { font: 400 14px var(--body); color: var(--t3); margin-bottom: 24px; line-height: 1.5; }
 
-        .subdomain-badge {
-            display: flex; align-items: center; gap: 8px;
-            background: var(--g-bg);
-            border: 1px solid var(--g-border);
-            border-radius: var(--r-sm);
-            padding: 9px 13px;
-            margin-bottom: 20px;
-        }
-        .subdomain-badge .dot { width: 6px; height: 6px; border-radius: 3px; background: var(--g); flex-shrink: 0; }
-        .subdomain-badge .empresa-n { font: 700 14px var(--body); color: var(--g); }
-        .subdomain-badge .dominio   { font: 400 13px var(--num); color: var(--t3); }
-
         .error-box {
             display: flex; align-items: flex-start; gap: 9px;
             background: var(--danger-bg);
@@ -123,6 +104,42 @@ $usuario_nuevo = e($_GET['u'] ?? '');
         .inp:focus      { border-color: var(--g); }
         .inp::placeholder { color: var(--t3); }
         .inp.error      { border-color: var(--danger); }
+
+        /* Campo empresa con sufijo fijo */
+        .empresa-field {
+            display: flex; align-items: stretch;
+            background: var(--bg); border: 1.5px solid var(--border);
+            border-radius: var(--r-sm); overflow: hidden;
+            transition: border-color .15s;
+        }
+        .empresa-field:focus-within { border-color: var(--g); }
+        .empresa-field.error { border-color: var(--danger); }
+        .empresa-field input {
+            flex: 1; border: none; background: transparent;
+            padding: 11px 2px 11px 13px;
+            font: 400 15px var(--body); color: var(--text);
+            outline: none; min-width: 0;
+        }
+        .empresa-field input::placeholder { color: var(--t3); }
+        .empresa-field .suffix {
+            display: flex; align-items: center;
+            padding: 0 13px 0 2px;
+            font: 500 14px var(--num); color: var(--t3);
+            white-space: nowrap; user-select: none;
+        }
+
+        /* Recordarme */
+        .remember-row {
+            display: flex; align-items: center; gap: 8px;
+            margin-top: 4px;
+        }
+        .remember-row input[type="checkbox"] {
+            width: 16px; height: 16px; accent-color: var(--g);
+            cursor: pointer;
+        }
+        .remember-row label {
+            font: 400 13px var(--body); color: var(--t2); cursor: pointer;
+        }
 
         .btn-submit {
             width: 100%; padding: 13px; margin-top: 20px;
@@ -163,16 +180,8 @@ $usuario_nuevo = e($_GET['u'] ?? '');
     <?php endif; ?>
 
     <div class="card">
-        <div class="card-title">Bienvenido de vuelta</div>
-        <div class="card-sub">Ingresa a tu cuenta</div>
-
-        <div class="subdomain-badge">
-            <div class="dot"></div>
-            <div>
-                <div class="empresa-n"><?= e($empresa['nombre']) ?></div>
-                <div class="dominio"><?= e(EMPRESA_SLUG) ?>.cotiza.cloud</div>
-            </div>
-        </div>
+        <div class="card-title">Iniciar sesión</div>
+        <div class="card-sub">Ingresa tus datos para acceder</div>
 
         <?php if ($msg_error): ?>
         <div class="error-box">
@@ -183,13 +192,30 @@ $usuario_nuevo = e($_GET['u'] ?? '');
 
         <form method="POST" action="/login" id="login-form">
             <?= csrf_field() ?>
-            <!-- visitor_id capturado desde localStorage — se registra como interno al hacer login exitoso -->
             <input type="hidden" id="vid_field" name="visitor_id" value="">
+
+            <div class="field">
+                <label class="lbl" for="empresa_slug">Tu empresa</label>
+                <div class="empresa-field <?= $error === 'empresa' ? 'error' : '' ?>">
+                    <input
+                        type="text"
+                        id="empresa_slug"
+                        name="empresa_slug"
+                        value="<?= $empresa_pre ?>"
+                        placeholder="miempresa"
+                        autocomplete="organization"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        required
+                    >
+                    <div class="suffix">.cotiza.cloud</div>
+                </div>
+            </div>
 
             <div class="field">
                 <label class="lbl" for="email">Email</label>
                 <input
-                    class="inp <?= $msg_error ? 'error' : '' ?>"
+                    class="inp <?= $error === 'credenciales' ? 'error' : '' ?>"
                     type="email"
                     id="email"
                     name="usuario"
@@ -204,7 +230,7 @@ $usuario_nuevo = e($_GET['u'] ?? '');
             <div class="field">
                 <label class="lbl" for="password">Contraseña</label>
                 <input
-                    class="inp <?= $msg_error ? 'error' : '' ?>"
+                    class="inp <?= $error === 'credenciales' ? 'error' : '' ?>"
                     type="password"
                     id="password"
                     name="password"
@@ -214,21 +240,23 @@ $usuario_nuevo = e($_GET['u'] ?? '');
                 >
             </div>
 
+            <div class="remember-row">
+                <input type="checkbox" id="recordar" name="recordar" value="1">
+                <label for="recordar">Recordarme por 30 días</label>
+            </div>
+
             <button class="btn-submit" type="submit" id="btn-submit">Entrar</button>
         </form>
     </div>
 
     <div class="auth-link">
-        ¿Tu empresa no tiene cuenta? <a href="<?= BASE_URL ?>/registro">Crear cuenta nueva</a>
+        ¿Tu empresa no tiene cuenta? <a href="/registro">Crear cuenta nueva</a>
     </div>
 
 </div>
 
 <script>
-// ─── Capturar visitor_id del navegador antes de enviar ───────────
-// Mismo mecanismo que en el portal de cotizaciones:
-// localStorage PRIMARY → cookie FALLBACK → generar nuevo UUID.
-// Al llegar al servidor se registra en radar_visitors_internos.
+// ─── Capturar visitor_id del navegador ───────────────────────
 (function() {
     function uuidv4() {
         if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -247,22 +275,27 @@ $usuario_nuevo = e($_GET['u'] ?? '');
     function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch(e) { return ''; } }
     function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
 
-    // Obtener o crear visitor_id — mismo key que el portal público
     var lk = 'cz_visitor_id', ck = 'cz_vid';
     var vid = lsGet(lk) || getCookie(ck) || uuidv4();
     lsSet(lk, vid);
-    setCookie(ck, vid, 60 * 60 * 24 * 730); // 2 años
+    setCookie(ck, vid, 60 * 60 * 24 * 730);
 
-    // Inyectar en el campo hidden
     var f = document.getElementById('vid_field');
     if (f) f.value = vid;
-})();
 
-document.getElementById('login-form').addEventListener('submit', function() {
-    const btn = document.getElementById('btn-submit');
-    btn.disabled = true;
-    btn.textContent = 'Ingresando...';
-});
+    // Recordar último slug de empresa usado
+    var sk = 'cz_empresa_slug';
+    var slugField = document.getElementById('empresa_slug');
+    if (slugField && !slugField.value) {
+        slugField.value = lsGet(sk) || '';
+    }
+    document.getElementById('login-form').addEventListener('submit', function() {
+        if (slugField.value) lsSet(sk, slugField.value.trim().toLowerCase());
+        var btn = document.getElementById('btn-submit');
+        btn.disabled = true;
+        btn.textContent = 'Ingresando...';
+    });
+})();
 </script>
 </body>
 </html>
