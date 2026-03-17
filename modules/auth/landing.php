@@ -595,24 +595,44 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 <script>
 (function(){
-  var fired=false;
-  var target=document.querySelector('.predictive');
-  if(!target)return;
-  var io=new IntersectionObserver(function(entries){
-    if(entries[0].isIntersecting && !fired){
-      fired=true;
-      var ids=['notif1','notif2','notif3','notif4'];
-      ids.forEach(function(id,i){
-        setTimeout(function(){document.getElementById(id).classList.add('show')},400+i*900);
-      });
-      /* se desvanecen uno a uno despues de 20s */
-      setTimeout(function(){document.getElementById('notif4').classList.remove('show')},22000);
-      setTimeout(function(){document.getElementById('notif3').classList.remove('show')},23500);
-      setTimeout(function(){document.getElementById('notif2').classList.remove('show')},25000);
-      setTimeout(function(){document.getElementById('notif1').classList.remove('show')},26500);
-    }
-  },{threshold:0.25});
-  io.observe(target);
+  function showAndAutoDismiss(id, showDelay, dismissDelay) {
+    setTimeout(function(){
+      var el = document.getElementById(id);
+      if(el) el.classList.add('show');
+    }, showDelay);
+    setTimeout(function(){
+      var el = document.getElementById(id);
+      if(el) el.classList.remove('show');
+    }, dismissDelay);
+  }
+
+  /* DISPARO 1: al ver seccion Predictive → Cierre Inminente + No abierta */
+  var fired1=false;
+  var target1=document.querySelector('.predictive');
+  if(target1){
+    var io1=new IntersectionObserver(function(entries){
+      if(entries[0].isIntersecting && !fired1){
+        fired1=true;
+        showAndAutoDismiss('notif1', 400, 18000);
+        showAndAutoDismiss('notif2', 1300, 20000);
+      }
+    },{threshold:0.2});
+    io1.observe(target1);
+  }
+
+  /* DISPARO 2: al ver Tools o Accelerators → Validando precio + Prediccion */
+  var fired2=false;
+  var target2=document.querySelector('.tools');
+  if(target2){
+    var io2=new IntersectionObserver(function(entries){
+      if(entries[0].isIntersecting && !fired2){
+        fired2=true;
+        showAndAutoDismiss('notif3', 400, 18000);
+        showAndAutoDismiss('notif4', 1300, 20000);
+      }
+    },{threshold:0.2});
+    io2.observe(target2);
+  }
 })();
 </script>
 
