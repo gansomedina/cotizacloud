@@ -691,7 +691,8 @@ CREATE TABLE `usuarios` (
   `puede_ver_todas_cots` tinyint(1) NOT NULL DEFAULT 0,
   `puede_ver_todas_ventas` tinyint(1) NOT NULL DEFAULT 0,
   `puede_eliminar_items_venta` tinyint(1) NOT NULL DEFAULT 0,
-  `puede_cancelar_recibos` tinyint(1) NOT NULL DEFAULT 0
+  `puede_cancelar_recibos` tinyint(1) NOT NULL DEFAULT 0,
+  `puede_capturar_pagos` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --

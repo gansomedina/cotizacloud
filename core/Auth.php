@@ -177,6 +177,7 @@ class Auth
                     u.puede_editar_precios, u.puede_aplicar_descuentos,
                     u.puede_ver_todas_cots, u.puede_ver_todas_ventas,
                     u.puede_eliminar_items_venta, u.puede_cancelar_recibos,
+                    u.puede_capturar_pagos,
                     u.ultimo_login, u.password_hash
              FROM user_sessions s
              JOIN usuarios u ON u.id = s.usuario_id
@@ -247,6 +248,7 @@ class Auth
             'ver_todas_ventas',
             'eliminar_items_venta',
             'cancelar_recibos',
+            'capturar_pagos',
         ];
 
         if (!in_array($permiso, $permisos_validos)) return false;
@@ -267,8 +269,7 @@ class Auth
     {
         self::requerir_login();
         if (!self::es_admin()) {
-            http_response_code(403);
-            die('Acceso denegado');
+            self::acceso_denegado('Solo los administradores pueden acceder a esta sección.');
         }
     }
 
@@ -277,9 +278,43 @@ class Auth
     {
         self::requerir_login();
         if (!self::puede($permiso)) {
-            http_response_code(403);
-            die('No tienes permisos para esta acción');
+            self::acceso_denegado('No tienes permisos para esta acción. Contacta a tu administrador.');
         }
+    }
+
+    // ─── Página de acceso denegado con estilo ────────────────
+    private static function acceso_denegado(string $mensaje): never
+    {
+        http_response_code(403);
+        ?><!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Acceso denegado — cotiza.cloud</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f7f7f5;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.box{background:#fff;border:1px solid #e5e5e3;border-radius:16px;padding:40px 32px;max-width:420px;width:90%;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.ico{width:56px;height:56px;border-radius:14px;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:26px}
+h1{font:800 20px 'DM Sans',sans-serif;color:#1a1a18;margin-bottom:8px}
+p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom:24px}
+.btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{padding:11px 22px;border-radius:10px;font:700 13px 'DM Sans',sans-serif;text-decoration:none;cursor:pointer;transition:all .15s;border:none}
+.btn-back{background:#f7f7f5;color:#1a1a18;border:1.5px solid #e5e5e3}
+.btn-back:hover{border-color:#2d7a50;color:#2d7a50}
+.btn-home{background:#2d7a50;color:#fff}
+.btn-home:hover{opacity:.9}
+</style></head><body>
+<div class="box">
+  <div class="ico">🔒</div>
+  <h1>Acceso denegado</h1>
+  <p><?= htmlspecialchars($mensaje) ?></p>
+  <div class="btns">
+    <a href="javascript:history.back()" class="btn btn-back">← Regresar</a>
+    <a href="/dashboard" class="btn btn-home">Ir al inicio</a>
+  </div>
+</div>
+</body></html><?php
+        exit;
     }
 
     // ─── Registrar nueva empresa + admin ─────────────────────

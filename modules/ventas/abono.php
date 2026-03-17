@@ -11,7 +11,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 csrf_check();
 
-if (!Auth::es_admin()) json_error('Sin permiso', 403);
+if (!Auth::es_admin() && !Auth::puede('capturar_pagos')) json_error('Sin permiso', 403);
 
 $empresa_id = EMPRESA_ID;
 $empresa    = Auth::empresa();

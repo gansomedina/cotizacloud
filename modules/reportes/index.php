@@ -106,12 +106,12 @@ $tasa_conv = $kfc['total'] > 0
 
 // Serie mensual (últimos 12 meses) para gráfica de barras
 $serie_meses = DB::query(
-    "SELECT DATE_FORMAT(created_at, '%Y-%m') AS mes,
-            COALESCE(SUM(total), 0)          AS monto,
-            COUNT(*)                         AS num
-     FROM ventas
-     WHERE empresa_id=? AND estado != 'cancelada'
-       AND created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+    "SELECT DATE_FORMAT(v.created_at, '%Y-%m') AS mes,
+            COALESCE(SUM(v.total), 0)          AS monto,
+            COUNT(*)                           AS num
+     FROM ventas v
+     WHERE v.empresa_id=? AND v.estado != 'cancelada'
+       AND v.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
        $usr_filter
      GROUP BY mes ORDER BY mes ASC",
     [$empresa_id]

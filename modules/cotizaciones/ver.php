@@ -193,7 +193,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             <?php endif; ?>
             <button class="accion-btn topbar-secondary" onclick="navigator.clipboard.writeText('<?= e($url_publica) ?>');this.textContent='✓';setTimeout(()=>this.textContent='Copiar',2000)">Copiar</button>
             <a href="<?= e($url_publica) ?>" target="_blank" class="accion-btn topbar-secondary">Ver</a>
-            <?php if ($cot['estado'] === 'borrador' && (Auth::es_admin() || (int)$cot['usuario_id'] === (int)Auth::id())): ?>
+            <?php if ($cot['estado'] === 'borrador' && Auth::es_admin()): ?>
                 <button class="accion-btn topbar-secondary" style="color:var(--danger);border-color:var(--danger)" onclick="eliminarCotizacion()">Eliminar</button>
             <?php endif; ?>
         </div>

@@ -36,6 +36,7 @@ $perms = [
     'puede_ver_todas_ventas'     => (int)($body['puede_ver_todas_ventas']     ?? 0),
     'puede_eliminar_items_venta' => (int)($body['puede_eliminar_items_venta'] ?? 0),
     'puede_cancelar_recibos'     => (int)($body['puede_cancelar_recibos']     ?? 0),
+    'puede_capturar_pagos'       => (int)($body['puede_capturar_pagos']       ?? 0),
 ];
 if ($rol === 'admin') {
     // Admin tiene todos los permisos implícitos
@@ -63,12 +64,14 @@ if ($usr_id > 0) {
     $set = "nombre=?, usuario=?, email=?, rol=?, activo=?,
             puede_editar_precios=?, puede_aplicar_descuentos=?,
             puede_ver_todas_cots=?, puede_ver_todas_ventas=?,
-            puede_eliminar_items_venta=?, puede_cancelar_recibos=?";
+            puede_eliminar_items_venta=?, puede_cancelar_recibos=?,
+            puede_capturar_pagos=?";
     $vals = [
         $nombre, $usuario, $email, $rol, $activo,
         $perms['puede_editar_precios'], $perms['puede_aplicar_descuentos'],
         $perms['puede_ver_todas_cots'], $perms['puede_ver_todas_ventas'],
         $perms['puede_eliminar_items_venta'], $perms['puede_cancelar_recibos'],
+        $perms['puede_capturar_pagos'],
     ];
 
     if ($pass !== '') {
@@ -93,8 +96,9 @@ if ($usr_id > 0) {
          (empresa_id, nombre, usuario, email, password_hash, rol, activo,
           puede_editar_precios, puede_aplicar_descuentos,
           puede_ver_todas_cots, puede_ver_todas_ventas,
-          puede_eliminar_items_venta, puede_cancelar_recibos)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          puede_eliminar_items_venta, puede_cancelar_recibos,
+          puede_capturar_pagos)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [
             $eid, $nombre, $usuario, $email,
             password_hash($pass, PASSWORD_DEFAULT),
@@ -102,6 +106,7 @@ if ($usr_id > 0) {
             $perms['puede_editar_precios'], $perms['puede_aplicar_descuentos'],
             $perms['puede_ver_todas_cots'], $perms['puede_ver_todas_ventas'],
             $perms['puede_eliminar_items_venta'], $perms['puede_cancelar_recibos'],
+            $perms['puede_capturar_pagos'],
         ]
     );
     echo json_encode(['ok'=>true, 'id'=>$nuevo]);

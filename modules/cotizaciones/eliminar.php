@@ -20,9 +20,9 @@ $cot = DB::row(
 );
 if (!$cot) json_error('No encontrada', 404);
 
-// Solo admins o el asesor dueño pueden eliminar
-if (!Auth::es_admin() && (int)$cot['usuario_id'] !== (int)Auth::id()) {
-    json_error('Sin permiso', 403);
+// Solo admins pueden eliminar cotizaciones
+if (!Auth::es_admin()) {
+    json_error('Solo administradores pueden eliminar cotizaciones', 403);
 }
 
 // Solo borradores

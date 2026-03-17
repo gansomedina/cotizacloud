@@ -469,7 +469,7 @@ ob_start();
     <div class="empty-state">
       <div class="empty-ico">🏷️</div>
       <div class="empty-tit">Sin categorías aún</div>
-      <div class="empty-sub">Crea categorías para organizar tus costos por tipo.</div>
+      <div class="empty-sub"><?= $es_admin ? 'Crea categorías para organizar tus costos por tipo.' : 'El administrador aún no ha creado categorías.' ?></div>
     </div>
   </div>
   <?php else: ?>
@@ -479,18 +479,22 @@ ob_start();
       <div class="cat-dot" style="background:<?= e(color_hex($cat['color'] ?? '#94a3b8')) ?>"></div>
       <div class="cat-nombre" style="<?= !$cat['activa']?'color:var(--t3)':'' ?>"><?= e($cat['nombre']) ?></div>
       <div class="cat-count"><?= (int)$cat['num_costos'] ?> costo<?= $cat['num_costos']!=1?'s':'' ?></div>
+      <?php if ($es_admin): ?>
       <label class="toggle" title="Activar/Desactivar">
         <input type="checkbox" <?= $cat['activa']?'checked':'' ?>
                onchange="toggleCategoria(<?= (int)$cat['id'] ?>, this.checked)">
         <div class="toggle-track"></div><div class="toggle-thumb"></div>
       </label>
       <button class="cat-edit-btn" onclick="abrirCategoria(<?= (int)$cat['id'] ?>, <?= htmlspecialchars(json_encode(['nombre'=>$cat['nombre'],'color'=>$cat['color']??'#3b82f6']), ENT_QUOTES) ?>)">✎</button>
+      <?php endif; ?>
     </div>
     <?php endforeach; ?>
   </div>
   <?php endif; ?>
 
+  <?php if ($es_admin): ?>
   <button class="add-row-btn" onclick="abrirCategoria(null)">+ Nueva categoría</button>
+  <?php endif; ?>
 
 </div><!-- /ctab-panel-categorias -->
 
