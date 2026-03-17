@@ -267,8 +267,8 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
   nav,#nav-lateral,.detail-layout{display:none!important}
   .venta-print-only{display:block!important}
   .recibo-print-only{display:none!important}
-  body.printing-recibo .venta-print-only{display:none!important}
-  body.printing-recibo .recibo-print-only{display:block!important}
+  .recibo-print-only.rp-active{display:block!important}
+  .venta-print-only.rp-hidden{display:none!important}
   body{background:#fff}
   .fac,#recibo-print-tpl{font-size:10pt}
   /* Estilos del recibo individual */
@@ -1352,9 +1352,14 @@ function imprimirRecibo(d){
     <div class="rp-foot">${escHtml(d.empresa)} · gracias por su preferencia</div>
     <div class="rp-sello">✓ ${escHtml(d.numero)} · ${escHtml(d.fecha)}</div>
   `;
-  document.body.classList.add('printing-recibo');
+  // Ocultar venta, mostrar solo recibo
+  const ventaEl = document.querySelector('.venta-print-only');
+  if(ventaEl) ventaEl.classList.add('rp-hidden');
+  el.classList.add('rp-active');
   window.print();
-  document.body.classList.remove('printing-recibo');
+  // Restaurar
+  if(ventaEl) ventaEl.classList.remove('rp-hidden');
+  el.classList.remove('rp-active');
 }
 
 // ── Init ──
