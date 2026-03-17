@@ -49,8 +49,8 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
         .wrap { width: 100%; max-width: 440px; }
 
         .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; justify-content: center; }
-        .logo-mark { width: 42px; height: 42px; border-radius: 12px; background: var(--g); display: flex; align-items: center; justify-content: center; }
-        .logo-mark svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+        .logo-mark { width: 44px; height: 44px; border-radius: 12px; background: var(--g); display: flex; align-items: center; justify-content: center; }
+        .logo-mark svg { width: 36px; height: 28px; }
         .logo-name { font: 800 22px var(--body); letter-spacing: -.02em; }
         .logo-name span { color: var(--g); }
 
@@ -102,7 +102,16 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
 
     <div class="logo">
         <div class="logo-mark">
-            <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+            <svg viewBox="0 0 60 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M48.5 38H14c-5.5 0-10-4.5-10-10 0-4.8 3.4-8.8 8-9.8C12.2 12.5 17.5 8 24 8c5.2 0 9.7 3 12 7.3C37.3 14.5 39 14 41 14c5.5 0 10 4.5 10 10 0 .7-.1 1.3-.2 2C54.3 27.5 57 31 57 35c0 1-.2 2-.5 3" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="33" cy="26" r="12" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>
+              <circle cx="33" cy="26" r="8" stroke="rgba(255,255,255,.65)" stroke-width="1.5"/>
+              <circle cx="33" cy="26" r="4" stroke="rgba(255,255,255,.8)" stroke-width="1.5"/>
+              <line x1="33" y1="14" x2="33" y2="38" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
+              <line x1="21" y1="26" x2="45" y2="26" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
+              <line x1="33" y1="26" x2="42" y2="18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="33" cy="26" r="1.8" fill="#4ade80"/>
+            </svg>
         </div>
         <div class="logo-name">Cotiza<span>.cloud</span></div>
     </div>
