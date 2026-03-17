@@ -151,19 +151,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .cta-note{font:500 13px var(--body);color:rgba(255,255,255,.6);margin-top:16px}
 
 /* LIVE NOTIFICATIONS */
-.notif-stack{position:fixed;top:80px;right:24px;z-index:90;display:flex;flex-direction:column;gap:12px;pointer-events:none}
-.notif{background:rgba(255,255,255,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:16px 20px;box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);display:flex;align-items:center;gap:14px;min-width:320px;max-width:380px;transform:translateX(120%);opacity:0;transition:all .5s cubic-bezier(.16,1,.3,1);pointer-events:auto}
+.notif-stack{position:fixed;top:76px;right:20px;z-index:90;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+.notif{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(0,0,0,.06);border-radius:14px;padding:12px 16px;box-shadow:0 6px 24px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.05);display:flex;align-items:center;gap:12px;max-width:310px;transform:translateX(120%);opacity:0;transition:all .5s cubic-bezier(.16,1,.3,1);pointer-events:auto}
 .notif.show{transform:translateX(0);opacity:1}
-.notif-ico{font-size:28px;flex-shrink:0;line-height:1}
+.notif-ico{font-size:22px;flex-shrink:0;line-height:1}
 .notif-body{flex:1;min-width:0}
-.notif-title{font:700 13px var(--body);color:var(--text);margin-bottom:2px;letter-spacing:-.01em}
-.notif-desc{font:400 12px var(--body);color:var(--t3);line-height:1.4}
-.notif-time{font:500 10px var(--body);color:var(--t3);opacity:.6;flex-shrink:0;align-self:flex-start;margin-top:2px}
-.notif-app{display:flex;align-items:center;gap:6px;margin-bottom:6px}
-.notif-app-ico{width:18px;height:18px;border-radius:4px;background:var(--g);display:flex;align-items:center;justify-content:center}
-.notif-app-ico svg{width:10px;height:10px;fill:none;stroke:#fff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.notif-app-name{font:600 10px var(--body);color:var(--t3);text-transform:uppercase;letter-spacing:.04em}
-.notif-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:4px;font:700 10px var(--body);letter-spacing:.02em;margin-top:4px}
+.notif-title{font:700 12.5px var(--body);color:var(--text);margin-bottom:1px;letter-spacing:-.01em}
+.notif-desc{font:400 11px var(--body);color:var(--t3);line-height:1.35}
+.notif-time{font:500 10px var(--body);color:var(--t3);opacity:.5;flex-shrink:0;align-self:flex-start;margin-top:1px}
 
 /* FOOTER */
 .footer{border-top:1px solid var(--border);padding:24px;text-align:center;font:400 13px var(--body);color:var(--t3)}
@@ -443,41 +438,35 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   <div class="notif" id="notif1">
     <div class="notif-ico">&#128293;</div>
     <div class="notif-body">
-      <div class="notif-app">
-        <div class="notif-app-ico"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg></div>
-        <span class="notif-app-name">Cotiza.cloud</span>
-      </div>
       <div class="notif-title">3 cotizaciones en Cierre Inminente</div>
-      <div class="notif-desc">Arq. Rodriguez, Ing. Vega y Despacho Luna revisaron tu cotizacion varias veces hoy</div>
-      <div class="notif-badge" style="background:#fef2f2;color:#dc2626">&#128293; Cierre Inminente</div>
+      <div class="notif-desc">Arq. Rodriguez, Ing. Vega y Despacho Luna las revisaron varias veces hoy</div>
     </div>
     <div class="notif-time">ahora</div>
   </div>
 
   <div class="notif" id="notif2">
-    <div class="notif-ico">&#128270;</div>
+    <div class="notif-ico">&#10060;</div>
     <div class="notif-body">
-      <div class="notif-app">
-        <div class="notif-app-ico"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg></div>
-        <span class="notif-app-name">Cotiza.cloud</span>
-      </div>
-      <div class="notif-title">4 cotizaciones Validando Precio</div>
-      <div class="notif-desc">Tus clientes estan comparando opciones. Buen momento para dar seguimiento.</div>
-      <div class="notif-badge" style="background:#fef3c7;color:#92400e">&#128270; Validando Precio</div>
+      <div class="notif-title">4 cotizaciones no han sido vistas</div>
+      <div class="notif-desc">Enviadas hace mas de 48h sin ninguna apertura</div>
     </div>
-    <div class="notif-time">hace 2m</div>
+    <div class="notif-time">hace 1m</div>
   </div>
 
   <div class="notif" id="notif3">
-    <div class="notif-ico">&#128200;</div>
+    <div class="notif-ico">&#128296;</div>
     <div class="notif-body">
-      <div class="notif-app">
-        <div class="notif-app-ico"><svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/></svg></div>
-        <span class="notif-app-name">Cotiza.cloud</span>
-      </div>
+      <div class="notif-title">5 cotizaciones Validando Precio</div>
+      <div class="notif-desc">Tus clientes estan comparando. Buen momento para llamar.</div>
+    </div>
+    <div class="notif-time">hace 3m</div>
+  </div>
+
+  <div class="notif" id="notif4">
+    <div class="notif-ico">&#128302;</div>
+    <div class="notif-body">
       <div class="notif-title">1 cotizacion con Prediccion Alta</div>
-      <div class="notif-desc">Constructora MBL tiene 94% de probabilidad de cierre segun el radar.</div>
-      <div class="notif-badge" style="background:#ede9fe;color:#7c3aed">&#128200; Prediccion Alta</div>
+      <div class="notif-desc">Constructora MBL — 94% probabilidad de cierre</div>
     </div>
     <div class="notif-time">hace 5m</div>
   </div>
@@ -492,17 +481,17 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   var io=new IntersectionObserver(function(entries){
     if(entries[0].isIntersecting && !fired){
       fired=true;
-      var n1=document.getElementById('notif1');
-      var n2=document.getElementById('notif2');
-      var n3=document.getElementById('notif3');
-      setTimeout(function(){n1.classList.add('show')},300);
-      setTimeout(function(){n2.classList.add('show')},1200);
-      setTimeout(function(){n3.classList.add('show')},2200);
-      setTimeout(function(){n3.classList.remove('show')},8000);
-      setTimeout(function(){n2.classList.remove('show')},9000);
-      setTimeout(function(){n1.classList.remove('show')},10000);
+      var ids=['notif1','notif2','notif3','notif4'];
+      ids.forEach(function(id,i){
+        setTimeout(function(){document.getElementById(id).classList.add('show')},400+i*900);
+      });
+      /* se desvanecen uno a uno despues de 20s */
+      setTimeout(function(){document.getElementById('notif4').classList.remove('show')},22000);
+      setTimeout(function(){document.getElementById('notif3').classList.remove('show')},23500);
+      setTimeout(function(){document.getElementById('notif2').classList.remove('show')},25000);
+      setTimeout(function(){document.getElementById('notif1').classList.remove('show')},26500);
     }
-  },{threshold:0.3});
+  },{threshold:0.25});
   io.observe(target);
 })();
 </script>
