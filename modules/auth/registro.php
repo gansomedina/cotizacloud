@@ -126,7 +126,7 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
                 <label class="lbl">Nombre de la empresa <span class="req">*</span></label>
                 <input class="inp <?= !empty($errores['nombre_empresa']) ? 'error' : '' ?>"
                        type="text" name="nombre_empresa"
-                       placeholder="Ej. Cocinas Rodríguez"
+                       placeholder="Nombre de tu negocio"
                        value="<?= e($valores['nombre_empresa'] ?? '') ?>"
                        oninput="autoSlug(this.value)" autofocus>
                 <?php if (!empty($errores['nombre_empresa'])): ?>
@@ -192,7 +192,7 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
     </div>
 
     <div class="auth-link">
-        ¿Ya tienes cuenta? Ingresa en <strong>tuempresa.cotiza.cloud</strong>
+        ¿Ya tienes cuenta? <a href="/login" style="color:var(--g);font-weight:600;text-decoration:none">Inicia sesión</a>
     </div>
 
 </div>
