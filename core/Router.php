@@ -106,6 +106,11 @@ class Router
             : self::load('auth', 'landing')
         );
 
+        // ── Fallback: URLs públicas en dominio raíz → redirigir al subdominio ──
+        self::get('/c/:slug', fn($p) => self::redirect_to_subdomain('cotizaciones', 'slug', $p['slug'], '/c/'));
+        self::get('/v/:slug', fn($p) => self::redirect_to_subdomain('ventas',       'slug', $p['slug'], '/v/'));
+        self::get('/r/:token',fn($p) => self::redirect_to_subdomain('recibos',      'token',$p['token'],'/r/'));
+
         // ── App (requiere login) ───────────────────────────
         self::get('/dashboard',               fn()  => self::app('dashboard',    'index'));
 
@@ -266,5 +271,26 @@ class Router
     public static function is(string $pattern): bool
     {
         return self::match_pattern($pattern, self::$path) !== null;
+    }
+
+    // ─── Redirect public URL from root domain to correct subdomain ──
+    private static function redirect_to_subdomain(string $tabla, string $columna, string $valor, string $prefix): void
+    {
+        $row = DB::row(
+            "SELECT e.slug AS empresa_slug
+             FROM `$tabla` t
+             JOIN empresas e ON e.id = t.empresa_id AND e.activa = 1
+             WHERE t.`$columna` = ?
+             LIMIT 1",
+            [$valor]
+        );
+
+        if ($row && !empty($row['empresa_slug'])) {
+            $url = 'https://' . $row['empresa_slug'] . '.' . BASE_DOMAIN . $prefix . $valor;
+            header('Location: ' . $url, true, 301);
+            exit;
+        }
+
+        self::not_found();
     }
 }
