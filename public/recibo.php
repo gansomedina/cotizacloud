@@ -89,47 +89,47 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .page{max-width:var(--max);margin:0 auto;padding:20px 16px 60px}
 
 /* HEADER EMPRESA */
-.emp-hdr{text-align:center;padding:14px 16px 10px;background:var(--white);border-bottom:1px solid var(--border);margin:-20px -16px 14px}
-.emp-logo{width:38px;height:38px;border-radius:10px;background:var(--g);display:inline-flex;align-items:center;justify-content:center;font:700 14px var(--body);color:#fff;margin-bottom:5px}
-.emp-nombre{font:800 15px var(--body);letter-spacing:-.02em}
-.emp-contact{font-size:11px;color:var(--t3);margin-top:2px;line-height:1.5}
+.emp-hdr{text-align:center;padding:20px 16px 16px;background:var(--white);border-bottom:1px solid var(--border);margin:-20px -16px 20px}
+.emp-logo{width:52px;height:52px;border-radius:13px;background:var(--g);display:inline-flex;align-items:center;justify-content:center;font:700 18px var(--body);color:#fff;margin-bottom:8px}
+.emp-nombre{font:800 18px var(--body);letter-spacing:-.02em}
+.emp-contact{font-size:13px;color:var(--t3);margin-top:4px;line-height:1.7}
 .emp-contact a{color:var(--t3);text-decoration:none}
 
 /* TIPO DE RECIBO */
-.rec-type-banner{text-align:center;margin-bottom:10px}
-.rec-tipo{display:inline-block;padding:4px 12px;border-radius:20px;font:700 11px var(--body);background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-bd)}
-.rec-folio{font:400 12px var(--num);color:var(--t3);margin-top:3px}
+.rec-type-banner{text-align:center;margin-bottom:16px}
+.rec-tipo{display:inline-block;padding:5px 14px;border-radius:20px;font:700 12px var(--body);background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-bd)}
+.rec-folio{font:400 13px var(--num);color:var(--t3);margin-top:4px}
 <?php if ($es_cancelado): ?>
 .rec-folio::before{content:'⚠ ';color:var(--accent)}
 <?php endif; ?>
 
 /* MONTO PRINCIPAL */
-.monto-box{background:var(--accent-bg);border:2px solid var(--accent-bd);border-radius:var(--r);padding:14px 14px;text-align:center;margin-bottom:12px}
-.monto-lbl{font:700 9px var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
-.monto-val{font:300 34px var(--num);color:var(--accent);letter-spacing:-.02em;line-height:1}
+.monto-box{background:var(--accent-bg);border:2px solid var(--accent-bd);border-radius:var(--r);padding:20px 16px;text-align:center;margin-bottom:16px}
+.monto-lbl{font:700 10px var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.monto-val{font:300 42px var(--num);color:var(--accent);letter-spacing:-.02em;line-height:1}
 .monto-tachado{text-decoration:line-through;opacity:.5}
-.monto-fecha{font:400 11px var(--num);color:var(--accent);opacity:.7;margin-top:4px}
+.monto-fecha{font:400 12px var(--num);color:var(--accent);opacity:.7;margin-top:6px}
 
 /* CARDS DE DETALLE */
-.det-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:10px}
-.det-row{display:flex;justify-content:space-between;align-items:baseline;padding:7px 14px;border-bottom:1px solid var(--border);gap:12px}
+.det-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:12px}
+.det-row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 14px;border-bottom:1px solid var(--border);gap:12px}
 .det-row:last-child{border-bottom:none}
-.det-lbl{font:400 12px var(--body);color:var(--t2);flex-shrink:0}
-.det-val{font:500 12px var(--num);color:var(--text);text-align:right;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.det-row.section-title{background:var(--bg);padding:5px 14px}
-.det-row.section-title .det-lbl{font:700 9px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+.det-lbl{font:400 13px var(--body);color:var(--t2);flex-shrink:0}
+.det-val{font:500 14px var(--num);color:var(--text);text-align:right}
+.det-row.section-title{background:var(--bg);padding:7px 14px}
+.det-row.section-title .det-lbl{font:700 10px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
 
 /* DESGLOSE SALDO */
-.saldo-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:10px}
-.sal-row{display:flex;justify-content:space-between;align-items:center;padding:7px 14px;border-bottom:1px solid var(--border)}
+.saldo-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:12px}
+.sal-row{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border)}
 .sal-row:last-child{border-bottom:none}
-.sal-lbl{font:400 12px var(--body);color:var(--t2)}
-.sal-val{font:500 13px var(--num);color:var(--text)}
+.sal-lbl{font:400 13px var(--body);color:var(--t2)}
+.sal-val{font:500 14px var(--num);color:var(--text)}
 .sal-row.antes .sal-val{color:var(--t3)}
-.sal-row.este   .sal-lbl{font:600 12px var(--body)}
-.sal-row.este   .sal-val{font:600 14px var(--num);color:var(--accent)}
-.sal-row.despues .sal-lbl{font:700 12px var(--body)}
-.sal-row.despues .sal-val{font:600 14px var(--num)}
+.sal-row.este   .sal-lbl{font:600 13px var(--body)}
+.sal-row.este   .sal-val{font:600 15px var(--num);color:var(--accent)}
+.sal-row.despues .sal-lbl{font:700 13px var(--body)}
+.sal-row.despues .sal-val{font:600 16px var(--num)}
 
 /* SELLO */
 .sello{background:var(--bg);border:1px dashed var(--border);border-radius:var(--r-sm);padding:10px 14px;text-align:center;font:400 10px var(--num);color:var(--t3);margin-bottom:12px;line-height:1.7}
@@ -150,31 +150,22 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 /* ── PRINT ───────────────────── */
 @media print{
-  @page{margin:8mm 12mm;size:letter portrait}
+  @page{margin:10mm 14mm;size:letter portrait}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{background:#fff}
   .btn-row,.pie{display:none!important}
   .page{padding:0;max-width:100%}
-  .emp-hdr{margin:0 0 6pt;padding:0 0 5pt;border-bottom:1pt solid #000;background:transparent}
-  .emp-logo{width:28px;height:28px;font-size:11px;background:#111!important;margin-bottom:3px}
-  .emp-nombre{font-size:12pt}
-  .emp-contact{font-size:8pt;line-height:1.3}
-  .rec-type-banner{margin-bottom:6pt}
-  .rec-tipo{font-size:9pt;padding:2pt 8pt}
-  .rec-folio{font-size:8pt;margin-top:2pt}
-  .cancelado-aviso{font-size:9pt;padding:6pt 10pt;margin-bottom:6pt}
-  .monto-box{border:1.5pt solid #000;padding:8pt 10pt;margin-bottom:8pt}
-  .monto-lbl{font-size:8pt;margin-bottom:2pt}
-  .monto-val{font-size:22pt}
-  .monto-fecha{font-size:8pt;margin-top:2pt}
-  .det-card,.saldo-card{border:1pt solid #ccc;border-radius:3pt;box-shadow:none;margin-bottom:6pt}
-  .det-row{padding:3pt 10pt}
-  .sal-row{padding:4pt 10pt}
-  .det-row.section-title{padding:3pt 10pt}
-  .det-row.section-title .det-lbl{font-size:7pt}
+  .emp-hdr{margin:0 0 12pt;padding:0 0 8pt;border-bottom:1.5pt solid #000;background:transparent}
+  .emp-logo{width:34px;height:34px;font-size:13px;background:#111!important}
+  .emp-nombre{font-size:14pt}
+  .emp-contact{font-size:9pt}
+  .monto-box{border:1.5pt solid #000;padding:12pt}
+  .monto-val{font-size:30pt}
+  .det-card,.saldo-card{border:1pt solid #ccc;border-radius:3pt;box-shadow:none}
+  .det-row,.sal-row{padding:5pt 10pt}
   .det-lbl,.sal-lbl{font-size:9pt}
   .det-val,.sal-val{font-size:9pt}
-  .sello{border:1pt dashed #aaa;padding:4pt 8pt;font-size:7pt;margin-bottom:0}
+  .sello{border:1pt dashed #aaa;padding:6pt 10pt;font-size:8pt}
 }
 </style>
 </head>
@@ -226,7 +217,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <?php endif; ?>
     <div class="det-row section-title"><span class="det-lbl">Referencia de venta</span></div>
     <div class="det-row"><span class="det-lbl">Venta</span><span class="det-val"><?= e($rec['venta_numero']) ?></span></div>
-    <div class="det-row"><span class="det-lbl">Proyecto</span><span class="det-val"><?= e(mb_substr($rec['venta_titulo'],0,45)) ?></span></div>
+    <div class="det-row"><span class="det-lbl">Proyecto</span><span class="det-val"><?= e(mb_substr($rec['venta_titulo'],0,60)) ?></span></div>
     <div class="det-row"><span class="det-lbl">Total de la venta</span><span class="det-val"><?= fmt_r($venta_total) ?></span></div>
     <?php if ($rec['reg_por']): ?>
     <div class="det-row"><span class="det-lbl">Registrado por</span><span class="det-val"><?= e($rec['reg_por']) ?></span></div>

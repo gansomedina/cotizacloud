@@ -29,7 +29,7 @@ if (!$recibo) { flash('error', 'Recibo no encontrado'); redirect('/ventas'); }
 
 $es_cancelacion = $recibo['tipo'] === 'cancelacion';
 $cancelado      = (bool)$recibo['cancelado'];
-$url_publica    = Router::url_publica('/r/' . $recibo['token']);
+$url_publica    = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/r/' . $recibo['token'];
 
 $page_title = e($recibo['numero']);
 ob_start();
@@ -41,40 +41,30 @@ ob_start();
 .rbtn.primary { background:var(--g); border-color:var(--g); color:#fff; }
 .rbtn.primary:hover { opacity:.88; }
 
-.recibo-preview { background:var(--white); border:1px solid var(--border); border-radius:var(--r); padding:20px; box-shadow:var(--sh-md); max-width:480px; margin:0 auto; }
-.rp-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-.rp-empresa { font:700 13px var(--body); text-align:right; color:var(--text); }
-.rp-empresa-sub { font:400 11px var(--body); color:var(--t3); margin-top:1px; text-align:right; }
-.rp-title { font:800 18px var(--body); letter-spacing:-.02em; margin-bottom:2px; }
+.recibo-preview { background:var(--white); border:1px solid var(--border); border-radius:var(--r); padding:28px; box-shadow:var(--sh-md); max-width:480px; margin:0 auto; }
+.rp-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
+.rp-empresa { font:700 14px var(--body); text-align:right; color:var(--text); }
+.rp-empresa-sub { font:400 13px var(--body); color:var(--t3); margin-top:2px; text-align:right; }
+.rp-title { font:800 22px var(--body); letter-spacing:-.02em; margin-bottom:4px; }
 .rp-title.cancelado { color:var(--danger); }
 .rp-title.cancelacion { color:var(--purple); }
-.rp-num { font:600 12px var(--num); color:var(--t3); margin-bottom:10px; }
-.rp-divider { height:1px; background:var(--border); margin:8px 0; }
-.rp-row { display:flex; justify-content:space-between; padding:3px 0; font:400 12px var(--body); }
+.rp-num { font:600 13px var(--num); color:var(--t3); margin-bottom:16px; }
+.rp-divider { height:1px; background:var(--border); margin:14px 0; }
+.rp-row { display:flex; justify-content:space-between; padding:5px 0; font:400 13px var(--body); }
 .rp-lbl { color:var(--t2); }
-.rp-val { font:500 12px var(--num); color:var(--text); max-width:60%; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.rp-monto-big { display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding:10px 14px; border-radius:var(--r-sm); }
-.rp-monto-lbl { font:700 13px var(--body); }
-.rp-monto-val { font:800 22px var(--num); }
-.rp-footer { margin-top:10px; font:400 11px var(--body); color:var(--t3); text-align:center; line-height:1.5; }
-.rp-sello { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:8px; padding:6px; background:var(--bg); border-radius:var(--r-sm); font:600 10px var(--num); color:var(--t3); }
-.badge-cancelado { background:var(--danger-bg); color:var(--danger); padding:2px 8px; border-radius:5px; font:700 11px var(--body); }
-.badge-cancelacion { background:var(--purple-bg); color:var(--purple); padding:2px 8px; border-radius:5px; font:700 11px var(--body); }
+.rp-val { font:500 13px var(--num); color:var(--text); }
+.rp-monto-big { display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding:14px 16px; border-radius:var(--r-sm); }
+.rp-monto-lbl { font:700 14px var(--body); }
+.rp-monto-val { font:800 24px var(--num); }
+.rp-footer { margin-top:16px; font:400 13px var(--body); color:var(--t3); text-align:center; line-height:1.6; }
+.rp-sello { display:flex; align-items:center; justify-content:center; gap:6px; margin-top:10px; padding:8px; background:var(--bg); border-radius:var(--r-sm); font:600 12px var(--num); color:var(--t3); }
+.badge-cancelado { background:var(--danger-bg); color:var(--danger); padding:3px 9px; border-radius:5px; font:700 12px var(--body); }
+.badge-cancelacion { background:var(--purple-bg); color:var(--purple); padding:3px 9px; border-radius:5px; font:700 12px var(--body); }
 
 @media print {
-    @page { margin:10mm 14mm; size:letter portrait; }
-    .recibo-actions, .topbar, .sidebar, .layout-sidebar, .bottom-nav { display:none !important; }
+    .recibo-actions, .topbar, .sidebar, .layout-sidebar { display:none !important; }
     body { background:#fff; }
-    .recibo-preview { box-shadow:none; border:none; max-width:100%; padding:0; }
-    .rp-header { margin-bottom:6px; }
-    .rp-title { font-size:16px; }
-    .rp-divider { margin:6px 0; }
-    .rp-row { padding:2px 0; font-size:11px; }
-    .rp-val { font-size:11px; }
-    .rp-monto-big { margin-top:8px; padding:8px 12px; }
-    .rp-monto-val { font-size:20px; }
-    .rp-footer { font-size:10px; margin-top:6px; }
-    .rp-sello { font-size:9px; padding:4px; margin-top:6px; }
+    .recibo-preview { box-shadow:none; border:none; max-width:100%; }
 }
 </style>
 
@@ -92,7 +82,7 @@ ob_start();
 <div class="recibo-preview" id="recibo-imprimir">
 
     <div class="rp-header">
-        <div style="font-size:22px;"><?= $empresa['logo_emoji'] ?? '🏠' ?></div>
+        <div style="font-size:30px;"><?= $empresa['logo_emoji'] ?? '🏠' ?></div>
         <div>
             <div class="rp-empresa"><?= e($empresa['nombre']) ?></div>
             <div class="rp-empresa-sub"><?= e($empresa['ciudad'] ?? '') ?> · <?= e($empresa['telefono'] ?? '') ?></div>
@@ -130,7 +120,7 @@ ob_start();
     </div>
     <div class="rp-row">
         <span class="rp-lbl">Proyecto</span>
-        <span class="rp-val"><?= e(mb_substr($recibo['venta_titulo'], 0, 45)) ?></span>
+        <span class="rp-val"><?= e($recibo['venta_titulo']) ?></span>
     </div>
     <?php if (!$es_cancelacion): ?>
     <div class="rp-row">

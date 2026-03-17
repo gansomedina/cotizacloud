@@ -45,20 +45,30 @@ $pag = paginar($total_rows, $pagina, $por_pag);
 
 $clientes = DB::query(
     "SELECT cl.*,
-            COUNT(DISTINCT c.id)  AS num_cots,
-            COUNT(DISTINCT v.id)  AS num_ventas,
-            COALESCE(SUM(CASE WHEN v.estado != 'cancelada' THEN v.total ELSE 0 END), 0) AS total_comprado,
-            COALESCE(SUM(CASE WHEN v.estado != 'cancelada' THEN v.saldo ELSE 0 END), 0) AS saldo_pendiente,
+            COALESCE(sc.num_cots, 0)        AS num_cots,
+            COALESCE(sv.num_ventas, 0)       AS num_ventas,
+            COALESCE(sv.total_comprado, 0)   AS total_comprado,
+            COALESCE(sv.saldo_pendiente, 0)  AS saldo_pendiente,
             u.nombre AS asesor_nombre
      FROM clientes cl
-     LEFT JOIN cotizaciones c ON c.cliente_id = cl.id AND c.empresa_id = cl.empresa_id
-     LEFT JOIN ventas       v ON v.cliente_id = cl.id AND v.empresa_id = cl.empresa_id
-     LEFT JOIN usuarios     u ON u.id = cl.usuario_id
+     LEFT JOIN (
+         SELECT cliente_id, COUNT(*) AS num_cots
+         FROM cotizaciones WHERE empresa_id = ?
+         GROUP BY cliente_id
+     ) sc ON sc.cliente_id = cl.id
+     LEFT JOIN (
+         SELECT cliente_id,
+                COUNT(*) AS num_ventas,
+                SUM(CASE WHEN estado != 'cancelada' THEN total ELSE 0 END) AS total_comprado,
+                SUM(CASE WHEN estado != 'cancelada' THEN saldo ELSE 0 END) AS saldo_pendiente
+         FROM ventas WHERE empresa_id = ?
+         GROUP BY cliente_id
+     ) sv ON sv.cliente_id = cl.id
+     LEFT JOIN usuarios u ON u.id = cl.usuario_id
      WHERE $where_sql
-     GROUP BY cl.id
      ORDER BY $order_sql
      LIMIT ? OFFSET ?",
-    array_merge($params, [$por_pag, $pag['offset']])
+    array_merge([$empresa_id, $empresa_id], $params, [$por_pag, $pag['offset']])
 );
 
 $page_title = 'Clientes';
