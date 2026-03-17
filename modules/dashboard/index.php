@@ -226,8 +226,7 @@ $sin_abrir_list = DB::query(
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
      WHERE c.empresa_id=? AND c.estado='enviada'
-       AND c.vista_at IS NULL AND c.enviada_at IS NOT NULL
-       AND c.enviada_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) $c_where
+       AND c.vista_at IS NULL AND c.enviada_at IS NOT NULL $c_where
      ORDER BY c.enviada_at ASC LIMIT 6",
     [$empresa_id]
 );
