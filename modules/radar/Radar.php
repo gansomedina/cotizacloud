@@ -588,7 +588,7 @@ class Radar
             $guest_sessions >= 1 &&
             ($guest_sessions >= 2 || $e_sv_price || $e_mv_price) &&
             ($pv_read || $e_sv_price || $e_mv_price || $e_main_pev >= 2) &&
-            ($has_loop || $has_tot_rev || $e_tot_views >= 2 || $e_sv_price || $e_mv_price || $e_main_pev >= 2)
+            ($has_loop || $has_tot_rev || $e_tot_views >= 2)
         ) {
             $buckets[] = 'validando_precio';
         }
