@@ -1328,41 +1328,52 @@ async function guardarCambios(){
 
 // ── PDF de recibo individual ──
 function imprimirRecibo(d){
-  const el = document.getElementById('recibo-print-tpl');
-  el.innerHTML = `
-    <div class="rp-header">
-      <div class="rp-empresa">${escHtml(d.empresa)}</div>
-      <div class="rp-sub">${escHtml(d.ciudad)}${d.tel?' · '+escHtml(d.tel):''}</div>
-      <div class="rp-tipo">Recibo de pago</div>
-      <div class="rp-folio">${escHtml(d.numero)}</div>
-    </div>
-    <table class="rp-table">
-      <tr><td>Cliente</td><td>${escHtml(d.cliente)}</td></tr>
-      <tr><td>Venta</td><td>${escHtml(d.venta)}</td></tr>
-      <tr><td>Fecha</td><td>${escHtml(d.fecha)}</td></tr>
-      <tr><td>Concepto</td><td>${escHtml(d.concepto)}</td></tr>
-      ${d.notas?'<tr><td>Forma</td><td>'+escHtml(d.notas)+'</td></tr>':''}
-    </table>
-    <div class="rp-monto-box">
-      <div class="rp-monto-lbl">Total pagado</div>
-      <div class="rp-monto-val">$${parseFloat(d.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}</div>
-    </div>
-    <div class="rp-foot">${escHtml(d.empresa)} · gracias por su preferencia</div>
-    <div class="rp-sello">✓ ${escHtml(d.numero)} · ${escHtml(d.fecha)}</div>
-  `;
-  // Ocultar venta y mostrar recibo con inline styles (máxima prioridad)
-  const ventaEl = document.querySelector('.venta-print-only');
-  if(ventaEl) ventaEl.style.setProperty('display','none','important');
-  el.style.setProperty('display','block','important');
-  // Esperar repaint antes de imprimir
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      window.print();
-      // Restaurar después de imprimir
-      if(ventaEl) ventaEl.style.removeProperty('display');
-      el.style.removeProperty('display');
-    });
-  });
+  // Abrir ventana nueva con SOLO el recibo (evita conflictos CSS con la venta)
+  const w = window.open('','_blank','width=700,height=500');
+  if(!w){alert('Permite ventanas emergentes para imprimir el recibo');return;}
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>${escHtml(d.numero)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:40px;max-width:600px;margin:0 auto}
+@page{margin:14mm 16mm;size:letter}
+.rp-header{text-align:center;padding-bottom:12pt;border-bottom:2pt solid #000;margin-bottom:12pt}
+.rp-empresa{font-size:18pt;font-weight:800}
+.rp-sub{font-size:9pt;color:#555;margin:3pt 0}
+.rp-tipo{font-size:22pt;font-weight:300;margin-top:10pt}
+.rp-folio{font-size:11pt;font-weight:700;color:#555}
+table{width:100%;border-collapse:collapse;margin:12pt 0}
+td{padding:5pt 8pt;border-bottom:1pt solid #eee;font-size:10pt}
+td:first-child{font-weight:700;width:100pt;color:#555}
+.rp-monto-box{border:2pt solid #2a7;border-radius:6pt;padding:14pt;text-align:center;margin:14pt 0}
+.rp-monto-lbl{font-size:10pt;font-weight:600;color:#555}
+.rp-monto-val{font-size:26pt;font-weight:800;color:#1a6}
+.rp-foot{font-size:9pt;color:#555;text-align:center;margin-top:12pt;padding-top:8pt;border-top:1pt solid #ddd}
+.rp-sello{font-size:8pt;color:#aaa;text-align:center;margin-top:4pt}
+@media print{body{padding:0}}
+</style></head><body>
+<div class="rp-header">
+  <div class="rp-empresa">${escHtml(d.empresa)}</div>
+  <div class="rp-sub">${escHtml(d.ciudad)}${d.tel?' &middot; '+escHtml(d.tel):''}</div>
+  <div class="rp-tipo">Recibo de pago</div>
+  <div class="rp-folio">${escHtml(d.numero)}</div>
+</div>
+<table>
+  <tr><td>Cliente</td><td>${escHtml(d.cliente)}</td></tr>
+  <tr><td>Venta</td><td>${escHtml(d.venta)}</td></tr>
+  <tr><td>Fecha</td><td>${escHtml(d.fecha)}</td></tr>
+  <tr><td>Concepto</td><td>${escHtml(d.concepto)}</td></tr>
+  ${d.notas?'<tr><td>Forma</td><td>'+escHtml(d.notas)+'</td></tr>':''}
+</table>
+<div class="rp-monto-box">
+  <div class="rp-monto-lbl">Total pagado</div>
+  <div class="rp-monto-val">\$${parseFloat(d.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}</div>
+</div>
+<div class="rp-foot">${escHtml(d.empresa)} &middot; gracias por su preferencia</div>
+<div class="rp-sello">&check; ${escHtml(d.numero)} &middot; ${escHtml(d.fecha)}</div>
+</body></html>`);
+  w.document.close();
+  setTimeout(function(){ w.print(); w.close(); }, 200);
 }
 
 // ── Init ──
