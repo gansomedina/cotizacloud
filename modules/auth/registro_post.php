@@ -115,6 +115,5 @@ try {
     redirect('/registro');
 }
 
-// ─── Redirigir al login del subdominio nuevo ─────────────
-$url_login = 'https://' . $slug_raw . '.' . BASE_DOMAIN . '/login?nuevo=1&u=' . urlencode($email);
-redirect($url_login);
+// ─── Redirigir al login centralizado ─────────────
+redirect('/login?nuevo=1&empresa=' . urlencode($slug_raw) . '&u=' . urlencode($email));
