@@ -152,13 +152,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 /* LIVE NOTIFICATIONS */
 .notif-stack{position:fixed;top:76px;right:20px;z-index:90;display:flex;flex-direction:column;gap:10px;pointer-events:none}
-.notif{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(0,0,0,.06);border-radius:14px;padding:12px 16px;box-shadow:0 6px 24px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.05);display:flex;align-items:center;gap:12px;max-width:310px;transform:translateX(120%);opacity:0;transition:all .5s cubic-bezier(.16,1,.3,1);pointer-events:auto}
+.notif{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(0,0,0,.06);border-radius:14px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.05);display:flex;align-items:flex-start;gap:12px;max-width:340px;transform:translateX(120%);opacity:0;transition:all .5s cubic-bezier(.16,1,.3,1);pointer-events:auto}
 .notif.show{transform:translateX(0);opacity:1}
-.notif-ico{font-size:22px;flex-shrink:0;line-height:1}
+.notif-ico{font-size:22px;flex-shrink:0;line-height:1;margin-top:2px}
 .notif-body{flex:1;min-width:0}
-.notif-title{font:700 12.5px var(--body);color:var(--text);margin-bottom:1px;letter-spacing:-.01em}
-.notif-desc{font:400 11px var(--body);color:var(--t3);line-height:1.35}
-.notif-time{font:500 10px var(--body);color:var(--t3);opacity:.5;flex-shrink:0;align-self:flex-start;margin-top:1px}
+.notif-title{font:700 13px var(--body);color:var(--text);margin-bottom:3px;letter-spacing:-.01em}
+.notif-desc{font:400 12.5px var(--body);color:#64748b;line-height:1.4}
+.notif-time{font:500 10px var(--body);color:var(--t3);opacity:.6;flex-shrink:0;margin-top:3px}
+.notif-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font:700 10px var(--body);letter-spacing:.02em;margin-top:5px}
 
 /* FOOTER */
 .footer{border-top:1px solid var(--border);padding:24px;text-align:center;font:400 13px var(--body);color:var(--t3)}
@@ -436,37 +437,41 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <div class="notif-stack" id="notifStack">
 
   <div class="notif" id="notif1">
-    <div class="notif-ico">&#128293;</div>
+    <div class="notif-ico">🔥</div>
     <div class="notif-body">
       <div class="notif-title">3 cotizaciones en Cierre Inminente</div>
       <div class="notif-desc">Arq. Rodriguez, Ing. Vega y Despacho Luna las revisaron varias veces hoy</div>
+      <div class="notif-badge" style="background:#fff1f2;color:#991b1b">🔥 Cierre Inminente</div>
     </div>
     <div class="notif-time">ahora</div>
   </div>
 
   <div class="notif" id="notif2">
-    <div class="notif-ico">&#10060;</div>
+    <div class="notif-ico">❌</div>
     <div class="notif-body">
       <div class="notif-title">4 cotizaciones no han sido vistas</div>
       <div class="notif-desc">Enviadas hace mas de 48h sin ninguna apertura</div>
+      <div class="notif-badge" style="background:#fef2f2;color:#dc2626">❌ No abierta</div>
     </div>
     <div class="notif-time">hace 1m</div>
   </div>
 
   <div class="notif" id="notif3">
-    <div class="notif-ico">&#128296;</div>
+    <div class="notif-ico">💸</div>
     <div class="notif-body">
       <div class="notif-title">5 cotizaciones Validando Precio</div>
       <div class="notif-desc">Tus clientes estan comparando. Buen momento para llamar.</div>
+      <div class="notif-badge" style="background:#fffbeb;color:#92400e">💸 Validando precio</div>
     </div>
     <div class="notif-time">hace 3m</div>
   </div>
 
   <div class="notif" id="notif4">
-    <div class="notif-ico">&#128302;</div>
+    <div class="notif-ico">🔮</div>
     <div class="notif-body">
       <div class="notif-title">1 cotizacion con Prediccion Alta</div>
       <div class="notif-desc">Constructora MBL — 94% probabilidad de cierre</div>
+      <div class="notif-badge" style="background:#f0fdf4;color:#166534">🔮 Prediccion alta</div>
     </div>
     <div class="notif-time">hace 5m</div>
   </div>
