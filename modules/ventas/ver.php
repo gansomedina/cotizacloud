@@ -337,20 +337,23 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
   #main{margin-left:0!important}
   #content{padding:0!important}
   .fac,#recibo-print-tpl{font-size:10pt}
-  /* Estilos del recibo individual */
-  .rp-header{text-align:center;padding-bottom:10pt;border-bottom:2pt solid #000;margin-bottom:10pt}
-  .rp-empresa{font:800 16pt sans-serif}
-  .rp-sub{font:400 9pt sans-serif;color:#555;margin:2pt 0}
-  .rp-tipo{font:300 20pt sans-serif;margin-top:8pt}
-  .rp-folio{font:700 11pt sans-serif;color:#555}
-  .rp-table{width:100%;border-collapse:collapse;margin:10pt 0;font:400 10pt sans-serif}
-  .rp-table td{padding:4pt 6pt;border-bottom:1pt solid #eee}
-  .rp-table td:first-child{font-weight:700;width:90pt;color:#555}
-  .rp-monto-box{background:#f0faf5;border:2pt solid #2a7;border-radius:6pt;padding:10pt;text-align:center;margin:10pt 0}
-  .rp-monto-lbl{font:600 10pt sans-serif;color:#555}
-  .rp-monto-val{font:800 22pt sans-serif;color:#1a6}
-  .rp-foot{font:400 9pt sans-serif;color:#555;text-align:center;margin-top:10pt;padding-top:6pt;border-top:1pt solid #ddd}
-  .rp-sello{font:400 8pt sans-serif;color:#aaa;text-align:center;margin-top:4pt}
+  /* Estilos del recibo individual (compacto, 2 copias por página) */
+  .rp-copia{padding:8pt 0}
+  .rp-copia-lbl{font:700 7pt sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#999;text-align:right;margin-bottom:4pt}
+  .rp-corte{border:none;border-top:1pt dashed #aaa;margin:8pt 0}
+  .rp-header{text-align:center;padding-bottom:6pt;border-bottom:1.5pt solid #000;margin-bottom:6pt}
+  .rp-empresa{font:800 13pt sans-serif}
+  .rp-sub{font:400 8pt sans-serif;color:#555;margin:1pt 0}
+  .rp-tipo{font:300 15pt sans-serif;margin-top:4pt}
+  .rp-folio{font:700 9pt sans-serif;color:#555}
+  .rp-table{width:100%;border-collapse:collapse;margin:6pt 0;font:400 9pt sans-serif}
+  .rp-table td{padding:3pt 5pt;border-bottom:.5pt solid #eee}
+  .rp-table td:first-child{font-weight:700;width:80pt;color:#555}
+  .rp-monto-box{border:1.5pt solid #2a7;border-radius:4pt;padding:6pt;text-align:center;margin:6pt 0}
+  .rp-monto-lbl{font:600 8pt sans-serif;color:#555}
+  .rp-monto-val{font:800 18pt sans-serif;color:#1a6}
+  .rp-foot{font:400 8pt sans-serif;color:#555;text-align:center;margin-top:6pt;padding-top:4pt;border-top:.5pt solid #ddd}
+  .rp-sello{font:400 7pt sans-serif;color:#aaa;text-align:center;margin-top:2pt}
     @page{margin:14mm 16mm 14mm 16mm;size:letter}
     .web-only{display:none!important}
     .modal-overlay{display:none!important}
@@ -1433,7 +1436,8 @@ async function guardarCambios(){
 // ── PDF de recibo individual ──
 function imprimirRecibo(d){
   const el = document.getElementById('recibo-print-tpl');
-  el.innerHTML = `
+  const monto = '$'+parseFloat(d.monto||0).toLocaleString('en-US',{minimumFractionDigits:2});
+  const bloque = `
     <div class="rp-header">
       <div class="rp-empresa">${escHtml(d.empresa)}</div>
       <div class="rp-sub">${escHtml(d.ciudad)}${d.tel?' · '+escHtml(d.tel):''}</div>
@@ -1449,11 +1453,14 @@ function imprimirRecibo(d){
     </table>
     <div class="rp-monto-box">
       <div class="rp-monto-lbl">Total pagado</div>
-      <div class="rp-monto-val">$${parseFloat(d.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}</div>
+      <div class="rp-monto-val">${monto}</div>
     </div>
     <div class="rp-foot">${escHtml(d.empresa)} · gracias por su preferencia</div>
-    <div class="rp-sello">✓ ${escHtml(d.numero)} · ${escHtml(d.fecha)}</div>
-  `;
+    <div class="rp-sello">✓ ${escHtml(d.numero)} · ${escHtml(d.fecha)}</div>`;
+  el.innerHTML = `
+    <div class="rp-copia"><div class="rp-copia-lbl">Copia empresa</div>${bloque}</div>
+    <hr class="rp-corte">
+    <div class="rp-copia"><div class="rp-copia-lbl">Copia cliente</div>${bloque}</div>`;
   document.body.classList.add('modo-recibo');
   window.print();
   document.body.classList.remove('modo-recibo');
