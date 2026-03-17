@@ -255,7 +255,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   <!-- SELLO DIGITAL -->
   <div class="sello">
     ✓ <?= e($rec['numero']) ?> · <?= date('d/m/Y H:i', strtotime($rec['created_at'])) ?> · <?= e($rec['emp_nombre']) ?><br>
-    Verificado en CotizaApp
+    Verificado en Cotiza.cloud
   </div>
 
   <!-- BOTONES -->

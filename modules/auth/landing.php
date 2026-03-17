@@ -11,7 +11,7 @@ defined('COTIZAAPP') or die;
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CotizaApp — Cotizaciones y ventas para tu negocio</title>
+<title>Cotiza.cloud — Cotizaciones y ventas para tu negocio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -106,7 +106,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="logo-mark">
         <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
       </div>
-      <div class="logo-name">Cotiza<span>App</span></div>
+      <div class="logo-name">Cotiza<span>.cloud</span></div>
     </a>
     <div class="nav-links">
       <a href="/login" class="nav-link nav-link-ghost">Iniciar sesion</a>
@@ -214,7 +214,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 <!-- FOOTER -->
 <footer class="footer">
-  CotizaApp &copy; <?= date('Y') ?> &middot; <a href="/login">Iniciar sesion</a> &middot; <a href="/registro">Crear cuenta</a>
+  Cotiza.cloud &copy; <?= date('Y') ?> &middot; <a href="/login">Iniciar sesion</a> &middot; <a href="/registro">Crear cuenta</a>
 </footer>
 
 </body>
