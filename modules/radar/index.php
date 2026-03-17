@@ -61,6 +61,7 @@ $raw = DB::query(
     "SELECT c.id, c.titulo, c.numero, c.slug, c.total, c.estado,
             c.radar_score, c.radar_bucket, c.radar_senales, c.radar_updated_at,
             c.visitas,
+            c.ultima_vista_at AS raw_vista_at,
             COALESCE(c.ultima_vista_at,
                      (SELECT FROM_UNIXTIME(MAX(qe.ts_unix)) FROM quote_events qe WHERE qe.cotizacion_id=c.id),
                      c.created_at) AS ultima_vista_at,
@@ -162,7 +163,7 @@ foreach ($raw as $c) {
     $rows_all[] = $row;
     $total_all++;
     if ($accepted) $total_aceptadas++;
-    if ($c['ultima_vista_at'] && $last_ts >= time()-48*3600) $activos48[] = $row;
+    if ($c['raw_vista_at'] && $last_ts >= time()-48*3600) $activos48[] = $row;
     if ($bucket && isset($buckets[$bucket])) $buckets[$bucket][] = $row;
 }
 
