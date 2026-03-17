@@ -62,6 +62,7 @@ class Radar
         'priceval_recent_hours'      => [96,    72,    48   ],
         'priceval_vis_soft'          => [2000,  4000,  6000 ],
         'priceval_vis_hard'          => [5000,  8000,  12000],
+        'priceval_vis_sum'           => [10000, 14000, 20000],
         'priceval_scroll_soft'       => [40,    50,    70   ],
         'priceval_scroll_hard'       => [70,    90,    90   ],
 
@@ -399,12 +400,17 @@ class Radar
         }
 
         // IPs post primer guest (para multi-persona)
+        // IMPORTANTE: aplicar los mismos filtros que el loop principal de sesiones
         if ($first_guest_ts > 0) {
             foreach ($sess_rows as $s) {
                 $ts2 = strtotime($s['created_at']);
                 $ip2 = trim((string)($s['ip'] ?? ''));
+                $ua2 = (string)($s['ua'] ?? '');
+                $vid2 = trim((string)($s['visitor_id'] ?? ''));
                 if ($ip2 === '' || $ts2 < $first_guest_ts) continue;
                 if ($ts2 > $first_guest_ts + $multip_win) break;
+                if (($cfg['filtrar_bots'] ?? true) && (self::bot_ip($ip2) || self::bot_ua($ua2))) continue;
+                if (($cfg['excluir_internos'] ?? true) && (isset($intern_ip[$ip2]) || ($vid2 !== '' && isset($intern_v[$vid2])))) continue;
                 $ips_post_guest[$ip2] = true;
             }
         }
@@ -447,7 +453,7 @@ class Radar
         $e_main_pev   = (int)($es['main_pev']  ?? 0);     // price events del visitor principal
 
         $has_tot_view = $e_tot_views > 0;
-        $has_tot_rev  = $e_tot_rev   > 0;
+        $has_tot_rev  = $e_tot_rev   >= 2; // ≥2 para no activar con un único scroll-back casual
         $has_loop     = $e_loops     > 0;
         $has_promo    = $e_promo     > 0;
 
@@ -495,6 +501,7 @@ class Radar
 
         // ── 1. Probable cierre ───────────────────────────────
         if (
+            !$accepted &&
             $last_ts >= $now - (int)self::u('hot_close_last_hours', $modo) * 3600 &&
             ($views24 >= (int)self::u('hot_close_min_views24', $modo) ||
              $views7d  >= (int)self::u('hot_close_min_views7d',  $modo))
@@ -579,7 +586,7 @@ class Radar
         // ── 4. Validando precio ─────────────────────────────
         $pv_read = (
             $e_vis_max >= (int)self::u('priceval_vis_hard', $modo) ||
-            $e_vis_sum >= 14000 ||
+            $e_vis_sum >= (int)self::u('priceval_vis_sum',  $modo) ||
             ($e_vis_max >= (int)self::u('priceval_vis_soft', $modo) && $e_scroll_any >= (int)self::u('priceval_scroll_soft', $modo))
         );
         if (
@@ -588,13 +595,14 @@ class Radar
             $guest_sessions >= 1 &&
             ($guest_sessions >= 2 || $e_sv_price || $e_mv_price) &&
             ($pv_read || $e_sv_price || $e_mv_price || $e_main_pev >= 2) &&
-            ($has_loop || $has_tot_rev || $e_tot_views >= 2)
+            ($has_loop || $has_tot_rev || $e_tot_views >= 3)
         ) {
             $buckets[] = 'validando_precio';
         }
 
         // ── 5. Predicción alta ──────────────────────────────
         if (
+            !$accepted &&
             $fit_pct  >= (float)self::u('predict_min_fit_pct', $modo) &&
             $age_days <= (int)self::u('predict_recent_days', $modo)
         ) {
@@ -603,6 +611,7 @@ class Radar
 
         // ── 6. Decisión activa ──────────────────────────────
         if (
+            !$accepted &&
             $views48 >= (int)self::u('decision_min_views48', $modo) &&
             $span48  >= (int)self::u('decision_min_span_h', $modo) * 3600 &&
             $last_ts >= $now - (int)self::u('decision_window_h', $modo) * 3600
@@ -635,7 +644,7 @@ class Radar
             $last_ts >= $now - (int)self::u('multip_recent_hours', $modo) * 3600 &&
             $guest_sessions >= (int)self::u('multip_min_guest_total', $modo) &&
             (
-                ($e_uniq_v >= 2 && ($e_mv_price || $e_uniq_v >= 2)) ||
+                ($e_uniq_v >= 3 || ($e_uniq_v >= 2 && $e_mv_price)) ||
                 $ips_post_guest_count >= (int)self::u('multip_min_ips_post_guest', $modo) ||
                 ($ips_post_guest_count >= max(2, (int)self::u('multip_min_ips_post_guest', $modo) - 1) && $multip_boost)
             )
@@ -694,6 +703,7 @@ class Radar
         // Se necesita cargar el total de la cotización
         $cot_total = (float)($cot_meta['total'] ?? 0.0);
         if (
+            !$accepted &&
             $cot_total >= (float)self::u('high_amount_threshold', $modo) &&
             $last_ts >= $now - (int)self::u('high_amount_recent_hours', $modo) * 3600
         ) {
@@ -708,6 +718,7 @@ class Radar
             if ($ip_ts >= $now - 24 * 3600) $multi_ips_24h++;
         }
         if (
+            !$accepted &&
             $last_ts >= $now - (int)self::u('multi_recent_hours', $modo) * 3600 &&
             (
                 $multi_ips_24h >= (int)self::u('multi_min_ips', $modo) ||
@@ -719,10 +730,11 @@ class Radar
 
         // ── 14-17. Buckets exclusivos (uno solo) ─────────────
         // Mismo orden de precedencia que el radar original
-        $is_revive  = ($gap_days !== null && $gap_days >= (int)self::u('revive_gap_days', $modo) && $last_ts >= $now - (int)self::u('revive_recent_hours', $modo) * 3600);
-        $is_return4 = ($gap_days !== null && $gap_days >= (int)self::u('return_gap_days', $modo) && $last_ts >= $now - (int)self::u('return_recent_hours', $modo) * 3600);
-        $is_compare = ($compare_ips_count >= (int)self::u('compare_min_ips', $modo) && $last_ts >= $now - (int)self::u('compare_window_h', $modo) * 3600);
+        $is_revive  = (!$accepted && $gap_days !== null && $gap_days >= (int)self::u('revive_gap_days', $modo) && $last_ts >= $now - (int)self::u('revive_recent_hours', $modo) * 3600);
+        $is_return4 = (!$accepted && $gap_days !== null && $gap_days >= (int)self::u('return_gap_days', $modo) && $last_ts >= $now - (int)self::u('return_recent_hours', $modo) * 3600);
+        $is_compare = (!$accepted && $compare_ips_count >= (int)self::u('compare_min_ips', $modo) && $last_ts >= $now - (int)self::u('compare_window_h', $modo) * 3600);
         $is_cooling = (
+            !$accepted &&
             $sessions >= (int)self::u('cooling_min_sessions', $modo) &&
             $last_ts  <  $now - 48 * 3600 &&
             $last_ts  >= $now - (int)self::u('cooling_days', $modo) * 86400
@@ -733,27 +745,16 @@ class Radar
         elseif ($is_compare)  $buckets[] = 'comparando';
         elseif ($is_cooling)  $buckets[] = 'enfriandose';
 
-        // ── Bucket principal (orden de prioridad fijo) ────────
-        // ── 18. No abierta ─────────────────────────────────
-        // Cotización creada en los últimos 7 días, con más de 24h de antigüedad,
-        // sin evidencia de apertura (ni sesiones externas ni eventos JS)
-        $has_js_open = ($es['opens'] > 0 || $es['closes'] > 0 || $es['tot_views'] > 0 ||
-                        $es['tot_rev'] > 0 || $es['loops'] > 0 || $es['coupons'] > 0 ||
-                        $es['scroll_any'] > 0 || $es['vis_max'] > 0 || $es['uniq_v'] > 0);
-        $no_abierta_age_ok = ($age_hours >= 24 && ($now - $created_ts) <= 7 * 86400);
-        $is_not_opened = (!$accepted && $no_abierta_age_ok && $sessions <= 0 && !$has_js_open);
-        if ($is_not_opened) {
-            $buckets[] = 'no_abierta';
-        }
-
         // ── Iconos para la UI (mismos que el radar original) ─
+        // Nota: no_abierta se maneja en el early return (línea ~380) cuando sessions=0.
+        // $is_not_opened siempre sería false aquí porque sessions > 0 en este punto.
         $icons = [];
         if ($e_coupons > 0) $icons['coupon'] = true;
         if ($es['promo'] > 0) $icons['promo'] = true;
         if ($pss >= 3.0) $icons['price'] = true;
         if ($e_sv_price) $icons['sv_price'] = true;
         if ($e_mv_price) $icons['mv_price'] = true;
-        if ($is_not_opened) $icons['not_opened'] = true;
+        // not_opened solo aplica vía early return cuando sessions=0
 
         static $PRIORIDAD = [
             'onfire','inminente','validando_precio','prediccion_alta',
