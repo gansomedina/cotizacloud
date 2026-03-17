@@ -329,7 +329,10 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
   #more-drawer,#more-overlay,.topbar-right,
   .flash{display:none!important}
   .venta-print-only{display:block!important}
-  .recibo-print-only{display:block!important}
+  .recibo-print-only{display:none!important}
+  body.modo-recibo .venta-print-only,
+  body.modo-recibo .print-only:not(#recibo-print-tpl){display:none!important}
+  body.modo-recibo #recibo-print-tpl{display:block!important}
   body{background:#fff;margin:0;padding:0}
   #main{margin-left:0!important}
   #content{padding:0!important}
@@ -1429,51 +1432,31 @@ async function guardarCambios(){
 
 // ── PDF de recibo individual ──
 function imprimirRecibo(d){
-  const w = window.open('','_blank','width=700,height=500');
-  if(!w){alert('Permite ventanas emergentes para imprimir el recibo');return;}
-  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>${escHtml(d.numero)}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:40px;max-width:600px;margin:0 auto}
-@page{margin:14mm 16mm;size:letter}
-.hdr{text-align:center;padding-bottom:12pt;border-bottom:2pt solid #000;margin-bottom:12pt}
-.hdr h1{font-size:18pt;font-weight:800}
-.hdr .sub{font-size:9pt;color:#555;margin:3pt 0}
-.hdr .tipo{font-size:22pt;font-weight:300;margin-top:10pt}
-.hdr .folio{font-size:11pt;font-weight:700;color:#555}
-table{width:100%;border-collapse:collapse;margin:12pt 0}
-td{padding:5pt 8pt;border-bottom:1pt solid #eee;font-size:10pt}
-td:first-child{font-weight:700;width:100pt;color:#555}
-.monto{border:2pt solid #2a7;border-radius:6pt;padding:14pt;text-align:center;margin:14pt 0}
-.monto .lbl{font-size:10pt;font-weight:600;color:#555}
-.monto .val{font-size:26pt;font-weight:800;color:#1a6}
-.foot{font-size:9pt;color:#555;text-align:center;margin-top:12pt;padding-top:8pt;border-top:1pt solid #ddd}
-.sello{font-size:8pt;color:#aaa;text-align:center;margin-top:4pt}
-@media print{body{padding:0}}
-</style></head><body>
-<div class="hdr">
-  <h1>${escHtml(d.empresa)}</h1>
-  <div class="sub">${escHtml(d.ciudad)}${d.tel?' &middot; '+escHtml(d.tel):''}</div>
-  <div class="tipo">Recibo de pago</div>
-  <div class="folio">${escHtml(d.numero)}</div>
-</div>
-<table>
-  <tr><td>Cliente</td><td>${escHtml(d.cliente)}</td></tr>
-  <tr><td>Venta</td><td>${escHtml(d.venta)}</td></tr>
-  <tr><td>Fecha</td><td>${escHtml(d.fecha)}</td></tr>
-  <tr><td>Concepto</td><td>${escHtml(d.concepto)}</td></tr>
-  ${d.notas?'<tr><td>Forma</td><td>'+escHtml(d.notas)+'</td></tr>':''}
-</table>
-<div class="monto">
-  <div class="lbl">Total pagado</div>
-  <div class="val">$${parseFloat(d.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}</div>
-</div>
-<div class="foot">${escHtml(d.empresa)} &middot; gracias por su preferencia</div>
-<div class="sello">&check; ${escHtml(d.numero)} &middot; ${escHtml(d.fecha)}</div>
-</body></html>`);
-  w.document.close();
-  setTimeout(function(){ w.print(); }, 300);
+  const el = document.getElementById('recibo-print-tpl');
+  el.innerHTML = `
+    <div class="rp-header">
+      <div class="rp-empresa">${escHtml(d.empresa)}</div>
+      <div class="rp-sub">${escHtml(d.ciudad)}${d.tel?' · '+escHtml(d.tel):''}</div>
+      <div class="rp-tipo">Recibo de pago</div>
+      <div class="rp-folio">${escHtml(d.numero)}</div>
+    </div>
+    <table class="rp-table">
+      <tr><td>Cliente</td><td>${escHtml(d.cliente)}</td></tr>
+      <tr><td>Venta</td><td>${escHtml(d.venta)}</td></tr>
+      <tr><td>Fecha</td><td>${escHtml(d.fecha)}</td></tr>
+      <tr><td>Concepto</td><td>${escHtml(d.concepto)}</td></tr>
+      ${d.notas?'<tr><td>Forma</td><td>'+escHtml(d.notas)+'</td></tr>':''}
+    </table>
+    <div class="rp-monto-box">
+      <div class="rp-monto-lbl">Total pagado</div>
+      <div class="rp-monto-val">$${parseFloat(d.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}</div>
+    </div>
+    <div class="rp-foot">${escHtml(d.empresa)} · gracias por su preferencia</div>
+    <div class="rp-sello">✓ ${escHtml(d.numero)} · ${escHtml(d.fecha)}</div>
+  `;
+  document.body.classList.add('modo-recibo');
+  window.print();
+  document.body.classList.remove('modo-recibo');
 }
 
 // ── Init ──
