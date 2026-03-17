@@ -25,9 +25,9 @@ if (!Auth::es_admin()) {
     json_error('Solo administradores pueden eliminar cotizaciones', 403);
 }
 
-// Solo borradores
-if ($cot['estado'] !== 'borrador') {
-    json_error('Solo se pueden eliminar cotizaciones en borrador', 422);
+// No permitir eliminar cotizaciones convertidas (ya tienen venta asociada)
+if ($cot['estado'] === 'convertida') {
+    json_error('No se puede eliminar una cotización convertida en venta', 422);
 }
 
 // CASCADE elimina líneas, archivos y log
