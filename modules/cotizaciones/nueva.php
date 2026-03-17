@@ -345,7 +345,7 @@ $page_title = 'Nueva cotización';
         <div class="card">
             <div class="field">
                 <div class="field-lbl">Título <span style="color:var(--danger)">*</span></div>
-                <input type="text" id="cot-titulo" placeholder="Ej. Cocina L Escuadra 4.25×5.25"
+                <input type="text" id="cot-titulo" placeholder="Titulo del Proyecto"
                        oninput="actualizarEstado()">
             </div>
             <div style="display:flex">
