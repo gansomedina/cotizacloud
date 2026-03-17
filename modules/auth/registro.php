@@ -129,6 +129,9 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
 
         <form method="POST" action="/registro">
             <?= csrf_field() ?>
+            <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true" tabindex="-1">
+                <input type="text" name="website_url" value="" autocomplete="off" tabindex="-1">
+            </div>
 
             <!-- ── Empresa ── -->
             <div class="field">
