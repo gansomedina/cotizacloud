@@ -253,7 +253,12 @@ foreach ($mas_rutas as $r) {
         <?php if (!empty($empresa['logo_url'])): ?>
             <img src="<?= e($empresa['logo_url']) ?>" alt="Logo">
         <?php else: ?>
-            <div class="sidebar-logo-text">Cotiza.cloud</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:34px;height:34px;border-radius:9px;background:var(--g);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg viewBox="0 0 60 48" fill="none" style="width:28px;height:22px"><path d="M48.5 38H14c-5.5 0-10-4.5-10-10 0-4.8 3.4-8.8 8-9.8C12.2 12.5 17.5 8 24 8c5.2 0 9.7 3 12 7.3C37.3 14.5 39 14 41 14c5.5 0 10 4.5 10 10 0 .7-.1 1.3-.2 2C54.3 27.5 57 31 57 35c0 1-.2 2-.5 3" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="33" cy="26" r="12" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/><circle cx="33" cy="26" r="8" stroke="rgba(255,255,255,.65)" stroke-width="1.5"/><circle cx="33" cy="26" r="4" stroke="rgba(255,255,255,.8)" stroke-width="1.5"/><line x1="33" y1="26" x2="42" y2="18" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="33" cy="26" r="1.8" fill="#4ade80"/></svg>
+              </div>
+              <div class="sidebar-logo-text">Cotiza.cloud</div>
+            </div>
         <?php endif; ?>
         <div class="empresa-nombre"><?= e($empresa['nombre'] ?? '') ?></div>
     </div>
