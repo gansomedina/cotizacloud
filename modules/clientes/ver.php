@@ -24,15 +24,26 @@ if (!$cliente) { flash('error', 'Cliente no encontrado'); redirect('/clientes');
 // ─── Stats ───────────────────────────────────────────────
 $stats = DB::row(
     "SELECT
-        COUNT(DISTINCT c.id) AS num_cots,
-        COUNT(DISTINCT v.id) AS num_ventas,
-        COALESCE(SUM(CASE WHEN v.estado != 'cancelada' THEN v.total ELSE 0 END), 0) AS total_comprado,
-        COALESCE(SUM(CASE WHEN v.estado != 'cancelada' THEN v.saldo ELSE 0 END), 0) AS saldo_pendiente
+        COALESCE(sc.num_cots, 0)        AS num_cots,
+        COALESCE(sv.num_ventas, 0)       AS num_ventas,
+        COALESCE(sv.total_comprado, 0)   AS total_comprado,
+        COALESCE(sv.saldo_pendiente, 0)  AS saldo_pendiente
      FROM clientes cl
-     LEFT JOIN cotizaciones c ON c.cliente_id = cl.id AND c.empresa_id = cl.empresa_id
-     LEFT JOIN ventas       v ON v.cliente_id = cl.id AND v.empresa_id = cl.empresa_id
+     LEFT JOIN (
+         SELECT cliente_id, COUNT(*) AS num_cots
+         FROM cotizaciones WHERE cliente_id = ? AND empresa_id = ?
+         GROUP BY cliente_id
+     ) sc ON sc.cliente_id = cl.id
+     LEFT JOIN (
+         SELECT cliente_id,
+                COUNT(*) AS num_ventas,
+                SUM(CASE WHEN estado != 'cancelada' THEN total ELSE 0 END) AS total_comprado,
+                SUM(CASE WHEN estado != 'cancelada' THEN saldo ELSE 0 END) AS saldo_pendiente
+         FROM ventas WHERE cliente_id = ? AND empresa_id = ?
+         GROUP BY cliente_id
+     ) sv ON sv.cliente_id = cl.id
      WHERE cl.id = ?",
-    [$cliente_id]
+    [$cliente_id, $empresa_id, $cliente_id, $empresa_id, $cliente_id]
 );
 
 // ─── Cotizaciones recientes ──────────────────────────────
