@@ -634,6 +634,7 @@ const ARTICULOS   = <?= $articulos_js ?>;
 const CLIENTES    = <?= $clientes_js ?>;
 const EMPRESA_CFG = <?= $empresa_js ?>;
 const CSRF_TOKEN  = '<?= csrf_token() ?>';
+const URL_PUB_BASE = '<?= e(Router::url_publica('/c/')) ?>';
 const PUEDE_PRECIOS    = <?= $puede_editar_precios ? 'true' : 'false' ?>;
 const PUEDE_DESCUENTOS = <?= $puede_descuentos ? 'true' : 'false' ?>;
 const CUPONES_DATA = <?= json_encode(array_map(fn($c) => [
@@ -1100,7 +1101,7 @@ async function guardarCotizacion() {
         // Mostrar popup de éxito
         const cotId   = data.data.id;
         const cotSlug = data.data.slug;
-        const urlPublica = window.location.protocol + '//' + window.location.host + '/c/' + cotSlug;
+        const urlPublica = URL_PUB_BASE + cotSlug;
         document.getElementById('popup-ver-url').href    = urlPublica;
         document.getElementById('popup-ver-url').target  = '_blank';
         document.getElementById('popup-link-url').value  = urlPublica;
