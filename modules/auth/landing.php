@@ -93,6 +93,23 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .flow-arrow{display:flex;align-items:flex-start;padding-top:22px;color:var(--g-border)}
 .flow-arrow svg{width:20px;height:20px;stroke:var(--border2);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
 
+/* ACCELERATORS */
+.accel{max-width:1100px;margin:0 auto;padding:80px 24px 0}
+.accel-inner{background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 50%,#fff7ed 100%);border:1px solid #fde68a;border-radius:20px;padding:48px 40px;position:relative;overflow:hidden}
+.accel-inner::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(251,191,36,.15) 0%,transparent 70%);border-radius:50%}
+.accel-sparkle{position:absolute;top:16px;right:20px;font:600 11px var(--body);color:#92400e;background:rgba(255,255,255,.7);padding:4px 12px;border-radius:20px;letter-spacing:.04em}
+.accel-label{font:700 11px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#b45309;margin-bottom:12px}
+.accel-title{font:800 clamp(22px,3vw,30px)/1.15 var(--body);letter-spacing:-.02em;color:#78350f;margin-bottom:10px}
+.accel-sub{font:400 15px var(--body);color:#92400e;line-height:1.6;margin-bottom:32px;max-width:560px}
+.accel-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.accel-item{background:rgba(255,255,255,.75);border:1px solid rgba(251,191,36,.25);border-radius:14px;padding:20px 18px;text-align:center;transition:all .2s}
+.accel-item:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(251,191,36,.15)}
+.accel-item-ico{font-size:28px;margin-bottom:10px;line-height:1}
+.accel-item-name{font:700 13.5px var(--body);color:#78350f;margin-bottom:4px}
+.accel-item-desc{font:400 12px var(--body);color:#92400e;line-height:1.45}
+@media(max-width:768px){.accel-grid{grid-template-columns:repeat(2,1fr)}.accel-inner{padding:32px 24px}}
+@media(max-width:480px){.accel-grid{grid-template-columns:1fr}}
+
 /* FEATURES */
 .features{max-width:1100px;margin:0 auto;padding:80px 24px 0}
 .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
@@ -278,6 +295,38 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="flow-step-num hot">5</div>
       <div class="flow-step-title">Anticipa el cierre</div>
       <div class="flow-step-desc">Te avisa cuales estan listas. Tu decides el momento exacto para dar seguimiento.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ACCELERATORS - Sales psychology tools -->
+<section class="accel">
+  <div class="accel-inner">
+    <div class="accel-sparkle">Nuevo</div>
+    <div class="accel-label">Acelera el cierre</div>
+    <div class="accel-title">Gatillos de venta integrados en cada cotizacion</div>
+    <div class="accel-sub">Aplica las mismas tecnicas que usan Amazon, Booking y las mejores tiendas en linea. Urgencia, escasez y precio especial — directamente en tus cotizaciones, sin instalar nada.</div>
+    <div class="accel-grid">
+      <div class="accel-item">
+        <div class="accel-item-ico">&#9200;</div>
+        <div class="accel-item-name">Cuenta regresiva</div>
+        <div class="accel-item-desc">Un cronometro visible que genera urgencia real. Tu cliente sabe que el precio tiene fecha limite.</div>
+      </div>
+      <div class="accel-item">
+        <div class="accel-item-ico">&#127915;</div>
+        <div class="accel-item-name">Cupones de descuento</div>
+        <div class="accel-item-desc">Codigos exclusivos que tu cliente aplica al aceptar. Le das el poder de "ganar" su descuento.</div>
+      </div>
+      <div class="accel-item">
+        <div class="accel-item-ico">&#128176;</div>
+        <div class="accel-item-name">Precios promocionales</div>
+        <div class="accel-item-desc">Muestra el precio original tachado junto al precio especial. El ancla visual acelera la decision.</div>
+      </div>
+      <div class="accel-item">
+        <div class="accel-item-ico">&#128165;</div>
+        <div class="accel-item-name">Oferta por tiempo limitado</div>
+        <div class="accel-item-desc">Combina descuento + cronometro. La oferta desaparece y tu cliente lo sabe desde que abre la cotizacion.</div>
+      </div>
     </div>
   </div>
 </section>
