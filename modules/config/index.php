@@ -322,15 +322,15 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
         </div>
         <div class="field-row">
           <div class="field-lbl">Ciudad / Sucursal</div>
-          <input class="field-in" id="e_ciudad" type="text" value="<?= e($empresa['ciudad'] ?? '') ?>" placeholder="Hermosillo, Son.">
+          <input class="field-in" id="e_ciudad" type="text" value="<?= e($empresa['ciudad'] ?? '') ?>" placeholder="Ciudad, Estado">
         </div>
         <div class="field-row">
           <div class="field-lbl">Teléfono</div>
-          <input class="field-in" id="e_telefono" type="tel" value="<?= e($empresa['telefono'] ?? '') ?>" placeholder="6621234567">
+          <input class="field-in" id="e_telefono" type="tel" value="<?= e($empresa['telefono'] ?? '') ?>" placeholder="10 dígitos">
         </div>
         <div class="field-row">
           <div class="field-lbl">Email</div>
-          <input class="field-in" id="e_email" type="email" value="<?= e($empresa['email'] ?? '') ?>" placeholder="hola@tuempresa.com">
+          <input class="field-in" id="e_email" type="email" value="<?= e($empresa['email'] ?? '') ?>" placeholder="correo@empresa.com">
         </div>
         <div class="field-row" style="grid-column:1/-1">
           <div class="field-lbl">Dirección</div>
@@ -836,11 +836,11 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     </div>
     <div class="sh-field">
       <div class="sh-lbl">SKU (opcional)</div>
-      <input class="sh-input mono" type="text" id="shArtSku" placeholder="COC-01" maxlength="60">
+      <input class="sh-input mono" type="text" id="shArtSku" placeholder="SKU-01" maxlength="60">
     </div>
     <div class="sh-field">
       <div class="sh-lbl">Descripción (opcional)</div>
-      <textarea class="sh-input" id="shArtDesc" style="min-height:70px;resize:none" oninput="autoResize(this)" placeholder="Frentes, puertas, cajones…"></textarea>
+      <textarea class="sh-input" id="shArtDesc" style="min-height:70px;resize:none" oninput="autoResize(this)" placeholder="Descripción del artículo…"></textarea>
     </div>
     <div class="sh-field" style="border-bottom:none">
       <div class="sh-lbl">Precio unitario</div>
@@ -871,7 +871,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
       </div>
       <div>
         <div class="sh-lbl">Teléfono <span style="color:var(--danger)">*</span></div>
-        <input class="sh-input mono" type="tel" id="shCliTel" placeholder="6621234567">
+        <input class="sh-input mono" type="tel" id="shCliTel" placeholder="10 dígitos">
         <div class="sh-note">Sin espacios ni +52</div>
       </div>
     </div>
@@ -967,18 +967,18 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <div class="sh-field sh-row2">
       <div>
         <div class="sh-lbl">Nombre completo <span style="color:var(--danger)">*</span></div>
-        <input class="sh-input" type="text" id="shUsrNombre" placeholder="Juan Pérez">
+        <input class="sh-input" type="text" id="shUsrNombre" placeholder="Nombre completo">
       </div>
       <div>
         <div class="sh-lbl">Usuario <span style="color:var(--danger)">*</span></div>
-        <input class="sh-input mono" type="text" id="shUsrUsuario" placeholder="jperez" maxlength="60"
+        <input class="sh-input mono" type="text" id="shUsrUsuario" placeholder="usuario" maxlength="60"
                oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')">
         <div class="sh-note">Solo letras, números y . _ -</div>
       </div>
     </div>
     <div class="sh-field">
       <div class="sh-lbl">Email (opcional)</div>
-      <input class="sh-input" type="email" id="shUsrEmail" placeholder="juan@tuempresa.com">
+      <input class="sh-input" type="email" id="shUsrEmail" placeholder="correo@ejemplo.com">
     </div>
     <div class="sh-field">
       <div class="sh-lbl">Contraseña</div>
