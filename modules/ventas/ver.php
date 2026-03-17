@@ -60,6 +60,9 @@ $sig_rec = 'REC-' . date('Y') . '-' . str_pad($total_rec_empresa + 1, 4, '0', ST
 
 $url_vta      = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/v/' . $venta['slug'];
 $puede_admin  = Auth::es_admin();
+$puede_pagos  = Auth::es_admin() || Auth::puede('capturar_pagos');
+$puede_cancel_rec = Auth::es_admin() || Auth::puede('cancelar_recibos');
+$puede_descuento  = Auth::es_admin() || Auth::puede('aplicar_descuentos');
 $folio        = $venta['numero'] ?? 'VTA-' . $venta_id;
 $pct          = $venta['total'] > 0 ? min(100, round($venta['pagado'] / $venta['total'] * 100)) : 0;
 
@@ -516,14 +519,14 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
       </div>
       <div style="flex-shrink:0;text-align:right">
         <div class="abono-monto"><?= format_money($ab['monto'], $empresa['moneda']) ?></div>
-        <?php if ($puede_admin): ?>
+        <?php if ($puede_cancel_rec): ?>
         <button class="abono-btn" onclick="cancelarRec(<?= (int)$ab['id'] ?>,'<?= e($ab['numero']) ?>','<?= format_money($ab['monto'],$empresa['moneda']) ?>')">✕</button>
         <?php endif ?>
       </div>
     </div>
     <?php endforeach ?>
     <?php endif ?>
-    <?php if ($puede_admin && !in_array($venta['estado'],['cancelada','entregada'])): ?>
+    <?php if ($puede_pagos && !in_array($venta['estado'],['cancelada','entregada'])): ?>
     <div style="padding:11px 14px;border-top:1px solid var(--border)">
       <button class="add-row-btn" onclick="openSheet('shAbono')">+ Registrar abono</button>
     </div>
@@ -655,11 +658,11 @@ function closeRec(){
   </div>
 
   <!-- ACCIONES (punto 7: copiar URL en vez de compartir) -->
-  <?php if ($puede_admin && !in_array($venta['estado'],['cancelada','entregada'])): ?>
+  <?php if ($puede_pagos && !in_array($venta['estado'],['cancelada','entregada'])): ?>
   <button class="action-btn" onclick="openSheet('shAbono')">💰 Registrar abono</button>
   <?php endif ?>
   <button class="action-btn" id="btn-copiar" onclick="copiarUrl()">🔗 Copiar URL del cliente</button>
-  <?php if ($puede_admin && $venta['estado'] !== 'cancelada'): ?>
+  <?php if ($puede_descuento && $venta['estado'] !== 'cancelada'): ?>
   <button class="action-btn" onclick="openSheet('shDescuento')">🏷️ Agregar descuento</button>
   <?php endif ?>
 
