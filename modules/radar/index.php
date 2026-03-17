@@ -162,7 +162,7 @@ foreach ($raw as $c) {
     $rows_all[] = $row;
     $total_all++;
     if ($accepted) $total_aceptadas++;
-    if ($last_ts >= time()-48*3600) $activos48[] = $row;
+    if ($c['ultima_vista_at'] && $last_ts >= time()-48*3600) $activos48[] = $row;
     if ($bucket && isset($buckets[$bucket])) $buckets[$bucket][] = $row;
 }
 
