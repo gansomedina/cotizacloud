@@ -61,7 +61,7 @@ foreach ($mas_rutas as $r) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
-    <title><?= e($page_title ?? 'CotizaApp') ?> — <?= e($empresa['nombre'] ?? 'CotizaApp') ?></title>
+    <title><?= e($page_title ?? 'Cotiza.cloud') ?> — <?= e($empresa['nombre'] ?? 'Cotiza.cloud') ?></title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -253,7 +253,7 @@ foreach ($mas_rutas as $r) {
         <?php if (!empty($empresa['logo_url'])): ?>
             <img src="<?= e($empresa['logo_url']) ?>" alt="Logo">
         <?php else: ?>
-            <div class="sidebar-logo-text">CotizaApp</div>
+            <div class="sidebar-logo-text">Cotiza.cloud</div>
         <?php endif; ?>
         <div class="empresa-nombre"><?= e($empresa['nombre'] ?? '') ?></div>
     </div>

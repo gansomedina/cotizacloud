@@ -615,7 +615,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
   <div class="fac-footer">
     <div class="fac-footer-l"><?= e($venta['emp_nombre']) ?> · <?= e($venta['emp_ciudad']??'') ?><?php if($venta['emp_tel']): ?><br><?= e($venta['emp_tel']) ?><?php endif; ?></div>
-    <div class="fac-footer-r"><?= e($venta['numero']) ?> · generado con CotizaApp<br>Impreso: <?= date('d/m/Y') ?></div>
+    <div class="fac-footer-r"><?= e($venta['numero']) ?> · generado con Cotiza.cloud<br>Impreso: <?= date('d/m/Y') ?></div>
   </div>
   <div class="fac-nota">Este documento es un comprobante interno de venta. No es una factura fiscal.</div>
 

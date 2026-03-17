@@ -19,7 +19,7 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Crear cuenta — CotizaApp</title>
+    <title>Crear cuenta — Cotiza.cloud</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -104,7 +104,7 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
         <div class="logo-mark">
             <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
         </div>
-        <div class="logo-name">Cotiza<span>App</span></div>
+        <div class="logo-name">Cotiza<span>.cloud</span></div>
     </div>
 
     <div class="card">
