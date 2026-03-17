@@ -321,10 +321,15 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
 @media print{
   .page-top,.col-side,.sh-overlay,.bottom-sheet,#urlOv,
   .item-add-btn,.add-row-btn,.abono-btn,.sec-lbl,
-  nav,#nav-lateral,.detail-layout{display:none!important}
+  nav,#nav-lateral,.detail-layout,
+  #sidebar,#sidebar-overlay,#topbar,#bottom-nav,
+  #more-drawer,#more-overlay,.topbar-right,
+  .flash{display:none!important}
   .venta-print-only{display:block!important}
   .recibo-print-only{display:block!important}
-  body{background:#fff}
+  body{background:#fff;margin:0;padding:0}
+  #main{margin-left:0!important}
+  #content{padding:0!important}
   .fac,#recibo-print-tpl{font-size:10pt}
   /* Estilos del recibo individual */
   .rp-header{text-align:center;padding-bottom:10pt;border-bottom:2pt solid #000;margin-bottom:10pt}
