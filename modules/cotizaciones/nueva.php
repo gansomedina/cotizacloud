@@ -1160,6 +1160,8 @@ function toggleMob(hdr)   { hdr.closest('.mob-section').classList.toggle('open')
 <!-- ══ BOTTOM NAV MOBILE ══════════════════════════════════ -->
 <style>
 #app-bottom-nav{display:none}
+#app-more-drawer{display:none}
+#app-more-overlay{display:none}
 @media(max-width:768px){
   html,body{height:100%;overflow:hidden}
   #app-main{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}

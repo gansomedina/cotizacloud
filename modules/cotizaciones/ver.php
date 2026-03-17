@@ -301,7 +301,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 
         <?php if ($es_editable): ?>
         <button class="add-item-btn" onclick="openSheet('catalogSheet','catalogOverlay')">
-            <span style="font-size:18px">+</span> Agregar artículo
+            <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar artículo
         </button>
         <?php endif; ?>
 
@@ -462,7 +462,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     <div class="sh-handle"></div>
     <div class="sh-header">
         <span class="sh-title">Agregar artículo</span>
-        <button class="sh-close" onclick="closeSheet('catalogSheet','catalogOverlay')">✕</button>
+        <button class="sh-close" onclick="closeSheet('catalogSheet','catalogOverlay')"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </div>
     <div class="sh-search">
         <div class="sh-search-wrap">
@@ -480,7 +480,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     <div class="sh-handle"></div>
     <div class="sh-header">
         <span class="sh-title">Cliente</span>
-        <button class="sh-close" onclick="closeSheet('clientSheet','clientOverlay')">✕</button>
+        <button class="sh-close" onclick="closeSheet('clientSheet','clientOverlay')"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </div>
     <div class="sh-list" id="client-list" style="padding-top:8px"></div>
 </div>
@@ -595,13 +595,13 @@ function agregarItem(titulo, sku, desc, precio, articulo_id, editable=true){
     const html=`<div class="item-card" data-articulo-id="${articulo_id||''}" id="${id}">
         <div class="item-header">
             <div class="item-num-wrap">
-                ${editable?`<button class="item-arrow" onclick="moverItem(this,-1)">▲</button>`:''}
+                ${editable?`<button class="item-arrow" onclick="moverItem(this,-1)"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 2L9 8H1z" fill="currentColor"/></svg></button>`:''}
                 <div class="item-num">?</div>
-                ${editable?`<button class="item-arrow" onclick="moverItem(this,1)">▼</button>`:''}
+                ${editable?`<button class="item-arrow" onclick="moverItem(this,1)"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 8L1 2h8z" fill="currentColor"/></svg></button>`:''}
             </div>
             <div class="item-title-prev">${esc(titulo)||'Sin nombre'}</div>
             <div class="item-amt-prev">${amt}</div>
-            ${editable?`<button class="item-del" onclick="eliminarItem(this)">✕</button>`:''}
+            ${editable?`<button class="item-del" onclick="eliminarItem(this)"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>`:''}
         </div>
         <div class="item-body">
             <div class="item-field"><div class="item-field-lbl">Nombre</div><input type="text" data-campo="titulo" value="${esc(titulo)}" ${!editable?'readonly':''} oninput="updateItemPreview(this)"></div>
@@ -734,6 +734,8 @@ function closeUrlOverlay(){
 <!-- ══ BOTTOM NAV MOBILE ══════════════════════════════════ -->
 <style>
 #app-bottom-nav{display:none}
+#app-more-drawer{display:none}
+#app-more-overlay{display:none}
 @media(max-width:768px){
   html,body{height:100%;overflow:hidden}
   #app-main{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
