@@ -44,10 +44,9 @@ $titulo = trim($body['titulo'] ?? '');
 if (empty($titulo)) json_error('El título es requerido');
 
 $cliente_id = isset($body['cliente_id']) ? (int)$body['cliente_id'] : null;
-if ($cliente_id) {
-    $ok = DB::val("SELECT id FROM clientes WHERE id = ? AND empresa_id = ?", [$cliente_id, $empresa_id]);
-    if (!$ok) $cliente_id = null;
-}
+if (!$cliente_id) json_error('El cliente es requerido');
+$ok = DB::val("SELECT id FROM clientes WHERE id = ? AND empresa_id = ?", [$cliente_id, $empresa_id]);
+if (!$ok) json_error('Cliente no válido');
 
 $valida_hasta = trim($body['valida_hasta'] ?? '');
 // Validar formato, rango razonable y que no sea fecha cero
@@ -111,6 +110,11 @@ foreach ($items as $i => $item) {
         'subtotal'    => $sub_linea,
     ];
 }
+
+if (empty($lineas)) json_error('Se requiere al menos un artículo');
+$tiene_precio = false;
+foreach ($lineas as $l) { if ($l['precio_unit'] > 0) { $tiene_precio = true; break; } }
+if (!$tiene_precio) json_error('Al menos un artículo debe tener precio');
 
 $base = $subtotal;
 $cupon_monto = 0.0;
