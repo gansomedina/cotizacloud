@@ -28,7 +28,7 @@ $range  = $_GET['range'] ?? 'all';
 $limit  = isset($_GET['limit']) ? max(10, min(300, (int)$_GET['limit'])) : 50;
 $sort   = in_array($_GET['sort'] ?? '', ['titulo','last','amount','fit','priority']) ? $_GET['sort'] : 'priority';
 $dir    = in_array($_GET['dir']  ?? '', ['asc','desc']) ? $_GET['dir'] : 'desc';
-$debug_mode = $es_admin && (($_GET['debug'] ?? '') === '1');
+$debug_mode = Auth::es_superadmin() && (($_GET['debug'] ?? '') === '1');
 $GLOBALS['debug_mode'] = $debug_mode;
 
 $range_secs = ['all'=>0,'48h'=>48*3600,'4h'=>4*3600,'30m'=>30*60];
@@ -622,7 +622,7 @@ ob_start();
     <input type="number" name="limit" value="<?= $limit ?>" min="10" max="300"
            style="width:68px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);font:500 13px var(--num)">
     <button class="rdr-bt" style="border-radius:var(--r-sm);padding:7px 14px">Actualizar</button>
-    <?php if ($es_admin): ?>
+    <?php if (Auth::es_superadmin()): ?>
     <a href="<?= rurlq(['debug'=>$debug_mode?'0':'1']) ?>" class="rdr-bt <?= $debug_mode?'active':'' ?>">Debug</a>
     <?php endif; ?>
   </form>
