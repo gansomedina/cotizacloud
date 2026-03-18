@@ -40,9 +40,10 @@ if (!$resultado['ok']) {
     redirect('/login?error=' . $error . '&empresa=' . urlencode($empresa_slug));
 }
 
-// Login exitoso — registrar visitor_id como interno
+// Login exitoso — registrar visitor_id como interno (skip para superadmin _system)
 $visitor_id_post = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_POST['visitor_id'] ?? '')), 0, 64);
-if ($visitor_id_post !== '') {
+$emp_slug_check = $resultado['empresa']['slug'] ?? '';
+if ($visitor_id_post !== '' && $emp_slug_check !== '_system') {
     require_once MODULES_PATH . '/radar/Radar.php';
     $ip_login = ip_real();
     $ua_login = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
@@ -58,8 +59,12 @@ if ($visitor_id_post !== '') {
     Radar::aprender_ip_radar((int)$emp['id'], $ip_login);
 }
 
-// Redirigir al dashboard (dominio raíz)
+// Redirigir: superadmin con _admin va al panel, otros al dashboard
 $redirect_to = $_SESSION['redirect_after_login'] ?? '/dashboard';
 unset($_SESSION['redirect_after_login']);
+
+if ($resultado['usuario']['rol'] === 'superadmin' && $empresa_slug === '_admin') {
+    $redirect_to = '/superadmin';
+}
 
 redirect($redirect_to);

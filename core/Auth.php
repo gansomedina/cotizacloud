@@ -74,6 +74,20 @@ class Auth
             [trim($empresa_slug)]
         );
 
+        // Superadmin puede entrar con slug '_admin' directo al panel
+        if (!$empresa && trim($empresa_slug) === '_admin') {
+            $sa_user = DB::row(
+                "SELECT * FROM usuarios WHERE email = ? AND rol = 'superadmin' AND activo = 1",
+                [trim($email)]
+            );
+            if ($sa_user && password_verify($password, $sa_user['password_hash'])) {
+                $empresa = DB::row("SELECT * FROM empresas WHERE slug = '_system'");
+                if (!$empresa) {
+                    return ['ok' => false, 'error' => 'Sistema no configurado'];
+                }
+            }
+        }
+
         if (!$empresa) {
             return ['ok' => false, 'error' => 'Empresa no encontrada'];
         }
@@ -85,6 +99,15 @@ class Auth
              WHERE empresa_id = ? AND email = ? AND activo = 1",
             [$empresa_id, trim($email)]
         );
+
+        // Si no existe en esa empresa, buscar superadmin global
+        if (!$usuario) {
+            $usuario = DB::row(
+                "SELECT * FROM usuarios
+                 WHERE email = ? AND rol = 'superadmin' AND activo = 1",
+                [trim($email)]
+            );
+        }
 
         if (!$usuario || !password_verify($password, $usuario['password_hash'])) {
             return ['ok' => false, 'error' => 'Usuario o contraseña incorrectos'];
@@ -190,7 +213,7 @@ class Auth
         if ($sesion) {
             $empresa_id = (int) $sesion['empresa_id'];
             self::$empresa = DB::row(
-                "SELECT * FROM empresas WHERE id = ? AND activa = 1",
+                "SELECT * FROM empresas WHERE id = ?",
                 [$empresa_id]
             );
 
@@ -198,6 +221,12 @@ class Auth
                 self::$usuario = $sesion;
                 define('EMPRESA_ID',   $empresa_id);
                 define('EMPRESA_SLUG', self::$empresa['slug']);
+            } elseif ($sesion['rol'] === 'superadmin') {
+                // Superadmin sin empresa activa — permitir acceso al panel admin
+                self::$usuario = $sesion;
+                self::$empresa = ['id' => 0, 'slug' => '_system', 'nombre' => 'CotizaCloud Admin'];
+                define('EMPRESA_ID',   0);
+                define('EMPRESA_SLUG', '_system');
             }
         }
     }
@@ -225,7 +254,12 @@ class Auth
 
     public static function es_admin(): bool
     {
-        return self::$usuario && self::$usuario['rol'] === 'admin';
+        return self::$usuario && in_array(self::$usuario['rol'], ['admin', 'superadmin'], true);
+    }
+
+    public static function es_superadmin(): bool
+    {
+        return self::$usuario && self::$usuario['rol'] === 'superadmin';
     }
 
     public static function rol(): string
@@ -270,6 +304,15 @@ class Auth
         self::requerir_login();
         if (!self::es_admin()) {
             self::acceso_denegado('Solo los administradores pueden acceder a esta sección.');
+        }
+    }
+
+    // ─── Middleware: requiere superadmin ───────────────────────
+    public static function requerir_superadmin(): void
+    {
+        self::requerir_login();
+        if (!self::es_superadmin()) {
+            self::acceso_denegado('Acceso exclusivo para administradores del sistema.');
         }
     }
 
