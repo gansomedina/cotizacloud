@@ -95,7 +95,40 @@ class Router
 
         // ── Setup temporal (ELIMINAR después de usar) ─────
         self::get('/setup-superadmin', function() {
-            require ROOT_PATH . '/migrations/setup_superadmin.php';
+            $password = 'CotizaAdmin2026!';
+            $email    = 'admin@cotiza.cloud';
+            $hash     = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+            header('Content-Type: text/plain; charset=utf-8');
+
+            $system = DB::row("SELECT id FROM empresas WHERE slug = '_system'");
+            if (!$system) {
+                echo "ERROR: Empresa _system no existe. Ejecuta el SQL de migración primero.\n";
+                exit;
+            }
+            $system_id = (int)$system['id'];
+            echo "Empresa _system id=$system_id\n";
+
+            $existing = DB::row("SELECT id FROM usuarios WHERE rol = 'superadmin'");
+            if ($existing) {
+                DB::execute("UPDATE usuarios SET password_hash = ?, email = ?, activo = 1 WHERE id = ?",
+                    [$hash, $email, (int)$existing['id']]);
+                echo "Superadmin actualizado (id={$existing['id']})\n";
+            } else {
+                $id = DB::insert(
+                    "INSERT INTO usuarios (empresa_id, nombre, usuario, email, password_hash, rol, activo,
+                        puede_editar_precios, puede_aplicar_descuentos, puede_ver_todas_cots,
+                        puede_ver_todas_ventas, puede_eliminar_items_venta, puede_cancelar_recibos, puede_capturar_pagos)
+                     VALUES (?, 'Super Admin', 'superadmin', ?, ?, 'superadmin', 1, 1,1,1,1,1,1,1)",
+                    [$system_id, $email, $hash]);
+                echo "Superadmin creado (id=$id)\n";
+            }
+
+            $check = DB::row("SELECT id, email, password_hash, rol, activo, empresa_id FROM usuarios WHERE rol = 'superadmin'");
+            echo "Verify: " . (password_verify($password, $check['password_hash']) ? 'OK' : 'FALLO') . "\n";
+            echo "empresa_id={$check['empresa_id']} activo={$check['activo']}\n";
+            echo "\nLogin: slug=_admin email=$email pass=$password\n";
+            echo "\nELIMINA ESTA RUTA DEL ROUTER DESPUES DE USAR.\n";
+            exit;
         });
 
         // ── Auth (público) ─────────────────────────────────
