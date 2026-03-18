@@ -188,6 +188,7 @@ $rows_all = array_slice($rows_all,0,$limit);
 
 $cnt_urgentes = count($buckets['onfire'])+count($buckets['inminente'])+count($buckets['probable_cierre']);
 $cierre_pct   = $stat_cierre;
+$ciclo_venta  = Radar::ciclo_venta($empresa_id);
 
 // Config + IPs internas
 $config = Radar::config($empresa_id);
@@ -315,6 +316,8 @@ ob_start();
     <h1 style="font:800 22px var(--body);letter-spacing:-.02em">📡 Radar</h1>
     <p style="font:400 13px var(--body);color:var(--t3);margin-top:3px">
       Total: <?= $stat_total ?> · Aceptadas: <?= $stat_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
+      · Ciclo venta: <b><?= $ciclo_venta['dias'] ?>d</b><?= $ciclo_venta['auto'] ? '' : ' <span style="opacity:.6">(estimado)</span>' ?>
+      · Modo: <b><?= ucfirst($config['sensibilidad'] ?? 'medio') ?></b>
     </p>
   </div>
   <?php if ($debug_mode): ?><span style="padding:4px 10px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font:700 11px var(--body);color:#92400e">DEBUG ON</span><?php endif; ?>
@@ -337,6 +340,13 @@ ob_start();
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv"><?= $cierre_pct ?>%</div>
     <div class="rdr-sl">📊 Tasa cierre</div>
+  </div>
+  <div class="card" style="padding:12px 16px">
+    <div class="rdr-sv"><?= $ciclo_venta['dias'] ?>d</div>
+    <div class="rdr-sl"><?= $ciclo_venta['auto'] ? '🔄' : '📐' ?> Ciclo venta<?= $ciclo_venta['auto'] ? '' : ' (est.)' ?></div>
+    <?php if ($ciclo_venta['auto'] && $ciclo_venta['p25'] !== null): ?>
+    <div style="font:400 10px var(--body);color:var(--t3);margin-top:2px">P25: <?= $ciclo_venta['p25'] ?>d · P75: <?= $ciclo_venta['p75'] ?>d · n=<?= $ciclo_venta['n'] ?></div>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -390,8 +400,8 @@ render_bkt('💸 Validando precio',
     'Detecta foco real en precio: exige base guest + validación individual (misma huella) o compartida (multi-visitor)',
     $buckets['validando_precio'],$sort,$dir);
 
-render_bkt('🔮 Predicción alta',
-    'v2.3: FIT ≥ 14% + cotización reciente + actividad en ventana proporcional al ciclo de venta (no se muestra si lleva días sin verse)',
+render_bkt('🔮 Predicción alta (ciclo: '.$ciclo_venta['dias'].'d)',
+    'v2.3: FIT ≥ 14% + edad ≤ ciclo venta real ('.$ciclo_venta['dias'].'d) + actividad reciente. El ciclo se auto-calcula con la mediana de días envío→cierre de tu empresa.',
     $buckets['prediccion_alta'],$sort,$dir);
 ?>
 </div>

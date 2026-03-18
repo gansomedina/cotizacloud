@@ -29,6 +29,7 @@ class Radar
     private static array $config_cache = [];
     private static array $p80_cache = [];
     private static array $fit_cal_cache = [];
+    private static array $ciclo_cache = [];
 
     // ============================================================
     //  UMBRALES × 3 MODOS
@@ -645,16 +646,20 @@ class Radar
         }
 
         // ── 5. Predicción alta ──────────────────────────────
-        // v2.3: además de FIT alto + edad, exigir actividad reciente.
-        // Ventas consultivas: predicción sin momentum = dato frío.
-        // Ventana proporcional: 1/3 de predict_recent_days (mín 5d, máx 21d)
-        // Así funciona igual para ciclo corto (21d → 7d) que largo (45d → 15d).
-        $predict_alive_days = max(5, min(21, (int)ceil((int)self::u('predict_recent_days', $modo) / 3)));
+        // v2.3: ventanas adaptadas al ciclo de venta real de la empresa.
+        // predict_window = ciclo × multiplicador por modo (agresivo=1.5, medio=1.0, ligero=0.7)
+        // predict_alive  = 1/3 de la ventana (mín 3d, máx 30d)
+        // Freelancer (ciclo 5d): ventana=5d, alive=3d
+        // Constructora (ciclo 60d): ventana=60d, alive=20d
+        $ciclo = self::ciclo_venta($empresa_id);
+        $ciclo_mult = match($modo) { 'agresivo' => 1.5, 'ligero' => 0.7, default => 1.0 };
+        $predict_window = max(7, min(120, (int)round($ciclo['dias'] * $ciclo_mult)));
+        $predict_alive_days = max(3, min(30, (int)ceil($predict_window / 3)));
         $predict_alive = ($last_ts >= $now - $predict_alive_days * 86400);
         if (
             !$accepted &&
             $fit_pct  >= (float)self::u('predict_min_fit_pct', $modo) &&
-            $age_days <= (int)self::u('predict_recent_days', $modo) &&
+            $age_days <= $predict_window &&
             $predict_alive
         ) {
             $buckets[] = 'prediccion_alta';
@@ -1257,6 +1262,48 @@ class Radar
         }
         self::$p80_cache[$empresa_id] = $fallback;
         return $fallback;
+    }
+
+    // ============================================================
+    //  CICLO DE VENTA — mediana de días envío → cierre por empresa
+    //  Se auto-calcula con datos reales. Fallback: 30 días.
+    //  Cacheado por request. Usado para adaptar ventanas temporales.
+    // ============================================================
+    public static function ciclo_venta(int $empresa_id): array
+    {
+        if (isset(self::$ciclo_cache[$empresa_id])) return self::$ciclo_cache[$empresa_id];
+
+        // Días entre envío de cotización y creación de la venta (cierre real)
+        $rows = DB::query(
+            "SELECT DATEDIFF(v.created_at, c.enviada_at) AS dias
+             FROM ventas v
+             JOIN cotizaciones c ON c.id = v.cotizacion_id
+             WHERE v.empresa_id = ? AND v.estado != 'cancelada'
+               AND c.enviada_at IS NOT NULL
+             ORDER BY dias ASC",
+            [$empresa_id]
+        );
+
+        $dias = array_filter(array_map(fn($r) => max(0, (int)$r['dias']), $rows), fn($d) => $d >= 0);
+        sort($dias);
+        $n = count($dias);
+
+        if ($n < 3) {
+            // Menos de 3 ventas: no hay suficiente data, fallback 30d
+            $result = ['dias' => 30, 'mediana' => null, 'p25' => null, 'p75' => null, 'n' => $n, 'auto' => false];
+        } else {
+            $med = $n % 2 === 0
+                ? ($dias[$n/2 - 1] + $dias[$n/2]) / 2
+                : $dias[(int)floor($n/2)];
+            $p25 = $dias[(int)floor($n * 0.25)];
+            $p75 = $dias[(int)floor($n * 0.75)];
+            // Clamp mediana a [1, 180] para evitar extremos
+            $med = max(1, min(180, (int)round($med)));
+            $result = ['dias' => $med, 'mediana' => $med, 'p25' => $p25, 'p75' => $p75, 'n' => $n, 'auto' => true];
+        }
+
+        self::$ciclo_cache[$empresa_id] = $result;
+        return $result;
     }
 
     // ============================================================
