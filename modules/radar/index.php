@@ -116,6 +116,29 @@ $BM = [
     'enfriandose'           => ['🔵','#0284c7','#e0f2fe','Enfriándose'],
     'no_abierta'            => ['❌','#dc2626','#fef2f2','No abierta'],
 ];
+// Descripciones cortas de cada bucket (para playbook modal)
+$GLOBALS['BKT_HINTS'] = [
+    'onfire'               => 'Actividad en 72h · 2+ sesiones · scroll ≥ 90% · lectura real · foco en precio · validación por visitor',
+    'inminente'            => 'Actividad en 24h · FIT ≥ 8.5% · edad ≥ 2h · guest ≥ 1 · mínimo 2 señales (≥1 fuerte) · misma huella insistiendo en precio',
+    'probable_cierre'      => 'Vistas recientes + señal de calidad (precio/scroll/cupón) + piso FIT ≥ 5% o 3+ sesiones',
+    'validando_precio'     => 'Foco real en precio: exige base guest + validación individual (misma huella) o compartida (multi-visitor)',
+    'prediccion_alta'      => 'FIT ≥ 14% + edad ≤ ciclo venta real + actividad reciente. Ciclo auto-calculado con mediana de días envío→cierre',
+    'decision_activa'      => 'Sesiones recientes con señales de decisión: scroll profundo, revisión de precio, múltiples vistas',
+    'alto_importe'         => 'Cotizaciones de alto valor con actividad reciente y señales de interés genuino',
+    're_enganche_caliente' => 'Regresó después de inactividad con señales fuertes: scroll, precio, múltiples páginas',
+    're_enganche'          => 'Regresó después de inactividad moderada con al menos una señal de interés',
+    'multi_persona'        => 'Múltiples dispositivos/IPs revisando la misma cotización — decisión compartida',
+    'revision_profunda'    => 'Scroll profundo + tiempo de lectura alto en una sola sesión',
+    'vistas_multiples'     => 'Varias vistas en poco tiempo, pero sin señales fuertes de decisión',
+    'hesitacion'           => 'Vistas intermitentes sin avanzar — el cliente duda pero no descarta',
+    'sobre_analisis'       => 'Demasiadas vistas sin acción — posible parálisis de decisión',
+    'revivio'              => 'Cotización vieja que volvió a recibir actividad después de mucho tiempo',
+    'regreso'              => 'Regreso después de +4 días sin actividad',
+    'comparando'           => 'Patrón de comparación: vistas cortas, posiblemente compartiendo con terceros',
+    'enfriandose'          => 'Actividad en declive — cada vez menos interacción',
+    'no_abierta'           => 'Cotización enviada pero nunca abierta por el cliente',
+];
+
 function rbadge(?string $b,?int $sc,array $BM): string {
     if(!$b) return '<span style="color:var(--t3);font-size:11px">—</span>';
     [$ico,$col,$bg,$lbl]=$BM[$b]??['⬜','#64748b','#f1f5f9',ucfirst($b)];
@@ -212,12 +235,12 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
     echo "<div class='rdrs'><table class='rdrt'><thead><tr>";
     echo "<th>Título / Cliente</th>";
     if ($motivo) echo "<th style='width:100px'>Motivo</th>";
-    echo "<th class='tc' style='width:72px'>Estado</th>";
+    echo "<th class='tc col-estado' style='width:72px'>Estado</th>";
     echo "<th class='tr' style='width:70px'><a href='".rurlq(['sort'=>'fit','dir'=>rtdir($s,'fit',$d)])."'>Score%</a></th>";
-    echo "<th class='tr' style='width:70px'><a href='".rurlq(['sort'=>'priority','dir'=>rtdir($s,'priority',$d)])."'>Prior%</a></th>";
+    echo "<th class='tr col-prior' style='width:70px'><a href='".rurlq(['sort'=>'priority','dir'=>rtdir($s,'priority',$d)])."'>Prior%</a></th>";
     echo "<th class='tr' style='width:68px'><a href='".rurlq(['sort'=>'amount','dir'=>rtdir($s,'amount',$d)])."'>Importe</a></th>";
-    echo "<th style='width:120px'><a href='".rurlq(['sort'=>'last','dir'=>rtdir($s,'last',$d)])."'>Última vista</a></th>";
-    echo "<th style='width:55px'>Ver</th>";
+    echo "<th class='col-vista' style='width:120px'><a href='".rurlq(['sort'=>'last','dir'=>rtdir($s,'last',$d)])."'>Última vista</a></th>";
+    echo "<th class='col-ver' style='width:55px'>Ver</th>";
     echo "</tr></thead><tbody>";
     foreach ($items as $r) {
         $ago = time()-$r['last_ts'];
@@ -233,16 +256,17 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         if (!empty($r_icons['mv_price']))   $r_ico_str .= '👥';
         if (!empty($r_icons['not_opened'])) $r_ico_str .= '❌';
         $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo']);
-        echo "<td><div class='rtit'>{$r_title_show}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></td>";
+        $cot_url = '/cotizaciones/'.(int)$r['id'];
+        echo "<td><a href='{$cot_url}' class='rtit-link'><div class='rtit'>{$r_title_show}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
         if ($motivo) echo "<td><span class='rmot'>".htmlspecialchars($r['reason']??'')."</span></td>";
-        echo "<td class='tc'>$ab</td>";
+        echo "<td class='tc col-estado'>$ab</td>";
         echo "<td class='tr'><b>".number_format($r['fit_pct'],1)."%</b></td>";
-        echo "<td class='tr'><b>".number_format($r['priority_pct'],1)."%</b></td>";
+        echo "<td class='tr col-prior'><b>".number_format($r['priority_pct'],1)."%</b></td>";
         echo "<td class='tr'>".rmoney($r['total'])."</td>";
         $last_fmt = date('m-d H:i',$r['last_ts'])." <span class='ago'>(".rhace($r['last_ts']).")</span>";
         if ($gap && isset($r['gap_days'])) $last_fmt .= " <b style='color:#6a1b9a'>gap ".(int)$r['gap_days']."d</b>";
-        echo "<td>$last_fmt</td>";
-        echo "<td><a href='/cotizaciones/".(int)$r['id']."' class='rlnk'>Editar</a></td>";
+        echo "<td class='col-vista'>$last_fmt</td>";
+        echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a></td>";
         echo "</tr>";
     }
     echo "</tbody></table></div></div>";
@@ -392,7 +416,21 @@ ob_start();
 .pb-priority.critica{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
 .pb-priority.alta{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
 .pb-priority.media{background:#f3f4f6;color:#374151;border:1px solid #d1d5db}
-@media(max-width:760px){.rdr-stats{grid-template-columns:repeat(2,1fr)}.modo-grid{grid-template-columns:1fr}.pb-cols{grid-template-columns:1fr}.pb-modal{border-radius:14px}.rbk-hd{gap:6px}}
+.rtit-link{text-decoration:none;color:inherit;display:block}
+.rtit-link:hover .rtit{text-decoration:underline}
+@media(max-width:760px){
+  .rdr-stats{grid-template-columns:repeat(2,1fr)}
+  .modo-grid{grid-template-columns:1fr}
+  .pb-cols{grid-template-columns:1fr}
+  .pb-modal{border-radius:14px}
+  .rbk-hd{gap:6px}
+  .col-estado,.col-prior,.col-ver{display:none}
+  .rdrt{min-width:0}
+  .rtit{max-width:160px}
+}
+@media(max-width:480px){
+  .col-vista{display:none}
+}
 </style>
 
 <!-- Cabecera -->
@@ -745,14 +783,17 @@ document.addEventListener('keydown',function(e){
 <?php
 // ─── Render playbook modals ─────────────────────────────────
 $_PB = $GLOBALS['PLAYBOOK'] ?? [];
+$_BH = $GLOBALS['BKT_HINTS'] ?? [];
 foreach ($_PB as $pb_key => $pb):
     $pb_pclass = str_replace('í','i',$pb['priority']); // critica, alta, media
+    $pb_hint = $_BH[$pb_key] ?? '';
 ?>
 <div class="pb-overlay" id="pb-<?= $pb_key ?>" onclick="if(event.target===this)closePlaybook('<?= $pb_key ?>')">
   <div class="pb-modal">
     <div class="pb-modal-hd">
       <div>
         <h2>📖 <?= e($BM[$pb_key][3] ?? ucfirst(str_replace('_',' ',$pb_key))) ?></h2>
+        <?php if ($pb_hint): ?><p style="font:400 12px var(--body);color:#6b7280;margin:4px 0 0;line-height:1.4"><?= e($pb_hint) ?></p><?php endif; ?>
         <p><?= e($pb['summary']) ?></p>
         <span class="pb-priority <?= $pb_pclass ?>"><?= e(ucfirst($pb['priority'])) ?></span>
       </div>
