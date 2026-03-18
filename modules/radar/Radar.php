@@ -533,25 +533,7 @@ class Radar
         // ============================================================
         $buckets = [];
 
-        // ── 1. Probable cierre ───────────────────────────────
-        // v2.3: requiere actividad reciente + acumulada + señal de calidad + FIT mínimo
-        // Psicología: quien va a comprar interactúa con el precio, no solo mira.
-        // Sin un piso de FIT, cualquier curioso con 2 vistas entra aquí y el
-        // asesor pierde confianza en el radar. Exigimos FIT ≥ 5% o sesiones ≥ 3.
-        $hot_quality = (
-            $has_tot_view || $has_tot_rev || $has_loop || $e_coupons > 0 ||
-            $e_sv_price || $e_mv_price || $pss >= 2.0 || $e_scroll_cls >= 70
-        );
-        if (
-            !$accepted &&
-            $last_ts >= $now - (int)self::u('hot_close_last_hours', $modo) * 3600 &&
-            $views24 >= (int)self::u('hot_close_min_views24', $modo) &&
-            $views7d >= (int)self::u('hot_close_min_views7d', $modo) &&
-            $hot_quality &&
-            ($fit_pct >= 5.0 || $sessions >= 3)
-        ) {
-            $buckets[] = 'probable_cierre';
-        }
+        // ── 1. Probable cierre → se evalúa AL FINAL (necesita saber los otros buckets)
 
         // ── 2. Inminente ────────────────────────────────────
         // Señales fuertes
@@ -814,6 +796,44 @@ class Radar
         elseif ($is_compare)  $buckets[] = 'comparando';
         elseif ($is_cooling)  $buckets[] = 'enfriandose';
 
+        // ── 1. Probable cierre (CROSS-BUCKET) ──────────────────
+        // v3: Meta-bucket agregador. Requiere:
+        //   - Estar en al menos 1 bucket de alta intención
+        //   - Tener señales de 2+ categorías distintas (confirmación cruzada)
+        //   - Actividad reciente (72h)
+        // Categorías de señal:
+        //   Engagement: scroll ≥ 50%, visibilidad alta, lectura real
+        //   Precio: precio tocado, cupón, tot_rev, loop
+        //   Persistencia: 2+ sesiones, gap/regreso
+        //   Social: multi-IP, multi-dispositivo
+        // Psicología: un curioso hace UNA cosa. Un comprador cruza categorías.
+
+        // Buckets que califican como alta intención
+        $pc_qualifying = ['onfire','inminente','validando_precio','decision_activa',
+                          're_enganche_caliente','prediccion_alta','multi_persona','alto_importe'];
+        $pc_source = null;
+        foreach ($pc_qualifying as $qb) {
+            if (in_array($qb, $buckets, true)) { $pc_source = $qb; break; }
+        }
+
+        if ($pc_source !== null && !$accepted && $last_ts >= $now - 72 * 3600) {
+            // Contar categorías de señal presentes
+            $cat_engagement  = ($e_scroll_cls >= 50 || $e_scroll_any >= 50 ||
+                                $e_vis_max >= 8 || $e_vis_sum >= 15 ||
+                                ($has_tot_view && $sessions >= 2));
+            $cat_precio      = ($has_tot_rev || $has_loop || $e_coupons > 0 ||
+                                $e_sv_price || $e_mv_price || $pss >= 2.0);
+            $cat_persistencia = ($sessions >= 2 || ($gap_days !== null && $gap_days >= 1));
+            $cat_social       = ($e_uniq_v >= 2 || $ips_post_guest_count >= 2 || $e_mv_price);
+
+            $cat_count = (int)$cat_engagement + (int)$cat_precio +
+                         (int)$cat_persistencia + (int)$cat_social;
+
+            if ($cat_count >= 2) {
+                $buckets[] = 'probable_cierre';
+            }
+        }
+
         // ── Iconos para la UI (mismos que el radar original) ─
         // Nota: no_abierta se maneja en el early return (línea ~380) cuando sessions=0.
         // $is_not_opened siempre sería false aquí porque sessions > 0 en este punto.
@@ -826,7 +846,8 @@ class Radar
         // not_opened solo aplica vía early return cuando sessions=0
 
         static $PRIORIDAD = [
-            'onfire','inminente','probable_cierre','validando_precio',
+            'probable_cierre',
+            'onfire','inminente','validando_precio',
             'prediccion_alta','alto_importe','decision_activa','revivio',
             'no_abierta','re_enganche_caliente','re_enganche','multi_persona',
             'revision_profunda','vistas_multiples','hesitacion','sobre_analisis',
@@ -851,6 +872,7 @@ class Radar
             'priority_pct' => round($priority, 2),
             'bucket'       => $bucket_main,
             'buckets'      => $buckets,
+            'pc_source'    => $pc_source,
             'cooling_price_touched' => $cooling_price_touched,
             'cooling_reason'        => $cooling_reason,
             'icons'        => $icons,
@@ -1004,7 +1026,7 @@ class Radar
             [
                 $r['score'],
                 $r['bucket'],
-                json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? []]),
+                json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null]),
                 $cotizacion_id,
             ]
         );

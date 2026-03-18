@@ -98,7 +98,7 @@ function rmoney(float $n): string {
 $BM = [
     'onfire'                => ['🔴','#991b1b','#fff1f2','On Fire'],
     'inminente'             => ['🟠','#c2410c','#fff7ed','Inminente'],
-    'probable_cierre'       => ['🟡','#92400e','#fffbeb','Probable cierre'],
+    'probable_cierre'       => ['🎯','#92400e','#fffbeb','Probable cierre'],
     'decision_activa'       => ['🟡','#92400e','#fffbeb','Decisión activa'],
     'validando_precio'      => ['💸','#92400e','#fffbeb','Validando precio'],
     'prediccion_alta'       => ['🔮','#166534','#f0fdf4','Predicción alta'],
@@ -120,7 +120,7 @@ $BM = [
 $GLOBALS['BKT_HINTS'] = [
     'onfire'               => 'Actividad en 72h · 2+ sesiones · scroll ≥ 90% · lectura real · foco en precio · validación por visitor',
     'inminente'            => 'Actividad en 24h · FIT ≥ 8.5% · edad ≥ 2h · guest ≥ 1 · mínimo 2 señales (≥1 fuerte) · misma huella insistiendo en precio',
-    'probable_cierre'      => 'Vistas recientes + señal de calidad (precio/scroll/cupón) + piso FIT ≥ 5% o 3+ sesiones',
+    'probable_cierre'      => 'Cross-bucket: confirma intención real con 2+ categorías de señal (engagement + precio + persistencia + social)',
     'validando_precio'     => 'Foco real en precio: exige base guest + validación individual (misma huella) o compartida (multi-visitor)',
     'prediccion_alta'      => 'FIT ≥ 14% + edad ≤ ciclo venta real + actividad reciente. Ciclo auto-calculado con mediana de días envío→cierre',
     'decision_activa'      => 'Sesiones recientes con señales de decisión: scroll profundo, revisión de precio, múltiples vistas',
@@ -146,8 +146,9 @@ function rbadge(?string $b,?int $sc,array $BM): string {
     return "<span style='display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font:700 11px var(--body);background:{$bg};color:{$col};white-space:nowrap'>{$ico} {$lbl}{$s}</span>";
 }
 
-// PRIORIDAD v2.3: re_enganche_caliente antes de re_enganche
-$PRIO = ['onfire','inminente','probable_cierre','validando_precio',
+// PRIORIDAD v3: probable_cierre es #1 (cross-bucket agregador)
+$PRIO = ['probable_cierre',
+         'onfire','inminente','validando_precio',
          'prediccion_alta','alto_importe','decision_activa','revivio',
          'no_abierta','re_enganche_caliente','re_enganche','multi_persona',
          'revision_profunda','vistas_multiples','hesitacion','sobre_analisis',
@@ -167,6 +168,9 @@ foreach ($raw as $c) {
     $accepted = $c['estado'] === 'aceptada';
     $total    = (float)($c['total'] ?? 0);
     $senales  = is_string($c['radar_senales']) ? (json_decode($c['radar_senales'],true) ?? []) : [];
+
+    $all_buckets = $senales['buckets'] ?? [];
+    $pc_source = $senales['pc_source'] ?? null;
 
     $row = [
         'id'          => (int)$c['id'],
@@ -190,7 +194,19 @@ foreach ($raw as $c) {
     $total_all++;
     if ($accepted) $total_aceptadas++;
     if ($c['raw_vista_at'] && $last_ts >= time()-48*3600) $activos48[] = $row;
-    if ($bucket && isset($buckets[$bucket])) $buckets[$bucket][] = $row;
+
+    // Probable cierre es cross-bucket: la cotización aparece AQUÍ y en su bucket origen
+    if (in_array('probable_cierre', $all_buckets, true) && $pc_source) {
+        $row['reason'] = $pc_source; // bucket que la activó
+        $buckets['probable_cierre'][] = $row;
+        // También asignar al bucket origen (sin duplicar en probable_cierre)
+        $origin_bucket = $pc_source;
+        if ($origin_bucket && isset($buckets[$origin_bucket])) {
+            $buckets[$origin_bucket][] = $row;
+        }
+    } elseif ($bucket && $bucket !== 'probable_cierre' && isset($buckets[$bucket])) {
+        $buckets[$bucket][] = $row;
+    }
 }
 
 // Función de orden
@@ -260,7 +276,15 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo']);
         $cot_url = '/cotizaciones/'.(int)$r['id'];
         echo "<td><a href='{$cot_url}' class='rtit-link'><div class='rtit'>{$r_title_show}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
-        if ($motivo) echo "<td><span class='rmot'>".htmlspecialchars($r['reason']??'')."</span></td>";
+        if ($motivo) {
+            $reason_key = $r['reason'] ?? '';
+            $reason_meta = $BM[$reason_key] ?? null;
+            if ($reason_meta) {
+                echo "<td>".rbadge($reason_key, null, $BM)."</td>";
+            } else {
+                echo "<td><span class='rmot'>".htmlspecialchars($reason_key)."</span></td>";
+            }
+        }
         echo "<td class='tc col-estado'>$ab</td>";
         echo "<td class='tr'><b>".number_format($r['fit_pct'],1)."%</b></td>";
         echo "<td class='tr col-prior'><b>".number_format($r['priority_pct'],1)."%</b></td>";
@@ -503,6 +527,10 @@ ob_start();
 <!-- ===== TAB: ALTA PRIORIDAD ===== -->
 <div class="tab-panel on" id="tab-urgentes">
 <?php
+render_bkt('🎯 Probable cierre',
+    'Cross-bucket: confirma intención real con 2+ categorías de señal (engagement + precio + persistencia + social)',
+    $buckets['probable_cierre'],$sort,$dir,false,true,'probable_cierre');
+
 render_bkt('🔥😱 ON FIRE',
     'Actividad en 72h · 2+ sesiones · scroll ≥ 90% · lectura real · foco en precio · validación por visitor',
     $buckets['onfire'],$sort,$dir,false,false,'onfire');
@@ -510,10 +538,6 @@ render_bkt('🔥😱 ON FIRE',
 render_bkt('🔥 Cierre inminente',
     'Actividad en 24h · FIT ≥ 8.5% · edad ≥ 2h · guest ≥ 1 · mínimo 2 señales (≥1 fuerte) · misma huella insistiendo en precio',
     $buckets['inminente'],$sort,$dir,false,false,'inminente');
-
-render_bkt('🔥 Probable cierre (PRIORIDAD)',
-    'v2.3: Vistas recientes + señal de calidad (precio/scroll/cupón) + piso FIT ≥ 5% o 3+ sesiones. Elimina curiosos sin intención real.',
-    $buckets['probable_cierre'],$sort,$dir,false,true,'probable_cierre');
 
 render_bkt('💸 Validando precio',
     'Detecta foco real en precio: exige base guest + validación individual (misma huella) o compartida (multi-visitor)',
