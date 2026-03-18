@@ -48,8 +48,6 @@ ob_start();
 .ay-step h4{font:700 14px var(--body);margin:0 0 4px}
 .ay-step p{font:400 13px var(--body);color:var(--t3);margin:0;line-height:1.6}
 
-.ay-img-placeholder{background:#f1f5f9;border:2px dashed #cbd5e1;border-radius:var(--r);padding:40px 20px;text-align:center;margin:16px 0;color:#94a3b8;font:500 13px var(--body)}
-
 .ay-tip{background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--r);padding:14px 18px;margin:16px 0;font:400 13px var(--body);color:#1e40af;line-height:1.6}
 .ay-tip::before{content:'💡 ';font-size:15px}
 
@@ -200,8 +198,6 @@ ob_start();
   <h2 class="ay-h2">📊 Dashboard</h2>
   <p class="ay-subtitle">Tu vista ejecutiva. De un vistazo sabes cómo va tu negocio.</p>
 
-  <div class="ay-img-placeholder">📸 Captura del dashboard aquí</div>
-
   <div class="ay-card">
     <h3>¿Qué encuentras aquí?</h3>
     <ul>
@@ -220,8 +216,6 @@ ob_start();
 <div class="ay-section" id="sec-clientes">
   <h2 class="ay-h2">👥 Clientes</h2>
   <p class="ay-subtitle">Tu base de datos de clientes. Centraliza toda la información de contacto.</p>
-
-  <div class="ay-img-placeholder">📸 Captura de la lista de clientes aquí</div>
 
   <div class="ay-card">
     <h3>Funciones principales</h3>
@@ -254,8 +248,6 @@ ob_start();
   <h2 class="ay-h2">📄 Cotizaciones</h2>
   <p class="ay-subtitle">El corazón del sistema. Crea propuestas profesionales que tus clientes pueden ver, aceptar o rechazar desde un link.</p>
 
-  <div class="ay-img-placeholder">📸 Captura del listado de cotizaciones aquí</div>
-
   <div class="ay-card">
     <h3>Estados de una cotización</h3>
     <ul>
@@ -285,8 +277,6 @@ ob_start();
     </div>
   </div>
 
-  <div class="ay-img-placeholder">📸 Captura del builder de cotización aquí</div>
-
   <div class="ay-card">
     <h3>¿Qué ve el cliente?</h3>
     <p>El cliente recibe un link (ej: <code>tuempresa.cotiza.cloud/c/abc123</code>) que abre una página profesional con tu logo, productos, precios y totales. Puede aceptar o rechazar directamente desde ahí.</p>
@@ -303,8 +293,6 @@ ob_start();
 <div class="ay-section" id="sec-ventas">
   <h2 class="ay-h2">🛒 Ventas</h2>
   <p class="ay-subtitle">Gestiona tus ventas cerradas. Registra pagos, emite recibos y controla entregas.</p>
-
-  <div class="ay-img-placeholder">📸 Captura del listado de ventas aquí</div>
 
   <div class="ay-card">
     <h3>Estados de una venta</h3>
@@ -344,8 +332,6 @@ ob_start();
 <div class="ay-section" id="sec-radar">
   <h2 class="ay-h2">📡 Radar</h2>
   <p class="ay-subtitle">Tu arma secreta de ventas. Detecta en tiempo real quién está a punto de comprar y quién necesita seguimiento.</p>
-
-  <div class="ay-img-placeholder">📸 Captura del radar aquí</div>
 
   <div class="ay-card">
     <h3>¿Cómo funciona?</h3>
@@ -408,8 +394,6 @@ ob_start();
   <h2 class="ay-h2">📉 Costos</h2>
   <p class="ay-subtitle">Controla los gastos asociados a tus ventas para conocer tu margen real.</p>
 
-  <div class="ay-img-placeholder">📸 Captura del módulo de costos aquí</div>
-
   <div class="ay-card">
     <h3>Funciones principales</h3>
     <ul>
@@ -429,8 +413,6 @@ ob_start();
 <div class="ay-section" id="sec-reportes">
   <h2 class="ay-h2">📋 Reportes</h2>
   <p class="ay-subtitle">Análisis de rendimiento de tu negocio con datos reales, filtrados por período.</p>
-
-  <div class="ay-img-placeholder">📸 Captura de reportes aquí</div>
 
   <div class="ay-card">
     <h3>Tipos de reporte</h3>
@@ -463,8 +445,6 @@ ob_start();
 <div class="ay-section" id="sec-configuracion">
   <h2 class="ay-h2">⚙️ Configuración</h2>
   <p class="ay-subtitle">Personaliza tu cuenta, equipo y catálogo. Solo visible para administradores.</p>
-
-  <div class="ay-img-placeholder">📸 Captura de configuración aquí</div>
 
   <div class="ay-card">
     <h3>Secciones de configuración</h3>
