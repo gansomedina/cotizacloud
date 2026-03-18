@@ -15,6 +15,42 @@ $total_ventas   = (int)DB::val("SELECT COUNT(*) FROM ventas");
 $nuevas_hoy = (int)DB::val("SELECT COUNT(*) FROM empresas WHERE slug != '_system' AND DATE(created_at) = CURDATE()");
 $nuevas_7d  = (int)DB::val("SELECT COUNT(*) FROM empresas WHERE slug != '_system' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
 
+// ── Empresas nuevas (últimos 30 días) ──────────────────────
+$empresas_nuevas = DB::query("
+    SELECT e.id, e.nombre, e.slug, e.activa, e.created_at,
+        (SELECT COUNT(*) FROM usuarios u WHERE u.empresa_id = e.id) AS num_usuarios,
+        (SELECT COUNT(*) FROM cotizaciones c WHERE c.empresa_id = e.id) AS num_cots
+    FROM empresas e
+    WHERE e.slug != '_system' AND e.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    ORDER BY e.created_at DESC
+");
+
+// ── Tickets de soporte ─────────────────────────────────────
+DB::execute("CREATE TABLE IF NOT EXISTS tickets_soporte (
+    id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    empresa_id    INT UNSIGNED NOT NULL,
+    usuario_id    INT UNSIGNED NOT NULL,
+    titulo        VARCHAR(255) NOT NULL,
+    descripcion   TEXT NOT NULL,
+    imagen_url    VARCHAR(500) DEFAULT NULL,
+    estado        ENUM('abierto','en_proceso','cerrado') NOT NULL DEFAULT 'abierto',
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_empresa (empresa_id),
+    INDEX idx_estado  (estado)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+$tickets = DB::query("
+    SELECT t.*, e.nombre AS empresa_nombre, e.slug AS empresa_slug,
+           u.nombre AS usuario_nombre, u.email AS usuario_email
+    FROM tickets_soporte t
+    JOIN empresas e ON e.id = t.empresa_id
+    JOIN usuarios u ON u.id = t.usuario_id
+    ORDER BY FIELD(t.estado, 'abierto', 'en_proceso', 'cerrado'), t.created_at DESC
+    LIMIT 50
+");
+$tickets_abiertos = (int)DB::val("SELECT COUNT(*) FROM tickets_soporte WHERE estado != 'cerrado'");
+
 // ── Lista de empresas con stats ────────────────────────────
 $empresas = DB::query("
     SELECT e.*,
@@ -108,8 +144,24 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
 .btn-enter:hover{background:var(--g);color:#fff}
 .btn-detail{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid var(--border2);background:var(--white);color:var(--t2);text-decoration:none;transition:all .12s;white-space:nowrap}
 .btn-detail:hover{border-color:var(--blue);color:var(--blue)}
+.btn-suspend{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid #fca5a5;background:var(--danger-bg);color:var(--danger);text-decoration:none;transition:all .12s;white-space:nowrap}
+.btn-suspend:hover{background:var(--danger);color:#fff}
+.btn-activate{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid var(--g-border);background:var(--g-bg);color:var(--g);text-decoration:none;transition:all .12s;white-space:nowrap}
+.btn-activate:hover{background:var(--g);color:#fff}
 
 .actions-cell{display:flex;gap:6px;align-items:center}
+
+/* Sections */
+.sa-section{margin-bottom:28px}
+.sa-section h2{font-size:15px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.sa-section h2 .count{font:600 12px var(--num);background:var(--danger);color:#fff;border-radius:99px;padding:2px 8px}
+
+/* Ticket badges */
+.ticket-estado{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.ticket-abierto{background:#fef3c7;color:#92400e}
+.ticket-en_proceso{background:#dbeafe;color:#1d4ed8}
+.ticket-cerrado{background:#f1f5f9;color:#475569}
+.ticket-desc{font-size:12px;color:var(--t3);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .ago{color:var(--t3);font-size:12px}
 
@@ -167,6 +219,100 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         <div class="stat-label">Ventas</div>
         <div class="stat-val num"><?= number_format($total_ventas) ?></div>
     </div>
+    <div class="stat <?= $tickets_abiertos > 0 ? 'stat-highlight' : '' ?>">
+        <div class="stat-label">Tickets abiertos</div>
+        <div class="stat-val"><?= $tickets_abiertos ?></div>
+    </div>
+</div>
+
+<!-- Empresas nuevas (últimos 30 días) -->
+<?php if ($empresas_nuevas): ?>
+<div class="sa-section">
+    <h2><i data-feather="star" style="width:16px;height:16px;color:var(--g)"></i> Empresas nuevas (30d)</h2>
+    <div class="sa-table-wrap">
+    <table class="sa-table" style="min-width:500px">
+    <thead>
+    <tr><th>Empresa</th><th>Estado</th><th>Usuarios</th><th>Cots</th><th>Registrada</th><th></th></tr>
+    </thead>
+    <tbody>
+    <?php foreach ($empresas_nuevas as $en): ?>
+    <tr>
+        <td>
+            <div class="emp-name"><?= e($en['nombre']) ?></div>
+            <div class="emp-slug"><?= e($en['slug']) ?>.cotiza.cloud</div>
+        </td>
+        <td><span class="badge <?= $en['activa'] ? 'badge-green' : 'badge-red' ?>"><?= $en['activa'] ? 'Activa' : 'Suspendida' ?></span></td>
+        <td class="num"><?= $en['num_usuarios'] ?></td>
+        <td class="num"><?= $en['num_cots'] ?></td>
+        <td><span class="ago"><?= $en['created_at'] ? date('d/m/Y', strtotime($en['created_at'])) : '—' ?></span></td>
+        <td><a href="/superadmin/empresa/<?= $en['id'] ?>" class="btn-detail"><i data-feather="eye" style="width:12px;height:12px"></i> Ver</a></td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+<?php endif; ?>
+
+<!-- Tickets de soporte -->
+<div class="sa-section">
+    <h2>
+        <i data-feather="message-circle" style="width:16px;height:16px"></i> Tickets de soporte
+        <?php if ($tickets_abiertos > 0): ?><span class="count"><?= $tickets_abiertos ?></span><?php endif; ?>
+    </h2>
+    <?php if ($tickets): ?>
+    <div class="sa-table-wrap">
+    <table class="sa-table" style="min-width:700px">
+    <thead>
+    <tr><th>Ticket</th><th>Empresa</th><th>Usuario / Email</th><th>Estado</th><th>Fecha</th><th></th></tr>
+    </thead>
+    <tbody>
+    <?php foreach ($tickets as $tk): ?>
+    <tr>
+        <td>
+            <div style="font-weight:600;font-size:13px"><?= e($tk['titulo']) ?></div>
+            <div class="ticket-desc"><?= e(mb_substr($tk['descripcion'], 0, 80)) ?><?= mb_strlen($tk['descripcion']) > 80 ? '...' : '' ?></div>
+        </td>
+        <td>
+            <div class="emp-name" style="font-size:12.5px"><?= e($tk['empresa_nombre']) ?></div>
+            <div class="emp-slug"><?= e($tk['empresa_slug']) ?></div>
+        </td>
+        <td>
+            <div style="font-size:12.5px;font-weight:500"><?= e($tk['usuario_nombre']) ?></div>
+            <div style="font-size:12px;color:var(--blue)"><a href="mailto:<?= e($tk['usuario_email']) ?>" style="color:var(--blue);text-decoration:none"><?= e($tk['usuario_email']) ?></a></div>
+        </td>
+        <td><span class="ticket-estado ticket-<?= e($tk['estado']) ?>"><?= e(str_replace('_', ' ', ucfirst($tk['estado']))) ?></span></td>
+        <td><span class="ago"><?= $tk['created_at'] ? date('d/m/Y H:i', strtotime($tk['created_at'])) : '—' ?></span></td>
+        <td>
+            <?php if ($tk['estado'] !== 'cerrado'): ?>
+            <form method="post" action="/superadmin/ticket/<?= $tk['id'] ?>/estado" style="margin:0;display:flex;gap:4px">
+                <?= csrf_field() ?>
+                <?php if ($tk['estado'] === 'abierto'): ?>
+                    <input type="hidden" name="estado" value="en_proceso">
+                    <button type="submit" class="btn-detail" style="font-size:11px;padding:4px 8px">En proceso</button>
+                <?php endif; ?>
+                <?php if ($tk['estado'] === 'abierto'): ?>
+                    <input type="hidden" name="estado" value="cerrado">
+                <?php endif; ?>
+                <button type="submit" class="btn-suspend" style="font-size:11px;padding:4px 8px" onclick="this.form.querySelector('[name=estado]').value='cerrado'">Cerrar</button>
+            </form>
+            <?php else: ?>
+                <span class="ago">Cerrado</span>
+            <?php endif; ?>
+            <?php if ($tk['imagen_url']): ?>
+                <a href="<?= e($tk['imagen_url']) ?>" target="_blank" style="font-size:11px;color:var(--blue);margin-left:4px">Ver imagen</a>
+            <?php endif; ?>
+        </td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    <?php else: ?>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:24px;text-align:center;color:var(--t3);font-size:13px">
+        Sin tickets de soporte pendientes.
+    </div>
+    <?php endif; ?>
 </div>
 
 <!-- Search -->
@@ -226,6 +372,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
                 <input type="hidden" name="empresa_id" value="<?= $e['id'] ?>">
                 <?= csrf_field() ?>
                 <button type="submit" class="btn-enter"><i data-feather="log-in" style="width:12px;height:12px"></i> Entrar</button>
+            </form>
+            <form method="post" action="/superadmin/empresa/<?= $e['id'] ?>/toggle" style="margin:0" onsubmit="return confirm('<?= $e['activa'] ? '¿Suspender esta empresa? Los usuarios no podrán acceder.' : '¿Reactivar esta empresa?' ?>')">
+                <?= csrf_field() ?>
+                <?php if ($e['activa']): ?>
+                    <button type="submit" class="btn-suspend"><i data-feather="pause-circle" style="width:12px;height:12px"></i> Suspender</button>
+                <?php else: ?>
+                    <button type="submit" class="btn-activate"><i data-feather="play-circle" style="width:12px;height:12px"></i> Activar</button>
+                <?php endif; ?>
             </form>
         </div>
     </td>

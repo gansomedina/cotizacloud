@@ -32,7 +32,7 @@ foreach ($cots_estado as $ce) $estados[$ce['estado']] = (int)$ce['n'];
 
 // Últimas 10 cotizaciones
 $ultimas_cots = DB::query(
-    "SELECT c.id, c.slug, c.folio, c.estado, c.total, c.created_at,
+    "SELECT c.id, c.slug, c.numero, c.estado, c.total, c.created_at,
             cl.nombre AS cliente_nombre
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
@@ -158,12 +158,20 @@ tr:hover td{background:#fafaf8}
     </div>
     <div style="display:flex;gap:8px;align-items:center">
         <span class="badge <?= $emp['activa'] ? 'badge-green' : 'badge-red' ?>">
-            <?= $emp['activa'] ? 'Activa' : 'Inactiva' ?>
+            <?= $emp['activa'] ? 'Activa' : 'Suspendida' ?>
         </span>
         <form method="post" action="/superadmin/impersonar" style="margin:0">
             <input type="hidden" name="empresa_id" value="<?= $emp['id'] ?>">
             <?= csrf_field() ?>
             <button type="submit" class="btn-enter"><i data-feather="log-in" style="width:14px;height:14px"></i> Entrar como admin</button>
+        </form>
+        <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/toggle" style="margin:0" onsubmit="return confirm('<?= $emp['activa'] ? '¿Suspender esta empresa? Los usuarios no podrán acceder.' : '¿Reactivar esta empresa?' ?>')">
+            <?= csrf_field() ?>
+            <?php if ($emp['activa']): ?>
+                <button type="submit" class="btn-enter" style="border-color:#fca5a5;background:#fff5f5;color:#c53030"><i data-feather="pause-circle" style="width:14px;height:14px"></i> Suspender</button>
+            <?php else: ?>
+                <button type="submit" class="btn-enter"><i data-feather="play-circle" style="width:14px;height:14px"></i> Activar</button>
+            <?php endif; ?>
         </form>
     </div>
 </div>
@@ -287,7 +295,7 @@ tr:hover td{background:#fafaf8}
     <tbody>
     <?php foreach ($ultimas_cots as $c): ?>
     <tr>
-        <td class="num" style="font-weight:600;font-size:12.5px"><?= e($c['folio'] ?? $c['slug']) ?></td>
+        <td class="num" style="font-weight:600;font-size:12.5px"><?= e($c['numero'] ?? $c['slug']) ?></td>
         <td><?= e($c['cliente_nombre'] ?? '—') ?></td>
         <td><span class="badge <?= $badge_estado[$c['estado']] ?? 'badge-slate' ?>"><?= e(ucfirst($c['estado'])) ?></span></td>
         <td class="num"><?= sa_money((float)($c['total'] ?? 0)) ?></td>
