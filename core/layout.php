@@ -24,6 +24,10 @@ $menu = [
     ['href' => '/ayuda',        'icon' => 'help-circle',   'label' => 'Ayuda'],
 ];
 
+if (Auth::es_superadmin()) {
+    $menu[] = ['href' => '/superadmin', 'icon' => 'shield', 'label' => 'Super Admin'];
+}
+
 if (!function_exists('menu_activo')) {
     function menu_activo(string $href, string $path): bool {
         if ($href === '/') return $path === '/' || $path === '/dashboard';

@@ -146,6 +146,11 @@ class Router
 
         self::get('/radar',                  fn()   => self::app('radar',       'index'));
 
+        // ── Super Admin ──────────────────────────────────
+        self::get('/superadmin',                fn()   => self::superadmin('index'));
+        self::get('/superadmin/empresa/:id',    fn($p) => self::superadmin('empresa', $p));
+        self::post('/superadmin/impersonar',    fn()   => self::superadmin('impersonar'));
+
         self::get('/costos',                             fn()   => self::app('costos', 'index'));
         self::get('/costos/:id',                         fn($p) => self::app('costos', 'ver',            $p));
         self::post('/costos/gasto',                      fn()   => self::app('costos', 'nuevo_gasto'));
@@ -225,6 +230,18 @@ class Router
         Auth::requerir_login('/login');
 
         $file = MODULES_PATH . '/' . $modulo . '/' . $accion . '.php';
+        if (!file_exists($file)) self::not_found();
+
+        extract($params);
+        require $file;
+    }
+
+    // Módulo superadmin (requiere rol superadmin)
+    private static function superadmin(string $accion, array $params = []): void
+    {
+        Auth::requerir_superadmin();
+
+        $file = MODULES_PATH . '/superadmin/' . $accion . '.php';
         if (!file_exists($file)) self::not_found();
 
         extract($params);
