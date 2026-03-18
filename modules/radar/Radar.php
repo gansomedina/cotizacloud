@@ -1,7 +1,8 @@
 <?php
 // ============================================================
-//  CotizaApp — modules/radar/Radar.php  v2.0
+//  CotizaApp — modules/radar/Radar.php  v2.1
 //  Motor de scoring e intención — 15 buckets × 3 modos
+//  v2.1: Ajustes alto ticket — prioridades, FIT, multi-persona, no_abierta 30d
 //  Portado fielmente de radar_3_.php (On Time / WordPress)
 //  Adaptado a PDO sin WordPress, multitenant por empresa_id
 // ============================================================
@@ -27,13 +28,13 @@ class Radar
 
         // ── Bucket 1: Probable cierre ────────────────────────
         'hot_close_last_hours'       => [48,    24,    12   ],
-        'hot_close_min_views24'      => [1,     1,     2    ],
-        'hot_close_min_views7d'      => [1,     2,     3    ],
+        'hot_close_min_views24'      => [1,     2,     2    ],
+        'hot_close_min_views7d'      => [2,     2,     3    ],
 
         // ── Bucket 2: Inminente ──────────────────────────────
         'imminent_recent_hours'      => [36,    24,    24   ],
         'imminent_min_fit_pct'       => [6.0,   8.5,   11.0 ],
-        'imminent_min_age_hours'     => [1.0,   2.0,   4.0  ],
+        'imminent_min_age_hours'     => [2.0,   3.0,   6.0  ],
         'imminent_min_guest'         => [1,     1,     2    ],
         'imminent_ip_window_min'     => [240,   180,   120  ],
         'imminent_signal_views24'    => [1,     2,     3    ],
@@ -71,7 +72,7 @@ class Radar
         'predict_recent_days'        => [45,    30,    21   ],
 
         // ── Bucket 6: Decisión activa ────────────────────────
-        'decision_window_h'          => [48,    48,    48   ],
+        'decision_window_h'          => [72,    48,    48   ],
         'decision_min_views48'       => [2,     4,     5    ],
         'decision_min_span_h'        => [3,     6,     8    ],
 
@@ -83,7 +84,7 @@ class Radar
 
         // ── Bucket 8: Multi-persona ──────────────────────────
         'multip_recent_hours'        => [96,    72,    48   ],
-        'multip_ip_window_min'       => [120,   90,    60   ],
+        'multip_ip_window_min'       => [1440,  720,   360  ],
         'multip_min_ips_post_guest'  => [2,     3,     4    ],
         'multip_min_guest_total'     => [1,     2,     3    ],
 
@@ -92,18 +93,20 @@ class Radar
         'deep_min_views48'           => [2,     3,     4    ],
         'deep_min_span_h'            => [2,     3,     4    ],
         'deep_min_guest_48h'         => [1,     1,     2    ],
+        'deep_min_vis_max'           => [8000,  10000, 15000],
+        'deep_min_vis_sum'           => [14000, 18000, 25000],
 
         // ── Bucket 10: Hesitación ────────────────────────────
         'hes_min_guest_7d'           => [1,     2,     3    ],
-        'hes_last_min_hours'         => [24,    24,    24   ],
-        'hes_last_max_days'          => [10,    7,     5    ],
+        'hes_last_min_hours'         => [24,    36,    48   ],
+        'hes_last_max_days'          => [14,    10,    7    ],
         'hes_max_ips_total'          => [3,     2,     2    ],
         'hes_max_span_h'             => [8,     6,     4    ],
 
         // ── Bucket 11: Sobre-análisis ────────────────────────
-        'over_min_sessions'          => [12,    20,    28   ],
-        'over_min_guest'             => [5,     8,     12   ],
-        'over_min_age_days'          => [5,     7,     10   ],
+        'over_min_sessions'          => [15,    25,    35   ],
+        'over_min_guest'             => [7,     10,    15   ],
+        'over_min_age_days'          => [7,     10,    14   ],
         'over_recent_days'           => [30,    21,    14   ],
         'over_max_fit_pct'           => [14.0,  14.0,  14.0 ],
         'over_max_ips_post_guest'    => [5,     4,     3    ],
@@ -123,6 +126,7 @@ class Radar
         // ── Bucket 15: Enfriándose ───────────────────────────
         'cooling_min_sessions'       => [3,     4,     5    ],
         'cooling_days'               => [10,    7,     5    ],
+        'cooling_min_silence_h'      => [60,    48,    36   ],
 
         // ── Bucket alto importe ──────────────────────────────
         'high_amount_threshold'      => [80000, 120000, 160000],
@@ -147,19 +151,21 @@ class Radar
 
     // Tasas relativas neutras: más sesiones/IPs = mayor probabilidad de cierre
     // Se calibran con datos reales de la empresa en cuanto hay suficientes ventas
+    // v2.1: curva más plana en rangos altos — en alto ticket más sesiones = due diligence, no sobre-análisis
     const FIT_RATE_SESS = [
         '1'   => 0.06,   // 1 sesión — vio y se fue
         '2'   => 0.10,   // 2 sesiones — volvió a revisar
         '3-4' => 0.13,   // 3-4 sesiones — considerando seriamente
-        '5-7' => 0.16,   // 5-7 sesiones — muy interesado
-        '8-12'=> 0.14,   // 8-12 sesiones — puede ser sobre-análisis
-        '13+' => 0.10,   // 13+ sesiones — análisis excesivo, señal mixta
+        '5-7' => 0.16,   // 5-7 sesiones — muy interesado (pico)
+        '8-12'=> 0.155,  // 8-12 sesiones — comprador meticuloso, caída suave
+        '13+' => 0.13,   // 13+ sesiones — aún buena señal en alto ticket
     ];
+    // v2.1: 4+ IPs = comité de compra activo en alto ticket (esposo+esposa+arquitecto+familiar)
     const FIT_RATE_IPS = [
         '1'  => 0.07,    // 1 IP — solo el contacto principal
         '2'  => 0.14,    // 2 IPs — lo compartió con alguien (pareja, socio)
         '3'  => 0.11,    // 3 IPs — varios involucrados
-        '4+' => 0.09,    // 4+ IPs — muchos revisores, decisión compleja
+        '4+' => 0.12,    // 4+ IPs — comité de compra, proceso de aprobación
     ];
     const FIT_RATE_GAP = [
         'sin'  => 0.08,  // Sin gap — vio una sola vez
@@ -315,7 +321,7 @@ class Radar
         }
 
         // ── C. Agregar eventos JS (misma lógica que event_stats_by_quote) ──
-        $es = self::_agregar_eventos($ev_rows, $intern_v, $cfg);
+        $es = self::_agregar_eventos($ev_rows, $intern_v, $intern_ip, $cfg);
 
         // ── D. Cargar sesiones históricas ─────────────────────
         $sess_rows = DB::query(
@@ -386,7 +392,7 @@ class Radar
             $has_js = ($es['opens'] > 0 || $es['closes'] > 0 || $es['tot_views'] > 0 ||
                        $es['tot_rev'] > 0 || $es['loops'] > 0 || $es['coupons'] > 0 ||
                        $es['scroll_any'] > 0 || $es['vis_max'] > 0 || $es['uniq_v'] > 0);
-            $no_abierta_age_ok = ($age_h_early >= 24 && ($now - $created_early) <= 7 * 86400);
+            $no_abierta_age_ok = ($age_h_early >= 24 && ($now - $created_early) <= 30 * 86400);
             if (!$accepted_early && $no_abierta_age_ok && !$has_js) {
                 return [
                     'score'=>0,'fit_pct'=>0.0,'priority_pct'=>0.0,
@@ -472,12 +478,13 @@ class Radar
         $fit_prob    = self::fit_prob($sessions, $uniq_ips_total, $gap_days, $empresa_id);
         $fit_pct     = min(100.0, $fit_prob * 100.0);
 
-        // recency_bonus exacto del radar original
+        // recency_bonus — v2.1: escalón 72h para alto ticket (vigencia 30d)
         $recency = 0.0;
-        if ($last_ts >= $now - 30 * 60)     $recency = 12.0;
+        if ($last_ts >= $now - 30 * 60)       $recency = 12.0;
         elseif ($last_ts >= $now - 4  * 3600) $recency = 8.0;
         elseif ($last_ts >= $now - 24 * 3600) $recency = 4.0;
         elseif ($last_ts >= $now - 48 * 3600) $recency = 2.0;
+        elseif ($last_ts >= $now - 72 * 3600) $recency = 1.0;
 
         $priority = $fit_pct + $recency;
         $priority += min(4.0, $pss * 0.55);
@@ -499,11 +506,12 @@ class Radar
         $buckets = [];
 
         // ── 1. Probable cierre ───────────────────────────────
+        // v2.1: AND en vez de OR — debe tener actividad reciente Y acumulada
         if (
             !$accepted &&
             $last_ts >= $now - (int)self::u('hot_close_last_hours', $modo) * 3600 &&
-            ($views24 >= (int)self::u('hot_close_min_views24', $modo) ||
-             $views7d  >= (int)self::u('hot_close_min_views7d',  $modo))
+            $views24 >= (int)self::u('hot_close_min_views24', $modo) &&
+            $views7d >= (int)self::u('hot_close_min_views7d', $modo)
         ) {
             $buckets[] = 'probable_cierre';
         }
@@ -543,7 +551,8 @@ class Radar
         if ($sig_views)    $total_sig++;
         if ($sig_ips_120)  $total_sig++;
         if ($sig_closes)   $total_sig++;
-        if ($sig_coupon)   $total_sig++;
+        // v2.1: cupón = señal fuerte en alto ticket (decisión tomada, negociando precio)
+        if ($sig_coupon)   { $strong++; $total_sig++; }
         if ($sig_mv_price) $total_sig++;
         // bonus señal media
         if (!$sig_price_strong && ($e_tot_views >= 2 || $pss >= 2.0) && $sig_scroll) $total_sig++;
@@ -658,7 +667,7 @@ class Radar
             $span48    >= (int)self::u('deep_min_span_h', $modo) * 3600 &&
             $last_ts   >= $now - (int)self::u('deep_recent_hours', $modo) * 3600 &&
             $guest_48h >= (int)self::u('deep_min_guest_48h', $modo) &&
-            ($e_vis_max >= 10000 || $e_vis_sum >= 18000) &&
+            ($e_vis_max >= (int)self::u('deep_min_vis_max', $modo) || $e_vis_sum >= (int)self::u('deep_min_vis_sum', $modo)) &&
             ($has_tot_view || $has_tot_rev || $has_loop || $pss >= 2.5 || $e_sv_price)
         ) {
             $buckets[] = 'revision_profunda';
@@ -735,7 +744,7 @@ class Radar
         $is_cooling = (
             !$accepted &&
             $sessions >= (int)self::u('cooling_min_sessions', $modo) &&
-            $last_ts  <  $now - 48 * 3600 &&
+            $last_ts  <  $now - (int)self::u('cooling_min_silence_h', $modo) * 3600 &&
             $last_ts  >= $now - (int)self::u('cooling_days', $modo) * 86400
         );
 
@@ -756,11 +765,11 @@ class Radar
         // not_opened solo aplica vía early return cuando sessions=0
 
         static $PRIORIDAD = [
-            'onfire','inminente','validando_precio','prediccion_alta',
-            'alto_importe','decision_activa','re_enganche','multi_persona',
-            'revision_profunda','probable_cierre','vistas_multiples',
-            'hesitacion','sobre_analisis','revivio',
-            'regreso','comparando','enfriandose','no_abierta',
+            'onfire','inminente','probable_cierre','validando_precio',
+            'prediccion_alta','alto_importe','decision_activa','revivio',
+            'no_abierta','re_enganche','multi_persona','revision_profunda',
+            'vistas_multiples','hesitacion','sobre_analisis',
+            'regreso','comparando','enfriandose',
         ];
         $bucket_main = null;
         foreach ($PRIORIDAD as $b) {
@@ -804,7 +813,7 @@ class Radar
     //  AGREGACIÓN DE EVENTOS JS
     //  Portado del bloque event_stats_by_quote del radar original
     // ============================================================
-    private static function _agregar_eventos(array $rows, array $intern_v, array $cfg): array
+    private static function _agregar_eventos(array $rows, array $intern_v, array $intern_ip, array $cfg): array
     {
         $s = [
             'opens'=>0,'closes'=>0,'coupons'=>0,'tot_views'=>0,'tot_rev'=>0,
@@ -816,6 +825,10 @@ class Radar
         foreach ($rows as $r) {
             $vid = trim((string)($r['visitor_id'] ?? ''));
             if ($vid !== '' && isset($intern_v[$vid])) continue;
+
+            // v2.1: filtrar IPs internas en eventos (paridad con sesiones)
+            $ev_ip = trim((string)($r['ip'] ?? ''));
+            if ($ev_ip !== '' && ($cfg['excluir_internos'] ?? true) && isset($intern_ip[$ev_ip])) continue;
 
             $ua = (string)($r['ua'] ?? '');
             if (($cfg['filtrar_bots'] ?? true) && self::bot_ua($ua)) continue;
@@ -902,7 +915,7 @@ class Radar
         if ($loop)          $s['price_loop'] = ['pts'=>10, 'desc'=>'Revisó precio varias veces'];
         if ($tot_rev)       $s['tot_rev']    = ['pts'=>8,  'desc'=>'Volvió a revisar totales'];
         if ($tot_view && !$tot_rev) $s['tot_view'] = ['pts'=>4, 'desc'=>'Revisó sección de totales'];
-        if ($coupons > 0)   $s['cupon']      = ['pts'=>6,  'desc'=>'Intentó aplicar cupón'];
+        if ($coupons > 0)   $s['cupon']      = ['pts'=>10, 'desc'=>'Intentó aplicar cupón'];
         if ($sv_price)      $s['sv_price']   = ['pts'=>8,  'desc'=>'Misma persona enfocada en precio'];
         if ($mv_price)      $s['mv_price']   = ['pts'=>8,  'desc'=>'Varias personas revisaron precio'];
         if ($v24 >= 2)      $s['vistas_hoy'] = ['pts'=>6,  'desc'=>"$v24 vistas en 24h"];
