@@ -81,7 +81,7 @@ $raw = DB::query(
 
 // Helpers
 function rhace(int $ts): string {
-    $d=time()-$ts; if($d<60) return $d.'s'; if($d<3600) return floor($d/60).'m';
+    $d=time()-$ts; if($d<=0) return 'ahora'; if($d<60) return $d.'s'; if($d<3600) return floor($d/60).'m';
     if($d<86400) return floor($d/3600).'h'; return floor($d/86400).'d';
 }
 function rurlq(array $p=[]): string {
