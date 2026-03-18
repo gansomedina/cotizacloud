@@ -444,6 +444,9 @@ ob_start();
       Total: <?= $stat_total ?> · Aceptadas: <?= $stat_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
       · Ciclo venta: <b><?= $ciclo_venta['dias'] ?>d</b><?= $ciclo_venta['auto'] ? '' : ' <span style="opacity:.6">(estimado)</span>' ?>
       · Modo: <b><?= ucfirst($config['sensibilidad'] ?? 'medio') ?></b>
+      <?php if ($ciclo_venta['auto'] && $ciclo_venta['p25'] !== null): ?>
+      · P25: <?= $ciclo_venta['p25'] ?>d · P75: <?= $ciclo_venta['p75'] ?>d · n=<?= $ciclo_venta['n'] ?>
+      <?php endif; ?>
     </p>
   </div>
   <?php if ($debug_mode): ?><span style="padding:4px 10px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font:700 11px var(--body);color:#92400e">DEBUG ON</span><?php endif; ?>
@@ -466,12 +469,6 @@ ob_start();
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv"><?= $cierre_pct ?>%</div>
     <div class="rdr-sl">📊 Tasa cierre</div>
-    <div style="font:400 10px var(--body);color:var(--t3);margin-top:4px">
-      <?= $ciclo_venta['auto'] ? '🔄' : '📐' ?> Ciclo: <b><?= $ciclo_venta['dias'] ?>d</b><?= $ciclo_venta['auto'] ? '' : ' (est.)' ?>
-      <?php if ($ciclo_venta['auto'] && $ciclo_venta['p25'] !== null): ?>
-      · P25: <?= $ciclo_venta['p25'] ?>d · P75: <?= $ciclo_venta['p75'] ?>d · n=<?= $ciclo_venta['n'] ?>
-      <?php endif; ?>
-    </div>
   </div>
 </div>
 
