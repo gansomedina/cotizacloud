@@ -224,11 +224,13 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
     echo "<div class='rbk'>";
     echo "<div class='rbk-hd'>";
     echo "<span class='rbk-tit'>".htmlspecialchars($tit)."</span>";
+    echo "<span class='rbk-hint'>".htmlspecialchars($hint)."</span>";
+    echo "<span class='rbk-right'>";
     if ($bkt_key && isset($PB[$bkt_key])) {
         echo "<button class='pb-btn' onclick=\"openPlaybook('{$bkt_key}')\">📖 Playbook</button>";
     }
-    echo "<span class='rbk-hint'>".htmlspecialchars($hint)."</span>";
     echo "<span class='rbk-n'>".count($items)."</span>";
+    echo "</span>";
     echo "</div>";
     if (!$items) { echo "<div class='rbk-em'>Sin registros.</div></div>"; return; }
     $items = array_slice($items,0,12);
@@ -298,7 +300,8 @@ ob_start();
 .rbk-hd{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);flex-wrap:wrap}
 .rbk-tit{font:700 13px var(--body);white-space:nowrap}
 .rbk-hint{font:400 11px var(--body);color:var(--t3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rbk-n{font:700 13px var(--num);color:var(--t3);margin-left:auto;white-space:nowrap;flex-shrink:0}
+.rbk-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
+.rbk-n{font:700 13px var(--num);color:var(--t3);white-space:nowrap}
 .rbk-em{padding:14px 16px;font:400 13px var(--body);color:var(--t3)}
 @media(max-width:600px){.rbk-hint{display:none}}
 
