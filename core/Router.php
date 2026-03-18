@@ -147,9 +147,11 @@ class Router
         self::get('/radar',                  fn()   => self::app('radar',       'index'));
 
         // ── Super Admin ──────────────────────────────────
-        self::get('/superadmin',                fn()   => self::superadmin('index'));
-        self::get('/superadmin/empresa/:id',    fn($p) => self::superadmin('empresa', $p));
-        self::post('/superadmin/impersonar',    fn()   => self::superadmin('impersonar'));
+        self::get('/superadmin',                     fn()   => self::superadmin('index'));
+        self::get('/superadmin/empresa/:id',         fn($p) => self::superadmin('empresa', $p));
+        self::post('/superadmin/impersonar',         fn()   => self::superadmin('impersonar'));
+        self::post('/superadmin/empresa/:id/toggle', fn($p) => self::superadmin('toggle_empresa', $p));
+        self::post('/superadmin/ticket/:id/estado',  fn($p) => self::superadmin('ticket_estado', $p));
 
         self::get('/costos',                             fn()   => self::app('costos', 'index'));
         self::get('/costos/:id',                         fn($p) => self::app('costos', 'ver',            $p));

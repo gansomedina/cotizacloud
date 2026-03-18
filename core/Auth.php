@@ -440,9 +440,34 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
             die('Empresa no encontrada');
         }
 
-        // Existe pero inactiva
+        // Existe pero inactiva — mostrar pantalla de licencia suspendida
         http_response_code(402);
-        die('Licencia suspendida. Contacta a soporte.');
+        echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">';
+        echo '<title>Licencia Suspendida — CotizaCloud</title>';
+        echo '<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">';
+        echo '<style>';
+        echo '*{box-sizing:border-box;margin:0;padding:0}';
+        echo 'body{font-family:"Plus Jakarta Sans",sans-serif;background:#f4f4f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}';
+        echo '.card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:480px;width:100%;padding:48px 40px;text-align:center}';
+        echo '.icon{width:64px;height:64px;border-radius:50%;background:#fff5f5;display:flex;align-items:center;justify-content:center;margin:0 auto 24px}';
+        echo '.icon svg{width:32px;height:32px;stroke:#c53030;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}';
+        echo 'h1{font-size:22px;font-weight:800;color:#1a1a18;margin-bottom:8px}';
+        echo 'p{font-size:14px;color:#4a4a46;line-height:1.6;margin-bottom:20px}';
+        echo '.slug{font-family:monospace;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-size:13px;color:#475569}';
+        echo '.contact{display:inline-flex;align-items:center;gap:6px;padding:10px 24px;border-radius:9px;font:600 14px "Plus Jakarta Sans",sans-serif;background:#1a5c38;color:#fff;text-decoration:none;transition:opacity .12s}';
+        echo '.contact:hover{opacity:.85}';
+        echo '.back{display:block;margin-top:16px;font-size:13px;color:#6a6a64;text-decoration:none}';
+        echo '.back:hover{color:#1a5c38}';
+        echo '</style></head><body>';
+        echo '<div class="card">';
+        echo '<div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>';
+        echo '<h1>Licencia Suspendida</h1>';
+        echo '<p>La cuenta <span class="slug">' . htmlspecialchars($slug) . '</span> se encuentra suspendida.</p>';
+        echo '<p>Para reactivar tu acceso, contacta a nuestro equipo de soporte.</p>';
+        echo '<a href="mailto:soporte@cotiza.cloud" class="contact">Contactar soporte</a>';
+        echo '<a href="/login" class="back">Volver al inicio de sesión</a>';
+        echo '</div></body></html>';
+        exit;
     }
 
     // ─── Limpiar sesiones expiradas (llamar desde cron) ──────
