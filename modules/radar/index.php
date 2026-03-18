@@ -240,7 +240,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
     echo "<th class='tr col-prior' style='width:70px'><a href='".rurlq(['sort'=>'priority','dir'=>rtdir($s,'priority',$d)])."'>Prior%</a></th>";
     echo "<th class='tr' style='width:68px'><a href='".rurlq(['sort'=>'amount','dir'=>rtdir($s,'amount',$d)])."'>Importe</a></th>";
     echo "<th class='col-vista' style='width:120px'><a href='".rurlq(['sort'=>'last','dir'=>rtdir($s,'last',$d)])."'>Última vista</a></th>";
-    echo "<th class='col-ver' style='width:55px'>Ver</th>";
+    echo "<th style='width:55px'>Ver</th>";
     echo "</tr></thead><tbody>";
     foreach ($items as $r) {
         $ago = time()-$r['last_ts'];
@@ -257,7 +257,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         if (!empty($r_icons['not_opened'])) $r_ico_str .= '❌';
         $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo']);
         $cot_url = '/cotizaciones/'.(int)$r['id'];
-        echo "<td><a href='{$cot_url}' class='rtit-link'><div class='rtit'>{$r_title_show}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
+        echo "<td><div class='rtit'>{$r_title_show}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></td>";
         if ($motivo) echo "<td><span class='rmot'>".htmlspecialchars($r['reason']??'')."</span></td>";
         echo "<td class='tc col-estado'>$ab</td>";
         echo "<td class='tr'><b>".number_format($r['fit_pct'],1)."%</b></td>";
@@ -266,7 +266,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $last_fmt = date('m-d H:i',$r['last_ts'])." <span class='ago'>(".rhace($r['last_ts']).")</span>";
         if ($gap && isset($r['gap_days'])) $last_fmt .= " <b style='color:#6a1b9a'>gap ".(int)$r['gap_days']."d</b>";
         echo "<td class='col-vista'>$last_fmt</td>";
-        echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a></td>";
+        echo "<td><a href='{$cot_url}' class='rlnk'>Editar</a></td>";
         echo "</tr>";
     }
     echo "</tbody></table></div></div>";
@@ -416,15 +416,13 @@ ob_start();
 .pb-priority.critica{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
 .pb-priority.alta{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
 .pb-priority.media{background:#f3f4f6;color:#374151;border:1px solid #d1d5db}
-.rtit-link{text-decoration:none;color:inherit;display:block}
-.rtit-link:hover .rtit{text-decoration:underline}
 @media(max-width:760px){
   .rdr-stats{grid-template-columns:repeat(2,1fr)}
   .modo-grid{grid-template-columns:1fr}
   .pb-cols{grid-template-columns:1fr}
   .pb-modal{border-radius:14px}
   .rbk-hd{gap:6px}
-  .col-estado,.col-prior,.col-ver{display:none}
+  .col-estado,.col-prior{display:none}
   .rdrt{min-width:0}
   .rtit{max-width:140px}
 }
