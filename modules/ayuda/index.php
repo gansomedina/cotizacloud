@@ -1,0 +1,575 @@
+<?php
+// ============================================================
+//  CotizaApp — modules/ayuda/index.php
+//  GET /ayuda
+//  Centro de ayuda y manual de usuario
+// ============================================================
+
+defined('COTIZAAPP') or die;
+
+$page_title = 'Centro de Ayuda';
+$empresa = Auth::empresa();
+ob_start();
+?>
+<style>
+/* ── Layout ── */
+.ay-wrap{display:flex;gap:0;min-height:calc(100vh - 80px)}
+.ay-nav{width:240px;flex-shrink:0;background:var(--white);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto;padding:20px 0}
+.ay-body{flex:1;padding:32px 40px;max-width:800px}
+
+/* ── Nav ── */
+.ay-nav-title{font:800 14px var(--body);color:var(--t1);padding:0 20px 16px;letter-spacing:-.02em}
+.ay-nav-section{font:700 10px var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:16px 20px 6px}
+.ay-nav a{display:flex;align-items:center;gap:8px;padding:8px 20px;font:500 13px var(--body);color:var(--t2);text-decoration:none;transition:all .12s;border-left:3px solid transparent}
+.ay-nav a:hover{background:var(--bg);color:var(--t1)}
+.ay-nav a.active{background:var(--g-bg);color:var(--g);border-left-color:var(--g);font-weight:700}
+.ay-nav a .ay-ico{width:18px;text-align:center;font-size:14px}
+
+/* ── Content ── */
+.ay-hero{margin-bottom:32px}
+.ay-hero h1{font:800 28px var(--body);letter-spacing:-.03em;margin:0 0 8px}
+.ay-hero p{font:400 15px var(--body);color:var(--t3);line-height:1.6;margin:0}
+.ay-section{display:none;animation:ayFade .2s ease}
+.ay-section.active{display:block}
+@keyframes ayFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.ay-h2{font:800 22px var(--body);letter-spacing:-.02em;margin:0 0 6px;display:flex;align-items:center;gap:10px}
+.ay-subtitle{font:400 14px var(--body);color:var(--t3);margin:0 0 24px;line-height:1.5}
+
+.ay-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:20px 24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.ay-card h3{font:700 15px var(--body);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.ay-card p,.ay-card li{font:400 14px var(--body);color:var(--t2);line-height:1.7;margin:0}
+.ay-card ul{margin:8px 0 0;padding-left:20px}
+.ay-card li{margin-bottom:6px}
+
+.ay-steps{counter-reset:step}
+.ay-step{position:relative;padding:16px 20px 16px 60px;background:var(--white);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px}
+.ay-step::before{counter-increment:step;content:counter(step);position:absolute;left:18px;top:16px;width:28px;height:28px;border-radius:50%;background:var(--g);color:#fff;font:700 14px var(--num);display:flex;align-items:center;justify-content:center}
+.ay-step h4{font:700 14px var(--body);margin:0 0 4px}
+.ay-step p{font:400 13px var(--body);color:var(--t3);margin:0;line-height:1.6}
+
+.ay-img-placeholder{background:#f1f5f9;border:2px dashed #cbd5e1;border-radius:var(--r);padding:40px 20px;text-align:center;margin:16px 0;color:#94a3b8;font:500 13px var(--body)}
+
+.ay-tip{background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--r);padding:14px 18px;margin:16px 0;font:400 13px var(--body);color:#1e40af;line-height:1.6}
+.ay-tip::before{content:'💡 ';font-size:15px}
+
+.ay-warn{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r);padding:14px 18px;margin:16px 0;font:400 13px var(--body);color:#92400e;line-height:1.6}
+.ay-warn::before{content:'⚠️ ';font-size:15px}
+
+.ay-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+.ay-feature{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px;text-align:center}
+.ay-feature .ay-feat-ico{font-size:28px;margin-bottom:8px}
+.ay-feature h4{font:700 13px var(--body);margin:0 0 4px}
+.ay-feature p{font:400 12px var(--body);color:var(--t3);margin:0;line-height:1.5}
+
+.ay-shortcut{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font:600 12px var(--num);color:var(--t2);margin:2px}
+
+.ay-faq{border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden}
+.ay-faq summary{padding:14px 18px;font:600 14px var(--body);cursor:pointer;background:var(--white);list-style:none;display:flex;align-items:center;gap:8px}
+.ay-faq summary::before{content:'▸';font-size:12px;transition:transform .2s}
+.ay-faq[open] summary::before{transform:rotate(90deg)}
+.ay-faq summary:hover{background:var(--bg)}
+.ay-faq .ay-faq-body{padding:0 18px 16px;font:400 14px var(--body);color:var(--t2);line-height:1.7}
+
+/* ── Mobile ── */
+@media(max-width:768px){
+  .ay-wrap{flex-direction:column}
+  .ay-nav{width:100%;height:auto;position:relative;border-right:none;border-bottom:1px solid var(--border);padding:12px 0;overflow-x:auto;white-space:nowrap;display:flex;gap:0;flex-wrap:nowrap}
+  .ay-nav-title,.ay-nav-section{display:none}
+  .ay-nav a{padding:8px 14px;border-left:none;border-bottom:2px solid transparent;white-space:nowrap;font-size:12px}
+  .ay-nav a.active{border-left:none;border-bottom-color:var(--g)}
+  .ay-body{padding:20px 16px}
+  .ay-hero h1{font-size:22px}
+  .ay-step{padding-left:50px}
+  .ay-step::before{left:12px;width:24px;height:24px;font-size:12px}
+}
+</style>
+
+<div class="ay-wrap">
+
+<!-- ── Navegación lateral ── -->
+<nav class="ay-nav" id="ayNav">
+  <div class="ay-nav-title">Centro de Ayuda</div>
+
+  <div class="ay-nav-section">Inicio</div>
+  <a href="#inicio" class="active" onclick="ayTab('inicio',this)"><span class="ay-ico">🏠</span> Bienvenida</a>
+  <a href="#primeros-pasos" onclick="ayTab('primeros-pasos',this)"><span class="ay-ico">🚀</span> Primeros pasos</a>
+
+  <div class="ay-nav-section">Módulos</div>
+  <a href="#dashboard" onclick="ayTab('dashboard',this)"><span class="ay-ico">📊</span> Dashboard</a>
+  <a href="#clientes" onclick="ayTab('clientes',this)"><span class="ay-ico">👥</span> Clientes</a>
+  <a href="#cotizaciones" onclick="ayTab('cotizaciones',this)"><span class="ay-ico">📄</span> Cotizaciones</a>
+  <a href="#ventas" onclick="ayTab('ventas',this)"><span class="ay-ico">🛒</span> Ventas</a>
+  <a href="#radar" onclick="ayTab('radar',this)"><span class="ay-ico">📡</span> Radar</a>
+  <a href="#costos" onclick="ayTab('costos',this)"><span class="ay-ico">📉</span> Costos</a>
+  <a href="#reportes" onclick="ayTab('reportes',this)"><span class="ay-ico">📋</span> Reportes</a>
+
+  <div class="ay-nav-section">Admin</div>
+  <a href="#configuracion" onclick="ayTab('configuracion',this)"><span class="ay-ico">⚙️</span> Configuración</a>
+  <a href="#faq" onclick="ayTab('faq',this)"><span class="ay-ico">❓</span> Preguntas frecuentes</a>
+</nav>
+
+<!-- ── Contenido ── -->
+<div class="ay-body">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  BIENVENIDA                                            -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section active" id="sec-inicio">
+  <div class="ay-hero">
+    <h1>Bienvenido a cotiza.cloud</h1>
+    <p>La plataforma todo-en-uno para crear cotizaciones profesionales, cerrar más ventas y entender el comportamiento de tus clientes en tiempo real.</p>
+  </div>
+
+  <div class="ay-grid">
+    <div class="ay-feature">
+      <div class="ay-feat-ico">📄</div>
+      <h4>Cotizaciones</h4>
+      <p>Crea y envía cotizaciones profesionales en minutos</p>
+    </div>
+    <div class="ay-feature">
+      <div class="ay-feat-ico">📡</div>
+      <h4>Radar</h4>
+      <p>Sabe cuándo tu cliente revisa la cotización y qué le interesa</p>
+    </div>
+    <div class="ay-feature">
+      <div class="ay-feat-ico">🛒</div>
+      <h4>Ventas</h4>
+      <p>Convierte cotizaciones en ventas y controla pagos</p>
+    </div>
+    <div class="ay-feature">
+      <div class="ay-feat-ico">📋</div>
+      <h4>Reportes</h4>
+      <p>Visualiza el rendimiento de tu negocio con datos reales</p>
+    </div>
+  </div>
+
+  <div class="ay-card">
+    <h3>¿Cómo está organizado el sistema?</h3>
+    <p>cotiza.cloud se divide en módulos. Cada uno tiene una función específica en tu flujo de ventas:</p>
+    <ul>
+      <li><b>Dashboard</b> — Vista ejecutiva de tu negocio</li>
+      <li><b>Clientes</b> — Base de datos de tus clientes</li>
+      <li><b>Cotizaciones</b> — Crear, enviar y dar seguimiento a propuestas</li>
+      <li><b>Ventas</b> — Gestionar ventas cerradas, pagos y recibos</li>
+      <li><b>Radar</b> — Inteligencia comercial: detecta quién va a comprar</li>
+      <li><b>Costos</b> — Controla gastos asociados a cada venta</li>
+      <li><b>Reportes</b> — Análisis de rendimiento por período</li>
+      <li><b>Configuración</b> — Ajusta tu empresa, catálogo, usuarios y más</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  PRIMEROS PASOS                                        -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-primeros-pasos">
+  <h2 class="ay-h2">🚀 Primeros pasos</h2>
+  <p class="ay-subtitle">Sigue estos pasos para configurar tu cuenta y enviar tu primera cotización.</p>
+
+  <div class="ay-steps">
+    <div class="ay-step">
+      <h4>Configura tu empresa</h4>
+      <p>Ve a <b>Configuración → Empresa</b> y llena el nombre, logo, datos fiscales y condiciones comerciales. Esto aparece en todas tus cotizaciones.</p>
+    </div>
+    <div class="ay-step">
+      <h4>Crea tu catálogo de productos</h4>
+      <p>En <b>Configuración → Catálogo</b>, agrega tus productos o servicios con nombre, descripción y precio base. Podrás ajustar precios al momento de cotizar.</p>
+    </div>
+    <div class="ay-step">
+      <h4>Agrega tu primer cliente</h4>
+      <p>Ve a <b>Clientes → Nuevo cliente</b>. Solo necesitas nombre y teléfono o email para empezar.</p>
+    </div>
+    <div class="ay-step">
+      <h4>Crea y envía tu primera cotización</h4>
+      <p>En <b>Cotizaciones → Nueva cotización</b>, selecciona el cliente, agrega productos del catálogo o líneas personalizadas, y presiona <b>Enviar</b>. El cliente recibe un link profesional.</p>
+    </div>
+    <div class="ay-step">
+      <h4>Revisa el Radar</h4>
+      <p>Una vez enviada, ve a <b>Radar</b>. Ahí verás cuándo el cliente abre la cotización, qué secciones revisa y cuánto tiempo dedica. Esto te dice cuándo es el mejor momento para dar seguimiento.</p>
+    </div>
+  </div>
+
+  <div class="ay-tip">Una vez que el cliente acepta, la cotización se convierte en venta automáticamente. Desde ahí puedes registrar pagos y emitir recibos.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  DASHBOARD                                             -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-dashboard">
+  <h2 class="ay-h2">📊 Dashboard</h2>
+  <p class="ay-subtitle">Tu vista ejecutiva. De un vistazo sabes cómo va tu negocio.</p>
+
+  <div class="ay-img-placeholder">📸 Captura del dashboard aquí</div>
+
+  <div class="ay-card">
+    <h3>¿Qué encuentras aquí?</h3>
+    <ul>
+      <li><b>KPIs principales</b> — Total de cotizaciones, ventas cerradas, tasa de cierre y monto total vendido</li>
+      <li><b>Gráficas de tendencia</b> — Visualiza cómo evolucionan tus ventas en el tiempo</li>
+      <li><b>Filtro por período</b> — Mes actual, mes anterior, últimos 30 días, 90 días o año completo</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">Revisa tu dashboard al inicio de cada día para tener contexto antes de empezar a vender.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  CLIENTES                                              -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-clientes">
+  <h2 class="ay-h2">👥 Clientes</h2>
+  <p class="ay-subtitle">Tu base de datos de clientes. Centraliza toda la información de contacto.</p>
+
+  <div class="ay-img-placeholder">📸 Captura de la lista de clientes aquí</div>
+
+  <div class="ay-card">
+    <h3>Funciones principales</h3>
+    <ul>
+      <li><b>Crear cliente</b> — Nombre, teléfono, email, dirección y notas</li>
+      <li><b>Buscar</b> — Encuentra clientes por nombre, teléfono o email</li>
+      <li><b>Historial</b> — Ve todas las cotizaciones y ventas asociadas a cada cliente</li>
+      <li><b>Editar</b> — Actualiza datos de contacto en cualquier momento</li>
+    </ul>
+  </div>
+
+  <div class="ay-steps">
+    <div class="ay-step">
+      <h4>Crea un nuevo cliente</h4>
+      <p>Haz clic en <b>"Nuevo cliente"</b>, llena al menos el nombre y un dato de contacto (teléfono o email), y guarda.</p>
+    </div>
+    <div class="ay-step">
+      <h4>Asocia cotizaciones</h4>
+      <p>Al crear una cotización, seleccionas el cliente. Todo queda vinculado automáticamente.</p>
+    </div>
+  </div>
+
+  <div class="ay-tip">Siempre registra el teléfono del cliente — es el canal más efectivo para dar seguimiento en ventas de alto valor.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  COTIZACIONES                                          -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-cotizaciones">
+  <h2 class="ay-h2">📄 Cotizaciones</h2>
+  <p class="ay-subtitle">El corazón del sistema. Crea propuestas profesionales que tus clientes pueden ver, aceptar o rechazar desde un link.</p>
+
+  <div class="ay-img-placeholder">📸 Captura del listado de cotizaciones aquí</div>
+
+  <div class="ay-card">
+    <h3>Estados de una cotización</h3>
+    <ul>
+      <li><span class="ay-shortcut">Borrador</span> Aún no se envía al cliente. Puedes editarla libremente.</li>
+      <li><span class="ay-shortcut">Enviada</span> El cliente recibió el link pero no la ha abierto.</li>
+      <li><span class="ay-shortcut">Vista</span> El cliente abrió la cotización. El Radar empieza a rastrear.</li>
+      <li><span class="ay-shortcut">Aceptada</span> El cliente aceptó. Se convierte en venta automáticamente.</li>
+      <li><span class="ay-shortcut">Rechazada</span> El cliente rechazó la propuesta.</li>
+    </ul>
+  </div>
+
+  <div class="ay-card">
+    <h3>Crear una cotización</h3>
+    <div class="ay-steps">
+      <div class="ay-step">
+        <h4>Selecciona o crea el cliente</h4>
+        <p>Busca un cliente existente o crea uno nuevo directamente desde el formulario de cotización.</p>
+      </div>
+      <div class="ay-step">
+        <h4>Agrega productos o servicios</h4>
+        <p>Selecciona del catálogo o agrega líneas personalizadas con descripción, cantidad y precio.</p>
+      </div>
+      <div class="ay-step">
+        <h4>Revisa y envía</h4>
+        <p>Verifica totales, agrega notas si es necesario, y presiona <b>Enviar</b>. El cliente recibe un link que puede ver desde cualquier dispositivo.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ay-img-placeholder">📸 Captura del builder de cotización aquí</div>
+
+  <div class="ay-card">
+    <h3>¿Qué ve el cliente?</h3>
+    <p>El cliente recibe un link (ej: <code>tuempresa.cotiza.cloud/c/abc123</code>) que abre una página profesional con tu logo, productos, precios y totales. Puede aceptar o rechazar directamente desde ahí.</p>
+  </div>
+
+  <div class="ay-tip">Envía la cotización por WhatsApp para mejor tasa de apertura. El link funciona en cualquier dispositivo sin necesidad de descargar nada.</div>
+
+  <div class="ay-warn">Una vez enviada, editar la cotización actualiza lo que el cliente ve en tiempo real. Ten cuidado si el cliente ya la está revisando.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  VENTAS                                                -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-ventas">
+  <h2 class="ay-h2">🛒 Ventas</h2>
+  <p class="ay-subtitle">Gestiona tus ventas cerradas. Registra pagos, emite recibos y controla entregas.</p>
+
+  <div class="ay-img-placeholder">📸 Captura del listado de ventas aquí</div>
+
+  <div class="ay-card">
+    <h3>Estados de una venta</h3>
+    <ul>
+      <li><span class="ay-shortcut">Pendiente</span> Venta creada, sin pagos registrados.</li>
+      <li><span class="ay-shortcut">Parcial</span> El cliente ha hecho abonos pero falta saldo.</li>
+      <li><span class="ay-shortcut">Pagada</span> El monto total fue cubierto.</li>
+      <li><span class="ay-shortcut">Entregada</span> Producto/servicio entregado al cliente.</li>
+      <li><span class="ay-shortcut">Cancelada</span> Venta cancelada.</li>
+    </ul>
+  </div>
+
+  <div class="ay-card">
+    <h3>Registrar pagos</h3>
+    <div class="ay-steps">
+      <div class="ay-step">
+        <h4>Abre la venta</h4>
+        <p>Haz clic en la venta desde el listado para ver el detalle.</p>
+      </div>
+      <div class="ay-step">
+        <h4>Registra un abono</h4>
+        <p>Ingresa el monto del pago y el método (efectivo, transferencia, tarjeta, etc.). El sistema calcula el saldo restante automáticamente.</p>
+      </div>
+      <div class="ay-step">
+        <h4>Emite recibo</h4>
+        <p>Cada pago genera un recibo con folio que puedes compartir con el cliente como comprobante.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ay-tip">El cliente también puede ver el estado de su venta y saldo pendiente desde un link público — ideal para que sepa cuánto debe sin tener que preguntar.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  RADAR                                                 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-radar">
+  <h2 class="ay-h2">📡 Radar</h2>
+  <p class="ay-subtitle">Tu arma secreta de ventas. Detecta en tiempo real quién está a punto de comprar y quién necesita seguimiento.</p>
+
+  <div class="ay-img-placeholder">📸 Captura del radar aquí</div>
+
+  <div class="ay-card">
+    <h3>¿Cómo funciona?</h3>
+    <p>Cada vez que un cliente abre su cotización, el Radar registra:</p>
+    <ul>
+      <li><b>Cuándo la abrió</b> — Fecha y hora exacta</li>
+      <li><b>Cuánto tiempo estuvo</b> — Segundos de lectura real</li>
+      <li><b>Qué tanto scrolleó</b> — Si solo vio el inicio o leyó toda la cotización</li>
+      <li><b>Si revisó el precio</b> — Si se detuvo en los totales</li>
+      <li><b>Cuántas veces volvió</b> — Si regresó a revisar de nuevo</li>
+      <li><b>Desde cuántos dispositivos</b> — Si la compartió con alguien</li>
+    </ul>
+    <p style="margin-top:12px">Con estas señales, el sistema clasifica cada cotización en <b>buckets</b> (categorías de intención) y te dice exactamente a quién llamar primero.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Buckets principales</h3>
+    <ul>
+      <li><b>🎯 Probable cierre</b> — Tu lista de trabajo #1. Cotizaciones con intención confirmada desde múltiples señales. Contacta HOY.</li>
+      <li><b>🔥 On Fire</b> — Máxima actividad. El cliente está revisando intensamente ahora mismo.</li>
+      <li><b>🔥 Cierre inminente</b> — Varias señales fuertes convergiendo. Está a punto de decidir.</li>
+      <li><b>💸 Validando precio</b> — Está enfocado en los números. No bajes el precio — transfiere certeza.</li>
+      <li><b>🔮 Predicción alta</b> — El modelo estadístico predice alta probabilidad de cierre.</li>
+      <li><b>🔥 Re-enganche caliente</b> — Volvió después de días con señales fuertes.</li>
+      <li><b>👥 Multi-persona</b> — Múltiples personas revisando. Decisión compartida (pareja, socio).</li>
+    </ul>
+  </div>
+
+  <div class="ay-card">
+    <h3>Playbook</h3>
+    <p>Cada bucket tiene un <b>Playbook</b> — una guía con:</p>
+    <ul>
+      <li>Qué está pensando el cliente en esa etapa</li>
+      <li>Qué hacer y qué NO hacer</li>
+      <li>Mensajes de WhatsApp listos para copiar y enviar</li>
+      <li>El mejor canal para contactar (WhatsApp vs llamada)</li>
+    </ul>
+    <p style="margin-top:8px">Haz clic en el botón <b>📖 Playbook</b> de cualquier bucket para verlo.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Métricas clave</h3>
+    <ul>
+      <li><b>Score%</b> — Qué tan probable es que cierre (basado en comportamiento real)</li>
+      <li><b>Prior%</b> — Prioridad para dar seguimiento</li>
+      <li><b>Ciclo venta</b> — Mediana de días que tarda una venta en cerrarse en tu empresa</li>
+      <li><b>Tasa cierre</b> — Porcentaje de cotizaciones que se convierten en venta</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">El Radar se recalibra automáticamente con cada nueva venta. Entre más datos tenga, más preciso se vuelve. Confía en las señales pero siempre usa tu criterio de vendedor.</div>
+
+  <div class="ay-warn">El Radar solo funciona cuando el cliente abre la cotización desde el link. Si le mandas un PDF o screenshot, no hay tracking.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  COSTOS                                                -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-costos">
+  <h2 class="ay-h2">📉 Costos</h2>
+  <p class="ay-subtitle">Controla los gastos asociados a tus ventas para conocer tu margen real.</p>
+
+  <div class="ay-img-placeholder">📸 Captura del módulo de costos aquí</div>
+
+  <div class="ay-card">
+    <h3>Funciones principales</h3>
+    <ul>
+      <li><b>Registrar gastos</b> — Cada gasto con monto, categoría, descripción y fecha</li>
+      <li><b>Categorías</b> — Organiza por tipo: materiales, mano de obra, transporte, etc.</li>
+      <li><b>Asociar a ventas</b> — Vincula gastos a ventas específicas para calcular margen</li>
+      <li><b>Filtrar</b> — Busca por categoría, fecha o descripción</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">Registra los costos al momento de incurrir en ellos, no al final del mes. Así siempre tendrás visibilidad real de tu rentabilidad.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  REPORTES                                              -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-reportes">
+  <h2 class="ay-h2">📋 Reportes</h2>
+  <p class="ay-subtitle">Análisis de rendimiento de tu negocio con datos reales, filtrados por período.</p>
+
+  <div class="ay-img-placeholder">📸 Captura de reportes aquí</div>
+
+  <div class="ay-card">
+    <h3>Tipos de reporte</h3>
+    <ul>
+      <li><b>Financiero</b> — Ingresos, gastos, margen bruto por período</li>
+      <li><b>Asesores</b> — Rendimiento individual de cada vendedor del equipo</li>
+      <li><b>Cotizaciones</b> — Tasa de cierre, tiempo promedio de cierre, cotizaciones más vistas</li>
+      <li><b>Costos</b> — Desglose de gastos por categoría</li>
+    </ul>
+  </div>
+
+  <div class="ay-card">
+    <h3>Filtro por período</h3>
+    <p>Todos los reportes permiten filtrar por:</p>
+    <ul>
+      <li>Mes actual</li>
+      <li>Mes anterior</li>
+      <li>Últimos 30 días</li>
+      <li>Últimos 90 días</li>
+      <li>Año completo</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">Revisa el reporte de asesores semanalmente si tienes equipo de ventas. Te ayuda a identificar quién necesita apoyo y quién está sobresaliendo.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  CONFIGURACIÓN                                         -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-configuracion">
+  <h2 class="ay-h2">⚙️ Configuración</h2>
+  <p class="ay-subtitle">Personaliza tu cuenta, equipo y catálogo. Solo visible para administradores.</p>
+
+  <div class="ay-img-placeholder">📸 Captura de configuración aquí</div>
+
+  <div class="ay-card">
+    <h3>Secciones de configuración</h3>
+    <ul>
+      <li><b>Empresa</b> — Nombre, logo, datos fiscales, moneda, condiciones comerciales. Todo esto aparece en tus cotizaciones.</li>
+      <li><b>Catálogo</b> — Tus productos/servicios con SKU, nombre, descripción y precio. Puedes agregar, editar o desactivar artículos.</li>
+      <li><b>Clientes</b> — Gestión masiva de tu base de clientes.</li>
+      <li><b>Cupones</b> — Crea códigos de descuento que tus clientes pueden aplicar a cotizaciones.</li>
+      <li><b>Usuarios</b> — Agrega asesores y administradores. Cada usuario tiene su login y puedes asignar permisos.</li>
+      <li><b>Radar</b> — Ajusta la sensibilidad del radar (agresivo, medio, ligero) y configura IPs internas para excluir vistas propias.</li>
+    </ul>
+  </div>
+
+  <div class="ay-card">
+    <h3>Roles de usuario</h3>
+    <ul>
+      <li><b>Admin</b> — Acceso total: configuración, todos los clientes, todas las cotizaciones, reportes completos</li>
+      <li><b>Asesor</b> — Ve solo sus propias cotizaciones y clientes (salvo que tenga permiso especial)</li>
+    </ul>
+  </div>
+
+  <div class="ay-warn">Solo los administradores pueden acceder a Configuración. Si no ves esta opción en el menú, contacta a tu administrador.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  FAQ                                                   -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-faq">
+  <h2 class="ay-h2">❓ Preguntas frecuentes</h2>
+  <p class="ay-subtitle">Respuestas rápidas a las dudas más comunes.</p>
+
+  <details class="ay-faq">
+    <summary>¿El cliente necesita crear cuenta para ver la cotización?</summary>
+    <div class="ay-faq-body">No. El cliente solo necesita el link. Puede ver la cotización, aceptarla o rechazarla sin registrarse ni descargar nada.</div>
+  </details>
+
+  <details class="ay-faq">
+    <summary>¿Cómo sé si el cliente ya vio mi cotización?</summary>
+    <div class="ay-faq-body">Ve al <b>Radar</b>. Ahí aparecen todas las cotizaciones con actividad. También puedes ver el estado de cada cotización en el listado — cambia de "Enviada" a "Vista" cuando el cliente la abre.</div>
+  </details>
+
+  <details class="ay-faq">
+    <summary>¿Puedo editar una cotización después de enviarla?</summary>
+    <div class="ay-faq-body">Sí. Los cambios se reflejan en tiempo real en el link del cliente. Ten en cuenta que si el cliente la está viendo en ese momento, verá los cambios al refrescar.</div>
+  </details>
+
+  <details class="ay-faq">
+    <summary>¿Cómo funciona el Score% del Radar?</summary>
+    <div class="ay-faq-body">El Score% es una probabilidad calculada automáticamente basada en el comportamiento real del cliente: cuántas veces abrió la cotización, si revisó el precio, si volvió después de días, si la compartió con alguien, etc. Se calibra con tu historial de ventas real — entre más ventas cierres, más preciso se vuelve.</div>
+  </details>
+
+  <details class="ay-faq">
+    <summary>¿Puedo usar cotiza.cloud desde el celular?</summary>
+    <div class="ay-faq-body">Sí. El sistema es 100% responsive. Puedes crear cotizaciones, ver el Radar y gestionar ventas desde tu celular. Solo abre tu navegador y entra a tu subdominio (tuempresa.cotiza.cloud).</div>
+  </details>
+
+  <details class="ay-faq">
+    <summary>¿Qué pasa cuando el cliente acepta la cotización?</summary>
+    <div class="ay-faq-body">Se crea una venta automáticamente. La cotización cambia a estado "Aceptada" y aparece en el módulo de Ventas donde puedes registrar pagos y emitir recibos.</div>
+  </details>
+
+  <details class="ay-faq">
+    <summary>¿Mis datos están seguros?</summary>
+    <div class="ay-faq-body">Sí. Cada empresa tiene sus datos completamente aislados. Los asesores solo ven sus propias cotizaciones (salvo que el admin les dé acceso ampliado). Todas las conexiones son cifradas con HTTPS.</div>
+  </details>
+
+  <details class="ay-faq">
+    <summary>¿Puedo tener varios asesores en mi cuenta?</summary>
+    <div class="ay-faq-body">Sí. En <b>Configuración → Usuarios</b> puedes agregar tantos asesores como necesites. Cada uno tiene su login y ve solo sus cotizaciones. El administrador ve todo.</div>
+  </details>
+
+  <details class="ay-faq">
+    <summary>¿El Radar funciona si envío la cotización como PDF?</summary>
+    <div class="ay-faq-body">No. El Radar solo funciona cuando el cliente abre la cotización desde el link de cotiza.cloud. Si le mandas un PDF, screenshot o la imprimes, no hay forma de rastrear si la vio.</div>
+  </details>
+
+  <details class="ay-faq">
+    <summary>¿Puedo crear cupones de descuento?</summary>
+    <div class="ay-faq-body">Sí. En <b>Configuración → Cupones</b> puedes crear códigos de descuento con porcentaje o monto fijo. El cliente puede aplicarlo directamente en la cotización.</div>
+  </details>
+
+  <div class="ay-card" style="margin-top:24px;text-align:center">
+    <h3>¿No encontraste tu respuesta?</h3>
+    <p>Escríbenos por WhatsApp y te ayudamos en minutos.</p>
+  </div>
+</div>
+
+</div><!-- .ay-body -->
+</div><!-- .ay-wrap -->
+
+<script>
+function ayTab(id, el) {
+  document.querySelectorAll('.ay-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.ay-nav a').forEach(a => a.classList.remove('active'));
+  var sec = document.getElementById('sec-' + id);
+  if (sec) sec.classList.add('active');
+  if (el) el.classList.add('active');
+  // Scroll top on mobile
+  if (window.innerWidth <= 768) {
+    document.querySelector('.ay-body').scrollTop = 0;
+    window.scrollTo(0, document.querySelector('.ay-body').offsetTop - 60);
+  }
+}
+</script>
+
+<?php
+$page_content = ob_get_clean();
+require CORE_PATH . '/layout.php';

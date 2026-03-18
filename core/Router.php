@@ -156,6 +156,7 @@ class Router
         self::post('/costos/categoria/:id/toggle',       fn($p) => self::app_extra('costos', 'categoria', $p, ['accion'=>'toggle']));
 
         self::get('/reportes',               fn()   => self::app('reportes',    'index'));
+        self::get('/ayuda',                  fn()   => self::app('ayuda',       'index'));
 
         self::get('/config',                              fn()   => self::app('config', 'index'));
         self::post('/config/empresa',                     fn()   => self::app('config', 'guardar_empresa'));
