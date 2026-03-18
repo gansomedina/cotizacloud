@@ -9,6 +9,7 @@
 defined('COTIZAAPP') or die;
 
 require_once MODULES_PATH . '/radar/Radar.php';
+require_once MODULES_PATH . '/radar/playbook-data.php';
 
 $empresa_id = EMPRESA_ID;
 $usuario    = Auth::usuario();
@@ -195,10 +196,14 @@ $config = Radar::config($empresa_id);
 $ips_internas = DB::query("SELECT * FROM radar_ips_internas WHERE empresa_id=? ORDER BY created_at DESC LIMIT 50",[$empresa_id]);
 
 // Render de cada bucket
-function render_bkt(string $tit, string $hint, array $items, string $s, string $d, bool $gap=false, bool $motivo=false): void {
-    global $BM;
+function render_bkt(string $tit, string $hint, array $items, string $s, string $d, bool $gap=false, bool $motivo=false, string $bkt_key=''): void {
+    global $BM, $PLAYBOOK;
     echo "<div class='rbk'>";
-    echo "<div class='rbk-hd'><span class='rbk-tit'>".htmlspecialchars($tit)."</span><span class='rbk-n'>".count($items)."</span></div>";
+    echo "<div class='rbk-hd'><span class='rbk-tit'>".htmlspecialchars($tit)."</span>";
+    if ($bkt_key && isset($PLAYBOOK[$bkt_key])) {
+        echo "<button class='pb-btn' onclick=\"openPlaybook('{$bkt_key}')\">📖 Playbook</button>";
+    }
+    echo "<span class='rbk-n'>".count($items)."</span></div>";
     echo "<div class='rbk-hint'>".htmlspecialchars($hint)."</div>";
     if (!$items) { echo "<div class='rbk-em'>Sin registros.</div></div>"; return; }
     $items = array_slice($items,0,12);
@@ -307,7 +312,84 @@ ob_start();
 .tog input:checked ~ .tog-thumb{left:21px}
 .ip-irow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)}
 .ip-irow:last-child{border-bottom:none}
-@media(max-width:760px){.rdr-stats{grid-template-columns:repeat(2,1fr)}.modo-grid{grid-template-columns:1fr}}
+/* Playbook button */
+.pb-btn{
+  padding:4px 12px;border-radius:14px;border:1px solid #c7d2fe;
+  background:linear-gradient(135deg,#eef2ff,#e0e7ff);color:#4338ca;
+  font:700 11px var(--body);cursor:pointer;transition:all .15s;
+  display:inline-flex;align-items:center;gap:4px;margin:0 8px;
+}
+.pb-btn:hover{background:linear-gradient(135deg,#c7d2fe,#a5b4fc);color:#312e81;border-color:#a5b4fc;transform:scale(1.04)}
+/* Playbook modal */
+.pb-overlay{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,.45);backdrop-filter:blur(4px);
+  justify-content:center;align-items:flex-start;padding:32px 16px;overflow-y:auto;
+}
+.pb-overlay.open{display:flex}
+.pb-modal{
+  background:#fff;border-radius:20px;max-width:680px;width:100%;
+  box-shadow:0 24px 64px rgba(0,0,0,.18);animation:pbSlide .2s ease;
+  max-height:90vh;overflow-y:auto;
+}
+@keyframes pbSlide{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.pb-modal-hd{
+  position:sticky;top:0;z-index:1;
+  padding:20px 24px 16px;border-bottom:1px solid #e5e7eb;
+  background:linear-gradient(180deg,#fafaff,#fff);border-radius:20px 20px 0 0;
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+}
+.pb-modal-hd h2{margin:0;font:800 20px var(--body);letter-spacing:-.02em;line-height:1.2}
+.pb-modal-hd p{margin:4px 0 0;font:400 13px var(--body);color:#6b7280;line-height:1.5}
+.pb-close{
+  background:none;border:1px solid #e5e7eb;border-radius:10px;
+  width:34px;height:34px;font-size:18px;cursor:pointer;color:#6b7280;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.pb-close:hover{background:#f3f4f6;color:#111}
+.pb-body{padding:20px 24px 28px}
+.pb-section{margin-bottom:18px}
+.pb-section h4{
+  margin:0 0 8px;font:700 11px var(--body);text-transform:uppercase;
+  letter-spacing:.12em;color:#6366f1;
+}
+.pb-psych{
+  background:#fafaff;border:1px solid #e0e7ff;border-radius:14px;
+  padding:14px 16px;font:400 13.5px var(--body);line-height:1.65;color:#1f2937;
+  margin-bottom:18px;
+}
+.pb-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.pb-mini{border:1px solid #e5e7eb;border-radius:14px;padding:14px 16px;background:#fff}
+.pb-mini h4{margin:0 0 8px;font:700 11px var(--body);text-transform:uppercase;letter-spacing:.1em;color:#4b5563}
+.pb-mini.do-card{border-color:#bbf7d0;background:#f0fdf4}
+.pb-mini.do-card h4{color:#166534}
+.pb-mini.dont-card{border-color:#fecaca;background:#fef2f2}
+.pb-mini.dont-card h4{color:#991b1b}
+.pb-mini ul{margin:0;padding-left:16px}
+.pb-mini li{margin:0 0 6px;font:400 13px var(--body);line-height:1.5;color:#1f2937}
+.pb-msg{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;margin-bottom:10px}
+.pb-msg-canal{
+  padding:7px 14px;font:700 11px var(--body);text-transform:uppercase;
+  letter-spacing:.08em;border-bottom:1px solid #e5e7eb;
+}
+.pb-msg-canal.wa{background:#dcf8c6;color:#166534}
+.pb-msg-canal.call{background:#ede9fe;color:#5b21b6}
+.pb-msg-texto{padding:12px 16px;font:400 14px var(--body);line-height:1.65;color:#111827;background:#fff;border-bottom:1px solid #f3f4f6}
+.pb-msg-nota{padding:8px 14px;font:italic 12px var(--body);color:#6b7280;background:#fafafa}
+.pb-footer{
+  display:flex;gap:16px;flex-wrap:wrap;padding-top:14px;margin-top:14px;
+  border-top:1px solid #e5e7eb;
+}
+.pb-footer-item{font:400 12px var(--body);color:#6b7280}
+.pb-footer-item b{color:#111827;font-weight:700}
+.pb-priority{
+  display:inline-block;padding:3px 10px;border-radius:999px;
+  font:700 11px var(--body);margin-top:8px;
+}
+.pb-priority.critica{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.pb-priority.alta{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+.pb-priority.media{background:#f3f4f6;color:#374151;border:1px solid #d1d5db}
+@media(max-width:760px){.rdr-stats{grid-template-columns:repeat(2,1fr)}.modo-grid{grid-template-columns:1fr}.pb-cols{grid-template-columns:1fr}.pb-modal{border-radius:14px}}
 </style>
 
 <!-- Cabecera -->
@@ -386,23 +468,23 @@ ob_start();
 <?php
 render_bkt('🔥😱 ON FIRE',
     'Actividad en 72h · 2+ sesiones · scroll ≥ 90% · lectura real · foco en precio · validación por visitor',
-    $buckets['onfire'],$sort,$dir);
+    $buckets['onfire'],$sort,$dir,false,false,'onfire');
 
 render_bkt('🔥 Cierre inminente',
     'Actividad en 24h · FIT ≥ 8.5% · edad ≥ 2h · guest ≥ 1 · mínimo 2 señales (≥1 fuerte) · misma huella insistiendo en precio',
-    $buckets['inminente'],$sort,$dir);
+    $buckets['inminente'],$sort,$dir,false,false,'inminente');
 
 render_bkt('🔥 Probable cierre (PRIORIDAD)',
     'v2.3: Vistas recientes + señal de calidad (precio/scroll/cupón) + piso FIT ≥ 5% o 3+ sesiones. Elimina curiosos sin intención real.',
-    $buckets['probable_cierre'],$sort,$dir,false,true);
+    $buckets['probable_cierre'],$sort,$dir,false,true,'probable_cierre');
 
 render_bkt('💸 Validando precio',
     'Detecta foco real en precio: exige base guest + validación individual (misma huella) o compartida (multi-visitor)',
-    $buckets['validando_precio'],$sort,$dir);
+    $buckets['validando_precio'],$sort,$dir,false,false,'validando_precio');
 
 render_bkt('🔮 Predicción alta (ciclo: '.$ciclo_venta['dias'].'d)',
     'v2.3: FIT ≥ 14% + edad ≤ ciclo venta real ('.$ciclo_venta['dias'].'d) + actividad reciente. El ciclo se auto-calcula con la mediana de días envío→cierre de tu empresa.',
-    $buckets['prediccion_alta'],$sort,$dir);
+    $buckets['prediccion_alta'],$sort,$dir,false,false,'prediccion_alta');
 ?>
 </div>
 
@@ -411,51 +493,51 @@ render_bkt('🔮 Predicción alta (ciclo: '.$ciclo_venta['dias'].'d)',
 <?php
 render_bkt('🧠 Decisión activa',
     '4+ vistas en 48h y regresos reales (span ≥ 6h)',
-    $buckets['decision_activa'],$sort,$dir);
+    $buckets['decision_activa'],$sort,$dir,false,false,'decision_activa');
 
 render_bkt('💰 Alto importe',
     'v2.2: Umbral dinámico P80 de la empresa (auto-calculado). Vista reciente.',
-    $buckets['alto_importe'],$sort,$dir);
+    $buckets['alto_importe'],$sort,$dir,false,false,'alto_importe');
 
 render_bkt('🔥 Re-enganche caliente',
     'v2.3: Regresó tras gap + interactuó con precio (revisó totales, loop, cupón o sv_price). Señal de compra fuerte.',
-    $buckets['re_enganche_caliente'] ?? [],$sort,$dir,true);
+    $buckets['re_enganche_caliente'] ?? [],$sort,$dir,true,false,'re_enganche_caliente');
 
 render_bkt('🟣 Re-enganche',
     'v2.3: Regresó tras gap + señal de interés, pero sin foco directo en precio. Oportunidad de seguimiento.',
-    $buckets['re_enganche'],$sort,$dir,true);
+    $buckets['re_enganche'],$sort,$dir,true,false,'re_enganche');
 
 render_bkt('👥 Revisión multi-persona',
     'Last < 72h + 2+ visitors o IPs post primer guest/90min + guest_total ≥ 2',
-    $buckets['multi_persona'],$sort,$dir);
+    $buckets['multi_persona'],$sort,$dir,false,false,'multi_persona');
 
 render_bkt('🧾 Revisión profunda',
     'Exige lectura real (visible) y foco en precio/totales. Análisis serio, no solo muchas vistas.',
-    $buckets['revision_profunda'],$sort,$dir);
+    $buckets['revision_profunda'],$sort,$dir,false,false,'revision_profunda');
 
 render_bkt('🟩 Vistas múltiples',
     '(2+ IPs en 24h) O (3+ vistas en 24h) y última vista en 24h',
-    $buckets['vistas_multiples'],$sort,$dir);
+    $buckets['vistas_multiples'],$sort,$dir,false,false,'vistas_multiples');
 
 render_bkt('🟠 Hesitación',
     'Pausa entre 24h y 7d, con repetición guest limitada y al menos una señal de fricción real en precio/totales',
-    $buckets['hesitacion'],$sort,$dir);
+    $buckets['hesitacion'],$sort,$dir,false,false,'hesitacion');
 
 render_bkt('🟤 Sobre-análisis',
     'v2.3: Muchas sesiones + muchos guests + edad alta + FIT bajo (umbral por modo). Posible parálisis de decisión.',
-    $buckets['sobre_analisis'],$sort,$dir);
+    $buckets['sobre_analisis'],$sort,$dir,false,false,'sobre_analisis');
 
 render_bkt('💜 Revivió cotización vieja (señal exclusiva)',
     'Volvió tras 30+ días sin verla y última vista en 48h',
-    $buckets['revivio'],$sort,$dir,true);
+    $buckets['revivio'],$sort,$dir,true,false,'revivio');
 
 render_bkt('🟣 Regreso después de +4 días (señal exclusiva)',
     'Volvió tras 4+ días sin verla y última vista en 48h',
-    $buckets['regreso'],$sort,$dir,true);
+    $buckets['regreso'],$sort,$dir,true,false,'regreso');
 
 render_bkt('🟠 Comparando / Compartiendo (señal exclusiva)',
     'v2.3: 2+ IPs distintas en ventana + al menos 1 evento JS (anti-bot). Indica comité o compartido.',
-    $buckets['comparando'],$sort,$dir);
+    $buckets['comparando'],$sort,$dir,false,false,'comparando');
 
 // Enfriándose con motivo
 $cooling = $buckets['enfriandose'];
@@ -467,11 +549,11 @@ foreach ($cooling as &$cr) {
 unset($cr);
 render_bkt('🔵 Enfriándose (señal exclusiva)',
     'v2.3: Tuvo sesiones + engagement real (scroll/visible/open) pero dejó de ver. Distingue precio/sin precio. Sin engagement previo = no aparece (está perdido, no enfriándose).',
-    $cooling,$sort,$dir,false,true);
+    $cooling,$sort,$dir,false,true,'enfriandose');
 
 render_bkt('❌ No abierta',
     'Cotización con más de 24h y dentro de su vigencia, sin evidencia de apertura por el cliente — ni vistas externas ni eventos JS.',
-    $buckets['no_abierta'] ?? [],$sort,$dir);
+    $buckets['no_abierta'] ?? [],$sort,$dir,false,false,'no_abierta');
 
 render_bkt('🟡 Activos 48h (todos los activos)',
     'Lista completa de todo lo visto en las últimas 48 horas',
@@ -640,7 +722,84 @@ async function addIp(){
   if(d.ok) location.reload();
   else alert(d.error||'Error');
 }
+function openPlaybook(key){
+  const el=document.getElementById('pb-'+key);
+  if(el) el.classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closePlaybook(key){
+  const el=document.getElementById('pb-'+key);
+  if(el) el.classList.remove('open');
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    document.querySelectorAll('.pb-overlay.open').forEach(function(o){o.classList.remove('open')});
+    document.body.style.overflow='';
+  }
+});
 </script>
+
+<?php
+// ─── Render playbook modals ─────────────────────────────────
+foreach ($PLAYBOOK as $pb_key => $pb):
+    $pb_pclass = str_replace('í','i',$pb['priority']); // critica, alta, media
+?>
+<div class="pb-overlay" id="pb-<?= $pb_key ?>" onclick="if(event.target===this)closePlaybook('<?= $pb_key ?>')">
+  <div class="pb-modal">
+    <div class="pb-modal-hd">
+      <div>
+        <h2>📖 <?= e($BM[$pb_key][3] ?? ucfirst(str_replace('_',' ',$pb_key))) ?></h2>
+        <p><?= e($pb['summary']) ?></p>
+        <span class="pb-priority <?= $pb_pclass ?>"><?= e(ucfirst($pb['priority'])) ?></span>
+      </div>
+      <button class="pb-close" onclick="closePlaybook('<?= $pb_key ?>')">✕</button>
+    </div>
+    <div class="pb-body">
+      <div class="pb-section">
+        <h4>🧠 Qué está pensando el cliente</h4>
+        <div class="pb-psych"><?= e($pb['psychology']) ?></div>
+      </div>
+
+      <div class="pb-section">
+        <h4>Qué significa esta señal</h4>
+        <div class="pb-mini">
+          <ul><?php foreach($pb['meaning'] as $m): ?><li><?= e($m) ?></li><?php endforeach; ?></ul>
+        </div>
+      </div>
+
+      <div class="pb-cols">
+        <div class="pb-mini do-card">
+          <h4>✅ Qué hacer</h4>
+          <ul><?php foreach($pb['do'] as $d): ?><li><?= e($d) ?></li><?php endforeach; ?></ul>
+        </div>
+        <div class="pb-mini dont-card">
+          <h4>🚫 Qué NO hacer</h4>
+          <ul><?php foreach($pb['dont'] as $d): ?><li><?= e($d) ?></li><?php endforeach; ?></ul>
+        </div>
+      </div>
+
+      <div class="pb-section">
+        <h4>💬 Mensajes sugeridos</h4>
+        <?php foreach($pb['messages'] as $msg):
+            $isCall = str_contains($msg['canal'], '📞');
+        ?>
+        <div class="pb-msg">
+          <div class="pb-msg-canal <?= $isCall ? 'call' : 'wa' ?>"><?= e($msg['canal']) ?></div>
+          <div class="pb-msg-texto"><?= e($msg['texto']) ?></div>
+          <div class="pb-msg-nota">→ <?= e($msg['nota']) ?></div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+
+      <div class="pb-footer">
+        <div class="pb-footer-item">🎯 Objetivo: <b><?= e($pb['goal']) ?></b></div>
+        <div class="pb-footer-item">📱 Canal: <b><?= e($pb['best_channel']) ?></b></div>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endforeach; ?>
 
 <?php
 $content = ob_get_clean();
