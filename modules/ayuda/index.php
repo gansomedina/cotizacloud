@@ -571,5 +571,5 @@ function ayTab(id, el) {
 </script>
 
 <?php
-$page_content = ob_get_clean();
+$content = ob_get_clean();
 require ROOT_PATH . '/core/layout.php';
