@@ -460,12 +460,7 @@ ob_start();
   .pb-cols{grid-template-columns:1fr}
   .pb-modal{border-radius:14px}
   .rbk-hd{gap:6px}
-  .col-estado,.col-prior,.col-ver{display:none}
-  .rdrt{min-width:0}
   .rtit{max-width:160px}
-}
-@media(max-width:480px){
-  .col-vista{display:none}
 }
 </style>
 
