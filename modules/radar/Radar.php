@@ -888,6 +888,16 @@ class Radar
                 'views24'=>$views24,'views48'=>$views48,
                 'span48h'=>round($span48/3600,1).'h','pss'=>round($pss,2),
                 'ev_uniq_v'=>$e_uniq_v,'modo'=>$modo,
+                'scroll_cls'=>$e_scroll_cls,'scroll_any'=>$e_scroll_any,
+                'vis_max'=>$e_vis_max,'vis_sum'=>$e_vis_sum,
+                'ips_post_guest'=>$ips_post_guest_count,
+                'pc_cats'=>isset($cat_count) ? [
+                    'engagement'=>(bool)($cat_engagement ?? false),
+                    'precio'=>(bool)($cat_precio ?? false),
+                    'persistencia'=>(bool)($cat_persistencia ?? false),
+                    'social'=>(bool)($cat_social ?? false),
+                    'total'=>$cat_count ?? 0,
+                ] : null,
             ],
         ];
     }
