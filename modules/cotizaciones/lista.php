@@ -93,6 +93,7 @@ function radar_badge(?string $bucket, ?int $score, int $vistas = 0): string {
         'prediccion_alta'  => ['🟢','#166534','#f0fdf4'],
         'revision_profunda'=> ['🔵','#1d4ed8','#dbeafe'],
         'multi_persona'    => ['🔵','#1d4ed8','#dbeafe'],
+        're_enganche_caliente' => ['🔥','#6d28d9','#ede9fe'],
         're_enganche'      => ['🟣','#6d28d9','#ede9fe'],
         'regreso'          => ['🟣','#6d28d9','#ede9fe'],
         'revivio'          => ['🟣','#6d28d9','#ede9fe'],
