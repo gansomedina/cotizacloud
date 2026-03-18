@@ -199,12 +199,14 @@ $ips_internas = DB::query("SELECT * FROM radar_ips_internas WHERE empresa_id=? O
 function render_bkt(string $tit, string $hint, array $items, string $s, string $d, bool $gap=false, bool $motivo=false, string $bkt_key=''): void {
     $PB = $GLOBALS['PLAYBOOK'] ?? [];
     echo "<div class='rbk'>";
-    echo "<div class='rbk-hd'><span class='rbk-tit'>".htmlspecialchars($tit)."</span>";
+    echo "<div class='rbk-hd'>";
+    echo "<span class='rbk-tit'>".htmlspecialchars($tit)."</span>";
     if ($bkt_key && isset($PB[$bkt_key])) {
         echo "<button class='pb-btn' onclick=\"openPlaybook('{$bkt_key}')\">📖 Playbook</button>";
     }
-    echo "<span class='rbk-n'>".count($items)."</span></div>";
-    echo "<div class='rbk-hint'>".htmlspecialchars($hint)."</div>";
+    echo "<span class='rbk-hint'>".htmlspecialchars($hint)."</span>";
+    echo "<span class='rbk-n'>".count($items)."</span>";
+    echo "</div>";
     if (!$items) { echo "<div class='rbk-em'>Sin registros.</div></div>"; return; }
     $items = array_slice($items,0,12);
     echo "<div class='rdrs'><table class='rdrt'><thead><tr>";
@@ -269,11 +271,12 @@ ob_start();
 .tab-panel{display:none}.tab-panel.on{display:block}
 
 .rbk{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:12px}
-.rbk-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg)}
-.rbk-tit{font:700 13px var(--body)}
-.rbk-n{font:700 13px var(--num);color:var(--t3)}
-.rbk-hint{padding:6px 16px;font:400 11px var(--body);color:var(--t3);border-bottom:1px solid var(--border);background:#fafaf8}
+.rbk-hd{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);flex-wrap:wrap}
+.rbk-tit{font:700 13px var(--body);white-space:nowrap}
+.rbk-hint{font:400 11px var(--body);color:var(--t3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rbk-n{font:700 13px var(--num);color:var(--t3);margin-left:auto;white-space:nowrap;flex-shrink:0}
 .rbk-em{padding:14px 16px;font:400 13px var(--body);color:var(--t3)}
+@media(max-width:600px){.rbk-hint{display:none}}
 
 .rdrs{overflow-x:auto}
 .rdrt{width:100%;border-collapse:collapse;min-width:520px}
@@ -317,7 +320,7 @@ ob_start();
   padding:4px 12px;border-radius:14px;border:1px solid #c7d2fe;
   background:linear-gradient(135deg,#eef2ff,#e0e7ff);color:#4338ca;
   font:700 11px var(--body);cursor:pointer;transition:all .15s;
-  display:inline-flex;align-items:center;gap:4px;margin:0 8px;
+  display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;
 }
 .pb-btn:hover{background:linear-gradient(135deg,#c7d2fe,#a5b4fc);color:#312e81;border-color:#a5b4fc;transform:scale(1.04)}
 /* Playbook modal */
@@ -389,7 +392,7 @@ ob_start();
 .pb-priority.critica{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
 .pb-priority.alta{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
 .pb-priority.media{background:#f3f4f6;color:#374151;border:1px solid #d1d5db}
-@media(max-width:760px){.rdr-stats{grid-template-columns:repeat(2,1fr)}.modo-grid{grid-template-columns:1fr}.pb-cols{grid-template-columns:1fr}.pb-modal{border-radius:14px}}
+@media(max-width:760px){.rdr-stats{grid-template-columns:repeat(2,1fr)}.modo-grid{grid-template-columns:1fr}.pb-cols{grid-template-columns:1fr}.pb-modal{border-radius:14px}.rbk-hd{gap:6px}}
 </style>
 
 <!-- Cabecera -->
@@ -422,13 +425,12 @@ ob_start();
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv"><?= $cierre_pct ?>%</div>
     <div class="rdr-sl">📊 Tasa cierre</div>
-  </div>
-  <div class="card" style="padding:12px 16px">
-    <div class="rdr-sv"><?= $ciclo_venta['dias'] ?>d</div>
-    <div class="rdr-sl"><?= $ciclo_venta['auto'] ? '🔄' : '📐' ?> Ciclo venta<?= $ciclo_venta['auto'] ? '' : ' (est.)' ?></div>
-    <?php if ($ciclo_venta['auto'] && $ciclo_venta['p25'] !== null): ?>
-    <div style="font:400 10px var(--body);color:var(--t3);margin-top:2px">P25: <?= $ciclo_venta['p25'] ?>d · P75: <?= $ciclo_venta['p75'] ?>d · n=<?= $ciclo_venta['n'] ?></div>
-    <?php endif; ?>
+    <div style="font:400 10px var(--body);color:var(--t3);margin-top:4px">
+      <?= $ciclo_venta['auto'] ? '🔄' : '📐' ?> Ciclo: <b><?= $ciclo_venta['dias'] ?>d</b><?= $ciclo_venta['auto'] ? '' : ' (est.)' ?>
+      <?php if ($ciclo_venta['auto'] && $ciclo_venta['p25'] !== null): ?>
+      · P25: <?= $ciclo_venta['p25'] ?>d · P75: <?= $ciclo_venta['p75'] ?>d · n=<?= $ciclo_venta['n'] ?>
+      <?php endif; ?>
+    </div>
   </div>
 </div>
 
