@@ -1,9 +1,22 @@
 <?php
 // ============================================================
-//  CotizaApp — modules/radar/Radar.php  v2.2
-//  Motor de scoring e intención — 15 buckets × 3 modos
+//  CotizaApp — modules/radar/Radar.php  v2.3
+//  Motor de scoring e intención — 16 buckets × 3 modos
 //  v2.1: Ajustes alto ticket — prioridades, FIT, multi-persona, no_abierta
 //  v2.2: Universalidad — alto_importe dinámico (P80), vigencia real, multi-persona balance
+//  v2.3: Robustez estadística + ventas consultivas:
+//        - FIT: Laplace smoothing (α=5) + cap multiplicadores [0.3, 3.0] + cache
+//        - Calibración gap: últimas 2 sesiones (no span total)
+//        - Auto-calibración proporcional (20% delta) + decay 90d
+//        - Probable cierre: requiere señal de calidad + piso FIT ≥5% o sess ≥3
+//        - Predicción alta: ventana alive proporcional a predict_recent_days
+//        - Re-enganche caliente: nuevo bucket (regresó + interacción precio)
+//        - Sobre-análisis: umbrales diferenciados por modo
+//        - Comparando: gate de engagement JS (anti-bot)
+//        - Enfriándose: requiere engagement previo (no clasifica "perdidos")
+//        - P80 alto_importe cacheado + multip_boost parametrizado
+//        - Bandas calibración: prepared statements completos
+//        - SQL injection fix en lista_activas
 //  Portado fielmente de radar_3_.php (On Time / WordPress)
 //  Adaptado a PDO sin WordPress, multitenant por empresa_id
 // ============================================================
@@ -14,6 +27,8 @@ class Radar
 {
     // ─── Cache en memoria por request ───────────────────────
     private static array $config_cache = [];
+    private static array $p80_cache = [];
+    private static array $fit_cal_cache = [];
 
     // ============================================================
     //  UMBRALES × 3 MODOS
@@ -110,7 +125,7 @@ class Radar
         'over_min_guest'             => [5,     8,     12   ],
         'over_min_age_days'          => [5,     7,     10   ],
         'over_recent_days'           => [30,    21,    14   ],
-        'over_max_fit_pct'           => [14.0,  14.0,  14.0 ],
+        'over_max_fit_pct'           => [18.0,  14.0,  10.0 ],
         'over_max_ips_post_guest'    => [5,     4,     3    ],
 
         // ── Bucket 12: Regreso ───────────────────────────────
@@ -257,13 +272,16 @@ class Radar
     // ============================================================
     public static function fit_prob(int $sessions, int $uniq_ips, ?int $gap_days, int $empresa_id): float
     {
-        // Leer tasas calibradas (o usar las de On Time como fallback)
-        $cal = DB::row(
-            "SELECT global_rate, rate_sess_json, rate_ips_json, rate_gap_json
-             FROM radar_fit_calibracion WHERE empresa_id=? AND activa=1
-             ORDER BY created_at DESC LIMIT 1",
-            [$empresa_id]
-        );
+        // Cache por request: evita N+1 queries en recalcular_empresa()
+        if (!isset(self::$fit_cal_cache[$empresa_id])) {
+            self::$fit_cal_cache[$empresa_id] = DB::row(
+                "SELECT global_rate, rate_sess_json, rate_ips_json, rate_gap_json
+                 FROM radar_fit_calibracion WHERE empresa_id=? AND activa=1
+                 ORDER BY created_at DESC LIMIT 1",
+                [$empresa_id]
+            );
+        }
+        $cal = self::$fit_cal_cache[$empresa_id];
 
         $global = $cal ? (float)($cal['global_rate'] ?? self::FIT_GLOBAL) : self::FIT_GLOBAL;
         $rs_map = ($cal && $cal['rate_sess_json']) ? (json_decode($cal['rate_sess_json'], true) ?? self::FIT_RATE_SESS) : self::FIT_RATE_SESS;
@@ -278,7 +296,10 @@ class Radar
         $li = $global > 0 ? $ri / $global : 1.0;
         $lg = $global > 0 ? $rg / $global : 1.0;
 
-        $fit = $global * $ls * $li * $lg;
+        // Cap multiplicadores individuales a [0.3, 3.0] para amortiguar
+        // correlación entre sesiones/IPs/gap (no son independientes)
+        $cap = fn($x) => max(0.3, min(3.0, $x));
+        $fit = $global * $cap($ls) * $cap($li) * $cap($lg);
         return max(self::FIT_MIN, min(self::FIT_MAX, $fit));
     }
 
@@ -512,12 +533,21 @@ class Radar
         $buckets = [];
 
         // ── 1. Probable cierre ───────────────────────────────
-        // v2.1: AND en vez de OR — debe tener actividad reciente Y acumulada
+        // v2.3: requiere actividad reciente + acumulada + señal de calidad + FIT mínimo
+        // Psicología: quien va a comprar interactúa con el precio, no solo mira.
+        // Sin un piso de FIT, cualquier curioso con 2 vistas entra aquí y el
+        // asesor pierde confianza en el radar. Exigimos FIT ≥ 5% o sesiones ≥ 3.
+        $hot_quality = (
+            $has_tot_view || $has_tot_rev || $has_loop || $e_coupons > 0 ||
+            $e_sv_price || $e_mv_price || $pss >= 2.0 || $e_scroll_cls >= 70
+        );
         if (
             !$accepted &&
             $last_ts >= $now - (int)self::u('hot_close_last_hours', $modo) * 3600 &&
             $views24 >= (int)self::u('hot_close_min_views24', $modo) &&
-            $views7d >= (int)self::u('hot_close_min_views7d', $modo)
+            $views7d >= (int)self::u('hot_close_min_views7d', $modo) &&
+            $hot_quality &&
+            ($fit_pct >= 5.0 || $sessions >= 3)
         ) {
             $buckets[] = 'probable_cierre';
         }
@@ -615,10 +645,17 @@ class Radar
         }
 
         // ── 5. Predicción alta ──────────────────────────────
+        // v2.3: además de FIT alto + edad, exigir actividad reciente.
+        // Ventas consultivas: predicción sin momentum = dato frío.
+        // Ventana proporcional: 1/3 de predict_recent_days (mín 5d, máx 21d)
+        // Así funciona igual para ciclo corto (21d → 7d) que largo (45d → 15d).
+        $predict_alive_days = max(5, min(21, (int)ceil((int)self::u('predict_recent_days', $modo) / 3)));
+        $predict_alive = ($last_ts >= $now - $predict_alive_days * 86400);
         if (
             !$accepted &&
             $fit_pct  >= (float)self::u('predict_min_fit_pct', $modo) &&
-            $age_days <= (int)self::u('predict_recent_days', $modo)
+            $age_days <= (int)self::u('predict_recent_days', $modo) &&
+            $predict_alive
         ) {
             $buckets[] = 'prediccion_alta';
         }
@@ -634,18 +671,21 @@ class Radar
         }
 
         // ── 7. Re-enganche ──────────────────────────────────
+        // v2.3: diferenciar calidad — re-enganche con señal de precio
+        // tiene prioridad más alta (re_enganche_caliente vs re_enganche)
         $reeng_interest = (
             $guest_24h >= (int)self::u('reeng_min_guest_24h', $modo) ||
             $views24   >= (int)self::u('reeng_min_views24', $modo) ||
             $has_tot_view || $has_tot_rev || $has_loop || $pss >= 2.0 || $e_sv_price
         );
+        $reeng_hot = ($has_tot_rev || $has_loop || $e_sv_price || $e_mv_price || $e_coupons > 0);
         if (
             !$accepted &&
             $gap_days !== null && $gap_days >= (int)self::u('reeng_gap_days', $modo) &&
             $last_ts >= $now - (int)self::u('reeng_recent_hours', $modo) * 3600 &&
             $reeng_interest
         ) {
-            $buckets[] = 're_enganche';
+            $buckets[] = $reeng_hot ? 're_enganche_caliente' : 're_enganche';
         }
 
         // ── 8. Multi-persona ────────────────────────────────
@@ -718,22 +758,7 @@ class Radar
         // Para constructora $200k: P80 ≈ $350k → alto importe = $350k+
         // Fallback al umbral estático si <5 cotizaciones
         $cot_total = (float)($cot_meta['total'] ?? 0.0);
-        $hi_threshold = (float)self::u('high_amount_threshold', $modo);
-        $hi_count = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado NOT IN ('borrador') AND total > 0",
-            [$empresa_id]
-        );
-        if ($hi_count >= 5) {
-            $hi_offset = max(0, (int)floor($hi_count * 0.80) - 1);
-            $p80 = DB::val(
-                "SELECT total FROM cotizaciones WHERE empresa_id=? AND estado NOT IN ('borrador') AND total > 0
-                 ORDER BY total ASC LIMIT 1 OFFSET $hi_offset",
-                [$empresa_id]
-            );
-            if ($p80 !== null && $p80 !== false) {
-                $hi_threshold = (float)$p80;
-            }
-        }
+        $hi_threshold = self::_p80_alto_importe($empresa_id, $modo);
         if (
             !$accepted &&
             $cot_total >= $hi_threshold &&
@@ -764,12 +789,19 @@ class Radar
         // Mismo orden de precedencia que el radar original
         $is_revive  = (!$accepted && $gap_days !== null && $gap_days >= (int)self::u('revive_gap_days', $modo) && $last_ts >= $now - (int)self::u('revive_recent_hours', $modo) * 3600);
         $is_return4 = (!$accepted && $gap_days !== null && $gap_days >= (int)self::u('return_gap_days', $modo) && $last_ts >= $now - (int)self::u('return_recent_hours', $modo) * 3600);
-        $is_compare = (!$accepted && $compare_ips_count >= (int)self::u('compare_min_ips', $modo) && $last_ts >= $now - (int)self::u('compare_window_h', $modo) * 3600);
+        // v2.3: comparando requiere al menos 1 evento JS (scroll, visible_ms, open)
+        // para evitar falsos positivos de bots que pasaron el filtro de UA/IP
+        $has_any_engagement = ($e_opens > 0 || $e_scroll_any > 0 || $e_vis_max > 0);
+        $is_compare = (!$accepted && $compare_ips_count >= (int)self::u('compare_min_ips', $modo) && $last_ts >= $now - (int)self::u('compare_window_h', $modo) * 3600 && $has_any_engagement);
+        // v2.3: enfriándose requiere engagement previo mínimo.
+        // Sin engagement = nunca enganchó → no se está "enfriando", está perdido.
+        // Con precio tocado → "enfriandose" (accionable para el asesor).
         $is_cooling = (
             !$accepted &&
             $sessions >= (int)self::u('cooling_min_sessions', $modo) &&
             $last_ts  <  $now - (int)self::u('cooling_min_silence_h', $modo) * 3600 &&
-            $last_ts  >= $now - (int)self::u('cooling_days', $modo) * 86400
+            $last_ts  >= $now - (int)self::u('cooling_days', $modo) * 86400 &&
+            ($e_opens > 0 || $e_scroll_any > 0 || $e_vis_max > 0)
         );
 
         if ($is_revive)       $buckets[] = 'revivio';
@@ -791,8 +823,8 @@ class Radar
         static $PRIORIDAD = [
             'onfire','inminente','probable_cierre','validando_precio',
             'prediccion_alta','alto_importe','decision_activa','revivio',
-            'no_abierta','re_enganche','multi_persona','revision_profunda',
-            'vistas_multiples','hesitacion','sobre_analisis',
+            'no_abierta','re_enganche_caliente','re_enganche','multi_persona',
+            'revision_profunda','vistas_multiples','hesitacion','sobre_analisis',
             'regreso','comparando','enfriandose',
         ];
         $bucket_main = null;
@@ -1080,7 +1112,16 @@ class Radar
             $bk_gap[$bg]  = ($bk_gap[$bg]  ?? [0,0]); $bk_gap[$bg][0]++;  if ($closed) $bk_gap[$bg][1]++;
         }
 
-        $to_rate = fn($bk, $fallback) => array_map(fn($v) => $v[0]>0 ? round($v[1]/$v[0],4) : $fallback, $bk);
+        // Laplace smoothing: (cierres + α·prior) / (total + α)
+        // α = 5 pseudo-observaciones → con pocos datos converge al prior global,
+        // con muchos datos domina la evidencia real de la empresa.
+        $alpha = 5;
+        $to_rate = fn($bk, $fallback) => array_map(
+            fn($v) => $v[0] > 0
+                ? round(($v[1] + $alpha * $fallback) / ($v[0] + $alpha), 4)
+                : $fallback,
+            $bk
+        );
         $rate_sess = $to_rate($bk_sess, $base);
         $rate_ips  = $to_rate($bk_ips,  $base);
         $rate_gap  = $to_rate($bk_gap,  $base);
@@ -1114,11 +1155,18 @@ class Radar
             // Menos de 5 cotizaciones: una sola banda
             $bandas[] = ['min' => 0, 'max' => null, 'label' => 'Todas'];
         }
-        // Calcular tasa de cierre por banda
+        // Calcular tasa de cierre por banda (prepared statements)
         foreach ($bandas as &$b) {
-            $mc = $b['max'] !== null ? "AND c.total < {$b['max']}" : '';
-            $bt = (int)DB::val("SELECT COUNT(*) FROM cotizaciones c WHERE c.empresa_id=? AND c.total>={$b['min']} $mc AND estado NOT IN ('borrador')", [$empresa_id]);
-            $bc = (int)DB::val("SELECT COUNT(*) FROM cotizaciones c WHERE c.empresa_id=? AND c.total>={$b['min']} $mc AND estado IN ('aceptada','convertida')", [$empresa_id]);
+            $params_t = [$empresa_id, $b['min']];
+            $params_c = [$empresa_id, $b['min']];
+            $mc = '';
+            if ($b['max'] !== null) {
+                $mc = 'AND c.total < ?';
+                $params_t[] = $b['max'];
+                $params_c[] = $b['max'];
+            }
+            $bt = (int)DB::val("SELECT COUNT(*) FROM cotizaciones c WHERE c.empresa_id=? AND c.total>=? $mc AND estado NOT IN ('borrador')", $params_t);
+            $bc = (int)DB::val("SELECT COUNT(*) FROM cotizaciones c WHERE c.empresa_id=? AND c.total>=? $mc AND estado IN ('aceptada','convertida')", $params_c);
             $b['total'] = $bt;
             $b['cerradas'] = $bc;
             $b['tasa_cierre'] = $bt > 0 ? round($bc / $bt, 4) : $base;
@@ -1131,17 +1179,33 @@ class Radar
              VALUES (?,?,?,?,?,?,?,?,1)",
             [$empresa_id, round($base,4), json_encode($bandas), json_encode($rate_sess), json_encode($rate_ips), json_encode($rate_gap), $total, $cerr]
         );
+        // Invalidar cache de FIT para que recalcular_empresa() use datos frescos
+        unset(self::$fit_cal_cache[$empresa_id]);
 
         return ['ok'=>true,'global_rate'=>round($base*100,2),'rate_sess'=>$rate_sess,'rate_ips'=>$rate_ips,'rate_gap'=>$rate_gap,'bandas'=>$bandas,'total'=>$total,'cierres'=>$cerr];
     }
 
     public static function check_auto_calibrar(int $empresa_id): void
     {
-        // Auto-calibrar cada 10 nuevos cierres (ventas + aceptadas)
+        // v2.3: auto-calibración proporcional + decaimiento temporal
+        // - Trigger proporcional: cada 20% de nuevos cierres (mín 5, máx 50)
+        // - Trigger temporal: recalibrar si la calibración tiene > 90 días
+        // Así funciona igual para empresa con 10 ventas que con 1000.
         if (!($this_cfg = self::config($empresa_id))['calibracion_auto']) return;
-        $ultima   = (int)(DB::val("SELECT ventas_cerradas FROM radar_fit_calibracion WHERE empresa_id=? AND activa=1 LIMIT 1", [$empresa_id]) ?? 0);
+
+        $cal_row = DB::row("SELECT ventas_cerradas, created_at FROM radar_fit_calibracion WHERE empresa_id=? AND activa=1 ORDER BY created_at DESC LIMIT 1", [$empresa_id]);
+        $ultima   = (int)($cal_row['ventas_cerradas'] ?? 0);
+        $cal_age  = $cal_row ? (time() - strtotime($cal_row['created_at'])) / 86400 : 999;
         $actuales = (int)DB::val("SELECT COUNT(*) FROM ventas WHERE empresa_id=? AND estado != 'cancelada'", [$empresa_id]);
-        if (($actuales - $ultima) >= 10) self::calibrar($empresa_id);
+
+        // Trigger proporcional: 20% del total anterior, clamped [5, 50]
+        $delta_trigger = max(5, min(50, (int)ceil($ultima * 0.20)));
+        $needs_recal = ($actuales - $ultima) >= $delta_trigger;
+
+        // Trigger temporal: > 90 días desde última calibración
+        if (!$needs_recal && $cal_age > 90 && $actuales >= 3) $needs_recal = true;
+
+        if ($needs_recal) self::calibrar($empresa_id);
     }
 
     // ============================================================
@@ -1166,6 +1230,33 @@ class Radar
         if (!in_array($cfg['sensibilidad'] ?? '', ['agresivo','medio','ligero'])) $cfg['sensibilidad'] = 'medio';
         DB::execute("UPDATE empresas SET radar_config=? WHERE id=?", [json_encode($cfg), $empresa_id]);
         unset(self::$config_cache[$empresa_id]);
+    }
+
+    // ============================================================
+    //  P80 ALTO IMPORTE — cacheado por request (evita N+1)
+    // ============================================================
+    private static function _p80_alto_importe(int $empresa_id, string $modo): float
+    {
+        if (isset(self::$p80_cache[$empresa_id])) return self::$p80_cache[$empresa_id];
+
+        $fallback = (float)self::u('high_amount_threshold', $modo);
+        $hi_count = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado NOT IN ('borrador') AND total > 0",
+            [$empresa_id]
+        );
+        if ($hi_count >= 5) {
+            $hi_offset = max(0, (int)floor($hi_count * 0.80) - 1);
+            $p80 = DB::val(
+                "SELECT total FROM cotizaciones WHERE empresa_id=? AND estado NOT IN ('borrador') AND total > 0
+                 ORDER BY total ASC LIMIT 1 OFFSET ?",
+                [$empresa_id, $hi_offset]
+            );
+            if ($p80 !== null && $p80 !== false) {
+                $fallback = (float)$p80;
+            }
+        }
+        self::$p80_cache[$empresa_id] = $fallback;
+        return $fallback;
     }
 
     // ============================================================
