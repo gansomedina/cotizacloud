@@ -444,9 +444,6 @@ ob_start();
       Total: <?= $stat_total ?> · Aceptadas: <?= $stat_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
       · Ciclo venta: <b><?= $ciclo_venta['dias'] ?>d</b><?= $ciclo_venta['auto'] ? '' : ' <span style="opacity:.6">(estimado)</span>' ?>
       · Modo: <b><?= ucfirst($config['sensibilidad'] ?? 'medio') ?></b>
-      <?php if ($ciclo_venta['auto'] && $ciclo_venta['p25'] !== null): ?>
-      · P25: <?= $ciclo_venta['p25'] ?>d · P75: <?= $ciclo_venta['p75'] ?>d · n=<?= $ciclo_venta['n'] ?>
-      <?php endif; ?>
     </p>
   </div>
   <?php if ($debug_mode): ?><span style="padding:4px 10px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font:700 11px var(--body);color:#92400e">DEBUG ON</span><?php endif; ?>
