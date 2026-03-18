@@ -797,16 +797,22 @@ class Radar
         elseif ($is_cooling)  $buckets[] = 'enfriandose';
 
         // ── 1. Probable cierre (CROSS-BUCKET) ──────────────────
-        // v3: Meta-bucket agregador. Requiere:
+        // v4: Meta-bucket agregador con filtros anti-falso-positivo.
+        // Requiere:
         //   - Estar en al menos 1 bucket de alta intención
-        //   - Tener señales de 2+ categorías distintas (confirmación cruzada)
         //   - Actividad reciente (72h)
+        //   - sessions >= 2 (el regreso confirma intención — commitment escalation)
+        //   - 2+ categorías de señal
+        //   - Al menos 1 categoría "fuerte" (precio O engagement)
+        //     Solo persistencia + social = consideration, no decision.
         // Categorías de señal:
-        //   Engagement: scroll ≥ 50%, visibilidad alta, lectura real
-        //   Precio: precio tocado, cupón, tot_rev, loop
+        //   Engagement (fuerte): scroll ≥ 50%, visibilidad alta, lectura real
+        //   Precio (fuerte): precio tocado, cupón, tot_rev, loop
         //   Persistencia: 2+ sesiones, gap/regreso
         //   Social: multi-IP, multi-dispositivo
-        // Psicología: un curioso hace UNA cosa. Un comprador cruza categorías.
+        // Psicología: un curioso hace UNA cosa. Un comprador cruza categorías
+        //   y REGRESA. P(cierre|1 sess) << P(cierre|2+ sess).
+        //   P(cierre|PSS=0) << P(cierre|PSS>0).
 
         // Buckets que califican como alta intención
         $pc_qualifying = ['onfire','inminente','validando_precio','decision_activa',
@@ -816,7 +822,7 @@ class Radar
             if (in_array($qb, $buckets, true)) { $pc_source = $qb; break; }
         }
 
-        if ($pc_source !== null && !$accepted && $last_ts >= $now - 72 * 3600) {
+        if ($pc_source !== null && !$accepted && $last_ts >= $now - 72 * 3600 && $sessions >= 2) {
             // Contar categorías de señal presentes
             $cat_engagement  = ($e_scroll_cls >= 50 || $e_scroll_any >= 50 ||
                                 $e_vis_max >= 8 || $e_vis_sum >= 15 ||
@@ -829,7 +835,11 @@ class Radar
             $cat_count = (int)$cat_engagement + (int)$cat_precio +
                          (int)$cat_persistencia + (int)$cat_social;
 
-            if ($cat_count >= 2) {
+            // v4: Exigir al menos 1 categoría fuerte (precio o engagement)
+            // Solo persistencia + social = fase de consideration, no decision.
+            $has_strong_cat = ($cat_precio || $cat_engagement);
+
+            if ($cat_count >= 2 && $has_strong_cat) {
                 $buckets[] = 'probable_cierre';
             }
         }
@@ -897,6 +907,8 @@ class Radar
                     'persistencia'=>(bool)($cat_persistencia ?? false),
                     'social'=>(bool)($cat_social ?? false),
                     'total'=>$cat_count ?? 0,
+                    'has_strong'=>(bool)($has_strong_cat ?? false),
+                    'min_sess_ok'=>$sessions >= 2,
                 ] : null,
             ],
         ];

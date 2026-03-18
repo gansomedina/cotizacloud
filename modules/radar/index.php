@@ -360,11 +360,19 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             // Probable cierre categories
             $pc = $dbg['pc_cats'] ?? null;
             if ($pc) {
+                $sess_ok = $pc['min_sess_ok'] ?? false;
+                $strong_ok = $pc['has_strong'] ?? false;
                 echo "<div class='dbg-sec'><div class='dbg-lbl'>Prob. Cierre ({$pc['total']}/4 cats)</div><div class='dbg-val'>";
-                foreach (['engagement','precio','persistencia','social'] as $cat) {
+                foreach (['engagement','precio'] as $cat) {
+                    $on = $pc[$cat] ?? false;
+                    echo "<span class='dbg-tag".($on?' dbg-on':'')."'>⚡$cat</span> ";
+                }
+                foreach (['persistencia','social'] as $cat) {
                     $on = $pc[$cat] ?? false;
                     echo "<span class='dbg-tag".($on?' dbg-on':'')."'>$cat</span> ";
                 }
+                echo "<span class='dbg-tag".($sess_ok?' dbg-on':' dbg-fail')."'>sess≥2</span> ";
+                echo "<span class='dbg-tag".($strong_ok?' dbg-on':' dbg-fail')."'>cat_fuerte</span>";
                 echo "</div></div>";
             }
             // Extra scoring details
@@ -444,6 +452,7 @@ ob_start();
 .dbg-val b{font-weight:700;color:#451a03}
 .dbg-tag{display:inline-block;padding:0 5px;border-radius:4px;font:500 10px var(--body);background:#e5e7eb;color:#6b7280;margin:1px}
 .dbg-tag.dbg-on{background:#dcfce7;color:#166534;font-weight:700}
+.dbg-tag.dbg-fail{background:#fee2e2;color:#991b1b;font-weight:700}
 .dbg-bkt{display:inline-block;padding:1px 6px;border-radius:6px;font:600 10px var(--body);background:#e0e7ff;color:#3730a3;margin:1px}
 .dbg-bkt.dbg-main{background:#4f46e5;color:#fff}
 
@@ -799,11 +808,19 @@ render_bkt('🟡 Activos 48h (todos los activos)',
           <?php foreach ($ics as $ik=>$iv): if($iv): ?><span class="dbg-tag dbg-on"><?= $ik ?></span> <?php endif; endforeach; ?>
         </div></div>
         <?php endif; ?>
-        <?php $pc_d = $dbg['pc_cats'] ?? null; if ($pc_d): ?>
+        <?php $pc_d = $dbg['pc_cats'] ?? null; if ($pc_d):
+            $sess_ok = $pc_d['min_sess_ok'] ?? false;
+            $strong_ok = $pc_d['has_strong'] ?? false;
+        ?>
         <div class="dbg-sec"><div class="dbg-lbl">Prob. Cierre (<?= $pc_d['total'] ?>/4 cats)</div><div class="dbg-val">
-          <?php foreach (['engagement','precio','persistencia','social'] as $cat): $on=$pc_d[$cat]??false; ?>
+          <?php foreach (['engagement','precio'] as $cat): $on=$pc_d[$cat]??false; ?>
+            <span class="dbg-tag<?= $on?' dbg-on':'' ?>">⚡<?= $cat ?></span>
+          <?php endforeach; ?>
+          <?php foreach (['persistencia','social'] as $cat): $on=$pc_d[$cat]??false; ?>
             <span class="dbg-tag<?= $on?' dbg-on':'' ?>"><?= $cat ?></span>
           <?php endforeach; ?>
+          <span class="dbg-tag<?= $sess_ok?' dbg-on':' dbg-fail' ?>">sess≥2</span>
+          <span class="dbg-tag<?= $strong_ok?' dbg-on':' dbg-fail' ?>">cat_fuerte</span>
         </div></div>
         <?php endif; ?>
         <?php if (isset($dbg['scroll_cls'])): ?>
