@@ -197,10 +197,10 @@ $ips_internas = DB::query("SELECT * FROM radar_ips_internas WHERE empresa_id=? O
 
 // Render de cada bucket
 function render_bkt(string $tit, string $hint, array $items, string $s, string $d, bool $gap=false, bool $motivo=false, string $bkt_key=''): void {
-    global $BM, $PLAYBOOK;
+    $PB = $GLOBALS['PLAYBOOK'] ?? [];
     echo "<div class='rbk'>";
     echo "<div class='rbk-hd'><span class='rbk-tit'>".htmlspecialchars($tit)."</span>";
-    if ($bkt_key && isset($PLAYBOOK[$bkt_key])) {
+    if ($bkt_key && isset($PB[$bkt_key])) {
         echo "<button class='pb-btn' onclick=\"openPlaybook('{$bkt_key}')\">📖 Playbook</button>";
     }
     echo "<span class='rbk-n'>".count($items)."</span></div>";
@@ -742,7 +742,8 @@ document.addEventListener('keydown',function(e){
 
 <?php
 // ─── Render playbook modals ─────────────────────────────────
-foreach ($PLAYBOOK as $pb_key => $pb):
+$_PB = $GLOBALS['PLAYBOOK'] ?? [];
+foreach ($_PB as $pb_key => $pb):
     $pb_pclass = str_replace('í','i',$pb['priority']); // critica, alta, media
 ?>
 <div class="pb-overlay" id="pb-<?= $pb_key ?>" onclick="if(event.target===this)closePlaybook('<?= $pb_key ?>')">

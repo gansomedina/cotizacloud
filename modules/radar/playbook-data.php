@@ -9,7 +9,9 @@
 
 defined('COTIZAAPP') or die;
 
-$PLAYBOOK = [
+// Forzar scope global — este archivo se carga dentro de Router::app()
+// que ejecuta require dentro de un método (scope local).
+$GLOBALS['PLAYBOOK'] = [
 
     // ─── ALTA PRIORIDAD ──────────────────────────────────────────
 
