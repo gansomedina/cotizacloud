@@ -76,16 +76,7 @@ class Auth
 
         // Superadmin puede entrar con slug '_admin' directo al panel
         if (!$empresa && trim($empresa_slug) === '_admin') {
-            $sa_user = DB::row(
-                "SELECT * FROM usuarios WHERE email = ? AND rol = 'superadmin' AND activo = 1",
-                [trim($email)]
-            );
-            if ($sa_user && password_verify($password, $sa_user['password_hash'])) {
-                $empresa = DB::row("SELECT * FROM empresas WHERE slug = '_system'");
-                if (!$empresa) {
-                    return ['ok' => false, 'error' => 'Sistema no configurado'];
-                }
-            }
+            $empresa = DB::row("SELECT * FROM empresas WHERE slug = '_system'");
         }
 
         if (!$empresa) {
