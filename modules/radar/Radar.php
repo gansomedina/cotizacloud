@@ -619,8 +619,7 @@ class Radar
         if (
             !$accepted &&
             $last_ts >= $now - (int)self::u('priceval_recent_hours', $modo) * 3600 &&
-            $guest_sessions >= 1 &&
-            ($guest_sessions >= 2 || $e_sv_price || $e_mv_price) &&
+            $guest_sessions >= 2 &&
             ($pv_read || $e_sv_price || $e_mv_price || $e_main_pev >= 2) &&
             ($has_loop || $has_tot_rev || $e_tot_views >= 2 || $e_sv_price || $e_mv_price)
         ) {
