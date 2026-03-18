@@ -1,8 +1,9 @@
 <?php
 // ============================================================
-//  CotizaApp — modules/radar/Radar.php  v2.1
+//  CotizaApp — modules/radar/Radar.php  v2.2
 //  Motor de scoring e intención — 15 buckets × 3 modos
-//  v2.1: Ajustes alto ticket — prioridades, FIT, multi-persona, no_abierta 30d
+//  v2.1: Ajustes alto ticket — prioridades, FIT, multi-persona, no_abierta
+//  v2.2: Universalidad — alto_importe dinámico (P80), vigencia real, multi-persona balance
 //  Portado fielmente de radar_3_.php (On Time / WordPress)
 //  Adaptado a PDO sin WordPress, multitenant por empresa_id
 // ============================================================
@@ -84,7 +85,7 @@ class Radar
 
         // ── Bucket 8: Multi-persona ──────────────────────────
         'multip_recent_hours'        => [96,    72,    48   ],
-        'multip_ip_window_min'       => [1440,  720,   360  ],
+        'multip_ip_window_min'       => [720,   480,   360  ],
         'multip_min_ips_post_guest'  => [2,     3,     4    ],
         'multip_min_guest_total'     => [1,     2,     3    ],
 
@@ -104,9 +105,9 @@ class Radar
         'hes_max_span_h'             => [8,     6,     4    ],
 
         // ── Bucket 11: Sobre-análisis ────────────────────────
-        'over_min_sessions'          => [15,    25,    35   ],
-        'over_min_guest'             => [7,     10,    15   ],
-        'over_min_age_days'          => [7,     10,    14   ],
+        'over_min_sessions'          => [12,    20,    28   ],
+        'over_min_guest'             => [5,     8,     12   ],
+        'over_min_age_days'          => [5,     7,     10   ],
         'over_recent_days'           => [30,    21,    14   ],
         'over_max_fit_pct'           => [14.0,  14.0,  14.0 ],
         'over_max_ips_post_guest'    => [5,     4,     3    ],
@@ -385,14 +386,18 @@ class Radar
 
         if ($sessions <= 0) {
             // ── Detectar "no abierta" ──────────────────────────
-            $cot_meta_early = DB::row("SELECT created_at, estado FROM cotizaciones WHERE id=?", [$cotizacion_id]);
+            $cot_meta_early = DB::row("SELECT created_at, estado, valida_hasta FROM cotizaciones WHERE id=?", [$cotizacion_id]);
             $created_early  = $cot_meta_early ? strtotime($cot_meta_early['created_at']) : $now;
             $age_h_early    = ($now - $created_early) / 3600.0;
             $accepted_early = ($cot_meta_early['estado'] ?? '') === 'aceptada';
             $has_js = ($es['opens'] > 0 || $es['closes'] > 0 || $es['tot_views'] > 0 ||
                        $es['tot_rev'] > 0 || $es['loops'] > 0 || $es['coupons'] > 0 ||
                        $es['scroll_any'] > 0 || $es['vis_max'] > 0 || $es['uniq_v'] > 0);
-            $no_abierta_age_ok = ($age_h_early >= 24 && ($now - $created_early) <= 30 * 86400);
+            // v2.2: usar vigencia real de la cotización (valida_hasta) o fallback a 30d
+            $vigencia_ts = ($cot_meta_early && $cot_meta_early['valida_hasta'])
+                ? strtotime($cot_meta_early['valida_hasta'])
+                : $created_early + 30 * 86400;
+            $no_abierta_age_ok = ($age_h_early >= 24 && $now <= $vigencia_ts);
             if (!$accepted_early && $no_abierta_age_ok && !$has_js) {
                 return [
                     'score'=>0,'fit_pct'=>0.0,'priority_pct'=>0.0,
@@ -707,12 +712,30 @@ class Radar
         }
 
         // ── 12. Alto importe ────────────────────────────────
-        // Portado de is_high_amount del radar original
-        // Se necesita cargar el total de la cotización
+        // v2.2: umbral dinámico — P80 de cotizaciones de la empresa (universal)
+        // Para freelancer $5k: P80 ≈ $12k → alto importe = $12k+
+        // Para constructora $200k: P80 ≈ $350k → alto importe = $350k+
+        // Fallback al umbral estático si <5 cotizaciones
         $cot_total = (float)($cot_meta['total'] ?? 0.0);
+        $hi_threshold = (float)self::u('high_amount_threshold', $modo);
+        $hi_count = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado NOT IN ('borrador') AND total > 0",
+            [$empresa_id]
+        );
+        if ($hi_count >= 5) {
+            $hi_offset = max(0, (int)floor($hi_count * 0.80) - 1);
+            $p80 = DB::val(
+                "SELECT total FROM cotizaciones WHERE empresa_id=? AND estado NOT IN ('borrador') AND total > 0
+                 ORDER BY total ASC LIMIT 1 OFFSET $hi_offset",
+                [$empresa_id]
+            );
+            if ($p80 !== null && $p80 !== false) {
+                $hi_threshold = (float)$p80;
+            }
+        }
         if (
             !$accepted &&
-            $cot_total >= (float)self::u('high_amount_threshold', $modo) &&
+            $cot_total >= $hi_threshold &&
             $last_ts >= $now - (int)self::u('high_amount_recent_hours', $modo) * 3600
         ) {
             $buckets[] = 'alto_importe';
