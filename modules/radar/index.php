@@ -95,24 +95,25 @@ function rmoney(float $n): string {
 }
 
 $BM = [
-    'onfire'           => ['🔴','#991b1b','#fff1f2','On Fire'],
-    'inminente'        => ['🟠','#c2410c','#fff7ed','Inminente'],
-    'probable_cierre'  => ['🟡','#92400e','#fffbeb','Probable cierre'],
-    'decision_activa'  => ['🟡','#92400e','#fffbeb','Decisión activa'],
-    'validando_precio' => ['💸','#92400e','#fffbeb','Validando precio'],
-    'prediccion_alta'  => ['🔮','#166534','#f0fdf4','Predicción alta'],
-    'alto_importe'     => ['💰','#1d4ed8','#dbeafe','Alto importe'],
-    're_enganche'      => ['🟣','#6d28d9','#ede9fe','Re-enganche'],
-    'multi_persona'    => ['👥','#1d4ed8','#dbeafe','Multi-persona'],
-    'revision_profunda'=> ['🧾','#1d4ed8','#dbeafe','Revisión profunda'],
-    'vistas_multiples' => ['🟩','#166534','#f0fdf4','Vistas múltiples'],
-    'hesitacion'       => ['🟠','#c2410c','#fff7ed','Hesitación'],
-    'sobre_analisis'   => ['🟤','#64748b','#f1f5f9','Sobre-análisis'],
-    'revivio'          => ['💜','#6d28d9','#ede9fe','Revivió'],
-    'regreso'          => ['🟣','#6d28d9','#ede9fe','Regreso'],
-    'comparando'       => ['🔘','#94a3b8','#f1f5f9','Comparando'],
-    'enfriandose'      => ['🔵','#0284c7','#e0f2fe','Enfriándose'],
-    'no_abierta'       => ['❌','#dc2626','#fef2f2','No abierta'],
+    'onfire'                => ['🔴','#991b1b','#fff1f2','On Fire'],
+    'inminente'             => ['🟠','#c2410c','#fff7ed','Inminente'],
+    'probable_cierre'       => ['🟡','#92400e','#fffbeb','Probable cierre'],
+    'decision_activa'       => ['🟡','#92400e','#fffbeb','Decisión activa'],
+    'validando_precio'      => ['💸','#92400e','#fffbeb','Validando precio'],
+    'prediccion_alta'       => ['🔮','#166534','#f0fdf4','Predicción alta'],
+    'alto_importe'          => ['💰','#1d4ed8','#dbeafe','Alto importe'],
+    're_enganche_caliente'  => ['🔥','#6d28d9','#ede9fe','Re-enganche caliente'],
+    're_enganche'           => ['🟣','#6d28d9','#ede9fe','Re-enganche'],
+    'multi_persona'         => ['👥','#1d4ed8','#dbeafe','Multi-persona'],
+    'revision_profunda'     => ['🧾','#1d4ed8','#dbeafe','Revisión profunda'],
+    'vistas_multiples'      => ['🟩','#166534','#f0fdf4','Vistas múltiples'],
+    'hesitacion'            => ['🟠','#c2410c','#fff7ed','Hesitación'],
+    'sobre_analisis'        => ['🟤','#64748b','#f1f5f9','Sobre-análisis'],
+    'revivio'               => ['💜','#6d28d9','#ede9fe','Revivió'],
+    'regreso'               => ['🟣','#6d28d9','#ede9fe','Regreso'],
+    'comparando'            => ['🔘','#94a3b8','#f1f5f9','Comparando'],
+    'enfriandose'           => ['🔵','#0284c7','#e0f2fe','Enfriándose'],
+    'no_abierta'            => ['❌','#dc2626','#fef2f2','No abierta'],
 ];
 function rbadge(?string $b,?int $sc,array $BM): string {
     if(!$b) return '<span style="color:var(--t3);font-size:11px">—</span>';
@@ -121,11 +122,12 @@ function rbadge(?string $b,?int $sc,array $BM): string {
     return "<span style='display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font:700 11px var(--body);background:{$bg};color:{$col};white-space:nowrap'>{$ico} {$lbl}{$s}</span>";
 }
 
-// PRIORIDAD idéntica a radar_3_.php
-$PRIO = ['onfire','inminente','probable_cierre','decision_activa','validando_precio',
-         'prediccion_alta','re_enganche','multi_persona','revision_profunda',
-         'alto_importe','vistas_multiples','hesitacion','sobre_analisis',
-         'revivio','regreso','comparando','enfriandose','no_abierta'];
+// PRIORIDAD v2.3: re_enganche_caliente antes de re_enganche
+$PRIO = ['onfire','inminente','probable_cierre','validando_precio',
+         'prediccion_alta','alto_importe','decision_activa','revivio',
+         'no_abierta','re_enganche_caliente','re_enganche','multi_persona',
+         'revision_profunda','vistas_multiples','hesitacion','sobre_analisis',
+         'regreso','comparando','enfriandose'];
 
 $buckets = array_fill_keys($PRIO, []);
 $activos48 = [];
@@ -381,7 +383,7 @@ render_bkt('🔥 Cierre inminente',
     $buckets['inminente'],$sort,$dir);
 
 render_bkt('🔥 Probable cierre (PRIORIDAD)',
-    'Ventana: últimas 24h + momentum (1+ vistas/24h o 2+ vistas/7d)',
+    'v2.3: Vistas recientes + señal de calidad (precio/scroll/cupón) + piso FIT ≥ 5% o 3+ sesiones. Elimina curiosos sin intención real.',
     $buckets['probable_cierre'],$sort,$dir,false,true);
 
 render_bkt('💸 Validando precio',
@@ -389,7 +391,7 @@ render_bkt('💸 Validando precio',
     $buckets['validando_precio'],$sort,$dir);
 
 render_bkt('🔮 Predicción alta',
-    'FIT ≥ 14% y cotización reciente (30 días)',
+    'v2.3: FIT ≥ 14% + cotización reciente + actividad en ventana proporcional al ciclo de venta (no se muestra si lleva días sin verse)',
     $buckets['prediccion_alta'],$sort,$dir);
 ?>
 </div>
@@ -401,12 +403,16 @@ render_bkt('🧠 Decisión activa',
     '4+ vistas en 48h y regresos reales (span ≥ 6h)',
     $buckets['decision_activa'],$sort,$dir);
 
-render_bkt('💰 Alto importe 48h',
-    'Importe ≥ $120,000 y vista en últimas 48h',
+render_bkt('💰 Alto importe',
+    'v2.2: Umbral dinámico P80 de la empresa (auto-calculado). Vista reciente.',
     $buckets['alto_importe'],$sort,$dir);
 
-render_bkt('🟣 Re-enganche decisivo',
-    'Gap ≥ 4d y last < 168h + (guest_24h ≥ 1 o vistas24 ≥ 1) + FIT% ≥ 5%',
+render_bkt('🔥 Re-enganche caliente',
+    'v2.3: Regresó tras gap + interactuó con precio (revisó totales, loop, cupón o sv_price). Señal de compra fuerte.',
+    $buckets['re_enganche_caliente'] ?? [],$sort,$dir,true);
+
+render_bkt('🟣 Re-enganche',
+    'v2.3: Regresó tras gap + señal de interés, pero sin foco directo en precio. Oportunidad de seguimiento.',
     $buckets['re_enganche'],$sort,$dir,true);
 
 render_bkt('👥 Revisión multi-persona',
@@ -426,7 +432,7 @@ render_bkt('🟠 Hesitación',
     $buckets['hesitacion'],$sort,$dir);
 
 render_bkt('🟤 Sobre-análisis',
-    'guest_total ≥ 8, sesiones ≥ 20, edad ≥ 7d, last < 21d + poca expansión post guest',
+    'v2.3: Muchas sesiones + muchos guests + edad alta + FIT bajo (umbral por modo). Posible parálisis de decisión.',
     $buckets['sobre_analisis'],$sort,$dir);
 
 render_bkt('💜 Revivió cotización vieja (señal exclusiva)',
@@ -438,7 +444,7 @@ render_bkt('🟣 Regreso después de +4 días (señal exclusiva)',
     $buckets['regreso'],$sort,$dir,true);
 
 render_bkt('🟠 Comparando / Compartiendo (señal exclusiva)',
-    '2+ IPs distintas en 24h y última vista en 24h',
+    'v2.3: 2+ IPs distintas en ventana + al menos 1 evento JS (anti-bot). Indica comité o compartido.',
     $buckets['comparando'],$sort,$dir);
 
 // Enfriándose con motivo
@@ -450,11 +456,11 @@ foreach ($cooling as &$cr) {
 }
 unset($cr);
 render_bkt('🔵 Enfriándose (señal exclusiva)',
-    'Tuvo 4+ vistas históricas pero no se ha visto en 48h. Distingue si ya había foco en precio o no.',
+    'v2.3: Tuvo sesiones + engagement real (scroll/visible/open) pero dejó de ver. Distingue precio/sin precio. Sin engagement previo = no aparece (está perdido, no enfriándose).',
     $cooling,$sort,$dir,false,true);
 
 render_bkt('❌ No abierta',
-    'Cotizaciones creadas en los últimos 7 días (con más de 24h) sin evidencia de apertura por el cliente — ni vistas externas ni eventos JS.',
+    'Cotización con más de 24h y dentro de su vigencia, sin evidencia de apertura por el cliente — ni vistas externas ni eventos JS.',
     $buckets['no_abierta'] ?? [],$sort,$dir);
 
 render_bkt('🟡 Activos 48h (todos los activos)',
