@@ -95,7 +95,7 @@ function rmoney(float $n): string {
     return '$'.number_format($n,0);
 }
 
-$BM = [
+$GLOBALS['BM'] = $BM = [
     'onfire'                => ['🔴','#991b1b','#fff1f2','On Fire'],
     'inminente'             => ['🟠','#c2410c','#fff7ed','Inminente'],
     'probable_cierre'       => ['🎯','#92400e','#fffbeb','Probable cierre'],
@@ -237,15 +237,23 @@ $ips_internas = DB::query("SELECT * FROM radar_ips_internas WHERE empresa_id=? O
 // Render de cada bucket
 function render_bkt(string $tit, string $hint, array $items, string $s, string $d, bool $gap=false, bool $motivo=false, string $bkt_key=''): void {
     $PB = $GLOBALS['PLAYBOOK'] ?? [];
-    echo "<div class='rbk'>";
-    echo "<div class='rbk-hd'>";
+    $BM = $GLOBALS['BM'] ?? [];
+    $bm = $BM[$bkt_key] ?? null;
+    $border_color = $bm ? $bm[1] : '#94a3b8';
+    $bg_color = $bm ? $bm[2] : '#f8fafc';
+    $has_items = count($items) > 0;
+    $border_style = $has_items ? "border-left:4px solid {$border_color}" : "border-left:4px solid #d1d5db";
+    echo "<div class='rbk' style='{$border_style}'>";
+    echo "<div class='rbk-hd' style='".($has_items ? "background:{$bg_color}" : "")."'>";
     echo "<span class='rbk-tit'>".htmlspecialchars($tit)."</span>";
     echo "<span class='rbk-hint'>".htmlspecialchars($hint)."</span>";
     echo "<span class='rbk-right'>";
     if ($bkt_key && isset($PB[$bkt_key])) {
         echo "<button class='pb-btn' onclick=\"openPlaybook('{$bkt_key}')\">📖 Playbook</button>";
     }
-    echo "<span class='rbk-n'>".count($items)."</span>";
+    $n = count($items);
+    $n_class = $n > 0 ? 'rbk-n rbk-n-active' : 'rbk-n';
+    echo "<span class='{$n_class}'>{$n}</span>";
     echo "</span>";
     echo "</div>";
     if (!$items) { echo "<div class='rbk-em'>Sin registros.</div></div>"; return; }
@@ -320,12 +328,13 @@ ob_start();
 .rtab:not(.on) .rtab-c{background:var(--bg);color:var(--t2);border:1px solid var(--border)}
 .tab-panel{display:none}.tab-panel.on{display:block}
 
-.rbk{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:12px}
+.rbk{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:14px}
 .rbk-hd{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);flex-wrap:wrap}
 .rbk-tit{font:700 13px var(--body);white-space:nowrap}
 .rbk-hint{font:400 11px var(--body);color:var(--t3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rbk-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
-.rbk-n{font:700 13px var(--num);color:var(--t3);white-space:nowrap}
+.rbk-n{font:700 13px var(--num);color:var(--t3);white-space:nowrap;min-width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px}
+.rbk-n-active{background:var(--g);color:#fff;padding:0 8px}
 .rbk-em{padding:14px 16px;font:400 13px var(--body);color:var(--t3)}
 @media(max-width:600px){.rbk-hint{display:none}}
 
