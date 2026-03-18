@@ -365,11 +365,11 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 echo "<div class='dbg-sec'><div class='dbg-lbl'>Prob. Cierre ({$pc['total']}/4 cats)</div><div class='dbg-val'>";
                 foreach (['engagement','precio'] as $cat) {
                     $on = $pc[$cat] ?? false;
-                    echo "<span class='dbg-tag".($on?' dbg-on':'')."'>⚡$cat</span> ";
+                    echo $on ? "<span class='dbg-tag dbg-on'>⚡$cat</span> " : "<span class='dbg-tag dbg-off'>$cat</span> ";
                 }
                 foreach (['persistencia','social'] as $cat) {
                     $on = $pc[$cat] ?? false;
-                    echo "<span class='dbg-tag".($on?' dbg-on':'')."'>$cat</span> ";
+                    echo "<span class='dbg-tag".($on?' dbg-on':' dbg-off')."'>$cat</span> ";
                 }
                 echo "<span class='dbg-tag".($sess_ok?' dbg-on':' dbg-fail')."'>sess≥2</span> ";
                 echo "<span class='dbg-tag".($strong_ok?' dbg-on':' dbg-fail')."'>cat_fuerte</span>";
@@ -453,6 +453,7 @@ ob_start();
 .dbg-tag{display:inline-block;padding:0 5px;border-radius:4px;font:500 10px var(--body);background:#e5e7eb;color:#6b7280;margin:1px}
 .dbg-tag.dbg-on{background:#dcfce7;color:#166534;font-weight:700}
 .dbg-tag.dbg-fail{background:#fee2e2;color:#991b1b;font-weight:700}
+.dbg-tag.dbg-off{background:#f3f4f6;color:#9ca3af;text-decoration:line-through;font-weight:400}
 .dbg-bkt{display:inline-block;padding:1px 6px;border-radius:6px;font:600 10px var(--body);background:#e0e7ff;color:#3730a3;margin:1px}
 .dbg-bkt.dbg-main{background:#4f46e5;color:#fff}
 
@@ -814,10 +815,12 @@ render_bkt('🟡 Activos 48h (todos los activos)',
         ?>
         <div class="dbg-sec"><div class="dbg-lbl">Prob. Cierre (<?= $pc_d['total'] ?>/4 cats)</div><div class="dbg-val">
           <?php foreach (['engagement','precio'] as $cat): $on=$pc_d[$cat]??false; ?>
-            <span class="dbg-tag<?= $on?' dbg-on':'' ?>">⚡<?= $cat ?></span>
+            <?php if ($on): ?><span class="dbg-tag dbg-on">⚡<?= $cat ?></span>
+            <?php else: ?><span class="dbg-tag dbg-off"><?= $cat ?></span>
+            <?php endif; ?>
           <?php endforeach; ?>
           <?php foreach (['persistencia','social'] as $cat): $on=$pc_d[$cat]??false; ?>
-            <span class="dbg-tag<?= $on?' dbg-on':'' ?>"><?= $cat ?></span>
+            <span class="dbg-tag<?= $on?' dbg-on':' dbg-off' ?>"><?= $cat ?></span>
           <?php endforeach; ?>
           <span class="dbg-tag<?= $sess_ok?' dbg-on':' dbg-fail' ?>">sess≥2</span>
           <span class="dbg-tag<?= $strong_ok?' dbg-on':' dbg-fail' ?>">cat_fuerte</span>
