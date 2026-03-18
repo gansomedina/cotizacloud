@@ -157,6 +157,7 @@ class Router
 
         self::get('/reportes',               fn()   => self::app('reportes',    'index'));
         self::get('/ayuda',                  fn()   => self::app('ayuda',       'index'));
+        self::post('/ayuda/ticket',          fn()   => self::app('ayuda',       'ticket'));
 
         self::get('/config',                              fn()   => self::app('config', 'index'));
         self::post('/config/empresa',                     fn()   => self::app('config', 'guardar_empresa'));
