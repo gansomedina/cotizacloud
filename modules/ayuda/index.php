@@ -48,6 +48,21 @@ ob_start();
 .ay-step h4{font:700 14px var(--body);margin:0 0 4px}
 .ay-step p{font:400 13px var(--body);color:var(--t3);margin:0;line-height:1.6}
 
+/* ── Form ── */
+.ay-field{margin-bottom:16px}
+.ay-field label{display:block;font:600 13px var(--body);color:var(--t1);margin-bottom:6px}
+.ay-field input[type="text"],.ay-field textarea{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:var(--r-sm);font:400 14px var(--body);color:var(--t1);background:var(--bg);transition:border-color .15s;box-sizing:border-box;resize:vertical}
+.ay-field input[type="text"]:focus,.ay-field textarea:focus{outline:none;border-color:var(--g);box-shadow:0 0 0 3px rgba(16,185,129,.1)}
+.ay-upload-area{border:2px dashed var(--border);border-radius:var(--r);padding:0;cursor:pointer;transition:border-color .15s;overflow:hidden;position:relative}
+.ay-upload-area:hover,.ay-upload-area.dragover{border-color:var(--g);background:var(--g-bg)}
+.ay-upload-placeholder{display:flex;flex-direction:column;align-items:center;gap:6px;padding:28px 20px;color:var(--t3);font:500 13px var(--body)}
+.ay-upload-preview{position:relative;text-align:center;padding:12px}
+.ay-upload-preview img{max-width:100%;max-height:220px;border-radius:var(--r-sm);object-fit:contain}
+.ay-upload-remove{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.ay-btn-submit{display:inline-flex;align-items:center;gap:8px;padding:10px 28px;background:var(--g);color:#fff;border:none;border-radius:var(--r-sm);font:600 14px var(--body);cursor:pointer;transition:opacity .15s}
+.ay-btn-submit:hover{opacity:.9}
+.ay-btn-submit:disabled{opacity:.5;cursor:not-allowed}
+
 .ay-tip{background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--r);padding:14px 18px;margin:16px 0;font:400 13px var(--body);color:#1e40af;line-height:1.6}
 .ay-tip::before{content:'💡 ';font-size:15px}
 
@@ -92,6 +107,7 @@ ob_start();
   <div class="ay-nav-section">Inicio</div>
   <a href="#inicio" class="active" onclick="ayTab('inicio',this)"><span class="ay-ico">🏠</span> Bienvenida</a>
   <a href="#primeros-pasos" onclick="ayTab('primeros-pasos',this)"><span class="ay-ico">🚀</span> Primeros pasos</a>
+  <a href="#soporte" onclick="ayTab('soporte',this)"><span class="ay-ico">🎫</span> Enviar ticket</a>
 
   <div class="ay-nav-section">Módulos</div>
   <a href="#dashboard" onclick="ayTab('dashboard',this)"><span class="ay-ico">📊</span> Dashboard</a>
@@ -189,6 +205,48 @@ ob_start();
   </div>
 
   <div class="ay-tip">Una vez que el cliente acepta, la cotización se convierte en venta automáticamente. Desde ahí puedes registrar pagos y emitir recibos.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  ENVIAR TICKET DE SOPORTE                              -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-soporte">
+  <h2 class="ay-h2">🎫 Enviar ticket de soporte</h2>
+  <p class="ay-subtitle">¿Tienes un problema o necesitas ayuda? Descríbelo y nuestro equipo te contactará.</p>
+
+  <div class="ay-card">
+    <form action="/ayuda/ticket" method="POST" enctype="multipart/form-data" id="ticketForm">
+      <?= csrf_field() ?>
+
+      <div class="ay-field">
+        <label for="tk-titulo">Título del problema</label>
+        <input type="text" id="tk-titulo" name="titulo" required maxlength="255" placeholder="Ej: No puedo enviar cotización al cliente">
+      </div>
+
+      <div class="ay-field">
+        <label for="tk-desc">Descripción</label>
+        <textarea id="tk-desc" name="descripcion" required rows="5" placeholder="Describe el problema con el mayor detalle posible: qué intentabas hacer, qué pasó y qué esperabas que pasara."></textarea>
+      </div>
+
+      <div class="ay-field">
+        <label for="tk-img">Captura de pantalla <span style="color:var(--t3);font-weight:400">(opcional)</span></label>
+        <div class="ay-upload-area" id="uploadArea">
+          <input type="file" id="tk-img" name="imagen" accept="image/*" style="display:none">
+          <div class="ay-upload-placeholder" id="uploadPlaceholder">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>Haz clic o arrastra una imagen aquí</span>
+            <span style="font-size:11px;color:var(--t3)">JPG, PNG o GIF — Máx <?= MAX_UPLOAD_MB ?>MB</span>
+          </div>
+          <div class="ay-upload-preview" id="uploadPreview" style="display:none">
+            <img id="previewImg" src="" alt="Preview">
+            <button type="button" class="ay-upload-remove" onclick="removeImage()">&times;</button>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="ay-btn-submit" id="btnSubmit">Enviar ticket</button>
+    </form>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -536,6 +594,57 @@ ob_start();
 </div><!-- .ay-wrap -->
 
 <script>
+// ── Upload area: click, drag & drop, preview ──
+(function(){
+  var area = document.getElementById('uploadArea');
+  var input = document.getElementById('tk-img');
+  var ph = document.getElementById('uploadPlaceholder');
+  var pv = document.getElementById('uploadPreview');
+  var img = document.getElementById('previewImg');
+  if (!area) return;
+
+  area.addEventListener('click', function(){ input.click(); });
+  input.addEventListener('change', function(){ if(input.files[0]) showPreview(input.files[0]); });
+
+  area.addEventListener('dragover', function(e){ e.preventDefault(); area.classList.add('dragover'); });
+  area.addEventListener('dragleave', function(){ area.classList.remove('dragover'); });
+  area.addEventListener('drop', function(e){
+    e.preventDefault(); area.classList.remove('dragover');
+    if(e.dataTransfer.files[0]){
+      input.files = e.dataTransfer.files;
+      showPreview(e.dataTransfer.files[0]);
+    }
+  });
+
+  window.showPreview = function(file){
+    if(!file.type.startsWith('image/')){ return; }
+    var reader = new FileReader();
+    reader.onload = function(e){ img.src = e.target.result; ph.style.display='none'; pv.style.display='block'; };
+    reader.readAsDataURL(file);
+  };
+  window.removeImage = function(){
+    input.value = ''; img.src = ''; pv.style.display='none'; ph.style.display='flex';
+  };
+})();
+
+// ── Auto-open section from hash (for redirect after ticket submit) ──
+(function(){
+  var h = window.location.hash.replace('#','');
+  if (h) {
+    var link = document.querySelector('.ay-nav a[href="#'+h+'"]');
+    if (link) ayTab(h, link);
+  }
+})();
+
+// ── Prevent double submit ──
+(function(){
+  var form = document.getElementById('ticketForm');
+  if(form) form.addEventListener('submit', function(){
+    document.getElementById('btnSubmit').disabled = true;
+    document.getElementById('btnSubmit').textContent = 'Enviando...';
+  });
+})();
+
 function ayTab(id, el) {
   document.querySelectorAll('.ay-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.ay-nav a').forEach(a => a.classList.remove('active'));
