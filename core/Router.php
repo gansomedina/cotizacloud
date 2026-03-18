@@ -93,6 +93,11 @@ class Router
 
         // ══ DOMINIO RAÍZ: login + registro + panel ═══════════
 
+        // ── Setup temporal (ELIMINAR después de usar) ─────
+        self::get('/setup-superadmin', function() {
+            require ROOT_PATH . '/migrations/setup_superadmin.php';
+        });
+
         // ── Auth (público) ─────────────────────────────────
         self::get('/login',    fn() => self::load('auth', 'login'));
         self::post('/login',   fn() => self::load('auth', 'login_post'));
