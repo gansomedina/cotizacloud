@@ -29,6 +29,7 @@ $limit  = isset($_GET['limit']) ? max(10, min(300, (int)$_GET['limit'])) : 50;
 $sort   = in_array($_GET['sort'] ?? '', ['titulo','last','amount','fit','priority']) ? $_GET['sort'] : 'priority';
 $dir    = in_array($_GET['dir']  ?? '', ['asc','desc']) ? $_GET['dir'] : 'desc';
 $debug_mode = $es_admin && (($_GET['debug'] ?? '') === '1');
+$GLOBALS['debug_mode'] = $debug_mode;
 
 $range_secs = ['all'=>0,'48h'=>48*3600,'4h'=>4*3600,'30m'=>30*60];
 $min_last   = ($range !== 'all' && isset($range_secs[$range])) ? time() - $range_secs[$range] : 0;
@@ -236,6 +237,7 @@ $ips_internas = DB::query("SELECT * FROM radar_ips_internas WHERE empresa_id=? O
 
 // Render de cada bucket
 function render_bkt(string $tit, string $hint, array $items, string $s, string $d, bool $gap=false, bool $motivo=false, string $bkt_key=''): void {
+    $debug_mode = $GLOBALS['debug_mode'] ?? false;
     $PB = $GLOBALS['PLAYBOOK'] ?? [];
     $BM = $GLOBALS['BM'] ?? [];
     $bm = $BM[$bkt_key] ?? null;
@@ -302,6 +304,81 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         echo "<td class='col-vista'>$last_fmt</td>";
         echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a></td>";
         echo "</tr>";
+        // Debug row: show all scoring internals
+        if ($debug_mode) {
+            $dbg = $r['senales']['debug'] ?? [];
+            $sn  = $r['senales']['senales'] ?? [];
+            $bks = $r['senales']['buckets'] ?? [];
+            $ics = $r['senales']['icons'] ?? [];
+            $pcs = $r['senales']['pc_source'] ?? null;
+            $col_span = 6 + ($motivo ? 1 : 0);
+            echo "<tr class='dbg-row'><td colspan='{$col_span}' style='padding:6px 12px 10px;background:#fffbeb;border-bottom:2px solid #fde68a'>";
+            echo "<div class='dbg-grid'>";
+            // Internals
+            echo "<div class='dbg-sec'><div class='dbg-lbl'>Internos</div><div class='dbg-val'>";
+            echo "sess:<b>".($dbg['sessions']??'?')."</b> ";
+            echo "guest:<b>".($dbg['guest']??'?')."</b> ";
+            echo "ips:<b>".($dbg['uniq_ips']??'?')."</b> ";
+            echo "gap:<b>".($dbg['gap_days']!==null?$dbg['gap_days'].'d':'—')."</b> ";
+            echo "v24:<b>".($dbg['views24']??'?')."</b> ";
+            echo "v48:<b>".($dbg['views48']??'?')."</b> ";
+            echo "span48:<b>".($dbg['span48h']??'?')."</b> ";
+            echo "pss:<b>".($dbg['pss']??'?')."</b> ";
+            echo "ev_v:<b>".($dbg['ev_uniq_v']??'?')."</b> ";
+            echo "modo:<b>".($dbg['modo']??'?')."</b>";
+            echo "</div></div>";
+            // Signals
+            if ($sn) {
+                echo "<div class='dbg-sec'><div class='dbg-lbl'>Señales</div><div class='dbg-val'>";
+                $sn_parts = [];
+                foreach ($sn as $sk => $sv) {
+                    $sn_parts[] = "<span class='dbg-tag".($sv?' dbg-on':'')."'>$sk</span>";
+                }
+                echo implode(' ', $sn_parts);
+                echo "</div></div>";
+            }
+            // Buckets
+            echo "<div class='dbg-sec'><div class='dbg-lbl'>Buckets</div><div class='dbg-val'>";
+            if ($bks) {
+                foreach ($bks as $bk) {
+                    $is_main = ($bk === ($r['bucket'] ?? ''));
+                    echo "<span class='dbg-bkt".($is_main?' dbg-main':'')."'>$bk</span> ";
+                }
+            } else {
+                echo "<span style='color:#9ca3af'>ninguno</span>";
+            }
+            if ($pcs) echo " <span style='color:#6b7280;font-size:11px'>pc_source=$pcs</span>";
+            echo "</div></div>";
+            // Icons
+            if ($ics) {
+                echo "<div class='dbg-sec'><div class='dbg-lbl'>Icons</div><div class='dbg-val'>";
+                foreach ($ics as $ik => $iv) {
+                    if ($iv) echo "<span class='dbg-tag dbg-on'>$ik</span> ";
+                }
+                echo "</div></div>";
+            }
+            // Probable cierre categories
+            $pc = $dbg['pc_cats'] ?? null;
+            if ($pc) {
+                echo "<div class='dbg-sec'><div class='dbg-lbl'>Prob. Cierre ({$pc['total']}/4 cats)</div><div class='dbg-val'>";
+                foreach (['engagement','precio','persistencia','social'] as $cat) {
+                    $on = $pc[$cat] ?? false;
+                    echo "<span class='dbg-tag".($on?' dbg-on':'')."'>$cat</span> ";
+                }
+                echo "</div></div>";
+            }
+            // Extra scoring details
+            if (isset($dbg['scroll_cls'])) {
+                echo "<div class='dbg-sec'><div class='dbg-lbl'>Engagement</div><div class='dbg-val'>";
+                echo "scroll_cls:<b>".($dbg['scroll_cls']??0)."%</b> ";
+                echo "scroll_any:<b>".($dbg['scroll_any']??0)."%</b> ";
+                echo "vis_max:<b>".($dbg['vis_max']??0)."ms</b> ";
+                echo "vis_sum:<b>".($dbg['vis_sum']??0)."ms</b> ";
+                echo "ips_post:<b>".($dbg['ips_post_guest']??0)."</b>";
+                echo "</div></div>";
+            }
+            echo "</div></td></tr>";
+        }
     }
     echo "</tbody></table></div></div>";
 }
@@ -356,6 +433,19 @@ ob_start();
 .bno{display:inline-block;padding:1px 6px;border-radius:8px;font:700 10px var(--body);background:var(--bg);border:1px solid var(--border);color:var(--t2)}
 .rlnk{font:600 12px var(--body);color:var(--g);text-decoration:none}
 .rlnk:hover{text-decoration:underline}
+
+/* Debug rows */
+.dbg-row td{cursor:default!important}
+.dbg-row:hover td{background:#fffbeb!important}
+.dbg-grid{display:flex;flex-wrap:wrap;gap:6px 16px}
+.dbg-sec{min-width:0}
+.dbg-lbl{font:700 9px var(--body);text-transform:uppercase;letter-spacing:.08em;color:#92400e;margin-bottom:2px}
+.dbg-val{font:400 11px var(--num);color:#78350f;line-height:1.6;word-break:break-all}
+.dbg-val b{font-weight:700;color:#451a03}
+.dbg-tag{display:inline-block;padding:0 5px;border-radius:4px;font:500 10px var(--body);background:#e5e7eb;color:#6b7280;margin:1px}
+.dbg-tag.dbg-on{background:#dcfce7;color:#166534;font-weight:700}
+.dbg-bkt{display:inline-block;padding:1px 6px;border-radius:6px;font:600 10px var(--body);background:#e0e7ff;color:#3730a3;margin:1px}
+.dbg-bkt.dbg-main{background:#4f46e5;color:#fff}
 
 .modo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
 .modo-opt{padding:14px 16px;border:1.5px solid var(--border);border-radius:var(--r-sm);cursor:pointer;transition:all .12s;background:var(--white)}
@@ -670,6 +760,64 @@ render_bkt('🟡 Activos 48h (todos los activos)',
       <td><?= rbadge($r['bucket'],$r['score'],$BM) ?></td>
       <td><a href="/cotizaciones/<?= (int)$r['id'] ?>" class="rlnk">Editar</a></td>
     </tr>
+    <?php if ($debug_mode):
+        $dbg = $r['senales']['debug'] ?? [];
+        $sn  = $r['senales']['senales'] ?? [];
+        $bks = $r['senales']['buckets'] ?? [];
+        $ics = $r['senales']['icons'] ?? [];
+        $pcs = $r['senales']['pc_source'] ?? null;
+    ?>
+    <tr class="dbg-row"><td colspan="8" style="padding:6px 12px 10px;background:#fffbeb;border-bottom:2px solid #fde68a">
+      <div class="dbg-grid">
+        <div class="dbg-sec"><div class="dbg-lbl">Internos</div><div class="dbg-val">
+          sess:<b><?= $dbg['sessions']??'?' ?></b>
+          guest:<b><?= $dbg['guest']??'?' ?></b>
+          ips:<b><?= $dbg['uniq_ips']??'?' ?></b>
+          gap:<b><?= isset($dbg['gap_days']) && $dbg['gap_days']!==null ? $dbg['gap_days'].'d' : '—' ?></b>
+          v24:<b><?= $dbg['views24']??'?' ?></b>
+          v48:<b><?= $dbg['views48']??'?' ?></b>
+          span48:<b><?= $dbg['span48h']??'?' ?></b>
+          pss:<b><?= $dbg['pss']??'?' ?></b>
+          ev_v:<b><?= $dbg['ev_uniq_v']??'?' ?></b>
+          modo:<b><?= $dbg['modo']??'?' ?></b>
+        </div></div>
+        <?php if ($sn): ?>
+        <div class="dbg-sec"><div class="dbg-lbl">Señales</div><div class="dbg-val">
+          <?php foreach ($sn as $sk=>$sv): ?><span class="dbg-tag<?= $sv?' dbg-on':'' ?>"><?= $sk ?></span> <?php endforeach; ?>
+        </div></div>
+        <?php endif; ?>
+        <div class="dbg-sec"><div class="dbg-lbl">Buckets</div><div class="dbg-val">
+          <?php if ($bks): foreach ($bks as $bk): $is_main=($bk===($r['bucket']??'')); ?>
+            <span class="dbg-bkt<?= $is_main?' dbg-main':'' ?>"><?= $bk ?></span>
+          <?php endforeach; else: ?>
+            <span style="color:#9ca3af">ninguno</span>
+          <?php endif; ?>
+          <?php if ($pcs): ?> <span style="color:#6b7280;font-size:11px">pc_source=<?= $pcs ?></span><?php endif; ?>
+        </div></div>
+        <?php if ($ics): ?>
+        <div class="dbg-sec"><div class="dbg-lbl">Icons</div><div class="dbg-val">
+          <?php foreach ($ics as $ik=>$iv): if($iv): ?><span class="dbg-tag dbg-on"><?= $ik ?></span> <?php endif; endforeach; ?>
+        </div></div>
+        <?php endif; ?>
+        <?php $pc_d = $dbg['pc_cats'] ?? null; if ($pc_d): ?>
+        <div class="dbg-sec"><div class="dbg-lbl">Prob. Cierre (<?= $pc_d['total'] ?>/4 cats)</div><div class="dbg-val">
+          <?php foreach (['engagement','precio','persistencia','social'] as $cat): $on=$pc_d[$cat]??false; ?>
+            <span class="dbg-tag<?= $on?' dbg-on':'' ?>"><?= $cat ?></span>
+          <?php endforeach; ?>
+        </div></div>
+        <?php endif; ?>
+        <?php if (isset($dbg['scroll_cls'])): ?>
+        <div class="dbg-sec"><div class="dbg-lbl">Engagement</div><div class="dbg-val">
+          scroll_cls:<b><?= $dbg['scroll_cls']??0 ?>%</b>
+          scroll_any:<b><?= $dbg['scroll_any']??0 ?>%</b>
+          vis_max:<b><?= $dbg['vis_max']??0 ?>ms</b>
+          vis_sum:<b><?= $dbg['vis_sum']??0 ?>ms</b>
+          ips_post:<b><?= $dbg['ips_post_guest']??0 ?></b>
+        </div></div>
+        <?php endif; ?>
+      </div>
+    </td></tr>
+    <?php endif; ?>
     <?php endforeach; ?>
     </tbody>
   </table></div>
