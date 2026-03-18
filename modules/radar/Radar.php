@@ -88,6 +88,7 @@ class Radar
         'multip_ip_window_min'       => [720,   480,   360  ],
         'multip_min_ips_post_guest'  => [2,     3,     4    ],
         'multip_min_guest_total'     => [1,     2,     3    ],
+        'multip_boost_vis_max'       => [8000,  12000, 16000],
 
         // ── Bucket 9: Revisión profunda ──────────────────────
         'deep_recent_hours'          => [96,    72,    48   ],
@@ -650,7 +651,7 @@ class Radar
         // ── 8. Multi-persona ────────────────────────────────
         $multip_boost = (
             $has_tot_rev || $has_loop || $pss >= 3.0 || $e_opens >= 2 ||
-            $e_closes >= 1 || $e_vis_max >= 12000 || $e_mv_price || $e_uniq_v >= 2
+            $e_closes >= 1 || $e_vis_max >= (int)self::u('multip_boost_vis_max', $modo) || $e_mv_price || $e_uniq_v >= 2
         );
         if (
             !$accepted &&
@@ -1060,8 +1061,8 @@ class Radar
                     (SELECT COUNT(*)        FROM quote_sessions qs WHERE qs.cotizacion_id=c.id) AS num_sess,
                     (SELECT COUNT(DISTINCT qs2.ip) FROM quote_sessions qs2 WHERE qs2.cotizacion_id=c.id) AS num_ips,
                     DATEDIFF(
-                        (SELECT MAX(qs3.created_at) FROM quote_sessions qs3 WHERE qs3.cotizacion_id=c.id),
-                        (SELECT MIN(qs4.created_at) FROM quote_sessions qs4 WHERE qs4.cotizacion_id=c.id)
+                        (SELECT qs3.created_at FROM quote_sessions qs3 WHERE qs3.cotizacion_id=c.id ORDER BY qs3.created_at DESC LIMIT 1),
+                        (SELECT qs4.created_at FROM quote_sessions qs4 WHERE qs4.cotizacion_id=c.id ORDER BY qs4.created_at DESC LIMIT 1 OFFSET 1)
                     ) AS gap_d
              FROM cotizaciones c
              WHERE c.empresa_id=? AND c.estado NOT IN ('borrador')",
@@ -1172,7 +1173,9 @@ class Radar
     // ============================================================
     public static function lista_activas(int $empresa_id, ?int $usuario_id = null): array
     {
-        $uw = $usuario_id ? "AND c.usuario_id=$usuario_id" : '';
+        $uw = $usuario_id ? "AND c.usuario_id=?" : '';
+        $params = [$empresa_id];
+        if ($usuario_id) $params[] = $usuario_id;
         return DB::query(
             "SELECT c.id, c.titulo, c.numero, c.total, c.estado,
                     c.radar_score, c.radar_bucket, c.radar_senales, c.radar_updated_at,
@@ -1186,7 +1189,7 @@ class Radar
              LEFT JOIN usuarios  u  ON u.id=c.usuario_id
              WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada') $uw
              ORDER BY c.radar_score IS NULL ASC, c.radar_score DESC, c.ultima_vista_at DESC",
-            [$empresa_id]
+            $params
         );
     }
 }
