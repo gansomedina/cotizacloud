@@ -1062,24 +1062,33 @@ class Radar
             ]
         );
 
-        // Push notification cuando entra en un bucket importante (solo si cambió)
+        // Push notification cuando entra en un bucket importante
+        // Condiciones: bucket cambió + no se envió push para esta cotización en 24h
         if (
             $r['bucket'] !== null &&
             $r['bucket'] !== $old_bucket &&
             isset(self::PUSH_BUCKETS[$r['bucket']])
         ) {
-            try {
-                $label = self::PUSH_BUCKETS[$r['bucket']];
-                $ref = $cot['numero'] ?: $cot['titulo'] ?: "#{$cotizacion_id}";
-                PushNotification::enviar_a_empresa(
-                    $empresa_id,
-                    'radar_' . $r['bucket'],
-                    "Radar: {$label}",
-                    "{$ref} — {$label}",
-                    ['cotizacion_id' => $cotizacion_id, 'url' => '/radar']
-                );
-            } catch (\Exception $e) {
-                // No bloquear el recálculo si falla el push
+            $ya_enviado = (int)DB::val(
+                "SELECT COUNT(*) FROM notificaciones_push
+                 WHERE empresa_id = ? AND tipo LIKE 'radar_%'
+                   AND datos LIKE ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+                [$empresa_id, '%"cotizacion_id":' . $cotizacion_id . '%']
+            );
+            if ($ya_enviado === 0) {
+                try {
+                    $label = self::PUSH_BUCKETS[$r['bucket']];
+                    $ref = $cot['numero'] ?: $cot['titulo'] ?: "#{$cotizacion_id}";
+                    PushNotification::enviar_a_empresa(
+                        $empresa_id,
+                        'radar_' . $r['bucket'],
+                        "Radar: {$label}",
+                        "{$ref} — {$label}",
+                        ['cotizacion_id' => $cotizacion_id, 'url' => '/radar']
+                    );
+                } catch (\Exception $e) {
+                    // No bloquear el recálculo si falla el push
+                }
             }
         }
     }
