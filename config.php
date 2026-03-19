@@ -25,6 +25,17 @@ define('SESSION_NAME',     'cza_session');
 define('SESSION_LIFETIME', 60 * 60 * 8);   // 8 horas
 define('CSRF_TOKEN_NAME',  'cza_csrf');
 
+// ─── APNs Push Notifications ────────────────────────────────
+// Configurar estos valores al tener la cuenta Apple Developer:
+// APNS_KEY_PATH: ruta al archivo .p8 descargado de Apple
+// APNS_KEY_ID:   Key ID del portal de Apple
+// APNS_TEAM_ID:  Team ID de tu cuenta Apple Developer
+define('APNS_KEY_PATH',  getenv('APNS_KEY_PATH')  ?: '');
+define('APNS_KEY_ID',    getenv('APNS_KEY_ID')    ?: '');
+define('APNS_TEAM_ID',   getenv('APNS_TEAM_ID')   ?: '');
+define('APNS_BUNDLE_ID', getenv('APNS_BUNDLE_ID') ?: 'com.cotizacloud.app');
+define('APNS_ENV',       getenv('APNS_ENV')       ?: 'production');
+
 // ─── Paths ───────────────────────────────────────────────────
 define('ROOT_PATH',    dirname(__FILE__));
 define('MODULES_PATH', ROOT_PATH . '/modules');
