@@ -325,7 +325,7 @@ foreach ($mas_rutas as $r) {
                 <i data-feather="alert-circle"></i>
                 <div>
                     <strong>Límite de prueba alcanzado.</strong> Has usado <?= $trial['usadas'] ?>/<?= TRIAL_LIMIT ?> cotizaciones.
-                    <a href="/ayuda#sec-licencia" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu licencia</a>
+                    <a href="/licencia" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu licencia</a>
                 </div>
             </div>
             <?php elseif ($trial['cerca']): ?>
@@ -333,7 +333,7 @@ foreach ($mas_rutas as $r) {
                 <i data-feather="alert-triangle"></i>
                 <div>
                     <strong>Prueba:</strong> <?= $trial['restantes'] ?> cotizaciones restantes de <?= TRIAL_LIMIT ?>.
-                    <a href="/ayuda#sec-licencia" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu licencia</a>
+                    <a href="/licencia" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu licencia</a>
                 </div>
             </div>
             <?php elseif ($trial['por_vencer']): ?>
@@ -341,7 +341,7 @@ foreach ($mas_rutas as $r) {
                 <i data-feather="alert-triangle"></i>
                 <div>
                     <strong>Tu licencia vence en <?= $trial['dias_restantes'] ?> día<?= $trial['dias_restantes'] !== 1 ? 's' : '' ?>.</strong>
-                    <a href="/ayuda#sec-licencia" style="color:inherit;font-weight:700;text-decoration:underline">Renueva tu licencia</a>
+                    <a href="/licencia" style="color:inherit;font-weight:700;text-decoration:underline">Renueva tu licencia</a>
                 </div>
             </div>
             <?php endif;

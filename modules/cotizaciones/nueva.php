@@ -33,7 +33,7 @@ if ($trial['agotado']) {
                 <div style="background:var(--amb);height:100%;width:100%;border-radius:6px"></div>
             </div>
         </div>
-        <a href="/ayuda#sec-licencia" class="btn btn-primary" style="padding:12px 28px;font-size:14px">
+        <a href="/licencia" class="btn btn-primary" style="padding:12px 28px;font-size:14px">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             Activar licencia
         </a>
