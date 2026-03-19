@@ -400,36 +400,36 @@ ob_start();
 ?>
 <style>
 .rdr-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
-.rdr-bt{padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:var(--white);font:600 12px var(--body);color:var(--t2);cursor:pointer;white-space:nowrap;transition:all .12s;text-decoration:none}
+.rdr-bt{padding:7px 13px;border-radius:20px;border:1px solid var(--border);background:var(--white);font-weight:600;font-size:12px;color:var(--t2);cursor:pointer;white-space:nowrap;transition:all .12s;text-decoration:none}
 .rdr-bt.active,.rdr-bt:hover:not(.active){background:var(--g);border-color:var(--g);color:#fff}
 .rdr-bt:hover:not(.active){opacity:.85}
 .rdr-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
-.rdr-sv{font:800 22px var(--num);margin-bottom:2px}
-.rdr-sl{font:500 11px var(--body);color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.rdr-sv{font-weight:800;font-size:22px;font-family:var(--num);margin-bottom:2px}
+.rdr-sl{font-weight:500;font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
 
 .rtabs{display:flex;gap:0;background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:20px;flex-wrap:wrap}
-.rtab{padding:10px 16px;font:600 13px var(--body);color:var(--t2);cursor:pointer;border:none;background:none;border-right:1px solid var(--border);transition:all .12s;display:flex;align-items:center;gap:6px}
+.rtab{padding:10px 16px;font-weight:600;font-size:13px;color:var(--t2);cursor:pointer;border:none;background:none;border-right:1px solid var(--border);transition:all .12s;display:flex;align-items:center;gap:6px}
 .rtab:last-child{border-right:none}
 .rtab.on{background:var(--g);color:#fff}
 .rtab:hover:not(.on){background:var(--bg)}
-.rtab-c{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font:700 11px var(--body)}
+.rtab-c{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-weight:700;font-size:11px}
 .rtab.on .rtab-c{background:rgba(255,255,255,.25);color:#fff}
 .rtab:not(.on) .rtab-c{background:var(--bg);color:var(--t2);border:1px solid var(--border)}
 .tab-panel{display:none}.tab-panel.on{display:block}
 
 .rbk{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:14px}
 .rbk-hd{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);flex-wrap:wrap}
-.rbk-tit{font:700 13px var(--body);white-space:nowrap}
-.rbk-hint{font:400 11px var(--body);color:var(--t3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rbk-tit{font-weight:700;font-size:13px;white-space:nowrap}
+.rbk-hint{font-weight:400;font-size:11px;color:var(--t3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rbk-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
-.rbk-n{font:700 13px var(--num);color:var(--t3);white-space:nowrap;min-width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px}
+.rbk-n{font-weight:700;font-size:13px;font-family:var(--num);color:var(--t3);white-space:nowrap;min-width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px}
 .rbk-n-active{background:var(--g);color:#fff;padding:0 8px}
-.rbk-em{padding:14px 16px;font:400 13px var(--body);color:var(--t3)}
+.rbk-em{padding:14px 16px;font-weight:400;font-size:13px;color:var(--t3)}
 @media(max-width:600px){.rbk-hint{display:none}}
 
 .rdrs{overflow-x:auto}
 .rdrt{width:100%;border-collapse:collapse;min-width:520px}
-.rdrt th{font:700 10px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);padding:7px 12px;border-bottom:1.5px solid var(--border);background:var(--bg);white-space:nowrap}
+.rdrt th{font-weight:700;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);padding:7px 12px;border-bottom:1.5px solid var(--border);background:var(--bg);white-space:nowrap}
 .rdrt th a{color:inherit;text-decoration:none}.rdrt th a:hover{text-decoration:underline}
 .rdrt td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
 .rdrt tr:last-child td{border-bottom:none}
@@ -437,13 +437,13 @@ ob_start();
 .rdrt tr.hot4h{background:#fff7cc}
 .rdrt tr:hover td{background:#fafaf8;cursor:pointer}
 .tc{text-align:center}.tr{text-align:right}
-.rtit{font:600 13px var(--body);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
-.rsub{font:400 11px var(--body);color:var(--t3);margin-top:1px}
+.rtit{font-weight:600;font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.rsub{font-weight:400;font-size:11px;color:var(--t3);margin-top:1px}
 .ago{color:#888;font-size:11px}
-.rmot{font:500 11px var(--body);color:var(--t2)}
-.bok{display:inline-block;padding:1px 6px;border-radius:8px;font:700 10px var(--body);background:#dcfce7;border:1px solid #86efac;color:#166534}
-.bno{display:inline-block;padding:1px 6px;border-radius:8px;font:700 10px var(--body);background:var(--bg);border:1px solid var(--border);color:var(--t2)}
-.rlnk{font:600 12px var(--body);color:var(--g);text-decoration:none}
+.rmot{font-weight:500;font-size:11px;color:var(--t2)}
+.bok{display:inline-block;padding:1px 6px;border-radius:8px;font-weight:700;font-size:10px;background:#dcfce7;border:1px solid #86efac;color:#166534}
+.bno{display:inline-block;padding:1px 6px;border-radius:8px;font-weight:700;font-size:10px;background:var(--bg);border:1px solid var(--border);color:var(--t2)}
+.rlnk{font-weight:600;font-size:12px;color:var(--g);text-decoration:none}
 .rlnk:hover{text-decoration:underline}
 
 /* Debug rows */
@@ -451,26 +451,26 @@ ob_start();
 .dbg-row:hover td{background:#fffbeb!important}
 .dbg-grid{display:flex;flex-wrap:wrap;gap:6px 16px}
 .dbg-sec{min-width:0}
-.dbg-lbl{font:700 9px var(--body);text-transform:uppercase;letter-spacing:.08em;color:#92400e;margin-bottom:2px}
-.dbg-val{font:400 11px var(--num);color:#78350f;line-height:1.6;word-break:break-all}
+.dbg-lbl{font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;margin-bottom:2px}
+.dbg-val{font-weight:400;font-size:11px;font-family:var(--num);color:#78350f;line-height:1.6;word-break:break-all}
 .dbg-val b{font-weight:700;color:#451a03}
-.dbg-tag{display:inline-block;padding:0 5px;border-radius:4px;font:500 10px var(--body);background:#e5e7eb;color:#6b7280;margin:1px}
+.dbg-tag{display:inline-block;padding:0 5px;border-radius:4px;font-weight:500;font-size:10px;background:#e5e7eb;color:#6b7280;margin:1px}
 .dbg-tag.dbg-on{background:#dcfce7;color:#166534;font-weight:700}
 .dbg-tag.dbg-fail{background:#fee2e2;color:#991b1b;font-weight:700}
 .dbg-tag.dbg-off{background:#f3f4f6;color:#9ca3af;text-decoration:line-through;font-weight:400}
-.dbg-bkt{display:inline-block;padding:1px 6px;border-radius:6px;font:600 10px var(--body);background:#e0e7ff;color:#3730a3;margin:1px}
+.dbg-bkt{display:inline-block;padding:1px 6px;border-radius:6px;font-weight:600;font-size:10px;background:#e0e7ff;color:#3730a3;margin:1px}
 .dbg-bkt.dbg-main{background:#4f46e5;color:#fff}
 
 .modo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
 .modo-opt{padding:14px 16px;border:1.5px solid var(--border);border-radius:var(--r-sm);cursor:pointer;transition:all .12s;background:var(--white)}
 .modo-opt:hover{border-color:var(--border2)}
 .modo-opt.sel{border-color:var(--g);background:var(--g-bg)}
-.modo-opt-tit{font:700 14px var(--body);margin-bottom:4px}
-.modo-opt-sub{font:400 12px var(--body);color:var(--t3);line-height:1.5}
+.modo-opt-tit{font-weight:700;font-size:14px;margin-bottom:4px}
+.modo-opt-sub{font-weight:400;font-size:12px;color:var(--t3);line-height:1.5}
 .tog-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
 .tog-row:last-child{border-bottom:none}
-.tog-lbl{font:600 13px var(--body)}
-.tog-sub{font:400 12px var(--body);color:var(--t3);margin-top:2px}
+.tog-lbl{font-weight:600;font-size:13px}
+.tog-sub{font-weight:400;font-size:12px;color:var(--t3);margin-top:2px}
 .tog{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0}
 .tog input{opacity:0;width:0;height:0}
 .tog-track{position:absolute;inset:0;background:var(--border2);border-radius:12px;transition:background .2s}
@@ -483,7 +483,7 @@ ob_start();
 .pb-btn{
   padding:4px 12px;border-radius:14px;border:1px solid #c7d2fe;
   background:linear-gradient(135deg,#eef2ff,#e0e7ff);color:#4338ca;
-  font:700 11px var(--body);cursor:pointer;transition:all .15s;
+  font-weight:700;font-size:11px;cursor:pointer;transition:all .15s;
   display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;
 }
 .pb-btn:hover{background:linear-gradient(135deg,#c7d2fe,#a5b4fc);color:#312e81;border-color:#a5b4fc;transform:scale(1.04)}
@@ -506,8 +506,8 @@ ob_start();
   background:linear-gradient(180deg,#fafaff,#fff);border-radius:20px 20px 0 0;
   display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
 }
-.pb-modal-hd h2{margin:0;font:800 20px var(--body);letter-spacing:-.02em;line-height:1.2}
-.pb-modal-hd p{margin:4px 0 0;font:400 13px var(--body);color:#6b7280;line-height:1.5}
+.pb-modal-hd h2{margin:0;font-weight:800;font-size:20px;letter-spacing:-.02em;line-height:1.2}
+.pb-modal-hd p{margin:4px 0 0;font-weight:400;font-size:13px;color:#6b7280;line-height:1.5}
 .pb-close{
   background:none;border:1px solid #e5e7eb;border-radius:10px;
   width:34px;height:34px;font-size:18px;cursor:pointer;color:#6b7280;
@@ -517,41 +517,41 @@ ob_start();
 .pb-body{padding:20px 24px 28px}
 .pb-section{margin-bottom:18px}
 .pb-section h4{
-  margin:0 0 8px;font:700 11px var(--body);text-transform:uppercase;
+  margin:0 0 8px;font-weight:700;font-size:11px;text-transform:uppercase;
   letter-spacing:.12em;color:#6366f1;
 }
 .pb-psych{
   background:#fafaff;border:1px solid #e0e7ff;border-radius:14px;
-  padding:14px 16px;font:400 13.5px var(--body);line-height:1.65;color:#1f2937;
+  padding:14px 16px;font-weight:400;font-size:13.5px;line-height:1.65;color:#1f2937;
   margin-bottom:18px;
 }
 .pb-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
 .pb-mini{border:1px solid #e5e7eb;border-radius:14px;padding:14px 16px;background:#fff}
-.pb-mini h4{margin:0 0 8px;font:700 11px var(--body);text-transform:uppercase;letter-spacing:.1em;color:#4b5563}
+.pb-mini h4{margin:0 0 8px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#4b5563}
 .pb-mini.do-card{border-color:#bbf7d0;background:#f0fdf4}
 .pb-mini.do-card h4{color:#166534}
 .pb-mini.dont-card{border-color:#fecaca;background:#fef2f2}
 .pb-mini.dont-card h4{color:#991b1b}
 .pb-mini ul{margin:0;padding-left:16px}
-.pb-mini li{margin:0 0 6px;font:400 13px var(--body);line-height:1.5;color:#1f2937}
+.pb-mini li{margin:0 0 6px;font-weight:400;font-size:13px;line-height:1.5;color:#1f2937}
 .pb-msg{border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;margin-bottom:10px}
 .pb-msg-canal{
-  padding:7px 14px;font:700 11px var(--body);text-transform:uppercase;
+  padding:7px 14px;font-weight:700;font-size:11px;text-transform:uppercase;
   letter-spacing:.08em;border-bottom:1px solid #e5e7eb;
 }
 .pb-msg-canal.wa{background:#dcf8c6;color:#166534}
 .pb-msg-canal.call{background:#ede9fe;color:#5b21b6}
-.pb-msg-texto{padding:12px 16px;font:400 14px var(--body);line-height:1.65;color:#111827;background:#fff;border-bottom:1px solid #f3f4f6}
-.pb-msg-nota{padding:8px 14px;font:italic 12px var(--body);color:#6b7280;background:#fafafa}
+.pb-msg-texto{padding:12px 16px;font-weight:400;font-size:14px;line-height:1.65;color:#111827;background:#fff;border-bottom:1px solid #f3f4f6}
+.pb-msg-nota{padding:8px 14px;font-style:italic;font-weight:400;font-size:12px;color:#6b7280;background:#fafafa}
 .pb-footer{
   display:flex;gap:16px;flex-wrap:wrap;padding-top:14px;margin-top:14px;
   border-top:1px solid #e5e7eb;
 }
-.pb-footer-item{font:400 12px var(--body);color:#6b7280}
+.pb-footer-item{font-weight:400;font-size:12px;color:#6b7280}
 .pb-footer-item b{color:#111827;font-weight:700}
 .pb-priority{
   display:inline-block;padding:3px 10px;border-radius:999px;
-  font:700 11px var(--body);margin-top:8px;
+  font-weight:700;font-size:11px;margin-top:8px;
 }
 .pb-priority.critica{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
 .pb-priority.alta{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
@@ -566,28 +566,19 @@ ob_start();
   .rbk-hd{gap:6px}
   .rtit{max-width:160px}
 }
-/* iOS WKWebView: font: shorthand con var() no resuelve font-family correctamente.
-   Forzamos font-family como propiedad separada para garantizar emoji fallback. */
-.rdr-sl,.rdr-sv,.rdr-bt,.rtab,.rtab-c,.rbk-tit,.rbk-hint,.rbk-n,.rbk-em,
-.rdrt th,.rdrt td,.rtit,.rsub,.rmot,.bok,.bno,.rlnk,.pb-btn,.pb-h,.pb-sub,
-.pb-msg,.pb-footer-item,.pb-priority,.pb-close,.modo-opt-tit,.modo-opt-sub,
-.tog-lbl,.tog-sub,.dbg-lbl,.dbg-val,.dbg-tag,.dbg-bkt,
-h1,h2,h3,h4,p,button,span,div,td,th,a,input,select{
-  font-family:'Plus Jakarta Sans','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif !important;
-}
 </style>
 
 <!-- Cabecera -->
 <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
   <div>
     <h1 style="font-weight:800;font-size:22px;letter-spacing:-.02em">📡 Radar</h1>
-    <p style="font:400 13px var(--body);color:var(--t3);margin-top:3px">
+    <p style="font-weight:400;font-size:13px;color:var(--t3);margin-top:3px">
       Total: <?= $stat_total ?> · Aceptadas: <?= $stat_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
       · Ciclo venta: <b><?= $ciclo_venta['dias'] ?>d</b><?= $ciclo_venta['auto'] ? '' : ' <span style="opacity:.6">(estimado)</span>' ?>
       · Modo: <b><?= ucfirst($config['sensibilidad'] ?? 'medio') ?></b>
     </p>
   </div>
-  <?php if ($debug_mode): ?><span style="padding:4px 10px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font:700 11px var(--body);color:#92400e">DEBUG ON</span><?php endif; ?>
+  <?php if ($debug_mode): ?><span style="padding:4px 10px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font-weight:700;font-size:11px;color:#92400e">DEBUG ON</span><?php endif; ?>
 </div>
 
 <!-- Stats -->
@@ -633,7 +624,7 @@ h1,h2,h3,h4,p,button,span,div,td,th,a,input,select{
   <form method="get" style="display:flex;align-items:center;gap:8px;margin:0">
     <?php foreach($_GET as $k=>$v): if($k==='limit') continue; ?><input type="hidden" name="<?= e($k) ?>" value="<?= e($v) ?>"><?php endforeach; ?>
     <input type="number" name="limit" value="<?= $limit ?>" min="10" max="300"
-           style="width:68px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);font:500 13px var(--num)">
+           style="width:68px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--r-sm);font-weight:500;font-size:13px;font-family:var(--num)">
     <button class="rdr-bt" style="border-radius:var(--r-sm);padding:7px 14px">Actualizar</button>
     <?php if (Auth::es_superadmin()): ?>
     <a href="<?= rurlq(['debug'=>$debug_mode?'0':'1']) ?>" class="rdr-bt <?= $debug_mode?'active':'' ?>">Debug</a>
@@ -861,7 +852,7 @@ render_bkt('🟡 Activos 48h (todos los activos)',
 <div class="tab-panel" id="tab-config">
 
 <div class="card" style="margin-bottom:16px">
-  <div style="font:700 14px var(--body);margin-bottom:12px">Sensibilidad del motor</div>
+  <div style="font-weight:700;font-size:14px;margin-bottom:12px">Sensibilidad del motor</div>
   <div class="modo-grid">
     <?php
     $modos = [
@@ -905,18 +896,18 @@ render_bkt('🟡 Activos 48h (todos los activos)',
 </div>
 
 <div class="card">
-  <div style="font:700 14px var(--body);margin-bottom:6px">IPs internas (excluidas del radar)</div>
-  <div style="font:400 12px var(--body);color:var(--t3);margin-bottom:12px">
+  <div style="font-weight:700;font-size:14px;margin-bottom:6px">IPs internas (excluidas del radar)</div>
+  <div style="font-weight:400;font-size:12px;color:var(--t3);margin-bottom:12px">
     Tu IP actual <b><?= e($ip_actual) ?></b> se registró automáticamente al abrir el radar.
   </div>
   <?php if (empty($ips_internas)): ?>
-  <div style="padding:14px;color:var(--t3);font:400 13px var(--body)">Sin IPs registradas.</div>
+  <div style="padding:14px;color:var(--t3);font-weight:400;font-size:13px">Sin IPs registradas.</div>
   <?php else: ?>
   <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">
     <?php foreach ($ips_internas as $ip): ?>
     <div class="ip-irow">
-      <span style="font:500 14px var(--num);flex:1"><?= e($ip['ip']) ?></span>
-      <span style="font:400 12px var(--body);color:var(--t3)"><?= e($ip['fuente']??'') ?> · <?= date('d M Y',strtotime($ip['created_at'])) ?></span>
+      <span style="font-weight:500;font-size:14px;font-family:var(--num);flex:1"><?= e($ip['ip']) ?></span>
+      <span style="font-weight:400;font-size:12px;color:var(--t3)"><?= e($ip['fuente']??'') ?> · <?= date('d M Y',strtotime($ip['created_at'])) ?></span>
       <?php if ($es_admin): ?>
       <button onclick="delIp(<?= (int)$ip['id'] ?>,this)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:4px">✕</button>
       <?php endif; ?>
@@ -927,7 +918,7 @@ render_bkt('🟡 Activos 48h (todos los activos)',
   <?php if ($es_admin): ?>
   <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
     <input type="text" id="newIp" placeholder="Agregar IP manualmente…"
-           style="flex:1;min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-sm);font:400 13px var(--body)">
+           style="flex:1;min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r-sm);font-weight:400;font-size:13px">
     <button class="btn btn-primary" onclick="addIp()">Agregar</button>
   </div>
   <?php endif; ?>
@@ -999,7 +990,7 @@ foreach ($_PB as $pb_key => $pb):
     <div class="pb-modal-hd">
       <div>
         <h2>📖 <?= e($BM[$pb_key][3] ?? ucfirst(str_replace('_',' ',$pb_key))) ?></h2>
-        <?php if ($pb_hint): ?><p style="font:400 12px var(--body);color:#6b7280;margin:4px 0 0;line-height:1.4"><?= e($pb_hint) ?></p><?php endif; ?>
+        <?php if ($pb_hint): ?><p style="font-weight:400;font-size:12px;color:#6b7280;margin:4px 0 0;line-height:1.4"><?= e($pb_hint) ?></p><?php endif; ?>
         <p><?= e($pb['summary']) ?></p>
         <span class="pb-priority <?= $pb_pclass ?>"><?= e(ucfirst($pb['priority'])) ?></span>
       </div>
