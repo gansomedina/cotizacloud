@@ -5,16 +5,21 @@
 
 (function () {
     // Solo ejecutar si estamos en Capacitor (app nativa)
+    console.log('[Push] Capacitor:', !!window.Capacitor, 'isNative:', window.Capacitor && window.Capacitor.isNativePlatform());
     if (!window.Capacitor || !window.Capacitor.isNativePlatform()) return;
 
     var PushNotifications = window.Capacitor.Plugins.PushNotifications;
+    console.log('[Push] Plugin PushNotifications:', !!PushNotifications);
     if (!PushNotifications) return;
 
     // Pedir permisos y registrar
     function initPush() {
+        console.log('[Push] initPush called');
         PushNotifications.checkPermissions().then(function (result) {
+            console.log('[Push] checkPermissions result:', JSON.stringify(result));
             if (result.receive === 'prompt') {
                 PushNotifications.requestPermissions().then(function (perm) {
+                    console.log('[Push] requestPermissions result:', JSON.stringify(perm));
                     if (perm.receive === 'granted') {
                         PushNotifications.register();
                     }
@@ -22,6 +27,8 @@
             } else if (result.receive === 'granted') {
                 PushNotifications.register();
             }
+        }).catch(function(err) {
+            console.error('[Push] checkPermissions error:', err);
         });
     }
 
