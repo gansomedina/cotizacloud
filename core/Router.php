@@ -100,10 +100,10 @@ class Router
         self::get('/registro', fn() => self::load('auth', 'registro'));
         self::post('/registro', fn() => self::load('auth', 'registro_post'));
 
-        // Landing: página informativa o dashboard si ya logueado
+        // Raíz: dashboard si logueado, login si no
         self::get('/', fn() => Auth::logueado()
             ? redirect('/dashboard')
-            : self::load('auth', 'landing')
+            : redirect('/login')
         );
 
         // ── Solicitar licencia (público — desde página de empresa suspendida) ──
