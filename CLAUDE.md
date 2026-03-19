@@ -31,10 +31,44 @@
 - PATH de Gems: `/usr/local/lib/ruby/gems/4.0.0/bin`
 - Ambos agregados a `~/.zshrc`
 
+## Push Notifications (iOS) — Estado
+
+### Completado (código listo, falta configurar Apple)
+- Plugin `@capacitor/push-notifications@8.0.2` instalado y sincronizado
+- Tablas BD: migración en `migrations/add_push_notifications.sql` (pendiente ejecutar en servidor)
+  - `dispositivos_push` — tokens de dispositivos
+  - `notificaciones_push` — log de notificaciones enviadas
+- Servicio PHP APNs: `core/PushNotification.php` — envío via HTTP/2 con JWT ES256
+- API endpoints:
+  - `POST /api/push/register` — registra token del dispositivo (requiere login)
+  - `POST /api/push/unregister` — desactiva token
+- Hooks en `api/quote_action.php` — dispara push al aceptar/rechazar cotización
+- JS cliente: `assets/js/push.js` — pide permisos, registra token, muestra banner en foreground
+- Config APNs: constantes en `config.php` (vacías, pendiente llenar)
+- Plugin configurado en `capacitor.config.ts` con `presentationOptions: ['badge', 'sound', 'alert']`
+
+### Pendiente (requiere cuenta Apple Developer activa)
+1. **Ejecutar migración SQL** en servidor: `migrations/add_push_notifications.sql`
+2. **Crear APNs Key** en Apple Developer Portal:
+   - Ir a Certificates, Identifiers & Profiles > Keys > "+"
+   - Habilitar "Apple Push Notifications service (APNs)"
+   - Descargar el archivo `.p8` y subirlo al servidor
+3. **Configurar en `config.php`** o variables de entorno:
+   - `APNS_KEY_PATH` → ruta al archivo .p8 en el servidor
+   - `APNS_KEY_ID` → Key ID que da Apple al crear la key
+   - `APNS_TEAM_ID` → Team ID de la cuenta Apple Developer
+4. **Habilitar Push Notifications capability** en Xcode:
+   - Abrir proyecto > Target App > Signing & Capabilities > "+ Capability" > Push Notifications
+5. **Compilar y probar** en dispositivo real (push no funciona en simulador)
+
+### Cuenta Apple Developer
+- **Estado**: Pagada, esperando activación (normalmente 24-48 horas)
+- Se necesita para: certificado APNs, publicar en App Store
+
 ## Próximos Pasos
-1. Probar la app completa (login, cotizaciones, navegación entre módulos)
-2. Verificar íconos y splash screen en todos los tamaños
-3. Cuenta Apple Developer ($99 USD/año) - preguntar si ya la tiene
+1. Configurar push notifications cuando se active la cuenta Apple Developer
+2. Probar la app completa (login, cotizaciones, navegación entre módulos)
+3. Verificar íconos y splash screen en todos los tamaños
 4. App Store Connect: crear ficha (screenshots, descripción, categoría)
 5. Build de producción: archivar desde Xcode y subir a App Store
 6. Android: carpeta `android/` ya existe, falta probar y publicar en Google Play

@@ -210,6 +210,9 @@ foreach ($mas_rutas as $r) {
         /* ── TWEMOJI ── */
         img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-0.1em;display:inline}
 
+        /* ── PUSH NOTIFICATION BANNER ── */
+        @keyframes pushSlide{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+
         /* ── SCROLLBAR ── */
         ::-webkit-scrollbar{width:6px;height:6px}
         ::-webkit-scrollbar-track{background:transparent}
@@ -418,6 +421,9 @@ function toggleMoreDrawer(){
 </script>
 
 <?php if (isset($extra_scripts)) echo $extra_scripts; ?>
+
+<!-- Push Notifications (solo carga en app nativa Capacitor) -->
+<script src="/assets/js/push.js"></script>
 
 <script>
 // Twemoji: convierte emojis Unicode a imágenes SVG para iOS WKWebView

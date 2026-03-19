@@ -124,6 +124,20 @@ if ($accion === 'aceptar') {
         );
 
         DB::commit();
+
+        // Push notification a los usuarios de la empresa
+        try {
+            PushNotification::enviar_a_empresa(
+                EMPRESA_ID,
+                'cotizacion_aceptada',
+                'Cotización aceptada',
+                $nombre . ' aceptó la cotización: ' . $cot['titulo'],
+                ['cotizacion_id' => $cot_id, 'url' => '/cotizaciones/' . $cot_id]
+            );
+        } catch (\Exception $e) {
+            // No romper el flujo principal si falla el push
+            if (DEBUG) error_log('Push error: ' . $e->getMessage());
+        }
     } catch (Exception $e) {
         DB::rollback();
         if (DEBUG) throw $e;
@@ -160,6 +174,19 @@ if ($accion === 'rechazar') {
         );
 
         DB::commit();
+
+        // Push notification a los usuarios de la empresa
+        try {
+            PushNotification::enviar_a_empresa(
+                EMPRESA_ID,
+                'cotizacion_rechazada',
+                'Cotización rechazada',
+                'La cotización "' . $cot['titulo'] . '" fue rechazada' . ($motivo ? ': ' . $motivo : ''),
+                ['cotizacion_id' => $cot_id, 'url' => '/cotizaciones/' . $cot_id]
+            );
+        } catch (\Exception $e) {
+            if (DEBUG) error_log('Push error: ' . $e->getMessage());
+        }
     } catch (Exception $e) {
         DB::rollback();
         if (DEBUG) throw $e;
