@@ -485,7 +485,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     <div class="sh-list" id="client-list" style="padding-top:8px"></div>
 </div>
 
-<script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+<script src="/assets/js/feather.min.js"></script>
 <script>
 const ARTICULOS   = <?= $articulos_js ?>;
 const CLIENTES    = <?= $clientes_js ?>;

@@ -54,7 +54,7 @@ foreach ($mas_rutas as $r) {
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { corePlugins: { preflight: false } }</script>
-    <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+    <script src="/assets/js/feather.min.js"></script>
     <style>
 
     :root {

@@ -46,7 +46,7 @@ function menu_activo(string $href, string $path): bool {
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Feather Icons -->
-    <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+    <script src="/assets/js/feather.min.js"></script>
 
     <style>
         :root {

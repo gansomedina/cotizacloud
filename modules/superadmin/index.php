@@ -77,7 +77,7 @@ $page_title = 'Super Admin';
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+<script src="/assets/js/feather.min.js"></script>
 <style>
 :root {
     --bg:#f4f4f0; --white:#fff; --border:#e2e2dc; --border2:#c8c8c0;

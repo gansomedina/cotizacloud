@@ -6,7 +6,7 @@
 
 define('COTIZAAPP', true);
 
-// ─── Servir archivos estáticos de /uploads/ ─────────────────
+// ─── Servir archivos estáticos de /uploads/ y /assets/ ──────
 $req_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 if (preg_match('#^/uploads/(.+)$#', $req_uri, $m)) {
     // Buscar primero en ROOT/uploads/, luego en ROOT/public/uploads/
@@ -26,6 +26,22 @@ if (preg_match('#^/uploads/(.+)$#', $req_uri, $m)) {
             readfile($real);
             exit;
         }
+    }
+}
+
+// ─── Servir archivos estáticos de /assets/ (JS, CSS, etc.) ──
+if (preg_match('#^/assets/(.+)$#', $req_uri, $m)) {
+    $file = __DIR__ . '/assets/' . $m[1];
+    $real = realpath($file);
+    $base = realpath(__DIR__ . '/assets');
+    if ($real && is_file($real) && $base && str_starts_with($real, $base)) {
+        $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
+        $mimes = ['js' => 'application/javascript', 'css' => 'text/css', 'svg' => 'image/svg+xml'];
+        $mime = $mimes[$ext] ?? mime_content_type($real);
+        header('Content-Type: ' . $mime);
+        header('Cache-Control: public, max-age=31536000');
+        readfile($real);
+        exit;
     }
 }
 
