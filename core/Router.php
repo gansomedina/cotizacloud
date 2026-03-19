@@ -112,6 +112,9 @@ class Router
         self::post('/api/push/register',   fn() => self::load_api('push_register'));
         self::post('/api/push/unregister', fn() => self::load_api('push_unregister'));
 
+        // ── Páginas legales (público) ───────────────────────
+        self::get('/privacidad', fn() => self::load_public('privacidad'));
+
         // ── Solicitar licencia (público — desde página de empresa suspendida) ──
         self::post('/solicitar-licencia', fn() => self::load('auth', 'solicitar_licencia'));
 
