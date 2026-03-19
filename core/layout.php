@@ -336,6 +336,14 @@ foreach ($mas_rutas as $r) {
                     <a href="mailto:soporte@cotiza.cloud" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu licencia</a>
                 </div>
             </div>
+            <?php elseif ($trial['por_vencer']): ?>
+            <div class="flash flash-warning" style="margin-bottom:16px">
+                <i data-feather="alert-triangle"></i>
+                <div>
+                    <strong>Tu licencia vence en <?= $trial['dias_restantes'] ?> día<?= $trial['dias_restantes'] !== 1 ? 's' : '' ?>.</strong>
+                    Contacta a <a href="mailto:soporte@cotiza.cloud" style="color:inherit;font-weight:700;text-decoration:underline">soporte</a> para renovar.
+                </div>
+            </div>
             <?php endif;
         }
         ?>
