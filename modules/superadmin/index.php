@@ -441,5 +441,8 @@ function hace_tiempo(int $ts): string {
 }
 ?>
 
+<!-- Push Notifications (solo carga en app nativa Capacitor) -->
+<script src="/assets/js/push.js"></script>
+
 </body>
 </html>
