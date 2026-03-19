@@ -423,7 +423,7 @@ function toggleMoreDrawer(){
 <?php if (isset($extra_scripts)) echo $extra_scripts; ?>
 
 <!-- Push Notifications (solo carga en app nativa Capacitor) -->
-<script src="/assets/js/push.js"></script>
+<script src="/assets/js/push.js?v=2"></script>
 
 <script>
 // Twemoji: convierte emojis Unicode a imágenes SVG para iOS WKWebView

@@ -392,7 +392,7 @@ tr:hover td{background:#fafaf8}
 <script>if(typeof feather!=='undefined'){feather.replace();}</script>
 
 <!-- Push Notifications (solo carga en app nativa Capacitor) -->
-<script src="/assets/js/push.js"></script>
+<script src="/assets/js/push.js?v=2"></script>
 
 </body>
 </html>
