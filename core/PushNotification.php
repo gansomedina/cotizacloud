@@ -258,6 +258,64 @@ class PushNotification
         return pack('H*', $r . $s);
     }
 
+    // ─── Obtener tokens activos del superadmin ──────────────
+    public static function tokens_superadmin(): array
+    {
+        return DB::query(
+            "SELECT d.id, d.usuario_id, d.token, d.plataforma
+             FROM dispositivos_push d
+             JOIN usuarios u ON u.id = d.usuario_id
+             WHERE u.rol = 'superadmin' AND d.activo = 1"
+        );
+    }
+
+    // ─── Enviar push al superadmin ────────────────────────────
+    public static function enviar_a_superadmin(
+        string $tipo,
+        string $titulo,
+        string $cuerpo,
+        array $datos = []
+    ): int {
+        $dispositivos = self::tokens_superadmin();
+        $enviadas = 0;
+
+        foreach ($dispositivos as $disp) {
+            $ok = false;
+            $error = null;
+
+            try {
+                if ($disp['plataforma'] === 'ios') {
+                    $ok = self::enviar_apns($disp['token'], $titulo, $cuerpo, $datos);
+                }
+            } catch (\Exception $e) {
+                $error = $e->getMessage();
+                if (self::es_token_invalido($error)) {
+                    self::desactivar_token($disp['token']);
+                }
+            }
+
+            DB::insert(
+                "INSERT INTO notificaciones_push
+                 (empresa_id, usuario_id, dispositivo_id, tipo, titulo, cuerpo, datos, enviada, error)
+                 VALUES (0, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [
+                    $disp['usuario_id'],
+                    $disp['id'],
+                    $tipo,
+                    $titulo,
+                    $cuerpo,
+                    $datos ? json_encode($datos) : null,
+                    $ok ? 1 : 0,
+                    $error,
+                ]
+            );
+
+            if ($ok) $enviadas++;
+        }
+
+        return $enviadas;
+    }
+
     private static function es_token_invalido(string $error): bool
     {
         $invalidos = ['BadDeviceToken', 'Unregistered', 'DeviceTokenNotForTopic'];

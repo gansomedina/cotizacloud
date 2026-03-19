@@ -144,5 +144,17 @@ try {
     redirect('/registro');
 }
 
+// ─── Notificar al superadmin ─────────────────────
+try {
+    PushNotification::enviar_a_superadmin(
+        'nueva_empresa',
+        'Nueva empresa registrada',
+        "{$nombre_empresa} ({$slug_raw}) — {$nombre} <{$email}>",
+        ['url' => '/superadmin']
+    );
+} catch (Exception $e) {
+    // No bloquear el registro si falla la notificación
+}
+
 // ─── Redirigir al login centralizado ─────────────
 redirect('/login?nuevo=1&empresa=' . urlencode($slug_raw) . '&u=' . urlencode($email));

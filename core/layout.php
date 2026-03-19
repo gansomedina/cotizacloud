@@ -196,7 +196,7 @@ foreach ($mas_rutas as $r) {
         /* ── MORE DRAWER ── */
         #more-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:var(--nav-h);background:rgba(0,0,0,.4);z-index:580}
         #more-overlay.on{display:block}
-        #more-drawer{display:none;position:fixed;bottom:var(--nav-h);left:0;right:0;background:var(--white);border-top:1px solid var(--border);border-radius:14px 14px 0 0;z-index:590;box-shadow:0 -4px 24px rgba(0,0,0,.12);padding:10px 8px}
+        #more-drawer{display:none;position:fixed;bottom:var(--nav-h);left:0;right:0;background:var(--white);border-top:1px solid var(--border);border-radius:14px 14px 0 0;z-index:590;box-shadow:0 -4px 24px rgba(0,0,0,.12);padding:10px 8px 20px}
         #more-drawer.open{display:block;animation:drawerUp .22s cubic-bezier(.4,0,.2,1) both}
         @keyframes drawerUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
         .more-handle{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 10px}
@@ -388,7 +388,7 @@ foreach ($mas_rutas as $r) {
 </div>
 
 <script>
-feather.replace({'stroke-width':1.8});
+if(typeof feather!=='undefined'){feather.replace({'stroke-width':1.8});}
 
 function openSidebar(){
     document.getElementById('sidebar').classList.add('open');
