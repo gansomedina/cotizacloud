@@ -97,25 +97,25 @@ function rmoney(float $n): string {
 }
 
 $GLOBALS['BM'] = $BM = [
-    'onfire'                => [ico('red',10),'#991b1b','#fff1f2','On Fire'],
-    'inminente'             => [ico('orange',10),'#c2410c','#fff7ed','Inminente'],
-    'probable_cierre'       => [ico('target',12,'#92400e'),'#92400e','#fffbeb','Probable cierre'],
-    'decision_activa'       => [ico('yellow',10),'#92400e','#fffbeb','Decisión activa'],
-    'validando_precio'      => [ico('money',12,'#92400e'),'#92400e','#fffbeb','Validando precio'],
-    'prediccion_alta'       => [ico('green',10),'#166534','#f0fdf4','Predicción alta'],
-    'alto_importe'          => [ico('money',12,'#1d4ed8'),'#1d4ed8','#dbeafe','Alto importe'],
-    're_enganche_caliente'  => [ico('fire',12,'#6d28d9'),'#6d28d9','#ede9fe','Re-enganche caliente'],
-    're_enganche'           => [ico('purple',10),'#6d28d9','#ede9fe','Re-enganche'],
-    'multi_persona'         => [ico('eye',12,'#1d4ed8'),'#1d4ed8','#dbeafe','Multi-persona'],
-    'revision_profunda'     => [ico('file',12,'#1d4ed8'),'#1d4ed8','#dbeafe','Revisión profunda'],
-    'vistas_multiples'      => [ico('green',10),'#166534','#f0fdf4','Vistas múltiples'],
-    'hesitacion'            => [ico('orange',10),'#c2410c','#fff7ed','Hesitación'],
-    'sobre_analisis'        => [ico('gray',10),'#64748b','#f1f5f9','Sobre-análisis'],
-    'revivio'               => [ico('purple',10),'#6d28d9','#ede9fe','Revivió'],
-    'regreso'               => [ico('purple',10),'#6d28d9','#ede9fe','Regreso'],
-    'comparando'            => [ico('gray',10),'#94a3b8','#f1f5f9','Comparando'],
-    'enfriandose'           => [ico('blue',10),'#0284c7','#e0f2fe','Enfriándose'],
-    'no_abierta'            => [ico('x',10,'#dc2626'),'#dc2626','#fef2f2','No abierta'],
+    'onfire'                => ['🔴','#991b1b','#fff1f2','On Fire'],
+    'inminente'             => ['🟠','#c2410c','#fff7ed','Inminente'],
+    'probable_cierre'       => ['🎯','#92400e','#fffbeb','Probable cierre'],
+    'decision_activa'       => ['🟡','#92400e','#fffbeb','Decisión activa'],
+    'validando_precio'      => ['💸','#92400e','#fffbeb','Validando precio'],
+    'prediccion_alta'       => ['🔮','#166534','#f0fdf4','Predicción alta'],
+    'alto_importe'          => ['💰','#1d4ed8','#dbeafe','Alto importe'],
+    're_enganche_caliente'  => ['🔥','#6d28d9','#ede9fe','Re-enganche caliente'],
+    're_enganche'           => ['🟣','#6d28d9','#ede9fe','Re-enganche'],
+    'multi_persona'         => ['👥','#1d4ed8','#dbeafe','Multi-persona'],
+    'revision_profunda'     => ['🧾','#1d4ed8','#dbeafe','Revisión profunda'],
+    'vistas_multiples'      => ['🟩','#166534','#f0fdf4','Vistas múltiples'],
+    'hesitacion'            => ['🟠','#c2410c','#fff7ed','Hesitación'],
+    'sobre_analisis'        => ['🟤','#64748b','#f1f5f9','Sobre-análisis'],
+    'revivio'               => ['💜','#6d28d9','#ede9fe','Revivió'],
+    'regreso'               => ['🟣','#6d28d9','#ede9fe','Regreso'],
+    'comparando'            => ['🔘','#94a3b8','#f1f5f9','Comparando'],
+    'enfriandose'           => ['🔵','#0284c7','#e0f2fe','Enfriándose'],
+    'no_abierta'            => ['❌','#dc2626','#fef2f2','No abierta'],
 ];
 // Descripciones cortas de cada bucket (para playbook modal)
 $GLOBALS['BKT_HINTS'] = [
@@ -142,7 +142,7 @@ $GLOBALS['BKT_HINTS'] = [
 
 function rbadge(?string $b,?int $sc,array $BM): string {
     if(!$b) return '<span style="color:var(--t3);font-size:11px">—</span>';
-    [$ico,$col,$bg,$lbl]=$BM[$b]??[ico('gray',10),'#64748b','#f1f5f9',ucfirst($b)];
+    [$ico,$col,$bg,$lbl]=$BM[$b]??['⬜','#64748b','#f1f5f9',ucfirst($b)];
     $s=$sc?" · {$sc}":'';
     return "<span style='display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font:700 11px var(--body);background:{$bg};color:{$col};white-space:nowrap'>{$ico} {$lbl}{$s}</span>";
 }
@@ -247,11 +247,11 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
     $border_style = $has_items ? "border-left:4px solid {$border_color}" : "border-left:4px solid #d1d5db";
     echo "<div class='rbk' style='{$border_style}'>";
     echo "<div class='rbk-hd' style='".($has_items ? "background:{$bg_color}" : "")."'>";
-    echo "<span class='rbk-tit'>".$tit."</span>";
+    echo "<span class='rbk-tit'>".htmlspecialchars($tit)."</span>";
     echo "<span class='rbk-hint'>".htmlspecialchars($hint)."</span>";
     echo "<span class='rbk-right'>";
     if ($bkt_key && isset($PB[$bkt_key])) {
-        echo "<button class='pb-btn' onclick=\"openPlaybook('{$bkt_key}')\">" . ico('file',12) . " Playbook</button>";
+        echo "<button class='pb-btn' onclick=\"openPlaybook('{$bkt_key}')\">📖 Playbook</button>";
     }
     $n = count($items);
     $n_class = $n > 0 ? 'rbk-n rbk-n-active' : 'rbk-n';
@@ -277,12 +277,12 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         echo "<tr class='$rc'>";
         $r_icons = $r['senales']['icons'] ?? [];
         $r_ico_str = '';
-        if (!empty($r_icons['coupon']))     $r_ico_str .= ico('tag',12,'#6d28d9');
-        if (!empty($r_icons['promo']))      $r_ico_str .= ico('zap',12,'#dc2626');
-        if (!empty($r_icons['price']))      $r_ico_str .= ico('money',12,'#d97706');
-        if (!empty($r_icons['sv_price']))   $r_ico_str .= ico('eye',12,'#2563eb');
-        if (!empty($r_icons['mv_price']))   $r_ico_str .= ico('eye',12,'#7c3aed');
-        if (!empty($r_icons['not_opened'])) $r_ico_str .= ico('x',12,'#dc2626');
+        if (!empty($r_icons['coupon']))     $r_ico_str .= '🎟️';
+        if (!empty($r_icons['promo']))      $r_ico_str .= '💣';
+        if (!empty($r_icons['price']))      $r_ico_str .= '💸';
+        if (!empty($r_icons['sv_price']))   $r_ico_str .= '👤';
+        if (!empty($r_icons['mv_price']))   $r_ico_str .= '👥';
+        if (!empty($r_icons['not_opened'])) $r_ico_str .= '❌';
         $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo']);
         $cot_url = '/cotizaciones/'.(int)$r['id'];
         echo "<td><a href='{$cot_url}' class='rtit-link'><div class='rtit'>{$r_title_show}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
@@ -365,7 +365,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 echo "<div class='dbg-sec'><div class='dbg-lbl'>Prob. Cierre ({$pc['total']}/4 cats)</div><div class='dbg-val'>";
                 foreach (['engagement','precio'] as $cat) {
                     $on = $pc[$cat] ?? false;
-                    echo $on ? "<span class='dbg-tag dbg-on'>".ico('zap',10,'#d97706')."$cat</span> " : "<span class='dbg-tag dbg-off'>$cat</span> ";
+                    echo $on ? "<span class='dbg-tag dbg-on'>⚡$cat</span> " : "<span class='dbg-tag dbg-off'>$cat</span> ";
                 }
                 foreach (['persistencia','social'] as $cat) {
                     $on = $pc[$cat] ?? false;
@@ -581,34 +581,34 @@ ob_start();
 <div class="rdr-stats">
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv" style="color:#991b1b"><?= $cnt_urgentes ?></div>
-    <div class="rdr-sl"><?= ico('fire',14,'#991b1b') ?> Alta prioridad</div>
+    <div class="rdr-sl">🔥 Alta prioridad</div>
   </div>
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv"><?= count($activos48) ?></div>
-    <div class="rdr-sl"><?= ico('clock',14,'#4a4a46') ?> Activos 48h</div>
+    <div class="rdr-sl">⏱ Activos 48h</div>
   </div>
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv"><?= $stat_aceptadas ?></div>
-    <div class="rdr-sl"><?= ico('check',14,'#16a34a') ?> Aceptadas</div>
+    <div class="rdr-sl">✅ Aceptadas</div>
   </div>
   <div class="card" style="padding:12px 16px">
     <div class="rdr-sv"><?= $cierre_pct ?>%</div>
-    <div class="rdr-sl"><?= ico('chart',14,'#2563eb') ?> Tasa cierre</div>
+    <div class="rdr-sl">📊 Tasa cierre</div>
   </div>
 </div>
 
 <!-- Tabs -->
 <div class="rtabs" id="radarTabs">
   <button class="rtab on" onclick="rTab('urgentes',this)">
-    <?= ico('fire',14,'#991b1b') ?> Alta prioridad
+    🔥 Alta prioridad
     <?php if ($cnt_urgentes>0): ?><span class="rtab-c"><?= $cnt_urgentes ?></span><?php endif; ?>
   </button>
   <button class="rtab" onclick="rTab('buckets',this)">
-    <?= ico('target',14) ?> Todos los buckets
+    📡 Todos los buckets
     <?php if (count($activos48)>0): ?><span class="rtab-c"><?= count($activos48) ?></span><?php endif; ?>
   </button>
-  <button class="rtab" onclick="rTab('ranking',this)"><?= ico('file',14) ?> Ranking</button>
-  <button class="rtab" onclick="rTab('config',this)"><?= ico('target',14) ?> Config</button>
+  <button class="rtab" onclick="rTab('ranking',this)">📋 Ranking</button>
+  <button class="rtab" onclick="rTab('config',this)">⚙️ Config</button>
 </div>
 
 <!-- Filtros -->
@@ -631,23 +631,23 @@ ob_start();
 <!-- ===== TAB: ALTA PRIORIDAD ===== -->
 <div class="tab-panel on" id="tab-urgentes">
 <?php
-render_bkt(ico('target',14,'#92400e').' Probable cierre',
+render_bkt('🎯 Probable cierre',
     'Cross-bucket: confirma intención real con 2+ categorías de señal (engagement + precio + persistencia + social)',
     $buckets['probable_cierre'],$sort,$dir,false,true,'probable_cierre');
 
-render_bkt(ico('fire',14,'#991b1b').' ON FIRE',
+render_bkt('🔥😱 ON FIRE',
     'Actividad en 72h · 2+ sesiones · scroll ≥ 90% · lectura real · foco en precio · validación por visitor',
     $buckets['onfire'],$sort,$dir,false,false,'onfire');
 
-render_bkt(ico('fire',14,'#c2410c').' Cierre inminente',
+render_bkt('🔥 Cierre inminente',
     'Actividad en 24h · FIT ≥ 8.5% · edad ≥ 2h · guest ≥ 1 · mínimo 2 señales (≥1 fuerte) · misma huella insistiendo en precio',
     $buckets['inminente'],$sort,$dir,false,false,'inminente');
 
-render_bkt(ico('money',14,'#d97706').' Validando precio',
+render_bkt('💸 Validando precio',
     'Detecta foco real en precio: exige base guest + validación individual (misma huella) o compartida (multi-visitor)',
     $buckets['validando_precio'],$sort,$dir,false,false,'validando_precio');
 
-render_bkt(ico('green',10).' Predicción alta (ciclo: '.$ciclo_venta['dias'].'d)',
+render_bkt('🔮 Predicción alta (ciclo: '.$ciclo_venta['dias'].'d)',
     'v2.3: FIT ≥ 14% + edad ≤ ciclo venta real ('.$ciclo_venta['dias'].'d) + actividad reciente. El ciclo se auto-calcula con la mediana de días envío→cierre de tu empresa.',
     $buckets['prediccion_alta'],$sort,$dir,false,false,'prediccion_alta');
 ?>
@@ -656,51 +656,51 @@ render_bkt(ico('green',10).' Predicción alta (ciclo: '.$ciclo_venta['dias'].'d)
 <!-- ===== TAB: TODOS LOS BUCKETS ===== -->
 <div class="tab-panel" id="tab-buckets">
 <?php
-render_bkt(ico('yellow',10).' Decisión activa',
+render_bkt('🧠 Decisión activa',
     '4+ vistas en 48h y regresos reales (span ≥ 6h)',
     $buckets['decision_activa'],$sort,$dir,false,false,'decision_activa');
 
-render_bkt(ico('money',14,'#1d4ed8').' Alto importe',
+render_bkt('💰 Alto importe',
     'v2.2: Umbral dinámico P80 de la empresa (auto-calculado). Vista reciente.',
     $buckets['alto_importe'],$sort,$dir,false,false,'alto_importe');
 
-render_bkt(ico('fire',14,'#6d28d9').' Re-enganche caliente',
+render_bkt('🔥 Re-enganche caliente',
     'v2.3: Regresó tras gap + interactuó con precio (revisó totales, loop, cupón o sv_price). Señal de compra fuerte.',
     $buckets['re_enganche_caliente'] ?? [],$sort,$dir,true,false,'re_enganche_caliente');
 
-render_bkt(ico('purple',10).' Re-enganche',
+render_bkt('🟣 Re-enganche',
     'v2.3: Regresó tras gap + señal de interés, pero sin foco directo en precio. Oportunidad de seguimiento.',
     $buckets['re_enganche'],$sort,$dir,true,false,'re_enganche');
 
-render_bkt(ico('eye',14,'#1d4ed8').' Revisión multi-persona',
+render_bkt('👥 Revisión multi-persona',
     'Last < 72h + 2+ visitors o IPs post primer guest/90min + guest_total ≥ 2',
     $buckets['multi_persona'],$sort,$dir,false,false,'multi_persona');
 
-render_bkt(ico('file',14,'#1d4ed8').' Revisión profunda',
+render_bkt('🧾 Revisión profunda',
     'Exige lectura real (visible) y foco en precio/totales. Análisis serio, no solo muchas vistas.',
     $buckets['revision_profunda'],$sort,$dir,false,false,'revision_profunda');
 
-render_bkt(ico('green',10).' Vistas múltiples',
+render_bkt('🟩 Vistas múltiples',
     '(2+ IPs en 24h) O (3+ vistas en 24h) y última vista en 24h',
     $buckets['vistas_multiples'],$sort,$dir,false,false,'vistas_multiples');
 
-render_bkt(ico('orange',10).' Hesitación',
+render_bkt('🟠 Hesitación',
     'Pausa entre 24h y 7d, con repetición guest limitada y al menos una señal de fricción real en precio/totales',
     $buckets['hesitacion'],$sort,$dir,false,false,'hesitacion');
 
-render_bkt(ico('gray',10).' Sobre-análisis',
+render_bkt('🟤 Sobre-análisis',
     'v2.3: Muchas sesiones + muchos guests + edad alta + FIT bajo (umbral por modo). Posible parálisis de decisión.',
     $buckets['sobre_analisis'],$sort,$dir,false,false,'sobre_analisis');
 
-render_bkt(ico('purple',10).' Revivió cotización vieja (señal exclusiva)',
+render_bkt('💜 Revivió cotización vieja (señal exclusiva)',
     'Volvió tras 30+ días sin verla y última vista en 48h',
     $buckets['revivio'],$sort,$dir,true,false,'revivio');
 
-render_bkt(ico('purple',10).' Regreso después de +4 días (señal exclusiva)',
+render_bkt('🟣 Regreso después de +4 días (señal exclusiva)',
     'Volvió tras 4+ días sin verla y última vista en 48h',
     $buckets['regreso'],$sort,$dir,true,false,'regreso');
 
-render_bkt(ico('orange',10).' Comparando / Compartiendo (señal exclusiva)',
+render_bkt('🟠 Comparando / Compartiendo (señal exclusiva)',
     'v2.3: 2+ IPs distintas en ventana + al menos 1 evento JS (anti-bot). Indica comité o compartido.',
     $buckets['comparando'],$sort,$dir,false,false,'comparando');
 
@@ -709,18 +709,18 @@ $cooling = $buckets['enfriandose'];
 foreach ($cooling as &$cr) {
     $keys = is_array($cr['senales']) ? array_keys($cr['senales']) : [];
     $with_p = array_intersect(['price_loop','tot_rev','tot_view','cupon','sv_price','mv_price'], $keys);
-    $cr['reason'] = count($with_p) ? ico('money',12,'#d97706').' con precio' : ico('blue',10).' sin precio';
+    $cr['reason'] = count($with_p) ? '💸 con precio' : '🧊 sin precio';
 }
 unset($cr);
-render_bkt(ico('blue',10).' Enfriándose (señal exclusiva)',
+render_bkt('🔵 Enfriándose (señal exclusiva)',
     'v2.3: Tuvo sesiones + engagement real (scroll/visible/open) pero dejó de ver. Distingue precio/sin precio. Sin engagement previo = no aparece (está perdido, no enfriándose).',
     $cooling,$sort,$dir,false,true,'enfriandose');
 
-render_bkt(ico('x',14,'#dc2626').' No abierta',
+render_bkt('❌ No abierta',
     'Cotización con más de 24h y dentro de su vigencia, sin evidencia de apertura por el cliente — ni vistas externas ni eventos JS.',
     $buckets['no_abierta'] ?? [],$sort,$dir,false,false,'no_abierta');
 
-render_bkt(ico('yellow',10).' Activos 48h (todos los activos)',
+render_bkt('🟡 Activos 48h (todos los activos)',
     'Lista completa de todo lo visto en las últimas 48 horas',
     $activos48,$sort,$dir);
 ?>
@@ -754,12 +754,12 @@ render_bkt(ico('yellow',10).' Activos 48h (todos los activos)',
       <?php
         $rg_icons = $r['senales']['icons'] ?? [];
         $rg_ico = '';
-        if (!empty($rg_icons['coupon']))     $rg_ico .= ico('tag',12,'#6d28d9');
-        if (!empty($rg_icons['promo']))      $rg_ico .= ico('zap',12,'#dc2626');
-        if (!empty($rg_icons['price']))      $rg_ico .= ico('money',12,'#d97706');
-        if (!empty($rg_icons['sv_price']))   $rg_ico .= ico('eye',12,'#2563eb');
-        if (!empty($rg_icons['mv_price']))   $rg_ico .= ico('eye',12,'#7c3aed');
-        if (!empty($rg_icons['not_opened'])) $rg_ico .= ico('x',12,'#dc2626');
+        if (!empty($rg_icons['coupon']))     $rg_ico .= '🎟️';
+        if (!empty($rg_icons['promo']))      $rg_ico .= '💣';
+        if (!empty($rg_icons['price']))      $rg_ico .= '💸';
+        if (!empty($rg_icons['sv_price']))   $rg_ico .= '👤';
+        if (!empty($rg_icons['mv_price']))   $rg_ico .= '👥';
+        if (!empty($rg_icons['not_opened'])) $rg_ico .= '❌';
       ?>
       <td><div class="rtit"><?= $rg_ico ? $rg_ico.' ' : '' ?><?= e($r['titulo']) ?></div><div class="rsub"><?= e($r['cliente']) ?></div></td>
       <td class="tc"><?= $ab ?></td>
@@ -815,7 +815,7 @@ render_bkt(ico('yellow',10).' Activos 48h (todos los activos)',
         ?>
         <div class="dbg-sec"><div class="dbg-lbl">Prob. Cierre (<?= $pc_d['total'] ?>/4 cats)</div><div class="dbg-val">
           <?php foreach (['engagement','precio'] as $cat): $on=$pc_d[$cat]??false; ?>
-            <?php if ($on): ?><span class="dbg-tag dbg-on"><?= ico('zap',10,'#d97706') ?><?= $cat ?></span>
+            <?php if ($on): ?><span class="dbg-tag dbg-on">⚡<?= $cat ?></span>
             <?php else: ?><span class="dbg-tag dbg-off"><?= $cat ?></span>
             <?php endif; ?>
           <?php endforeach; ?>
@@ -1007,19 +1007,19 @@ foreach ($_PB as $pb_key => $pb):
 
       <div class="pb-cols">
         <div class="pb-mini do-card">
-          <h4><?= ico('check',14,'#16a34a') ?> Qué hacer</h4>
+          <h4>✅ Qué hacer</h4>
           <ul><?php foreach($pb['do'] as $d): ?><li><?= e($d) ?></li><?php endforeach; ?></ul>
         </div>
         <div class="pb-mini dont-card">
-          <h4><?= ico('x',14,'#dc2626') ?> Qué NO hacer</h4>
+          <h4>🚫 Qué NO hacer</h4>
           <ul><?php foreach($pb['dont'] as $d): ?><li><?= e($d) ?></li><?php endforeach; ?></ul>
         </div>
       </div>
 
       <div class="pb-section">
-        <h4><?= ico('mail',14,'#2563eb') ?> Mensajes sugeridos</h4>
+        <h4>💬 Mensajes sugeridos</h4>
         <?php foreach($pb['messages'] as $msg):
-            $isCall = str_contains($msg['canal'], 'Llamar') || str_contains($msg['canal'], 'llamar');
+            $isCall = str_contains($msg['canal'], '📞') || str_contains(strtolower($msg['canal']), 'llamad');
         ?>
         <div class="pb-msg">
           <div class="pb-msg-canal <?= $isCall ? 'call' : 'wa' ?>"><?= e($msg['canal']) ?></div>
@@ -1030,8 +1030,8 @@ foreach ($_PB as $pb_key => $pb):
       </div>
 
       <div class="pb-footer">
-        <div class="pb-footer-item"><?= ico('target',14,'#92400e') ?> Objetivo: <b><?= e($pb['goal']) ?></b></div>
-        <div class="pb-footer-item"><?= ico('link',14,'#2563eb') ?> Canal: <b><?= e($pb['best_channel']) ?></b></div>
+        <div class="pb-footer-item">🎯 Objetivo: <b><?= e($pb['goal']) ?></b></div>
+        <div class="pb-footer-item">📱 Canal: <b><?= e($pb['best_channel']) ?></b></div>
       </div>
     </div>
   </div>
