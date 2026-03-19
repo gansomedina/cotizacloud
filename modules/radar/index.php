@@ -571,6 +571,15 @@ ob_start();
   .rbk-hd{gap:6px}
   .rtit{max-width:160px}
 }
+/* iOS WKWebView: font: shorthand con var() no resuelve font-family correctamente.
+   Forzamos font-family como propiedad separada para garantizar emoji fallback. */
+.rdr-sl,.rdr-sv,.rdr-bt,.rtab,.rtab-c,.rbk-tit,.rbk-hint,.rbk-n,.rbk-em,
+.rdrt th,.rdrt td,.rtit,.rsub,.rmot,.bok,.bno,.rlnk,.pb-btn,.pb-h,.pb-sub,
+.pb-msg,.pb-footer-item,.pb-priority,.pb-close,.modo-opt-tit,.modo-opt-sub,
+.tog-lbl,.tog-sub,.dbg-lbl,.dbg-val,.dbg-tag,.dbg-bkt,
+h1,h2,h3,h4,p,button,span,div,td,th,a,input,select{
+  font-family:'Plus Jakarta Sans','Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif !important;
+}
 </style>
 
 <!-- Cabecera -->
