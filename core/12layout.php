@@ -71,7 +71,7 @@ foreach ($mas_rutas as $r) {
     <script>tailwind.config = { corePlugins: { preflight: false } }</script>
 
     <!-- Feather: solo para sidebar y flash (están visibles desde el inicio) -->
-    <script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+    <script src="/assets/js/feather.min.js"></script>
 
     <style>
         :root {

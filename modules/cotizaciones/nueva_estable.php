@@ -621,7 +621,7 @@ $page_title = 'Nueva cotización';
     </div>
 </div>
 
-<script src="https://unpkg.com/feather-icons/dist/feather.min.js"></script>
+<script src="/assets/js/feather.min.js"></script>
 <script>
 // ─── Datos del servidor ─────────────────────────────────
 const ARTICULOS   = <?= $articulos_js ?>;
