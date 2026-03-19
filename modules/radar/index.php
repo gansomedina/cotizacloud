@@ -142,7 +142,7 @@ $GLOBALS['BKT_HINTS'] = [
 
 function rbadge(?string $b,?int $sc,array $BM): string {
     if(!$b) return '<span style="color:var(--t3);font-size:11px">—</span>';
-    [$ico,$col,$bg,$lbl]=$BM[$b]??['⬜','#64748b','#f1f5f9',ucfirst($b)];
+    [$ico,$col,$bg,$lbl]=$BM[$b]??[ico('gray',10),'#64748b','#f1f5f9',ucfirst($b)];
     $s=$sc?" · {$sc}":'';
     return "<span style='display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font:700 11px var(--body);background:{$bg};color:{$col};white-space:nowrap'>{$ico} {$lbl}{$s}</span>";
 }
@@ -247,11 +247,11 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
     $border_style = $has_items ? "border-left:4px solid {$border_color}" : "border-left:4px solid #d1d5db";
     echo "<div class='rbk' style='{$border_style}'>";
     echo "<div class='rbk-hd' style='".($has_items ? "background:{$bg_color}" : "")."'>";
-    echo "<span class='rbk-tit'>".htmlspecialchars($tit)."</span>";
+    echo "<span class='rbk-tit'>".$tit."</span>";
     echo "<span class='rbk-hint'>".htmlspecialchars($hint)."</span>";
     echo "<span class='rbk-right'>";
     if ($bkt_key && isset($PB[$bkt_key])) {
-        echo "<button class='pb-btn' onclick=\"openPlaybook('{$bkt_key}')\">📖 Playbook</button>";
+        echo "<button class='pb-btn' onclick=\"openPlaybook('{$bkt_key}')\">" . ico('file',12) . " Playbook</button>";
     }
     $n = count($items);
     $n_class = $n > 0 ? 'rbk-n rbk-n-active' : 'rbk-n';
