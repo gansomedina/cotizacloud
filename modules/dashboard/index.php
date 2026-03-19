@@ -481,7 +481,7 @@ ob_start();
 <div class="kpi-grid">
 
   <div class="kpi-card kpi-ventas">
-    <div class="kpi-ico">💰</div>
+    <div class="kpi-ico"><?= ico('money', 22, '#16a34a') ?></div>
     <div class="kpi-label">Ventas del período</div>
     <div class="kpi-val green"><?= fmt_dash((float)$kpi_ventas['monto_ventas']) ?></div>
     <div class="kpi-sub">
@@ -497,7 +497,7 @@ ob_start();
   </div>
 
   <div class="kpi-card kpi-cobrado">
-    <div class="kpi-ico">✅</div>
+    <div class="kpi-ico"><?= ico('check', 22, '#16a34a') ?></div>
     <div class="kpi-label">Cobrado</div>
     <div class="kpi-val green"><?= fmt_dash((float)$kpi_ventas['monto_cobrado']) ?></div>
     <div class="kpi-sub">
@@ -511,7 +511,7 @@ ob_start();
   </div>
 
   <div class="kpi-card kpi-pendiente">
-    <div class="kpi-ico">⏳</div>
+    <div class="kpi-ico"><?= ico('clock', 22, '#d97706') ?></div>
     <div class="kpi-label">Por cobrar</div>
     <div class="kpi-val amber"><?= fmt_dash((float)$kpi_ventas['monto_saldo']) ?></div>
     <div class="kpi-sub">
@@ -522,7 +522,7 @@ ob_start();
   </div>
 
   <div class="kpi-card kpi-cots">
-    <div class="kpi-ico">📋</div>
+    <div class="kpi-ico"><?= ico('file', 22, '#2563eb') ?></div>
     <div class="kpi-label">Cotizaciones creadas</div>
     <div class="kpi-val blue"><?= (int)$kpi_cots['num_cots'] ?></div>
     <div class="kpi-sub">
@@ -614,7 +614,7 @@ ob_start();
   <!-- Aceptadas recientemente -->
   <div class="alert-card">
     <div class="alert-header">
-      <div class="alert-title">✅ Aceptadas recientemente <span class="alert-badge ab-green"><?= count($aceptadas) ?></span></div>
+      <div class="alert-title"><?= ico('check', 16, '#16a34a') ?> Aceptadas recientemente <span class="alert-badge ab-green"><?= count($aceptadas) ?></span></div>
     </div>
     <?php if (empty($aceptadas)): ?>
     <div class="alert-empty">Sin cotizaciones aceptadas recientemente.</div>
@@ -700,7 +700,7 @@ ob_start();
   <!-- Sin abrir -->
   <div class="alert-card">
     <div class="alert-header">
-      <div class="alert-title">📭 Sin abrir <span class="alert-badge ab-amber"><?= count($sin_abrir_list) ?></span></div>
+      <div class="alert-title"><?= ico('mail', 16, '#d97706') ?> Sin abrir <span class="alert-badge ab-amber"><?= count($sin_abrir_list) ?></span></div>
     </div>
     <?php if (empty($sin_abrir_list)): ?>
     <div class="alert-empty">Todas las cotizaciones enviadas han sido abiertas.</div>
@@ -736,9 +736,9 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
 
   <?php
   $bucket_def = [
-      'probable'  => ['🟡', 'Probable cierre',    'b-probable'],
-      'inminente' => ['🟠', 'Cierre inminente',   'b-inminente'],
-      'onfire'    => ['🔴', 'On Fire',             'b-onfire'],
+      'probable'  => [ico('yellow',10), 'Probable cierre',    'b-probable'],
+      'inminente' => [ico('orange',10), 'Cierre inminente',   'b-inminente'],
+      'onfire'    => [ico('red',10),    'On Fire',             'b-onfire'],
   ];
   foreach ($bucket_def as $bkey => [$ico, $blbl, $bcls]):
       $items     = $buckets[$bkey];
@@ -807,7 +807,7 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
 
   <div class="monthly-card">
     <div class="monthly-header">
-      <div class="monthly-title">📋 Cotizaciones</div>
+      <div class="monthly-title"><?= ico('file', 16, '#2563eb') ?> Cotizaciones</div>
     </div>
     <div class="monthly-big"><?= (int)$act_cots['total'] ?></div>
     <div class="monthly-sub">cotizaciones generadas</div>
@@ -841,7 +841,7 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
 
   <div class="monthly-card">
     <div class="monthly-header">
-      <div class="monthly-title">💰 Ventas</div>
+      <div class="monthly-title"><?= ico('money', 16, '#16a34a') ?> Ventas</div>
     </div>
     <div class="monthly-big g"><?= (int)$act_ventas['total'] ?></div>
     <div class="monthly-sub">ventas generadas</div>

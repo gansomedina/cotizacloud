@@ -97,7 +97,7 @@ if ($cot_subtotal <= 0) {
 $page_title = $folio . ' — ' . $venta['titulo'];
 
 function icono_forma(string $f): string {
-    return match($f) { 'efectivo'=>'💵','transferencia'=>'🏦','tarjeta'=>'💳', default=>'💰' };
+    return match($f) { 'efectivo'=>ico('money',14,'#16a34a'),'transferencia'=>ico('bank',14,'#2563eb'),'tarjeta'=>ico('card',14,'#7c3aed'), default=>ico('money',14) };
 }
 function bg_forma(string $f): string {
     return match($f) { 'efectivo'=>'#dcfce7','transferencia'=>'#dbeafe','tarjeta'=>'#f3e8ff', default=>'#f1f5f9' };
@@ -429,7 +429,7 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
 
 <?php if ($venta['estado'] === 'cancelada'): ?>
 <div style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:var(--r);padding:11px 16px;font:600 13px var(--body);color:var(--danger);margin-bottom:14px">
-  ⚠️ Venta cancelada<?= $venta['cancelado_motivo'] ? ' — '.e($venta['cancelado_motivo']) : '' ?>
+  <?= ico('alert',14,'#c53030') ?> Venta cancelada<?= $venta['cancelado_motivo'] ? ' — '.e($venta['cancelado_motivo']) : '' ?>
 </div>
 <?php endif ?>
 
@@ -665,17 +665,17 @@ function closeRec(){
 
   <!-- ACCIONES (punto 7: copiar URL en vez de compartir) -->
   <?php if ($puede_pagos && !in_array($venta['estado'],['cancelada','entregada'])): ?>
-  <button class="action-btn" onclick="openSheet('shAbono')">💰 Registrar abono</button>
+  <button class="action-btn" onclick="openSheet('shAbono')"><?= ico('money',14) ?> Registrar abono</button>
   <?php endif ?>
-  <button class="action-btn" id="btn-copiar" onclick="copiarUrl()">🔗 Copiar URL del cliente</button>
+  <button class="action-btn" id="btn-copiar" onclick="copiarUrl()"><?= ico('link',14) ?> Copiar URL del cliente</button>
   <?php if ($puede_descuento && $venta['estado'] !== 'cancelada'): ?>
-  <button class="action-btn" onclick="openSheet('shDescuento')">🏷️ Agregar descuento</button>
+  <button class="action-btn" onclick="openSheet('shDescuento')"><?= ico('tag',14) ?> Agregar descuento</button>
   <?php endif ?>
 
   <button class="action-btn" id="btn-guardar"
     onclick="guardarCambios()"
     style="display:none;background:var(--g);color:#fff;border-color:var(--g);font-weight:700">
-    💾 Guardar cambios
+    <?= ico('check',14,'#fff') ?> Guardar cambios
   </button>
   <button class="action-btn" onclick="window.print()">🖨️ Imprimir / PDF</button>
 
@@ -1019,7 +1019,7 @@ function closeRec(){
   <div class="sh-body">
     <div class="sh-field">
       <div style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:var(--r-sm);padding:12px;font-size:13px;color:var(--danger);line-height:1.6">
-        ⚠️ Se cancelará <strong><?= e($folio) ?></strong>. Solo es posible si no tiene pagos registrados.
+        <?= ico('alert',14,'#c53030') ?> Se cancelará <strong><?= e($folio) ?></strong>. Solo es posible si no tiene pagos registrados.
       </div>
     </div>
     <div class="sh-field"><div class="sh-lbl">Motivo *</div><textarea class="sh-input" id="cancelar-motivo" style="min-height:64px;resize:none" placeholder="Razón…"></textarea></div>
@@ -1202,8 +1202,8 @@ function selForma(el,f){document.querySelectorAll('.forma-opt').forEach(o=>o.cla
 function copiarUrl(){
   navigator.clipboard.writeText(URL_VTA).then(()=>{
     const b=document.getElementById('btn-copiar');
-    b.textContent='✓ URL copiada';
-    setTimeout(()=>b.textContent='🔗 Copiar URL del cliente',2000);
+    b.textContent='URL copiada';
+    setTimeout(()=>b.innerHTML='<?= addslashes(ico('link',14)) ?> Copiar URL del cliente',2000);
   }).catch(()=>alert(URL_VTA));
 }
 
@@ -1230,7 +1230,7 @@ async function doAbono(){
 
 // ── Cancelar recibo ──
 function cancelarRec(id,numero,monto){
-  document.getElementById('cancelrec-info').innerHTML=`⚠️ Cancelarás <strong>${numero}</strong> por <strong>${monto}</strong>. El saldo de la venta se ajustará.`;
+  document.getElementById('cancelrec-info').innerHTML=`<?= addslashes(ico('alert',14,'#c53030')) ?> Cancelarás <strong>${numero}</strong> por <strong>${monto}</strong>. El saldo de la venta se ajustará.`;
   document.getElementById('cancelrec-motivo').value='';
   document.getElementById('cancelrec-btn').onclick=async()=>{
     const motivo=document.getElementById('cancelrec-motivo').value.trim();

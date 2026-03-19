@@ -509,7 +509,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 <div class="tab-panel <?= $tab_activo==='catalogo'?'on':'' ?>" id="panel-catalogo">
 
   <div class="search-bar">
-    <span class="search-ico">🔍</span>
+    <span class="search-ico"><?= ico('search', 16, '#6a6a64') ?></span>
     <input type="text" placeholder="Buscar artículo…" id="qCat" value="<?= e($q_cat) ?>"
            oninput="debounce(()=>buscarTab('q_cat',this.value),280)">
   </div>
@@ -562,7 +562,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 <div class="tab-panel <?= $tab_activo==='clientes'?'on':'' ?>" id="panel-clientes">
 
   <div class="search-bar">
-    <span class="search-ico">🔍</span>
+    <span class="search-ico"><?= ico('search', 16, '#6a6a64') ?></span>
     <input type="text" placeholder="Buscar cliente…" id="qCli" value="<?= e($q_cli) ?>"
            oninput="debounce(()=>buscarTab('q_cli',this.value),280)">
   </div>
@@ -691,9 +691,9 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   <div class="radar-modos">
     <?php
     $modos = [
-        'agresivo' => ['ico'=>'🔥','tit'=>'Agresivo','sub'=>'Más cotizaciones visibles. Ideal cuando el volumen es bajo y no quieres perder ninguna señal.'],
-        'medio'    => ['ico'=>'⚖️','tit'=>'Medio',    'sub'=>'Balance entre precisión y cobertura. Recomendado para la mayoría de los casos.'],
-        'ligero'   => ['ico'=>'🎯','tit'=>'Ligero',   'sub'=>'Solo muestra señales muy sólidas. Reduce ruido cuando tienes muchas cotizaciones activas.'],
+        'agresivo' => ['ico'=>ico('fire',16,'#dc2626'),'tit'=>'Agresivo','sub'=>'Más cotizaciones visibles. Ideal cuando el volumen es bajo y no quieres perder ninguna señal.'],
+        'medio'    => ['ico'=>ico('target',16,'#2563eb'),'tit'=>'Medio',    'sub'=>'Balance entre precisión y cobertura. Recomendado para la mayoría de los casos.'],
+        'ligero'   => ['ico'=>ico('target',16,'#16a34a'),'tit'=>'Ligero',   'sub'=>'Solo muestra señales muy sólidas. Reduce ruido cuando tienes muchas cotizaciones activas.'],
     ];
     foreach ($modos as $mk => $mv):
     ?>
@@ -754,13 +754,13 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   <div class="card" style="margin-bottom:20px">
     <?php
     $buckets_def = [
-        'cierre'           => ['ico'=>'🔥','tit'=>'Probable cierre / Cierre inminente',   'sub'=>'Actividad reciente + señales fuertes de intención'],
-        'validando_precio' => ['ico'=>'💸','tit'=>'Validando precio',                      'sub'=>'Foco en totales, loops de precio y revisitas'],
-        'decision_activa'  => ['ico'=>'🧠','tit'=>'Decisión activa',                       'sub'=>'Múltiples vistas con span de horas entre ellas'],
-        'multi_persona'    => ['ico'=>'👥','tit'=>'Revisión multi-persona',                'sub'=>'Varias IPs distintas revisando la misma cotización'],
-        'revivio'          => ['ico'=>'💜','tit'=>'Revivió / Regreso',                     'sub'=>'Volvió tras días o semanas sin actividad'],
-        'enfriandose'      => ['ico'=>'🔵','tit'=>'Enfriándose',                           'sub'=>'Tuvo actividad pero no ha regresado en 48h+'],
-        'hesitacion'       => ['ico'=>'🟤','tit'=>'Sobre-análisis / Hesitación',           'sub'=>'Muchas visitas, pausa prolongada, posible fricción de precio'],
+        'cierre'           => ['ico'=>ico('fire',14,'#dc2626'),'tit'=>'Probable cierre / Cierre inminente',   'sub'=>'Actividad reciente + señales fuertes de intención'],
+        'validando_precio' => ['ico'=>ico('money',14,'#d97706'),'tit'=>'Validando precio',                      'sub'=>'Foco en totales, loops de precio y revisitas'],
+        'decision_activa'  => ['ico'=>ico('target',14,'#2563eb'),'tit'=>'Decisión activa',                       'sub'=>'Múltiples vistas con span de horas entre ellas'],
+        'multi_persona'    => ['ico'=>ico('eye',14,'#2563eb'),'tit'=>'Revisión multi-persona',                'sub'=>'Varias IPs distintas revisando la misma cotización'],
+        'revivio'          => ['ico'=>ico('purple',10),'tit'=>'Revivió / Regreso',                     'sub'=>'Volvió tras días o semanas sin actividad'],
+        'enfriandose'      => ['ico'=>ico('blue',10),'tit'=>'Enfriándose',                           'sub'=>'Tuvo actividad pero no ha regresado en 48h+'],
+        'hesitacion'       => ['ico'=>ico('orange',10),'tit'=>'Sobre-análisis / Hesitación',           'sub'=>'Muchas visitas, pausa prolongada, posible fricción de precio'],
     ];
     $last_b = array_key_last($buckets_def);
     foreach ($buckets_def as $bk => $bv):

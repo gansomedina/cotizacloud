@@ -85,28 +85,27 @@ $rows = DB::query(
 function radar_badge(?string $bucket, ?int $score, int $vistas = 0): string {
     if (!$bucket) return '';
     $map = [
-        'onfire'           => ['🔴','#991b1b','#fff1f2'],
-        'inminente'        => ['🟠','#c2410c','#fff7ed'],
-        'probable_cierre'  => ['🟡','#92400e','#fffbeb'],
-        'decision_activa'  => ['🟡','#92400e','#fffbeb'],
-        'validando_precio' => ['🟡','#92400e','#fffbeb'],
-        'prediccion_alta'  => ['🟢','#166534','#f0fdf4'],
-        'revision_profunda'=> ['🔵','#1d4ed8','#dbeafe'],
-        'multi_persona'    => ['🔵','#1d4ed8','#dbeafe'],
-        're_enganche_caliente' => ['🔥','#6d28d9','#ede9fe'],
-        're_enganche'      => ['🟣','#6d28d9','#ede9fe'],
-        'regreso'          => ['🟣','#6d28d9','#ede9fe'],
-        'revivio'          => ['🟣','#6d28d9','#ede9fe'],
-        'hesitacion'       => ['⚪','#64748b','#f1f5f9'],
-        'sobre_analisis'   => ['⚪','#64748b','#f1f5f9'],
-        'enfriandose'      => ['🔘','#94a3b8','#f1f5f9'],
-        'comparando'       => ['🔘','#94a3b8','#f1f5f9'],
-        'no_abierta'       => ['❌','#dc2626','#fef2f2'],
+        'onfire'           => [ico('red',10),'#991b1b','#fff1f2'],
+        'inminente'        => [ico('orange',10),'#c2410c','#fff7ed'],
+        'probable_cierre'  => [ico('yellow',10),'#92400e','#fffbeb'],
+        'decision_activa'  => [ico('yellow',10),'#92400e','#fffbeb'],
+        'validando_precio' => [ico('yellow',10),'#92400e','#fffbeb'],
+        'prediccion_alta'  => [ico('green',10),'#166534','#f0fdf4'],
+        'revision_profunda'=> [ico('blue',10),'#1d4ed8','#dbeafe'],
+        'multi_persona'    => [ico('blue',10),'#1d4ed8','#dbeafe'],
+        're_enganche_caliente' => [ico('fire',12,'#6d28d9'),'#6d28d9','#ede9fe'],
+        're_enganche'      => [ico('purple',10),'#6d28d9','#ede9fe'],
+        'regreso'          => [ico('purple',10),'#6d28d9','#ede9fe'],
+        'revivio'          => [ico('purple',10),'#6d28d9','#ede9fe'],
+        'hesitacion'       => [ico('gray',10),'#64748b','#f1f5f9'],
+        'sobre_analisis'   => [ico('gray',10),'#64748b','#f1f5f9'],
+        'enfriandose'      => [ico('gray',10),'#94a3b8','#f1f5f9'],
+        'comparando'       => [ico('gray',10),'#94a3b8','#f1f5f9'],
+        'no_abierta'       => [ico('x',10,'#dc2626'),'#dc2626','#fef2f2'],
     ];
-    [$ico,$color,$bg] = $map[$bucket] ?? ['⬜','#64748b','#f1f5f9'];
+    [$ico,$color,$bg] = $map[$bucket] ?? [ico('gray',10),'#64748b','#f1f5f9'];
     $lbl = ucwords(str_replace('_',' ',$bucket));
-    // El ojo con vistas va dentro del badge, no separado
-    $eye = $vistas > 0 ? " 👁 {$vistas}" : '';
+    $eye = $vistas > 0 ? ' '.ico('eye',10,$color).' '.$vistas : '';
     return "<span style=\"display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:12px;font:700 10px var(--body);background:{$bg};color:{$color};white-space:nowrap\">{$ico} {$lbl}{$eye}</span>";
 }
 
@@ -299,7 +298,7 @@ ob_start();
 <!-- Toolbar -->
 <div class="toolbar">
   <div class="search-wrap">
-    <span class="search-ico">🔍</span>
+    <span class="search-ico"><?= ico('search', 16, '#6a6a64') ?></span>
     <input type="text" id="srchCot" placeholder="Buscar por cliente, teléfono, título, número…"
            value="<?= e($busqueda) ?>" onkeydown="if(event.key==='Enter')filtrar('q',this.value)">
     <button onclick="filtrar('q',document.getElementById('srchCot').value)" style="padding:6px 14px;border-radius:var(--r-sm);border:1px solid var(--g);background:var(--g);color:#fff;font:600 13px var(--body);cursor:pointer;flex-shrink:0">Buscar</button>
@@ -338,7 +337,7 @@ foreach ($chips as $k => $lbl):
 
 <?php if (empty($rows)): ?>
 <div class="empty">
-  <div class="empty-ico">📋</div>
+  <div class="empty-ico"><?= ico('file', 32, '#94a3b8') ?></div>
   <div class="empty-txt"><?= $busqueda ? 'Sin resultados para "'.e($busqueda).'"' : 'No hay cotizaciones aún' ?></div>
 </div>
 <?php else: ?>
@@ -353,7 +352,7 @@ foreach ($chips as $k => $lbl):
     $url    = 'https://'.EMPRESA_SLUG.'.'.BASE_DOMAIN.'/c/'.$c['slug'];
     $puedeX = !in_array($c['estado'], ['aceptada','aceptada_cliente','convertida']);
     $vistas = (int)($c['visitas'] ?? 0);
-    $vis_txt = $vistas > 0 ? '👁 '.$vistas : '—';
+    $vis_txt = $vistas > 0 ? ico('eye',12,'#6a6a64').' '.$vistas : '—';
     $radar  = radar_badge($c['radar_bucket'], (int)($c['radar_score'] ?? 0), $vistas);
     $ed_url = '/cotizaciones/'.(int)$c['id'];
   ?>
@@ -379,7 +378,7 @@ foreach ($chips as $k => $lbl):
           <?php if ($c['radar_bucket']): ?>
             <?= $radar ?>
           <?php elseif ($vistas > 0): ?>
-            <span class="cot-vistas">👁 <?= $vistas ?></span>
+            <span class="cot-vistas"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
           <?php endif ?>
         </div>
       </div>
@@ -398,9 +397,9 @@ foreach ($chips as $k => $lbl):
           <?php endif ?>
         </div>
         <div class="exp-btns">
-          <a href="<?= $ed_url ?>" class="exp-btn">✏️ Editar</a>
-          <a href="<?= e($url) ?>" target="_blank" class="exp-btn">🔗 Ver</a>
-          <button class="exp-btn" onclick="copyLink('<?= e($url) ?>')">📋 Copiar</button>
+          <a href="<?= $ed_url ?>" class="exp-btn"><?= ico('edit',12) ?> Editar</a>
+          <a href="<?= e($url) ?>" target="_blank" class="exp-btn"><?= ico('link',12) ?> Ver</a>
+          <button class="exp-btn" onclick="copyLink('<?= e($url) ?>')"><?= ico('copy',12) ?> Copiar</button>
           <?php if ($puedeX): ?>
           <button class="exp-btn exp-btn-danger" onclick="eliminarCot(<?= (int)$c['id'] ?>,this)">✕ Borrar</button>
           <?php endif ?>
@@ -424,7 +423,7 @@ foreach ($chips as $k => $lbl):
         <?php if ($c['radar_bucket']): ?>
           <?= $radar ?>
         <?php elseif ($vistas > 0): ?>
-          <span class="cot-vistas-badge">👁 <?= $vistas ?></span>
+          <span class="cot-vistas-badge"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
         <?php endif ?>
       </div>
     </div>
@@ -437,9 +436,9 @@ foreach ($chips as $k => $lbl):
 
     <!-- col 7 desktop: acciones siempre visibles; click fila va a editar -->
     <div class="desk-actions" onclick="event.stopPropagation()">
-      <a href="<?= $ed_url ?>" class="act-btn">✏️ Editar</a>
-      <a href="<?= e($url) ?>" target="_blank" class="act-btn">🔗 Ver</a>
-      <button class="act-btn" onclick="copyLink('<?= e($url) ?>')">📋</button>
+      <a href="<?= $ed_url ?>" class="act-btn"><?= ico('edit',12) ?> Editar</a>
+      <a href="<?= e($url) ?>" target="_blank" class="act-btn"><?= ico('link',12) ?> Ver</a>
+      <button class="act-btn" onclick="copyLink('<?= e($url) ?>')"><?= ico('copy',12) ?></button>
       <?php if ($puedeX): ?>
       <button class="act-btn danger" onclick="eliminarCot(<?= (int)$c['id'] ?>,this)">✕</button>
       <?php endif ?>
@@ -494,8 +493,8 @@ function copyLink(url) {
   navigator.clipboard.writeText(url).then(() => {
     const btn = event.target.closest('button');
     const orig = btn.textContent;
-    btn.textContent = '✅ Copiado';
-    setTimeout(() => btn.textContent = orig, 1500);
+    btn.innerHTML = 'Copiado';
+    setTimeout(() => btn.innerHTML = orig, 1500);
   }).catch(() => {
     prompt('Copia este enlace:', url);
   });

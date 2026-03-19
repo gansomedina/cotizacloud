@@ -205,7 +205,7 @@ foreach ($elabels as $k => $lbl):
 <!-- SEARCH + ORDEN -->
 <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
   <div class="search-bar" style="flex:1;min-width:180px;margin-bottom:0">
-    <span style="color:var(--t3)">🔍</span>
+    <span style="color:var(--t3)"><?= ico('search', 16, '#6a6a64') ?></span>
     <input type="text" id="srch" value="<?= e($busqueda) ?>" placeholder="Buscar venta, cliente, folio…" onkeydown="if(event.key==='Enter')fil('q',this.value)">
     <button onclick="fil('q',document.getElementById('srch').value)" style="padding:6px 14px;border-radius:var(--r-sm);border:1px solid var(--g);background:var(--g);color:#fff;font:600 13px var(--body);cursor:pointer">Buscar</button>
   </div>
@@ -282,8 +282,8 @@ foreach ($elabels as $k => $lbl):
 
   <!-- Col 5: acciones -->
   <div class="venta-col-accion" onclick="event.stopPropagation()">
-    <a href="/ventas/<?= (int)$v['id'] ?>" class="act-btn" title="Editar">✏️</a>
-    <a href="<?= e($url_vta) ?>" target="_blank" class="act-btn" title="Ver liga pública">🔗</a>
+    <a href="/ventas/<?= (int)$v['id'] ?>" class="act-btn" title="Editar"><?= ico('edit',12) ?></a>
+    <a href="<?= e($url_vta) ?>" target="_blank" class="act-btn" title="Ver liga pública"><?= ico('link',12) ?></a>
     <?php if ($v['estado'] !== 'cancelada' && (float)$v['pagado'] <= 0): ?>
     <button class="act-btn act-danger" title="Cancelar venta"
       onclick="cancelarVenta(<?= (int)$v['id'] ?>)">✕</button>
@@ -297,7 +297,7 @@ foreach ($elabels as $k => $lbl):
       <?= $v['saldo'] <= 0 ? 'Pagado ✓' : $saldo_f . ' pendiente' ?>
     </div>
     <div style="margin-top:5px"><?= vst_badge($v['estado']) ?></div>
-    <a href="<?= e($url_vta) ?>" target="_blank" onclick="event.stopPropagation()" class="liga-btn" style="margin-top:5px">🔗 Liga</a>
+    <a href="<?= e($url_vta) ?>" target="_blank" onclick="event.stopPropagation()" class="liga-btn" style="margin-top:5px"><?= ico('link',12) ?> Liga</a>
   </div>
 
 </div>
