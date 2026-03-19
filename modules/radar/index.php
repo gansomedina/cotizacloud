@@ -84,11 +84,6 @@ $raw = DB::query(
 );
 
 // Helpers
-// Convierte emojis UTF-8 a entidades HTML numéricas para garantizar rendering en iOS WKWebView
-function emo(string $s): string {
-    return preg_replace_callback('/[\x{1F000}-\x{1FAFF}\x{2300}-\x{23FF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE00}-\x{FE0F}\x{200D}]/u',
-        function($m) { return '&#x'.strtoupper(dechex(mb_ord($m[0]))).';'; }, $s);
-}
 function rhace(int $ts): string {
     $d=time()-$ts; if($d<=0) return 'ahora'; if($d<60) return $d.'s'; if($d<3600) return floor($d/60).'m';
     if($d<86400) return floor($d/3600).'h'; return floor($d/86400).'d';
@@ -153,7 +148,7 @@ function rbadge(?string $b,?int $sc,array $BM): string {
     if(!$b) return '<span style="color:var(--t3);font-size:11px">—</span>';
     [$ico,$col,$bg,$lbl]=$BM[$b]??['⬜','#64748b','#f1f5f9',ucfirst($b)];
     $s=$sc?" · {$sc}":'';
-    return "<span style='display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font:700 11px var(--body);background:{$bg};color:{$col};white-space:nowrap'>{$ico} {$lbl}{$s}</span>";
+    return "<span style='display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-weight:700;font-size:11px;background:{$bg};color:{$col};white-space:nowrap'>{$ico} {$lbl}{$s}</span>";
 }
 
 // PRIORIDAD v3: probable_cierre es #1 (cross-bucket agregador)
@@ -585,7 +580,7 @@ h1,h2,h3,h4,p,button,span,div,td,th,a,input,select{
 <!-- Cabecera -->
 <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
   <div>
-    <h1 style="font:800 22px var(--body);letter-spacing:-.02em">📡 Radar</h1>
+    <h1 style="font-weight:800;font-size:22px;letter-spacing:-.02em">📡 Radar</h1>
     <p style="font:400 13px var(--body);color:var(--t3);margin-top:3px">
       Total: <?= $stat_total ?> · Aceptadas: <?= $stat_aceptadas ?> · Cierre global: <b><?= $cierre_pct ?>%</b>
       · Ciclo venta: <b><?= $ciclo_venta['dias'] ?>d</b><?= $ciclo_venta['auto'] ? '' : ' <span style="opacity:.6">(estimado)</span>' ?>
@@ -1057,5 +1052,5 @@ foreach ($_PB as $pb_key => $pb):
 <?php endforeach; ?>
 
 <?php
-$content = emo(ob_get_clean());
+$content = ob_get_clean();
 require ROOT_PATH . '/core/layout.php';
