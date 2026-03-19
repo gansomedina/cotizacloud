@@ -33,9 +33,9 @@ if ($trial['agotado']) {
                 <div style="background:var(--amb);height:100%;width:100%;border-radius:6px"></div>
             </div>
         </div>
-        <a href="mailto:soporte@cotiza.cloud?subject=Activar licencia - <?= e($empresa['nombre']) ?>" class="btn btn-primary" style="padding:12px 28px;font-size:14px">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            Contactar para activar
+        <a href="/ayuda#sec-licencia" class="btn btn-primary" style="padding:12px 28px;font-size:14px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Activar licencia
         </a>
         <a href="/cotizaciones" style="display:block;margin-top:12px;font-size:13px;color:var(--t3);text-decoration:none">Volver a cotizaciones</a>
     </div>
