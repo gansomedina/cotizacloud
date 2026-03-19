@@ -1036,11 +1036,21 @@ class Radar
     // ============================================================
     //  PERSISTIR SCORE
     // ============================================================
+    // Buckets que disparan push notification a la empresa
+    const PUSH_BUCKETS = [
+        'probable_cierre'  => 'Probable cierre',
+        'onfire'           => 'On Fire',
+        'inminente'        => 'Cierre inminente',
+        'validando_precio' => 'Validando precio',
+        'prediccion_alta'  => 'Predicción alta',
+    ];
+
     public static function recalcular(int $cotizacion_id, int $empresa_id): void
     {
-        $cot = DB::row("SELECT estado FROM cotizaciones WHERE id=? AND empresa_id=?", [$cotizacion_id, $empresa_id]);
+        $cot = DB::row("SELECT estado, radar_bucket, titulo, numero FROM cotizaciones WHERE id=? AND empresa_id=?", [$cotizacion_id, $empresa_id]);
         if (!$cot || !in_array($cot['estado'], ['enviada','vista','aceptada'])) return;
 
+        $old_bucket = $cot['radar_bucket'];
         $r = self::score($cotizacion_id, $empresa_id);
         DB::execute(
             "UPDATE cotizaciones SET radar_score=?, radar_bucket=?, radar_senales=?, radar_updated_at=NOW() WHERE id=?",
@@ -1051,6 +1061,27 @@ class Radar
                 $cotizacion_id,
             ]
         );
+
+        // Push notification cuando entra en un bucket importante (solo si cambió)
+        if (
+            $r['bucket'] !== null &&
+            $r['bucket'] !== $old_bucket &&
+            isset(self::PUSH_BUCKETS[$r['bucket']])
+        ) {
+            try {
+                $label = self::PUSH_BUCKETS[$r['bucket']];
+                $ref = $cot['numero'] ?: $cot['titulo'] ?: "#{$cotizacion_id}";
+                PushNotification::enviar_a_empresa(
+                    $empresa_id,
+                    'radar_' . $r['bucket'],
+                    "Radar: {$label}",
+                    "{$ref} — {$label}",
+                    ['cotizacion_id' => $cotizacion_id, 'url' => '/radar']
+                );
+            } catch (\Exception $e) {
+                // No bloquear el recálculo si falla el push
+            }
+        }
     }
 
     public static function recalcular_empresa(int $empresa_id): int
