@@ -450,7 +450,8 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
             ? 'Contacta a soporte para renovar tu licencia.'
             : 'Para reactivar tu acceso, contacta a nuestro equipo de soporte.';
 
-        // Existe pero inactiva — mostrar pantalla
+        // Existe pero inactiva — mostrar pantalla con formulario de solicitud
+        $base = rtrim(BASE_URL, '/');
         http_response_code(402);
         echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">';
         echo '<title>' . $titulo . ' — CotizaCloud</title>';
@@ -458,14 +459,22 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
         echo '<style>';
         echo '*{box-sizing:border-box;margin:0;padding:0}';
         echo 'body{font-family:"Plus Jakarta Sans",sans-serif;background:#f4f4f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}';
-        echo '.card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:480px;width:100%;padding:48px 40px;text-align:center}';
+        echo '.card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:520px;width:100%;padding:48px 40px;text-align:center}';
         echo '.icon{width:64px;height:64px;border-radius:50%;background:#fff5f5;display:flex;align-items:center;justify-content:center;margin:0 auto 24px}';
         echo '.icon svg{width:32px;height:32px;stroke:#c53030;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}';
         echo 'h1{font-size:22px;font-weight:800;color:#1a1a18;margin-bottom:8px}';
         echo 'p{font-size:14px;color:#4a4a46;line-height:1.6;margin-bottom:20px}';
         echo '.slug{font-family:monospace;background:#f1f5f9;padding:2px 8px;border-radius:6px;font-size:13px;color:#475569}';
-        echo '.contact{display:inline-flex;align-items:center;gap:6px;padding:10px 24px;border-radius:9px;font:600 14px "Plus Jakarta Sans",sans-serif;background:#1a5c38;color:#fff;text-decoration:none;transition:opacity .12s}';
-        echo '.contact:hover{opacity:.85}';
+        echo '.form-section{background:#f8faf9;border:1px solid #e2e8e4;border-radius:12px;padding:24px;margin-top:24px;text-align:left}';
+        echo '.form-section h3{font-size:15px;font-weight:700;color:#1a1a18;margin:0 0 4px}';
+        echo '.form-section .hint{font-size:12px;color:#6a6a64;margin-bottom:16px}';
+        echo '.field{margin-bottom:14px}';
+        echo '.field label{display:block;font-size:12px;font-weight:600;color:#4a4a46;margin-bottom:4px}';
+        echo '.field select,.field textarea{width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font:400 13px "Plus Jakarta Sans",sans-serif;color:#1a1a18;background:#fff;outline:none}';
+        echo '.field select:focus,.field textarea:focus{border-color:#1a5c38}';
+        echo '.field textarea{resize:vertical;min-height:60px}';
+        echo '.btn-submit{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:11px 24px;border-radius:9px;font:600 14px "Plus Jakarta Sans",sans-serif;background:#1a5c38;color:#fff;border:none;cursor:pointer;transition:opacity .12s}';
+        echo '.btn-submit:hover{opacity:.85}';
         echo '.back{display:block;margin-top:16px;font-size:13px;color:#6a6a64;text-decoration:none}';
         echo '.back:hover{color:#1a5c38}';
         echo '</style></head><body>';
@@ -473,8 +482,24 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
         echo '<div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>';
         echo '<h1>' . $titulo . '</h1>';
         echo '<p>' . $msg . '</p>';
-        echo '<p>' . $sub . '</p>';
-        echo '<a href="mailto:soporte@cotiza.cloud" class="contact">Contactar soporte</a>';
+
+        // Formulario de solicitud de licencia
+        echo '<div class="form-section">';
+        echo '<h3>Activar licencia</h3>';
+        echo '<div class="hint">Selecciona la duración y serás contactado a la brevedad con la liga de cobro.</div>';
+        echo '<form method="POST" action="' . $base . '/solicitar-licencia">';
+        echo '<input type="hidden" name="slug" value="' . htmlspecialchars($slug) . '">';
+        echo '<div class="field"><label>Duración</label><select name="duracion">';
+        echo '<option value="1_mes">1 mes</option>';
+        echo '<option value="3_meses">3 meses</option>';
+        echo '<option value="6_meses">6 meses</option>';
+        echo '<option value="1_anio">1 año</option>';
+        echo '</select></div>';
+        echo '<div class="field"><label>Mensaje (opcional)</label><textarea name="mensaje" placeholder="Información adicional..." rows="3"></textarea></div>';
+        echo '<button type="submit" class="btn-submit">Solicitar activación</button>';
+        echo '</form>';
+        echo '</div>';
+
         echo '<a href="/login" class="back">Volver al inicio de sesión</a>';
         echo '</div></body></html>';
         exit;

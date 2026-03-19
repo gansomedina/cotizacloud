@@ -106,6 +106,9 @@ class Router
             : self::load('auth', 'landing')
         );
 
+        // ── Solicitar licencia (público — desde página de empresa suspendida) ──
+        self::post('/solicitar-licencia', fn() => self::load('auth', 'solicitar_licencia'));
+
         // ── Fallback: URLs públicas en dominio raíz → redirigir al subdominio ──
         self::get('/c/:slug', fn($p) => self::redirect_to_subdomain('cotizaciones', 'slug', $p['slug'], '/c/'));
         self::get('/v/:slug', fn($p) => self::redirect_to_subdomain('ventas',       'slug', $p['slug'], '/v/'));

@@ -186,9 +186,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         </div>
     </div>
     <div class="sa-actions">
-        <?php if (EMPRESA_ID > 0 && EMPRESA_SLUG !== '_system'): ?>
-            <a href="/dashboard" class="sa-btn sa-btn-ghost"><i data-feather="arrow-left" style="width:14px;height:14px"></i> Volver a <?= e(EMPRESA_SLUG) ?></a>
-        <?php endif; ?>
         <a href="/logout" class="sa-btn sa-btn-ghost" style="color:var(--danger);border-color:#fca5a5"><i data-feather="log-out" style="width:14px;height:14px"></i> Salir</a>
     </div>
 </div>
@@ -351,7 +348,11 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
     </td>
     <td>
         <?php $plan = $e['plan'] ?? 'trial'; ?>
-        <span class="badge <?= $plan === 'pro' ? 'badge-green' : 'badge-amber' ?>"><?= strtoupper($plan) ?></span>
+        <?php if ($plan === 'trial' && (int)$e['num_cots'] >= TRIAL_LIMIT): ?>
+            <span class="badge badge-red">TRIAL AGOTADO</span>
+        <?php else: ?>
+            <span class="badge <?= $plan === 'pro' ? 'badge-green' : 'badge-amber' ?>"><?= strtoupper($plan) ?></span>
+        <?php endif; ?>
     </td>
     <td>
         <?php
