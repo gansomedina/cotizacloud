@@ -324,6 +324,8 @@ function dias_lbl(int $dias, bool $pasado = false): array {
 
 $mes_lbl_cap = ucfirst($mes_lbl);
 
+$trial = trial_info($empresa_id);
+
 $page_title = 'Inicio';
 ob_start();
 ?>
@@ -434,6 +436,27 @@ ob_start();
   .kpi-val{font-size:20px}
 }
 </style>
+
+<?php if ($trial['agotado'] || $trial['vencido']): ?>
+<div style="background:<?= $trial['vencido'] ? '#fff5f5' : 'var(--amb-bg)' ?>;border:1px solid <?= $trial['vencido'] ? '#fca5a5' : '#fcd34d' ?>;border-radius:var(--r);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <div style="width:48px;height:48px;border-radius:50%;background:<?= $trial['vencido'] ? '#fee2e2' : '#fde68a' ?>;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="<?= $trial['vencido'] ? '#c53030' : '#92400e' ?>" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <div style="flex:1">
+        <?php if ($trial['vencido']): ?>
+            <div style="font:700 15px var(--body);color:#c53030;margin-bottom:2px">Licencia vencida</div>
+            <div style="font:400 13px var(--body);color:#991b1b;line-height:1.5">Tu licencia PRO venció el <?= date('d/m/Y', strtotime($trial['plan_vence'])) ?>. Renueva para seguir creando cotizaciones.</div>
+        <?php else: ?>
+            <div style="font:700 15px var(--body);color:#92400e;margin-bottom:2px">Prueba gratuita agotada</div>
+            <div style="font:400 13px var(--body);color:#78350f;line-height:1.5">Has usado las <?= TRIAL_LIMIT ?> cotizaciones de prueba. Activa tu licencia PRO para continuar.</div>
+        <?php endif; ?>
+    </div>
+    <a href="/licencia" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--r-sm);font:600 13px var(--body);background:<?= $trial['vencido'] ? '#c53030' : '#92400e' ?>;color:#fff;text-decoration:none;white-space:nowrap;transition:opacity .12s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Activar licencia
+    </a>
+</div>
+<?php endif; ?>
 
 <!-- SELECTOR DE PERÍODO (en topbar via slot extra) -->
 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
