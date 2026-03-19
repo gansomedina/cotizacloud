@@ -363,7 +363,7 @@ ob_start();
 
   <!-- Búsqueda -->
   <div class="search-wrap">
-    <span class="search-ico">🔍</span>
+    <span class="search-ico"><?= ico('search', 16, '#6a6a64') ?></span>
     <input type="text" id="busqueda" placeholder="Buscar venta o cliente…"
            value="<?= e($q) ?>"
            oninput="debounce(()=>buscar(this.value), 280)">
@@ -373,7 +373,7 @@ ob_start();
   <?php if (empty($ventas_raw)): ?>
   <div class="list-card">
     <div class="empty-state">
-      <div class="empty-ico">📊</div>
+      <div class="empty-ico"><?= ico('chart', 32, '#94a3b8') ?></div>
       <div class="empty-tit">Sin ventas que mostrar</div>
       <div class="empty-sub">Cuando conviertas cotizaciones en ventas, podrás registrar sus costos aquí.</div>
     </div>
@@ -467,7 +467,7 @@ ob_start();
   <?php if (empty($categorias)): ?>
   <div class="list-card">
     <div class="empty-state">
-      <div class="empty-ico">🏷️</div>
+      <div class="empty-ico"><?= ico('tag', 32, '#94a3b8') ?></div>
       <div class="empty-tit">Sin categorías aún</div>
       <div class="empty-sub"><?= $es_admin ? 'Crea categorías para organizar tus costos por tipo.' : 'El administrador aún no ha creado categorías.' ?></div>
     </div>

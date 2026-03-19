@@ -37,17 +37,17 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿tiene alguna duda sobre la cotización o qué le falta para que arranquemos?',
                 'nota'  => 'Directa y abierta. Invita al cliente a nombrar lo que falta sin presionarlo — y si ya está listo, lo dice.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], esta semana tenemos disponibilidad limitada. Si quiere que arranquemos este mes, este es buen momento para apartar su lugar.',
                 'nota'  => 'Urgencia real de capacidad. Para alguien con señal fuerte, este mensaje es suficiente para mover la decisión.',
             ],
             [
-                'canal' => '📞 Llamada — solo si no respondió WhatsApp en 48h',
+                'canal' => 'Llamada — solo si no respondió WhatsApp en 48h',
                 'texto' => '[Nombre], le llamo rápido porque quería consultarle un detalle de su cotización antes de agendar.',
                 'nota'  => 'Pretexto concreto que justifica la llamada. En la llamada se mencionan tiempos de entrega y se cierra agenda.',
             ],
@@ -78,12 +78,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], esta semana tenemos disponibilidad limitada. Si quiere que arranquemos este mes, este es buen momento para apartar su lugar.',
                 'nota'  => 'Urgencia real de capacidad. El cliente siente que está aprovechando un espacio disponible, no que lo están presionando.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿tiene alguna duda sobre su cotización o qué le falta para iniciar?',
                 'nota'  => 'Pregunta directa que invita a nombrar el freno. Si ya está listo, lo dice. Si tiene duda, también.',
             ],
@@ -126,7 +126,7 @@ $GLOBALS['PLAYBOOK'] = [
                 'nota'  => 'No bajes el precio. Ofrece estructura de pago que haga digerible el monto.',
             ],
             [
-                'canal' => '📞 Llamada — motivo Re-enganche',
+                'canal' => 'Llamada — motivo Re-enganche',
                 'texto' => 'Hola [Nombre], noté que revisó de nuevo su cotización. ¿Cambió algo en su proyecto o le ajustamos algo?',
                 'nota'  => 'Volvió después de días. Llamada > WhatsApp aquí. Algo cambió en su situación.',
             ],
@@ -157,7 +157,7 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿hay algo de la propuesta que no quedó del todo claro? A veces por este medio no se lee igual — si gusta podemos hacer una llamada rápida.',
                 'nota'  => 'Abre la puerta sin asumir que el problema es precio. Si es precio, él lo dice. Si es otra cosa, también.',
             ],
@@ -193,12 +193,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿cómo va con la propuesta? Si tiene alguna duda o quiere ajustar algo, con gusto lo vemos.',
                 'nota'  => 'Neutro y disponible. Le das razón para responder sin asumir nada sobre su proceso.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], solo para que lo tenga presente: tenemos disponibilidad esta semana si quiere que avancemos.',
                 'nota'  => 'Timing suave. No presiona, pero le recuerda que hay un espacio para él.',
             ],
@@ -231,12 +231,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿cómo va la evaluación? Si necesita material adicional — fotos, referencias, o detalles técnicos — con gusto se lo preparo.',
                 'nota'  => 'Te posicionas como recurso, no como vendedor. En ticket alto, el que da más confianza gana.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], entiendo que una decisión de este nivel se piensa bien. Si quiere podemos agendar una llamada para resolver cualquier duda que tenga.',
                 'nota'  => 'Reconoces que es una decisión importante. Eso genera confianza — sabe que no lo vas a presionar.',
             ],
@@ -267,12 +267,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], si tiene alguna pregunta mientras revisa la propuesta, aquí estoy. A veces es más fácil si me pregunta directo.',
                 'nota'  => 'No presionas — te ofreces como recurso. El cliente siente apoyo disponible cuando lo necesite.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿tiene alguna duda sobre su cotización o qué le falta para iniciar?',
                 'nota'  => 'Segunda opción más directa. Invita a nombrar el freno sin asumir nada.',
             ],
@@ -303,12 +303,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿cómo va el proyecto? ¿Sigue en pie? Si gusta le explico cualquier detalle de la cotización.',
                 'nota'  => 'Retoma sin drama. Ofrecer explicar le da razón para responder — y abre la puerta a resolver lo que la competencia no le resolvió.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], tenemos disponibilidad limitada esta semana. Si quiere arrancar este mes, es buen momento para apartar su lugar.',
                 'nota'  => 'Urgencia real de capacidad. Para quien ya está comparando, un espacio disponible es un argumento concreto.',
             ],
@@ -339,12 +339,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿cómo va todo? ¿El proyecto sigue en pie?',
                 'nota'  => 'Simple y natural. Si algo cambió, lo dice. Si solo está revisando, retoma conversación.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿gusta que le actualice la cotización o ajustemos algo?',
                 'nota'  => 'Ofreces valor concreto sin asumir nada. Le das razón para responder.',
             ],
@@ -375,12 +375,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿cómo va todo? ¿El proyecto sigue en pie? Le recuerdo que contamos con garantía por escrito de cumplimiento en tiempos y calidad.',
                 'nota'  => 'Neutro al inicio. El recordatorio de garantía es el argumento que más se comparte cuando hay más de un decisor.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], si necesita algo para revisar el proyecto con más detalle — fotos, referencias, o un resumen ejecutivo — dígame y se lo preparo.',
                 'nota'  => 'Le das material sin preguntarle para quién. Si hay otra persona en la decisión, lo usará.',
             ],
@@ -411,12 +411,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿alguna pregunta sobre los detalles de la propuesta? A veces hay cosas que por este medio no se leen igual.',
                 'nota'  => 'Abre la puerta a la pregunta técnica que tiene guardada. Cuando la hace, avanza.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], si quiere le mando ejemplos de proyectos similares al suyo para que vea el resultado final.',
                 'nota'  => 'Para el perfil analítico, ver resultados reales es más convincente que cualquier argumento escrito.',
             ],
@@ -447,7 +447,7 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿ya pudo ver bien la propuesta?',
                 'nota'  => 'El mensaje más corto del playbook. Cuando no ha respondido nada, un mensaje corto tiene más oportunidad que uno largo.',
             ],
@@ -483,12 +483,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿cómo va todo? ¿El proyecto sigue en pie?',
                 'nota'  => 'Sin presión, sin juicio. Si algo cambió, lo dice. Si solo está ocupado, retoma natural.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], solo para que lo tenga claro: arrancamos cuando usted lo autorice. No hay prisa de nuestra parte. Si quiere que avancemos en detalles mientras tanto, dígame.',
                 'nota'  => 'Quitar la presión percibida paradójicamente lo mueve más rápido.',
             ],
@@ -519,12 +519,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], llevo un tiempo dándole seguimiento a su proyecto. Dígame si hay algo que no le haya convencido o si todavía está en proceso.',
                 'nota'  => 'Invitas la objeción directamente. El que tiene algo pendiente lo agradece.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], tenemos disponibilidad limitada esta semana. Si quiere que arranquemos este mes, es buen momento.',
                 'nota'  => 'Urgencia real de capacidad. Para alguien que lleva semanas pensándolo, una razón concreta de timing a veces es lo único que mueve.',
             ],
@@ -560,12 +560,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¡hola! Dándole seguimiento a su cotización — ¿gusta que le hagamos algún ajuste?',
                 'nota'  => 'Retoma como continuidad natural. Ofrecer ajustes es razón concreta para volver a platicar.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿sigue siendo el mismo proyecto o cambió algo desde que lo platicamos?',
                 'nota'  => 'Alternativa más abierta. Evita mandar la misma propuesta vieja sin contexto.',
             ],
@@ -596,12 +596,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿cómo va el proyecto? ¿Sigue en pie? ¿Gusta que le explique algo de la cotización?',
                 'nota'  => 'Retoma sin drama. Ofrecer explicar le da razón para responder.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], tenemos disponibilidad esta semana. Si quiere que arranquemos, es buen momento para apartar su lugar.',
                 'nota'  => 'Para quien ya está comparando, disponibilidad inmediata es un argumento concreto.',
             ],
@@ -632,12 +632,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], entiendo que tiene que evaluar opciones. Si tiene alguna duda de cómo trabajamos o qué incluye exactamente, con gusto se lo explico.',
                 'nota'  => 'Reconoces que puede estar comparando sin juzgarlo. Eso posiciona al asesor como el más transparente.',
             ],
             [
-                'canal' => '📞 Llamada',
+                'canal' => 'Llamada',
                 'texto' => '[Nombre], le llamo porque quiero asegurarme de que tiene toda la información para evaluar bien. ¿Tiene dos minutos?',
                 'nota'  => '"Para evaluar bien" pone al asesor del lado del cliente.',
             ],
@@ -714,12 +714,12 @@ $GLOBALS['PLAYBOOK'] = [
         ],
         'messages' => [
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], le envié su cotización hace unos días. ¿Le llegó bien? Se la puedo reenviar si gusta.',
                 'nota'  => 'No asumes nada. Si no le llegó, la reenvías. Si la ignoró, la abre ahora.',
             ],
             [
-                'canal' => '📱 WhatsApp',
+                'canal' => 'WhatsApp',
                 'texto' => '[Nombre], ¿pudo ver la propuesta que le envié? Dígame si tiene alguna duda.',
                 'nota'  => 'Alternativa más directa. Para clientes con los que ya hay conversación previa.',
             ],

@@ -64,10 +64,10 @@ ob_start();
 .ay-btn-submit:disabled{opacity:.5;cursor:not-allowed}
 
 .ay-tip{background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--r);padding:14px 18px;margin:16px 0;font:400 13px var(--body);color:#1e40af;line-height:1.6}
-.ay-tip::before{content:'💡 ';font-size:15px}
+.ay-tip::before{content:'';display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z'/%3E%3C/svg%3E") center/contain no-repeat}
 
 .ay-warn{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r);padding:14px 18px;margin:16px 0;font:400 13px var(--body);color:#92400e;line-height:1.6}
-.ay-warn::before{content:'⚠️ ';font-size:15px}
+.ay-warn::before{content:'';display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E") center/contain no-repeat}
 
 .ay-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
 .ay-feature{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px;text-align:center}
@@ -107,20 +107,20 @@ ob_start();
   <div class="ay-nav-section">Inicio</div>
   <a href="#inicio" class="active" onclick="ayTab('inicio',this)"><span class="ay-ico">🏠</span> Bienvenida</a>
   <a href="#primeros-pasos" onclick="ayTab('primeros-pasos',this)"><span class="ay-ico">🚀</span> Primeros pasos</a>
-  <a href="#soporte" onclick="ayTab('soporte',this)"><span class="ay-ico">🎫</span> Enviar ticket</a>
+  <a href="#soporte" onclick="ayTab('soporte',this)"><span class="ay-ico"><?= ico('mail',14) ?></span> Enviar ticket</a>
 
   <div class="ay-nav-section">Módulos</div>
-  <a href="#dashboard" onclick="ayTab('dashboard',this)"><span class="ay-ico">📊</span> Dashboard</a>
-  <a href="#clientes" onclick="ayTab('clientes',this)"><span class="ay-ico">👥</span> Clientes</a>
-  <a href="#cotizaciones" onclick="ayTab('cotizaciones',this)"><span class="ay-ico">📄</span> Cotizaciones</a>
-  <a href="#ventas" onclick="ayTab('ventas',this)"><span class="ay-ico">🛒</span> Ventas</a>
-  <a href="#radar" onclick="ayTab('radar',this)"><span class="ay-ico">📡</span> Radar</a>
-  <a href="#costos" onclick="ayTab('costos',this)"><span class="ay-ico">📉</span> Costos</a>
-  <a href="#reportes" onclick="ayTab('reportes',this)"><span class="ay-ico">📋</span> Reportes</a>
+  <a href="#dashboard" onclick="ayTab('dashboard',this)"><span class="ay-ico"><?= ico('chart',14) ?></span> Dashboard</a>
+  <a href="#clientes" onclick="ayTab('clientes',this)"><span class="ay-ico"><?= ico('eye',14) ?></span> Clientes</a>
+  <a href="#cotizaciones" onclick="ayTab('cotizaciones',this)"><span class="ay-ico"><?= ico('file',14) ?></span> Cotizaciones</a>
+  <a href="#ventas" onclick="ayTab('ventas',this)"><span class="ay-ico"><?= ico('money',14) ?></span> Ventas</a>
+  <a href="#radar" onclick="ayTab('radar',this)"><span class="ay-ico"><?= ico('target',14) ?></span> Radar</a>
+  <a href="#costos" onclick="ayTab('costos',this)"><span class="ay-ico"><?= ico('chart',14) ?></span> Costos</a>
+  <a href="#reportes" onclick="ayTab('reportes',this)"><span class="ay-ico"><?= ico('file',14) ?></span> Reportes</a>
 
   <div class="ay-nav-section">Admin</div>
-  <a href="#configuracion" onclick="ayTab('configuracion',this)"><span class="ay-ico">⚙️</span> Configuración</a>
-  <a href="#faq" onclick="ayTab('faq',this)"><span class="ay-ico">❓</span> Preguntas frecuentes</a>
+  <a href="#configuracion" onclick="ayTab('configuracion',this)"><span class="ay-ico"><?= ico('target',14) ?></span> Configuración</a>
+  <a href="#faq" onclick="ayTab('faq',this)"><span class="ay-ico"><?= ico('bulb',14) ?></span> Preguntas frecuentes</a>
 </nav>
 
 <!-- ── Contenido ── -->
@@ -137,22 +137,22 @@ ob_start();
 
   <div class="ay-grid">
     <div class="ay-feature">
-      <div class="ay-feat-ico">📄</div>
+      <div class="ay-feat-ico"><?= ico('file',28,'#2563eb') ?></div>
       <h4>Cotizaciones</h4>
       <p>Crea y envía cotizaciones profesionales en minutos</p>
     </div>
     <div class="ay-feature">
-      <div class="ay-feat-ico">📡</div>
+      <div class="ay-feat-ico"><?= ico('target',28,'#16a34a') ?></div>
       <h4>Radar</h4>
       <p>Sabe cuándo tu cliente revisa la cotización y qué le interesa</p>
     </div>
     <div class="ay-feature">
-      <div class="ay-feat-ico">🛒</div>
+      <div class="ay-feat-ico"><?= ico('money',28,'#d97706') ?></div>
       <h4>Ventas</h4>
       <p>Convierte cotizaciones en ventas y controla pagos</p>
     </div>
     <div class="ay-feature">
-      <div class="ay-feat-ico">📋</div>
+      <div class="ay-feat-ico"><?= ico('chart',28,'#7c3aed') ?></div>
       <h4>Reportes</h4>
       <p>Visualiza el rendimiento de tu negocio con datos reales</p>
     </div>
@@ -301,7 +301,7 @@ ob_start();
 <!--  DASHBOARD                                             -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-dashboard">
-  <h2 class="ay-h2">📊 Dashboard</h2>
+  <h2 class="ay-h2"><?= ico('chart',18,'#2563eb') ?> Dashboard</h2>
   <p class="ay-subtitle">Tu vista ejecutiva. De un vistazo sabes cómo va tu negocio.</p>
 
   <div class="ay-card">
@@ -436,7 +436,7 @@ ob_start();
 <!--  RADAR                                                 -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-radar">
-  <h2 class="ay-h2">📡 Radar</h2>
+  <h2 class="ay-h2"><?= ico('target',18,'#16a34a') ?> Radar</h2>
   <p class="ay-subtitle">Tu arma secreta de ventas. Detecta en tiempo real quién está a punto de comprar y quién necesita seguimiento.</p>
 
   <div class="ay-card">
@@ -456,12 +456,12 @@ ob_start();
   <div class="ay-card">
     <h3>Buckets principales</h3>
     <ul>
-      <li><b>🎯 Probable cierre</b> — Tu lista de trabajo #1. Cotizaciones con intención confirmada desde múltiples señales. Contacta HOY.</li>
-      <li><b>🔥 On Fire</b> — Máxima actividad. El cliente está revisando intensamente ahora mismo.</li>
-      <li><b>🔥 Cierre inminente</b> — Varias señales fuertes convergiendo. Está a punto de decidir.</li>
+      <li><b><?= ico('target',12,'#92400e') ?> Probable cierre</b> — Tu lista de trabajo #1. Cotizaciones con intención confirmada desde múltiples señales. Contacta HOY.</li>
+      <li><b><?= ico('fire',12,'#991b1b') ?> On Fire</b> — Máxima actividad. El cliente está revisando intensamente ahora mismo.</li>
+      <li><b><?= ico('fire',12,'#c2410c') ?> Cierre inminente</b> — Varias señales fuertes convergiendo. Está a punto de decidir.</li>
       <li><b>💸 Validando precio</b> — Está enfocado en los números. No bajes el precio — transfiere certeza.</li>
       <li><b>🔮 Predicción alta</b> — El modelo estadístico predice alta probabilidad de cierre.</li>
-      <li><b>🔥 Re-enganche caliente</b> — Volvió después de días con señales fuertes.</li>
+      <li><b><?= ico('fire',12,'#6d28d9') ?> Re-enganche caliente</b> — Volvió después de días con señales fuertes.</li>
       <li><b>👥 Multi-persona</b> — Múltiples personas revisando. Decisión compartida (pareja, socio).</li>
     </ul>
   </div>
@@ -517,7 +517,7 @@ ob_start();
 <!--  REPORTES                                              -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-reportes">
-  <h2 class="ay-h2">📋 Reportes</h2>
+  <h2 class="ay-h2"><?= ico('file',18,'#7c3aed') ?> Reportes</h2>
   <p class="ay-subtitle">Análisis de rendimiento de tu negocio con datos reales, filtrados por período.</p>
 
   <div class="ay-card">

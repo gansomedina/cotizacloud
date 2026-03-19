@@ -738,7 +738,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
 <!-- PANTALLA ÉXITO -->
 <div class="succ" id="succWrap">
-  <div class="sico" id="sIco">✅</div>
+  <div class="sico" id="sIco"><?= ico('check', 48, '#16a34a') ?></div>
   <div class="stit" id="sTit"></div>
   <div class="smsg" id="sMsg"></div>
   <div class="sbox" id="sBox"></div>
@@ -962,7 +962,7 @@ async function doAcc(){
     const msgExito = EMPRESA.texto_aceptar
         ? EMPRESA.texto_aceptar.replace(/\n/g,'<br>')
         : 'Gracias, '+nombre+'. El equipo se pondrá en contacto contigo pronto.';
-    mostrarExito('✅', '¡Cotización aceptada!',
+    mostrarExito('<?= addslashes(ico('check',48,'#16a34a')) ?>', '¡Cotización aceptada!',
         msgExito,
         'WhatsApp: '+(EMPRESA.tel||'')+(EMPRESA.email?' · '+EMPRESA.email:'')
     );

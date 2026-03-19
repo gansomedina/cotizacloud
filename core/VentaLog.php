@@ -50,18 +50,18 @@ class VentaLog
     public static function label(string $evento): array
     {
         return match ($evento) {
-            'abono_registrado'    => ['💰', 'Pago registrado'],
-            'abono_cancelado'     => ['↩️',  'Pago cancelado'],
-            'estado_cambiado'     => ['🔄', 'Estado actualizado'],
-            'item_agregado'       => ['➕', 'Artículo agregado'],
-            'item_editado'        => ['✏️',  'Artículo editado'],
-            'item_eliminado'      => ['🗑',  'Artículo eliminado'],
-            'descuento_agregado'  => ['🏷️', 'Descuento agregado'],
-            'descuento_eliminado' => ['✕',  'Descuento eliminado'],
-            'cliente_cambiado'    => ['👤', 'Cliente cambiado'],
-            'cotizacion_guardada' => ['💾', 'Cotización guardada'],
-            'venta_creada'        => ['🎉', 'Venta creada'],
-            default               => ['📌', ucfirst(str_replace('_', ' ', $evento))],
+            'abono_registrado'    => [ico('money',14,'#16a34a'), 'Pago registrado'],
+            'abono_cancelado'     => [ico('x',14,'#dc2626'),  'Pago cancelado'],
+            'estado_cambiado'     => [ico('check',14,'#2563eb'), 'Estado actualizado'],
+            'item_agregado'       => [ico('check',14,'#16a34a'), 'Artículo agregado'],
+            'item_editado'        => [ico('edit',14,'#d97706'),  'Artículo editado'],
+            'item_eliminado'      => [ico('x',14,'#dc2626'),  'Artículo eliminado'],
+            'descuento_agregado'  => [ico('tag',14,'#7c3aed'), 'Descuento agregado'],
+            'descuento_eliminado' => [ico('x',14,'#dc2626'),  'Descuento eliminado'],
+            'cliente_cambiado'    => [ico('eye',14,'#2563eb'), 'Cliente cambiado'],
+            'cotizacion_guardada' => [ico('check',14,'#16a34a'), 'Cotización guardada'],
+            'venta_creada'        => [ico('check',14,'#16a34a'), 'Venta creada'],
+            default               => [ico('file',14,'#64748b'), ucfirst(str_replace('_', ' ', $evento))],
         };
     }
 }
