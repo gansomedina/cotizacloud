@@ -34,6 +34,7 @@
 
     // Cuando se obtiene el token, enviarlo al servidor
     PushNotifications.addListener('registration', function (token) {
+        console.log('[Push] Token obtenido:', token.value.substring(0, 20) + '...');
         var plataforma = window.Capacitor.getPlatform(); // 'ios' o 'android'
 
         fetch('/api/push/register', {
@@ -44,8 +45,13 @@
                 token: token.value,
                 plataforma: plataforma
             })
+        }).then(function (res) {
+            console.log('[Push] Registro HTTP status:', res.status);
+            return res.json();
+        }).then(function (data) {
+            console.log('[Push] Registro respuesta:', JSON.stringify(data));
         }).catch(function (err) {
-            console.warn('Push register error:', err);
+            console.warn('[Push] Registro error:', err);
         });
     });
 
