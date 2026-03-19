@@ -8,6 +8,10 @@
 
 defined('COTIZAAPP') or die;
 
+// Evitar cache agresivo en iOS WKWebView
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+
 require_once MODULES_PATH . '/radar/Radar.php';
 require_once MODULES_PATH . '/radar/playbook-data.php';
 
