@@ -97,9 +97,11 @@ ob_start();
 .vt-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
 
 /* SEARCH */
-.search-bar{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:12px;box-shadow:var(--sh)}
-.search-bar input{flex:1;background:transparent;border:none;outline:none;font:400 14px var(--body);color:var(--text)}
-.search-bar input::placeholder{color:var(--t3)}
+.search-wrap{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;position:relative;margin-bottom:12px}
+.search-wrap input{width:100%;background:var(--white);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 14px 10px 38px;font:400 14px var(--body);color:var(--text);outline:none;transition:border-color .15s;box-shadow:var(--sh)}
+.search-wrap input:focus{border-color:var(--g)}
+.search-wrap input::placeholder{color:var(--t3)}
+.search-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--t3);pointer-events:none}
 
 /* TABLA DESKTOP */
 .vtbl-header{display:none}
@@ -203,8 +205,8 @@ foreach ($elabels as $k => $lbl):
 </div>
 
 <!-- SEARCH -->
-<div class="search-bar">
-  <span style="color:var(--t3)"><?= ico('search', 16, '#6a6a64') ?></span>
+<div class="search-wrap">
+  <span class="search-ico"><?= ico('search', 16, '#6a6a64') ?></span>
   <input type="text" id="srch" value="<?= e($busqueda) ?>" placeholder="Buscar venta, cliente, folio…" onkeydown="if(event.key==='Enter')fil('q',this.value)">
   <button onclick="fil('q',document.getElementById('srch').value)" style="padding:6px 14px;border-radius:var(--r-sm);border:1px solid var(--g);background:var(--g);color:#fff;font:600 13px var(--body);cursor:pointer;flex-shrink:0">Buscar</button>
 </div>
