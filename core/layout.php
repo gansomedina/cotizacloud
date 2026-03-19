@@ -79,6 +79,9 @@ foreach ($mas_rutas as $r) {
     <!-- Feather: solo para sidebar y flash (están visibles desde el inicio) -->
     <script src="/assets/js/feather.min.js"></script>
 
+    <!-- Twemoji: renderiza emojis como SVG para compatibilidad iOS WKWebView -->
+    <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
+
     <style>
         :root {
             --bg:#f4f4f0; --white:#fff; --border:#e2e2dc; --border2:#c8c8c0;
@@ -203,6 +206,9 @@ foreach ($mas_rutas as $r) {
         .more-item svg{width:24px;height:24px}
         .more-item-logout{color:var(--danger)}
         .more-item-logout:active{background:var(--danger-bg)}
+
+        /* ── TWEMOJI ── */
+        img.emoji{height:1em;width:1em;margin:0 .05em 0 .1em;vertical-align:-0.1em;display:inline}
 
         /* ── SCROLLBAR ── */
         ::-webkit-scrollbar{width:6px;height:6px}
@@ -412,6 +418,11 @@ function toggleMoreDrawer(){
 </script>
 
 <?php if (isset($extra_scripts)) echo $extra_scripts; ?>
+
+<script>
+// Twemoji: convierte emojis Unicode a imágenes SVG para iOS WKWebView
+if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'.svg',base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});}
+</script>
 
 </body>
 </html>
