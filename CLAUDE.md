@@ -33,9 +33,9 @@
 
 ## Push Notifications (iOS) — Estado
 
-### Completado (código listo, falta configurar Apple)
+### Completado
 - Plugin `@capacitor/push-notifications@8.0.2` instalado y sincronizado
-- Tablas BD: migración en `migrations/add_push_notifications.sql` (pendiente ejecutar en servidor)
+- Tablas BD: migración ejecutada en servidor (`migrations/add_push_notifications.sql`)
   - `dispositivos_push` — tokens de dispositivos
   - `notificaciones_push` — log de notificaciones enviadas
 - Servicio PHP APNs: `core/PushNotification.php` — envío via HTTP/2 con JWT ES256
@@ -44,29 +44,20 @@
   - `POST /api/push/unregister` — desactiva token
 - Hooks en `api/quote_action.php` — dispara push al aceptar/rechazar cotización
 - JS cliente: `assets/js/push.js` — pide permisos, registra token, muestra banner en foreground
-- Config APNs: constantes en `config.php` (vacías, pendiente llenar)
 - Plugin configurado en `capacitor.config.ts` con `presentationOptions: ['badge', 'sound', 'alert']`
+- Cuenta Apple Developer activa
+- App ID `com.cotizacloud.app` registrado con Push Notifications habilitado
+- APNs Key creada (Key ID: `D2AW3CT2UF`, Team ID: `T3LPNPVHZ2`)
+- Archivo `.p8` subido al servidor en `/home/key/AuthKey_D2AW3CT2UF.p8`
+- Config APNs configurado en `config.php` con Key ID, Team ID y ruta al .p8
+- Push Notifications capability habilitado en Xcode (`App.entitlements`)
 
-### Pendiente (requiere cuenta Apple Developer activa)
-1. **Ejecutar migración SQL** en servidor: `migrations/add_push_notifications.sql`
-2. **Crear APNs Key** en Apple Developer Portal:
-   - Ir a Certificates, Identifiers & Profiles > Keys > "+"
-   - Habilitar "Apple Push Notifications service (APNs)"
-   - Descargar el archivo `.p8` y subirlo al servidor
-3. **Configurar en `config.php`** o variables de entorno:
-   - `APNS_KEY_PATH` → ruta al archivo .p8 en el servidor
-   - `APNS_KEY_ID` → Key ID que da Apple al crear la key
-   - `APNS_TEAM_ID` → Team ID de la cuenta Apple Developer
-4. **Habilitar Push Notifications capability** en Xcode:
-   - Abrir proyecto > Target App > Signing & Capabilities > "+ Capability" > Push Notifications
-5. **Compilar y probar** en dispositivo real (push no funciona en simulador)
-
-### Cuenta Apple Developer
-- **Estado**: Pagada, esperando activación (normalmente 24-48 horas)
-- Se necesita para: certificado APNs, publicar en App Store
+### Pendiente
+1. **Compilar y probar** en dispositivo real (push no funciona en simulador)
+2. Para producción: cambiar `aps-environment` en `App.entitlements` de `development` a `production`
 
 ## Próximos Pasos
-1. Configurar push notifications cuando se active la cuenta Apple Developer
+1. Probar push notifications en dispositivo real (iPhone conectado por USB)
 2. Probar la app completa (login, cotizaciones, navegación entre módulos)
 3. Verificar íconos y splash screen en todos los tamaños
 4. App Store Connect: crear ficha (screenshots, descripción, categoría)
