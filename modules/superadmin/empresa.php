@@ -41,6 +41,9 @@ $ultimas_cots = DB::query(
     [$empresa_id]
 );
 
+// Trial info
+$trial = trial_info($empresa_id);
+
 // Radar config
 $radar_config = json_decode($emp['radar_config'] ?? '{}', true) ?: [];
 $radar_modo = $radar_config['modo'] ?? 'medio';
@@ -174,6 +177,36 @@ tr:hover td{background:#fafaf8}
             <?php endif; ?>
         </form>
     </div>
+</div>
+
+<!-- Plan / Trial -->
+<div style="background:<?= $trial['es_trial'] ? 'var(--amb-bg)' : 'var(--g-bg)' ?>;border:1px solid <?= $trial['es_trial'] ? '#fcd34d' : 'var(--g-border)' ?>;border-radius:var(--r);padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+        <span class="badge <?= $trial['es_trial'] ? 'badge-amber' : 'badge-green' ?>" style="font-size:12px;padding:5px 14px;margin-right:8px">
+            <?= $trial['es_trial'] ? 'TRIAL' : 'PRO' ?>
+        </span>
+        <?php if ($trial['es_trial']): ?>
+            <span style="font-size:13px;color:var(--amb);font-weight:600">
+                <?= $trial['usadas'] ?> / <?= TRIAL_LIMIT ?> cotizaciones usadas
+                <?php if ($trial['agotado']): ?> — <strong>AGOTADO</strong><?php endif; ?>
+            </span>
+            <div style="background:#fde68a;border-radius:6px;height:6px;margin-top:8px;max-width:300px;overflow:hidden">
+                <div style="background:<?= $trial['agotado'] ? 'var(--danger)' : 'var(--amb)' ?>;height:100%;width:<?= $trial['pct'] ?>%;border-radius:6px"></div>
+            </div>
+        <?php else: ?>
+            <span style="font-size:13px;color:var(--g);font-weight:600">
+                Licencia activa — <?= $trial['usadas'] ?> cotizaciones creadas
+            </span>
+        <?php endif; ?>
+    </div>
+    <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0" onsubmit="return confirm('<?= $trial['es_trial'] ? '¿Activar plan PRO? Se eliminará el límite de cotizaciones.' : '¿Regresar a TRIAL? Se activará el límite de ' . TRIAL_LIMIT . ' cotizaciones.' ?>')">
+        <?= csrf_field() ?>
+        <?php if ($trial['es_trial']): ?>
+            <button type="submit" class="btn-enter" style="font-size:12px"><i data-feather="zap" style="width:14px;height:14px"></i> Activar PRO</button>
+        <?php else: ?>
+            <button type="submit" class="btn-enter" style="border-color:#fcd34d;background:var(--amb-bg);color:var(--amb);font-size:12px"><i data-feather="rotate-ccw" style="width:14px;height:14px"></i> Regresar a Trial</button>
+        <?php endif; ?>
+    </form>
 </div>
 
 <!-- Info de empresa -->

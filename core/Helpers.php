@@ -305,6 +305,37 @@ function validar_url(string $url): bool
     return filter_var($url, FILTER_VALIDATE_URL) !== false;
 }
 
+// ─── Trial / Plan ───────────────────────────────────────────
+define('TRIAL_LIMIT', 100);
+
+function trial_info(int $empresa_id): array
+{
+    // Auto-migrar columna plan si no existe
+    static $migrated = false;
+    if (!$migrated) {
+        try {
+            DB::execute("ALTER TABLE empresas ADD COLUMN plan ENUM('trial','pro') NOT NULL DEFAULT 'trial'");
+        } catch (\PDOException $e) {
+            // Columna ya existe — OK
+        }
+        $migrated = true;
+    }
+
+    $plan = DB::val("SELECT plan FROM empresas WHERE id = ?", [$empresa_id]) ?: 'trial';
+    $usadas = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id = ?", [$empresa_id]);
+
+    return [
+        'plan'       => $plan,
+        'es_trial'   => $plan === 'trial',
+        'usadas'     => $usadas,
+        'limite'     => TRIAL_LIMIT,
+        'restantes'  => max(0, TRIAL_LIMIT - $usadas),
+        'agotado'    => $plan === 'trial' && $usadas >= TRIAL_LIMIT,
+        'cerca'      => $plan === 'trial' && $usadas >= (TRIAL_LIMIT * 0.8),
+        'pct'        => $plan === 'trial' ? min(100, round($usadas / TRIAL_LIMIT * 100)) : 0,
+    ];
+}
+
 // ─── Upload de archivos ──────────────────────────────────────
 function upload_archivo(array $file, int $empresa_id, string $sub = 'adjuntos'): array
 {
