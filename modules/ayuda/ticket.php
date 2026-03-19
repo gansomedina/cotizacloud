@@ -60,6 +60,29 @@ DB::insert(
 
 // Si viene de solicitud de licencia, redirigir a /licencia
 $es_licencia = str_contains($titulo, 'licencia PRO');
+
+// ── Notificar al superadmin ──
+try {
+    $empresa_nombre = $empresa['nombre'] ?? 'Empresa';
+    if ($es_licencia) {
+        PushNotification::enviar_a_superadmin(
+            'solicitud_licencia',
+            'Solicitud de licencia PRO',
+            "{$empresa_nombre} solicita renovación/activación de licencia",
+            ['url' => '/superadmin']
+        );
+    } else {
+        PushNotification::enviar_a_superadmin(
+            'nuevo_ticket',
+            'Nuevo ticket de soporte',
+            "{$empresa_nombre}: {$titulo}",
+            ['url' => '/superadmin']
+        );
+    }
+} catch (Exception $e) {
+    // No bloquear el ticket si falla la notificación
+}
+
 if ($es_licencia) {
     flash('success', 'Solicitud enviada. Te contactaremos a la brevedad con la liga de cobro.');
     redirect('/licencia');
