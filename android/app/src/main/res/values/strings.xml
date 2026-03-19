@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CotizaCloud</string>
+    <string name="title_activity_main">CotizaCloud</string>
+    <string name="package_name">com.cotizacloud.app</string>
+    <string name="custom_url_scheme">com.cotizacloud.app</string>
+</resources>

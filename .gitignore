@@ -12,6 +12,9 @@ config.php
 /public/uploads/logos/*
 !/public/uploads/logos/.gitkeep
 
+# Node
+node_modules/
+
 # Archivos del sistema
 .DS_Store
 Thumbs.db
