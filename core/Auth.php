@@ -433,17 +433,27 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
     private static function empresa_inactiva(string $slug): never
     {
         // Ver si existe pero está inactiva
-        $existe = DB::val("SELECT activa FROM empresas WHERE slug = ?", [$slug]);
+        $emp = DB::row("SELECT activa, plan, plan_vence FROM empresas WHERE slug = ?", [$slug]);
 
-        if ($existe === null) {
+        if ($emp === null) {
             http_response_code(404);
             die('Empresa no encontrada');
         }
 
-        // Existe pero inactiva — mostrar pantalla de licencia suspendida
+        // Determinar si venció la licencia
+        $vencida = ($emp['plan'] === 'pro' && $emp['plan_vence'] && $emp['plan_vence'] < date('Y-m-d'));
+        $titulo = $vencida ? 'Licencia Vencida' : 'Licencia Suspendida';
+        $msg = $vencida
+            ? 'Tu licencia PRO venció el <strong>' . date('d/m/Y', strtotime($emp['plan_vence'])) . '</strong>. Renueva tu plan para continuar usando CotizaCloud.'
+            : 'La cuenta <span class="slug">' . htmlspecialchars($slug) . '</span> se encuentra suspendida.';
+        $sub = $vencida
+            ? 'Contacta a soporte para renovar tu licencia.'
+            : 'Para reactivar tu acceso, contacta a nuestro equipo de soporte.';
+
+        // Existe pero inactiva — mostrar pantalla
         http_response_code(402);
         echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">';
-        echo '<title>Licencia Suspendida — CotizaCloud</title>';
+        echo '<title>' . $titulo . ' — CotizaCloud</title>';
         echo '<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">';
         echo '<style>';
         echo '*{box-sizing:border-box;margin:0;padding:0}';
@@ -461,9 +471,9 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
         echo '</style></head><body>';
         echo '<div class="card">';
         echo '<div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>';
-        echo '<h1>Licencia Suspendida</h1>';
-        echo '<p>La cuenta <span class="slug">' . htmlspecialchars($slug) . '</span> se encuentra suspendida.</p>';
-        echo '<p>Para reactivar tu acceso, contacta a nuestro equipo de soporte.</p>';
+        echo '<h1>' . $titulo . '</h1>';
+        echo '<p>' . $msg . '</p>';
+        echo '<p>' . $sub . '</p>';
         echo '<a href="mailto:soporte@cotiza.cloud" class="contact">Contactar soporte</a>';
         echo '<a href="/login" class="back">Volver al inicio de sesión</a>';
         echo '</div></body></html>';

@@ -305,6 +305,65 @@ function validar_url(string $url): bool
     return filter_var($url, FILTER_VALIDATE_URL) !== false;
 }
 
+// ─── Trial / Plan ───────────────────────────────────────────
+define('TRIAL_LIMIT', 100);
+
+function trial_info(int $empresa_id): array
+{
+    // Auto-migrar columnas plan y plan_vence si no existen
+    static $migrated = false;
+    if (!$migrated) {
+        try {
+            DB::execute("ALTER TABLE empresas ADD COLUMN plan ENUM('trial','pro') NOT NULL DEFAULT 'trial'");
+        } catch (\PDOException $e) {
+            // Columna ya existe — OK
+        }
+        try {
+            DB::execute("ALTER TABLE empresas ADD COLUMN plan_vence DATE DEFAULT NULL");
+        } catch (\PDOException $e) {
+            // Columna ya existe — OK
+        }
+        $migrated = true;
+    }
+
+    $row = DB::row("SELECT plan, plan_vence, activa FROM empresas WHERE id = ?", [$empresa_id]);
+    $plan = $row['plan'] ?? 'trial';
+    $plan_vence = $row['plan_vence'] ?? null;
+    $activa = (int)($row['activa'] ?? 1);
+
+    // Auto-suspender si el plan PRO venció
+    $vencido = false;
+    if ($plan === 'pro' && $plan_vence && $plan_vence < date('Y-m-d')) {
+        $vencido = true;
+        if ($activa) {
+            DB::execute("UPDATE empresas SET activa = 0 WHERE id = ?", [$empresa_id]);
+        }
+    }
+
+    $usadas = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id = ?", [$empresa_id]);
+
+    // Calcular días restantes de licencia
+    $dias_restantes = null;
+    if ($plan === 'pro' && $plan_vence && !$vencido) {
+        $dias_restantes = (int)((strtotime($plan_vence) - strtotime(date('Y-m-d'))) / 86400);
+    }
+
+    return [
+        'plan'            => $plan,
+        'es_trial'        => $plan === 'trial',
+        'usadas'          => $usadas,
+        'limite'          => TRIAL_LIMIT,
+        'restantes'       => max(0, TRIAL_LIMIT - $usadas),
+        'agotado'         => $plan === 'trial' && $usadas >= TRIAL_LIMIT,
+        'cerca'           => $plan === 'trial' && $usadas >= (TRIAL_LIMIT * 0.8),
+        'pct'             => $plan === 'trial' ? min(100, round($usadas / TRIAL_LIMIT * 100)) : 0,
+        'plan_vence'      => $plan_vence,
+        'vencido'         => $vencido,
+        'dias_restantes'  => $dias_restantes,
+        'por_vencer'      => $dias_restantes !== null && $dias_restantes <= 7,
+    ];
+}
+
 // ─── Upload de archivos ──────────────────────────────────────
 function upload_archivo(array $file, int $empresa_id, string $sub = 'adjuntos'): array
 {

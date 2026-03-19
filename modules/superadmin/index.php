@@ -326,6 +326,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
 <thead>
 <tr>
     <th>Empresa</th>
+    <th>Plan</th>
+    <th>Vence</th>
     <th>Estado</th>
     <th>Usuarios</th>
     <th>Cots</th>
@@ -348,10 +350,32 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         <div class="emp-slug"><?= e($e['slug']) ?>.cotiza.cloud</div>
     </td>
     <td>
+        <?php $plan = $e['plan'] ?? 'trial'; ?>
+        <span class="badge <?= $plan === 'pro' ? 'badge-green' : 'badge-amber' ?>"><?= strtoupper($plan) ?></span>
+    </td>
+    <td>
+        <?php
+        $pv = $e['plan_vence'] ?? null;
+        if ($plan === 'pro' && $pv):
+            $dias_r = (int)((strtotime($pv) - strtotime(date('Y-m-d'))) / 86400);
+            if ($dias_r < 0): ?>
+                <span class="badge badge-red"><?= date('d/m', strtotime($pv)) ?></span>
+            <?php elseif ($dias_r <= 7): ?>
+                <span class="badge badge-amber"><?= $dias_r ?>d</span>
+            <?php else: ?>
+                <span class="ago"><?= date('d/m/Y', strtotime($pv)) ?></span>
+            <?php endif;
+        elseif ($plan === 'pro'): ?>
+            <span class="ago">—</span>
+        <?php else: ?>
+            <span class="ago">—</span>
+        <?php endif; ?>
+    </td>
+    <td>
         <?php if ($e['activa']): ?>
             <span class="badge badge-green">Activa</span>
         <?php else: ?>
-            <span class="badge badge-red">Inactiva</span>
+            <span class="badge badge-red">Suspendida</span>
         <?php endif; ?>
     </td>
     <td class="num"><?= $e['num_usuarios'] ?></td>

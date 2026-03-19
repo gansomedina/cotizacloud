@@ -18,6 +18,12 @@ $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $empresa_id = EMPRESA_ID;
 
+// ─── Verificar límite trial ──────────────────────────────
+$trial = trial_info($empresa_id);
+if ($trial['agotado']) {
+    json_error('Has alcanzado el límite de ' . TRIAL_LIMIT . ' cotizaciones de prueba. Activa tu licencia para continuar.', 402);
+}
+
 // ─── Leer JSON ───────────────────────────────────────────
 $body = json_decode(file_get_contents('php://input'), true);
 if (!$body) json_error('Payload inválido', 400);

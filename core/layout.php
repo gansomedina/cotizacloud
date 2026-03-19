@@ -316,6 +316,37 @@ foreach ($mas_rutas as $r) {
             <?= e($flash['msg']) ?>
         </div>
         <?php endif; ?>
+        <?php
+        // Trial banner
+        if (EMPRESA_ID > 0 && !Auth::es_superadmin()) {
+            $trial = trial_info(EMPRESA_ID);
+            if ($trial['agotado']): ?>
+            <div class="flash flash-error" style="margin-bottom:16px">
+                <i data-feather="alert-circle"></i>
+                <div>
+                    <strong>Límite de prueba alcanzado.</strong> Has usado <?= $trial['usadas'] ?>/<?= TRIAL_LIMIT ?> cotizaciones.
+                    <a href="mailto:soporte@cotiza.cloud" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu licencia</a>
+                </div>
+            </div>
+            <?php elseif ($trial['cerca']): ?>
+            <div class="flash flash-warning" style="margin-bottom:16px">
+                <i data-feather="alert-triangle"></i>
+                <div>
+                    <strong>Prueba:</strong> <?= $trial['restantes'] ?> cotizaciones restantes de <?= TRIAL_LIMIT ?>.
+                    <a href="mailto:soporte@cotiza.cloud" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu licencia</a>
+                </div>
+            </div>
+            <?php elseif ($trial['por_vencer']): ?>
+            <div class="flash flash-warning" style="margin-bottom:16px">
+                <i data-feather="alert-triangle"></i>
+                <div>
+                    <strong>Tu licencia vence en <?= $trial['dias_restantes'] ?> día<?= $trial['dias_restantes'] !== 1 ? 's' : '' ?>.</strong>
+                    Contacta a <a href="mailto:soporte@cotiza.cloud" style="color:inherit;font-weight:700;text-decoration:underline">soporte</a> para renovar.
+                </div>
+            </div>
+            <?php endif;
+        }
+        ?>
         <?php if (isset($content)) echo $content; ?>
     </main>
 </div>

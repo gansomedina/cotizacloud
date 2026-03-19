@@ -41,6 +41,9 @@ $ultimas_cots = DB::query(
     [$empresa_id]
 );
 
+// Trial info
+$trial = trial_info($empresa_id);
+
 // Radar config
 $radar_config = json_decode($emp['radar_config'] ?? '{}', true) ?: [];
 $radar_modo = $radar_config['modo'] ?? 'medio';
@@ -173,6 +176,82 @@ tr:hover td{background:#fafaf8}
                 <button type="submit" class="btn-enter"><i data-feather="play-circle" style="width:14px;height:14px"></i> Activar</button>
             <?php endif; ?>
         </form>
+    </div>
+</div>
+
+<!-- Plan / Trial -->
+<?php
+    $plan_bg = $trial['es_trial'] ? 'var(--amb-bg)' : ($trial['vencido'] ? 'var(--danger-bg)' : ($trial['por_vencer'] ? 'var(--amb-bg)' : 'var(--g-bg)'));
+    $plan_border = $trial['es_trial'] ? '#fcd34d' : ($trial['vencido'] ? '#fca5a5' : ($trial['por_vencer'] ? '#fcd34d' : 'var(--g-border)'));
+?>
+<div style="background:<?= $plan_bg ?>;border:1px solid <?= $plan_border ?>;border-radius:var(--r);padding:16px 20px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+            <span class="badge <?= $trial['es_trial'] ? 'badge-amber' : ($trial['vencido'] ? 'badge-red' : 'badge-green') ?>" style="font-size:12px;padding:5px 14px;margin-right:8px">
+                <?= $trial['es_trial'] ? 'TRIAL' : ($trial['vencido'] ? 'PRO VENCIDO' : 'PRO') ?>
+            </span>
+            <?php if ($trial['es_trial']): ?>
+                <span style="font-size:13px;color:var(--amb);font-weight:600">
+                    <?= $trial['usadas'] ?> / <?= TRIAL_LIMIT ?> cotizaciones usadas
+                    <?php if ($trial['agotado']): ?> — <strong>AGOTADO</strong><?php endif; ?>
+                </span>
+                <div style="background:#fde68a;border-radius:6px;height:6px;margin-top:8px;max-width:300px;overflow:hidden">
+                    <div style="background:<?= $trial['agotado'] ? 'var(--danger)' : 'var(--amb)' ?>;height:100%;width:<?= $trial['pct'] ?>%;border-radius:6px"></div>
+                </div>
+            <?php elseif ($trial['vencido']): ?>
+                <span style="font-size:13px;color:var(--danger);font-weight:600">
+                    Licencia vencida el <?= date('d/m/Y', strtotime($trial['plan_vence'])) ?> — Empresa suspendida
+                </span>
+            <?php elseif ($trial['por_vencer']): ?>
+                <span style="font-size:13px;color:var(--amb);font-weight:600">
+                    Vence el <?= date('d/m/Y', strtotime($trial['plan_vence'])) ?> — <?= $trial['dias_restantes'] ?> días restantes
+                </span>
+            <?php else: ?>
+                <span style="font-size:13px;color:var(--g);font-weight:600">
+                    Licencia activa hasta <?= $trial['plan_vence'] ? date('d/m/Y', strtotime($trial['plan_vence'])) : 'indefinido' ?>
+                    <?php if ($trial['dias_restantes'] !== null): ?> — <?= $trial['dias_restantes'] ?> días<?php endif; ?>
+                </span>
+            <?php endif; ?>
+        </div>
+
+        <?php if ($trial['es_trial']): ?>
+            <!-- Activar PRO con duración -->
+            <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0;display:flex;gap:6px;align-items:center" onsubmit="return confirm('¿Activar plan PRO?')">
+                <?= csrf_field() ?>
+                <input type="hidden" name="accion" value="activar_pro">
+                <select name="duracion" style="padding:6px 10px;border:1.5px solid var(--g-border);border-radius:var(--r-sm);font:500 12px var(--body);background:var(--white)">
+                    <option value="1_mes">1 mes</option>
+                    <option value="3_meses">3 meses</option>
+                    <option value="6_meses">6 meses</option>
+                    <option value="1_anio">1 año</option>
+                </select>
+                <button type="submit" class="btn-enter" style="font-size:12px"><i data-feather="zap" style="width:14px;height:14px"></i> Activar PRO</button>
+            </form>
+        <?php else: ?>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <!-- Renovar PRO -->
+                <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0;display:flex;gap:6px;align-items:center" onsubmit="return confirm('¿Renovar licencia PRO?')">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="accion" value="renovar">
+                    <select name="duracion" style="padding:6px 10px;border:1.5px solid var(--g-border);border-radius:var(--r-sm);font:500 12px var(--body);background:var(--white)">
+                        <option value="1_mes">+1 mes</option>
+                        <option value="3_meses">+3 meses</option>
+                        <option value="6_meses">+6 meses</option>
+                        <option value="1_anio">+1 año</option>
+                    </select>
+                    <button type="submit" class="btn-enter" style="font-size:12px"><i data-feather="refresh-cw" style="width:14px;height:14px"></i> Renovar</button>
+                </form>
+                <!-- Regresar a Trial -->
+                <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0" onsubmit="return confirm('¿Regresar a TRIAL? Se activará el límite de <?= TRIAL_LIMIT ?> cotizaciones.')">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="accion" value="regresar_trial">
+                    <button type="submit" class="btn-enter" style="border-color:#fcd34d;background:var(--amb-bg);color:var(--amb);font-size:12px"><i data-feather="rotate-ccw" style="width:14px;height:14px"></i> Trial</button>
+                </form>
+            </div>
+        <?php endif; ?>
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:var(--t3)">
+        <?= $trial['usadas'] ?> cotizaciones creadas en total
     </div>
 </div>
 
