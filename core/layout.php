@@ -388,7 +388,7 @@ foreach ($mas_rutas as $r) {
 </div>
 
 <script>
-feather.replace({'stroke-width':1.8});
+if(typeof feather!=='undefined'){feather.replace({'stroke-width':1.8});}
 
 function openSidebar(){
     document.getElementById('sidebar').classList.add('open');
