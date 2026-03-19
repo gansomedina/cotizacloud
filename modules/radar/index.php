@@ -84,6 +84,11 @@ $raw = DB::query(
 );
 
 // Helpers
+// Convierte emojis UTF-8 a entidades HTML numéricas para garantizar rendering en iOS WKWebView
+function emo(string $s): string {
+    return preg_replace_callback('/[\x{1F000}-\x{1FAFF}\x{2300}-\x{23FF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE00}-\x{FE0F}\x{200D}]/u',
+        function($m) { return '&#x'.strtoupper(dechex(mb_ord($m[0]))).';'; }, $s);
+}
 function rhace(int $ts): string {
     $d=time()-$ts; if($d<=0) return 'ahora'; if($d<60) return $d.'s'; if($d<3600) return floor($d/60).'m';
     if($d<86400) return floor($d/3600).'h'; return floor($d/86400).'d';
@@ -1043,5 +1048,5 @@ foreach ($_PB as $pb_key => $pb):
 <?php endforeach; ?>
 
 <?php
-$content = ob_get_clean();
+$content = emo(ob_get_clean());
 require ROOT_PATH . '/core/layout.php';
