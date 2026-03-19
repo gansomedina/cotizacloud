@@ -4,6 +4,7 @@
 //  Entry point único — todo pasa por aquí
 // ============================================================
 
+header('Content-Type: text/html; charset=UTF-8');
 define('COTIZAAPP', true);
 
 // ─── Servir archivos estáticos de /uploads/ y /assets/ ──────
