@@ -120,14 +120,19 @@ foreach ($mas_rutas as $r) {
         /* ── MAIN ── */
         #main{margin-left:var(--sidebar-w);min-height:100dvh;display:flex;flex-direction:column}
 
-        /* ── TOPBAR ── */
-        #topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+        /* ── TOPBAR (mobile only) ── */
+        #topbar{display:none;background:var(--white);border-bottom:1px solid var(--border);padding:0 14px;height:52px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
         .topbar-title{font-size:16px;font-weight:700;color:var(--text)}
         .topbar-right{display:flex;align-items:center;gap:12px}
-        .topbar-user{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)}
-        .topbar-avatar{width:30px;height:30px;background:var(--g-bg);color:var(--g);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
-        #topbar-hamburger{display:none;background:none;border:none;cursor:pointer;padding:8px;border-radius:var(--r-sm);color:var(--t2);-webkit-tap-highlight-color:transparent}
+        #topbar-hamburger{display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;padding:8px;border-radius:var(--r-sm);color:var(--t2);-webkit-tap-highlight-color:transparent}
         #topbar-hamburger svg{width:22px;height:22px;display:block;stroke:currentColor}
+
+        /* ── SIDEBAR USER ── */
+        .sidebar-user{display:flex;align-items:center;gap:10px;padding:12px;margin:0 10px 4px;border-radius:var(--r-sm);background:var(--bg)}
+        .sidebar-user-avatar{width:32px;height:32px;background:var(--g-bg);color:var(--g);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+        .sidebar-user-info{overflow:hidden}
+        .sidebar-user-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .sidebar-user-role{font-size:11px;color:var(--t3);text-transform:capitalize}
 
         /* ── CONTENT ── */
         #content{padding:16px 24px 40px;flex:1}
@@ -211,9 +216,7 @@ foreach ($mas_rutas as $r) {
             #sidebar{transform:translateX(-100%);width:80vw;max-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.13)}
             #sidebar.open{transform:translateX(0)}
             #main{margin-left:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
-            #topbar{padding:0 14px;height:52px}
-            #topbar-hamburger{display:flex;align-items:center;justify-content:center}
-            .topbar-user span{display:none}
+            #topbar{display:flex}
             /* padding-bottom = altura nav + safe area + margen */
             #content{padding:14px 14px calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 20px)}
 
@@ -279,6 +282,13 @@ foreach ($mas_rutas as $r) {
         <?php endforeach; ?>
     </nav>
     <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <div class="sidebar-user-avatar"><?= strtoupper(substr($usuario['nombre'] ?? 'U', 0, 1)) ?></div>
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-name"><?= e($usuario['nombre'] ?? '') ?></div>
+                <div class="sidebar-user-role"><?= e($usuario['rol'] ?? '') ?></div>
+            </div>
+        </div>
         <a href="/logout" class="nav-item" style="color:var(--danger)">
             <i data-feather="log-out"></i>
             Cerrar sesión
@@ -297,12 +307,6 @@ foreach ($mas_rutas as $r) {
         </div>
         <div class="topbar-right">
             <?php if (!empty($topbar_action)) echo $topbar_action; ?>
-            <div class="topbar-user">
-                <div class="topbar-avatar">
-                    <?= strtoupper(substr($usuario['nombre'] ?? 'U', 0, 1)) ?>
-                </div>
-                <span><?= e($usuario['nombre'] ?? '') ?></span>
-            </div>
         </div>
     </header>
 

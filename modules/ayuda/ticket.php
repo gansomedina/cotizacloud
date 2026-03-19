@@ -58,5 +58,12 @@ DB::insert(
     [$empresa['id'], $usuario['id'], $titulo, $descripcion, $imagen_url]
 );
 
-flash('success', 'Ticket enviado correctamente. Te contactaremos pronto.');
-redirect('/ayuda#soporte');
+// Si viene de solicitud de licencia, redirigir a /licencia
+$es_licencia = str_contains($titulo, 'licencia PRO');
+if ($es_licencia) {
+    flash('success', 'Solicitud enviada. Te contactaremos a la brevedad con la liga de cobro.');
+    redirect('/licencia');
+} else {
+    flash('success', 'Ticket enviado correctamente. Te contactaremos pronto.');
+    redirect('/ayuda#soporte');
+}
