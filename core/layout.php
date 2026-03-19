@@ -91,8 +91,8 @@ foreach ($mas_rutas as $r) {
             --slate:#475569; --slate-bg:#f1f5f9;
             --r:12px; --r-sm:9px;
             --sh:0 1px 3px rgba(0,0,0,.06); --sh-md:0 4px 16px rgba(0,0,0,.08);
-            --body:'Plus Jakarta Sans',sans-serif;
-            --num:'DM Sans',sans-serif;
+            --body:'Plus Jakarta Sans','Apple Color Emoji','Segoe UI Emoji',sans-serif;
+            --num:'DM Sans','Apple Color Emoji','Segoe UI Emoji',sans-serif;
             --sidebar-w:220px;
             --nav-h:60px;
         }
