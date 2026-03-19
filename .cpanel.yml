@@ -10,4 +10,5 @@ deployment:
     - /bin/cp -R core $DEPLOYPATH
     - /bin/cp -R modules $DEPLOYPATH
     - /bin/cp -R public $DEPLOYPATH
+    - /bin/cp -R assets $DEPLOYPATH
     - /bin/cp -R tools $DEPLOYPATH
