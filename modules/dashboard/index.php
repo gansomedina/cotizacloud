@@ -156,7 +156,8 @@ $tiempo_cierre = (float)(DB::val(
 $sin_abrir = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones c
      WHERE c.empresa_id=? AND estado='enviada'
-       AND vista_at IS NULL AND c.created_at BETWEEN ? AND ? $c_where",
+       AND vista_at IS NULL AND c.created_at BETWEEN ? AND ?
+       AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where",
     [$empresa_id, $desde, $hasta]
 );
 
@@ -226,7 +227,8 @@ $sin_abrir_list = DB::query(
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
      WHERE c.empresa_id=? AND c.estado='enviada'
-       AND c.vista_at IS NULL AND c.enviada_at IS NOT NULL $c_where
+       AND c.vista_at IS NULL AND c.enviada_at IS NOT NULL
+       AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where
      ORDER BY c.enviada_at ASC LIMIT 6",
     [$empresa_id]
 );

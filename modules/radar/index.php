@@ -323,7 +323,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             echo "sess:<b>".($dbg['sessions']??'?')."</b> ";
             echo "guest:<b>".($dbg['guest']??'?')."</b> ";
             echo "ips:<b>".($dbg['uniq_ips']??'?')."</b> ";
-            echo "gap:<b>".($dbg['gap_days']!==null?$dbg['gap_days'].'d':'—')."</b> ";
+            echo "gap:<b>".(isset($dbg['gap_days']) && $dbg['gap_days']!==null?$dbg['gap_days'].'d':'—')."</b> ";
             echo "v24:<b>".($dbg['views24']??'?')."</b> ";
             echo "v48:<b>".($dbg['views48']??'?')."</b> ";
             echo "span48:<b>".($dbg['span48h']??'?')."</b> ";
