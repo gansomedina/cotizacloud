@@ -107,7 +107,8 @@
 ### Pendiente — Próxima sesión
 1. **Módulo Costos Avanzados** (Business) — categorías avanzadas de costos, márgenes por categoría, análisis por proveedor
 2. **Módulo Reportes Avanzados** (Business) — dashboards de equipo, comparativas entre vendedores, métricas de conversión
-3. Con estos dos módulos queda completo el diferenciador Business vs Pro
+3. **Permisos por usuario** (Business) — en el tab Usuarios, poder activar/desactivar acceso a módulos por vendedor: Costos, Reportes, Radar. Esto permite al admin controlar qué ve cada miembro del equipo.
+4. Con estos tres features queda completo el diferenciador Business vs Pro
 
 ### Archivos clave del sistema de planes
 | Archivo | Función |
