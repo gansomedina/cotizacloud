@@ -174,6 +174,60 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .tool-title{font:700 17px var(--body);margin-bottom:5px;letter-spacing:-.01em}
 .tool-desc{font:400 14.5px var(--body);color:var(--t3);line-height:1.6}
 
+/* PRICING */
+.pricing{max-width:1100px;margin:0 auto;padding:80px 24px 0}
+.pricing-toggle{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:48px}
+.toggle-label{font:600 15px var(--body);color:var(--t3);cursor:pointer;transition:color .2s}
+.toggle-label.active{color:var(--text);font-weight:700}
+.toggle-switch{position:relative;display:inline-block;width:52px;height:28px;cursor:pointer}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--border2);border-radius:28px;transition:all .3s}
+.toggle-slider::before{content:"";position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:all .3s;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.toggle-switch input:checked+.toggle-slider{background:var(--g)}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(24px)}
+.toggle-save{font:700 12px var(--body);color:#fff;background:var(--g);padding:4px 12px;border-radius:20px;letter-spacing:.02em;animation:pulse-save 2s infinite}
+@keyframes pulse-save{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.85;transform:scale(1.05)}}
+
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start}
+.price-card{background:var(--white);border:1.5px solid var(--border);border-radius:20px;padding:36px 28px;position:relative;transition:all .3s}
+.price-card:hover{box-shadow:var(--sh-lg);transform:translateY(-4px)}
+.price-card-featured{border:2.5px solid var(--g);box-shadow:var(--sh-lg);transform:scale(1.04);z-index:2}
+.price-card-featured:hover{transform:scale(1.04) translateY(-4px)}
+
+.price-badge-popular{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--g);color:#fff;font:800 11px var(--body);padding:5px 18px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.price-badge-launch{position:absolute;top:16px;right:16px;background:var(--warm-bg);color:var(--warm);font:700 10px var(--body);padding:4px 10px;border-radius:6px;letter-spacing:.04em;text-transform:uppercase;animation:pulse-badge 2.5s infinite}
+@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.6}}
+
+.price-header{margin-bottom:24px}
+.price-plan-name{font:800 24px var(--body);letter-spacing:-.02em;margin-bottom:4px}
+.price-plan-desc{font:400 14px var(--body);color:var(--t3)}
+
+.price-amount{display:flex;align-items:baseline;gap:2px;margin-bottom:4px}
+.price-currency{font:700 22px var(--num);color:var(--text)}
+.price-value{font:800 52px var(--num);color:var(--text);letter-spacing:-.04em;line-height:1}
+.price-mo{font:500 16px var(--body);color:var(--t3);margin-left:2px}
+.price-original{font:600 18px var(--num);color:var(--t3);text-decoration:line-through;margin-right:8px;align-self:center}
+.price-card-featured .price-value{color:var(--g)}
+
+.price-period{font:500 13px var(--body);color:var(--t3);margin-bottom:24px;min-height:20px}
+.price-period strong{color:var(--g);font-weight:700}
+
+.price-btn{display:block;width:100%;padding:14px;border-radius:var(--r-sm);font:700 15px var(--body);text-align:center;text-decoration:none;transition:all .2s;border:none;cursor:pointer}
+.price-btn-solid{background:var(--g);color:#fff;box-shadow:0 4px 16px rgba(26,92,56,.25)}
+.price-btn-solid:hover{background:var(--g2);box-shadow:0 6px 24px rgba(26,92,56,.35);transform:translateY(-1px)}
+.price-btn-outline{background:var(--white);color:var(--g);border:2px solid var(--g)}
+.price-btn-outline:hover{background:var(--g-bg)}
+
+.price-trial-note{font:500 12px var(--body);color:var(--t3);text-align:center;margin-top:8px}
+.price-features{margin-top:24px;padding-top:24px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:12px}
+.price-feat-header{font:700 13px var(--body);color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.price-feat{display:flex;align-items:center;gap:10px;font:400 14.5px var(--body);color:var(--t2)}
+.feat-check{color:var(--g);font-weight:800;font-size:15px;flex-shrink:0}
+
+.pricing-note{text-align:center;font:400 13px var(--body);color:var(--t3);margin-top:32px}
+
+@media(max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:400px;margin:0 auto}.price-card-featured{transform:scale(1)}.price-card-featured:hover{transform:translateY(-4px)}}
+
 /* CTA */
 .cta{max-width:720px;margin:0 auto;padding:80px 24px;text-align:center}
 .cta-card{background:var(--g);border-radius:24px;padding:56px 40px;position:relative;overflow:hidden}
@@ -248,6 +302,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="logo-name">Cotiza<span>.cloud</span></div>
     </a>
     <div class="nav-links">
+      <a href="#precios" class="nav-link nav-link-ghost">Precios</a>
       <a href="/login" class="nav-link nav-link-ghost">Iniciar sesion</a>
       <a href="/registro" class="nav-link nav-link-primary">Crear cuenta gratis</a>
     </div>
@@ -539,6 +594,116 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   </div>
 </section>
 
+<!-- PRICING -->
+<section class="pricing" id="precios">
+  <span class="section-label">Planes y precios</span>
+  <div class="section-title">Empieza gratis. Crece cuando quieras.</div>
+  <p class="section-sub">Sin sorpresas. Sin letras chiquitas. Cancela cuando quieras.</p>
+
+  <div class="pricing-toggle">
+    <span class="toggle-label" id="toggleMensual">Mensual</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="billingToggle">
+      <span class="toggle-slider"></span>
+    </label>
+    <span class="toggle-label" id="toggleAnual">Anual</span>
+    <span class="toggle-save">Ahorra 20%</span>
+  </div>
+
+  <div class="pricing-grid">
+
+    <!-- FREE -->
+    <div class="price-card">
+      <div class="price-header">
+        <div class="price-plan-name">Free</div>
+        <div class="price-plan-desc">Para probar sin compromiso</div>
+      </div>
+      <div class="price-amount">
+        <span class="price-currency">$</span>
+        <span class="price-value">0</span>
+      </div>
+      <div class="price-period">Para siempre</div>
+      <a href="/registro" class="price-btn price-btn-outline">Crear cuenta gratis</a>
+      <div class="price-features">
+        <div class="price-feat"><span class="feat-check">&#10003;</span>25 cotizaciones incluidas</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Radar de inteligencia</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas y recibos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos y margenes</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Portal publico del cliente</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y descuentos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Catalogo de articulos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
+      </div>
+    </div>
+
+    <!-- PRO -->
+    <div class="price-card price-card-featured">
+      <div class="price-badge-popular">Mas popular</div>
+      <div class="price-badge-launch">Precio de lanzamiento</div>
+      <div class="price-header">
+        <div class="price-plan-name">Pro</div>
+        <div class="price-plan-desc">Para profesionales y emprendedores</div>
+      </div>
+      <div class="price-amount">
+        <span class="price-original monthly-price">$499</span>
+        <span class="price-original annual-price" style="display:none">$399</span>
+        <span class="price-currency">$</span>
+        <span class="price-value monthly-price">299</span>
+        <span class="price-value annual-price" style="display:none">239</span>
+        <span class="price-mo">/mes</span>
+      </div>
+      <div class="price-period monthly-price">$3,588 MXN/año</div>
+      <div class="price-period annual-price" style="display:none">$2,868 MXN/año · <strong>Ahorras $720</strong></div>
+      <a href="/registro" class="price-btn price-btn-solid">Empezar prueba gratis</a>
+      <div class="price-trial-note">14 dias gratis, cancela cuando quieras</div>
+      <div class="price-features">
+        <div class="price-feat-header">Todo de Free, mas:</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Cotizaciones ilimitadas</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Radar de inteligencia</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas y recibos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos y margenes</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Portal publico del cliente</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y descuentos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Articulos ilimitados</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>App movil + notificaciones push</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
+      </div>
+    </div>
+
+    <!-- BUSINESS -->
+    <div class="price-card">
+      <div class="price-header">
+        <div class="price-plan-name">Business</div>
+        <div class="price-plan-desc">Para equipos de venta</div>
+      </div>
+      <div class="price-amount">
+        <span class="price-original monthly-price">$1,299</span>
+        <span class="price-original annual-price" style="display:none">$999</span>
+        <span class="price-currency">$</span>
+        <span class="price-value monthly-price">799</span>
+        <span class="price-value annual-price" style="display:none">639</span>
+        <span class="price-mo">/mes</span>
+      </div>
+      <div class="price-period monthly-price">$9,588 MXN/año</div>
+      <div class="price-period annual-price" style="display:none">$7,668 MXN/año · <strong>Ahorras $1,920</strong></div>
+      <a href="/registro" class="price-btn price-btn-outline">Empezar prueba gratis</a>
+      <div class="price-trial-note">14 dias gratis, cancela cuando quieras</div>
+      <div class="price-features">
+        <div class="price-feat-header">Todo de Pro, mas:</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Usuarios ilimitados</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos con categorias avanzadas</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Modulo de proveedores</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes avanzados</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Soporte prioritario</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Permisos granulares por vendedor</div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="pricing-note">Precios en MXN. IVA no incluido. Pago con tarjeta, transferencia o SPEI.</p>
+</section>
+
 <!-- CTA -->
 <section class="cta">
   <div class="cta-card">
@@ -638,6 +803,38 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     },{threshold:0.2});
     io2.observe(target2);
   }
+})();
+</script>
+
+<script>
+(function(){
+  var toggle = document.getElementById('billingToggle');
+  var lblMensual = document.getElementById('toggleMensual');
+  var lblAnual = document.getElementById('toggleAnual');
+  if(!toggle) return;
+
+  function updatePricing(){
+    var isAnual = toggle.checked;
+    var monthly = document.querySelectorAll('.monthly-price');
+    var annual = document.querySelectorAll('.annual-price');
+
+    for(var i=0;i<monthly.length;i++){
+      monthly[i].style.display = isAnual ? 'none' : '';
+    }
+    for(var i=0;i<annual.length;i++){
+      annual[i].style.display = isAnual ? '' : 'none';
+    }
+
+    lblMensual.classList.toggle('active', !isAnual);
+    lblAnual.classList.toggle('active', isAnual);
+  }
+
+  toggle.addEventListener('change', updatePricing);
+  lblMensual.addEventListener('click', function(){ toggle.checked=false; updatePricing(); });
+  lblAnual.addEventListener('click', function(){ toggle.checked=true; updatePricing(); });
+
+  // Init
+  lblMensual.classList.add('active');
 })();
 </script>
 

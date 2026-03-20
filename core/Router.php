@@ -102,10 +102,10 @@ class Router
         self::get('/registro', fn() => self::load('auth', 'registro'));
         self::post('/registro', fn() => self::load('auth', 'registro_post'));
 
-        // Raíz: dashboard si logueado, login si no
+        // Raíz: dashboard si logueado, landing si no
         self::get('/', fn() => Auth::logueado()
             ? redirect('/dashboard')
-            : redirect('/login')
+            : self::load('auth', 'landing')
         );
 
         // ── Push notifications API ───────────────────────────
