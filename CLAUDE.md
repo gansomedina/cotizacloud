@@ -56,13 +56,28 @@
 1. **Compilar y probar** en dispositivo real (push no funciona en simulador)
 2. Para producción: cambiar `aps-environment` en `App.entitlements` de `development` a `production`
 
-## Próximos Pasos
-1. Probar push notifications en dispositivo real (iPhone conectado por USB)
-2. Probar la app completa (login, cotizaciones, navegación entre módulos)
-3. Verificar íconos y splash screen en todos los tamaños
-4. App Store Connect: crear ficha (screenshots, descripción, categoría)
-5. Build de producción: archivar desde Xcode y subir a App Store
-6. Android: carpeta `android/` ya existe, falta probar y publicar en Google Play
+## App Store Submission — Estado
+
+### Completado
+- Build 1 (v1.0) subido a App Store Connect
+- Ficha de la app configurada (screenshots, descripción, categoría)
+- Pricing: Free (USD 0.00)
+- Disponibilidad: 175 países
+- Página de privacidad: `public/privacidad.php` → https://cotiza.cloud/privacidad
+- Privacy Policy URL configurada en App Store Connect
+- App Privacy: 5 data types (Name, Email, Phone, User ID, Product Interaction) — todos "App Functionality", linked to user, no tracking
+- Export Compliance: no usa encriptación propia (solo HTTPS del sistema)
+- Cuenta de prueba para Apple Review: `review@cotiza.cloud` / `Review2026!`
+  - Script: `migrations/create_review_user.php` (ejecutar en servidor antes de que Apple revise)
+  - Crea empresa "Apple Review Demo" (slug: `apple-review`) con cliente y cotización de ejemplo
+- **App enviada a revisión el 20 marzo 2026** — esperando respuesta de Apple (24-48 hrs)
+
+### Pendiente
+1. Esperar aprobación de Apple (o corregir si rechazan)
+2. Agregar `ITSAppUsesNonExemptEncryption = NO` al Info.plist para evitar pregunta de compliance en futuros builds
+3. Probar push notifications en dispositivo real
+4. Cambiar `aps-environment` en `App.entitlements` de `development` a `production`
+5. Android: carpeta `android/` ya existe, falta probar y publicar en Google Play
 
 ## Comandos Útiles
 ```bash

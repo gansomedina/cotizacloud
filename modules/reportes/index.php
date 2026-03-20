@@ -58,7 +58,7 @@ $f_fin_dt = $f_fin . ' 23:59:59';
 $usr_filter     = $es_admin ? '' : "AND v.usuario_id = {$usuario['id']}";
 $usr_filter_c   = $es_admin ? '' : "AND c.usuario_id = {$usuario['id']}";
 
-$tab = in_array($_GET['tab'] ?? '', ['financiero','asesores','cotizaciones','costos'])
+$tab = in_array($_GET['tab'] ?? '', ['financiero','asesores','cotizaciones','costos','recibos'])
     ? $_GET['tab'] : 'financiero';
 
 // ─────────────────────────────────────────────────────────────
@@ -225,6 +225,39 @@ $ventas_con_margen = DB::query(
     [$empresa_id, $f_ini_dt, $f_fin_dt]
 );
 
+// ─────────────────────────────────────────────────────────────
+//  TAB 5: RECIBOS
+// ─────────────────────────────────────────────────────────────
+$usr_filter_r = $es_admin ? '' : "AND r.usuario_id = {$usuario['id']}";
+$lista_recibos = DB::query(
+    "SELECT r.id, r.numero, r.monto, r.tipo, r.cancelado, r.fecha, r.forma_pago,
+            r.concepto, r.cancelado_at, r.cancelado_motivo,
+            v.numero AS venta_numero, v.titulo AS venta_titulo, v.id AS venta_id,
+            cl.nombre AS cliente_nombre,
+            u.nombre AS asesor_nombre
+     FROM recibos r
+     LEFT JOIN ventas v ON v.id = r.venta_id
+     LEFT JOIN clientes cl ON cl.id = v.cliente_id
+     LEFT JOIN usuarios u ON u.id = r.usuario_id
+     WHERE r.empresa_id = ? AND r.fecha BETWEEN ? AND ? $usr_filter_r
+     ORDER BY r.created_at DESC
+     LIMIT 300",
+    [$empresa_id, $f_ini, $f_fin]
+);
+$total_recibos_pagados = 0;
+$total_recibos_cancelados = 0;
+$num_cancelados = 0;
+foreach ($lista_recibos as $lr) {
+    if ((int)($lr['cancelado'] ?? 0)) {
+        $num_cancelados++;
+    } else {
+        $total_recibos_pagados += (float)$lr['monto'];
+    }
+    if ($lr['tipo'] === 'cancelacion') {
+        $total_recibos_cancelados += (float)$lr['monto'];
+    }
+}
+
 // ── Helpers de formato ────────────────────────────────────────
 function rp(float $n): string { return '$' . number_format($n, 0, '.', ','); }
 function rpp(float $n): string { return number_format($n, 1) . '%'; }
@@ -390,6 +423,7 @@ ob_start();
     <button class="rep-tab <?= $tab==='asesores'     ?'on':'' ?>" onclick="repTab('asesores',this)">Por asesor</button>
     <?php endif; ?>
     <button class="rep-tab <?= $tab==='cotizaciones' ?'on':'' ?>" onclick="repTab('cotizaciones',this)">Cotizaciones</button>
+    <button class="rep-tab <?= $tab==='recibos'       ?'on':'' ?>" onclick="repTab('recibos',this)">Recibos</button>
     <button class="rep-tab <?= $tab==='costos'       ?'on':'' ?>" onclick="repTab('costos',this)">Costos y márgenes</button>
   </div>
 </div>
@@ -732,6 +766,105 @@ ob_start();
   <?php endif; ?>
 
 </div><!-- /panel-cotizaciones -->
+
+
+<!-- ══ TAB: RECIBOS ═════════════════════════════════════════ -->
+<div class="tab-panel <?= $tab==='recibos'?'on':'' ?>" id="panel-recibos">
+
+  <?php if (empty($lista_recibos)): ?>
+    <div class="empty card" style="padding:40px">Sin recibos en el período seleccionado</div>
+  <?php else: ?>
+
+  <!-- KPIs recibos -->
+  <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="kpi-card">
+      <div class="kpi-label">Total recibos</div>
+      <div class="kpi-val"><?= count($lista_recibos) ?></div>
+      <div class="kpi-sub"><?= $num_cancelados ?> cancelado<?= $num_cancelados!=1?'s':'' ?></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Monto cobrado</div>
+      <div class="kpi-val green"><?= rp($total_recibos_pagados) ?></div>
+      <div class="kpi-sub">Recibos activos</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Cancelaciones</div>
+      <div class="kpi-val danger"><?= rp($total_recibos_cancelados) ?></div>
+      <div class="kpi-sub"><?= $num_cancelados ?> recibo<?= $num_cancelados!=1?'s':'' ?></div>
+    </div>
+  </div>
+
+  <div class="sec-lbl">Detalle de recibos</div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table class="tbl" id="tbl-recibos">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Cliente / Venta</th>
+            <?php if ($es_admin): ?><th>Asesor</th><?php endif; ?>
+            <th class="r">Monto</th>
+            <th>Tipo</th>
+            <th>Forma pago</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($lista_recibos as $rec):
+            $es_cancel = (int)($rec['cancelado'] ?? 0);
+            $es_tipo_cancel = $rec['tipo'] === 'cancelacion';
+            $forma = match($rec['forma_pago'] ?? '') {
+                'efectivo' => 'Efectivo',
+                'transferencia' => 'Transferencia',
+                'tarjeta' => 'Tarjeta',
+                default => $rec['forma_pago'] ?? '—',
+            };
+          ?>
+          <tr>
+            <td>
+              <a href="/ventas/<?= (int)$rec['venta_id'] ?>"
+                 style="font:700 12px var(--num);color:var(--g);text-decoration:none">
+                <?= e($rec['numero']) ?>
+              </a>
+            </td>
+            <td>
+              <div style="font:600 13px var(--body)"><?= e($rec['cliente_nombre'] ?? '—') ?></div>
+              <div class="tbl-sub"><?= e(mb_substr($rec['venta_titulo'] ?? '',0,40)) ?> · <?= e($rec['venta_numero'] ?? '') ?></div>
+            </td>
+            <?php if ($es_admin): ?>
+            <td style="font-size:12px;color:var(--t3)"><?= e($rec['asesor_nombre'] ?? '—') ?></td>
+            <?php endif; ?>
+            <td class="tbl-num" style="color:<?= $es_cancel ? 'var(--danger)' : 'var(--g)' ?>">
+              <?= $es_cancel ? '-' : '' ?><?= rp((float)$rec['monto']) ?>
+            </td>
+            <td>
+              <?php if ($es_tipo_cancel): ?>
+                <span class="badge badge-purple" style="background:var(--purple-bg);color:var(--purple)">Cancelación</span>
+              <?php else: ?>
+                <span class="badge badge-green">Abono</span>
+              <?php endif; ?>
+            </td>
+            <td style="font-size:12px;color:var(--t3)"><?= e($forma) ?></td>
+            <td>
+              <?php if ($es_cancel): ?>
+                <span class="badge badge-red">Cancelado</span>
+              <?php else: ?>
+                <span class="badge badge-green">Activo</span>
+              <?php endif; ?>
+            </td>
+            <td style="font:400 12px var(--num);color:var(--t3);white-space:nowrap">
+              <?= date('d/m/Y', strtotime($rec['fecha'])) ?>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <?php endif; ?>
+
+</div><!-- /panel-recibos -->
 
 
 <!-- ══ TAB: COSTOS Y MÁRGENES ════════════════════════════════ -->

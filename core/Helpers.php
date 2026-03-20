@@ -306,7 +306,7 @@ function validar_url(string $url): bool
 }
 
 // ─── Trial / Plan ───────────────────────────────────────────
-define('TRIAL_LIMIT', 100);
+define('TRIAL_LIMIT', 25);
 
 function trial_info(int $empresa_id): array
 {

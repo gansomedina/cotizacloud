@@ -298,6 +298,24 @@ foreach ($mas_rutas as $r) {
                 <div class="sidebar-user-role"><?= e($usuario['rol'] ?? '') ?></div>
             </div>
         </div>
+        <?php
+        $trial_layout = trial_info(EMPRESA_ID);
+        if ($trial_layout['es_trial']): ?>
+        <div style="padding:6px 12px;margin-bottom:4px;font:500 11px var(--body);color:var(--t3)">
+            Plan: <span style="color:var(--amb);font-weight:700">Prueba</span>
+            <span style="font:400 11px var(--num);color:var(--t3);display:block;margin-top:1px"><?= $trial_layout['usadas'] ?>/<?= TRIAL_LIMIT ?> cotizaciones</span>
+        </div>
+        <?php elseif ($trial_layout['plan_vence']): ?>
+        <div style="padding:6px 12px;margin-bottom:4px;font:500 11px var(--body);color:var(--t3)">
+            Plan: <span style="color:var(--g);font-weight:700">PRO</span>
+            <span style="font:400 11px var(--num);color:<?= $trial_layout['por_vencer'] ? 'var(--danger)' : 'var(--t3)' ?>;display:block;margin-top:1px">
+                Vence: <?= date('d/m/Y', strtotime($trial_layout['plan_vence'])) ?>
+                <?php if ($trial_layout['dias_restantes'] !== null): ?>
+                (<?= $trial_layout['dias_restantes'] ?> día<?= $trial_layout['dias_restantes']!=1?'s':'' ?>)
+                <?php endif; ?>
+            </span>
+        </div>
+        <?php endif; ?>
         <a href="/logout" class="nav-item" style="color:var(--danger)">
             <i data-feather="log-out"></i>
             Cerrar sesión
