@@ -122,6 +122,30 @@
 | `modules/ayuda/licencia.php` | Página de solicitud de licencia |
 | `modules/auth/landing.php` | Landing con sección de precios |
 
+## Módulo Marketing (Business) — Pendiente
+
+### Concepto
+Complementa al módulo Radar. Radar trackea aperturas de cotizaciones; Marketing permite al empresario **hacer retargeting y medir campañas**.
+
+### Features planeados
+1. **Pixels de tracking** — El empresario configura sus IDs (Facebook Pixel, GA4, TikTok Pixel) en Configuración > Marketing. Se inyectan automáticamente en las URLs públicas de cotizaciones.
+2. **Retargeting** — Clientes que vieron la cotización y no aceptaron les aparecen anuncios (gracias a los pixels).
+3. **UTM tracking** — Registrar de qué campaña/fuente vino cada lead (utm_source, utm_medium, utm_campaign). Reportes de origen de leads.
+4. **Página pública de empresa** — Mini landing con SEO en `cotiza.cloud/empresa/{slug}`, catálogo de servicios, botón "Solicitar cotización".
+
+### Resumen
+| Feature | Esfuerzo | Valor |
+|---------|----------|-------|
+| Pixels (FB/GA/TikTok) en cotizaciones | Bajo | Alto |
+| UTM tracking de leads | Bajo | Medio |
+| Página pública empresa con SEO | Alto | Medio |
+
+### Implementación pendiente
+- Tabla `marketing_config` (empresa_id, pixel_fb, pixel_ga, pixel_tiktok)
+- Inyectar scripts en vista pública de cotización
+- Config UI en módulo Configuración > Marketing (solo Business)
+- UTM capture en registro/creación de clientes
+
 ## Comandos Útiles
 ```bash
 # Sincronizar cambios web con iOS
