@@ -257,11 +257,29 @@ $radar_buckets_raw = DB::query(
 );
 
 // Agrupar por bucket
-$buckets = ['onfire' => [], 'inminente' => [], 'probable' => []];
+$buckets = ['onfire' => [], 'inminente' => [], 'probable_cierre' => []];
 foreach ($radar_buckets_raw as $r) {
     $b = $r['radar_bucket'];
     if (isset($buckets[$b])) $buckets[$b][] = $r;
 }
+
+// ═══════════════════════════════════════════════════════
+//  BLOQUE 4b: RECIBOS DEL DÍA
+// ═══════════════════════════════════════════════════════
+
+$hoy = $ahora->format('Y-m-d');
+$recibos_hoy = DB::query(
+    "SELECT r.id, r.numero, r.monto, r.tipo, r.cancelado, r.fecha, r.forma_pago,
+            v.numero AS venta_numero, v.titulo AS venta_titulo, v.id AS venta_id,
+            cl.nombre AS cliente_nombre
+     FROM recibos r
+     LEFT JOIN ventas v ON v.id = r.venta_id
+     LEFT JOIN clientes cl ON cl.id = v.cliente_id
+     WHERE r.empresa_id = ?
+       AND (r.fecha = ? OR (r.cancelado = 1 AND DATE(r.cancelado_at) = ?))
+     ORDER BY r.created_at DESC LIMIT 10",
+    [$empresa_id, $hoy, $hoy]
+);
 
 // ═══════════════════════════════════════════════════════
 //  BLOQUE 5: ACTIVIDAD DEL MES
@@ -405,6 +423,19 @@ ob_start();
 .heat-dot{width:6px;height:6px;border-radius:50%}
 .hd-off{background:var(--border)}.hd-low{background:#fbbf24}.hd-mid{background:#f97316}.hd-hot{background:#ef4444}
 .bucket-empty{padding:20px 14px;text-align:center;font:400 13px var(--body);color:var(--t3)}
+
+/* RECIBOS DEL DÍA */
+.recibo-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background .1s}
+.recibo-row:last-child{border-bottom:none}
+.recibo-row:hover{background:#fafaf8}
+.recibo-ico{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font:700 12px var(--body);flex-shrink:0}
+.recibo-ico.pago{background:var(--g-bg);color:var(--g)}.recibo-ico.cancel{background:var(--danger-bg);color:var(--danger)}
+.recibo-info{flex:1;min-width:0}
+.recibo-name{font:600 13px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recibo-meta{font:400 11px var(--num);color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recibo-r{text-align:right;flex-shrink:0}
+.recibo-monto{font:500 13px var(--num)}
+.recibo-badge{font:700 10px var(--body);padding:2px 7px;border-radius:10px;margin-top:2px;display:inline-block}
 
 /* ACTIVIDAD MENSUAL */
 .monthly-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -626,7 +657,6 @@ ob_start();
       $href = $a['venta_id'] ? '/ventas/'.$a['venta_id'] : '/cotizaciones/'.$a['id'];
     ?>
     <a href="<?= $href ?>" class="alert-row">
-      <div class="alert-av"><?= e($ini) ?></div>
       <div class="alert-info">
         <div class="alert-name"><?= e($a['cliente_nombre'] ?? '—') ?></div>
         <div class="alert-meta"><?= e(mb_substr($a['titulo'],0,45)) ?> · <?= e($a['vta_numero'] ?? $a['cot_numero']) ?></div>
@@ -655,7 +685,6 @@ ob_start();
       $dcls = $dias <= 2 ? 'dias-red' : 'dias-amb';
     ?>
     <a href="/cotizaciones/<?= (int)$r['id'] ?>" class="alert-row">
-      <div class="alert-av red"><?= e($ini) ?></div>
       <div class="alert-info">
         <div class="alert-name"><?= e($r['cliente_nombre'] ?? '—') ?></div>
         <div class="alert-meta"><?= e(mb_substr($r['titulo'],0,45)) ?> · <?= e($r['numero']) ?></div>
@@ -683,7 +712,6 @@ ob_start();
       [$dlbl, $dcls] = dias_lbl($dias, false);
     ?>
     <a href="/cotizaciones/<?= (int)$pv['id'] ?>" class="alert-row">
-      <div class="alert-av amber"><?= e($ini) ?></div>
       <div class="alert-info">
         <div class="alert-name"><?= e($pv['cliente_nombre'] ?? '—') ?></div>
         <div class="alert-meta"><?= e(mb_substr($pv['titulo'],0,45)) ?> · <?= e($pv['numero']) ?></div>
@@ -711,10 +739,9 @@ ob_start();
       $dcls = $dias >= 5 ? 'dias-red' : ($dias >= 3 ? 'dias-amb' : 'dias-amb');
     ?>
     <a href="/cotizaciones/<?= (int)$sa['id'] ?>" class="alert-row">
-      <div class="alert-av <?= $dias >= 5 ? 'slate' : 'amber' ?>"><?= e($ini) ?></div>
       <div class="alert-info">
         <div class="alert-name"><?= e($sa['cliente_nombre'] ?? '—') ?></div>
-        <div class="alert-meta">Enviada hace <?= $dias ?> día<?= $dias!=1?'s':'' ?> · <?= e($sa['numero']) ?></div>
+        <div class="alert-meta"><?= e(mb_substr($sa['titulo'],0,45)) ?> · <?= e($sa['numero']) ?></div>
       </div>
       <div class="alert-r">
         <div class="alert-monto"><?= fmt_dash((float)$sa['total']) ?></div>
@@ -729,16 +756,16 @@ ob_start();
 
 <!-- ══ RADAR BUCKETS ══ -->
 <?php
-$hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !empty($buckets['probable']);
+$hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !empty($buckets['probable_cierre']);
 ?>
 <div class="slabel">Radar · oportunidades activas</div>
 <div class="buckets-grid">
 
   <?php
   $bucket_def = [
-      'probable'  => [ico('yellow',10), 'Probable cierre',    'b-probable'],
-      'inminente' => [ico('orange',10), 'Cierre inminente',   'b-inminente'],
-      'onfire'    => [ico('red',10),    'On Fire',             'b-onfire'],
+      'probable_cierre' => [ico('yellow',10), 'Probable cierre',    'b-probable'],
+      'inminente'       => [ico('orange',10), 'Cierre inminente',   'b-inminente'],
+      'onfire'          => [ico('red',10),    'On Fire',             'b-onfire'],
   ];
   foreach ($bucket_def as $bkey => [$ico, $blbl, $bcls]):
       $items     = $buckets[$bkey];
@@ -746,7 +773,7 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
       $count_b   = count($items);
 
       // Colores de avatar según bucket
-      $av_colors = ['probable'=>'var(--g)', 'inminente'=>'#c2410c', 'onfire'=>'#991b1b'];
+      $av_colors = ['probable_cierre'=>'var(--g)', 'inminente'=>'#c2410c', 'onfire'=>'#991b1b'];
       $av_bg     = $av_colors[$bkey];
   ?>
   <div class="bucket-card <?= $bcls ?>">
@@ -800,6 +827,47 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
   <div style="font:400 13px var(--body); color:var(--t3);">Los buckets se llenan automáticamente cuando se envían cotizaciones y los clientes las visitan.</div>
 </div>
 <?php endif; ?>
+
+<!-- ══ RECIBOS DEL DÍA ══ -->
+<div class="slabel">Recibos del día · <?= date('d/m/Y') ?></div>
+<div class="alert-card" style="margin-bottom:12px">
+  <div class="alert-header">
+    <div class="alert-title"><?= ico('file', 16, '#16a34a') ?> Recibos de hoy <span class="alert-badge ab-green"><?= count($recibos_hoy) ?></span></div>
+  </div>
+  <?php if (empty($recibos_hoy)): ?>
+  <div class="alert-empty">Sin recibos registrados hoy.</div>
+  <?php else: ?>
+  <?php foreach ($recibos_hoy as $rec):
+    $es_cancelado = (int)($rec['cancelado'] ?? 0);
+    $es_cancelacion = $rec['tipo'] === 'cancelacion';
+    $ico_cls = ($es_cancelado || $es_cancelacion) ? 'cancel' : 'pago';
+    $ico_txt = ($es_cancelado || $es_cancelacion) ? '✕' : '$';
+    $monto_col = ($es_cancelado || $es_cancelacion) ? 'var(--danger)' : 'var(--g)';
+    $forma = match($rec['forma_pago'] ?? '') {
+        'efectivo' => 'Efectivo',
+        'transferencia' => 'Transferencia',
+        'tarjeta' => 'Tarjeta',
+        default => $rec['forma_pago'] ?? '',
+    };
+  ?>
+  <a href="/ventas/<?= (int)$rec['venta_id'] ?>" class="recibo-row">
+    <div class="recibo-ico <?= $ico_cls ?>"><?= $ico_txt ?></div>
+    <div class="recibo-info">
+      <div class="recibo-name"><?= e($rec['cliente_nombre'] ?? '—') ?></div>
+      <div class="recibo-meta"><?= e($rec['numero']) ?> · <?= e(mb_substr($rec['venta_titulo'] ?? '',0,35)) ?><?= $forma ? ' · '.$forma : '' ?></div>
+    </div>
+    <div class="recibo-r">
+      <div class="recibo-monto" style="color:<?= $monto_col ?>"><?= ($es_cancelado || $es_cancelacion) ? '-' : '+' ?><?= fmt_dash((float)$rec['monto']) ?></div>
+      <?php if ($es_cancelado): ?>
+      <div class="recibo-badge" style="background:var(--danger-bg);color:var(--danger)">Cancelado</div>
+      <?php elseif ($es_cancelacion): ?>
+      <div class="recibo-badge" style="background:var(--purple-bg);color:var(--purple)">Cancelación</div>
+      <?php endif; ?>
+    </div>
+  </a>
+  <?php endforeach; ?>
+  <?php endif; ?>
+</div>
 
 <!-- ══ ACTIVIDAD DEL MES ══ -->
 <div class="slabel">Actividad del período</div>
