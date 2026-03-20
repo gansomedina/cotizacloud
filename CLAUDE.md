@@ -79,6 +79,48 @@
 4. Cambiar `aps-environment` en `App.entitlements` de `development` a `production`
 5. Android: carpeta `android/` ya existe, falta probar y publicar en Google Play
 
+## Sistema de Planes (Free / Pro / Business)
+
+### Implementado
+- ENUM en BD: `free`, `pro`, `business` (migración automática desde `trial`)
+- `core/Helpers.php` → `trial_info()` retorna: `es_free`, `es_pro`, `es_business`, `es_pagado`, `plan_label`
+- `es_trial` se mantiene como alias de `es_free` para compatibilidad
+- Límite de 25 cotizaciones totales en plan Free (enforcement en `modules/cotizaciones/crear.php`)
+- SuperAdmin puede activar/renovar/cambiar entre los 3 planes (`modules/superadmin/toggle_plan.php`)
+- Tab "Usuarios" en Configuración solo visible para plan Business (`modules/config/index.php`)
+- Sidebar muestra nombre del plan dinámico con color (Free=amber, Pro=verde, Business=azul)
+- Landing page con sección de precios en `/landing` (toggle mensual/anual, precios tachados)
+- Ruta `/` sigue yendo a `/login` (seguro para app Capacitor en App Store review)
+
+### Precios
+| Plan | Mensual | Anual (20% desc) |
+|------|---------|-------------------|
+| Free | $0 | — |
+| Pro | $299 MXN | $239 MXN/mes ($2,868/año) |
+| Business | $799 MXN | $639 MXN/mes ($7,668/año) |
+
+### Diferenciadores por plan
+- **Free**: 25 cotizaciones total, todos los módulos, 1 usuario
+- **Pro**: cotizaciones ilimitadas, todos los módulos, 1 usuario, app móvil
+- **Business**: usuarios ilimitados, tab Usuarios visible, costos con categorías avanzadas (pendiente), módulo proveedores (pendiente), reportes avanzados (pendiente), soporte prioritario
+
+### Pendiente — Próxima sesión
+1. **Módulo Costos Avanzados** (Business) — categorías avanzadas de costos, márgenes por categoría, análisis por proveedor
+2. **Módulo Reportes Avanzados** (Business) — dashboards de equipo, comparativas entre vendedores, métricas de conversión
+3. Con estos dos módulos queda completo el diferenciador Business vs Pro
+
+### Archivos clave del sistema de planes
+| Archivo | Función |
+|---------|---------|
+| `core/Helpers.php` | `trial_info()` — lógica central de planes |
+| `core/Auth.php` | Mensajes de licencia vencida/suspendida |
+| `core/layout.php` | Sidebar con label de plan |
+| `modules/config/index.php` | Tab Usuarios condicionado a Business |
+| `modules/superadmin/toggle_plan.php` | API de gestión de planes |
+| `modules/superadmin/empresa.php` | UI SuperAdmin para planes |
+| `modules/ayuda/licencia.php` | Página de solicitud de licencia |
+| `modules/auth/landing.php` | Landing con sección de precios |
+
 ## Comandos Útiles
 ```bash
 # Sincronizar cambios web con iOS
