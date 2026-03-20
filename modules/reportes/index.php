@@ -231,7 +231,7 @@ $ventas_con_margen = DB::query(
 $usr_filter_r = $es_admin ? '' : "AND r.usuario_id = {$usuario['id']}";
 $lista_recibos = DB::query(
     "SELECT r.id, r.numero, r.monto, r.tipo, r.cancelado, r.fecha, r.forma_pago,
-            r.concepto, r.cancelado_at, r.cancelado_motivo,
+            r.concepto, r.cancelado_at,
             v.numero AS venta_numero, v.titulo AS venta_titulo, v.id AS venta_id,
             cl.nombre AS cliente_nombre,
             u.nombre AS asesor_nombre
