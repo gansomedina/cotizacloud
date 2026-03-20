@@ -12,6 +12,12 @@ $empresa_id = EMPRESA_ID;
 $tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar'])
     ? $_GET['tab'] : 'empresa';
 
+// Usuarios solo disponible en plan Business
+if ($tab_activo === 'usuarios') {
+    $plan_check = trial_info(EMPRESA_ID);
+    if (!$plan_check['es_business']) $tab_activo = 'empresa';
+}
+
 // ─── Cargar empresa ─────────────────────────────────────────
 $empresa = DB::row("SELECT * FROM empresas WHERE id=?", [$empresa_id]);
 
@@ -281,7 +287,9 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <a class="cfg-tab <?= $tab_activo==='catalogo'  ?'on':'' ?>" href="/config?tab=catalogo">Catálogo</a>
     <a class="cfg-tab <?= $tab_activo==='clientes'  ?'on':'' ?>" href="/config?tab=clientes">Clientes</a>
     <a class="cfg-tab <?= $tab_activo==='cupones'   ?'on':'' ?>" href="/config?tab=cupones">Cupones</a>
+    <?php $plan_info = trial_info(EMPRESA_ID); if ($plan_info['es_business']): ?>
     <a class="cfg-tab <?= $tab_activo==='usuarios'  ?'on':'' ?>" href="/config?tab=usuarios">Usuarios</a>
+    <?php endif; ?>
     <a class="cfg-tab <?= $tab_activo==='radar'     ?'on':'' ?>" href="/config?tab=radar">Radar</a>
   </div>
 </div>

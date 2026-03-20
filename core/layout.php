@@ -305,9 +305,9 @@ foreach ($mas_rutas as $r) {
             Plan: <span style="color:var(--amb);font-weight:700">Prueba</span>
             <span style="font:400 11px var(--num);color:var(--t3);display:block;margin-top:1px"><?= $trial_layout['usadas'] ?>/<?= TRIAL_LIMIT ?> cotizaciones</span>
         </div>
-        <?php elseif ($trial_layout['plan_vence']): ?>
+        <?php elseif ($trial_layout['es_pagado']): ?>
         <div style="padding:6px 12px;margin-bottom:4px;font:500 11px var(--body);color:var(--t3)">
-            Plan: <span style="color:var(--g);font-weight:700">PRO</span>
+            Plan: <span style="color:<?= $trial_layout['es_business'] ? 'var(--blue)' : 'var(--g)' ?>;font-weight:700"><?= $trial_layout['plan_label'] ?></span>
             <span style="font:400 11px var(--num);color:<?= $trial_layout['por_vencer'] ? 'var(--danger)' : 'var(--t3)' ?>;display:block;margin-top:1px">
                 Vence: <?= date('d/m/Y', strtotime($trial_layout['plan_vence'])) ?>
                 <?php if ($trial_layout['dias_restantes'] !== null): ?>
