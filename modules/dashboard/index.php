@@ -269,7 +269,8 @@ foreach ($radar_buckets_raw as $r) {
 
 $hoy = $ahora->format('Y-m-d');
 $recibos_hoy = DB::query(
-    "SELECT r.id, r.numero, r.monto, r.tipo, r.cancelado, r.fecha, r.forma_pago,
+    "SELECT r.id, r.numero, r.monto, r.tipo, r.cancelado, r.fecha,
+            r.forma_pago,
             v.numero AS venta_numero, v.titulo AS venta_titulo, v.id AS venta_id,
             cl.nombre AS cliente_nombre
      FROM recibos r
