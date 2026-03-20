@@ -420,7 +420,9 @@ class Radar
             $vigencia_ts = ($cot_meta_early && $cot_meta_early['valida_hasta'])
                 ? strtotime($cot_meta_early['valida_hasta'])
                 : $created_early + 30 * 86400;
-            $no_abierta_age_ok = ($age_h_early >= 24 && $now <= $vigencia_ts);
+            // v2.3: usar día calendario (>=1 día) para alinear con Dashboard
+            $age_days_early    = (int)((strtotime('today') - strtotime(date('Y-m-d', $created_early))) / 86400);
+            $no_abierta_age_ok = ($age_days_early >= 1 && $now <= $vigencia_ts);
             if (!$accepted_early && $no_abierta_age_ok && !$has_js) {
                 return [
                     'score'=>0,'fit_pct'=>0.0,'priority_pct'=>0.0,
