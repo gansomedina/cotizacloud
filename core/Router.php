@@ -102,16 +102,17 @@ class Router
         self::get('/registro', fn() => self::load('auth', 'registro'));
         self::post('/registro', fn() => self::load('auth', 'registro_post'));
 
-        // Raíz: dashboard si logueado, landing si no (app nativa → login)
-        self::get('/', function() {
-            if (Auth::logueado()) { redirect('/dashboard'); return; }
-            $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-            if (str_contains($ua, 'CotizaCloud') || str_contains($ua, 'Capacitor')) {
-                redirect('/login');
-            } else {
-                self::load('auth', 'landing');
-            }
-        });
+        // Landing page pública
+        self::get('/landing', fn() => Auth::logueado()
+            ? redirect('/dashboard')
+            : self::load('auth', 'landing')
+        );
+
+        // Raíz: dashboard si logueado, login si no
+        self::get('/', fn() => Auth::logueado()
+            ? redirect('/dashboard')
+            : redirect('/login')
+        );
 
         // ── Push notifications API ───────────────────────────
         self::post('/api/push/register',   fn() => self::load_api('push_register'));
