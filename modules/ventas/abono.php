@@ -69,13 +69,16 @@ try {
     $recibo_id = DB::insert(
         "INSERT INTO recibos
          (empresa_id, venta_id, numero, token,
-          monto, concepto, notas, fecha, created_at)
-         VALUES (?,?,?,?,?,?,?,CURDATE(),NOW())",
+          monto, concepto, notas, fecha, created_at,
+          forma_pago, usuario_id, pagado_antes, saldo_despues)
+         VALUES (?,?,?,?,?,?,?,CURDATE(),NOW(),?,?,?,?)",
         [
             $empresa_id, $venta_id,
             $numero_rec, $token_rec,
             $monto, $concepto ?: ucfirst($forma_pago),
             $notas_rec ?: null,
+            $forma_pago, Auth::id(),
+            (float)$venta['pagado'], $nuevo_saldo,
         ]
     );
 

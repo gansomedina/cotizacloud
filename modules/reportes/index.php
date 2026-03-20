@@ -230,15 +230,17 @@ $ventas_con_margen = DB::query(
 // ─────────────────────────────────────────────────────────────
 $usr_filter_r = $es_admin ? '' : "AND r.usuario_id = {$usuario['id']}";
 $lista_recibos = DB::query(
-    "SELECT r.id, r.numero, r.monto, r.tipo, r.cancelado, r.fecha, r.forma_pago,
+    "SELECT r.id, r.numero, r.monto, r.tipo, r.cancelado, r.fecha,
+            r.forma_pago,
             r.concepto, r.cancelado_at,
             v.numero AS venta_numero, v.titulo AS venta_titulo, v.id AS venta_id,
             cl.nombre AS cliente_nombre,
-            u.nombre AS asesor_nombre
+            COALESCE(ur.nombre, uv.nombre) AS asesor_nombre
      FROM recibos r
      LEFT JOIN ventas v ON v.id = r.venta_id
      LEFT JOIN clientes cl ON cl.id = v.cliente_id
-     LEFT JOIN usuarios u ON u.id = r.usuario_id
+     LEFT JOIN usuarios ur ON ur.id = r.usuario_id
+     LEFT JOIN usuarios uv ON uv.id = v.usuario_id
      WHERE r.empresa_id = ? AND r.fecha BETWEEN ? AND ? $usr_filter_r
      ORDER BY r.created_at DESC
      LIMIT 300",
@@ -814,11 +816,13 @@ ob_start();
           <?php foreach ($lista_recibos as $rec):
             $es_cancel = (int)($rec['cancelado'] ?? 0);
             $es_tipo_cancel = $rec['tipo'] === 'cancelacion';
-            $forma = match($rec['forma_pago'] ?? '') {
+            $fp_raw = trim($rec['forma_pago'] ?? '');
+            $forma = match($fp_raw) {
                 'efectivo' => 'Efectivo',
                 'transferencia' => 'Transferencia',
                 'tarjeta' => 'Tarjeta',
-                default => $rec['forma_pago'] ?? '—',
+                '' => '—',
+                default => ucfirst($fp_raw),
             };
           ?>
           <tr>
