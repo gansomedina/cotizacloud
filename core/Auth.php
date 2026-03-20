@@ -441,10 +441,13 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
         }
 
         // Determinar si venció la licencia
-        $vencida = ($emp['plan'] === 'pro' && $emp['plan_vence'] && $emp['plan_vence'] < date('Y-m-d'));
+        $plan = $emp['plan'] ?? 'free';
+        $es_pagado = in_array($plan, ['pro', 'business']);
+        $plan_label = match($plan) { 'pro' => 'Pro', 'business' => 'Business', default => 'Free' };
+        $vencida = ($es_pagado && $emp['plan_vence'] && $emp['plan_vence'] < date('Y-m-d'));
         $titulo = $vencida ? 'Licencia Vencida' : 'Licencia Suspendida';
         $msg = $vencida
-            ? 'Tu licencia PRO venció el <strong>' . date('d/m/Y', strtotime($emp['plan_vence'])) . '</strong>. Renueva tu plan para continuar usando CotizaCloud.'
+            ? 'Tu licencia ' . $plan_label . ' venció el <strong>' . date('d/m/Y', strtotime($emp['plan_vence'])) . '</strong>. Renueva tu plan para continuar usando CotizaCloud.'
             : 'La cuenta <span class="slug">' . htmlspecialchars($slug) . '</span> se encuentra suspendida.';
         $sub = $vencida
             ? 'Contacta a soporte para renovar tu licencia.'

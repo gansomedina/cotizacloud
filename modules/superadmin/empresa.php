@@ -179,18 +179,20 @@ tr:hover td{background:#fafaf8}
     </div>
 </div>
 
-<!-- Plan / Trial -->
+<!-- Plan -->
 <?php
-    $plan_bg = $trial['es_trial'] ? 'var(--amb-bg)' : ($trial['vencido'] ? 'var(--danger-bg)' : ($trial['por_vencer'] ? 'var(--amb-bg)' : 'var(--g-bg)'));
-    $plan_border = $trial['es_trial'] ? '#fcd34d' : ($trial['vencido'] ? '#fca5a5' : ($trial['por_vencer'] ? '#fcd34d' : 'var(--g-border)'));
+    $plan_bg = $trial['es_free'] ? 'var(--amb-bg)' : ($trial['vencido'] ? 'var(--danger-bg)' : ($trial['por_vencer'] ? 'var(--amb-bg)' : 'var(--g-bg)'));
+    $plan_border = $trial['es_free'] ? '#fcd34d' : ($trial['vencido'] ? '#fca5a5' : ($trial['por_vencer'] ? '#fcd34d' : 'var(--g-border)'));
+    $badge_class = $trial['es_free'] ? 'badge-amber' : ($trial['vencido'] ? 'badge-red' : ($trial['es_business'] ? 'badge-blue' : 'badge-green'));
+    $badge_text = $trial['es_free'] ? 'FREE' : ($trial['vencido'] ? strtoupper($trial['plan_label']) . ' VENCIDO' : strtoupper($trial['plan_label']));
 ?>
 <div style="background:<?= $plan_bg ?>;border:1px solid <?= $plan_border ?>;border-radius:var(--r);padding:16px 20px;margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
-            <span class="badge <?= $trial['es_trial'] ? 'badge-amber' : ($trial['vencido'] ? 'badge-red' : 'badge-green') ?>" style="font-size:12px;padding:5px 14px;margin-right:8px">
-                <?= $trial['es_trial'] ? 'TRIAL' : ($trial['vencido'] ? 'PRO VENCIDO' : 'PRO') ?>
+            <span class="badge <?= $badge_class ?>" style="font-size:12px;padding:5px 14px;margin-right:8px">
+                <?= $badge_text ?>
             </span>
-            <?php if ($trial['es_trial']): ?>
+            <?php if ($trial['es_free']): ?>
                 <span style="font-size:13px;color:var(--amb);font-weight:600">
                     <?= $trial['usadas'] ?> / <?= TRIAL_LIMIT ?> cotizaciones usadas
                     <?php if ($trial['agotado']): ?> — <strong>AGOTADO</strong><?php endif; ?>
@@ -214,23 +216,32 @@ tr:hover td{background:#fafaf8}
             <?php endif; ?>
         </div>
 
-        <?php if ($trial['es_trial']): ?>
-            <!-- Activar PRO con duración -->
-            <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0;display:flex;gap:6px;align-items:center" onsubmit="return confirm('¿Activar plan PRO?')">
-                <?= csrf_field() ?>
-                <input type="hidden" name="accion" value="activar_pro">
-                <select name="duracion" style="padding:6px 10px;border:1.5px solid var(--g-border);border-radius:var(--r-sm);font:500 12px var(--body);background:var(--white)">
+        <?php if ($trial['es_free']): ?>
+            <!-- Activar plan pagado -->
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <select id="sa-duracion" style="padding:6px 10px;border:1.5px solid var(--g-border);border-radius:var(--r-sm);font:500 12px var(--body);background:var(--white)">
                     <option value="1_mes">1 mes</option>
                     <option value="3_meses">3 meses</option>
                     <option value="6_meses">6 meses</option>
                     <option value="1_anio">1 año</option>
                 </select>
-                <button type="submit" class="btn-enter" style="font-size:12px"><i data-feather="zap" style="width:14px;height:14px"></i> Activar PRO</button>
-            </form>
+                <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0" onsubmit="this.querySelector('[name=duracion]').value=document.getElementById('sa-duracion').value;return confirm('¿Activar plan Pro?')">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="accion" value="activar_pro">
+                    <input type="hidden" name="duracion" value="">
+                    <button type="submit" class="btn-enter" style="font-size:12px"><i data-feather="zap" style="width:14px;height:14px"></i> Pro</button>
+                </form>
+                <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0" onsubmit="this.querySelector('[name=duracion]').value=document.getElementById('sa-duracion').value;return confirm('¿Activar plan Business?')">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="accion" value="activar_business">
+                    <input type="hidden" name="duracion" value="">
+                    <button type="submit" class="btn-enter" style="font-size:12px;border-color:var(--blue-bg);background:var(--blue-bg);color:var(--blue)"><i data-feather="briefcase" style="width:14px;height:14px"></i> Business</button>
+                </form>
+            </div>
         <?php else: ?>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                <!-- Renovar PRO -->
-                <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0;display:flex;gap:6px;align-items:center" onsubmit="return confirm('¿Renovar licencia PRO?')">
+                <!-- Renovar -->
+                <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0;display:flex;gap:6px;align-items:center" onsubmit="return confirm('¿Renovar licencia <?= $trial['plan_label'] ?>?')">
                     <?= csrf_field() ?>
                     <input type="hidden" name="accion" value="renovar">
                     <select name="duracion" style="padding:6px 10px;border:1.5px solid var(--g-border);border-radius:var(--r-sm);font:500 12px var(--body);background:var(--white)">
@@ -241,11 +252,27 @@ tr:hover td{background:#fafaf8}
                     </select>
                     <button type="submit" class="btn-enter" style="font-size:12px"><i data-feather="refresh-cw" style="width:14px;height:14px"></i> Renovar</button>
                 </form>
-                <!-- Regresar a Trial -->
-                <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0" onsubmit="return confirm('¿Regresar a TRIAL? Se activará el límite de <?= TRIAL_LIMIT ?> cotizaciones.')">
+                <!-- Cambiar plan -->
+                <?php if ($trial['es_pro']): ?>
+                <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0" onsubmit="return confirm('¿Cambiar a Business?')">
                     <?= csrf_field() ?>
-                    <input type="hidden" name="accion" value="regresar_trial">
-                    <button type="submit" class="btn-enter" style="border-color:#fcd34d;background:var(--amb-bg);color:var(--amb);font-size:12px"><i data-feather="rotate-ccw" style="width:14px;height:14px"></i> Trial</button>
+                    <input type="hidden" name="accion" value="cambiar_plan">
+                    <input type="hidden" name="nuevo_plan" value="business">
+                    <button type="submit" class="btn-enter" style="font-size:12px;border-color:var(--blue-bg);background:var(--blue-bg);color:var(--blue)"><i data-feather="arrow-up" style="width:14px;height:14px"></i> Business</button>
+                </form>
+                <?php else: ?>
+                <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0" onsubmit="return confirm('¿Cambiar a Pro?')">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="accion" value="cambiar_plan">
+                    <input type="hidden" name="nuevo_plan" value="pro">
+                    <button type="submit" class="btn-enter" style="font-size:12px"><i data-feather="arrow-down" style="width:14px;height:14px"></i> Pro</button>
+                </form>
+                <?php endif; ?>
+                <!-- Regresar a Free -->
+                <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="margin:0" onsubmit="return confirm('¿Regresar a FREE? Se activará el límite de <?= TRIAL_LIMIT ?> cotizaciones.')">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="accion" value="regresar_free">
+                    <button type="submit" class="btn-enter" style="border-color:#fcd34d;background:var(--amb-bg);color:var(--amb);font-size:12px"><i data-feather="rotate-ccw" style="width:14px;height:14px"></i> Free</button>
                 </form>
             </div>
         <?php endif; ?>
