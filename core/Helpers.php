@@ -314,9 +314,20 @@ function trial_info(int $empresa_id): array
     static $migrated = false;
     if (!$migrated) {
         try {
-            DB::execute("ALTER TABLE empresas ADD COLUMN plan ENUM('trial','pro') NOT NULL DEFAULT 'trial'");
+            DB::execute("ALTER TABLE empresas ADD COLUMN plan ENUM('free','pro','business') NOT NULL DEFAULT 'free'");
         } catch (\PDOException $e) {
-            // Columna ya existe — OK
+            // Columna ya existe — intentar ampliar ENUM si es el antiguo trial/pro
+            try {
+                DB::execute("ALTER TABLE empresas MODIFY COLUMN plan ENUM('free','pro','business') NOT NULL DEFAULT 'free'");
+            } catch (\PDOException $e2) {
+                // Ya tiene el ENUM correcto — OK
+            }
+        }
+        // Migrar registros con plan='trial' a 'free'
+        try {
+            DB::execute("UPDATE empresas SET plan = 'free' WHERE plan = 'trial'");
+        } catch (\PDOException $e) {
+            // trial ya no existe en ENUM o no hay registros — OK
         }
         try {
             DB::execute("ALTER TABLE empresas ADD COLUMN plan_vence DATE DEFAULT NULL");
@@ -327,13 +338,16 @@ function trial_info(int $empresa_id): array
     }
 
     $row = DB::row("SELECT plan, plan_vence, activa FROM empresas WHERE id = ?", [$empresa_id]);
-    $plan = $row['plan'] ?? 'trial';
+    $plan = $row['plan'] ?? 'free';
+    // Compatibilidad: si aún hay registros con 'trial', tratar como 'free'
+    if ($plan === 'trial') $plan = 'free';
     $plan_vence = $row['plan_vence'] ?? null;
     $activa = (int)($row['activa'] ?? 1);
+    $es_pagado = in_array($plan, ['pro', 'business']);
 
-    // Auto-suspender si el plan PRO venció
+    // Auto-suspender si el plan pagado venció
     $vencido = false;
-    if ($plan === 'pro' && $plan_vence && $plan_vence < date('Y-m-d')) {
+    if ($es_pagado && $plan_vence && $plan_vence < date('Y-m-d')) {
         $vencido = true;
         if ($activa) {
             DB::execute("UPDATE empresas SET activa = 0 WHERE id = ?", [$empresa_id]);
@@ -344,19 +358,31 @@ function trial_info(int $empresa_id): array
 
     // Calcular días restantes de licencia
     $dias_restantes = null;
-    if ($plan === 'pro' && $plan_vence && !$vencido) {
+    if ($es_pagado && $plan_vence && !$vencido) {
         $dias_restantes = (int)((strtotime($plan_vence) - strtotime(date('Y-m-d'))) / 86400);
     }
 
+    $plan_label = match($plan) {
+        'free' => 'Free',
+        'pro' => 'Pro',
+        'business' => 'Business',
+        default => 'Free',
+    };
+
     return [
         'plan'            => $plan,
-        'es_trial'        => $plan === 'trial',
+        'plan_label'      => $plan_label,
+        'es_free'         => $plan === 'free',
+        'es_trial'        => $plan === 'free',  // compatibilidad con código existente
+        'es_pro'          => $plan === 'pro',
+        'es_business'     => $plan === 'business',
+        'es_pagado'       => $es_pagado,
         'usadas'          => $usadas,
         'limite'          => TRIAL_LIMIT,
         'restantes'       => max(0, TRIAL_LIMIT - $usadas),
-        'agotado'         => $plan === 'trial' && $usadas >= TRIAL_LIMIT,
-        'cerca'           => $plan === 'trial' && $usadas >= (TRIAL_LIMIT * 0.8),
-        'pct'             => $plan === 'trial' ? min(100, round($usadas / TRIAL_LIMIT * 100)) : 0,
+        'agotado'         => $plan === 'free' && $usadas >= TRIAL_LIMIT,
+        'cerca'           => $plan === 'free' && $usadas >= (TRIAL_LIMIT * 0.8),
+        'pct'             => $plan === 'free' ? min(100, round($usadas / TRIAL_LIMIT * 100)) : 0,
         'plan_vence'      => $plan_vence,
         'vencido'         => $vencido,
         'dias_restantes'  => $dias_restantes,

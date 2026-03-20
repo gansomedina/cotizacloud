@@ -213,44 +213,53 @@ ob_start();
 <?php $trial = trial_info(EMPRESA_ID); ?>
 <div class="ay-section" id="sec-licencia">
   <h2 class="ay-h2">Activar licencia</h2>
-  <?php if ($trial['es_trial']): ?>
-    <p class="ay-subtitle">Activa tu licencia PRO para crear cotizaciones ilimitadas. Selecciona la duración deseada y te contactaremos con la liga de cobro.</p>
+  <?php if ($trial['es_free']): ?>
+    <p class="ay-subtitle">Activa tu plan Pro o Business para crear cotizaciones ilimitadas. Selecciona el plan y la duracion deseada y te contactaremos con la liga de cobro.</p>
   <?php elseif ($trial['por_vencer']): ?>
-    <p class="ay-subtitle">Tu licencia vence en <strong><?= $trial['dias_restantes'] ?> días</strong> (<?= date('d/m/Y', strtotime($trial['plan_vence'])) ?>). Renuévala aquí para no perder acceso.</p>
+    <p class="ay-subtitle">Tu licencia <?= $trial['plan_label'] ?> vence en <strong><?= $trial['dias_restantes'] ?> dias</strong> (<?= date('d/m/Y', strtotime($trial['plan_vence'])) ?>). Renuevala aqui para no perder acceso.</p>
   <?php else: ?>
-    <p class="ay-subtitle">Tu licencia PRO está activa<?= $trial['plan_vence'] ? ' hasta el ' . date('d/m/Y', strtotime($trial['plan_vence'])) : '' ?>. Si necesitas renovar o extender, usa el formulario.</p>
+    <p class="ay-subtitle">Tu plan <?= $trial['plan_label'] ?> esta activo<?= $trial['plan_vence'] ? ' hasta el ' . date('d/m/Y', strtotime($trial['plan_vence'])) : '' ?>. Si necesitas renovar o extender, usa el formulario.</p>
   <?php endif; ?>
 
   <div class="ay-card">
     <form action="/ayuda/ticket" method="POST" id="licenciaForm">
       <?= csrf_field() ?>
-      <input type="hidden" name="titulo" value="Solicitud de licencia PRO">
+      <input type="hidden" name="titulo" value="Solicitud de licencia">
 
       <div class="ay-field">
-        <label for="lic-duracion">Duración deseada</label>
+        <label for="lic-plan">Plan deseado</label>
+        <select id="lic-plan" name="plan_lic" style="width:100%;padding:10px 12px;border:1.5px solid var(--border2);border-radius:var(--r-sm);font:400 14px var(--body);background:var(--white);color:var(--text)">
+          <option value="Pro">Pro — $299/mes</option>
+          <option value="Business">Business — $799/mes</option>
+        </select>
+      </div>
+
+      <div class="ay-field">
+        <label for="lic-duracion">Duracion deseada</label>
         <select id="lic-duracion" name="duracion_lic" style="width:100%;padding:10px 12px;border:1.5px solid var(--border2);border-radius:var(--r-sm);font:400 14px var(--body);background:var(--white);color:var(--text)">
           <option value="1 mes">1 mes</option>
           <option value="3 meses">3 meses</option>
           <option value="6 meses">6 meses</option>
-          <option value="1 año">1 año</option>
+          <option value="1 año">1 año (20% descuento)</option>
         </select>
       </div>
 
       <div class="ay-field">
         <label for="lic-msg">Mensaje (opcional)</label>
-        <textarea id="lic-msg" name="descripcion" rows="3" placeholder="Información adicional..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border2);border-radius:var(--r-sm);font:400 14px var(--body);color:var(--text);resize:vertical"></textarea>
+        <textarea id="lic-msg" name="descripcion" rows="3" placeholder="Informacion adicional..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border2);border-radius:var(--r-sm);font:400 14px var(--body);color:var(--text);resize:vertical"></textarea>
       </div>
 
       <button type="submit" class="ay-btn-submit" onclick="
+        var plan = document.getElementById('lic-plan').value;
         var dur = document.getElementById('lic-duracion').value;
         var desc = document.getElementById('lic-msg');
         var tit = this.form.querySelector('[name=titulo]');
-        tit.value = 'Solicitud de licencia PRO — ' + dur;
-        if (!desc.value.trim()) desc.value = 'Solicitud de activación de licencia PRO.\nDuración solicitada: ' + dur;
-        else desc.value = 'Solicitud de activación de licencia PRO.\nDuración solicitada: ' + dur + '\n\nMensaje:\n' + desc.value;
-      ">Solicitar activación</button>
+        tit.value = 'Solicitud de licencia ' + plan + ' — ' + dur;
+        if (!desc.value.trim()) desc.value = 'Solicitud de activacion de licencia ' + plan + '.\nDuracion solicitada: ' + dur;
+        else desc.value = 'Solicitud de activacion de licencia ' + plan + '.\nDuracion solicitada: ' + dur + '\n\nMensaje:\n' + desc.value;
+      ">Solicitar activacion</button>
 
-      <p style="font-size:12px;color:var(--t3);margin-top:12px;text-align:center">Serás contactado a la brevedad con la liga de cobro para activar tu licencia.</p>
+      <p style="font-size:12px;color:var(--t3);margin-top:12px;text-align:center">Seras contactado a la brevedad con la liga de cobro para activar tu licencia.</p>
     </form>
   </div>
 </div>
