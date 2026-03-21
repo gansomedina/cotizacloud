@@ -140,28 +140,30 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .feat-title{font:700 18px var(--body);margin-bottom:6px;letter-spacing:-.01em}
 .feat-desc{font:400 14.5px var(--body);color:var(--t3);line-height:1.65}
 
-/* PREDICTIVE SECTION — compact, pipeline-first */
+/* PREDICTIVE SECTION — 2-col: copy left, pipeline right */
 .predictive{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.pred-card{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border-radius:24px;padding:48px 48px 44px;color:#fff;box-shadow:0 12px 48px rgba(0,0,0,.2);position:relative;overflow:hidden}
-.pred-card::before{content:"";position:absolute;top:-60%;right:-20%;width:400px;height:400px;background:radial-gradient(circle,rgba(124,58,237,.15) 0%,transparent 70%);pointer-events:none}
-.pred-card::after{content:"";position:absolute;bottom:-40%;left:-10%;width:300px;height:300px;background:radial-gradient(circle,rgba(26,92,56,.15) 0%,transparent 70%);pointer-events:none}
-.pred-label{font:700 11px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#a78bfa;margin-bottom:10px;text-align:center}
-.pred-title{font:800 clamp(22px,3vw,30px)/1.18 var(--body);letter-spacing:-.02em;margin-bottom:8px;text-align:center}
-.pred-desc{font:400 15px var(--body);opacity:.6;line-height:1.6;margin-bottom:36px;text-align:center;max-width:520px;margin-left:auto;margin-right:auto}
+.pred-card{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border-radius:24px;padding:52px;color:#fff;display:grid;grid-template-columns:1fr 1.1fr;gap:48px;align-items:center;box-shadow:0 12px 48px rgba(0,0,0,.2);position:relative;overflow:hidden}
+.pred-card::before{content:"";position:absolute;top:-60%;right:-20%;width:400px;height:400px;background:radial-gradient(circle,rgba(124,58,237,.12) 0%,transparent 70%);pointer-events:none}
+.pred-card::after{content:"";position:absolute;bottom:-40%;left:-10%;width:300px;height:300px;background:radial-gradient(circle,rgba(26,92,56,.12) 0%,transparent 70%);pointer-events:none}
+.pred-label{font:700 11px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#a78bfa;margin-bottom:12px}
+.pred-title{font:800 clamp(22px,3vw,30px)/1.15 var(--body);letter-spacing:-.02em;margin-bottom:14px}
+.pred-desc{font:400 15px var(--body);opacity:.65;line-height:1.65;margin-bottom:28px}
+.pred-states{display:flex;flex-direction:column;gap:12px}
+.pred-state{display:flex;align-items:center;gap:10px;font:500 14.5px var(--body);color:rgba(255,255,255,.8)}
+.pred-state-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.pred-state strong{color:#fff;font-weight:600;margin-right:4px}
 .pred-right{position:relative;z-index:1}
 
-/* PIPELINE VISUAL — full width, integrated labels */
-.pipeline{display:flex;flex-direction:column;gap:12px;max-width:680px;margin:0 auto}
-.pipe-row{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
-.pipe-bar{height:52px;border-radius:12px;display:flex;align-items:center;padding:0 18px;font:600 14px var(--body);transition:all .3s;gap:8px}
-.pipe-bar-label{font:700 14px var(--body);white-space:nowrap}
-.pipe-bar-sub{font:400 12.5px var(--body);opacity:.6;white-space:nowrap}
-.pipe-tag{margin-left:auto;font:600 10px var(--body);letter-spacing:.05em;text-transform:uppercase;opacity:.8;white-space:nowrap}
-.pipe-cold{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5)}
-.pipe-warm{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.2);color:#fbbf24}
-.pipe-hot{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);color:#ef4444}
-.pipe-close{background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.25);color:#4ade80}
-.pipe-count{font:800 22px var(--num);letter-spacing:-.02em;line-height:1}
+/* PIPELINE VISUAL */
+.pipeline{display:flex;flex-direction:column;gap:12px}
+.pipe-row{display:flex;align-items:center;gap:14px}
+.pipe-label{font:500 12px var(--body);opacity:.5;min-width:64px;text-align:right;flex-shrink:0}
+.pipe-bar{height:48px;border-radius:11px;display:flex;align-items:center;padding:0 16px;font:600 13.5px var(--body);transition:all .3s;white-space:nowrap;overflow:hidden;min-width:0}
+.pipe-tag{margin-left:auto;font:600 10px var(--body);letter-spacing:.05em;text-transform:uppercase;opacity:.7;padding-left:12px;flex-shrink:0}
+.pipe-cold{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);width:100%;color:rgba(255,255,255,.45)}
+.pipe-warm{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.18);width:82%;color:#fbbf24}
+.pipe-hot{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.18);width:58%;color:#ef4444}
+.pipe-close{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);width:38%;color:#4ade80}
 
 /* TOOLS SECTION */
 .tools{max-width:1100px;margin:0 auto;padding:80px 24px 0}
@@ -268,7 +270,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   .flow-arrow{display:none}
   .flow-steps{flex-direction:column;align-items:center;gap:24px}
   .flow-step{max-width:280px}
-  .pred-card{padding:36px 20px 32px}
+  .pred-card{grid-template-columns:1fr;padding:36px 24px 32px}
   .manifesto-card{padding:32px 24px}
   .proof-inner{gap:24px}
 }
@@ -342,26 +344,26 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   </div>
 </section>
 
-<!-- PREDICTIVE — compact, pipeline as hero -->
+<!-- PREDICTIVE — 2-col: copy + pipeline -->
 <section class="predictive" id="como-funciona">
   <div class="pred-card">
-    <div class="pred-label">Asi funciona el Radar</div>
-    <div class="pred-title">Ve cuales se van a cerrar — sin preguntar</div>
-    <div class="pred-desc">El radar analiza cada cotizacion y te dice exactamente donde esta.</div>
+    <div>
+      <div class="pred-label">Asi funciona el Radar</div>
+      <div class="pred-title">Sabe cuales se van a cerrar antes de que te llamen</div>
+      <div class="pred-desc">Analiza el comportamiento de cada cliente y clasifica tus cotizaciones automaticamente.</div>
+      <div class="pred-states">
+        <div class="pred-state"><span class="pred-state-dot" style="background:rgba(255,255,255,.25)"></span><strong>Sin abrir</strong> Nadie la ha visto aun</div>
+        <div class="pred-state"><span class="pred-state-dot" style="background:#fbbf24"></span><strong>Comparando</strong> Estan evaluando opciones</div>
+        <div class="pred-state"><span class="pred-state-dot" style="background:#ef4444"></span><strong>Alto interes</strong> Revisaron precios varias veces</div>
+        <div class="pred-state"><span class="pred-state-dot" style="background:#4ade80"></span><strong>Cierre inminente</strong> Momento de llamar</div>
+      </div>
+    </div>
     <div class="pred-right">
       <div class="pipeline">
-        <div class="pipe-row">
-          <div class="pipe-bar pipe-cold" style="width:100%"><span class="pipe-count">12</span><span class="pipe-bar-label">Sin abrir</span><span class="pipe-bar-sub">Nadie la ha visto</span><span class="pipe-tag">Reenviar</span></div>
-        </div>
-        <div class="pipe-row">
-          <div class="pipe-bar pipe-warm" style="width:78%"><span class="pipe-count">8</span><span class="pipe-bar-label">Comparando</span><span class="pipe-bar-sub">Evaluando opciones</span><span class="pipe-tag">Dar seguimiento</span></div>
-        </div>
-        <div class="pipe-row">
-          <div class="pipe-bar pipe-hot" style="width:55%"><span class="pipe-count">5</span><span class="pipe-bar-label">Alto interes</span><span class="pipe-bar-sub">Revisaron precios varias veces</span><span class="pipe-tag">Preparar cierre</span></div>
-        </div>
-        <div class="pipe-row">
-          <div class="pipe-bar pipe-close" style="width:38%"><span class="pipe-count">3</span><span class="pipe-bar-label">Cierre inminente</span><span class="pipe-bar-sub">Senales fuertes</span><span class="pipe-tag">Llamar ahora</span></div>
-        </div>
+        <div class="pipe-row"><span class="pipe-label">Enviadas</span><div class="pipe-bar pipe-cold">12 cotizaciones<span class="pipe-tag">Sin abrir</span></div></div>
+        <div class="pipe-row"><span class="pipe-label">Tibias</span><div class="pipe-bar pipe-warm">8 cotizaciones<span class="pipe-tag">Comparando</span></div></div>
+        <div class="pipe-row"><span class="pipe-label">Calientes</span><div class="pipe-bar pipe-hot">5 cotizaciones<span class="pipe-tag">Alto interes</span></div></div>
+        <div class="pipe-row"><span class="pipe-label">Por cerrar</span><div class="pipe-bar pipe-close">3 cotizaciones<span class="pipe-tag">Llama ya</span></div></div>
       </div>
     </div>
   </div>
