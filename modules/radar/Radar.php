@@ -204,13 +204,13 @@ class Radar
         'selenium','puppeteer','playwright','phantomjs',
     ];
     const BOT_IP = [
-        '66.249.',
-        '40.77.','52.167.','157.55.','207.46.',
-        '31.13.','66.220.','173.252.','69.171.','57.141.',
-        '104.28.',
-        '154.12.','185.191.','85.208.',
-        '54.39.','15.235.','167.114.',
-        '51.161.','51.222.','142.44.','148.113.',
+        '66.249.',                                          // Google
+        '40.77.','52.167.','157.55.','207.46.',             // Microsoft/Bing
+        '31.13.','66.220.','173.252.','69.171.','57.141.', // Facebook/Meta
+        '104.28.',                                          // Cloudflare
+        '154.12.','185.191.','85.208.',                     // Yandex
+        '54.39.','15.235.','167.114.',                      // OVH
+        '51.161.','51.222.','142.44.','148.113.',           // Hetzner
     ];
 
     // ============================================================
@@ -380,6 +380,21 @@ class Radar
             if ($ip === '') continue;
             if (($cfg['filtrar_bots'] ?? true) && (self::bot_ip($ip) || self::bot_ua($ua))) continue;
             if (($cfg['excluir_internos'] ?? true) && (isset($intern_ip[$ip]) || ($vid !== '' && isset($intern_v[$vid])))) continue;
+
+            // ── Filtro behavioral: sesión fantasma de bot de preview ──
+            // Si scroll=0, visible=0, sesión tiene >2 min de vida,
+            // y no hay eventos JS desde esa IP → es un bot que hizo fetch
+            // pero no ejecutó JavaScript (WhatsApp, Teams, iMessage, etc.)
+            $scroll = (int)($s['scroll_max'] ?? 0);
+            $vis    = (int)($s['visible_ms'] ?? 0);
+            if (($cfg['filtrar_bots'] ?? true) && $scroll === 0 && $vis === 0 && ($now - $ts) > 120) {
+                // Verificar si hay al menos 1 evento JS desde esta IP
+                $ip_has_events = false;
+                foreach ($ev_rows as $ev) {
+                    if (($ev['ip'] ?? '') === $ip) { $ip_has_events = true; break; }
+                }
+                if (!$ip_has_events) continue;
+            }
 
             // Deduplicar por IP en ventana
             if (isset($last_by_ip[$ip]) && ($ts - $last_by_ip[$ip]) < $dedupe) continue;
