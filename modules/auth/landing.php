@@ -93,6 +93,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .flow-step{flex:1;min-width:150px;max-width:188px;text-align:center;position:relative;padding:0 6px}
 .flow-step-num{width:52px;height:52px;border-radius:50%;background:var(--g);color:#fff;font:800 20px var(--num);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 4px 16px rgba(26,92,56,.25);position:relative;z-index:2}
 .flow-step-num.hot{background:var(--warm);box-shadow:0 4px 16px rgba(220,38,38,.25)}
+.flow-step-magic{background:rgba(26,92,56,.06);border:1.5px solid rgba(26,92,56,.18);border-radius:16px;padding:18px 10px 14px;margin:-6px -4px}
+.flow-step-num.magic{background:var(--g);box-shadow:0 0 0 4px rgba(26,92,56,.15),0 4px 16px rgba(26,92,56,.25)}
+.flow-magic-label{font:700 10px var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--g);margin-bottom:8px}
 .flow-step-title{font:700 16px var(--body);margin-bottom:5px;letter-spacing:-.01em}
 .flow-step-desc{font:400 14px var(--body);color:var(--t3);line-height:1.55}
 .flow-arrow{display:flex;align-items:flex-start;padding-top:22px;color:var(--g-border)}
@@ -193,6 +196,12 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .price-card:hover{box-shadow:var(--sh-lg);transform:translateY(-4px)}
 .price-card-featured{border:2.5px solid var(--g);box-shadow:var(--sh-lg);transform:scale(1.04);z-index:2}
 .price-card-featured:hover{transform:scale(1.04) translateY(-4px)}
+.price-card-business{border:2px solid #1d4ed8;background:linear-gradient(180deg,#fff 0%,#eff6ff 100%)}
+.price-card-business .price-value{color:#1d4ed8}
+.price-btn-business{display:block;text-align:center;padding:14px;border-radius:12px;font:700 15px var(--body);background:#1d4ed8;color:#fff;text-decoration:none;transition:all .2s}
+.price-btn-business:hover{background:#1e40af;transform:translateY(-1px)}
+.price-feat-limit{opacity:.5}
+.feat-x{color:#ef4444;font-weight:700;font-size:13px}
 
 .price-badge-popular{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--g);color:#fff;font:800 11px var(--body);padding:5px 18px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
 .price-badge-launch{position:absolute;top:16px;right:16px;background:var(--warm-bg);color:var(--warm);font:700 10px var(--body);padding:4px 10px;border-radius:6px;letter-spacing:.04em;text-transform:uppercase;animation:pulse-badge 2.5s infinite}
@@ -226,7 +235,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 .pricing-note{text-align:center;font:400 13px var(--body);color:var(--t3);margin-top:32px}
 
-@media(max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:400px;margin:0 auto}.price-card-featured{transform:scale(1)}.price-card-featured:hover{transform:translateY(-4px)}}
+@media(max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:400px;margin:0 auto}.price-card-featured{transform:scale(1)}.price-card-featured:hover{transform:translateY(-4px)}.flow-step-magic{margin:-4px -2px}}
 
 /* CTA */
 .cta{max-width:720px;margin:0 auto;padding:80px 24px;text-align:center}
@@ -347,10 +356,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="pred-title">Tu pipeline de ventas en tiempo real — sin preguntar nada</div>
       <div class="pred-desc">Cada vez que tu cliente abre una cotizacion, el radar registra su comportamiento: cuantas veces entro, si reviso el precio, si alguien mas la vio, cuanto tiempo le dedico. Con eso calcula la probabilidad real de cierre.</div>
       <ul class="pred-list">
-        <li><span class="pred-dot" style="background:rgba(255,255,255,.3)"></span><strong>No abierta</strong> — La envio y no la han visto. Momento de reenviar.</li>
-        <li><span class="pred-dot" style="background:#fbbf24"></span><strong>Comparando</strong> — Tu cliente la abrio desde otra IP. Estan evaluando opciones.</li>
-        <li><span class="pred-dot" style="background:#ef4444"></span><strong>Validando precio</strong> — Regreso a revisar los totales varias veces. Le interesa.</li>
-        <li><span class="pred-dot" style="background:#4ade80"></span><strong>Cierre inminente</strong> — Multiples senales fuertes. Llama ahora.</li>
+        <li><span class="pred-dot" style="background:rgba(255,255,255,.3)"></span><strong>No abierta</strong> — Enviaste la cotizacion y nadie la ha visto. Buen momento para reenviar.</li>
+        <li><span class="pred-dot" style="background:#fbbf24"></span><strong>Comparando</strong> — La abrieron desde otro dispositivo. Alguien mas la esta evaluando.</li>
+        <li><span class="pred-dot" style="background:#ef4444"></span><strong>Validando precio</strong> — Tu cliente regreso varias veces a revisar los totales. Le interesa.</li>
+        <li><span class="pred-dot" style="background:#4ade80"></span><strong>Cierre inminente</strong> — Multiples senales fuertes. Es momento de llamar.</li>
       </ul>
     </div>
     <div class="pred-right">
@@ -397,19 +406,20 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="flow-step-desc">WhatsApp, correo, donde sea. Tu cliente la abre al instante, sin descargar nada.</div>
     </div>
     <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-    <div class="flow-step">
-      <div class="flow-step-num">3</div>
+    <div class="flow-step flow-step-magic">
+      <div class="flow-magic-label">Aqui esta la magia</div>
+      <div class="flow-step-num magic">3</div>
       <div class="flow-step-title">Mide la interaccion</div>
       <div class="flow-step-desc">Cada apertura, cada visita, cada minuto que tu cliente pasa revisandola queda registrado.</div>
     </div>
     <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-    <div class="flow-step">
-      <div class="flow-step-num">4</div>
+    <div class="flow-step flow-step-magic">
+      <div class="flow-step-num magic">4</div>
       <div class="flow-step-title">Detecta el interes</div>
       <div class="flow-step-desc">El sistema identifica patrones de comportamiento y califica el nivel de interes real.</div>
     </div>
     <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-    <div class="flow-step">
+    <div class="flow-step flow-step-magic">
       <div class="flow-step-num hot">5</div>
       <div class="flow-step-title">Anticipa el cierre</div>
       <div class="flow-step-desc">Te avisa cuales estan listas. Tu decides el momento exacto para dar seguimiento.</div>
@@ -568,8 +578,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <!-- PRICING -->
 <section class="pricing" id="precios">
   <span class="section-label">Planes y precios</span>
-  <div class="section-title">Empieza gratis. Crece cuando quieras.</div>
-  <p class="section-sub">Sin sorpresas. Sin letras chiquitas. Cancela cuando quieras.</p>
+  <div class="section-title">Elige el plan que mueve tu negocio</div>
+  <p class="section-sub">Todos incluyen Radar. La diferencia esta en cuanto quieres crecer.</p>
 
   <div class="pricing-toggle">
     <span class="toggle-label" id="toggleMensual">Mensual</span>
@@ -587,7 +597,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <div class="price-card">
       <div class="price-header">
         <div class="price-plan-name">Free</div>
-        <div class="price-plan-desc">Para probar sin compromiso</div>
+        <div class="price-plan-desc">Conoce el sistema. Sin limite de tiempo.</div>
       </div>
       <div class="price-amount">
         <span class="price-currency">$</span>
@@ -596,14 +606,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="price-period">Para siempre</div>
       <a href="/registro" class="price-btn price-btn-outline">Crear cuenta gratis</a>
       <div class="price-features">
-        <div class="price-feat"><span class="feat-check">&#10003;</span>25 cotizaciones incluidas</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>25 cotizaciones</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Radar de inteligencia</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas y recibos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos y margenes</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Portal publico del cliente</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y descuentos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos basicos</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Catalogo de articulos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y descuentos</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
+        <div class="price-feat price-feat-limit"><span class="feat-x">&#10007;</span>Sin app movil</div>
       </div>
     </div>
 
@@ -613,7 +623,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="price-badge-launch">Precio de lanzamiento</div>
       <div class="price-header">
         <div class="price-plan-name">Pro</div>
-        <div class="price-plan-desc">Para profesionales y emprendedores</div>
+        <div class="price-plan-desc">Cotiza sin limites. Vende con inteligencia.</div>
       </div>
       <div class="price-amount">
         <span class="price-original monthly-price">$499</span>
@@ -625,27 +635,26 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       </div>
       <div class="price-period monthly-price">$3,588 MXN/año</div>
       <div class="price-period annual-price" style="display:none">$2,868 MXN/año · <strong>Ahorras $720</strong></div>
-      <a href="/registro" class="price-btn price-btn-solid">Empezar prueba gratis</a>
-      <div class="price-trial-note">14 dias gratis, cancela cuando quieras</div>
+      <a href="/registro" class="price-btn price-btn-solid">Empezar 14 dias gratis</a>
+      <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
-        <div class="price-feat-header">Todo de Free, mas:</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Cotizaciones ilimitadas</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Radar de inteligencia</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas y recibos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos y margenes</div>
+        <div class="price-feat-header">Todo de Free, sin limites:</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Articulos ilimitados</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Radar de inteligencia completo</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas, recibos y abonos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos y margenes por venta</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Portal publico del cliente</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y descuentos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Articulos ilimitados</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>App movil + notificaciones push</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
       </div>
     </div>
 
     <!-- BUSINESS -->
-    <div class="price-card">
+    <div class="price-card price-card-business">
       <div class="price-header">
         <div class="price-plan-name">Business</div>
-        <div class="price-plan-desc">Para equipos de venta</div>
+        <div class="price-plan-desc">Tu equipo completo. Control total.</div>
       </div>
       <div class="price-amount">
         <span class="price-original monthly-price">$1,299</span>
@@ -657,12 +666,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       </div>
       <div class="price-period monthly-price">$9,588 MXN/año</div>
       <div class="price-period annual-price" style="display:none">$7,668 MXN/año · <strong>Ahorras $1,920</strong></div>
-      <a href="/registro" class="price-btn price-btn-outline">Empezar prueba gratis</a>
-      <div class="price-trial-note">14 dias gratis, cancela cuando quieras</div>
+      <a href="/registro" class="price-btn price-btn-business">Empezar 14 dias gratis</a>
+      <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
         <div class="price-feat-header">Todo de Pro, mas:</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Usuarios ilimitados</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Permisos granulares por vendedor</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Usuarios ilimitados</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Permisos por vendedor</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos avanzados por categoria</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Modulo de proveedores</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes avanzados de equipo</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Marketing y retargeting</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Soporte prioritario</div>
@@ -746,9 +757,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     }, dismissDelay);
   }
 
-  /* DISPARO 1: al ver seccion Predictive → Cierre Inminente + No abierta */
+  /* DISPARO 1: al ver seccion Audience (mas abajo) → Cierre Inminente + No abierta */
   var fired1=false;
-  var target1=document.querySelector('.predictive');
+  var target1=document.querySelector('.audience');
   if(target1){
     var io1=new IntersectionObserver(function(entries){
       if(entries[0].isIntersecting && !fired1){
