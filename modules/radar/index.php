@@ -292,10 +292,10 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         if (!empty($r_icons['mv_price']))   $r_ico_str .= '👥';
         if (!empty($r_icons['not_opened'])) $r_ico_str .= '❌';
         $r_momentum = $r['momentum'] ?? 'stable';
-        $r_decay_ico = $r_momentum === 'cooling' ? ' <span class="momentum-down" title="Sin actividad reciente — perdiendo momentum">↓</span>' : '';
+        $r_decay_ico = $r_momentum === 'cooling' ? '<span class="momentum-down" title="Sin actividad reciente — perdiendo momentum">↓</span>' : '';
         $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo']);
         $cot_url = '/cotizaciones/'.(int)$r['id'];
-        echo "<td><a href='{$cot_url}' class='rtit-link'><div class='rtit'>{$r_title_show}{$r_decay_ico}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
+        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit'>{$r_title_show}</div>{$r_decay_ico}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
         if ($motivo) {
             $reason_key = $r['reason'] ?? '';
             $reason_meta = $BM[$reason_key] ?? null;
