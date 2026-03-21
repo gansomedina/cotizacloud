@@ -1,7 +1,11 @@
 <?php
 // ============================================================
-//  CotizaApp — modules/radar/Radar.php  v2.3
-//  Motor de scoring e intención — 16 buckets × 3 modos
+//  CotizaApp — modules/radar/Radar.php  v2.4
+//  Motor de scoring e intención — 17 buckets × 3 modos
+//  v2.4: Momentum — indicador visual de frescura por bucket.
+//        Vigencia estable = mitad de la ventana _recent_hours del bucket.
+//        Si última actividad excede vigencia → momentum='cooling' (↓ en UI).
+//        No modifica buckets, score ni FIT. Capa puramente informativa.
 //  v2.1: Ajustes alto ticket — prioridades, FIT, multi-persona, no_abierta
 //  v2.2: Universalidad — alto_importe dinámico (P80), vigencia real, multi-persona balance
 //  v2.3: Robustez estadística + ventas consultivas:
@@ -890,12 +894,16 @@ class Radar
         );
         $cooling_reason = $cooling_price_touched ? 'con precio' : 'sin precio';
 
+        // Momentum: indicador visual de frescura (no modifica bucket ni score)
+        $momentum = self::momentum($bucket_main, $last_ts, $now, $modo);
+
         return [
             'score'        => (int) round($priority),
             'fit_pct'      => round($fit_pct, 2),
             'priority_pct' => round($priority, 2),
             'bucket'       => $bucket_main,
             'buckets'      => $buckets,
+            'momentum'     => $momentum,
             'pc_source'    => $pc_source,
             'cooling_price_touched' => $cooling_price_touched,
             'cooling_reason'        => $cooling_reason,
@@ -911,7 +919,7 @@ class Radar
                 'gap_days'=>$gap_days,'guest'=>$guest_sessions,
                 'views24'=>$views24,'views48'=>$views48,
                 'span48h'=>round($span48/3600,1).'h','pss'=>round($pss,2),
-                'ev_uniq_v'=>$e_uniq_v,'modo'=>$modo,
+                'ev_uniq_v'=>$e_uniq_v,'modo'=>$modo,'momentum'=>$momentum,
                 'scroll_cls'=>$e_scroll_cls,'scroll_any'=>$e_scroll_any,
                 'vis_max'=>$e_vis_max,'vis_sum'=>$e_vis_sum,
                 'ips_post_guest'=>$ips_post_guest_count,
@@ -1020,6 +1028,53 @@ class Radar
     }
 
     // ============================================================
+    //  MOMENTUM — indicador de frescura del bucket
+    //  No modifica el bucket ni el score. Agrega una capa visual.
+    //  Compara tiempo desde última actividad vs mitad de la ventana
+    //  _recent_hours del bucket. Si excede → 'cooling'.
+    //  Buckets estadísticos/atributo no aplican (siempre 'stable').
+    // ============================================================
+    private static function momentum(?string $bucket, int $last_ts, int $now, string $modo): string
+    {
+        if ($bucket === null) return 'none';
+
+        // Buckets que NO decaen: son patrones/atributos, no estados emocionales
+        static $NO_DECAY = [
+            'prediccion_alta', 'alto_importe', 'sobre_analisis',
+            'hesitacion', 'no_abierta', 'enfriandose',
+        ];
+        if (in_array($bucket, $NO_DECAY, true)) return 'stable';
+
+        // Mapeo bucket → clave de umbral _recent_hours
+        static $WINDOW_KEY = [
+            'onfire'                => 'onfire_recent_hours',
+            'inminente'             => 'imminent_recent_hours',
+            'probable_cierre'       => 'onfire_recent_hours',       // usa ventana de onfire (72h medio)
+            'validando_precio'      => 'priceval_recent_hours',
+            'decision_activa'       => 'decision_window_h',
+            're_enganche_caliente'  => 'reeng_recent_hours',
+            're_enganche'           => 'reeng_recent_hours',
+            'multi_persona'         => 'multip_recent_hours',
+            'revision_profunda'     => 'deep_recent_hours',
+            'vistas_multiples'      => 'multi_recent_hours',
+            'revivio'               => 'revive_recent_hours',
+            'regreso'               => 'return_recent_hours',
+            'comparando'            => 'compare_window_h',
+        ];
+
+        $key = $WINDOW_KEY[$bucket] ?? null;
+        if ($key === null) return 'stable';
+
+        $window_hours = (float) self::u($key, $modo);
+        // Vigencia estable = mitad de la ventana del bucket
+        $stable_hours = $window_hours / 2.0;
+        $elapsed_hours = ($now - $last_ts) / 3600.0;
+
+        if ($elapsed_hours <= $stable_hours) return 'stable';
+        return 'cooling';
+    }
+
+    // ============================================================
     //  SEÑALES LEGIBLES PARA LA UI
     // ============================================================
     private static function _senales(
@@ -1072,7 +1127,7 @@ class Radar
             [
                 $r['score'],
                 $r['bucket'],
-                json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null]),
+                json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable']),
                 $cotizacion_id,
             ]
         );
