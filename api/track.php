@@ -189,6 +189,34 @@ switch ($tipo) {
         break;
 }
 
+// ── Limpieza de sesiones fantasma (bots de preview) ────────────────
+// Bots de link-preview (WhatsApp, iMessage, Teams) hacen fetch server-side
+// pero NO ejecutan JS. Resultado: sesión con scroll=0, visible_ms=0, sin eventos.
+// Al recibir un evento JS real, limpiar esas sesiones huérfanas y ajustar visitas.
+try {
+    $ghosts = DB::query(
+        "SELECT qs.id
+         FROM quote_sessions qs
+         LEFT JOIN quote_events qe ON qe.cotizacion_id = qs.cotizacion_id AND qe.ip = qs.ip
+         WHERE qs.cotizacion_id = ?
+           AND COALESCE(qs.scroll_max, 0) = 0
+           AND COALESCE(qs.visible_ms, 0) = 0
+           AND qs.created_at < DATE_SUB(NOW(), INTERVAL 2 MINUTE)
+           AND qe.id IS NULL",
+        [$cot_id]
+    );
+    if ($ghosts) {
+        $ghost_ids = array_column($ghosts, 'id');
+        $placeholders = implode(',', array_fill(0, count($ghost_ids), '?'));
+        DB::execute("DELETE FROM quote_sessions WHERE id IN ($placeholders)", $ghost_ids);
+        // Ajustar contador de visitas (CAST evita underflow en BIGINT UNSIGNED)
+        DB::execute(
+            "UPDATE cotizaciones SET visitas = CASE WHEN visitas >= ? THEN visitas - ? ELSE 0 END WHERE id = ?",
+            [count($ghost_ids), count($ghost_ids), $cot_id]
+        );
+    }
+} catch (Throwable $e) {}
+
 // Recalcular Radar
 if (in_array($cot['estado'], ['enviada','vista'], true)) {
     try { Radar::recalcular($cot_id, $empresa_id); } catch (Throwable $e) {}
