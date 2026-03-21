@@ -209,10 +209,10 @@ try {
         $ghost_ids = array_column($ghosts, 'id');
         $placeholders = implode(',', array_fill(0, count($ghost_ids), '?'));
         DB::execute("DELETE FROM quote_sessions WHERE id IN ($placeholders)", $ghost_ids);
-        // Ajustar contador de visitas
+        // Ajustar contador de visitas (CAST evita underflow en BIGINT UNSIGNED)
         DB::execute(
-            "UPDATE cotizaciones SET visitas = GREATEST(0, visitas - ?) WHERE id = ?",
-            [count($ghost_ids), $cot_id]
+            "UPDATE cotizaciones SET visitas = CASE WHEN visitas >= ? THEN visitas - ? ELSE 0 END WHERE id = ?",
+            [count($ghost_ids), count($ghost_ids), $cot_id]
         );
     }
 } catch (Throwable $e) {}
