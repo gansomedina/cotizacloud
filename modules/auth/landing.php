@@ -93,9 +93,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .flow-step{flex:1;min-width:150px;max-width:188px;text-align:center;position:relative;padding:0 6px}
 .flow-step-num{width:52px;height:52px;border-radius:50%;background:var(--g);color:#fff;font:800 20px var(--num);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 4px 16px rgba(26,92,56,.25);position:relative;z-index:2}
 .flow-step-num.hot{background:var(--warm);box-shadow:0 4px 16px rgba(220,38,38,.25)}
-.flow-step-magic{background:rgba(26,92,56,.06);border:1.5px solid rgba(26,92,56,.18);border-radius:16px;padding:18px 10px 14px;margin:-6px -4px}
-.flow-step-num.magic{background:var(--g);box-shadow:0 0 0 4px rgba(26,92,56,.15),0 4px 16px rgba(26,92,56,.25)}
-.flow-magic-label{font:700 10px var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--g);margin-bottom:8px}
 .flow-step-title{font:700 16px var(--body);margin-bottom:5px;letter-spacing:-.01em}
 .flow-step-desc{font:400 14px var(--body);color:var(--t3);line-height:1.55}
 .flow-arrow{display:flex;align-items:flex-start;padding-top:22px;color:var(--g-border)}
@@ -151,9 +148,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .pred-label{font:700 11px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#a78bfa;margin-bottom:12px}
 .pred-title{font:800 clamp(24px,3.2vw,34px)/1.12 var(--body);letter-spacing:-.02em;margin-bottom:16px}
 .pred-desc{font:400 16px var(--body);opacity:.8;line-height:1.7;margin-bottom:28px}
-.pred-list{list-style:none;display:flex;flex-direction:column;gap:14px}
-.pred-list li{display:flex;align-items:flex-start;gap:12px;font:500 15px var(--body);line-height:1.55}
-.pred-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.pred-list{list-style:none;display:flex;flex-direction:column;gap:16px}
+.pred-list li{display:flex;align-items:flex-start;gap:12px;font:400 14.5px var(--body);line-height:1.55;color:rgba(255,255,255,.75)}
+.pred-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:6px}
+.pred-list li strong{display:block;font:600 15px var(--body);color:#fff;margin-bottom:2px}
 .pred-right{position:relative;z-index:1}
 
 /* PIPELINE VISUAL */
@@ -200,8 +198,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .price-card-business .price-value{color:#1d4ed8}
 .price-btn-business{display:block;text-align:center;padding:14px;border-radius:12px;font:700 15px var(--body);background:#1d4ed8;color:#fff;text-decoration:none;transition:all .2s}
 .price-btn-business:hover{background:#1e40af;transform:translateY(-1px)}
-.price-feat-limit{opacity:.5}
-.feat-x{color:#ef4444;font-weight:700;font-size:13px}
 
 .price-badge-popular{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--g);color:#fff;font:800 11px var(--body);padding:5px 18px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
 .price-badge-launch{position:absolute;top:16px;right:16px;background:var(--warm-bg);color:var(--warm);font:700 10px var(--body);padding:4px 10px;border-radius:6px;letter-spacing:.04em;text-transform:uppercase;animation:pulse-badge 2.5s infinite}
@@ -235,7 +231,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 .pricing-note{text-align:center;font:400 13px var(--body);color:var(--t3);margin-top:32px}
 
-@media(max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:400px;margin:0 auto}.price-card-featured{transform:scale(1)}.price-card-featured:hover{transform:translateY(-4px)}.flow-step-magic{margin:-4px -2px}}
+@media(max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:400px;margin:0 auto}.price-card-featured{transform:scale(1)}.price-card-featured:hover{transform:translateY(-4px)}}
 
 /* CTA */
 .cta{max-width:720px;margin:0 auto;padding:80px 24px;text-align:center}
@@ -356,10 +352,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="pred-title">Tu pipeline de ventas en tiempo real — sin preguntar nada</div>
       <div class="pred-desc">Cada vez que tu cliente abre una cotizacion, el radar registra su comportamiento: cuantas veces entro, si reviso el precio, si alguien mas la vio, cuanto tiempo le dedico. Con eso calcula la probabilidad real de cierre.</div>
       <ul class="pred-list">
-        <li><span class="pred-dot" style="background:rgba(255,255,255,.3)"></span><strong>No abierta</strong> — Enviaste la cotizacion y nadie la ha visto. Buen momento para reenviar.</li>
-        <li><span class="pred-dot" style="background:#fbbf24"></span><strong>Comparando</strong> — La abrieron desde otro dispositivo. Alguien mas la esta evaluando.</li>
-        <li><span class="pred-dot" style="background:#ef4444"></span><strong>Validando precio</strong> — Tu cliente regreso varias veces a revisar los totales. Le interesa.</li>
-        <li><span class="pred-dot" style="background:#4ade80"></span><strong>Cierre inminente</strong> — Multiples senales fuertes. Es momento de llamar.</li>
+        <li><span class="pred-dot" style="background:rgba(255,255,255,.3)"></span><div><strong>No abierta</strong>Enviaste la cotizacion y nadie la ha visto. Buen momento para reenviar.</div></li>
+        <li><span class="pred-dot" style="background:#fbbf24"></span><div><strong>Comparando</strong>La abrieron desde otro dispositivo. Alguien mas la esta evaluando.</div></li>
+        <li><span class="pred-dot" style="background:#ef4444"></span><div><strong>Validando precio</strong>Tu cliente regreso varias veces a revisar los totales. Le interesa.</div></li>
+        <li><span class="pred-dot" style="background:#4ade80"></span><div><strong>Cierre inminente</strong>Multiples senales fuertes. Es momento de llamar.</div></li>
       </ul>
     </div>
     <div class="pred-right">
@@ -406,20 +402,19 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="flow-step-desc">WhatsApp, correo, donde sea. Tu cliente la abre al instante, sin descargar nada.</div>
     </div>
     <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-    <div class="flow-step flow-step-magic">
-      <div class="flow-magic-label">Aqui esta la magia</div>
-      <div class="flow-step-num magic">3</div>
+    <div class="flow-step">
+      <div class="flow-step-num">3</div>
       <div class="flow-step-title">Mide la interaccion</div>
       <div class="flow-step-desc">Cada apertura, cada visita, cada minuto que tu cliente pasa revisandola queda registrado.</div>
     </div>
     <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-    <div class="flow-step flow-step-magic">
-      <div class="flow-step-num magic">4</div>
+    <div class="flow-step">
+      <div class="flow-step-num">4</div>
       <div class="flow-step-title">Detecta el interes</div>
       <div class="flow-step-desc">El sistema identifica patrones de comportamiento y califica el nivel de interes real.</div>
     </div>
     <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-    <div class="flow-step flow-step-magic">
+    <div class="flow-step">
       <div class="flow-step-num hot">5</div>
       <div class="flow-step-title">Anticipa el cierre</div>
       <div class="flow-step-desc">Te avisa cuales estan listas. Tu decides el momento exacto para dar seguimiento.</div>
@@ -613,7 +608,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-feat"><span class="feat-check">&#10003;</span>Catalogo de articulos</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y descuentos</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
-        <div class="price-feat price-feat-limit"><span class="feat-x">&#10007;</span>Sin app movil</div>
       </div>
     </div>
 
@@ -640,8 +634,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="price-features">
         <div class="price-feat-header">Todo de Free, sin limites:</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Articulos ilimitados</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Radar de inteligencia completo</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Radar de inteligencia completo</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Articulos ilimitados</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas, recibos y abonos</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Costos y margenes por venta</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Portal publico del cliente</div>
@@ -757,9 +751,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     }, dismissDelay);
   }
 
-  /* DISPARO 1: al ver seccion Audience (mas abajo) → Cierre Inminente + No abierta */
+  /* DISPARO 1: entre Pipeline y Flow → las primeras 2 notificaciones */
   var fired1=false;
-  var target1=document.querySelector('.audience');
+  var target1=document.querySelector('.flow');
   if(target1){
     var io1=new IntersectionObserver(function(entries){
       if(entries[0].isIntersecting && !fired1){
@@ -771,9 +765,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     io1.observe(target1);
   }
 
-  /* DISPARO 2: al ver Accelerators → Validando precio + Prediccion */
+  /* DISPARO 2: al ver Pricing → las segundas 2 notificaciones */
   var fired2=false;
-  var target2=document.querySelector('.accel');
+  var target2=document.querySelector('.pricing');
   if(target2){
     var io2=new IntersectionObserver(function(entries){
       if(entries[0].isIntersecting && !fired2){
