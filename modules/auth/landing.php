@@ -11,10 +11,10 @@ defined('COTIZAAPP') or die;
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cotiza.cloud — Cotizaciones con inteligencia de ventas</title>
-<meta name="description" content="Genera cotizaciones profesionales, detecta cuando tu cliente las revisa y sabe quien esta listo para cerrar. Radar inteligente para vender mas.">
-<meta property="og:title" content="Cotiza.cloud — Cotizaciones con inteligencia de ventas">
-<meta property="og:description" content="Genera cotizaciones, detecta el interes real de tu cliente y cierra mas ventas. El radar que todo profesional necesita.">
+<title>Cotiza.cloud — Sabes quien va a comprar antes de que te llame</title>
+<meta name="description" content="Manda cotizaciones y sabe cuales se van a cerrar. El Radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando esta listo para comprar.">
+<meta property="og:title" content="Cotiza.cloud — Sabes quien va a comprar antes de que te llame">
+<meta property="og:description" content="Manda cotizaciones y sabe cuales se van a cerrar. Radar de inteligencia de ventas en tiempo real.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://cotiza.cloud">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -311,38 +311,68 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-badge"><div class="hero-badge-dot"></div>Sistema de cotizaciones para profesionales</div>
-  <h1>El secreto mejor guardado<br><em>del profesional</em></h1>
-  <p class="hero-sub">Tus cotizaciones ya son buenas. Lo que te falta es saber <strong>que pasa despues de enviarlas</strong>. Quien las abrio, quien esta comparando y quien esta listo para decir que si.</p>
+  <div class="hero-badge"><div class="hero-badge-dot"></div>Radar de inteligencia de ventas</div>
+  <h1>Sabes quien va a comprar<br><em>antes de que te llame</em></h1>
+  <p class="hero-sub">Mandas cotizaciones y esperas? Nosotros te decimos <strong>cuales se van a cerrar</strong>. El radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando esta listo.</p>
   <div class="hero-btns">
-    <a href="/registro" class="btn-hero btn-hero-primary">Empieza gratis</a>
-    <a href="/login" class="btn-hero btn-hero-secondary">Ya tengo cuenta</a>
+    <a href="/registro" class="btn-hero btn-hero-primary">Probar el Radar gratis</a>
+    <a href="#como-funciona" class="btn-hero btn-hero-secondary">Ver como funciona</a>
   </div>
-  <p class="hero-note">Sin tarjeta. Sin contratos. Listo en 30 segundos.</p>
+  <p class="hero-note">Sin tarjeta. Sin contratos. Radar completo desde el dia 1.</p>
 </section>
 
 <!-- PROOF -->
 <section class="proof">
   <div class="proof-inner">
     <div class="proof-item">
-      <div class="proof-num">100%</div>
-      <div class="proof-label">Gratis para empezar</div>
-    </div>
-    <div class="proof-item">
-      <div class="proof-num">30s</div>
-      <div class="proof-label">Para crear tu cuenta</div>
+      <div class="proof-num">17</div>
+      <div class="proof-label">Senales de interes que detecta</div>
     </div>
     <div class="proof-item">
       <div class="proof-num">24/7</div>
-      <div class="proof-label">Monitoreo activo</div>
+      <div class="proof-label">Monitoreo automatico</div>
+    </div>
+    <div class="proof-item">
+      <div class="proof-num">0</div>
+      <div class="proof-label">Llamadas en frio</div>
     </div>
   </div>
 </section>
 
-<!-- MANIFESTO -->
-<section class="manifesto">
-  <div class="manifesto-card">
-    <p class="manifesto-text">No solo mandas cotizaciones: sabes cuales estan <strong>vivas</strong>, cuales se estan <em>negociando</em> y cuales estan <strong>a punto de cerrar</strong>.</p>
+<!-- PREDICTIVE — ahora prominente, justo despues del hero -->
+<section class="predictive" id="como-funciona">
+  <div class="pred-card">
+    <div>
+      <div class="pred-label">Asi funciona el Radar</div>
+      <div class="pred-title">Tu pipeline de ventas en tiempo real — sin preguntar nada</div>
+      <div class="pred-desc">Cada vez que tu cliente abre una cotizacion, el radar registra su comportamiento: cuantas veces entro, si reviso el precio, si alguien mas la vio, cuanto tiempo le dedico. Con eso calcula la probabilidad real de cierre.</div>
+      <ul class="pred-list">
+        <li><span class="pred-dot" style="background:rgba(255,255,255,.3)"></span><strong>No abierta</strong> — La envio y no la han visto. Momento de reenviar.</li>
+        <li><span class="pred-dot" style="background:#fbbf24"></span><strong>Comparando</strong> — Tu cliente la abrio desde otra IP. Estan evaluando opciones.</li>
+        <li><span class="pred-dot" style="background:#ef4444"></span><strong>Validando precio</strong> — Regreso a revisar los totales varias veces. Le interesa.</li>
+        <li><span class="pred-dot" style="background:#4ade80"></span><strong>Cierre inminente</strong> — Multiples senales fuertes. Llama ahora.</li>
+      </ul>
+    </div>
+    <div class="pred-right">
+      <div class="pipeline">
+        <div class="pipe-row">
+          <span class="pipe-label">Enviadas</span>
+          <div class="pipe-bar pipe-cold">12 cotizaciones<span class="pipe-tag">Sin abrir</span></div>
+        </div>
+        <div class="pipe-row">
+          <span class="pipe-label">Tibias</span>
+          <div class="pipe-bar pipe-warm">8 cotizaciones<span class="pipe-tag">Comparando</span></div>
+        </div>
+        <div class="pipe-row">
+          <span class="pipe-label">Calientes</span>
+          <div class="pipe-bar pipe-hot">5 cotizaciones<span class="pipe-tag">Alto interes</span></div>
+        </div>
+        <div class="pipe-row">
+          <span class="pipe-label">Por cerrar</span>
+          <div class="pipe-bar pipe-close">3 cotizaciones<span class="pipe-tag">Llama ya</span></div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -387,180 +417,121 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   </div>
 </section>
 
-<!-- PREDICTIVE -->
+
+<!-- COSTOS — Seccion dedicada, segundo gancho -->
 <section class="predictive">
-  <div class="pred-card">
+  <div class="pred-card" style="background:linear-gradient(135deg,#1a1a18 0%,#2d1f0e 50%,#3d2b10 100%)">
     <div>
-      <div class="pred-label">Inteligencia predictiva</div>
-      <div class="pred-title">Sabe que cotizacion se va a cerrar antes de que tu cliente llame</div>
-      <div class="pred-desc">El radar analiza el comportamiento de cada cliente en tiempo real y te muestra una radiografia clara de tu pipeline de ventas.</div>
+      <div class="pred-label" style="color:#fbbf24">Rentabilidad real</div>
+      <div class="pred-title">Sabes exactamente cuanto ganas en cada proyecto</div>
+      <div class="pred-desc">No es Excel. Es un sistema que registra tus costos por operacion y te muestra el margen real — por venta, por cliente, por periodo. Sin sorpresas al final del mes.</div>
       <ul class="pred-list">
-        <li><span class="pred-dot" style="background:rgba(255,255,255,.3)"></span>Cotizaciones enviadas y sin abrir</li>
-        <li><span class="pred-dot" style="background:#fbbf24"></span>Clientes que estan comparando opciones</li>
-        <li><span class="pred-dot" style="background:#ef4444"></span>Alto interes: multiples visitas recientes</li>
-        <li><span class="pred-dot" style="background:#4ade80"></span>Listas para cerrar: el momento es ahora</li>
+        <li><span class="pred-dot" style="background:#fbbf24"></span><strong>Costo por venta</strong> — Registra materiales, mano de obra, gastos. Todo desglosado.</li>
+        <li><span class="pred-dot" style="background:#4ade80"></span><strong>Margen real</strong> — Ve tu utilidad neta por cada proyecto cerrado.</li>
+        <li><span class="pred-dot" style="background:#60a5fa"></span><strong>Reportes</strong> — Dashboards de ingresos, gastos y utilidad por periodo.</li>
       </ul>
     </div>
     <div class="pred-right">
       <div class="pipeline">
         <div class="pipe-row">
-          <span class="pipe-label">Enviadas</span>
-          <div class="pipe-bar pipe-cold">12 cotizaciones<span class="pipe-tag">Sin abrir</span></div>
+          <span class="pipe-label">Venta</span>
+          <div class="pipe-bar" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);width:100%;color:rgba(255,255,255,.7)">$34,500 MXN<span class="pipe-tag">Ingreso</span></div>
         </div>
         <div class="pipe-row">
-          <span class="pipe-label">Tibias</span>
-          <div class="pipe-bar pipe-warm">8 cotizaciones<span class="pipe-tag">Comparando</span></div>
+          <span class="pipe-label">Costos</span>
+          <div class="pipe-bar" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);width:62%;color:#ef4444">$21,400 MXN<span class="pipe-tag">62%</span></div>
         </div>
         <div class="pipe-row">
-          <span class="pipe-label">Calientes</span>
-          <div class="pipe-bar pipe-hot">5 cotizaciones<span class="pipe-tag">Alto interes</span></div>
-        </div>
-        <div class="pipe-row">
-          <span class="pipe-label">Por cerrar</span>
-          <div class="pipe-bar pipe-close">3 cotizaciones<span class="pipe-tag">Actua ya</span></div>
+          <span class="pipe-label">Utilidad</span>
+          <div class="pipe-bar" style="background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);width:38%;color:#4ade80">$13,100 MXN<span class="pipe-tag">38%</span></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- FEATURES -->
+<!-- PLATAFORMA — Features compactos, no roban protagonismo -->
 <section class="features">
   <span class="section-label">Plataforma completa</span>
-  <div class="section-title">Cada herramienta que tu negocio necesita</div>
-  <p class="section-sub">De la cotizacion al cobro, todo bajo control y en un solo lugar.</p>
+  <div class="section-title">Cotiza, vende, cobra — todo en un lugar</div>
+  <p class="section-sub">El Radar es el cerebro. Esto es todo lo que lo rodea.</p>
 
   <div class="features-grid">
-    <div class="feat-card featured">
-      <div class="feat-ico" style="background:var(--accent-bg)">
-        <svg viewBox="0 0 24 24" stroke="var(--accent)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      </div>
-      <div class="feat-tag" style="background:var(--accent-bg);color:var(--accent)">Diferenciador</div>
-      <div class="feat-title">Radar de interes en tiempo real</div>
-      <div class="feat-desc">Monitoreo continuo y automatico de cada cotizacion. Ve quien abrio, quien regreso y quien esta a punto de tomar una decision. Tu ventaja competitiva.</div>
-    </div>
-    <div class="feat-card featured">
-      <div class="feat-ico" style="background:#fef3c7">
-        <svg viewBox="0 0 24 24" stroke="#92400e"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      </div>
-      <div class="feat-tag" style="background:#fef3c7;color:#92400e">Rentabilidad</div>
-      <div class="feat-title">Costos, margen y utilidad por venta</div>
-      <div class="feat-desc">Registra el costo de cada operacion. Visualiza tu margen real por venta, por cliente y por periodo. Sabe exactamente cuanto ganas.</div>
-    </div>
     <div class="feat-card">
       <div class="feat-ico" style="background:var(--g-bg)">
         <svg viewBox="0 0 24 24" stroke="var(--g)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       </div>
-      <div class="feat-tag" style="background:var(--g-bg);color:var(--g)">Cotizaciones</div>
-      <div class="feat-title">Cotizaciones con tu marca</div>
-      <div class="feat-desc">Articulos, descuentos, cupones, condiciones. Compartelas con un link unico por WhatsApp o correo. Imagen profesional siempre.</div>
+      <div class="feat-title">Cotizaciones profesionales</div>
+      <div class="feat-desc">Con tu marca, articulos, descuentos y cupones. Compartelas por WhatsApp o correo con un link unico.</div>
     </div>
     <div class="feat-card">
       <div class="feat-ico" style="background:#dbeafe">
         <svg viewBox="0 0 24 24" stroke="#1d4ed8"><rect x="1" y="3" width="22" height="18" rx="2"/><line x1="1" y1="9" x2="23" y2="9"/><line x1="8" y1="15" x2="16" y2="15"/></svg>
       </div>
-      <div class="feat-tag" style="background:#dbeafe;color:#1d4ed8">Cobranza</div>
-      <div class="feat-title">Recibos y control de pagos</div>
-      <div class="feat-desc">Genera recibos profesionales, registra abonos parciales o totales. Tu cliente ve su saldo en tiempo real. Cero discusiones.</div>
+      <div class="feat-title">Ventas y recibos</div>
+      <div class="feat-desc">Genera recibos, registra abonos parciales o totales. Tu cliente ve su saldo en tiempo real.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-ico" style="background:#fef3c7">
+        <svg viewBox="0 0 24 24" stroke="#92400e"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      </div>
+      <div class="feat-title">Catalogo de articulos</div>
+      <div class="feat-desc">Precios, descripciones y categorias siempre actualizados. Cotiza rapido y sin errores.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-ico" style="background:var(--g-bg)">
+        <svg viewBox="0 0 24 24" stroke="var(--g)"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      </div>
+      <div class="feat-title">Directorio de clientes</div>
+      <div class="feat-desc">Historial completo por cliente: cotizaciones, ventas, pagos y nivel de actividad.</div>
     </div>
     <div class="feat-card">
       <div class="feat-ico" style="background:#fce7f3">
         <svg viewBox="0 0 24 24" stroke="#be185d"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       </div>
-      <div class="feat-tag" style="background:#fce7f3;color:#be185d">Reportes</div>
-      <div class="feat-title">Reportes de ventas y costos</div>
-      <div class="feat-desc">Dashboards claros con tus ingresos, gastos y utilidad. Filtra por periodo, vendedor o cliente. Decisiones basadas en datos.</div>
+      <div class="feat-title">Reportes de ventas</div>
+      <div class="feat-desc">Dashboards claros con ingresos, gastos y utilidad. Filtra por periodo, vendedor o cliente.</div>
     </div>
     <div class="feat-card">
       <div class="feat-ico" style="background:#dbeafe">
         <svg viewBox="0 0 24 24" stroke="#1d4ed8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </div>
-      <div class="feat-tag" style="background:#dbeafe;color:#1d4ed8">Equipo</div>
       <div class="feat-title">Multi-usuario y permisos</div>
-      <div class="feat-desc">Agrega vendedores con permisos granulares. Controla quien cotiza, quien descuenta y quien ve los numeros completos.</div>
+      <div class="feat-desc">Agrega vendedores con permisos granulares. Controla quien cotiza y quien ve los numeros.</div>
     </div>
   </div>
 </section>
 
 <!-- AUDIENCE -->
 <section class="audience">
-  <span class="section-label">Para quien es Cotiza.cloud</span>
+  <span class="section-label">Para quien es</span>
   <div class="section-title">Si cotizas para vender, esto es para ti</div>
-  <p class="section-sub">Profesionales de todos los giros ya usan inteligencia de cotizaciones para cerrar mas ventas.</p>
+  <p class="section-sub">Profesionales que mandan cotizaciones y quieren saber que pasa despues.</p>
 
   <div class="audience-grid">
     <div class="aud-card">
       <div class="aud-card-ico">&#128208;</div>
       <div class="aud-card-title">Arquitectos y Despachos</div>
-      <div class="aud-card-desc">Proyectos de remodelacion, obra nueva, interiorismo. Cotizaciones de alto valor donde el seguimiento lo es todo.</div>
-      <div class="aud-card-example">"Sabia exactamente cuando mi cliente reviso el presupuesto"</div>
+      <div class="aud-card-desc">Cotizaciones de alto valor donde el seguimiento define si cierras o no.</div>
     </div>
     <div class="aud-card">
       <div class="aud-card-ico">&#127959;</div>
       <div class="aud-card-title">Constructoras</div>
-      <div class="aud-card-desc">Obras civiles, desarrollos, mantenimiento industrial. Multiples cotizaciones activas donde perder una cuesta caro.</div>
-      <div class="aud-card-example">"De 40 cotizaciones al mes, ahora se cuales van en serio"</div>
+      <div class="aud-card-desc">Multiples cotizaciones activas. Sabe cuales van en serio sin llamar a todos.</div>
     </div>
     <div class="aud-card">
       <div class="aud-card-ico">&#128736;</div>
       <div class="aud-card-title">Fabricantes y Talleres</div>
-      <div class="aud-card-desc">Muebles, closets, herreria, carpinteria, señalizacion. Productos a la medida con precios que hay que defender.</div>
-      <div class="aud-card-example">"Mis clientes ya no me regatean — ven una cotizacion profesional"</div>
+      <div class="aud-card-desc">Muebles, herreria, carpinteria. Productos a la medida con imagen profesional.</div>
     </div>
     <div class="aud-card">
       <div class="aud-card-ico">&#128187;</div>
       <div class="aud-card-title">Freelancers y Consultores</div>
-      <div class="aud-card-desc">Diseno, marketing, TI, consultoria. Servicios profesionales donde tu imagen y tu tiempo son tu capital.</div>
-      <div class="aud-card-example">"Deje de perseguir clientes — ahora llamo cuando se que estan listos"</div>
+      <div class="aud-card-desc">Diseno, marketing, TI. Deja de perseguir clientes — llama cuando estan listos.</div>
     </div>
   </div>
 </section>
 
-<!-- EXTRA TOOLS -->
-<section class="tools">
-  <span class="section-label">Y ademas</span>
-  <div class="section-title">Herramientas que completan tu operacion</div>
-  <p class="section-sub">Cada detalle pensado para que te enfoques en lo que mejor haces: vender.</p>
-
-  <div class="tools-grid">
-    <div class="tool-card">
-      <div class="tool-ico" style="background:var(--g-bg)">
-        <svg viewBox="0 0 24 24" stroke="var(--g)"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-      </div>
-      <div>
-        <div class="tool-title">Directorio de clientes</div>
-        <div class="tool-desc">Historial completo por cliente: cotizaciones, ventas, pagos y nivel de actividad. Todo en un solo lugar.</div>
-      </div>
-    </div>
-    <div class="tool-card">
-      <div class="tool-ico" style="background:#dbeafe">
-        <svg viewBox="0 0 24 24" stroke="#1d4ed8"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      </div>
-      <div>
-        <div class="tool-title">Vigencias y seguimiento</div>
-        <div class="tool-desc">Cotizaciones con fecha de vigencia. Nunca pierdas de vista una oportunidad por falta de seguimiento.</div>
-      </div>
-    </div>
-    <div class="tool-card">
-      <div class="tool-ico" style="background:#fef3c7">
-        <svg viewBox="0 0 24 24" stroke="#92400e"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-      </div>
-      <div>
-        <div class="tool-title">Catalogo de articulos</div>
-        <div class="tool-desc">Tu catalogo siempre actualizado con precios, descripciones y categorias. Cotiza sin errores.</div>
-      </div>
-    </div>
-    <div class="tool-card">
-      <div class="tool-ico" style="background:#fce7f3">
-        <svg viewBox="0 0 24 24" stroke="#be185d"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      </div>
-      <div>
-        <div class="tool-title">Notas y comunicacion</div>
-        <div class="tool-desc">Agrega notas internas a cada cotizacion. Contexto que tu equipo necesita para dar seguimiento efectivo.</div>
-      </div>
-    </div>
-  </div>
-</section>
 
 <!-- ACCELERATORS - Sales psychology tools -->
 <section class="accel">
@@ -691,11 +662,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="price-features">
         <div class="price-feat-header">Todo de Pro, mas:</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Usuarios ilimitados</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos con categorias avanzadas</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Modulo de proveedores</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes avanzados</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Soporte prioritario</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Permisos granulares por vendedor</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes avanzados de equipo</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Marketing y retargeting</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Soporte prioritario</div>
       </div>
     </div>
 
@@ -707,10 +677,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <!-- CTA -->
 <section class="cta">
   <div class="cta-card">
-    <h2>Tu proximo cliente ya abrio tu cotizacion. Lo sabias?</h2>
-    <p class="cta-sub">Con Cotiza.cloud lo sabras. Crea tu cuenta y transforma la forma en que das seguimiento a tus ventas.</p>
-    <a href="/registro" class="btn-cta">Crear cuenta gratis</a>
-    <p class="cta-note">Sin tarjeta. Sin contratos. Cancela cuando quieras.</p>
+    <h2>Tu proximo cliente ya esta revisando tu cotizacion. Lo sabes?</h2>
+    <p class="cta-sub">Con el Radar de Cotiza.cloud, sabras quien esta listo para cerrar — antes de hacer una sola llamada.</p>
+    <a href="/registro" class="btn-cta">Probar el Radar gratis</a>
+    <p class="cta-note">Sin tarjeta. Sin contratos. Radar completo desde el dia 1.</p>
   </div>
 </section>
 
@@ -790,9 +760,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     io1.observe(target1);
   }
 
-  /* DISPARO 2: al ver Tools o Accelerators → Validando precio + Prediccion */
+  /* DISPARO 2: al ver Accelerators → Validando precio + Prediccion */
   var fired2=false;
-  var target2=document.querySelector('.tools');
+  var target2=document.querySelector('.accel');
   if(target2){
     var io2=new IntersectionObserver(function(entries){
       if(entries[0].isIntersecting && !fired2){
