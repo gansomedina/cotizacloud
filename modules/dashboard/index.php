@@ -388,6 +388,7 @@ ob_start();
 .thermo-bar{flex:1;height:4px;border-radius:2px;background:var(--border)}
 .thermo-bar-fill{height:100%;border-radius:2px;transition:width .4s}
 .thermo-bar-lbl{font:500 9px var(--body);color:var(--t3);margin-top:2px;text-align:center}
+.thermo-diag{font:400 12px var(--body);color:var(--t3);margin-top:8px;line-height:1.4}
 @media(max-width:600px){.thermo{flex-direction:column;text-align:center;gap:10px}.thermo-bars{justify-content:center}}
 
 /* LEADERBOARD */
@@ -403,7 +404,8 @@ ob_start();
 .lb-rank-2{color:#94a3b8}
 .lb-rank-3{color:#cd7f32}
 .lb-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff}
-.lb-name{font:600 13px var(--body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-name{font:600 13px var(--body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.lb-diag{font:400 11px var(--body);color:var(--t3);white-space:normal;line-height:1.3;margin-top:2px}
 .lb-stats{display:grid;grid-template-columns:repeat(4,52px);gap:4px}
 .lb-stat{text-align:center}
 .lb-stat-val{font:700 12px var(--num);display:block}
@@ -620,6 +622,7 @@ $ts_sdto  = (int)($ts['cierres_sin_dto'] ?? 0);
 $ts_ign   = (int)($ts['senales_ignoradas'] ?? 0);
 $ts_tup   = (int)($ts['transiciones_up'] ?? 0);
 $ts_pen   = (float)($ts['penalizaciones'] ?? 0);
+$ts_diag  = ActividadScore::diagnostico($ts);
 ?>
 <div class="thermo">
     <div class="thermo-gauge">
@@ -650,6 +653,7 @@ $ts_pen   = (float)($ts['penalizaciones'] ?? 0);
           <div class="thermo-bar-lbl">Conversión</div>
         </div>
       </div>
+      <div class="thermo-diag"><?= e($ts_diag) ?></div>
     </div>
   </div>
 
@@ -697,11 +701,15 @@ $ts_pen   = (float)($ts['penalizaciones'] ?? 0);
       $es_arrow = $es_mom >= 1.05 ? '↑' : ($es_mom <= 0.95 ? '↓' : '→');
       $es_mom_c = $es_mom >= 1.05 ? '#16a34a' : ($es_mom <= 0.95 ? '#dc2626' : '#9ca3af');
       $rank_cls = $rank <= 3 ? "lb-rank-{$rank}" : '';
+      $es_diag = ActividadScore::diagnostico($es);
     ?>
     <div class="lb-row">
       <div class="lb-rank <?= $rank_cls ?>"><?= $rank ?></div>
       <div class="lb-av" style="background:<?= $es_av_bg ?>"><?= e($es_ini) ?></div>
-      <div class="lb-name"><?= e($es['nombre']) ?></div>
+      <div class="lb-name">
+        <?= e($es['nombre']) ?>
+        <div class="lb-diag"><?= e($es_diag) ?></div>
+      </div>
       <div class="lb-stats">
         <div class="lb-stat"><span class="lb-stat-val"><?= (int)($es['cot_vistas'] ?? 0) ?>/<?= (int)($es['cot_asignadas'] ?? 0) ?></span><span class="lb-stat-lbl">Abiertas</span></div>
         <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['conversiones'] ?></span><span class="lb-stat-lbl">Cierres</span></div>

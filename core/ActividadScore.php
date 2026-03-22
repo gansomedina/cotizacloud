@@ -808,6 +808,103 @@ class ActividadScore
         );
     }
 
+    // ─── Diagnóstico textual — traduce el score a frase humana ──
+    public static function diagnostico(array $s): string
+    {
+        $act  = (float)($s['s_activacion'] ?? 0);
+        $seg  = (float)($s['s_seguimiento'] ?? 0);
+        $conv = (float)($s['s_conversion'] ?? 0);
+        $asig = (int)($s['cot_asignadas'] ?? 0);
+        $vist = (int)($s['cot_vistas'] ?? 0);
+        $cierres = (int)($s['conversiones'] ?? 0);
+        $dorm = (int)($s['cot_dormidas'] ?? 0);
+        $ign  = (int)($s['senales_ignoradas'] ?? 0);
+        $cbkt = (int)($s['cierres_bucket'] ?? 0);
+        $sdto = (int)($s['cierres_sin_dto'] ?? 0);
+        $tup  = (int)($s['transiciones_up'] ?? 0);
+        $mom  = (float)($s['momentum'] ?? 1);
+        $score = (int)($s['score'] ?? 0);
+        $pen  = (float)($s['penalizaciones'] ?? 0);
+
+        // Sin datos suficientes
+        if ($asig === 0) return 'Sin cotizaciones en el período.';
+
+        $frases = [];
+
+        // ── ACTIVACIÓN ──
+        $tasa_ap = $asig > 0 ? $vist / $asig : 0;
+        if ($tasa_ap >= 0.90) {
+            $frases[] = "Casi todo lo que envía llega al cliente";
+        } elseif ($tasa_ap >= 0.60) {
+            $frases[] = "Buena tasa de entrega, " . ($asig - $vist) . " cotizaciones sin abrir";
+        } elseif ($tasa_ap >= 0.30) {
+            $frases[] = "Muchas cotizaciones no se abren — revisar canal de envío";
+        } else {
+            $frases[] = "La mayoría de sus cotizaciones no llegan al cliente";
+        }
+
+        // ── SEGUIMIENTO ──
+        if ($seg >= 0.70) {
+            $frases[] = "da buen seguimiento con el radar";
+        } elseif ($seg >= 0.35) {
+            $frases[] = "seguimiento moderado, puede usar más el radar";
+        } elseif ($seg > 0.05) {
+            $frases[] = "poco seguimiento — rara vez revisa el radar";
+        } else {
+            $frases[] = "no usa el radar para dar seguimiento";
+        }
+
+        // ── CONVERSIÓN ──
+        if ($cierres === 0 && $vist >= 3) {
+            $frases[] = "cotiza pero no cierra — " . $vist . " abiertas sin resultado";
+        } elseif ($cierres === 0) {
+            $frases[] = "aún sin cierres en el período";
+        } elseif ($conv >= 0.70) {
+            $frases[] = "excelente tasa de cierre";
+            if ($cbkt > 0) $frases[] = "$cbkt cierres asistidos por radar";
+            if ($sdto === $cierres && $cierres > 0) $frases[] = "todos a precio completo";
+        } elseif ($conv >= 0.40) {
+            $frases[] = "$cierres cierres, ritmo aceptable";
+        } else {
+            $frases[] = "cierra poco para el volumen que maneja";
+        }
+
+        // ── SEÑALES ESPECÍFICAS ──
+        if ($dorm > 0) {
+            $frases[] = "$dorm cotizaciones enviadas que nadie abrió en 7+ días";
+        }
+        if ($ign > 0) {
+            $frases[] = "clientes activos sin atender — $ign señales calientes ignoradas";
+        }
+
+        // ── MOMENTUM ──
+        if ($mom >= 1.20) {
+            $frases[] = "tendencia en mejora";
+        } elseif ($mom <= 0.80) {
+            $frases[] = "tendencia a la baja vs su historial";
+        }
+
+        // Construir frase final — capitalizar primera letra
+        $txt = implode('. ', array_map(fn($f) => ucfirst($f), $frases)) . '.';
+
+        // Recomendación final según el punto más débil
+        $dims = ['act' => $act, 'seg' => $seg, 'conv' => $conv];
+        $peor = array_keys($dims, min($dims))[0];
+        $reco = match($peor) {
+            'act'  => $asig - $vist <= 2
+                ? ''
+                : ' Tip: verificar que los datos de contacto del cliente sean correctos.',
+            'seg'  => $seg < 0.10
+                ? ' Tip: entrar al Radar al menos 2 veces por semana para detectar oportunidades.'
+                : ' Tip: revisar el Radar cuando haya señales calientes.',
+            'conv' => $cierres === 0
+                ? ' Tip: dar seguimiento personalizado a las cotizaciones más vistas.'
+                : ' Tip: enfocarse en cotizaciones con alta actividad del cliente.',
+        };
+
+        return $txt . $reco;
+    }
+
     // ─── Benchmarks auto-ajustables por empresa ─────────
     private static array $_bench = [];
 
