@@ -1130,6 +1130,13 @@ function render_bucket_table($title, $hint, $items, $show_gap = false, $sort = '
 
       echo '<tr class="'.esc_attr($cls).'">';
       $title_icons = '';
+      // Fase 3: momentum indicator
+      $m = $r['momentum'] ?? 'none';
+      if ($m === 'stable')  $title_icons .= '↑';
+      elseif ($m === 'cooling') $title_icons .= '↓';
+      // Fase 3: probable cierre icon
+      if (!empty($r['is_probable_cierre'])) $title_icons .= '🎯';
+      if (!empty($r['is_reengage_hot']))    $title_icons .= '🔥';
       if (!empty($r['has_coupon_icon'])) $title_icons .= '🎟️';
       if (!empty($r['has_promo_icon']))  $title_icons .= '💣';
       if (!empty($r['has_price_icon']))  $title_icons .= '💸';
@@ -1138,7 +1145,17 @@ function render_bucket_table($title, $hint, $items, $show_gap = false, $sort = '
       if (!empty($r['is_not_opened'])) $title_icons .= '❌';
       $title_show = trim($title_icons . ' ' . ($r['title'] ?? ''));
 
-      echo '<td><div class="titlewrap"><div class="titletext">'.esc_html($title_show).'</div><div class="amount">'.esc_html($r['amount_fmt']).'</div></div></td>';
+      // Fase 3: señales como tooltip
+      $senales_text = '';
+      if (!empty($r['senales']) && is_array($r['senales'])) {
+        $parts = [];
+        foreach ($r['senales'] as $s) {
+          $parts[] = ($s['desc'] ?? '');
+        }
+        $senales_text = implode(' | ', $parts);
+      }
+
+      echo '<td><div class="titlewrap"><div class="titletext" '.($senales_text ? 'title="'.esc_attr($senales_text).'"' : '').'>'.esc_html($title_show).'</div><div class="amount">'.esc_html($r['amount_fmt']).'</div></div></td>';
 
       if ($show_reason_col) echo '<td>'.esc_html($r['reason'] ?? '').'</td>';
 
@@ -1330,10 +1347,12 @@ $bucket_price_validating = [];
 $bucket_not_opened       = [];
 
 $bucket_reengage_decisive = [];
+$bucket_reengage_hot      = [];
 $bucket_multi_persona     = [];
 $bucket_deep_review       = [];
 $bucket_hesitation        = [];
 $bucket_over_analysis     = [];
+$bucket_probable_cierre   = [];
 
 $band_counts = [
   '0-4.99'   => ['total'=>0,'sales'=>0],
@@ -2469,6 +2488,221 @@ foreach ($quote_ids as $id) {
     !$accepted;
 
   /** =========================
+   *  FASE 3: Re-enganche caliente
+   *  Variante del re-enganche: regresó + interacción con precio
+   *  ========================= */
+  $is_reengage_hot = (
+    $is_reengage_decisive &&
+    (
+      $has_price_loop ||
+      $has_totals_revisit ||
+      $event_same_visitor_price_focus_flag ||
+      $event_multi_visitor_price_flag ||
+      $price_signal_score >= 3.0
+    )
+  );
+
+  /** =========================
+   *  FASE 3: Probable cierre (meta-bucket)
+   *  Combina señales de múltiples categorías
+   *  Requiere ≥2 categorías con ≥1 fuerte
+   *  ========================= */
+
+  // Fuentes calificantes: solo buckets de alta intención
+  $pc_qualifying_source = (
+    $is_onfire || $is_imminent || $is_price_validating ||
+    $is_decision || $is_reengage_hot || $is_predict_high ||
+    $is_multi_persona || $is_high_amount
+  );
+
+  // Categorías de señales
+  $pc_cat_engagement = (
+    ($quote_max_scroll_any >= 50 || $quote_max_scroll_close >= 50) &&
+    ($quote_visible_ms_max >= 5000 || $quote_visible_ms_sum >= 10000) &&
+    $has_totals_view
+  );
+
+  $pc_cat_precio = (
+    $has_price_loop ||
+    $has_totals_revisit ||
+    $quote_coupon_clicks > 0 ||
+    $event_same_visitor_price_focus_flag ||
+    $price_signal_score >= 3.0
+  );
+
+  $pc_cat_persistencia = (
+    $sessions >= 2 ||
+    ($gap_days !== null && $gap_days >= 1)
+  );
+
+  $pc_cat_social = (
+    $event_multi_visitor_flag ||
+    $event_multi_visitor_price_flag ||
+    $multi_ips >= 2
+  );
+
+  // Contar categorías y fuertes
+  $pc_cats = 0;
+  $pc_strong = 0;
+  if ($pc_cat_engagement)   { $pc_cats++; $pc_strong++; }
+  if ($pc_cat_precio)       { $pc_cats++; $pc_strong++; }
+  if ($pc_cat_persistencia) { $pc_cats++; }
+  if ($pc_cat_social)       { $pc_cats++; }
+
+  $is_probable_cierre = (
+    !$accepted &&
+    $pc_qualifying_source &&
+    $sessions >= 2 &&
+    $last_ts >= $now - (72 * 3600) &&
+    $pc_cats >= 2 &&
+    $pc_strong >= 1
+  );
+
+  // Fuente del probable cierre (para debug/display)
+  $pc_source = '';
+  if ($is_probable_cierre) {
+    if ($is_onfire)           $pc_source = 'onfire';
+    elseif ($is_imminent)     $pc_source = 'inminente';
+    elseif ($is_price_validating) $pc_source = 'validando_precio';
+    elseif ($is_decision)     $pc_source = 'decision_activa';
+    elseif ($is_reengage_hot) $pc_source = 're_enganche_caliente';
+    elseif ($is_predict_high) $pc_source = 'prediccion_alta';
+    elseif ($is_multi_persona) $pc_source = 'multi_persona';
+    elseif ($is_high_amount)  $pc_source = 'alto_importe';
+  }
+
+  /** =========================
+   *  FASE 3: Momentum (frescura por bucket)
+   *  stable = dentro de vigencia, cooling = excede vigencia
+   *  No modifica score ni bucket — puramente informativo
+   *  ========================= */
+  $momentum = 'none';
+  if ($last_ts > 0 && !$accepted) {
+    $elapsed_h = ($now - $last_ts) / 3600.0;
+
+    // Determinar bucket principal para calcular vigencia
+    $bucket_principal = null;
+    if ($is_probable_cierre)      $bucket_principal = 'probable_cierre';
+    elseif ($is_onfire)           $bucket_principal = 'onfire';
+    elseif ($is_imminent)         $bucket_principal = 'inminente';
+    elseif ($is_price_validating) $bucket_principal = 'validando_precio';
+    elseif ($is_decision)         $bucket_principal = 'decision_activa';
+    elseif ($is_reengage_hot)     $bucket_principal = 're_enganche_caliente';
+    elseif ($is_reengage_decisive) $bucket_principal = 're_enganche';
+    elseif ($is_multi_persona)    $bucket_principal = 'multi_persona';
+    elseif ($is_deep_review)      $bucket_principal = 'revision_profunda';
+    elseif ($is_hot_close)        $bucket_principal = 'probable_cierre_base';
+    elseif ($is_return4d)         $bucket_principal = 'regreso';
+    elseif ($is_revive)           $bucket_principal = 'revivio';
+    elseif ($is_compare)          $bucket_principal = 'comparando';
+    elseif ($is_active48)         $bucket_principal = 'activo48';
+
+    // Mapa de bucket → clave de ventana temporal en U[]
+    $bucket_window_map = [
+      'probable_cierre'       => 72,  // fijo 72h
+      'onfire'                => u('onfire_recent_hours'),
+      'inminente'             => u('imminent_recent_hours'),
+      'validando_precio'      => u('priceval_recent_hours'),
+      'decision_activa'       => u('decision_window_h'),
+      're_enganche_caliente'  => u('reeng_recent_hours'),
+      're_enganche'           => u('reeng_recent_hours'),
+      'multi_persona'         => u('multip_recent_hours'),
+      'revision_profunda'     => u('deep_recent_hours'),
+      'probable_cierre_base'  => u('hot_close_last_hours'),
+      'regreso'               => u('return_recent_hours'),
+      'revivio'               => u('revive_recent_hours'),
+      'comparando'            => u('compare_window_h'),
+      'activo48'              => 48,
+    ];
+
+    if ($bucket_principal !== null && isset($bucket_window_map[$bucket_principal])) {
+      $window_h = (float)$bucket_window_map[$bucket_principal];
+      $vigencia_h = $window_h / 2.0; // mitad de la ventana = vigencia estable
+      $momentum = ($elapsed_h <= $vigencia_h) ? 'stable' : 'cooling';
+    }
+  }
+
+  /** =========================
+   *  FASE 3: Señales legibles
+   *  Array de explicaciones humanas del score
+   *  ========================= */
+  $senales = [];
+
+  // Sesiones
+  if ($sessions >= 1) {
+    $senales[] = ['pts' => min(5, $sessions) * 8, 'desc' => $sessions . ' visitas únicas'];
+  }
+
+  // Visitors
+  if ($event_uniq_visitors >= 2) {
+    $senales[] = ['pts' => 10, 'desc' => $event_uniq_visitors . ' personas distintas vieron la cotización'];
+  }
+
+  // Precio
+  if ($has_price_loop) {
+    $senales[] = ['pts' => 10, 'desc' => 'Revisó precio varias veces (loop)'];
+  } elseif ($has_totals_revisit) {
+    $senales[] = ['pts' => 8, 'desc' => 'Regresó a ver totales'];
+  } elseif ($has_totals_view) {
+    $senales[] = ['pts' => 4, 'desc' => 'Vio sección de totales'];
+  }
+
+  // Cupón
+  if ($quote_coupon_clicks > 0) {
+    $senales[] = ['pts' => 10, 'desc' => 'Intentó aplicar cupón'];
+  }
+
+  // Scroll profundo
+  if ($quote_max_scroll_any >= 90) {
+    $senales[] = ['pts' => 6, 'desc' => 'Leyó hasta el final (scroll ' . $quote_max_scroll_any . '%)'];
+  } elseif ($quote_max_scroll_any >= 50) {
+    $senales[] = ['pts' => 3, 'desc' => 'Leyó más de la mitad (scroll ' . $quote_max_scroll_any . '%)'];
+  }
+
+  // Tiempo de lectura
+  $vis_sec = (int)round($quote_visible_ms_max / 1000);
+  if ($vis_sec >= 60) {
+    $vis_min = (int)round($vis_sec / 60);
+    $senales[] = ['pts' => min(8, $vis_min * 2), 'desc' => 'Dedicó ~' . $vis_min . ' min leyendo'];
+  } elseif ($vis_sec >= 15) {
+    $senales[] = ['pts' => 2, 'desc' => 'Dedicó ~' . $vis_sec . 's leyendo'];
+  }
+
+  // Gap / regreso
+  if ($gap_days !== null && $gap_days >= 1) {
+    $senales[] = ['pts' => min(12, $gap_days * 2), 'desc' => 'Regresó tras ' . $gap_days . ' días'];
+  }
+
+  // Multi-persona
+  if ($event_multi_visitor_price_flag) {
+    $senales[] = ['pts' => 10, 'desc' => 'Varias personas revisaron el precio'];
+  } elseif ($event_multi_visitor_flag) {
+    $senales[] = ['pts' => 6, 'desc' => 'Compartida con otras personas'];
+  }
+
+  // Mismo visitor insistente
+  if ($event_same_visitor_price_focus_flag) {
+    $senales[] = ['pts' => 8, 'desc' => 'Misma persona insistió en el precio'];
+  }
+
+  // FIT alto
+  if ($fit_pct >= 14.0) {
+    $senales[] = ['pts' => 0, 'desc' => 'FIT ' . round($fit_pct, 1) . '% — patrón de cierre alto'];
+  } elseif ($fit_pct >= 8.5) {
+    $senales[] = ['pts' => 0, 'desc' => 'FIT ' . round($fit_pct, 1) . '% — patrón moderado'];
+  }
+
+  // Promo
+  if ($has_promo_timer) {
+    $senales[] = ['pts' => 2, 'desc' => 'Vio temporizador de promoción'];
+  }
+
+  // Probable cierre
+  if ($is_probable_cierre) {
+    $senales[] = ['pts' => 15, 'desc' => 'Probable cierre — ' . str_replace('_', ' ', $pc_source)];
+  }
+
+  /** =========================
    *  DEBUG FUNNELS
    *  ========================= */
   $dbg_over['c0']++;
@@ -2555,7 +2789,9 @@ foreach ($quote_ids as $id) {
     'data_source'   => $data_source,  // 'events' o 'log'
     'fit_pct'       => $fit_pct,
     'priority_pct'  => $priority_pct,
-    'reason'        => $is_hot_close ? hot_reason_priority($is_imminent, $is_decision, $is_revive, $is_multi, $is_return4d, $is_price_validating) : '',
+    'reason'        => $is_probable_cierre
+      ? '🎯 ' . str_replace('_', ' ', $pc_source)
+      : ($is_hot_close ? hot_reason_priority($is_imminent, $is_decision, $is_revive, $is_multi, $is_return4d, $is_price_validating) : ''),
 
     'event_uniq_visitors'                => $event_uniq_visitors,
     'event_uniq_sessions'                => $event_uniq_sessions,
@@ -2641,6 +2877,15 @@ foreach ($quote_ids as $id) {
     'not_opened_age_ok'             => $not_opened_age_ok ? 1 : 0,
     'not_opened_has_external_views' => $not_opened_has_external_views ? 1 : 0,
     'not_opened_has_js_open'        => $not_opened_has_js_open ? 1 : 0,
+
+    // Fase 3
+    'is_probable_cierre'            => $is_probable_cierre ? 1 : 0,
+    'pc_source'                     => $pc_source,
+    'pc_cats'                       => (int)$pc_cats,
+    'pc_strong'                     => (int)$pc_strong,
+    'is_reengage_hot'               => $is_reengage_hot ? 1 : 0,
+    'momentum'                      => $momentum,
+    'senales'                       => $senales,
   ];
 
   $rows[] = $row;
@@ -2669,10 +2914,12 @@ foreach ($quote_ids as $id) {
   if ($is_not_opened)        $bucket_not_opened[] = $row;
 
   if ($is_reengage_decisive) $bucket_reengage_decisive[] = $row;
+  if ($is_reengage_hot)      $bucket_reengage_hot[]      = $row;
   if ($is_multi_persona)     $bucket_multi_persona[]     = $row;
   if ($is_deep_review)       $bucket_deep_review[]       = $row;
   if ($is_hesitation)        $bucket_hesitation[]        = $row;
   if ($is_over_analysis)     $bucket_over_analysis[]     = $row;
+  if ($is_probable_cierre)   $bucket_probable_cierre[]   = $row;
 
   if ($is_revive) {
     $bucket_revive_old[] = $row;
@@ -2711,10 +2958,12 @@ usort($bucket_price_validating,  $sorter);
 usort($bucket_not_opened,        $sorter);
 
 usort($bucket_reengage_decisive, $sorter);
+usort($bucket_reengage_hot,      $sorter);
 usort($bucket_multi_persona,     $sorter);
 usort($bucket_deep_review,       $sorter);
 usort($bucket_hesitation,        $sorter);
 usort($bucket_over_analysis,     $sorter);
+usort($bucket_probable_cierre,   $sorter);
 
 usort($rows, $sorter);
 $rows = array_slice($rows, 0, $limit);
@@ -3135,6 +3384,16 @@ foreach (['0-4.99','5-7.99','8-9.99','10-11.99','12+'] as $b) {
 
 <?php
 render_bucket_fixed(
+  '🎯 Probable cierre (META)',
+  'Combina señales de múltiples categorías: engagement + precio + persistencia + social. Requiere ≥2 categorías con ≥1 fuerte. Fuentes: onfire, inminente, validando precio, decisión, re-enganche caliente, predicción alta, multi-persona, alto importe.',
+  $bucket_probable_cierre,
+  false,
+  $sort,
+  $dir,
+  true
+);
+
+render_bucket_fixed(
   '🔥 Probable cierre (PRIORIDAD)',
   'Ventana: últimas '.u('hot_close_last_hours').'h + momentum ('.u('hot_close_min_views24').'+ vistas/24h o '.u('hot_close_min_views7d').'+ vistas/7d). Modo: '.$radar_modo,
   $bucket_hot_close,
@@ -3218,6 +3477,16 @@ render_bucket_fixed(
   '🟣 Re-enganche decisivo',
   'Gap >= '.u('reeng_gap_days').'d y last < '.u('reeng_recent_hours').'h + interés reciente. Modo: '.$radar_modo,
   $bucket_reengage_decisive,
+  true,
+  $sort,
+  $dir,
+  false
+);
+
+render_bucket_fixed(
+  '🔥🟣 Re-enganche caliente',
+  'Re-enganche + interacción de precio (loop, revisita totales, precio focus, o PSS >= 3.0). Modo: '.$radar_modo,
+  $bucket_reengage_hot,
   true,
   $sort,
   $dir,
@@ -3358,6 +3627,12 @@ render_bucket_fixed(
     <div class="titlewrap">
       <?php
       $title_icons = '';
+      // Fase 3: momentum + meta-bucket icons
+      $m = $r['momentum'] ?? 'none';
+      if ($m === 'stable')  $title_icons .= '↑';
+      elseif ($m === 'cooling') $title_icons .= '↓';
+      if (!empty($r['is_probable_cierre'])) $title_icons .= '🎯';
+      if (!empty($r['is_reengage_hot']))    $title_icons .= '🔥';
       if (!empty($r['has_coupon_icon'])) $title_icons .= '🎟️';
       if (!empty($r['has_promo_icon']))  $title_icons .= '💣';
       if (!empty($r['has_price_icon']))  $title_icons .= '💸';
@@ -3365,8 +3640,16 @@ render_bucket_fixed(
       if (!empty($r['event_multi_visitor_price_flag'])) $title_icons .= '👥';
       if (!empty($r['is_not_opened'])) $title_icons .= '❌';
       $title_show = trim($title_icons . ' ' . ($r['title'] ?? ''));
+
+      // Señales tooltip
+      $senales_text = '';
+      if (!empty($r['senales']) && is_array($r['senales'])) {
+        $parts = [];
+        foreach ($r['senales'] as $s) { $parts[] = ($s['desc'] ?? ''); }
+        $senales_text = implode(' | ', $parts);
+      }
       ?>
-      <div class="titletext"><?php echo esc_html($title_show); ?></div>
+      <div class="titletext" <?php echo $senales_text ? 'title="'.esc_attr($senales_text).'"' : ''; ?>><?php echo esc_html($title_show); ?></div>
       <div class="amount"><?php echo esc_html($r['amount_fmt']); ?></div>
     </div>
   </td>
