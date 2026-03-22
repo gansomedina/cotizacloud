@@ -10,9 +10,9 @@
 //    4. Capas de profundidad       (peso progresivo + penalizaciones)
 //
 //  3 DIMENSIONES:
-//    Activación   (35%) — ¿las cotizaciones asignadas llegan al cliente?
-//    Seguimiento  (30%) — ¿usa el radar para dar seguimiento?
-//    Conversión   (35%) — ¿el software le ayuda a cerrar ventas?
+//    Activación   (20%) — ¿las cotizaciones asignadas llegan al cliente? (mínimo esperado)
+//    Seguimiento  (35%) — ¿usa el radar para dar seguimiento?
+//    Conversión   (45%) — ¿el software le ayuda a cerrar ventas? (lo que importa)
 //
 //  PENALIZACIONES:
 //    - Cotizaciones dormidas (sin abrir >7d, escala con tiempo)
@@ -341,8 +341,10 @@ class ActividadScore
         }
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 1: ACTIVACIÓN (35%)
+        //  DIMENSIÓN 1: ACTIVACIÓN (20%)
         //  "¿Las cotizaciones asignadas llegan al cliente?"
+        //  Esto es el MÍNIMO esperado — no un logro.
+        //  Techo bajo: sigmoid satura rápido.
         // ═══════════════════════════════════════════════════
 
         $asignadas_validas = max($cot_asignadas, 1);
@@ -358,11 +360,12 @@ class ActividadScore
                 ($dormidas_solo_7  * 6) +
                 ($dormidas_solo_14 * 10) +
                 ($dormidas_solo_21 * 15)
-            ) / ($asignadas_validas * 15); // normalizado 0-1
+            ) / ($asignadas_validas * 15);
         }
         $pen_dormidas = min($pen_dormidas, 1.0);
 
-        $s_activacion = self::sigmoid($tasa_apertura, 0.50, 5.0) - ($pen_dormidas * 0.4);
+        // Techo de activación: satura en 70% de apertura (el resto es suerte del cliente)
+        $s_activacion = self::sigmoid($tasa_apertura, 0.70, 6.0) - ($pen_dormidas * 0.4);
         $s_activacion = max(0.0, min(1.0, $s_activacion));
 
         // ═══════════════════════════════════════════════════
@@ -396,8 +399,9 @@ class ActividadScore
         $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 3: CONVERSIÓN (35%)
-        //  "¿El software le ayuda a cerrar ventas?"
+        //  DIMENSIÓN 3: CONVERSIÓN (45%)
+        //  "¿Cierra ventas? Esto es lo que importa."
+        //  Volumen alto + cierres bajos = penalización fuerte.
         // ═══════════════════════════════════════════════════
 
         // Tasa de cierre sobre cotizaciones vistas (justo)
@@ -414,17 +418,28 @@ class ActividadScore
         // Penalización por zona muerta
         $pen_zona_muerta = min($zona_muerta * 0.05, 0.25);
 
-        $s_conversion = (self::sigmoid($tasa_cierre, 0.20, 8.0) * 0.5 + $cierre_quality * 0.5)
-                        - $pen_vencidas - $pen_zona_muerta;
+        // Penalización por volumen sin resultado:
+        // Si tiene muchas cotizaciones vistas pero 0 cierres, penalizar proporcionalmente.
+        // 5+ vistas sin cierre = empieza a pesar, 10+ = penalización fuerte
+        $pen_volumen_sin_cierre = 0.0;
+        if ($cierres_total === 0 && $cot_vistas >= 3) {
+            $pen_volumen_sin_cierre = min(($cot_vistas - 2) * 0.08, 0.5);
+        } elseif ($cot_vistas >= 5 && $tasa_cierre < 0.10) {
+            // Tiene algún cierre pero tasa < 10% con volumen alto
+            $pen_volumen_sin_cierre = min((1.0 - $tasa_cierre / 0.10) * 0.3, 0.3);
+        }
+
+        $s_conversion = (self::sigmoid($tasa_cierre, 0.15, 10.0) * 0.5 + $cierre_quality * 0.5)
+                        - $pen_vencidas - $pen_zona_muerta - $pen_volumen_sin_cierre;
         $s_conversion = max(0.0, min(1.0, $s_conversion));
 
         // ═══════════════════════════════════════════════════
         //  SCORE PROPORCIONAL (Ángulo 3: Uso vs Resultados)
         // ═══════════════════════════════════════════════════
 
-        $proporcional = $s_activacion  * 0.35
-                      + $s_seguimiento * 0.30
-                      + $s_conversion  * 0.35;
+        $proporcional = $s_activacion  * 0.20
+                      + $s_seguimiento * 0.35
+                      + $s_conversion  * 0.45;
 
         // ═══════════════════════════════════════════════════
         //  ÁNGULO 1: MOMENTUM (vs su propio histórico)
@@ -443,7 +458,7 @@ class ActividadScore
             $ema_seg  = $alpha * $s_seguimiento + (1 - $alpha) * (float)($prev['ema_seguimiento'] ?? $s_seguimiento);
             $ema_conv = $alpha * $s_conversion  + (1 - $alpha) * (float)($prev['ema_conversion'] ?? $s_conversion);
 
-            $ema_composite = $ema_act * 0.35 + $ema_seg * 0.30 + $ema_conv * 0.35;
+            $ema_composite = $ema_act * 0.20 + $ema_seg * 0.35 + $ema_conv * 0.45;
             $cur_composite = $proporcional;
 
             $momentum = $ema_composite > 0
@@ -484,7 +499,7 @@ class ActividadScore
                 if ((int)$t['id'] === $usuario_id) {
                     $scores_equipo[] = $proporcional;
                 } else {
-                    $scores_equipo[] = (float)$t['sa'] * 0.35 + (float)$t['ss'] * 0.30 + (float)$t['scv'] * 0.35;
+                    $scores_equipo[] = (float)$t['sa'] * 0.20 + (float)$t['ss'] * 0.35 + (float)$t['scv'] * 0.45;
                 }
             }
             sort($scores_equipo);
@@ -513,7 +528,7 @@ class ActividadScore
         else $nivel = 'bajo';
 
         // Total penalizaciones y bonuses (para display)
-        $total_pen = $pen_dormidas + $pen_buckets + $pen_senales + $pen_vencidas + $pen_zona_muerta + $pen_trans_down;
+        $total_pen = $pen_dormidas + $pen_buckets + $pen_senales + $pen_vencidas + $pen_zona_muerta + $pen_trans_down + $pen_volumen_sin_cierre;
         $total_bonus = $bonus_transiciones + ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0);
 
         // ═══════════════════════════════════════════════════

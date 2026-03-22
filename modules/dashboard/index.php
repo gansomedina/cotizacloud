@@ -666,9 +666,9 @@ $ts_pen   = (float)($ts['penalizaciones'] ?? 0);
         <b>¿Qué mide este ranking?</b>
         <p>Algoritmo APC (Productividad Comercial) — 30 días rolling, auto-ajustable:</p>
         <ul>
-          <li><b>Activación (35%)</b> — ¿Las cotizaciones asignadas llegan al cliente? Penaliza cotizaciones dormidas sin abrir.</li>
-          <li><b>Seguimiento (30%)</b> — ¿Usa el radar para dar seguimiento? Premia transiciones de bucket frío→caliente. Penaliza señales calientes ignoradas y buckets estancados.</li>
-          <li><b>Conversión (35%)</b> — ¿El software ayuda a cerrar? Cierres desde buckets fríos dan más puntos (vendedor rescató la venta). Cierres con descuento dan menos puntos.</li>
+          <li><b>Activación (20%)</b> — ¿Las cotizaciones llegan al cliente? Mínimo esperado, no un logro. Penaliza dormidas.</li>
+          <li><b>Seguimiento (35%)</b> — ¿Usa el radar para dar seguimiento? Premia transiciones frío→caliente. Penaliza señales ignoradas y buckets estancados.</li>
+          <li><b>Conversión (45%)</b> — ¿Cierra ventas? Lo que más pesa. Penaliza fuerte cotizar mucho sin cerrar. Cierres desde buckets fríos valen más. Descuentos reducen puntaje.</li>
         </ul>
         <p>Se auto-ajusta en 3 ejes: contra el propio historial (momentum), contra el equipo (percentil), y por volumen de trabajo (normalización).</p>
         <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Índice algorítmico basado en datos de uso de la plataforma. Referencia de adopción del software, no evaluación personal.</p>
