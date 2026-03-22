@@ -11,6 +11,9 @@ $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $moneda     = $empresa['moneda'] ?? 'MXN';
 
+// ─── Termómetro de actividad ──────────────────────────────
+$mi_score = ActividadScore::calcular(Auth::id(), $empresa_id);
+
 // ─── Período seleccionado ────────────────────────────────
 $periodo = $_GET['periodo'] ?? 'mes_actual';
 $periodos_validos = ['mes_actual','mes_ant','30_dias','90_dias','anio'];
@@ -351,6 +354,20 @@ $page_title = 'Inicio';
 ob_start();
 ?>
 <style>
+/* TERMÓMETRO */
+.thermo{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--sh);margin-bottom:20px;display:flex;align-items:center;gap:24px}
+.thermo-gauge{position:relative;width:64px;height:64px;flex-shrink:0}
+.thermo-gauge svg{transform:rotate(-90deg)}
+.thermo-gauge-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 20px var(--num);letter-spacing:-.02em}
+.thermo-info{flex:1;min-width:0}
+.thermo-nivel{font:700 15px var(--body);margin-bottom:4px}
+.thermo-detail{font:400 13px var(--body);color:var(--t3);line-height:1.5}
+.thermo-detail b{color:var(--text);font-weight:600}
+.thermo-bars{display:flex;gap:8px;margin-top:10px}
+.thermo-bar{flex:1;height:6px;border-radius:3px;background:var(--border)}
+.thermo-bar-fill{height:100%;border-radius:3px;transition:width .4s}
+.thermo-bar-lbl{font:500 10px var(--body);color:var(--t3);margin-top:3px;text-align:center}
+@media(max-width:600px){.thermo{flex-direction:column;text-align:center;gap:14px}.thermo-bars{justify-content:center}}
 /* KPI GRID */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .kpi-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh);position:relative;overflow:hidden}
@@ -508,6 +525,63 @@ ob_start();
       <option value="anio"        <?= $periodo==='anio'       ?'selected':''?>>Este año</option>
     </select>
   </form>
+</div>
+
+<!-- ══ TERMÓMETRO DE ACTIVIDAD ══ -->
+<?php
+$ts = $mi_score;
+$ts_color = match($ts['nivel']) {
+    'top'     => '#2563eb',
+    'activo'  => '#16a34a',
+    'regular' => '#d97706',
+    default   => '#dc2626',
+};
+$ts_label = match($ts['nivel']) {
+    'top'     => 'Rendimiento excepcional',
+    'activo'  => 'Buen ritmo',
+    'regular' => 'Puede mejorar',
+    default   => 'Necesita atención',
+};
+$ts_pct   = $ts['score'];
+$ts_circ  = 2 * M_PI * 28; // circumference r=28
+$ts_dash  = $ts_circ * ($ts_pct / 100);
+$ts_mom   = $ts['momentum'];
+$ts_arrow = $ts_mom >= 1.05 ? '↑' : ($ts_mom <= 0.95 ? '↓' : '→');
+$ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b7280');
+?>
+<div class="thermo">
+  <div class="thermo-gauge">
+    <svg width="64" height="64" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="28" fill="none" stroke="var(--border)" stroke-width="5"/>
+      <circle cx="32" cy="32" r="28" fill="none" stroke="<?= $ts_color ?>" stroke-width="5"
+              stroke-dasharray="<?= round($ts_dash, 1) ?> <?= round($ts_circ, 1) ?>"
+              stroke-linecap="round"/>
+    </svg>
+    <div class="thermo-gauge-num" style="color:<?= $ts_color ?>"><?= $ts_pct ?></div>
+  </div>
+  <div class="thermo-info">
+    <div class="thermo-nivel" style="color:<?= $ts_color ?>"><?= $ts_label ?> <span style="color:<?= $ts_mom_c ?>;font-size:16px"><?= $ts_arrow ?></span></div>
+    <div class="thermo-detail">
+      <b><?= $ts['dias_activos'] ?></b> días activo ·
+      <b><?= $ts['acciones'] ?></b> acciones ·
+      <b><?= $ts['conversiones'] ?></b> conversiones ·
+      <b><?= $ts['carga_activa'] ?></b> en pipeline
+    </div>
+    <div class="thermo-bars">
+      <div style="flex:1">
+        <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round($ts['dias_activos'] / 22 * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
+        <div class="thermo-bar-lbl">Presencia</div>
+      </div>
+      <div style="flex:1">
+        <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round(min($ts['tasa_gestion'] / 2, 1) * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
+        <div class="thermo-bar-lbl">Gestión</div>
+      </div>
+      <div style="flex:1">
+        <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts['carga_activa'] > 0 ? min(100, round($ts['conversiones'] / max($ts['carga_activa'],1) * 100 / 0.3)) : 0 ?>%;background:<?= $ts_color ?>"></div></div>
+        <div class="thermo-bar-lbl">Conversión</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ══ KPIs FINANCIEROS ══ -->

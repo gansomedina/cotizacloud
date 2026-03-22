@@ -19,6 +19,9 @@ $empresa_id = EMPRESA_ID;
 $usuario    = Auth::usuario();
 $es_admin   = Auth::es_admin();
 
+// Registrar actividad: consulta al Radar
+ActividadScore::registrar(Auth::id(), $empresa_id, 'radar_view');
+
 // Aprender IP del asesor
 $ip_actual = trim(explode(',', (string)($_SERVER['HTTP_CF_CONNECTING_IP']
     ?? $_SERVER['HTTP_X_FORWARDED_FOR']

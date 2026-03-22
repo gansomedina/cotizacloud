@@ -125,6 +125,9 @@ class Auth
             [$usuario['id']]
         );
 
+        // Registrar actividad: login
+        ActividadScore::registrar((int)$usuario['id'], (int)$usuario['empresa_id'], 'login');
+
         // Setear cookie
         setcookie(SESSION_NAME, $token, [
             'expires'  => time() + $duracion,

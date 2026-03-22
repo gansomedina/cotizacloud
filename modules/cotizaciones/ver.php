@@ -33,6 +33,9 @@ if (!Auth::puede('ver_todas_cots') && (int)$cot['usuario_id'] !== (int)Auth::id(
     redirect('/cotizaciones');
 }
 
+// Registrar actividad: consulta de cotización
+ActividadScore::registrar(Auth::id(), EMPRESA_ID, 'quote_view', $cot_id);
+
 // ─── Líneas ──────────────────────────────────────────────
 $lineas = DB::query(
     "SELECT * FROM cotizacion_lineas WHERE cotizacion_id = ? ORDER BY orden ASC",
