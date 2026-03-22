@@ -715,7 +715,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-feat"><span class="feat-check">&#10003;</span>Modulo de proveedores</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes avanzados de equipo</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Marketing y retargeting</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Soporte prioritario</div>
       </div>
     </div>
 
