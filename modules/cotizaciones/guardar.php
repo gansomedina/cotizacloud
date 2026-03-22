@@ -50,13 +50,15 @@ if (!$ok) json_error('Cliente no válido');
 
 // Vendedor asignado (solo si tiene permiso)
 $vendedor_id = (int)($cot['vendedor_id'] ?? $cot['usuario_id']);
-if (!empty($body['vendedor_id']) && Auth::puede('asignar_cotizaciones')) {
+if (isset($body['vendedor_id']) && Auth::puede('asignar_cotizaciones')) {
     $vid = (int)$body['vendedor_id'];
-    $existe_vendedor = DB::val(
-        "SELECT id FROM usuarios WHERE id = ? AND empresa_id = ? AND activo = 1",
-        [$vid, $empresa_id]
-    );
-    if ($existe_vendedor) $vendedor_id = $vid;
+    if ($vid > 0) {
+        $existe_vendedor = DB::val(
+            "SELECT id FROM usuarios WHERE id = ? AND empresa_id = ? AND activo = 1",
+            [$vid, $empresa_id]
+        );
+        if ($existe_vendedor) $vendedor_id = $vid;
+    }
 }
 
 $valida_hasta = trim($body['valida_hasta'] ?? '');

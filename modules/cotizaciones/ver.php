@@ -283,17 +283,6 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <input type="text" id="cot-titulo" value="<?= e($cot['titulo']) ?>"
                        <?= !$es_editable ? 'readonly' : '' ?>>
             </div>
-            <?php if ($puede_asignar && count($vendedores) > 1 && $es_editable): ?>
-            <div class="field">
-                <div class="field-lbl">Vendedor asignado</div>
-                <select id="cot-vendedor" style="width:100%;border:none;background:transparent;font:400 15px var(--body);color:var(--text);padding:0;outline:none;cursor:pointer">
-                    <?php $vid_actual = (int)($cot['vendedor_id'] ?? $cot['usuario_id']); ?>
-                    <?php foreach ($vendedores as $v): ?>
-                    <option value="<?= (int)$v['id'] ?>" <?= (int)$v['id'] === $vid_actual ? 'selected' : '' ?>><?= e($v['nombre']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <?php endif; ?>
             <div style="display:flex">
                 <div class="field" style="flex:1;border-bottom:none;border-right:1px solid var(--border)">
                     <div class="field-lbl">Fecha</div>
@@ -398,6 +387,26 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                           placeholder="Solo visible para el asesor..."><?= e($cot['notas_internas'] ?? '') ?></textarea>
             </div>
         </div>
+
+        <?php
+        $vid_actual = (int)($cot['vendedor_id'] ?? $cot['usuario_id']);
+        $vendedor_nombre = DB::val("SELECT nombre FROM usuarios WHERE id = ?", [$vid_actual]) ?? '—';
+        ?>
+        <?php if ($puede_asignar && count($vendedores) > 1 && $es_editable): ?>
+        <div class="panel-section">
+            <div class="panel-lbl">Vendedor asignado</div>
+            <select id="cot-vendedor" style="width:100%;border:none;background:transparent;font:400 14px var(--body);color:var(--text);padding:8px 0;outline:none;cursor:pointer">
+                <?php foreach ($vendedores as $v): ?>
+                <option value="<?= (int)$v['id'] ?>" <?= (int)$v['id'] === $vid_actual ? 'selected' : '' ?>><?= e($v['nombre']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <?php else: ?>
+        <div class="panel-section">
+            <div class="panel-lbl">Vendedor asignado</div>
+            <div style="font:400 14px var(--body);color:var(--text);padding:8px 0"><?= e($vendedor_nombre) ?></div>
+        </div>
+        <?php endif; ?>
 
         <!-- Historial de visitas -->
         <div class="panel-section">
