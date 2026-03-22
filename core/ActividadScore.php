@@ -123,23 +123,26 @@ class ActividadScore
     public static function calcular(int $usuario_id, int $empresa_id): array
     {
         $periodo = self::PERIODO;
+        $bench = self::_benchmarks($empresa_id, $periodo);
 
         // ═══════════════════════════════════════════════════
         //  SEÑALES CRUDAS (últimos 30 días)
         // ═══════════════════════════════════════════════════
 
-        // Cotizaciones asignadas al vendedor en el período
+        // Cotizaciones asignadas al vendedor en el período (Fix 6: total > 0)
         $cot_asignadas = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
+             AND total > 0
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
 
-        // Cotizaciones asignadas que fueron vistas por el cliente (estado='vista' o visitas>0)
+        // Cotizaciones vistas por el cliente (Fix 6: total > 0)
         $cot_vistas = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
+             AND total > 0
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND (estado IN ('vista','aceptada','convertida','aceptada_cliente') OR visitas > 0)",
             [$usuario_id, $empresa_id, $periodo]
@@ -361,8 +364,8 @@ class ActividadScore
         }
         $pen_dormidas = min($pen_dormidas, 1.0);
 
-        // Techo de activación: satura en 70% de apertura (el resto es suerte del cliente)
-        $s_activacion = self::sigmoid($tasa_apertura, 0.70, 6.0) - ($pen_dormidas * 0.4);
+        // Fix 12: midpoint auto-ajustable al promedio de la empresa
+        $s_activacion = self::sigmoid($tasa_apertura, $bench['apertura'], 2.0 / max($bench['apertura'], 0.1)) - ($pen_dormidas * 0.4);
         $s_activacion = max(0.0, min(1.0, $s_activacion));
 
         // ═══════════════════════════════════════════════════
@@ -374,10 +377,9 @@ class ActividadScore
         $radar_por_semana = $radar_sessions / $semanas;
         $consultas_por_semana = $consultas / $semanas;
 
-        // Score de uso del radar (sigmoid: 2 sesiones/semana = midpoint)
-        $s_radar = self::sigmoid($radar_por_semana, 2.0, 2.0);
-        // Score de consultas (sigmoid: 5 consultas/semana = midpoint)
-        $s_consultas = self::sigmoid($consultas_por_semana, 5.0, 1.0);
+        // Fix 12: radar midpoint = promedio de la empresa
+        $s_radar = self::sigmoid($radar_por_semana, $bench['radar_weekly'], 2.0 / max($bench['radar_weekly'], 0.1));
+        $s_consultas = self::sigmoid($consultas_por_semana, $bench['radar_weekly'] * 2.5, 0.5);
 
         // Bonus por transiciones frío→caliente
         $bonus_transiciones = min($transiciones_up * 0.08, 0.3);
@@ -418,15 +420,17 @@ class ActividadScore
         // Penalización por volumen sin resultado:
         // Si tiene muchas cotizaciones vistas pero 0 cierres, penalizar proporcionalmente.
         // 5+ vistas sin cierre = empieza a pesar, 10+ = penalización fuerte
+        // Fix 12: penalización relativa al benchmark de la empresa
         $pen_volumen_sin_cierre = 0.0;
+        $half_bench = $bench['close_rate'] / 2; // mitad del promedio empresa
         if ($cierres_total === 0 && $cot_vistas >= 3) {
             $pen_volumen_sin_cierre = min(($cot_vistas - 2) * 0.08, 0.5);
-        } elseif ($cot_vistas >= 5 && $tasa_cierre < 0.10) {
-            // Tiene algún cierre pero tasa < 10% con volumen alto
-            $pen_volumen_sin_cierre = min((1.0 - $tasa_cierre / 0.10) * 0.3, 0.3);
+        } elseif ($cot_vistas >= 5 && $tasa_cierre < $half_bench) {
+            $pen_volumen_sin_cierre = min((1.0 - $tasa_cierre / $half_bench) * 0.3, 0.3);
         }
 
-        $s_conversion = (self::sigmoid($tasa_cierre, 0.15, 10.0) * 0.5 + $cierre_quality * 0.5)
+        // Fix 12: close rate midpoint = promedio de la empresa
+        $s_conversion = (self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01)) * 0.5 + $cierre_quality * 0.5)
                         - $pen_vencidas - $pen_zona_muerta - $pen_volumen_sin_cierre;
         $s_conversion = max(0.0, min(1.0, $s_conversion));
 
@@ -667,6 +671,77 @@ class ActividadScore
              ORDER BY us.score DESC",
             [$empresa_id]
         );
+    }
+
+    // ─── Benchmarks auto-ajustables por empresa ─────────
+    private static array $_bench = [];
+
+    private static function _benchmarks(int $empresa_id, int $periodo): array
+    {
+        if (isset(self::$_bench[$empresa_id])) return self::$_bench[$empresa_id];
+
+        // Tasa de cierre de la empresa (vistas → cierres)
+        $emp_vistas = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0
+             AND (visitas > 0 OR estado IN ('aceptada','convertida','aceptada_cliente'))
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$empresa_id, $periodo]
+        );
+        $emp_cierres = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0
+             AND estado IN ('aceptada','convertida','aceptada_cliente')
+             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$empresa_id, $periodo]
+        );
+        $close_rate = $emp_vistas >= 5 ? $emp_cierres / $emp_vistas : 0.15;
+
+        // Tiempo promedio de cierre (días)
+        $avg_ttc = DB::val(
+            "SELECT AVG(DATEDIFF(accion_at, created_at)) FROM cotizaciones
+             WHERE empresa_id=? AND total > 0
+             AND estado IN ('aceptada','convertida','aceptada_cliente')
+             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND accion_at IS NOT NULL",
+            [$empresa_id, $periodo]
+        );
+
+        // Radar semanal promedio (de usuarios que SÍ lo usan)
+        $weeks = max($periodo / 7, 1);
+        $avg_radar = DB::val(
+            "SELECT AVG(cnt) FROM (
+                SELECT COUNT(*)/{$weeks} AS cnt FROM actividad_log
+                WHERE empresa_id=? AND tipo='radar_view'
+                AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                GROUP BY usuario_id
+             ) AS sub",
+            [$empresa_id, $periodo]
+        );
+
+        // Tasa de apertura de la empresa
+        $emp_asig = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$empresa_id, $periodo]
+        );
+        $apertura = $emp_asig >= 5 ? $emp_vistas / $emp_asig : 0.70;
+
+        // Monto promedio de cierre (para bonus relativo)
+        $avg_monto = DB::val(
+            "SELECT AVG(total) FROM cotizaciones
+             WHERE empresa_id=? AND total > 0
+             AND estado IN ('aceptada','convertida','aceptada_cliente')
+             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$empresa_id, $periodo]
+        );
+
+        self::$_bench[$empresa_id] = [
+            'close_rate'    => max((float)$close_rate, 0.03),
+            'time_to_close' => max((float)($avg_ttc ?? 14), 3),
+            'radar_weekly'  => max((float)($avg_radar ?? 2.0), 0.5),
+            'apertura'      => max((float)$apertura, 0.30),
+            'avg_monto'     => max((float)($avg_monto ?? 0), 1),
+        ];
+        return self::$_bench[$empresa_id];
     }
 
     // ─── Sigmoid helper ───────────────────────────────────
