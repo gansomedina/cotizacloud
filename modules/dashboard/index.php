@@ -401,7 +401,7 @@ ob_start();
 .lb-rank-3{color:#cd7f32}
 .lb-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff}
 .lb-name{font:600 13px var(--body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lb-stats{display:grid;grid-template-columns:repeat(4,48px);gap:4px}
+.lb-stats{display:grid;grid-template-columns:repeat(4,52px);gap:4px}
 .lb-stat{text-align:center}
 .lb-stat-val{font:700 12px var(--num);display:block}
 .lb-stat-lbl{font:400 9px var(--body);color:var(--t3);display:block}
@@ -596,11 +596,27 @@ $ts_label = match($ts['nivel']) {
     default   => 'Necesita atención',
 };
 $ts_pct   = $ts['score'];
-$ts_circ  = 2 * M_PI * 20; // circumference r=20
+$ts_circ  = 2 * M_PI * 20;
 $ts_dash  = $ts_circ * ($ts_pct / 100);
-$ts_mom   = $ts['momentum'];
+$ts_mom   = (float)($ts['momentum'] ?? 1);
 $ts_arrow = $ts_mom >= 1.05 ? '↑' : ($ts_mom <= 0.95 ? '↓' : '→');
 $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b7280');
+
+// Dimensiones para barras
+$ts_act = min(100, round((float)($ts['s_activacion'] ?? 0) * 100));
+$ts_seg = min(100, round((float)($ts['s_seguimiento'] ?? 0) * 100));
+$ts_con = min(100, round((float)($ts['s_conversion'] ?? 0) * 100));
+
+// Métricas de detalle
+$ts_asig = (int)($ts['cot_asignadas'] ?? 0);
+$ts_vist = (int)($ts['cot_vistas'] ?? 0);
+$ts_dorm = (int)($ts['cot_dormidas'] ?? 0);
+$ts_cierres = (int)($ts['conversiones'] ?? 0);
+$ts_cbuck = (int)($ts['cierres_bucket'] ?? 0);
+$ts_sdto  = (int)($ts['cierres_sin_dto'] ?? 0);
+$ts_ign   = (int)($ts['senales_ignoradas'] ?? 0);
+$ts_tup   = (int)($ts['transiciones_up'] ?? 0);
+$ts_pen   = (float)($ts['penalizaciones'] ?? 0);
 ?>
 <div class="thermo">
     <div class="thermo-gauge">
@@ -615,19 +631,19 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
     <div class="thermo-info">
       <div class="thermo-nivel" style="color:<?= $ts_color ?>"><?= $ts_label ?> <span style="color:<?= $ts_mom_c ?>;font-size:14px"><?= $ts_arrow ?></span></div>
       <div class="thermo-detail">
-        <b><?= $ts['dias_activos'] ?></b> días · <b><?= $ts['acciones'] ?></b> acciones · <b><?= $ts['conversiones'] ?></b> cierres · <b><?= $ts['carga_activa'] ?></b> pipeline
+        <b><?= $ts_vist ?></b>/<?= $ts_asig ?> abiertas · <b><?= $ts_cierres ?></b> cierres<?php if($ts_cbuck): ?> (<b><?= $ts_cbuck ?></b> desde radar)<?php endif; ?><?php if($ts_dorm): ?> · <span style="color:var(--danger)"><?= $ts_dorm ?> dormidas</span><?php endif; ?><?php if($ts_ign): ?> · <span style="color:var(--danger)"><?= $ts_ign ?> ignoradas</span><?php endif; ?>
       </div>
       <div class="thermo-bars">
         <div style="flex:1">
-          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round($ts['dias_activos'] / 30 * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
-          <div class="thermo-bar-lbl">Presencia</div>
+          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts_act ?>%;background:<?= $ts_act >= 60 ? '#16a34a' : ($ts_act >= 30 ? '#d97706' : '#dc2626') ?>"></div></div>
+          <div class="thermo-bar-lbl">Activación</div>
         </div>
         <div style="flex:1">
-          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round(min($ts['tasa_gestion'] / 2, 1) * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
-          <div class="thermo-bar-lbl">Gestión</div>
+          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts_seg ?>%;background:<?= $ts_seg >= 60 ? '#16a34a' : ($ts_seg >= 30 ? '#d97706' : '#dc2626') ?>"></div></div>
+          <div class="thermo-bar-lbl">Seguimiento</div>
         </div>
         <div style="flex:1">
-          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts['carga_activa'] > 0 ? min(100, round($ts['conversiones'] / max($ts['carga_activa'],1) * 100 / 0.3)) : 0 ?>%;background:<?= $ts_color ?>"></div></div>
+          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts_con ?>%;background:<?= $ts_con >= 60 ? '#16a34a' : ($ts_con >= 30 ? '#d97706' : '#dc2626') ?>"></div></div>
           <div class="thermo-bar-lbl">Conversión</div>
         </div>
       </div>
@@ -648,14 +664,14 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
     <div id="lb-info" class="lb-info">
       <div class="lb-info-inner">
         <b>¿Qué mide este ranking?</b>
-        <p>Combina tres indicadores de los últimos 30 días:</p>
+        <p>Algoritmo APC (Productividad Comercial) — 30 días rolling, auto-ajustable:</p>
         <ul>
-          <li><b>Presencia</b> — Días con actividad en la plataforma</li>
-          <li><b>Gestión</b> — Interacciones con cotizaciones y clientes, proporcional al volumen de trabajo asignado</li>
-          <li><b>Conversión</b> — Cotizaciones cerradas respecto a las activas</li>
+          <li><b>Activación (35%)</b> — ¿Las cotizaciones asignadas llegan al cliente? Penaliza cotizaciones dormidas sin abrir.</li>
+          <li><b>Seguimiento (30%)</b> — ¿Usa el radar para dar seguimiento? Premia transiciones de bucket frío→caliente. Penaliza señales calientes ignoradas y buckets estancados.</li>
+          <li><b>Conversión (35%)</b> — ¿El software ayuda a cerrar? Cierres desde buckets fríos dan más puntos (vendedor rescató la venta). Cierres con descuento dan menos puntos.</li>
         </ul>
-        <p>El score se auto-ajusta: compara a cada usuario contra su propio historial y contra el equipo. Un score alto significa consistencia y resultados, no solo volumen.</p>
-        <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Este índice es una referencia generada por algoritmo basada en datos de uso de la plataforma. No pretende medir ni evaluar el desempeño físico, la productividad real ni el comportamiento personal de ningún colaborador.</p>
+        <p>Se auto-ajusta en 3 ejes: contra el propio historial (momentum), contra el equipo (percentil), y por volumen de trabajo (normalización).</p>
+        <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Índice algorítmico basado en datos de uso de la plataforma. Referencia de adopción del software, no evaluación personal.</p>
       </div>
     </div>
     <?php
@@ -684,10 +700,10 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
       <div class="lb-av" style="background:<?= $es_av_bg ?>"><?= e($es_ini) ?></div>
       <div class="lb-name"><?= e($es['nombre']) ?></div>
       <div class="lb-stats">
-        <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['dias_activos'] ?></span><span class="lb-stat-lbl">Días</span></div>
-        <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['acciones'] ?></span><span class="lb-stat-lbl">Acciones</span></div>
+        <div class="lb-stat"><span class="lb-stat-val"><?= (int)($es['cot_vistas'] ?? 0) ?>/<?= (int)($es['cot_asignadas'] ?? 0) ?></span><span class="lb-stat-lbl">Abiertas</span></div>
         <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['conversiones'] ?></span><span class="lb-stat-lbl">Cierres</span></div>
-        <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['carga_activa'] ?></span><span class="lb-stat-lbl">Pipeline</span></div>
+        <div class="lb-stat"><span class="lb-stat-val"><?= (int)($es['cierres_bucket'] ?? 0) ?></span><span class="lb-stat-lbl">Radar</span></div>
+        <div class="lb-stat"><span class="lb-stat-val" style="color:<?= (int)($es['cot_dormidas'] ?? 0) > 0 ? 'var(--danger)' : 'inherit' ?>"><?= (int)($es['cot_dormidas'] ?? 0) ?></span><span class="lb-stat-lbl">Dormidas</span></div>
       </div>
       <div class="lb-score">
         <span class="lb-score-num" style="color:<?= $es_color ?>"><?= $es_score ?></span>
