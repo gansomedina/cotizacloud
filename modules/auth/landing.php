@@ -511,9 +511,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 <!-- TERMÓMETRO — sección compacta, visual -->
 <section class="features" style="padding-top:60px;padding-bottom:20px">
-  <span class="section-label" style="color:#1d4ed8">Business</span>
   <div class="section-title">Sabe quien vende bien — y quien necesita ayuda</div>
-  <p class="section-sub">El sistema analiza a cada vendedor y te da un diagnostico claro, sin revisar cotizacion por cotizacion.</p>
+  <p class="section-sub">Cada vendedor recibe un score en tiempo real con diagnostico automatico. Tu solo lees el resultado.</p>
 
   <div style="max-width:520px;margin:32px auto 0;background:#fff;border:2px solid #bfdbfe;border-radius:16px;padding:28px 24px;box-shadow:var(--sh-md)">
     <div style="display:flex;flex-direction:column;gap:16px">
