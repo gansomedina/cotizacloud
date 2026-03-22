@@ -121,7 +121,7 @@ foreach ($mas_rutas as $r) {
         #sidebar-overlay.on{display:block}
 
         /* ── MAIN ── */
-        #main{margin-left:var(--sidebar-w);min-height:100dvh;display:flex;flex-direction:column}
+        #main{margin-left:var(--sidebar-w);min-height:100dvh;display:flex;flex-direction:column;overflow-y:auto;scrollbar-gutter:stable}
 
         /* ── TOPBAR (mobile only) ── */
         #topbar{display:none;background:var(--white);border-bottom:1px solid var(--border);padding:0 14px;height:52px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
