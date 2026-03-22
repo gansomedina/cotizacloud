@@ -21,6 +21,9 @@ $cliente = DB::row(
 );
 if (!$cliente) { flash('error', 'Cliente no encontrado'); redirect('/clientes'); }
 
+// Registrar actividad: consulta de cliente
+ActividadScore::registrar(Auth::id(), $empresa_id, 'client_view', $cliente_id);
+
 // ─── Stats ───────────────────────────────────────────────
 $stats = DB::row(
     "SELECT

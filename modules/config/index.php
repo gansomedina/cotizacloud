@@ -654,12 +654,20 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <div>El permiso <strong>"puede editar precios"</strong> solo aplica si está activado globalmente en <strong>Empresa → Defaults</strong>.</div>
   </div>
 
+  <?php
+  // Cargar scores del equipo
+  $scores_equipo = [];
+  foreach (ActividadScore::equipo($empresa_id) as $se) {
+      $scores_equipo[(int)$se['usuario_id']] = $se;
+  }
+  ?>
   <div class="card">
     <?php foreach ($usuarios as $usr):
       $ini = ini_cfg($usr['nombre']);
       $es_admin = $usr['rol'] === 'admin';
+      $usr_score = $scores_equipo[(int)$usr['id']] ?? null;
     ?>
-    <div class="usr-row" onclick='editarUsuario(<?= (int)$usr["id"] ?>, <?= htmlspecialchars(json_encode(["nombre"=>$usr["nombre"],"usuario"=>$usr["usuario"],"email"=>$usr["email"]??'',"rol"=>$usr["rol"],"activo"=>$usr["activo"],"puede_editar_precios"=>$usr["puede_editar_precios"],"puede_aplicar_descuentos"=>$usr["puede_aplicar_descuentos"],"puede_ver_todas_cots"=>$usr["puede_ver_todas_cots"],"puede_ver_todas_ventas"=>$usr["puede_ver_todas_ventas"],"puede_eliminar_items_venta"=>$usr["puede_eliminar_items_venta"],"puede_cancelar_recibos"=>$usr["puede_cancelar_recibos"],"puede_capturar_pagos"=>$usr["puede_capturar_pagos"]??0]), ENT_QUOTES) ?>)'>
+    <div class="usr-row" onclick='editarUsuario(<?= (int)$usr["id"] ?>, <?= htmlspecialchars(json_encode(["nombre"=>$usr["nombre"],"usuario"=>$usr["usuario"],"email"=>$usr["email"]??'',"rol"=>$usr["rol"],"activo"=>$usr["activo"],"puede_editar_precios"=>$usr["puede_editar_precios"],"puede_aplicar_descuentos"=>$usr["puede_aplicar_descuentos"],"puede_ver_todas_cots"=>$usr["puede_ver_todas_cots"],"puede_ver_todas_ventas"=>$usr["puede_ver_todas_ventas"],"puede_eliminar_items_venta"=>$usr["puede_eliminar_items_venta"],"puede_cancelar_recibos"=>$usr["puede_cancelar_recibos"],"puede_capturar_pagos"=>$usr["puede_capturar_pagos"]??0,"puede_asignar_cotizaciones"=>$usr["puede_asignar_cotizaciones"]??0]), ENT_QUOTES) ?>)'>
       <div class="usr-av <?= $es_admin?'':'asesor' ?> <?= !$usr['activo']?'inactivo':'' ?>">
         <?= e($ini) ?>
       </div>
@@ -680,6 +688,21 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
         </div>
       </div>
       <div class="usr-meta">
+        <?php if ($usr_score && $usr['activo']):
+          $usc = (int)$usr_score['score'];
+          $usc_color = match($usr_score['nivel']) {
+              'top' => '#2563eb', 'activo' => '#16a34a', 'regular' => '#d97706', default => '#dc2626'
+          };
+          $usc_lbl = match($usr_score['nivel']) {
+              'top' => 'Top', 'activo' => 'Activo', 'regular' => 'Regular', default => 'Bajo'
+          };
+        ?>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px" title="Score: <?= $usc ?>/100 · <?= $usr_score['dias_activos'] ?> días activo · <?= $usr_score['acciones'] ?> acciones">
+          <svg width="28" height="28" viewBox="0 0 28 28" style="flex-shrink:0"><circle cx="14" cy="14" r="11" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle cx="14" cy="14" r="11" fill="none" stroke="<?= $usc_color ?>" stroke-width="3" stroke-dasharray="<?= round(2*M_PI*11*$usc/100,1) ?> <?= round(2*M_PI*11,1) ?>" stroke-linecap="round" transform="rotate(-90 14 14)"/></svg>
+          <span style="font:700 12px var(--num);color:<?= $usc_color ?>"><?= $usc ?></span>
+          <span style="font:500 10px var(--body);color:<?= $usc_color ?>"><?= $usc_lbl ?></span>
+        </div>
+        <?php endif; ?>
         <span class="tbl-badge <?= $usr['activo']?'badge-on':'badge-off' ?>"><?= $usr['activo']?'Activo':'Inactivo' ?></span>
       </div>
     </div>
