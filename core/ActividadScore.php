@@ -281,16 +281,31 @@ class ActividadScore
             [$usuario_id, $empresa_id]
         );
 
-        // ¿El vendedor revisó el radar en las últimas 48h?
-        $radar_48h = (int)DB::val(
-            "SELECT COUNT(*) FROM actividad_log
-             WHERE usuario_id=? AND tipo='radar_view'
-             AND created_at >= DATE_SUB(NOW(), INTERVAL 48 HOUR)",
-            [$usuario_id]
-        );
-
-        // Si hay cotizaciones calientes Y el vendedor no revisó radar → todas ignoradas
-        $senales_ignoradas = ($cot_calientes > 0 && $radar_48h === 0) ? $cot_calientes : 0;
+        // Escala gradual: ¿cuándo fue la última vez que revisó el radar?
+        $senales_ignoradas = 0;
+        if ($cot_calientes > 0) {
+            $ultimo_radar = DB::val(
+                "SELECT MAX(created_at) FROM actividad_log
+                 WHERE usuario_id=? AND tipo='radar_view'",
+                [$usuario_id]
+            );
+            if (!$ultimo_radar) {
+                // Nunca ha entrado al radar → todas ignoradas
+                $senales_ignoradas = $cot_calientes;
+            } else {
+                $horas_desde_radar = (time() - strtotime($ultimo_radar)) / 3600.0;
+                // <24h = 0 ignoradas, 24-48h = 50%, 48-72h = 75%, >72h = 100%
+                if ($horas_desde_radar <= 24) {
+                    $senales_ignoradas = 0;
+                } elseif ($horas_desde_radar <= 48) {
+                    $senales_ignoradas = (int)ceil($cot_calientes * 0.50);
+                } elseif ($horas_desde_radar <= 72) {
+                    $senales_ignoradas = (int)ceil($cot_calientes * 0.75);
+                } else {
+                    $senales_ignoradas = $cot_calientes;
+                }
+            }
+        }
 
         // Fix 11: Tasa de reacción — de cotizaciones con actividad del cliente en 7d,
         // ¿en cuántas el vendedor revisó radar/cotización dentro de 48h?
@@ -304,15 +319,20 @@ class ActividadScore
 
         $cot_con_reaccion_vendor = 0;
         if ($cot_con_actividad_cliente > 0) {
+            // EXISTS evita producto cartesiano — solo pregunta "¿hay al menos 1 log?"
             $cot_con_reaccion_vendor = (int)DB::val(
-                "SELECT COUNT(DISTINCT c.id) FROM cotizaciones c
-                 INNER JOIN actividad_log al ON al.usuario_id = ?
+                "SELECT COUNT(*) FROM cotizaciones c
                  WHERE COALESCE(c.vendedor_id, c.usuario_id)=? AND c.empresa_id=?
                  AND c.ultima_vista_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
                  AND c.estado IN ('enviada','vista') AND c.total > 0
-                 AND al.tipo IN ('radar_view','quote_view')
-                 AND al.created_at BETWEEN c.ultima_vista_at AND DATE_ADD(c.ultima_vista_at, INTERVAL 48 HOUR)",
-                [$usuario_id, $usuario_id, $empresa_id]
+                 AND EXISTS (
+                    SELECT 1 FROM actividad_log al
+                    WHERE al.usuario_id = ?
+                    AND al.tipo IN ('radar_view','quote_view')
+                    AND al.created_at BETWEEN c.ultima_vista_at AND DATE_ADD(c.ultima_vista_at, INTERVAL 48 HOUR)
+                    LIMIT 1
+                 )",
+                [$usuario_id, $empresa_id, $usuario_id]
             );
         }
         $tasa_reaccion = $cot_con_actividad_cliente > 0
@@ -461,11 +481,26 @@ class ActividadScore
         $cot_vistas_safe = max($cot_vistas, 1);
         $tasa_cierre = $cierres_total / $cot_vistas_safe;
 
-        // Fix 5: calidad = multiplicador promedio por cierre, normalizado al máximo (2.0)
-        // Vendedor que solo cierra ventas fáciles (onfire=0.8) → quality=0.40
-        // Vendedor que rescata ventas frías (enfriandose=2.0) → quality=1.00
-        $avg_mult = $cierres_total > 0 ? ($puntos_cierre / $cierres_total / $base_cierre) : 0;
-        $cierre_quality = min($avg_mult / 2.0, 1.0);
+        // Calidad de cierre: multiplicador promedio normalizado.
+        // Sin bucket (cierre directo) = mult 1.0 → quality 0.50 base.
+        // Rescata venta fría (2.0) → quality 1.0. Solo fáciles (0.8) → quality 0.40.
+        // Cierres sin bucket no castigan: se normaliza sobre cierres CON bucket si los hay.
+        $cierres_con_radar = 0;
+        $puntos_con_radar = 0.0;
+        foreach ($cierres_con_bucket as $cc) {
+            if ($cc['radar_bucket'] !== null) {
+                $cierres_con_radar++;
+                $puntos_con_radar += $base_cierre * (self::CIERRE_MULT[$cc['radar_bucket']] ?? 1.0)
+                    * (((float)$cc['cupon_pct'] > 0 || (float)$cc['dto_auto_pct'] > 0) ? self::DESCUENTO_FACTOR : 1.0);
+            }
+        }
+        if ($cierres_con_radar > 0) {
+            $avg_mult = $puntos_con_radar / $cierres_con_radar / $base_cierre;
+            $cierre_quality = min($avg_mult / 2.0, 1.0);
+        } else {
+            // Sin datos de radar → neutro
+            $cierre_quality = 0.50;
+        }
 
         // Penalización por vencidas sin acción
         $pen_vencidas = min($vencidas_sin_accion * 0.08, 0.3);
@@ -495,6 +530,31 @@ class ActividadScore
         $s_conversion = max(0.0, min(1.0, $s_conversion));
 
         // ═══════════════════════════════════════════════════
+        //  CONSISTENCIA SEMANAL
+        //  Un vendedor que cierra 1-2/semana constante es mejor
+        //  que uno que cierra 5 en semana 1 y luego 0 por 3 semanas.
+        // ═══════════════════════════════════════════════════
+
+        $semanas_con_cierre = (int)DB::val(
+            "SELECT COUNT(DISTINCT YEARWEEK(accion_at, 1)) FROM cotizaciones
+             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
+             AND estado IN ('aceptada','convertida','aceptada_cliente')
+             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND total > 0",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $total_semanas = max(round($periodo / 7), 1);
+        // Ratio: 4/4 semanas con cierre = 1.0, 1/4 = 0.25
+        $consistencia = $cierres_total > 0 ? $semanas_con_cierre / $total_semanas : 0;
+
+        // Ajustar conversión: bonus si es consistente, penalización si es irregular
+        // Solo aplica si tiene al menos 2 cierres (con 1 no hay variación que medir)
+        if ($cierres_total >= 2) {
+            $s_conversion = $s_conversion * (0.80 + 0.20 * $consistencia);
+            $s_conversion = max(0.0, min(1.0, $s_conversion));
+        }
+
+        // ═══════════════════════════════════════════════════
         //  SCORE PROPORCIONAL — PESOS DINÁMICOS
         //
         //  Distinguir dos casos:
@@ -510,14 +570,6 @@ class ActividadScore
              WHERE empresa_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              LIMIT 1",
             [$empresa_id, $periodo]
-        );
-
-        // ¿El usuario tiene al menos logins registrados?
-        $usuario_tiene_logins = (int)DB::val(
-            "SELECT COUNT(*) FROM actividad_log
-             WHERE usuario_id=? AND tipo='login'
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $periodo]
         );
 
         if ($empresa_tiene_logs === 0) {
@@ -565,9 +617,11 @@ class ActividadScore
             $ema_composite = $ema_act * $w_act + $ema_seg * $w_seg + $ema_conv * $w_conv;
             $cur_composite = $proporcional;
 
-            $momentum = $ema_composite > 0
+            // Momentum simétrico con log: mejorar 2x = +0.69, empeorar 2x = -0.69
+            $ratio = $ema_composite > 0
                 ? $cur_composite / $ema_composite
-                : ($cur_composite > 0 ? 1.5 : 1.0);
+                : ($cur_composite > 0 ? 2.0 : 1.0);
+            $momentum = max(0.1, min(10.0, $ratio)); // clamp para evitar log(0)
         } else {
             // Primera vez
             $ema_act  = $s_activacion;
@@ -576,8 +630,9 @@ class ActividadScore
             $momentum = 1.0;
         }
 
-        // Convertir momentum a score 0-1 con sigmoid
-        $momentum_score = 1.0 / (1.0 + exp(-3.0 * ($momentum - 1.0)));
+        // Convertir momentum a score 0-1 con sigmoid sobre log(ratio)
+        // log(1.0)=0 → 0.50 (estable), log(2.0)=0.69 → ~0.80, log(0.5)=-0.69 → ~0.20
+        $momentum_score = 1.0 / (1.0 + exp(-3.0 * log($momentum)));
 
         // ═══════════════════════════════════════════════════
         //  ÁNGULO 2: PERCENTIL EN EQUIPO
@@ -748,13 +803,20 @@ class ActividadScore
     // ─── Obtener scores de toda la empresa ────────────────
     public static function equipo(int $empresa_id): array
     {
+        $periodo = self::PERIODO;
         return DB::query(
             "SELECT us.*, u.nombre, u.rol
              FROM usuario_score us
              JOIN usuarios u ON u.id = us.usuario_id
              WHERE us.empresa_id = ? AND u.activo = 1
+             AND EXISTS (
+                SELECT 1 FROM cotizaciones c
+                WHERE COALESCE(c.vendedor_id, c.usuario_id) = u.id
+                AND c.empresa_id = ? AND c.total > 0
+                AND c.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             )
              ORDER BY us.score DESC",
-            [$empresa_id]
+            [$empresa_id, $empresa_id, $periodo]
         );
     }
 
@@ -790,9 +852,15 @@ class ActividadScore
             [$empresa_id, $periodo]
         );
 
-        // Radar semanal promedio (de usuarios que SÍ lo usan)
+        // Radar semanal promedio (requiere mínimo 2 usuarios para no sesgar)
         $weeks = max($periodo / 7, 1);
-        $avg_radar = DB::val(
+        $radar_users = (int)DB::val(
+            "SELECT COUNT(DISTINCT usuario_id) FROM actividad_log
+             WHERE empresa_id=? AND tipo='radar_view'
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$empresa_id, $periodo]
+        );
+        $avg_radar = $radar_users >= 2 ? DB::val(
             "SELECT AVG(cnt) FROM (
                 SELECT COUNT(*)/{$weeks} AS cnt FROM actividad_log
                 WHERE empresa_id=? AND tipo='radar_view'
@@ -800,7 +868,7 @@ class ActividadScore
                 GROUP BY usuario_id
              ) AS sub",
             [$empresa_id, $periodo]
-        );
+        ) : null;
 
         // Tasa de apertura de la empresa
         $emp_asig = (int)DB::val(
