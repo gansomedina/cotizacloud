@@ -11,8 +11,11 @@ $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $moneda     = $empresa['moneda'] ?? 'MXN';
 
-// ─── Termómetro de actividad ──────────────────────────────
-$mi_score = ActividadScore::calcular(Auth::id(), $empresa_id);
+// ─── Termómetro de actividad (cache 5 min) ────────────────
+$mi_score = ActividadScore::obtener(Auth::id());
+if (!$mi_score || (time() - strtotime($mi_score['updated_at'])) > 300) {
+    $mi_score = ActividadScore::calcular(Auth::id(), $empresa_id);
+}
 
 // ─── Período seleccionado ────────────────────────────────
 $periodo = $_GET['periodo'] ?? 'mes_actual';
