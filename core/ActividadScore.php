@@ -295,6 +295,50 @@ class ActividadScore
         // Si hay cotizaciones calientes Y el vendedor no revisó radar → todas ignoradas
         $senales_ignoradas = ($cot_calientes > 0 && $radar_48h === 0) ? $cot_calientes : 0;
 
+        // Fix 11: Tasa de reacción — de cotizaciones con actividad del cliente en 7d,
+        // ¿en cuántas el vendedor revisó radar/cotización dentro de 48h?
+        $cot_con_actividad_cliente = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones
+             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
+             AND ultima_vista_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+             AND estado IN ('enviada','vista') AND total > 0",
+            [$usuario_id, $empresa_id]
+        );
+
+        $cot_con_reaccion_vendor = 0;
+        if ($cot_con_actividad_cliente > 0) {
+            $cot_con_reaccion_vendor = (int)DB::val(
+                "SELECT COUNT(DISTINCT c.id) FROM cotizaciones c
+                 INNER JOIN actividad_log al ON al.usuario_id = ?
+                 WHERE COALESCE(c.vendedor_id, c.usuario_id)=? AND c.empresa_id=?
+                 AND c.ultima_vista_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                 AND c.estado IN ('enviada','vista') AND c.total > 0
+                 AND al.tipo IN ('radar_view','quote_view')
+                 AND al.created_at BETWEEN c.ultima_vista_at AND DATE_ADD(c.ultima_vista_at, INTERVAL 48 HOUR)",
+                [$usuario_id, $usuario_id, $empresa_id]
+            );
+        }
+        $tasa_reaccion = $cot_con_actividad_cliente > 0
+            ? $cot_con_reaccion_vendor / $cot_con_actividad_cliente
+            : 0.5; // neutro si no hay actividad del cliente
+
+        // Fix 1: Velocidad de cierre — tiempo promedio vs benchmark empresa
+        $avg_ttc_vendedor = $cierres_total > 0 ? DB::val(
+            "SELECT AVG(DATEDIFF(accion_at, created_at)) FROM cotizaciones
+             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
+             AND estado IN ('aceptada','convertida','aceptada_cliente')
+             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND accion_at IS NOT NULL AND total > 0",
+            [$usuario_id, $empresa_id, $periodo]
+        ) : null;
+
+        $ttc_score = 0.5; // neutro por defecto
+        if ($cierres_total > 0 && $avg_ttc_vendedor !== null && (float)$avg_ttc_vendedor > 0) {
+            // ratio > 1 = cierra más rápido que el promedio empresa
+            $ratio_ttc = $bench['time_to_close'] / (float)$avg_ttc_vendedor;
+            $ttc_score = self::sigmoid($ratio_ttc, 1.0, 3.0);
+        }
+
         // Fix 4: Transiciones — premiar REACCIÓN del vendedor, no la transición del cliente
         // Una transición frío→caliente la causa el cliente. Lo que importa es si el vendedor
         // revisó el radar dentro de las 48h PREVIAS a esa transición (causó la acción del cliente).
@@ -416,7 +460,8 @@ class ActividadScore
         // Penalización por transiciones caliente→frío
         $pen_trans_down = min($transiciones_down * 0.05, 0.2);
 
-        $s_seguimiento = ($s_radar * 0.5 + $s_consultas * 0.3 + $bonus_transiciones * 0.2)
+        // Fix 11: tasa_reaccion entra con 30% del peso de seguimiento
+        $s_seguimiento = ($s_radar * 0.30 + $s_consultas * 0.15 + $tasa_reaccion * 0.35 + $bonus_transiciones * 0.20)
                          - $pen_buckets - $pen_senales - $pen_trans_down;
         $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
 
@@ -454,8 +499,12 @@ class ActividadScore
             $pen_volumen_sin_cierre = min((1.0 - $tasa_cierre / $half_bench) * 0.3, 0.3);
         }
 
-        // Fix 12: close rate midpoint = promedio de la empresa
-        $s_conversion = (self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01)) * 0.5 + $cierre_quality * 0.5)
+        // Fix 1 + 12: close rate + quality + velocidad de cierre
+        $s_conversion = (
+            self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01)) * 0.40
+            + $cierre_quality * 0.35
+            + $ttc_score * 0.25
+        )
                         - $pen_vencidas - $pen_zona_muerta - $pen_volumen_sin_cierre;
         $s_conversion = max(0.0, min(1.0, $s_conversion));
 
