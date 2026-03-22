@@ -256,6 +256,18 @@ class ActividadScore
             [$usuario_id, $periodo]
         );
 
+        // ── Antigüedad del usuario en la plataforma ──
+        // Un usuario con <7 días no ha tenido tiempo de aprender las herramientas.
+        // No penalizar señales ignoradas ni declarar tendencias de momentum.
+        $primer_actividad = DB::val(
+            "SELECT MIN(created_at) FROM actividad_log WHERE usuario_id=?",
+            [$usuario_id]
+        );
+        $dias_en_plataforma = $primer_actividad
+            ? (int)ceil((time() - strtotime($primer_actividad)) / 86400)
+            : $dias_activos;
+        $es_usuario_nuevo = $dias_en_plataforma < 7;
+
         // Señales calientes ignoradas (FIX: 2 queries, no N+1)
         // Cotizaciones con 3+ visitas recientes = cliente interesado
         $cot_calientes = (int)DB::val(
@@ -574,11 +586,22 @@ class ActividadScore
             $w_seg  = 0.00;
             $w_conv = 0.80;
         } else {
-            // El sistema YA registra. Si el vendedor no entra al radar, es SU culpa.
-            // Pesos completos: Seguimiento con su score real (que será bajo/0)
+            // El sistema YA registra. Pesos base.
             $w_act  = 0.20;
             $w_seg  = 0.35;
             $w_conv = 0.45;
+
+            // Pesos adaptativos: si el vendedor cierra excepcionalmente bien
+            // (>2x benchmark empresa), los resultados hablan por sí solos.
+            // Seguimiento pierde peso proporcional a qué tanto supera el benchmark.
+            // Ejemplo: tasa_cierre = 1.0 (100%), bench = 0.15 → ratio 6.67
+            //   reducción = min((6.67 - 2) * 0.05, 0.20) = 0.20 → seg baja a 0.15
+            if ($bench['close_rate'] > 0 && $tasa_cierre > $bench['close_rate'] * 2) {
+                $ratio_sobre_bench = $tasa_cierre / $bench['close_rate'];
+                $reduccion_seg = min(($ratio_sobre_bench - 2) * 0.05, 0.20);
+                $w_seg  -= $reduccion_seg;
+                $w_conv += $reduccion_seg;
+            }
         }
 
         $proporcional = $s_activacion * $w_act
@@ -626,6 +649,12 @@ class ActividadScore
                 ? $cur_composite / $ema_composite
                 : ($cur_composite > 0 ? 2.0 : 1.0);
             $momentum = max(0.1, min(10.0, $ratio)); // clamp para evitar log(0)
+
+            // Usuarios nuevos (<7 días): forzar momentum neutro.
+            // No hay suficiente historial para declarar tendencia.
+            if ($es_usuario_nuevo) {
+                $momentum = 1.0;
+            }
         } else {
             // Primera vez
             $ema_act  = $s_activacion;
@@ -861,7 +890,8 @@ class ActividadScore
         if ($tasa_ap >= 0.90) {
             $frases[] = "Casi todo lo que envía llega al cliente";
         } elseif ($tasa_ap >= 0.60) {
-            $frases[] = "Buena tasa de entrega, " . ($asig - $vist) . " cotizaciones sin abrir";
+            $sin_abrir = $asig - $vist;
+            $frases[] = "Buena tasa de entrega, $sin_abrir " . ($sin_abrir === 1 ? "cotización sin abrir" : "cotizaciones sin abrir");
         } elseif ($tasa_ap >= 0.30) {
             $frases[] = "Muchas cotizaciones no se abren — revisar canal de envío";
         } else {
@@ -869,10 +899,21 @@ class ActividadScore
         }
 
         // ── SEGUIMIENTO ──
+        // Distinguir: ¿tiene acciones (quote_view+radar) pero 0 cierres desde radar?
+        // Si acciones > 0 pero cierres_bucket = 0 y score bajo, es que revisa cotizaciones
+        // pero no usa radar específicamente.
+        $acciones_total = (int)($s['acciones'] ?? 0);
+        $usa_radar = $cbkt > 0 || $tup > 0; // tiene cierres radar o transiciones up
         if ($seg >= 0.70) {
-            $frases[] = "da buen seguimiento con el radar";
+            $frases[] = $usa_radar ? "da buen seguimiento con el radar" : "responde bien a los clientes, buen seguimiento";
         } elseif ($seg >= 0.35) {
-            $frases[] = "seguimiento moderado, puede usar más el radar";
+            if ($usa_radar) {
+                $frases[] = "seguimiento moderado, puede usar más el radar";
+            } elseif ($acciones_total > 0) {
+                $frases[] = "revisa cotizaciones pero no usa el radar — le serviría para priorizar";
+            } else {
+                $frases[] = "seguimiento moderado, puede usar más el radar";
+            }
         } elseif ($seg > 0.05) {
             $frases[] = "poco seguimiento — rara vez revisa el radar";
         } else {
@@ -881,7 +922,9 @@ class ActividadScore
 
         // ── CONVERSIÓN ──
         if ($cierres === 0 && $vist >= 3) {
-            $frases[] = "cotiza pero no cierra — " . $vist . " abiertas sin resultado";
+            $frases[] = $vist === 1
+                ? "cotiza pero no cierra — 1 abierta sin resultado"
+                : "cotiza pero no cierra — $vist abiertas sin resultado";
         } elseif ($cierres === 0) {
             $frases[] = "aún sin cierres en el período";
         } elseif ($conv >= 0.70) {
@@ -896,10 +939,14 @@ class ActividadScore
 
         // ── SEÑALES ESPECÍFICAS ──
         if ($dorm > 0) {
-            $frases[] = "$dorm cotizaciones enviadas que nadie abrió en 7+ días";
+            $frases[] = $dorm === 1
+                ? "1 cotización enviada que nadie abrió en 7+ días"
+                : "$dorm cotizaciones enviadas que nadie abrió en 7+ días";
         }
         if ($ign > 0) {
-            $frases[] = "clientes activos sin atender — $ign señales calientes ignoradas";
+            $frases[] = $ign === 1
+                ? "1 cliente activo sin atender — señal caliente ignorada"
+                : "clientes activos sin atender — $ign señales calientes ignoradas";
         }
         // Fix P3: Mencionar descuentos si cierra mayormente con descuento
         if ($cierres > 0 && $sdto < $cierres) {
