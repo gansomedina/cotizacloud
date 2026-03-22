@@ -31,9 +31,9 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
 }
 
 // Verificar que la venta pertenece a la empresa (y al usuario si no es admin)
-$venta = DB::row("SELECT id, usuario_id FROM ventas WHERE id=? AND empresa_id=? AND estado != 'cancelada'", [$venta_id, $empresa_id]);
+$venta = DB::row("SELECT id, usuario_id, vendedor_id FROM ventas WHERE id=? AND empresa_id=? AND estado != 'cancelada'", [$venta_id, $empresa_id]);
 if (!$venta) { echo json_encode(['ok'=>false,'error'=>'Venta no encontrada']); exit; }
-if (!Auth::es_admin() && !Auth::puede('ver_todas_ventas') && (int)$venta['usuario_id'] !== Auth::id()) {
+if (!Auth::es_admin() && !Auth::puede('ver_todas_ventas') && (int)$venta['usuario_id'] !== Auth::id() && (int)($venta['vendedor_id'] ?? 0) !== Auth::id()) {
     echo json_encode(['ok'=>false,'error'=>'Sin permiso']); exit;
 }
 

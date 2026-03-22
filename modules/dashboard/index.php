@@ -56,8 +56,8 @@ $hasta_ant = date('Y-m-d H:i:s', strtotime($desde) - 1);
 // ─── Filtro de asesor (si no admin, solo ve las suyas) ───
 $solo_mias = !Auth::es_admin() && !Auth::puede('ver_todas_ventas');
 $user_id   = Auth::id();
-$v_where   = $solo_mias ? "AND v.usuario_id = $user_id" : '';
-$c_where   = $solo_mias ? "AND c.usuario_id = $user_id" : '';
+$v_where   = $solo_mias ? "AND (v.usuario_id = $user_id OR v.vendedor_id = $user_id)" : '';
+$c_where   = $solo_mias ? "AND (c.usuario_id = $user_id OR c.vendedor_id = $user_id)" : '';
 
 // ═══════════════════════════════════════════════════════
 //  BLOQUE 1: KPIs FINANCIEROS

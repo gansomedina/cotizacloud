@@ -10,7 +10,7 @@ $empresa_id = EMPRESA_ID;
 $es_admin   = Auth::es_admin();
 $solo_mias  = !$es_admin && !Auth::puede('ver_todas_ventas');
 $uid        = Auth::id();
-$v_where    = $solo_mias ? "AND v.usuario_id = $uid" : '';
+$v_where    = $solo_mias ? "AND (v.usuario_id = $uid OR v.vendedor_id = $uid)" : '';
 
 // ─── Período ────────────────────────────────────────────────
 // ─── Siempre mostramos todas las ventas; filtro solo por categoría ──
