@@ -127,6 +127,46 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 @media(max-width:768px){.accel-grid{grid-template-columns:repeat(2,1fr)}.accel-inner{padding:32px 24px}}
 @media(max-width:480px){.accel-grid{grid-template-columns:1fr}}
 
+/* APC THERMOMETER */
+.apc{max-width:1100px;margin:0 auto;padding:80px 24px 0}
+.apc-card{background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);border-radius:20px;padding:56px 48px;position:relative;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.apc-card::before{content:"";position:absolute;top:-60px;left:-60px;width:200px;height:200px;background:radial-gradient(circle,rgba(37,99,235,.15) 0%,transparent 70%);border-radius:50%}
+.apc-card::after{content:"";position:absolute;bottom:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(22,163,74,.1) 0%,transparent 70%);border-radius:50%}
+.apc-left{position:relative;z-index:1}
+.apc-badge{display:inline-block;font:700 10px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#60a5fa;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.2);padding:5px 14px;border-radius:20px;margin-bottom:16px}
+.apc-title{font:800 clamp(26px,3.5vw,36px)/1.12 var(--body);letter-spacing:-.03em;color:#fff;margin-bottom:14px}
+.apc-title em{font-style:normal;background:linear-gradient(135deg,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.apc-desc{font:400 16px/1.65 var(--body);color:#94a3b8;margin-bottom:28px}
+.apc-dims{display:flex;flex-direction:column;gap:12px}
+.apc-dim{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px 16px}
+.apc-dim-pct{font:800 18px var(--num);min-width:42px;text-align:center}
+.apc-dim-info{flex:1}
+.apc-dim-name{font:700 14px var(--body);color:#fff;margin-bottom:2px}
+.apc-dim-sub{font:400 12px var(--body);color:#64748b;line-height:1.4}
+/* APC demo thermometer */
+.apc-right{position:relative;z-index:1;display:flex;justify-content:center}
+.apc-demo{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:28px 24px;width:100%;max-width:380px}
+.apc-demo-header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.apc-demo-gauge{position:relative;width:64px;height:64px;flex-shrink:0}
+.apc-demo-gauge svg{transform:rotate(-90deg)}
+.apc-demo-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 22px var(--num);color:#2563eb}
+.apc-demo-info{flex:1}
+.apc-demo-nivel{font:700 15px var(--body);color:#2563eb;margin-bottom:2px}
+.apc-demo-detail{font:400 12px var(--body);color:#94a3b8;line-height:1.4}
+.apc-demo-bars{display:flex;gap:8px;margin-bottom:16px}
+.apc-demo-bar-wrap{flex:1}
+.apc-demo-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.08)}
+.apc-demo-bar-fill{height:100%;border-radius:3px}
+.apc-demo-bar-lbl{font:500 10px var(--body);color:#64748b;margin-top:4px;text-align:center}
+.apc-demo-diag{font:400 13px/1.55 var(--body);color:#cbd5e1;padding:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px}
+.apc-demo-diag b{color:#fff;font-weight:600}
+/* APC features row */
+.apc-feats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}
+.apc-feat{text-align:center;padding:14px 10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px}
+.apc-feat-val{font:800 20px var(--num);color:#fff;margin-bottom:2px}
+.apc-feat-lbl{font:400 11px var(--body);color:#64748b}
+@media(max-width:768px){.apc-card{grid-template-columns:1fr;padding:36px 24px;gap:32px}.apc-feats{grid-template-columns:repeat(3,1fr)}}
+
 /* FEATURES */
 .features{max-width:1100px;margin:0 auto;padding:80px 24px 0}
 .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
@@ -598,6 +638,93 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="accel-item-ico">&#128165;</div>
         <div class="accel-item-name">Oferta por tiempo limitado</div>
         <div class="accel-item-desc">Descuento + cronometro. La oferta desaparece y tu cliente lo sabe desde que abre la cotizacion.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- APC THERMOMETER -->
+<section class="apc">
+  <div class="apc-card">
+    <div class="apc-left">
+      <div class="apc-badge">Exclusivo CotizaCloud</div>
+      <div class="apc-title">Termometro de <em>Productividad Comercial</em></div>
+      <div class="apc-desc">Un algoritmo que mide la efectividad real de cada vendedor — automaticamente. No es opinion, son datos. Se auto-ajusta a tu empresa y evoluciona con tu equipo.</div>
+      <div class="apc-dims">
+        <div class="apc-dim">
+          <div class="apc-dim-pct" style="color:#34d399">20%</div>
+          <div class="apc-dim-info">
+            <div class="apc-dim-name">Activacion</div>
+            <div class="apc-dim-sub">¿Las cotizaciones llegan al cliente? Detecta dormidas y problemas de entrega.</div>
+          </div>
+        </div>
+        <div class="apc-dim">
+          <div class="apc-dim-pct" style="color:#60a5fa">35%</div>
+          <div class="apc-dim-info">
+            <div class="apc-dim-name">Seguimiento</div>
+            <div class="apc-dim-sub">¿Da seguimiento activo? Mide velocidad de reaccion, uso del Radar y atencion a senales calientes.</div>
+          </div>
+        </div>
+        <div class="apc-dim">
+          <div class="apc-dim-pct" style="color:#f59e0b">45%</div>
+          <div class="apc-dim-info">
+            <div class="apc-dim-name">Conversion</div>
+            <div class="apc-dim-sub">¿Cierra ventas? Lo que mas pesa. Calidad del cierre, velocidad y consistencia semanal.</div>
+          </div>
+        </div>
+      </div>
+      <div class="apc-feats">
+        <div class="apc-feat">
+          <div class="apc-feat-val">30d</div>
+          <div class="apc-feat-lbl">Ventana rolling</div>
+        </div>
+        <div class="apc-feat">
+          <div class="apc-feat-val">17</div>
+          <div class="apc-feat-lbl">Senales analizadas</div>
+        </div>
+        <div class="apc-feat">
+          <div class="apc-feat-val">Auto</div>
+          <div class="apc-feat-lbl">Benchmarks por empresa</div>
+        </div>
+      </div>
+    </div>
+    <div class="apc-right">
+      <div class="apc-demo">
+        <div class="apc-demo-header">
+          <div class="apc-demo-gauge">
+            <?php
+            $demo_pct = 87;
+            $demo_circ = 2 * M_PI * 26;
+            $demo_dash = $demo_circ * ($demo_pct / 100);
+            ?>
+            <svg width="64" height="64" viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5"/>
+              <circle cx="32" cy="32" r="26" fill="none" stroke="#2563eb" stroke-width="5"
+                      stroke-dasharray="<?= round($demo_dash, 1) ?> <?= round($demo_circ, 1) ?>"
+                      stroke-linecap="round"/>
+            </svg>
+            <div class="apc-demo-num"><?= $demo_pct ?></div>
+          </div>
+          <div class="apc-demo-info">
+            <div class="apc-demo-nivel">Excepcional <span style="color:#16a34a">&#8593;</span></div>
+            <div class="apc-demo-detail"><b>12</b>/14 abiertas · <b>8</b> cierres · <b>3</b> desde radar</div>
+          </div>
+        </div>
+        <div class="apc-demo-bars">
+          <div class="apc-demo-bar-wrap">
+            <div class="apc-demo-bar"><div class="apc-demo-bar-fill" style="width:92%;background:#16a34a"></div></div>
+            <div class="apc-demo-bar-lbl">Activacion</div>
+          </div>
+          <div class="apc-demo-bar-wrap">
+            <div class="apc-demo-bar"><div class="apc-demo-bar-fill" style="width:78%;background:#16a34a"></div></div>
+            <div class="apc-demo-bar-lbl">Seguimiento</div>
+          </div>
+          <div class="apc-demo-bar-wrap">
+            <div class="apc-demo-bar"><div class="apc-demo-bar-fill" style="width:90%;background:#16a34a"></div></div>
+            <div class="apc-demo-bar-lbl">Conversion</div>
+          </div>
+        </div>
+        <div class="apc-demo-diag">Casi todo lo que envia llega al cliente. Da buen seguimiento con el radar. <b>Excelente tasa de cierre</b> — 3 cierres asistidos por radar, todos a precio completo. Tendencia en mejora. <span style="color:#60a5fa">Tip: mantener el ritmo actual.</span></div>
       </div>
     </div>
   </div>
