@@ -434,12 +434,32 @@ class ActividadScore
         $s_conversion = max(0.0, min(1.0, $s_conversion));
 
         // ═══════════════════════════════════════════════════
-        //  SCORE PROPORCIONAL (Ángulo 3: Uso vs Resultados)
+        //  SCORE PROPORCIONAL — PESOS DINÁMICOS
+        //  Si no hay datos de actividad_log (radar/consultas),
+        //  Seguimiento no tiene base para medirse → redistribuir
+        //  peso solo entre las dimensiones con datos reales.
         // ═══════════════════════════════════════════════════
 
-        $proporcional = $s_activacion  * 0.20
-                      + $s_seguimiento * 0.35
-                      + $s_conversion  * 0.45;
+        // ¿Hay datos de actividad_log para este usuario?
+        $total_log_entries = (int)DB::val(
+            "SELECT COUNT(*) FROM actividad_log
+             WHERE usuario_id=? AND tipo IN ('radar_view','quote_view','client_view')
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $periodo]
+        );
+
+        // Confianza en seguimiento: necesita al menos 5 registros para ser confiable
+        $confianza_seg = min($total_log_entries / 5.0, 1.0);
+
+        // Pesos base: Activación=20%, Seguimiento=35%, Conversión=45%
+        // Si no hay datos de seguimiento, redistribuir su peso a conversión
+        $w_act  = 0.20;
+        $w_seg  = 0.35 * $confianza_seg;
+        $w_conv = 1.0 - $w_act - $w_seg; // absorbe lo que seguimiento no puede medir
+
+        $proporcional = $s_activacion * $w_act
+                      + $s_seguimiento * $w_seg
+                      + $s_conversion * $w_conv;
 
         // ═══════════════════════════════════════════════════
         //  ÁNGULO 1: MOMENTUM (vs su propio histórico)
@@ -458,7 +478,7 @@ class ActividadScore
             $ema_seg  = $alpha * $s_seguimiento + (1 - $alpha) * (float)($prev['ema_seguimiento'] ?? $s_seguimiento);
             $ema_conv = $alpha * $s_conversion  + (1 - $alpha) * (float)($prev['ema_conversion'] ?? $s_conversion);
 
-            $ema_composite = $ema_act * 0.20 + $ema_seg * 0.35 + $ema_conv * 0.45;
+            $ema_composite = $ema_act * $w_act + $ema_seg * $w_seg + $ema_conv * $w_conv;
             $cur_composite = $proporcional;
 
             $momentum = $ema_composite > 0
@@ -499,7 +519,7 @@ class ActividadScore
                 if ((int)$t['id'] === $usuario_id) {
                     $scores_equipo[] = $proporcional;
                 } else {
-                    $scores_equipo[] = (float)$t['sa'] * 0.20 + (float)$t['ss'] * 0.35 + (float)$t['scv'] * 0.45;
+                    $scores_equipo[] = (float)$t['sa'] * $w_act + (float)$t['ss'] * $w_seg + (float)$t['scv'] * $w_conv;
                 }
             }
             sort($scores_equipo);
