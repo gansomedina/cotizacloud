@@ -256,6 +256,18 @@ class ActividadScore
             [$usuario_id, $periodo]
         );
 
+        // ── Antigüedad del usuario en la plataforma ──
+        // Un usuario con <7 días no ha tenido tiempo de aprender las herramientas.
+        // No penalizar señales ignoradas ni declarar tendencias de momentum.
+        $primer_actividad = DB::val(
+            "SELECT MIN(created_at) FROM actividad_log WHERE usuario_id=?",
+            [$usuario_id]
+        );
+        $dias_en_plataforma = $primer_actividad
+            ? (int)ceil((time() - strtotime($primer_actividad)) / 86400)
+            : $dias_activos;
+        $es_usuario_nuevo = $dias_en_plataforma < 7;
+
         // Señales calientes ignoradas (FIX: 2 queries, no N+1)
         // Cotizaciones con 3+ visitas recientes = cliente interesado
         $cot_calientes = (int)DB::val(
@@ -637,6 +649,12 @@ class ActividadScore
                 ? $cur_composite / $ema_composite
                 : ($cur_composite > 0 ? 2.0 : 1.0);
             $momentum = max(0.1, min(10.0, $ratio)); // clamp para evitar log(0)
+
+            // Usuarios nuevos (<7 días): forzar momentum neutro.
+            // No hay suficiente historial para declarar tendencia.
+            if ($es_usuario_nuevo) {
+                $momentum = 1.0;
+            }
         } else {
             // Primera vez
             $ema_act  = $s_activacion;
@@ -872,7 +890,8 @@ class ActividadScore
         if ($tasa_ap >= 0.90) {
             $frases[] = "Casi todo lo que envía llega al cliente";
         } elseif ($tasa_ap >= 0.60) {
-            $frases[] = "Buena tasa de entrega, " . ($asig - $vist) . " cotizaciones sin abrir";
+            $sin_abrir = $asig - $vist;
+            $frases[] = "Buena tasa de entrega, $sin_abrir " . ($sin_abrir === 1 ? "cotización sin abrir" : "cotizaciones sin abrir");
         } elseif ($tasa_ap >= 0.30) {
             $frases[] = "Muchas cotizaciones no se abren — revisar canal de envío";
         } else {
@@ -903,7 +922,9 @@ class ActividadScore
 
         // ── CONVERSIÓN ──
         if ($cierres === 0 && $vist >= 3) {
-            $frases[] = "cotiza pero no cierra — " . $vist . " abiertas sin resultado";
+            $frases[] = $vist === 1
+                ? "cotiza pero no cierra — 1 abierta sin resultado"
+                : "cotiza pero no cierra — $vist abiertas sin resultado";
         } elseif ($cierres === 0) {
             $frases[] = "aún sin cierres en el período";
         } elseif ($conv >= 0.70) {
@@ -918,10 +939,14 @@ class ActividadScore
 
         // ── SEÑALES ESPECÍFICAS ──
         if ($dorm > 0) {
-            $frases[] = "$dorm cotizaciones enviadas que nadie abrió en 7+ días";
+            $frases[] = $dorm === 1
+                ? "1 cotización enviada que nadie abrió en 7+ días"
+                : "$dorm cotizaciones enviadas que nadie abrió en 7+ días";
         }
         if ($ign > 0) {
-            $frases[] = "clientes activos sin atender — $ign señales calientes ignoradas";
+            $frases[] = $ign === 1
+                ? "1 cliente activo sin atender — señal caliente ignorada"
+                : "clientes activos sin atender — $ign señales calientes ignoradas";
         }
         // Fix P3: Mencionar descuentos si cierra mayormente con descuento
         if ($cierres > 0 && $sdto < $cierres) {
