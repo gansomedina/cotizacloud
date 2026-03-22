@@ -119,156 +119,88 @@ class ActividadScore
     // ─── Calcular score completo de un usuario ───────────
     public static function calcular(int $usuario_id, int $empresa_id): array
     {
+        // Período base 30d, pero auto-escala si el ciclo de venta de la empresa es largo
+        // Primero calcular benchmarks con 30d, luego ajustar si time_to_close > 20d
+        $bench = self::_benchmarks($empresa_id, self::PERIODO);
         $periodo = self::PERIODO;
-        $bench = self::_benchmarks($empresa_id, $periodo);
+        if ($bench['time_to_close'] > 20) {
+            // Empresa con ciclo largo: extender período para capturar suficientes cierres
+            // ttc=30d → periodo=45d, ttc=60d → periodo=60d (cap 60)
+            $periodo = (int)min(max(self::PERIODO, $bench['time_to_close'] * 1.5), 60);
+            // Recalcular benchmarks con el período extendido
+            unset(self::$_bench[$empresa_id]);
+            $bench = self::_benchmarks($empresa_id, $periodo);
+        }
 
         // ═══════════════════════════════════════════════════
         //  SEÑALES CRUDAS (últimos 30 días)
         // ═══════════════════════════════════════════════════
 
-        // Cotizaciones asignadas al vendedor en el período (Fix 6: total > 0)
-        $cot_asignadas = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND total > 0
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $empresa_id, $periodo]
+        // ── QUERY CONSOLIDADA: cotizaciones del vendedor (14 queries → 1) ──
+        $cw = "COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?";
+        $stats = DB::row(
+            "SELECT
+              SUM(total > 0 AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS asignadas,
+              SUM(total > 0 AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                  AND (estado IN ('vista','aceptada','convertida','aceptada_cliente') OR visitas > 0)) AS vistas,
+              SUM(estado = 'enviada' AND visitas = 0
+                  AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
+                  AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS dorm7,
+              SUM(estado = 'enviada' AND visitas = 0
+                  AND created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)
+                  AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS dorm14,
+              SUM(estado = 'enviada' AND visitas = 0
+                  AND created_at < DATE_SUB(NOW(), INTERVAL 21 DAY)
+                  AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS dorm21,
+              SUM(estado IN ('aceptada','convertida','aceptada_cliente')
+                  AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS cierres,
+              SUM(estado IN ('aceptada','convertida','aceptada_cliente')
+                  AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                  AND radar_bucket IS NOT NULL) AS cierres_bkt,
+              SUM(estado IN ('aceptada','convertida','aceptada_cliente')
+                  AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                  AND (cupon_pct IS NULL OR cupon_pct = 0)
+                  AND (descuento_auto_pct IS NULL OR descuento_auto_pct = 0)) AS cierres_sdto,
+              SUM(estado IN ('borrador','enviada','vista')) AS pipeline,
+              SUM(radar_bucket IS NOT NULL AND radar_bucket != 'no_abierta'
+                  AND estado IN ('enviada','vista')
+                  AND radar_updated_at < DATE_SUB(NOW(), INTERVAL 14 DAY)) AS bkt_estanc,
+              SUM(valida_hasta IS NOT NULL AND valida_hasta < CURDATE()
+                  AND estado IN ('enviada','vista') AND accion_at IS NULL) AS vencidas,
+              SUM(estado IN ('enviada','vista')
+                  AND COALESCE(radar_updated_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 21 DAY)
+                  AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS zm
+             FROM cotizaciones WHERE $cw",
+            [$usuario_id, $empresa_id,
+             $periodo, $periodo, $periodo, $periodo, $periodo,
+             $periodo, $periodo, $periodo, $periodo]
         );
+        $cot_asignadas     = (int)($stats['asignadas'] ?? 0);
+        $cot_vistas        = (int)($stats['vistas'] ?? 0);
+        $dormidas_7d       = (int)($stats['dorm7'] ?? 0);
+        $dormidas_14d      = (int)($stats['dorm14'] ?? 0);
+        $dormidas_21d      = (int)($stats['dorm21'] ?? 0);
+        $cierres_total     = (int)($stats['cierres'] ?? 0);
+        $cierres_bucket    = (int)($stats['cierres_bkt'] ?? 0);
+        $cierres_sin_dto   = (int)($stats['cierres_sdto'] ?? 0);
+        $carga_activa      = (int)($stats['pipeline'] ?? 0);
+        $buckets_estancados = (int)($stats['bkt_estanc'] ?? 0);
+        $vencidas_sin_accion = (int)($stats['vencidas'] ?? 0);
+        $zona_muerta       = (int)($stats['zm'] ?? 0);
 
-        // Cotizaciones vistas por el cliente (Fix 6: total > 0)
-        $cot_vistas = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND total > 0
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND (estado IN ('vista','aceptada','convertida','aceptada_cliente') OR visitas > 0)",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-
-        // Cotizaciones dormidas: asignadas >7 días sin ninguna apertura
-        $dormidas_7d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND visitas = 0
-             AND estado = 'enviada'",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-
-        $dormidas_14d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND visitas = 0
-             AND estado = 'enviada'",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-
-        $dormidas_21d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND created_at < DATE_SUB(NOW(), INTERVAL 21 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND visitas = 0
-             AND estado = 'enviada'",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-
-        // Sesiones de radar del vendedor
-        $radar_sessions = (int)DB::val(
-            "SELECT COUNT(*) FROM actividad_log
-             WHERE usuario_id=? AND tipo='radar_view'
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+        // ── QUERY CONSOLIDADA: actividad_log (3 queries → 1) ──
+        $alog = DB::row(
+            "SELECT
+              SUM(tipo = 'radar_view') AS radar,
+              SUM(tipo IN ('quote_view','client_view')) AS consultas,
+              COUNT(DISTINCT CASE WHEN tipo IN ('radar_view','quote_view','client_view') THEN DATE(created_at) END) AS dias
+             FROM actividad_log
+             WHERE usuario_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $periodo]
         );
-
-        // Consultas de cotizaciones/clientes en el sistema
-        $consultas = (int)DB::val(
-            "SELECT COUNT(*) FROM actividad_log
-             WHERE usuario_id=? AND tipo IN ('quote_view','client_view')
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $periodo]
-        );
-
-        // Días con actividad real (no solo login — consulta, radar o acción)
-        $dias_activos = (int)DB::val(
-            "SELECT COUNT(DISTINCT DATE(created_at)) FROM actividad_log
-             WHERE usuario_id=? AND tipo IN ('radar_view','quote_view','client_view')
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $periodo]
-        );
-
-        // Cierres (aceptada/convertida) en el período
-        $cierres_total = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND estado IN ('aceptada','convertida','aceptada_cliente')
-             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-
-        // Cierres desde bucket (el radar detectó interés → se cerró)
-        $cierres_bucket = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND estado IN ('aceptada','convertida','aceptada_cliente')
-             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND radar_bucket IS NOT NULL",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-
-        // Cierres sin descuento (precio completo)
-        $cierres_sin_dto = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND estado IN ('aceptada','convertida','aceptada_cliente')
-             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND (cupon_pct IS NULL OR cupon_pct = 0)
-             AND (descuento_auto_pct IS NULL OR descuento_auto_pct = 0)",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-
-        // Carga activa (pipeline actual)
-        $carga_activa = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND estado IN ('borrador','enviada','vista')",
-            [$usuario_id, $empresa_id]
-        );
-
-        // Buckets estancados >14 días sin transición
-        $buckets_estancados = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND radar_bucket IS NOT NULL
-             AND radar_bucket NOT IN ('no_abierta')
-             AND estado IN ('enviada','vista')
-             AND radar_updated_at < DATE_SUB(NOW(), INTERVAL 14 DAY)",
-            [$usuario_id, $empresa_id]
-        );
-
-        // Cotizaciones vencidas sin acción
-        $vencidas_sin_accion = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND valida_hasta IS NOT NULL
-             AND valida_hasta < CURDATE()
-             AND estado IN ('enviada','vista')
-             AND accion_at IS NULL",
-            [$usuario_id, $empresa_id]
-        );
-
-        // Zona muerta: cotizaciones >21 días sin movimiento
-        $zona_muerta = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND estado IN ('enviada','vista')
-             AND COALESCE(radar_updated_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 21 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $empresa_id, $periodo]
-        );
+        $radar_sessions = (int)($alog['radar'] ?? 0);
+        $consultas      = (int)($alog['consultas'] ?? 0);
+        $dias_activos   = (int)($alog['dias'] ?? 0);
 
         // Señales calientes ignoradas (FIX: 2 queries, no N+1)
         // Cotizaciones con 3+ visitas recientes = cliente interesado
@@ -356,15 +288,20 @@ class ActividadScore
             $ttc_score = self::sigmoid($ratio_ttc, 1.0, 3.0);
         }
 
-        // Fix 4: Transiciones — premiar REACCIÓN del vendedor, no la transición del cliente
-        // Una transición frío→caliente la causa el cliente. Lo que importa es si el vendedor
-        // revisó el radar dentro de las 48h PREVIAS a esa transición (causó la acción del cliente).
+        // Transiciones — single query con LEFT JOIN para detectar reacción
         $transiciones_up = 0;
         $transiciones_down = 0;
         $transiciones_con_reaccion = 0;
         try {
             $trans = DB::query(
-                "SELECT bt.bucket_anterior, bt.bucket_nuevo, bt.created_at AS bt_at
+                "SELECT bt.bucket_anterior, bt.bucket_nuevo,
+                        EXISTS(
+                            SELECT 1 FROM actividad_log al
+                            WHERE al.usuario_id = bt.vendedor_id
+                            AND al.tipo IN ('radar_view','quote_view')
+                            AND al.created_at BETWEEN DATE_SUB(bt.created_at, INTERVAL 48 HOUR) AND bt.created_at
+                            LIMIT 1
+                        ) AS reacciono
                  FROM bucket_transitions bt
                  WHERE bt.vendedor_id=? AND bt.empresa_id=?
                  AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
@@ -377,14 +314,7 @@ class ActividadScore
                 if (!$temp_ant || !$temp_new) continue;
                 if (($order[$temp_new] ?? 0) > ($order[$temp_ant] ?? 0)) {
                     $transiciones_up++;
-                    // ¿El vendedor revisó radar en las 48h ANTES de esta transición?
-                    $reacted = (int)DB::val(
-                        "SELECT COUNT(*) FROM actividad_log
-                         WHERE usuario_id=? AND tipo IN ('radar_view','quote_view')
-                         AND created_at BETWEEN DATE_SUB(?, INTERVAL 48 HOUR) AND ?",
-                        [$usuario_id, $t['bt_at'], $t['bt_at']]
-                    );
-                    if ($reacted > 0) $transiciones_con_reaccion++;
+                    if ((int)$t['reacciono']) $transiciones_con_reaccion++;
                 } elseif (($order[$temp_new] ?? 0) < ($order[$temp_ant] ?? 0)) {
                     $transiciones_down++;
                 }
@@ -439,6 +369,7 @@ class ActividadScore
 
         // Fix 12: midpoint auto-ajustable al promedio de la empresa
         $s_activacion = self::sigmoid($tasa_apertura, $bench['apertura'], 2.0 / max($bench['apertura'], 0.1)) - ($pen_dormidas * 0.4);
+        // Tope: penalizaciones de activación no pueden bajar más de 0.60
         $s_activacion = max(0.0, min(1.0, $s_activacion));
 
         // ═══════════════════════════════════════════════════
@@ -466,9 +397,10 @@ class ActividadScore
         // Penalización por transiciones caliente→frío
         $pen_trans_down = min($transiciones_down * 0.05, 0.2);
 
-        // Fix 11: tasa_reaccion entra con 30% del peso de seguimiento
+        // tasa_reaccion entra con 35% del peso de seguimiento
+        $pen_seguimiento = min($pen_buckets + $pen_senales + $pen_trans_down, 0.60); // cap 0.60
         $s_seguimiento = ($s_radar * 0.30 + $s_consultas * 0.15 + $tasa_reaccion * 0.35 + $bonus_transiciones * 0.20)
-                         - $pen_buckets - $pen_senales - $pen_trans_down;
+                         - $pen_seguimiento;
         $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
 
         // ═══════════════════════════════════════════════════
@@ -520,13 +452,14 @@ class ActividadScore
             $pen_volumen_sin_cierre = min((1.0 - $tasa_cierre / $half_bench) * 0.3, 0.3);
         }
 
-        // Fix 1 + 12: close rate + quality + velocidad de cierre
+        // close rate + quality + velocidad de cierre
+        $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre, 0.65); // cap 0.65
         $s_conversion = (
             self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01)) * 0.40
             + $cierre_quality * 0.35
             + $ttc_score * 0.25
         )
-                        - $pen_vencidas - $pen_zona_muerta - $pen_volumen_sin_cierre;
+                        - $pen_conversion;
         $s_conversion = max(0.0, min(1.0, $s_conversion));
 
         // ═══════════════════════════════════════════════════
@@ -698,7 +631,7 @@ class ActividadScore
         else $nivel = 'bajo';
 
         // Total penalizaciones y bonuses (para display)
-        $total_pen = $pen_dormidas + $pen_buckets + $pen_senales + $pen_vencidas + $pen_zona_muerta + $pen_trans_down + $pen_volumen_sin_cierre;
+        $total_pen = min($pen_dormidas, 0.60) + $pen_seguimiento + $pen_conversion;
         $total_bonus = $bonus_transiciones + ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0);
 
         // ═══════════════════════════════════════════════════
