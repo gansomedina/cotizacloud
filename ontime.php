@@ -329,9 +329,6 @@ if (!$today_is_biz && $cts >= $today_start) {
  *  CONFIG
  *  ========================= */
 
-// Vista real: 1 por IP cada 30 min
-$dedupe_window_seconds = 30 * 60;
-
 // Excluir usuarios internos
 $exclude_bys = ['admin','ontime','mlimon','nog'];
 
@@ -366,155 +363,515 @@ $internal_visitors_file = __DIR__ . '/internal_visitors.json';
 $events_js_lookback_days = 150;
 $events_js_min_ts = $now - ($events_js_lookback_days * 86400);
 
-// Reglas base
-$active_hours = 48;
-
-// Probable cierre
-$hot_close_last_hours   = 24;
-$hot_close_min_views24  = 1;
-$hot_close_min_views7d  = 2;
-
-// Cierre inminente
-$imminent_recent_hours        = 24;
-$imminent_min_fit_pct         = 8.5;
-$imminent_min_age_hours       = 2;
-$imminent_min_guest_sessions  = 1;
-
-$imminent_ip_window_min       = 180;
-$imminent_signal_views24      = 2;
-$imminent_signal_ips_120m     = 2;
-$imminent_signal_closes       = 1;
-
-$imminent_signal_scroll_pct   = 90;
-$imminent_signal_visible_max  = 15000;
-$imminent_signal_visible_sum  = 18000;
-$imminent_signal_views48      = 3;
-$imminent_signal_span_hours   = 6;
-
-$imminent_signal_coupon_click = 1;
-$imminent_min_signals_total   = 2;
-$imminent_min_signals_strong  = 1;
-
-// Comparando / Compartiendo
-$compare_window_hours   = 24;
-$compare_window_minutes = $compare_window_hours * 60;
-$compare_min_ips        = 2;
-$compare_recent_hours   = 24;
-
-// Vistas múltiples
-$multi_window_hours   = 24;
-$multi_window_minutes = $multi_window_hours * 60;
-$multi_min_ips        = 2;
-$multi_min_views24    = 3;
-$multi_recent_hours   = 24;
-
-// Decisión activa
-$decision_window_hours   = 48;
-$decision_min_views48    = 4;
-$decision_min_span_hours = 6;
-
-// Regreso
-$return_gap_days     = 4;
-$return_recent_hours = 48;
-
-// Revivió
-$revive_gap_days     = 30;
-$revive_recent_hours = 48;
-
-// Alto importe
-$high_amount_threshold    = 120000;
-$high_amount_recent_hours = 48;
-
-// Enfriándose
-$cooling_days               = 7;
-$cooling_min_total_sessions = 4;
-
-// Predicción alta
-$predict_fit_threshold_pct = 14;
-$predict_recent_days       = 30;
-
-// ON FIRE
-$onfire_recent_hours      = 72;
-$onfire_min_sessions      = 2;
-$onfire_min_scroll_pct    = 90;
-$onfire_min_visible_sum   = 30000;
-$onfire_min_visible_max   = 22000;
-$onfire_min_gap_days      = 1;
-$onfire_min_views48       = 3;
-$onfire_min_span_hours    = 6;
-
-// Validando precio
-$priceval_recent_hours          = 72;
-$priceval_support_visible_soft  = 4000;
-$priceval_support_visible_hard  = 8000;
-$priceval_support_scroll_soft   = 50;
-$priceval_support_scroll_hard   = 90;
-
-// NO ABIERTA
-$not_opened_max_age_days      = 7;
-$not_opened_min_age_minutes   = 1440;
+/** =========================
+ *  FASE 2: SISTEMA DE 3 MODOS
+ *  Cada umbral tiene [agresivo, medio, ligero]
+ *  "medio"    = valores originales de On Time (tal cual estaban)
+ *  "agresivo" = umbrales más permisivos (más cotizaciones clasificadas)
+ *  "ligero"   = umbrales más exigentes  (solo señales sólidas)
+ *  ========================= */
 
 /** =========================
- *  BUCKETS NUEVOS EXISTENTES
+ *  FASE 4: Config persistente (JSON en wp_options)
  *  ========================= */
-$reeng_gap_days         = 4;
-$reeng_recent_hours     = 168;
-$reeng_min_guest_24h    = 1;
-$reeng_min_views24      = 1;
-$reeng_min_fit_pct      = 5.0;
+function radar_config_load() {
+  $defaults = [
+    'sensibilidad'     => 'medio',
+    'calibracion_auto' => true,
+    'excluir_internos' => true,
+    'filtrar_bots'     => true,
+    'deduplicar_30min' => true,
+  ];
 
-$multip_recent_hours           = 72;
-$multip_ip_window_min          = 90;
-$multip_min_ips_post_guest_win = 3;
-$multip_min_guest_total        = 2;
+  $raw = get_option('radar_config', '');
+  if ($raw) {
+    $cfg = json_decode($raw, true);
+    if (is_array($cfg)) {
+      return array_merge($defaults, $cfg);
+    }
+  }
+  return $defaults;
+}
 
-$deep_recent_hours     = 72;
-$deep_min_views48      = 3;
-$deep_min_span_hours   = 3;
-$deep_min_guest_48h    = 1;
+function radar_config_save($cfg) {
+  update_option('radar_config', wp_json_encode($cfg, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), false);
+}
 
-$hes_min_guest_7d      = 2;
-$hes_last_min_hours    = 24;
-$hes_last_max_days     = 7;
-$hes_max_ips_total     = 2;
-$hes_max_span_hours    = 6;
+$radar_config = radar_config_load();
 
-$over_min_sessions_total = 20;
-$over_min_guest_total    = 8;
-$over_min_age_days       = 7;
-$over_recent_days        = 21;
-$over_max_fit_pct        = 14.0;
-$over_max_ips_post_guest_180m = 4;
+// Admin puede cambiar modo via ?modo=agresivo|medio|ligero
+if (
+  current_user_can('manage_options') &&
+  isset($_GET['modo']) &&
+  in_array($_GET['modo'], ['agresivo', 'medio', 'ligero'], true)
+) {
+  $radar_config['sensibilidad'] = sanitize_text_field($_GET['modo']);
+  radar_config_save($radar_config);
+}
+
+$radar_modo = $radar_config['sensibilidad'];
+if (!in_array($radar_modo, ['agresivo', 'medio', 'ligero'], true)) {
+  $radar_modo = 'medio';
+}
+
+// Índice del modo en los arrays: 0=agresivo, 1=medio, 2=ligero
+$MODO_IDX = ['agresivo' => 0, 'medio' => 1, 'ligero' => 2];
+$mi = $MODO_IDX[$radar_modo];
+
+// Helper: obtener umbral por modo
+function u($key) {
+  global $U, $mi;
+  return $U[$key][$mi];
+}
+
+$U = [
+  // ── Deduplicación de vistas (ventana de sesión) ──────
+  'dedupe_seconds'             => [1200,  1800,  3600 ],
+
+  // ── Bucket: Probable cierre ──────────────────────────
+  'hot_close_last_hours'       => [48,    24,    12   ],
+  'hot_close_min_views24'      => [1,     1,     2    ],
+  'hot_close_min_views7d'      => [2,     2,     3    ],
+
+  // ── Bucket: Inminente ────────────────────────────────
+  'imminent_recent_hours'      => [36,    24,    24   ],
+  'imminent_min_fit_pct'       => [6.0,   8.5,   11.0 ],
+  'imminent_min_age_hours'     => [2.0,   2.0,   6.0  ],
+  'imminent_min_guest'         => [1,     1,     2    ],
+  'imminent_ip_window_min'     => [240,   180,   120  ],
+  'imminent_signal_views24'    => [1,     2,     3    ],
+  'imminent_signal_ips_120m'   => [1,     2,     3    ],
+  'imminent_signal_closes'     => [1,     1,     2    ],
+  'imminent_signal_scroll_pct' => [70,    90,    90   ],
+  'imminent_signal_vis_max'    => [8000,  15000, 20000],
+  'imminent_signal_vis_sum'    => [10000, 18000, 25000],
+  'imminent_signal_views48'    => [2,     3,     4    ],
+  'imminent_signal_span_h'     => [3,     6,     8    ],
+  'imminent_signal_coupon'     => [1,     1,     1    ],
+  'imminent_min_signals'       => [1,     2,     3    ],
+  'imminent_min_strong'        => [1,     1,     2    ],
+
+  // ── Bucket: On Fire ──────────────────────────────────
+  'onfire_recent_hours'        => [96,    72,    48   ],
+  'onfire_min_sessions'        => [2,     2,     3    ],
+  'onfire_min_scroll_pct'      => [70,    90,    90   ],
+  'onfire_min_vis_sum'         => [20000, 30000, 40000],
+  'onfire_min_vis_max'         => [15000, 22000, 30000],
+  'onfire_min_gap_days'        => [1,     1,     1    ],
+  'onfire_min_views48'         => [2,     3,     4    ],
+  'onfire_min_span_h'          => [4,     6,     8    ],
+
+  // ── Bucket: Validando precio ─────────────────────────
+  'priceval_recent_hours'      => [96,    72,    48   ],
+  'priceval_vis_soft'          => [2000,  4000,  6000 ],
+  'priceval_vis_hard'          => [5000,  8000,  12000],
+  'priceval_vis_sum'           => [10000, 14000, 20000],
+  'priceval_scroll_soft'       => [40,    50,    70   ],
+  'priceval_scroll_hard'       => [70,    90,    90   ],
+
+  // ── Bucket: Predicción alta ──────────────────────────
+  'predict_min_fit_pct'        => [10.0,  14.0,  18.0 ],
+  'predict_recent_days'        => [45,    30,    21   ],
+
+  // ── Bucket: Decisión activa ──────────────────────────
+  'decision_window_h'          => [72,    48,    48   ],
+  'decision_min_views48'       => [2,     4,     5    ],
+  'decision_min_span_h'        => [3,     6,     8    ],
+
+  // ── Bucket: Re-enganche ──────────────────────────────
+  'reeng_gap_days'             => [2,     4,     6    ],
+  'reeng_recent_hours'         => [240,   168,   120  ],
+  'reeng_min_guest_24h'        => [1,     1,     1    ],
+  'reeng_min_views24'          => [1,     1,     2    ],
+
+  // ── Bucket: Multi-persona ────────────────────────────
+  'multip_recent_hours'        => [96,    72,    48   ],
+  'multip_ip_window_min'       => [720,   90,    360  ],
+  'multip_min_ips_post_guest'  => [2,     3,     4    ],
+  'multip_min_guest_total'     => [1,     2,     3    ],
+  'multip_boost_vis_max'       => [8000,  12000, 16000],
+
+  // ── Bucket: Revisión profunda ────────────────────────
+  'deep_recent_hours'          => [96,    72,    48   ],
+  'deep_min_views48'           => [2,     3,     4    ],
+  'deep_min_span_h'            => [2,     3,     4    ],
+  'deep_min_guest_48h'         => [1,     1,     2    ],
+  'deep_min_vis_max'           => [8000,  10000, 15000],
+  'deep_min_vis_sum'           => [14000, 18000, 25000],
+
+  // ── Bucket: Hesitación ───────────────────────────────
+  'hes_min_guest_7d'           => [1,     2,     3    ],
+  'hes_last_min_hours'         => [24,    24,    48   ],
+  'hes_last_max_days'          => [14,    7,     7    ],
+  'hes_max_ips_total'          => [3,     2,     2    ],
+  'hes_max_span_h'             => [8,     6,     4    ],
+
+  // ── Bucket: Sobre-análisis ───────────────────────────
+  'over_min_sessions'          => [12,    20,    28   ],
+  'over_min_guest'             => [5,     8,     12   ],
+  'over_min_age_days'          => [5,     7,     10   ],
+  'over_recent_days'           => [30,    21,    14   ],
+  'over_max_fit_pct'           => [18.0,  14.0,  10.0 ],
+  'over_max_ips_post_guest'    => [5,     4,     3    ],
+
+  // ── Bucket: Regreso ──────────────────────────────────
+  'return_gap_days'            => [2,     4,     6    ],
+  'return_recent_hours'        => [72,    48,    36   ],
+
+  // ── Bucket: Revivió ──────────────────────────────────
+  'revive_gap_days'            => [15,    30,    45   ],
+  'revive_recent_hours'        => [72,    48,    36   ],
+
+  // ── Bucket: Comparando ───────────────────────────────
+  'compare_min_ips'            => [2,     2,     3    ],
+  'compare_window_h'           => [36,    24,    24   ],
+
+  // ── Bucket: Enfriándose ──────────────────────────────
+  'cooling_min_sessions'       => [3,     4,     5    ],
+  'cooling_days'               => [10,    7,     5    ],
+  'cooling_min_silence_h'      => [60,    48,    36   ],
+
+  // ── Bucket: Alto importe ─────────────────────────────
+  'high_amount_threshold'      => [80000, 120000, 160000],
+  'high_amount_recent_hours'   => [72,    48,    36   ],
+
+  // ── Bucket: Vistas múltiples ─────────────────────────
+  'multi_min_ips'              => [2,     2,     3    ],
+  'multi_min_views24'          => [2,     3,     4    ],
+  'multi_recent_hours'         => [36,    24,    24   ],
+
+  // ── NO ABIERTA ───────────────────────────────────────
+  'not_opened_max_age_days'    => [10,    7,     5    ],
+  'not_opened_min_age_min'     => [720,   1440,  2880 ],
+];
+
+// Variables derivadas
+$dedupe_window_seconds     = u('dedupe_seconds');
+$active_hours              = 48;
 
 /** =========================
- *  MODELO FIT
+ *  FASE 2: MODELO FIT — Auto-calibración con Laplace smoothing
  *  ========================= */
-$GLOBAL_CLOSE_RATE = 0.0815;
 
-$RATE_SESS = [
-  '1'    => 0.0345,
-  '2'    => 0.0833,
-  '3-4'  => 0.0585,
-  '5-7'  => 0.0968,
-  '8-12' => 0.1085,
-  '13+'  => 0.0740,
-];
-
-$RATE_IPS = [
-  '1'  => 0.0345,
-  '2'  => 0.1316,
-  '3'  => 0.0333,
-  '4+' => 0.0823,
-];
-
-$RATE_GAP = [
-  'sin'  => 0.0979,
-  '1-3d' => 0.0873,
-  '4+d'  => 0.0775,
+// Tasas base neutras (fallback antes de calibrar)
+$FIT_DEFAULTS = [
+  'global' => 0.0815,
+  'sess' => [
+    '1'    => 0.0345,
+    '2'    => 0.0833,
+    '3-4'  => 0.0585,
+    '5-7'  => 0.0968,
+    '8-12' => 0.1085,
+    '13+'  => 0.0740,
+  ],
+  'ips' => [
+    '1'  => 0.0345,
+    '2'  => 0.1316,
+    '3'  => 0.0333,
+    '4+' => 0.0823,
+  ],
+  'gap' => [
+    'sin'  => 0.0979,
+    '1-3d' => 0.0873,
+    '4+d'  => 0.0775,
+  ],
 ];
 
 $FIT_MIN = 0.005;
 $FIT_MAX = 0.35;
+
+// Laplace smoothing alpha — previene overfitting con pocos datos
+$FIT_LAPLACE_ALPHA = 5;
+
+// Caps de multiplicadores — evita swings extremos
+$FIT_MULT_MIN = 0.3;
+$FIT_MULT_MAX = 3.0;
+
+/**
+ * Fase 2: Auto-calibración FIT
+ * Calcula tasas de cierre reales desde quotes accepted en WordPress.
+ * Guarda en wp_options como JSON. Recalibra proporcionalmente.
+ */
+function radar_fit_calibrar($wpdb, $quote_ids_all, $accepted_ids_all) {
+  global $FIT_DEFAULTS, $FIT_LAPLACE_ALPHA;
+
+  $total = count($quote_ids_all);
+  $sales = count($accepted_ids_all);
+
+  // Necesita ≥3 ventas para calibrar
+  if ($sales < 3) {
+    return null;
+  }
+
+  $global_rate = $sales / max(1, $total);
+
+  // Clasificar cada quote en buckets de sesiones, IPs, gap
+  $by_sess = [];
+  $by_ips  = [];
+  $by_gap  = [];
+
+  $events_table = $wpdb->prefix . 'sliced_quote_events';
+  $table_exists = ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $events_table)) === $events_table);
+
+  foreach ($quote_ids_all as $qid) {
+    $qid = (int)$qid;
+    $is_sale = isset($accepted_ids_all[$qid]);
+
+    // Contar sesiones y IPs desde log
+    $log_val = get_post_meta($qid, '_sliced_log', true);
+    $log = [];
+    if ($log_val) {
+      $log = is_array($log_val) ? $log_val : @unserialize($log_val);
+      if (!is_array($log)) $log = [];
+    }
+
+    $sess_count = 0;
+    $ips_seen = [];
+    $sess_ts = [];
+
+    foreach ($log as $ts => $entry) {
+      if (!is_array($entry)) continue;
+      if (($entry['type'] ?? '') !== 'quote_viewed') continue;
+      $ip = trim((string)($entry['ip'] ?? ''));
+      if ($ip === '') continue;
+      $sess_count++;
+      $ips_seen[$ip] = true;
+      $sess_ts[] = (int)$ts;
+    }
+
+    // Sesiones desde JS events si hay
+    if ($table_exists) {
+      $ev_sess = (int)$wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(DISTINCT session_id) FROM {$events_table} WHERE quote_id = %d",
+        $qid
+      ));
+      if ($ev_sess > $sess_count) $sess_count = $ev_sess;
+    }
+
+    if ($sess_count <= 0) continue;
+
+    $ip_count = count($ips_seen);
+    sort($sess_ts);
+    $gap = null;
+    if (count($sess_ts) >= 2) {
+      $gap = max(0, (int)floor(($sess_ts[count($sess_ts)-1] - $sess_ts[count($sess_ts)-2]) / 86400));
+    }
+
+    $sl = _bucket_sessions_label($sess_count);
+    $il = _bucket_ips_label($ip_count);
+    $gl = _bucket_gap_label($gap);
+
+    if (!isset($by_sess[$sl])) $by_sess[$sl] = [0, 0];
+    $by_sess[$sl][0]++;
+    if ($is_sale) $by_sess[$sl][1]++;
+
+    if (!isset($by_ips[$il])) $by_ips[$il] = [0, 0];
+    $by_ips[$il][0]++;
+    if ($is_sale) $by_ips[$il][1]++;
+
+    if (!isset($by_gap[$gl])) $by_gap[$gl] = [0, 0];
+    $by_gap[$gl][0]++;
+    if ($is_sale) $by_gap[$gl][1]++;
+  }
+
+  // Laplace smoothing: rate = (sales + α * prior) / (total + α)
+  $alpha = $FIT_LAPLACE_ALPHA;
+  $smooth = function($bucket_data, $defaults, $global) use ($alpha) {
+    $result = [];
+    foreach ($defaults as $key => $prior) {
+      $t = (int)($bucket_data[$key][0] ?? 0);
+      $s = (int)($bucket_data[$key][1] ?? 0);
+      $result[$key] = ($t > 0)
+        ? round(($s + $alpha * $prior) / ($t + $alpha), 4)
+        : $prior;
+    }
+    return $result;
+  };
+
+  $cal = [
+    'global'  => round($global_rate, 4),
+    'sess'    => $smooth($by_sess, $FIT_DEFAULTS['sess'], $global_rate),
+    'ips'     => $smooth($by_ips,  $FIT_DEFAULTS['ips'],  $global_rate),
+    'gap'     => $smooth($by_gap,  $FIT_DEFAULTS['gap'],  $global_rate),
+    'total'   => $total,
+    'sales'   => $sales,
+    'updated' => time(),
+  ];
+
+  update_option('radar_fit_calibracion', wp_json_encode($cal), false);
+
+  return $cal;
+}
+
+/**
+ * Fase 2: Cargar calibración (de cache wp_options o default)
+ */
+function radar_fit_load() {
+  global $FIT_DEFAULTS;
+
+  $raw = get_option('radar_fit_calibracion', '');
+  if ($raw) {
+    $cal = json_decode($raw, true);
+    if (is_array($cal) && !empty($cal['global'])) {
+      return $cal;
+    }
+  }
+
+  return $FIT_DEFAULTS;
+}
+
+/**
+ * Fase 2: Verificar si hay que recalibrar (trigger proporcional)
+ */
+function radar_fit_check_auto($wpdb, $quote_ids_all, $accepted_ids_all) {
+  $cal = radar_fit_load();
+  $prev_sales = (int)($cal['sales'] ?? 0);
+  $prev_updated = (int)($cal['updated'] ?? 0);
+  $current_sales = count($accepted_ids_all);
+
+  // Trigger proporcional: recalibrar si 20% más ventas (mín 5, máx 50)
+  $delta = max(5, min(50, (int)round($prev_sales * 0.20)));
+
+  // Trigger temporal: >90 días sin recalibrar
+  $age_days = (time() - $prev_updated) / 86400;
+
+  if (($current_sales - $prev_sales) >= $delta || $age_days > 90) {
+    return radar_fit_calibrar($wpdb, $quote_ids_all, $accepted_ids_all);
+  }
+
+  return null;
+}
+
+// Helpers de bucket labels (prefijo _ para evitar colisión con funciones existentes en scope global)
+function _bucket_sessions_label($n) {
+  $n = (int)$n;
+  if ($n <= 1) return '1';
+  if ($n === 2) return '2';
+  if ($n <= 4) return '3-4';
+  if ($n <= 7) return '5-7';
+  if ($n <= 12) return '8-12';
+  return '13+';
+}
+
+function _bucket_ips_label($n) {
+  $n = (int)$n;
+  if ($n <= 1) return '1';
+  if ($n === 2) return '2';
+  if ($n === 3) return '3';
+  return '4+';
+}
+
+function _bucket_gap_label($g) {
+  if ($g === null) return 'sin';
+  $g = (int)$g;
+  if ($g <= 0) return 'sin';
+  if ($g <= 3) return '1-3d';
+  return '4+d';
+}
+
+/**
+ * Fase 2: P80 dinámico para alto importe
+ * Calcula percentil 80 de cotizaciones reales
+ */
+function radar_p80_alto_importe($wpdb) {
+  static $cache = null;
+  if ($cache !== null) return $cache;
+
+  $amounts = $wpdb->get_col(
+    "SELECT DISTINCT pm.meta_value
+     FROM {$wpdb->postmeta} pm
+     INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+     WHERE pm.meta_key = '_sliced_totals_for_ordering'
+       AND p.post_type = 'sliced_quote'
+       AND p.post_status IN ('publish','draft','private')
+       AND pm.meta_value IS NOT NULL
+       AND pm.meta_value != ''
+     ORDER BY CAST(pm.meta_value AS DECIMAL(20,2)) ASC"
+  );
+
+  $nums = [];
+  foreach ($amounts as $a) {
+    $v = (float)preg_replace('/[^0-9.\-]/', '', (string)$a);
+    if ($v > 0) $nums[] = $v;
+  }
+
+  if (count($nums) < 5) {
+    $cache = u('high_amount_threshold');
+    return $cache;
+  }
+
+  sort($nums);
+  $idx = (int)floor(count($nums) * 0.80);
+  $p80 = $nums[min($idx, count($nums) - 1)];
+
+  // Redondear a miles
+  $cache = max(10000, round($p80 / 1000) * 1000);
+  return $cache;
+}
+
+/**
+ * Fase 2: Ciclo de venta adaptativo
+ * Calcula mediana de días desde creación hasta accepted
+ */
+function radar_ciclo_venta($wpdb, $accepted_ids_all) {
+  static $cache = null;
+  if ($cache !== null) return $cache;
+
+  if (count($accepted_ids_all) < 3) {
+    $cache = ['dias' => 30, 'p25' => 15, 'p75' => 45, 'n' => 0];
+    return $cache;
+  }
+
+  $diffs = [];
+  foreach ($accepted_ids_all as $qid => $_) {
+    $post = get_post($qid);
+    if (!$post) continue;
+
+    $created = strtotime($post->post_date_gmt . ' GMT');
+    if ($created <= 0) continue;
+
+    // Buscar fecha de accepted en log
+    $log_val = get_post_meta($qid, '_sliced_log', true);
+    $log = [];
+    if ($log_val) {
+      $log = is_array($log_val) ? $log_val : @unserialize($log_val);
+      if (!is_array($log)) $log = [];
+    }
+
+    // Usar último timestamp del log como proxy de fecha de cierre
+    $last_ts = 0;
+    foreach ($log as $ts => $entry) {
+      $ts = (int)$ts;
+      if ($ts > $last_ts) $last_ts = $ts;
+    }
+
+    if ($last_ts <= $created) continue;
+
+    $diff = max(1, (int)round(($last_ts - $created) / 86400));
+    if ($diff <= 180) {
+      $diffs[] = $diff;
+    }
+  }
+
+  if (count($diffs) < 3) {
+    $cache = ['dias' => 30, 'p25' => 15, 'p75' => 45, 'n' => 0];
+    return $cache;
+  }
+
+  sort($diffs);
+  $n = count($diffs);
+  $mediana = $diffs[(int)floor($n / 2)];
+  $p25 = $diffs[(int)floor($n * 0.25)];
+  $p75 = $diffs[(int)floor($n * 0.75)];
+
+  $cache = [
+    'dias' => max(1, min(180, $mediana)),
+    'p25'  => max(1, $p25),
+    'p75'  => max(1, $p75),
+    'n'    => $n,
+  ];
+  return $cache;
+}
 
 /** =========================
  *  HELPERS
@@ -714,7 +1071,13 @@ function bucket_gap_label($gap_days){
   return '4+d';
 }
 
+/**
+ * Fase 2: compute_fit_prob con calibración + Laplace + caps
+ * Usa datos calibrados de la empresa si existen, sino defaults
+ */
 function compute_fit_prob($sessions, $uniq_ips_total, $gap_days, $GLOBAL_CLOSE_RATE, $RATE_SESS, $RATE_IPS, $RATE_GAP, $FIT_MIN, $FIT_MAX){
+  global $FIT_MULT_MIN, $FIT_MULT_MAX;
+
   $ls = bucket_sessions_label($sessions);
   $li = bucket_ips_label($uniq_ips_total);
   $lg = bucket_gap_label($gap_days);
@@ -723,9 +1086,14 @@ function compute_fit_prob($sessions, $uniq_ips_total, $gap_days, $GLOBAL_CLOSE_R
   $ri = $RATE_IPS[$li]  ?? $GLOBAL_CLOSE_RATE;
   $rg = $RATE_GAP[$lg]  ?? $GLOBAL_CLOSE_RATE;
 
+  // Lifts con caps [0.3, 3.0] — evita swings extremos
   $lift_s = ($GLOBAL_CLOSE_RATE > 0) ? ($rs / $GLOBAL_CLOSE_RATE) : 1.0;
   $lift_i = ($GLOBAL_CLOSE_RATE > 0) ? ($ri / $GLOBAL_CLOSE_RATE) : 1.0;
   $lift_g = ($GLOBAL_CLOSE_RATE > 0) ? ($rg / $GLOBAL_CLOSE_RATE) : 1.0;
+
+  $lift_s = max($FIT_MULT_MIN, min($FIT_MULT_MAX, $lift_s));
+  $lift_i = max($FIT_MULT_MIN, min($FIT_MULT_MAX, $lift_i));
+  $lift_g = max($FIT_MULT_MIN, min($FIT_MULT_MAX, $lift_g));
 
   $fit = $GLOBAL_CLOSE_RATE * $lift_s * $lift_i * $lift_g;
   if ($fit < $FIT_MIN) $fit = $FIT_MIN;
@@ -791,6 +1159,13 @@ function render_bucket_table($title, $hint, $items, $show_gap = false, $sort = '
 
       echo '<tr class="'.esc_attr($cls).'">';
       $title_icons = '';
+      // Fase 3: momentum indicator
+      $m = $r['momentum'] ?? 'none';
+      if ($m === 'stable')  $title_icons .= '↑';
+      elseif ($m === 'cooling') $title_icons .= '↓';
+      // Fase 3: probable cierre icon
+      if (!empty($r['is_probable_cierre'])) $title_icons .= '🎯';
+      if (!empty($r['is_reengage_hot']))    $title_icons .= '🔥';
       if (!empty($r['has_coupon_icon'])) $title_icons .= '🎟️';
       if (!empty($r['has_promo_icon']))  $title_icons .= '💣';
       if (!empty($r['has_price_icon']))  $title_icons .= '💸';
@@ -799,7 +1174,17 @@ function render_bucket_table($title, $hint, $items, $show_gap = false, $sort = '
       if (!empty($r['is_not_opened'])) $title_icons .= '❌';
       $title_show = trim($title_icons . ' ' . ($r['title'] ?? ''));
 
-      echo '<td><div class="titlewrap"><div class="titletext">'.esc_html($title_show).'</div><div class="amount">'.esc_html($r['amount_fmt']).'</div></div></td>';
+      // Fase 3: señales como tooltip
+      $senales_text = '';
+      if (!empty($r['senales']) && is_array($r['senales'])) {
+        $parts = [];
+        foreach ($r['senales'] as $s) {
+          $parts[] = ($s['desc'] ?? '');
+        }
+        $senales_text = implode(' | ', $parts);
+      }
+
+      echo '<td><div class="titlewrap"><div class="titletext" '.($senales_text ? 'title="'.esc_attr($senales_text).'"' : '').'>'.esc_html($title_show).'</div><div class="amount">'.esc_html($r['amount_fmt']).'</div></div></td>';
 
       if ($show_reason_col) echo '<td>'.esc_html($r['reason'] ?? '').'</td>';
 
@@ -836,6 +1221,33 @@ function render_bucket_fixed($title, $hint, $items, $show_gap = false, $sort = '
   echo '<div class="section-title">'.esc_html($title).' ('.(int)(is_array($items) ? count($items) : 0).')</div>';
   echo '<div class="hint">'.esc_html($hint).'</div>';
   render_bucket_table($title, $hint, $items, $show_gap, $sort, $dir, $show_reason_col);
+}
+
+/** =========================
+ *  FASE 4: Endpoint de configuración (admin only)
+ *  POST radar_config_action=toggle&key=calibracion_auto
+ *  ========================= */
+if (
+  isset($_POST['radar_config_action']) &&
+  current_user_can('manage_options') &&
+  is_user_logged_in()
+) {
+  $cfg_action = sanitize_text_field(wp_unslash($_POST['radar_config_action']));
+  $cfg_key    = sanitize_text_field(wp_unslash($_POST['config_key'] ?? ''));
+
+  if ($cfg_action === 'toggle' && in_array($cfg_key, ['calibracion_auto','excluir_internos','filtrar_bots','deduplicar_30min'], true)) {
+    $cfg = radar_config_load();
+    $cfg[$cfg_key] = empty($cfg[$cfg_key]);
+    radar_config_save($cfg);
+    wp_send_json_success(['key' => $cfg_key, 'value' => $cfg[$cfg_key]]);
+  }
+
+  if ($cfg_action === 'recalibrar') {
+    $recal = radar_fit_calibrar($wpdb, $quote_ids, $accepted_ids);
+    wp_send_json_success(['recalibrado' => !empty($recal), 'data' => $recal]);
+  }
+
+  wp_send_json_error(['message' => 'Acción inválida'], 400);
 }
 
 /** =========================
@@ -991,10 +1403,12 @@ $bucket_price_validating = [];
 $bucket_not_opened       = [];
 
 $bucket_reengage_decisive = [];
+$bucket_reengage_hot      = [];
 $bucket_multi_persona     = [];
 $bucket_deep_review       = [];
 $bucket_hesitation        = [];
 $bucket_over_analysis     = [];
+$bucket_probable_cierre   = [];
 
 $band_counts = [
   '0-4.99'   => ['total'=>0,'sales'=>0],
@@ -1060,6 +1474,88 @@ if ($tax && !empty($tax->query_var)) {
 }
 
 /** =========================
+ *  FASE 2: Auto-calibración FIT + P80 + Ciclo de venta
+ *  ========================= */
+// Cargar calibración existente o defaults
+$fit_cal = radar_fit_load();
+$GLOBAL_CLOSE_RATE = (float)($fit_cal['global'] ?? $FIT_DEFAULTS['global']);
+$RATE_SESS = $fit_cal['sess'] ?? $FIT_DEFAULTS['sess'];
+$RATE_IPS  = $fit_cal['ips']  ?? $FIT_DEFAULTS['ips'];
+$RATE_GAP  = $fit_cal['gap']  ?? $FIT_DEFAULTS['gap'];
+
+// Auto-calibrar si corresponde (trigger proporcional: 20% más ventas o >90 días)
+radar_fit_check_auto($wpdb, $quote_ids, $accepted_ids);
+
+// Recargar después de posible recalibración
+$fit_cal = radar_fit_load();
+$GLOBAL_CLOSE_RATE = (float)($fit_cal['global'] ?? $FIT_DEFAULTS['global']);
+$RATE_SESS = $fit_cal['sess'] ?? $FIT_DEFAULTS['sess'];
+$RATE_IPS  = $fit_cal['ips']  ?? $FIT_DEFAULTS['ips'];
+$RATE_GAP  = $fit_cal['gap']  ?? $FIT_DEFAULTS['gap'];
+
+// P80 dinámico: percentil 80 de cotizaciones reales
+$p80_alto_importe = radar_p80_alto_importe($wpdb);
+
+// Ciclo de venta adaptativo: mediana de días quote→accepted
+$ciclo_venta = radar_ciclo_venta($wpdb, $accepted_ids);
+
+// Debug info
+$dbg_fit_source = (!empty($fit_cal['updated'])) ? 'calibrado' : 'defaults';
+$dbg_fit_sales  = (int)($fit_cal['sales'] ?? 0);
+$dbg_p80        = $p80_alto_importe;
+$dbg_ciclo      = $ciclo_venta;
+
+/** =========================
+ *  FASE 4: Bucket transitions log
+ *  Tabla para auditoría de cambios de bucket
+ *  ========================= */
+$transitions_table = $wpdb->prefix . 'radar_bucket_transitions';
+$transitions_table_exists = ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $transitions_table)) === $transitions_table);
+
+if (!$transitions_table_exists && current_user_can('manage_options')) {
+  $charset = $wpdb->get_charset_collate();
+  $wpdb->query("
+    CREATE TABLE {$transitions_table} (
+      id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      quote_id bigint(20) unsigned NOT NULL,
+      bucket_anterior varchar(64) DEFAULT NULL,
+      bucket_nuevo varchar(64) DEFAULT NULL,
+      score_anterior decimal(6,2) DEFAULT NULL,
+      score_nuevo decimal(6,2) DEFAULT NULL,
+      fit_anterior decimal(6,4) DEFAULT NULL,
+      fit_nuevo decimal(6,4) DEFAULT NULL,
+      created_at datetime NOT NULL,
+      created_ts int(10) unsigned NOT NULL,
+      PRIMARY KEY (id),
+      KEY idx_quote (quote_id),
+      KEY idx_created (created_ts)
+    ) {$charset}
+  ");
+  $transitions_table_exists = ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $transitions_table)) === $transitions_table);
+}
+
+// Cargar buckets previos (último bucket por quote, últimas 24h)
+$prev_buckets = [];
+if ($transitions_table_exists) {
+  $prev_rows = $wpdb->get_results($wpdb->prepare(
+    "SELECT quote_id, bucket_nuevo
+     FROM {$transitions_table}
+     WHERE created_ts >= %d
+     ORDER BY id DESC",
+    $now - 86400
+  ), ARRAY_A);
+
+  foreach ($prev_rows as $pr) {
+    $qid = (int)$pr['quote_id'];
+    if (!isset($prev_buckets[$qid])) {
+      $prev_buckets[$qid] = (string)$pr['bucket_nuevo'];
+    }
+  }
+}
+
+$dbg_transitions_logged = 0;
+
+/** =========================
  *  EVENTS TABLE AGGREGATION
  *  ========================= */
 $events_table = $wpdb->prefix . 'sliced_quote_events';
@@ -1078,9 +1574,11 @@ if ($table_exists) {
         max_scroll,
         open_ms,
         visible_ms,
+        engaged_ms,
         session_id,
         page_id,
-        visitor_id
+        visitor_id,
+        INET6_NTOA(ip) AS ip_text
       FROM {$events_table}
       WHERE ts_unix >= %d
       ORDER BY quote_id ASC, id ASC
@@ -1123,6 +1621,15 @@ if ($table_exists) {
         'visitor_session_ids'         => [],
         'visitor_page_ids'            => [],
         'price_visitors'              => [],
+
+        // ── Fase 1: métricas temporales desde events ──
+        'ev_session_first_ts'         => [],   // session_id => primer ts
+        'ev_session_last_ts'          => [],   // session_id => último ts
+        'ev_all_ts'                   => [],   // todos los ts (para gap/span)
+        'ev_last_ts'                  => 0,    // último ts global
+        'ev_first_ts'                 => PHP_INT_MAX, // primer ts global
+        'ev_open_ts_list'             => [],   // timestamps de quote_open events
+        'ev_has_engagement'           => false, // al menos 1 evento con scroll>0 o visible>0
       ];
     }
 
@@ -1131,8 +1638,35 @@ if ($table_exists) {
     $etype   = (string)($er['event_type'] ?? '');
     $mscroll = max(0, (int)($er['max_scroll'] ?? 0));
     $vms     = max(0, (int)($er['visible_ms'] ?? 0));
+    $ems     = max(0, (int)($er['engaged_ms'] ?? 0));
     $sid     = trim((string)($er['session_id'] ?? ''));
     $pid     = trim((string)($er['page_id'] ?? ''));
+    $ev_ts   = (int)($er['ts_unix'] ?? 0);
+
+    // ── Fase 1: recopilar timestamps por session y globales ──
+    if ($ev_ts > 0) {
+      $st['ev_all_ts'][] = $ev_ts;
+      if ($ev_ts > $st['ev_last_ts'])  $st['ev_last_ts'] = $ev_ts;
+      if ($ev_ts < $st['ev_first_ts']) $st['ev_first_ts'] = $ev_ts;
+
+      if ($sid !== '') {
+        if (!isset($st['ev_session_first_ts'][$sid]) || $ev_ts < $st['ev_session_first_ts'][$sid]) {
+          $st['ev_session_first_ts'][$sid] = $ev_ts;
+        }
+        if (!isset($st['ev_session_last_ts'][$sid]) || $ev_ts > $st['ev_session_last_ts'][$sid]) {
+          $st['ev_session_last_ts'][$sid] = $ev_ts;
+        }
+      }
+
+      if ($etype === 'quote_open') {
+        $st['ev_open_ts_list'][] = $ev_ts;
+      }
+    }
+
+    // Engagement real: scroll > 0 o visible_ms > 0 o engaged_ms > 0
+    if ($mscroll > 0 || $vms > 0 || $ems > 0) {
+      $st['ev_has_engagement'] = true;
+    }
 
     if ($etype === 'quote_open') $st['quote_opens_count']++;
     if ($etype === 'quote_close') $st['quote_closes_count']++;
@@ -1256,14 +1790,91 @@ if ($table_exists) {
     $st['event_same_visitor_price_focus_flag'] = $same_visitor_price_focus ? 1 : 0;
     $st['event_multi_visitor_flag'] = ($st['event_uniq_visitors'] >= 2) ? 1 : 0;
     $st['event_multi_visitor_price_flag'] = (count($st['price_visitors']) >= 2) ? 1 : 0;
+
+    // ── Fase 1: métricas derivadas de events ──
+    // Sesiones = session_ids únicos (mucho más preciso que IP dedup)
+    $st['ev_sessions'] = count($st['uniq_sessions']);
+
+    // Visitors únicos (mejor proxy de "personas" que IPs)
+    $st['ev_visitors'] = count($st['uniq_visitors']);
+
+    // Ordenar timestamps de inicio de sesión para calcular gap y ventanas
+    $session_start_ts = array_values($st['ev_session_first_ts']);
+    sort($session_start_ts);
+    $st['ev_session_start_ts_sorted'] = $session_start_ts;
+
+    // Views en ventanas temporales desde events
+    $st['ev_views24'] = 0;
+    $st['ev_views48'] = 0;
+    $st['ev_views7d'] = 0;
+    $ev_ts48_list = [];
+
+    foreach ($session_start_ts as $sts) {
+      if ($sts >= $now - (24*3600)) $st['ev_views24']++;
+      if ($sts >= $now - (48*3600)) { $st['ev_views48']++; $ev_ts48_list[] = $sts; }
+      if ($sts >= $now - (7*86400)) $st['ev_views7d']++;
+    }
+
+    // Span48 desde events
+    $st['ev_span48'] = 0;
+    if (count($ev_ts48_list) >= 2) {
+      $st['ev_span48'] = max($ev_ts48_list) - min($ev_ts48_list);
+    }
+
+    // Gap days desde events (distancia entre penúltima y última sesión)
+    $st['ev_gap_days'] = null;
+    if (count($session_start_ts) >= 2) {
+      $prev = $session_start_ts[count($session_start_ts) - 2];
+      $last = $session_start_ts[count($session_start_ts) - 1];
+      $st['ev_gap_days'] = max(0, (int)floor(($last - $prev) / 86400));
+    }
+
+    // Guest sessions desde events: en quote_events TODOS son guest
+    // (el cliente viendo su cotización — no hay login)
+    $st['ev_guest_sessions'] = $st['ev_sessions'];
+    $st['ev_guest_24h'] = $st['ev_views24'];
+    $st['ev_guest_48h'] = $st['ev_views48'];
+    $st['ev_guest_7d']  = $st['ev_views7d'];
+
+    // First guest ts (primer evento = primer guest)
+    $st['ev_first_guest_ts'] = ($st['ev_first_ts'] < PHP_INT_MAX) ? $st['ev_first_ts'] : 0;
+
+    // Flag: este quote tiene datos JS confiables
+    $st['ev_has_js_data'] = ($st['ev_sessions'] > 0);
   }
   unset($st);
+
+  // ── Fase 1: Ghost session filter ──
+  // Construir índice de IPs que generaron eventos JS reales por quote
+  // Se usa en el fallback de log para descartar preview bots
+  // (WhatsApp, Teams, iMessage cargan URL pero no ejecutan JS)
+  $event_ips_by_quote = [];
+  foreach ($event_rows as $er) {
+    $qid = (int)($er['quote_id'] ?? 0);
+    $eip = trim((string)($er['ip_text'] ?? ''));
+    if ($qid > 0 && $eip !== '') {
+      $event_ips_by_quote[$qid][$eip] = true;
+    }
+  }
 }
+
+// Contadores debug para ghost sessions
+$dbg_ghost_filtered = 0;
 
 /** =========================
  *  MAIN LOOP
+ *  Events-first: métricas core desde quote_events (session_id/visitor_id)
+ *  Log (_sliced_log) como fallback para quotes sin JS events
+ *  IPs del log como capa complementaria para multi-persona
  *  ========================= */
 foreach ($quote_ids as $id) {
+  $es = $event_stats_by_quote[$id] ?? [];
+  $has_js_data = !empty($es['ev_has_js_data']);
+
+  // ─────────────────────────────────────────────────────────
+  //  CAPA 1 (log): siempre leer para IPs y has_raw_quote_viewed
+  //  También es fuente primaria si no hay JS events
+  // ─────────────────────────────────────────────────────────
   $log_val = get_post_meta($id, '_sliced_log', true);
 
   if (!$log_val) {
@@ -1273,7 +1884,7 @@ foreach ($quote_ids as $id) {
     if (!is_array($log)) $log = [];
   }
 
-  $events = [];
+  $log_events = [];
   $has_raw_quote_viewed = false;
 
   foreach ($log as $ts => $entry) {
@@ -1321,61 +1932,57 @@ foreach ($quote_ids as $id) {
       continue;
     }
 
+    // ── Fase 1: Ghost session filter ──
+    // Si este quote tiene eventos JS y esta IP NO generó ningún evento JS,
+    // y el log entry es guest y reciente (>2min), probablemente es un preview bot
+    // (WhatsApp, Teams, iMessage, etc. cargan la URL pero no ejecutan JS)
+    if ($by_num === 0 && $ip !== 'sin_ip' && isset($event_ips_by_quote[$id])) {
+      $log_entry_ts = (int)$ts;
+
+      if (!isset($event_ips_by_quote[$id][$ip]) && ($now - $log_entry_ts) > 120) {
+        $dbg_ghost_filtered++;
+        continue;
+      }
+    }
+
     $has_raw_quote_viewed = true;
 
-    $events[] = [
+    $log_events[] = [
       'ts'       => (int)$ts,
       'ip'       => $ip,
       'is_guest' => ($by_num === 0),
     ];
   }
 
-  if ($events) {
-    usort($events, fn($a,$b) => $a['ts'] <=> $b['ts']);
+  if ($log_events) {
+    usort($log_events, fn($a,$b) => $a['ts'] <=> $b['ts']);
   }
 
+  // ─────────────────────────────────────────────────────────
+  //  CAPA 2 (IPs del log): siempre calcular para multi-persona
+  //  Las IPs son complementarias, no primarias
+  // ─────────────────────────────────────────────────────────
   $lastSeenByIp = [];
-  $sessions = 0;
-  $views24 = 0;
-  $views7d = 0;
-  $last_ts = 0;
-  $session_ts = [];
-  $guest_sessions = 0;
-  $guest_6h  = 0;
-  $guest_24h = 0;
-  $guest_48h = 0;
-  $guest_7d  = 0;
-  $first_guest_ts = 0;
-
   $compare_ips_set = [];
   $multi_ips_set   = [];
   $ips_120m_set    = [];
 
-  $compare_window = $compare_window_minutes * 60;
-  $multi_window   = $multi_window_minutes * 60;
-  $win_ip         = $imminent_ip_window_min * 60;
+  $compare_window = u('compare_window_h') * 3600;
+  $multi_window   = u('multi_recent_hours') * 3600;
+  $win_ip         = u('imminent_ip_window_min') * 60;
 
-  foreach ($events as $e) {
+  $log_first_guest_ts = 0;
+
+  foreach ($log_events as $e) {
     $ts = $e['ts'];
     $ip = $e['ip'];
 
     if (!isset($lastSeenByIp[$ip]) || ($ts - $lastSeenByIp[$ip]) >= $dedupe_window_seconds) {
-      $sessions++;
       $lastSeenByIp[$ip] = $ts;
-      $session_ts[] = $ts;
 
-      if (!empty($e['is_guest'])) {
-        $guest_sessions++;
-        if ($first_guest_ts <= 0) $first_guest_ts = $ts;
-        if ($ts >= $now - (6*3600))  $guest_6h++;
-        if ($ts >= $now - (24*3600)) $guest_24h++;
-        if ($ts >= $now - (48*3600)) $guest_48h++;
-        if ($ts >= $now - (7*86400)) $guest_7d++;
+      if (!empty($e['is_guest']) && $log_first_guest_ts <= 0) {
+        $log_first_guest_ts = $ts;
       }
-
-      if ($ts >= $now - (24*3600)) $views24++;
-      if ($ts >= $now - (7*86400)) $views7d++;
-      if ($ts > $last_ts) $last_ts = $ts;
     }
 
     if ($ts >= $now - $compare_window) $compare_ips_set[$ip] = true;
@@ -1383,22 +1990,24 @@ foreach ($quote_ids as $id) {
     if ($ts >= $now - $win_ip)         $ips_120m_set[$ip]    = true;
   }
 
-  if ($sessions > 0 && $minLastViewTs && $last_ts < $minLastViewTs) continue;
-
   $uniq_ips_total = count($lastSeenByIp);
   $compare_ips    = count($compare_ips_set);
   $multi_ips      = count($multi_ips_set);
   $ips_120m       = count($ips_120m_set);
 
+  // IPs post primer guest (para multi-persona)
   $ips_post_guest_win = [];
-  $multip_win = (int)$multip_ip_window_min * 60;
+  $multip_win = u('multip_ip_window_min') * 60;
+  $first_guest_ts_for_ips = $has_js_data
+    ? (int)($es['ev_first_guest_ts'] ?? 0)
+    : $log_first_guest_ts;
 
-  if ($first_guest_ts > 0) {
-    $win_end = $first_guest_ts + $multip_win;
-    foreach ($events as $e2) {
+  if ($first_guest_ts_for_ips > 0) {
+    $win_end = $first_guest_ts_for_ips + $multip_win;
+    foreach ($log_events as $e2) {
       $ts2 = (int)$e2['ts'];
       $ip2 = (string)$e2['ip'];
-      if ($ts2 < $first_guest_ts) continue;
+      if ($ts2 < $first_guest_ts_for_ips) continue;
       if ($ts2 > $win_end) continue;
       if ($ip2 !== 'sin_ip' && $ip2 !== '') $ips_post_guest_win[$ip2] = true;
     }
@@ -1406,19 +2015,95 @@ foreach ($quote_ids as $id) {
 
   $ips_post_first_guest_180m = count($ips_post_guest_win);
 
-  $views48 = 0;
-  $ts48 = [];
-  $win48 = $decision_window_hours * 3600;
-  foreach ($session_ts as $tss) {
-    if ($tss >= $now - $win48) {
-      $views48++;
-      $ts48[] = $tss;
-    }
-  }
-  $span48 = 0;
-  if (count($ts48) >= 2) $span48 = max($ts48) - min($ts48);
+  // ─────────────────────────────────────────────────────────
+  //  MÉTRICAS CORE: events-first, log como fallback
+  // ─────────────────────────────────────────────────────────
+  if ($has_js_data) {
+    // ═══ FUENTE PRIMARIA: JS events ═══
+    $sessions       = (int)($es['ev_sessions'] ?? 0);
+    $views24        = (int)($es['ev_views24'] ?? 0);
+    $views7d        = (int)($es['ev_views7d'] ?? 0);
+    $views48        = (int)($es['ev_views48'] ?? 0);
+    $span48         = (int)($es['ev_span48'] ?? 0);
+    $last_ts        = (int)($es['ev_last_ts'] ?? 0);
+    $gap_days       = $es['ev_gap_days'];  // puede ser null
+    $guest_sessions = (int)($es['ev_guest_sessions'] ?? 0);
+    $guest_6h       = 0; // no usado en buckets críticos
+    $guest_24h      = (int)($es['ev_guest_24h'] ?? 0);
+    $guest_48h      = (int)($es['ev_guest_48h'] ?? 0);
+    $guest_7d       = (int)($es['ev_guest_7d'] ?? 0);
+    $first_guest_ts = (int)($es['ev_first_guest_ts'] ?? 0);
+    $session_ts     = $es['ev_session_start_ts_sorted'] ?? [];
+    $data_source    = 'events';
 
-  $es = $event_stats_by_quote[$id] ?? [];
+    // Complementar: si hay más IPs únicas que visitors, usar max
+    // (captura personas que no tienen JS — navegador viejo, etc.)
+    if ($uniq_ips_total > (int)($es['ev_visitors'] ?? 0)) {
+      // No reemplazar sessions, solo registrar la diferencia
+      // Las IPs extras se usan solo para multi-persona (ya calculado arriba)
+    }
+  } else {
+    // ═══ FALLBACK: _sliced_log (IP dedup) ═══
+    $sessions = 0;
+    $views24 = 0;
+    $views7d = 0;
+    $last_ts = 0;
+    $session_ts = [];
+    $guest_sessions = 0;
+    $guest_6h  = 0;
+    $guest_24h = 0;
+    $guest_48h = 0;
+    $guest_7d  = 0;
+    $first_guest_ts = 0;
+
+    $lastSeenByIp_fb = [];
+    foreach ($log_events as $e) {
+      $ts = $e['ts'];
+      $ip = $e['ip'];
+
+      if (!isset($lastSeenByIp_fb[$ip]) || ($ts - $lastSeenByIp_fb[$ip]) >= $dedupe_window_seconds) {
+        $sessions++;
+        $lastSeenByIp_fb[$ip] = $ts;
+        $session_ts[] = $ts;
+
+        if (!empty($e['is_guest'])) {
+          $guest_sessions++;
+          if ($first_guest_ts <= 0) $first_guest_ts = $ts;
+          if ($ts >= $now - (6*3600))  $guest_6h++;
+          if ($ts >= $now - (24*3600)) $guest_24h++;
+          if ($ts >= $now - (48*3600)) $guest_48h++;
+          if ($ts >= $now - (7*86400)) $guest_7d++;
+        }
+
+        if ($ts >= $now - (24*3600)) $views24++;
+        if ($ts >= $now - (7*86400)) $views7d++;
+        if ($ts > $last_ts) $last_ts = $ts;
+      }
+    }
+
+    // Gap days desde log
+    $gap_days = null;
+    if (count($session_ts) >= 2) {
+      $prev_ts_fb = $session_ts[count($session_ts) - 2];
+      $gap_days = max(0, (int)floor(($last_ts - $prev_ts_fb) / 86400));
+    }
+
+    $views48 = 0;
+    $ts48 = [];
+    $win48 = u('decision_window_h') * 3600;
+    foreach ($session_ts as $tss) {
+      if ($tss >= $now - $win48) {
+        $views48++;
+        $ts48[] = $tss;
+      }
+    }
+    $span48 = 0;
+    if (count($ts48) >= 2) $span48 = max($ts48) - min($ts48);
+
+    $data_source = 'log';
+  }
+
+  if ($sessions > 0 && $minLastViewTs && $last_ts < $minLastViewTs) continue;
 
   $quote_opens_count           = (int)($es['quote_opens_count'] ?? 0);
   $quote_closes_count          = (int)($es['quote_closes_count'] ?? 0);
@@ -1447,6 +2132,15 @@ foreach ($quote_ids as $id) {
   $has_totals_view    = ($quote_totals_views_count > 0);
   $has_totals_revisit = ($quote_totals_revisits_count > 0);
   $has_price_loop     = ($quote_price_loops_count > 0);
+
+  // ── Fase 1: engagement gate (anti-bot behavioral filter) ──
+  // Requiere al menos 1 señal de interacción JS real
+  $has_any_engagement = (
+    $quote_opens_count > 0 ||
+    $quote_max_scroll_any > 0 ||
+    $quote_visible_ms_max > 0 ||
+    !empty($es['ev_has_engagement'])
+  );
   $has_promo_timer    = ($quote_promo_present_count > 0);
 
   $price_signal_strong = ($has_price_loop || $has_totals_revisit);
@@ -1487,8 +2181,8 @@ foreach ($quote_ids as $id) {
 
   // NO ABIERTA
   $not_opened_age_ok = (
-    $created_ts >= ($now - ((int)$not_opened_max_age_days * 86400)) &&
-    $age_hours >= (((int)$not_opened_min_age_minutes) / 60)
+    $created_ts >= ($now - (u('not_opened_max_age_days') * 86400)) &&
+    $age_hours >= (u('not_opened_min_age_min') / 60)
   );
 
   $not_opened_has_external_views = !empty($has_raw_quote_viewed);
@@ -1516,40 +2210,45 @@ foreach ($quote_ids as $id) {
 
   $is_active48 = ($last_ts >= $now - ($active_hours * 3600));
 
-  $is_hot_close = ($last_ts >= $now - ($hot_close_last_hours * 3600)) &&
-                  ($views24 >= $hot_close_min_views24 || $views7d >= $hot_close_min_views7d);
+  $is_hot_close = ($last_ts >= $now - (u('hot_close_last_hours') * 3600)) &&
+                  ($views24 >= u('hot_close_min_views24') || $views7d >= u('hot_close_min_views7d'));
 
-  $is_compare = ($compare_ips >= $compare_min_ips) &&
-                ($last_ts >= $now - ($compare_recent_hours * 3600));
+  // Fase 1: engagement gate — requiere interacción JS real para evitar falsos positivos de bots
+  $is_compare = ($compare_ips >= u('compare_min_ips')) &&
+                ($last_ts >= $now - (u('compare_window_h') * 3600)) &&
+                $has_any_engagement;
 
   $is_multi = (
     (
-      $multi_ips >= $multi_min_ips &&
-      $last_ts >= $now - ($multi_recent_hours * 3600)
+      $multi_ips >= u('multi_min_ips') &&
+      $last_ts >= $now - (u('multi_recent_hours') * 3600)
     ) || (
-      $views24 >= $multi_min_views24 &&
-      $last_ts >= $now - ($multi_recent_hours * 3600)
+      $views24 >= u('multi_min_views24') &&
+      $last_ts >= $now - (u('multi_recent_hours') * 3600)
     )
   );
 
-  $is_decision = ($views48 >= $decision_min_views48) &&
-                 ($span48 >= ($decision_min_span_hours * 3600)) &&
-                 ($last_ts >= $now - ($decision_window_hours * 3600));
+  $is_decision = ($views48 >= u('decision_min_views48')) &&
+                 ($span48 >= (u('decision_min_span_h') * 3600)) &&
+                 ($last_ts >= $now - (u('decision_window_h') * 3600));
 
   $is_return4d = ($gap_days !== null) &&
-                 ($gap_days >= $return_gap_days) &&
-                 ($last_ts >= $now - ($return_recent_hours * 3600));
+                 ($gap_days >= u('return_gap_days')) &&
+                 ($last_ts >= $now - (u('return_recent_hours') * 3600));
 
   $is_revive = ($gap_days !== null) &&
-               ($gap_days >= $revive_gap_days) &&
-               ($last_ts >= $now - ($revive_recent_hours * 3600));
+               ($gap_days >= u('revive_gap_days')) &&
+               ($last_ts >= $now - (u('revive_recent_hours') * 3600));
 
-  $is_high_amount = ($amount_num >= (float)$high_amount_threshold) &&
-                    ($last_ts >= $now - ($high_amount_recent_hours * 3600));
+  // Fase 2: P80 dinámico para alto importe
+  $is_high_amount = ($amount_num >= (float)$p80_alto_importe) &&
+                    ($last_ts >= $now - (u('high_amount_recent_hours') * 3600));
 
-  $is_cooling = ($sessions >= $cooling_min_total_sessions) &&
+  // Fase 1: engagement gate — solo "enfriándose" si tuvo engagement real previo
+  $is_cooling = ($sessions >= u('cooling_min_sessions')) &&
                 ($last_ts <  $now - ($active_hours*3600)) &&
-                ($last_ts >= $now - ($cooling_days*86400));
+                ($last_ts >= $now - (u('cooling_days')*86400)) &&
+                $has_any_engagement;
 
   $cooling_price_touched = (
     $has_totals_view ||
@@ -1576,20 +2275,20 @@ foreach ($quote_ids as $id) {
    *  ON FIRE
    *  ========================= */
   $onfire_scroll_ok = (
-    $quote_max_scroll_close >= (int)$onfire_min_scroll_pct ||
-    $quote_max_scroll_any   >= (int)$onfire_min_scroll_pct
+    $quote_max_scroll_close >= u('onfire_min_scroll_pct') ||
+    $quote_max_scroll_any   >= u('onfire_min_scroll_pct')
   );
 
   $onfire_visible_ok = (
-    $quote_visible_ms_sum >= (int)$onfire_min_visible_sum ||
-    $quote_visible_ms_max >= (int)$onfire_min_visible_max
+    $quote_visible_ms_sum >= u('onfire_min_vis_sum') ||
+    $quote_visible_ms_max >= u('onfire_min_vis_max')
   );
 
   $onfire_return_ok = (
-    ($gap_days !== null && $gap_days >= (int)$onfire_min_gap_days) ||
+    ($gap_days !== null && $gap_days >= u('onfire_min_gap_days')) ||
     (
-      $views48 >= (int)$onfire_min_views48 &&
-      $span48 >= ((int)$onfire_min_span_hours * 3600)
+      $views48 >= u('onfire_min_views48') &&
+      $span48 >= (u('onfire_min_span_h') * 3600)
     )
   );
 
@@ -1608,8 +2307,8 @@ foreach ($quote_ids as $id) {
   );
 
   $is_onfire = (
-    $last_ts >= $now - ((int)$onfire_recent_hours * 3600) &&
-    $sessions >= (int)$onfire_min_sessions &&
+    $last_ts >= $now - (u('onfire_recent_hours') * 3600) &&
+    $sessions >= u('onfire_min_sessions') &&
     $onfire_scroll_ok &&
     $onfire_visible_ok &&
     $onfire_price_ok &&
@@ -1622,14 +2321,14 @@ foreach ($quote_ids as $id) {
    *  INMINENTE
    *  ========================= */
   $imminent_signal_scroll = (
-    $quote_max_scroll_close >= (int)$imminent_signal_scroll_pct ||
-    $quote_max_scroll_any   >= (int)$imminent_signal_scroll_pct
+    $quote_max_scroll_close >= u('imminent_signal_scroll_pct') ||
+    $quote_max_scroll_any   >= u('imminent_signal_scroll_pct')
   );
 
   $imminent_signal_visible = (
     (
-      $quote_visible_ms_max >= (int)$imminent_signal_visible_max ||
-      $quote_visible_ms_sum >= (int)$imminent_signal_visible_sum
+      $quote_visible_ms_max >= u('imminent_signal_vis_max') ||
+      $quote_visible_ms_sum >= u('imminent_signal_vis_sum')
     ) &&
     (
       $has_totals_revisit ||
@@ -1638,16 +2337,16 @@ foreach ($quote_ids as $id) {
     )
   );
 
-  $imminent_signal_coupon = ($quote_coupon_clicks >= (int)$imminent_signal_coupon_click);
+  $imminent_signal_coupon = ($quote_coupon_clicks >= u('imminent_signal_coupon'));
 
   $imminent_signal_review48 = (
-    $views48 >= (int)$imminent_signal_views48 &&
-    $span48 >= ((int)$imminent_signal_span_hours * 3600)
+    $views48 >= u('imminent_signal_views48') &&
+    $span48 >= (u('imminent_signal_span_h') * 3600)
   );
 
-  $imminent_signal_views = ($views24 >= (int)$imminent_signal_views24);
-  $imminent_signal_ips   = ($ips_120m >= (int)$imminent_signal_ips_120m);
-  $imminent_signal_close = ($quote_closes_count >= (int)$imminent_signal_closes);
+  $imminent_signal_views = ($views24 >= u('imminent_signal_views24'));
+  $imminent_signal_ips   = ($ips_120m >= u('imminent_signal_ips_120m'));
+  $imminent_signal_close = ($quote_closes_count >= u('imminent_signal_closes'));
 
   $imminent_signal_price_strong = (
     $has_price_loop ||
@@ -1700,19 +2399,19 @@ foreach ($quote_ids as $id) {
   $imminent_with_promo_boost = (
     $imminent_signal_promo_boost &&
     $imminent_signals_strong >= 1 &&
-    $imminent_signals_total >= max(1, ((int)$imminent_min_signals_total - 1))
+    $imminent_signals_total >= max(1, (u('imminent_min_signals') - 1))
   );
 
   $is_imminent = (
-    $last_ts >= $now - ((int)$imminent_recent_hours * 3600) &&
-    $fit_pct >= (float)$imminent_min_fit_pct &&
-    $age_hours >= (float)$imminent_min_age_hours &&
-    $guest_sessions >= (int)$imminent_min_guest_sessions &&
+    $last_ts >= $now - (u('imminent_recent_hours') * 3600) &&
+    $fit_pct >= (float)u('imminent_min_fit_pct') &&
+    $age_hours >= (float)u('imminent_min_age_hours') &&
+    $guest_sessions >= u('imminent_min_guest') &&
     (
-      $imminent_signals_total >= (int)$imminent_min_signals_total ||
+      $imminent_signals_total >= u('imminent_min_signals') ||
       $imminent_with_promo_boost
     ) &&
-    $imminent_signals_strong >= (int)$imminent_min_signals_strong &&
+    $imminent_signals_strong >= u('imminent_min_strong') &&
     !$accepted
   );
 
@@ -1720,7 +2419,7 @@ foreach ($quote_ids as $id) {
    *  VALIDANDO PRECIO
    *  ========================= */
   $priceval_recent_ok = (
-    $last_ts >= $now - ((int)$priceval_recent_hours * 3600)
+    $last_ts >= $now - (u('priceval_recent_hours') * 3600)
   );
 
   $priceval_guest_ok = (
@@ -1733,11 +2432,11 @@ foreach ($quote_ids as $id) {
   );
 
   $priceval_read_ok = (
-    $quote_visible_ms_max >= $priceval_support_visible_hard ||
-    $quote_visible_ms_sum >= 14000 ||
+    $quote_visible_ms_max >= u('priceval_vis_hard') ||
+    $quote_visible_ms_sum >= u('priceval_vis_sum') ||
     (
-      $quote_visible_ms_max >= $priceval_support_visible_soft &&
-      $quote_max_scroll_any >= $priceval_support_scroll_soft
+      $quote_visible_ms_max >= u('priceval_vis_soft') &&
+      $quote_max_scroll_any >= u('priceval_scroll_soft')
     )
   );
 
@@ -1772,19 +2471,22 @@ foreach ($quote_ids as $id) {
     )
   );
 
+  // Fase 2: Predicción alta con ciclo de venta adaptativo
+  $ciclo_mult = match($radar_modo) { 'agresivo' => 1.5, 'ligero' => 0.7, default => 1.0 };
+  $predict_window = max(7, min(120, (int)round($ciclo_venta['dias'] * $ciclo_mult)));
   $is_predict_high = (
-    $fit_pct >= (float)$predict_fit_threshold_pct &&
-    $age_days <= (int)$predict_recent_days
+    $fit_pct >= (float)u('predict_min_fit_pct') &&
+    $age_days <= $predict_window
   );
 
   $last_between_24h_7d = (
-    $last_ts <  $now - ((int)$hes_last_min_hours * 3600) &&
-    $last_ts >= $now - ((int)$hes_last_max_days * 86400)
+    $last_ts <  $now - (u('hes_last_min_hours') * 3600) &&
+    $last_ts >= $now - (u('hes_last_max_days') * 86400)
   );
 
   $reeng_recent_interest_ok = (
-    $guest_24h >= (int)$reeng_min_guest_24h ||
-    $views24 >= (int)$reeng_min_views24 ||
+    $guest_24h >= u('reeng_min_guest_24h') ||
+    $views24 >= u('reeng_min_views24') ||
     $has_totals_view ||
     $has_totals_revisit ||
     $has_price_loop ||
@@ -1794,8 +2496,8 @@ foreach ($quote_ids as $id) {
 
   $is_reengage_decisive = (
     $gap_days !== null &&
-    $gap_days >= (int)$reeng_gap_days &&
-    $last_ts >= $now - ((int)$reeng_recent_hours * 3600) &&
+    $gap_days >= u('reeng_gap_days') &&
+    $last_ts >= $now - (u('reeng_recent_hours') * 3600) &&
     $reeng_recent_interest_ok &&
     !$accepted
   );
@@ -1811,21 +2513,21 @@ foreach ($quote_ids as $id) {
     $event_uniq_visitors >= 2
   );
 
-  $is_multi_persona = ($last_ts >= $now - ((int)$multip_recent_hours * 3600)) &&
+  $is_multi_persona = ($last_ts >= $now - (u('multip_recent_hours') * 3600)) &&
                       (
                         ($event_uniq_visitors >= 2 && ($event_multi_visitor_price_flag || $event_uniq_sessions >= 2)) ||
-                        ($ips_post_first_guest_180m >= (int)$multip_min_ips_post_guest_win) ||
+                        ($ips_post_first_guest_180m >= u('multip_min_ips_post_guest')) ||
                         (
-                          $ips_post_first_guest_180m >= max(2, ((int)$multip_min_ips_post_guest_win - 1)) &&
+                          $ips_post_first_guest_180m >= max(2, (u('multip_min_ips_post_guest') - 1)) &&
                           $multi_validation_boost_ok
                         )
                       ) &&
-                      ($guest_sessions >= (int)$multip_min_guest_total) &&
+                      ($guest_sessions >= u('multip_min_guest_total')) &&
                       !$accepted;
 
   $deep_read_ok = (
-    $quote_visible_ms_max >= 10000 ||
-    $quote_visible_ms_sum >= 18000
+    $quote_visible_ms_max >= u('deep_min_vis_max') ||
+    $quote_visible_ms_sum >= u('deep_min_vis_sum')
   );
 
   $deep_price_focus_ok = (
@@ -1837,10 +2539,10 @@ foreach ($quote_ids as $id) {
   );
 
   $is_deep_review = (
-    $views48 >= (int)$deep_min_views48 &&
-    $span48 >= ((int)$deep_min_span_hours * 3600) &&
-    $last_ts >= $now - ((int)$deep_recent_hours * 3600) &&
-    $guest_48h >= (int)$deep_min_guest_48h &&
+    $views48 >= u('deep_min_views48') &&
+    $span48 >= (u('deep_min_span_h') * 3600) &&
+    $last_ts >= $now - (u('deep_recent_hours') * 3600) &&
+    $guest_48h >= u('deep_min_guest_48h') &&
     $deep_read_ok &&
     $deep_price_focus_ok &&
     !$accepted
@@ -1856,10 +2558,10 @@ foreach ($quote_ids as $id) {
   );
 
   $is_hesitation = (
-    $guest_7d >= (int)$hes_min_guest_7d &&
+    $guest_7d >= u('hes_min_guest_7d') &&
     $last_between_24h_7d &&
-    $uniq_ips_total <= (int)$hes_max_ips_total &&
-    $span48 < ((int)$hes_max_span_hours * 3600) &&
+    $uniq_ips_total <= u('hes_max_ips_total') &&
+    $span48 < (u('hes_max_span_h') * 3600) &&
     $hes_price_friction_ok &&
     !$accepted
   );
@@ -1873,7 +2575,7 @@ foreach ($quote_ids as $id) {
   );
 
   $over_soft_fit_ok = (
-    ($fit_pct < (float)$over_max_fit_pct) ||
+    ($fit_pct < (float)u('over_max_fit_pct')) ||
     (
       $event_same_visitor_price_focus_flag &&
       !$event_multi_visitor_flag &&
@@ -1882,28 +2584,243 @@ foreach ($quote_ids as $id) {
   );
 
   $is_over_analysis = (
-      ($guest_sessions >= (int)$over_min_guest_total) &&
-      ($sessions >= (int)$over_min_sessions_total)
+      ($guest_sessions >= u('over_min_guest')) &&
+      ($sessions >= u('over_min_sessions'))
     ) &&
-    ($age_days >= (int)$over_min_age_days) &&
-    ($last_ts >= $now - ((int)$over_recent_days * 86400)) &&
-    ($ips_post_first_guest_180m <= (int)$over_max_ips_post_guest_180m) &&
+    ($age_days >= u('over_min_age_days')) &&
+    ($last_ts >= $now - (u('over_recent_days') * 86400)) &&
+    ($ips_post_first_guest_180m <= u('over_max_ips_post_guest')) &&
     $over_soft_fit_ok &&
     !$accepted;
+
+  /** =========================
+   *  FASE 3: Re-enganche caliente
+   *  Variante del re-enganche: regresó + interacción con precio
+   *  ========================= */
+  $is_reengage_hot = (
+    $is_reengage_decisive &&
+    (
+      $has_price_loop ||
+      $has_totals_revisit ||
+      $event_same_visitor_price_focus_flag ||
+      $event_multi_visitor_price_flag ||
+      $price_signal_score >= 3.0
+    )
+  );
+
+  /** =========================
+   *  FASE 3: Probable cierre (meta-bucket)
+   *  Combina señales de múltiples categorías
+   *  Requiere ≥2 categorías con ≥1 fuerte
+   *  ========================= */
+
+  // Fuentes calificantes: solo buckets de alta intención
+  $pc_qualifying_source = (
+    $is_onfire || $is_imminent || $is_price_validating ||
+    $is_decision || $is_reengage_hot || $is_predict_high ||
+    $is_multi_persona || $is_high_amount
+  );
+
+  // Categorías de señales
+  $pc_cat_engagement = (
+    ($quote_max_scroll_any >= 50 || $quote_max_scroll_close >= 50) &&
+    ($quote_visible_ms_max >= 5000 || $quote_visible_ms_sum >= 10000) &&
+    $has_totals_view
+  );
+
+  $pc_cat_precio = (
+    $has_price_loop ||
+    $has_totals_revisit ||
+    $quote_coupon_clicks > 0 ||
+    $event_same_visitor_price_focus_flag ||
+    $price_signal_score >= 3.0
+  );
+
+  $pc_cat_persistencia = (
+    $sessions >= 2 ||
+    ($gap_days !== null && $gap_days >= 1)
+  );
+
+  $pc_cat_social = (
+    $event_multi_visitor_flag ||
+    $event_multi_visitor_price_flag ||
+    $multi_ips >= 2
+  );
+
+  // Contar categorías y fuertes
+  $pc_cats = 0;
+  $pc_strong = 0;
+  if ($pc_cat_engagement)   { $pc_cats++; $pc_strong++; }
+  if ($pc_cat_precio)       { $pc_cats++; $pc_strong++; }
+  if ($pc_cat_persistencia) { $pc_cats++; }
+  if ($pc_cat_social)       { $pc_cats++; }
+
+  $is_probable_cierre = (
+    !$accepted &&
+    $pc_qualifying_source &&
+    $sessions >= 2 &&
+    $last_ts >= $now - (72 * 3600) &&
+    $pc_cats >= 2 &&
+    $pc_strong >= 1
+  );
+
+  // Fuente del probable cierre (para debug/display)
+  $pc_source = '';
+  if ($is_probable_cierre) {
+    if ($is_onfire)           $pc_source = 'onfire';
+    elseif ($is_imminent)     $pc_source = 'inminente';
+    elseif ($is_price_validating) $pc_source = 'validando_precio';
+    elseif ($is_decision)     $pc_source = 'decision_activa';
+    elseif ($is_reengage_hot) $pc_source = 're_enganche_caliente';
+    elseif ($is_predict_high) $pc_source = 'prediccion_alta';
+    elseif ($is_multi_persona) $pc_source = 'multi_persona';
+    elseif ($is_high_amount)  $pc_source = 'alto_importe';
+  }
+
+  /** =========================
+   *  FASE 3: Momentum (frescura por bucket)
+   *  stable = dentro de vigencia, cooling = excede vigencia
+   *  No modifica score ni bucket — puramente informativo
+   *  ========================= */
+  $momentum = 'none';
+  if ($last_ts > 0 && !$accepted) {
+    $elapsed_h = ($now - $last_ts) / 3600.0;
+
+    // Determinar bucket principal para calcular vigencia
+    $bucket_principal = null;
+    if ($is_probable_cierre)      $bucket_principal = 'probable_cierre';
+    elseif ($is_onfire)           $bucket_principal = 'onfire';
+    elseif ($is_imminent)         $bucket_principal = 'inminente';
+    elseif ($is_price_validating) $bucket_principal = 'validando_precio';
+    elseif ($is_decision)         $bucket_principal = 'decision_activa';
+    elseif ($is_reengage_hot)     $bucket_principal = 're_enganche_caliente';
+    elseif ($is_reengage_decisive) $bucket_principal = 're_enganche';
+    elseif ($is_multi_persona)    $bucket_principal = 'multi_persona';
+    elseif ($is_deep_review)      $bucket_principal = 'revision_profunda';
+    elseif ($is_hot_close)        $bucket_principal = 'probable_cierre_base';
+    elseif ($is_return4d)         $bucket_principal = 'regreso';
+    elseif ($is_revive)           $bucket_principal = 'revivio';
+    elseif ($is_compare)          $bucket_principal = 'comparando';
+    elseif ($is_active48)         $bucket_principal = 'activo48';
+
+    // Mapa de bucket → clave de ventana temporal en U[]
+    $bucket_window_map = [
+      'probable_cierre'       => 72,  // fijo 72h
+      'onfire'                => u('onfire_recent_hours'),
+      'inminente'             => u('imminent_recent_hours'),
+      'validando_precio'      => u('priceval_recent_hours'),
+      'decision_activa'       => u('decision_window_h'),
+      're_enganche_caliente'  => u('reeng_recent_hours'),
+      're_enganche'           => u('reeng_recent_hours'),
+      'multi_persona'         => u('multip_recent_hours'),
+      'revision_profunda'     => u('deep_recent_hours'),
+      'probable_cierre_base'  => u('hot_close_last_hours'),
+      'regreso'               => u('return_recent_hours'),
+      'revivio'               => u('revive_recent_hours'),
+      'comparando'            => u('compare_window_h'),
+      'activo48'              => 48,
+    ];
+
+    if ($bucket_principal !== null && isset($bucket_window_map[$bucket_principal])) {
+      $window_h = (float)$bucket_window_map[$bucket_principal];
+      $vigencia_h = $window_h / 2.0; // mitad de la ventana = vigencia estable
+      $momentum = ($elapsed_h <= $vigencia_h) ? 'stable' : 'cooling';
+    }
+  }
+
+  /** =========================
+   *  FASE 3: Señales legibles
+   *  Array de explicaciones humanas del score
+   *  ========================= */
+  $senales = [];
+
+  // Sesiones
+  if ($sessions >= 1) {
+    $senales[] = ['pts' => min(5, $sessions) * 8, 'desc' => $sessions . ' visitas únicas'];
+  }
+
+  // Visitors
+  if ($event_uniq_visitors >= 2) {
+    $senales[] = ['pts' => 10, 'desc' => $event_uniq_visitors . ' personas distintas vieron la cotización'];
+  }
+
+  // Precio
+  if ($has_price_loop) {
+    $senales[] = ['pts' => 10, 'desc' => 'Revisó precio varias veces (loop)'];
+  } elseif ($has_totals_revisit) {
+    $senales[] = ['pts' => 8, 'desc' => 'Regresó a ver totales'];
+  } elseif ($has_totals_view) {
+    $senales[] = ['pts' => 4, 'desc' => 'Vio sección de totales'];
+  }
+
+  // Cupón
+  if ($quote_coupon_clicks > 0) {
+    $senales[] = ['pts' => 10, 'desc' => 'Intentó aplicar cupón'];
+  }
+
+  // Scroll profundo
+  if ($quote_max_scroll_any >= 90) {
+    $senales[] = ['pts' => 6, 'desc' => 'Leyó hasta el final (scroll ' . $quote_max_scroll_any . '%)'];
+  } elseif ($quote_max_scroll_any >= 50) {
+    $senales[] = ['pts' => 3, 'desc' => 'Leyó más de la mitad (scroll ' . $quote_max_scroll_any . '%)'];
+  }
+
+  // Tiempo de lectura
+  $vis_sec = (int)round($quote_visible_ms_max / 1000);
+  if ($vis_sec >= 60) {
+    $vis_min = (int)round($vis_sec / 60);
+    $senales[] = ['pts' => min(8, $vis_min * 2), 'desc' => 'Dedicó ~' . $vis_min . ' min leyendo'];
+  } elseif ($vis_sec >= 15) {
+    $senales[] = ['pts' => 2, 'desc' => 'Dedicó ~' . $vis_sec . 's leyendo'];
+  }
+
+  // Gap / regreso
+  if ($gap_days !== null && $gap_days >= 1) {
+    $senales[] = ['pts' => min(12, $gap_days * 2), 'desc' => 'Regresó tras ' . $gap_days . ' días'];
+  }
+
+  // Multi-persona
+  if ($event_multi_visitor_price_flag) {
+    $senales[] = ['pts' => 10, 'desc' => 'Varias personas revisaron el precio'];
+  } elseif ($event_multi_visitor_flag) {
+    $senales[] = ['pts' => 6, 'desc' => 'Compartida con otras personas'];
+  }
+
+  // Mismo visitor insistente
+  if ($event_same_visitor_price_focus_flag) {
+    $senales[] = ['pts' => 8, 'desc' => 'Misma persona insistió en el precio'];
+  }
+
+  // FIT alto
+  if ($fit_pct >= 14.0) {
+    $senales[] = ['pts' => 0, 'desc' => 'FIT ' . round($fit_pct, 1) . '% — patrón de cierre alto'];
+  } elseif ($fit_pct >= 8.5) {
+    $senales[] = ['pts' => 0, 'desc' => 'FIT ' . round($fit_pct, 1) . '% — patrón moderado'];
+  }
+
+  // Promo
+  if ($has_promo_timer) {
+    $senales[] = ['pts' => 2, 'desc' => 'Vio temporizador de promoción'];
+  }
+
+  // Probable cierre
+  if ($is_probable_cierre) {
+    $senales[] = ['pts' => 15, 'desc' => 'Probable cierre — ' . str_replace('_', ' ', $pc_source)];
+  }
 
   /** =========================
    *  DEBUG FUNNELS
    *  ========================= */
   $dbg_over['c0']++;
-  if ($guest_sessions >= (int)$over_min_guest_total) {
+  if ($guest_sessions >= u('over_min_guest')) {
     $dbg_over['c1']++;
-    if ($sessions >= (int)$over_min_sessions_total) {
+    if ($sessions >= u('over_min_sessions')) {
       $dbg_over['c2']++;
-      if ($age_days >= (int)$over_min_age_days) {
+      if ($age_days >= u('over_min_age_days')) {
         $dbg_over['c3']++;
-        if ($last_ts >= $now - ((int)$over_recent_days * 86400)) {
+        if ($last_ts >= $now - (u('over_recent_days') * 86400)) {
           $dbg_over['c4']++;
-          if ($ips_post_first_guest_180m <= (int)$over_max_ips_post_guest_180m) {
+          if ($ips_post_first_guest_180m <= u('over_max_ips_post_guest')) {
             $dbg_over['c5']++;
             if ($over_soft_fit_ok && !$accepted) {
               $dbg_over['c6']++;
@@ -1916,9 +2833,9 @@ foreach ($quote_ids as $id) {
   }
 
   $dbg_reeng['c0']++;
-  if ($gap_days !== null && $gap_days >= (int)$reeng_gap_days) {
+  if ($gap_days !== null && $gap_days >= u('reeng_gap_days')) {
     $dbg_reeng['c1']++;
-    if ($last_ts >= $now - ((int)$reeng_recent_hours * 3600)) {
+    if ($last_ts >= $now - (u('reeng_recent_hours') * 3600)) {
       $dbg_reeng['c2']++;
       if (!empty($reeng_recent_interest_ok)) {
         $dbg_reeng['c3']++;
@@ -1931,11 +2848,11 @@ foreach ($quote_ids as $id) {
   }
 
   $dbg_multi['c0']++;
-  if ($last_ts >= $now - ((int)$multip_recent_hours * 3600)) {
+  if ($last_ts >= $now - (u('multip_recent_hours') * 3600)) {
     $dbg_multi['c1']++;
-    if (($ips_post_first_guest_180m >= (int)$multip_min_ips_post_guest_win) || $event_uniq_visitors >= 2) {
+    if (($ips_post_first_guest_180m >= u('multip_min_ips_post_guest')) || $event_uniq_visitors >= 2) {
       $dbg_multi['c2']++;
-      if ($guest_sessions >= (int)$multip_min_guest_total && !$accepted) {
+      if ($guest_sessions >= u('multip_min_guest_total') && !$accepted) {
         $dbg_multi['c3']++;
         if ($is_multi_persona) $dbg_multi['final']++;
       }
@@ -1943,13 +2860,13 @@ foreach ($quote_ids as $id) {
   }
 
   $dbg_deep['c0']++;
-  if ($views48 >= (int)$deep_min_views48) {
+  if ($views48 >= u('deep_min_views48')) {
     $dbg_deep['c1']++;
-    if ($span48 >= ((int)$deep_min_span_hours * 3600)) {
+    if ($span48 >= (u('deep_min_span_h') * 3600)) {
       $dbg_deep['c2']++;
       if (
-        $last_ts >= $now - ((int)$deep_recent_hours * 3600) &&
-        $guest_48h >= (int)$deep_min_guest_48h &&
+        $last_ts >= $now - (u('deep_recent_hours') * 3600) &&
+        $guest_48h >= u('deep_min_guest_48h') &&
         !$accepted &&
         !empty($deep_read_ok) &&
         !empty($deep_price_focus_ok)
@@ -1975,9 +2892,12 @@ foreach ($quote_ids as $id) {
     'gap_days'      => $gap_days,
     'accepted'      => $accepted ? 1 : 0,
     'fit_prob'      => $fit_prob,
+    'data_source'   => $data_source,  // 'events' o 'log'
     'fit_pct'       => $fit_pct,
     'priority_pct'  => $priority_pct,
-    'reason'        => $is_hot_close ? hot_reason_priority($is_imminent, $is_decision, $is_revive, $is_multi, $is_return4d, $is_price_validating) : '',
+    'reason'        => $is_probable_cierre
+      ? '🎯 ' . str_replace('_', ' ', $pc_source)
+      : ($is_hot_close ? hot_reason_priority($is_imminent, $is_decision, $is_revive, $is_multi, $is_return4d, $is_price_validating) : ''),
 
     'event_uniq_visitors'                => $event_uniq_visitors,
     'event_uniq_sessions'                => $event_uniq_sessions,
@@ -2063,7 +2983,61 @@ foreach ($quote_ids as $id) {
     'not_opened_age_ok'             => $not_opened_age_ok ? 1 : 0,
     'not_opened_has_external_views' => $not_opened_has_external_views ? 1 : 0,
     'not_opened_has_js_open'        => $not_opened_has_js_open ? 1 : 0,
+
+    // Fase 3
+    'is_probable_cierre'            => $is_probable_cierre ? 1 : 0,
+    'pc_source'                     => $pc_source,
+    'pc_cats'                       => (int)$pc_cats,
+    'pc_strong'                     => (int)$pc_strong,
+    'is_reengage_hot'               => $is_reengage_hot ? 1 : 0,
+    'momentum'                      => $momentum,
+    'senales'                       => $senales,
   ];
+
+  // ── Fase 4: Determinar bucket principal y loggear transición ──
+  $current_bucket = null;
+  if ($is_probable_cierre)      $current_bucket = 'probable_cierre';
+  elseif ($is_onfire)           $current_bucket = 'onfire';
+  elseif ($is_imminent)         $current_bucket = 'inminente';
+  elseif ($is_price_validating) $current_bucket = 'validando_precio';
+  elseif ($is_reengage_hot)     $current_bucket = 're_enganche_caliente';
+  elseif ($is_predict_high)     $current_bucket = 'prediccion_alta';
+  elseif ($is_decision)         $current_bucket = 'decision_activa';
+  elseif ($is_reengage_decisive) $current_bucket = 're_enganche';
+  elseif ($is_multi_persona)    $current_bucket = 'multi_persona';
+  elseif ($is_deep_review)      $current_bucket = 'revision_profunda';
+  elseif ($is_high_amount)      $current_bucket = 'alto_importe';
+  elseif ($is_hot_close)        $current_bucket = 'probable_cierre_base';
+  elseif ($is_hesitation)       $current_bucket = 'hesitacion';
+  elseif ($is_over_analysis)    $current_bucket = 'sobre_analisis';
+  elseif ($is_revive)           $current_bucket = 'revivio';
+  elseif ($is_return4d)         $current_bucket = 'regreso';
+  elseif ($is_compare)          $current_bucket = 'comparando';
+  elseif ($is_cooling)          $current_bucket = 'enfriandose';
+  elseif ($is_not_opened)       $current_bucket = 'no_abierta';
+  elseif ($is_active48)         $current_bucket = 'activo48';
+
+  $row['bucket'] = $current_bucket;
+
+  // Log transición si cambió de bucket
+  if ($transitions_table_exists && $current_bucket !== null) {
+    $old_bucket = $prev_buckets[(int)$id] ?? null;
+
+    if ($old_bucket !== null && $old_bucket !== $current_bucket) {
+      $wpdb->insert($transitions_table, [
+        'quote_id'        => (int)$id,
+        'bucket_anterior' => $old_bucket,
+        'bucket_nuevo'    => $current_bucket,
+        'score_anterior'  => null,
+        'score_nuevo'     => round($priority_pct, 2),
+        'fit_anterior'    => null,
+        'fit_nuevo'       => round($fit_prob, 4),
+        'created_at'      => current_time('mysql'),
+        'created_ts'      => $now,
+      ], ['%d','%s','%s','%s','%s','%s','%s','%s','%d']);
+      $dbg_transitions_logged++;
+    }
+  }
 
   $rows[] = $row;
 
@@ -2091,10 +3065,12 @@ foreach ($quote_ids as $id) {
   if ($is_not_opened)        $bucket_not_opened[] = $row;
 
   if ($is_reengage_decisive) $bucket_reengage_decisive[] = $row;
+  if ($is_reengage_hot)      $bucket_reengage_hot[]      = $row;
   if ($is_multi_persona)     $bucket_multi_persona[]     = $row;
   if ($is_deep_review)       $bucket_deep_review[]       = $row;
   if ($is_hesitation)        $bucket_hesitation[]        = $row;
   if ($is_over_analysis)     $bucket_over_analysis[]     = $row;
+  if ($is_probable_cierre)   $bucket_probable_cierre[]   = $row;
 
   if ($is_revive) {
     $bucket_revive_old[] = $row;
@@ -2133,15 +3109,76 @@ usort($bucket_price_validating,  $sorter);
 usort($bucket_not_opened,        $sorter);
 
 usort($bucket_reengage_decisive, $sorter);
+usort($bucket_reengage_hot,      $sorter);
 usort($bucket_multi_persona,     $sorter);
 usort($bucket_deep_review,       $sorter);
 usort($bucket_hesitation,        $sorter);
 usort($bucket_over_analysis,     $sorter);
+usort($bucket_probable_cierre,   $sorter);
 
 usort($rows, $sorter);
 $rows = array_slice($rows, 0, $limit);
 
 $close_global_pct = ($total_all > 0) ? (100.0 * $total_sales / $total_all) : 0.0;
+
+/** =========================
+ *  FASE 4: Retorno estructurado (JSON API)
+ *  ?format=json devuelve datos puros sin HTML
+ *  Desacopla scoring de rendering — permite mobile, integraciones, etc.
+ *  ========================= */
+if (isset($_GET['format']) && $_GET['format'] === 'json' && (current_user_can('manage_options') || $login === 'ontime')) {
+  // Limpiar senales para serialización (ya son arrays simples)
+  $clean_row = function($r) {
+    // Remover campos internos pesados que no se necesitan en API
+    unset($r['amount_raw']);
+    return $r;
+  };
+
+  $json_response = [
+    'meta' => [
+      'modo'           => $radar_modo,
+      'config'         => $radar_config,
+      'fit_source'     => $dbg_fit_source,
+      'global_rate'    => round($GLOBAL_CLOSE_RATE, 4),
+      'p80'            => $p80_alto_importe,
+      'ciclo_venta'    => $ciclo_venta,
+      'total_quotes'   => $total_all,
+      'total_sales'    => $total_sales,
+      'close_pct'      => round($close_global_pct, 2),
+      'band_counts'    => $band_counts,
+      'generated_at'   => current_time('mysql'),
+      'transitions_logged' => $dbg_transitions_logged,
+    ],
+    'buckets' => [
+      'probable_cierre'       => array_map($clean_row, $bucket_probable_cierre),
+      'hot_close'             => array_map($clean_row, $bucket_hot_close),
+      'inminente'             => array_map($clean_row, $bucket_imminent),
+      'onfire'                => array_map($clean_row, $bucket_onfire),
+      'validando_precio'      => array_map($clean_row, $bucket_price_validating),
+      'no_abierta'            => array_map($clean_row, $bucket_not_opened),
+      'prediccion_alta'       => array_map($clean_row, $bucket_predict_high),
+      'alto_importe'          => array_map($clean_row, $bucket_high_amount),
+      'decision_activa'       => array_map($clean_row, $bucket_decision),
+      're_enganche'           => array_map($clean_row, $bucket_reengage_decisive),
+      're_enganche_caliente'  => array_map($clean_row, $bucket_reengage_hot),
+      'multi_persona'         => array_map($clean_row, $bucket_multi_persona),
+      'revision_profunda'     => array_map($clean_row, $bucket_deep_review),
+      'hesitacion'            => array_map($clean_row, $bucket_hesitation),
+      'sobre_analisis'        => array_map($clean_row, $bucket_over_analysis),
+      'vistas_multiples'      => array_map($clean_row, $bucket_multi),
+      'comparando'            => array_map($clean_row, $bucket_compare),
+      'revivio'               => array_map($clean_row, $bucket_revive_old),
+      'regreso'               => array_map($clean_row, $bucket_return4d),
+      'enfriandose'           => array_map($clean_row, $bucket_cooling),
+      'activos48'             => array_map($clean_row, $bucket_active48),
+    ],
+    'ranking' => array_map($clean_row, $rows),
+  ];
+
+  header('Content-Type: application/json; charset=utf-8');
+  echo wp_json_encode($json_response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+  exit;
+}
 
 $thermo_user_id = (int)$current_user->ID;
 $thermo_user_login = $login;
@@ -2447,7 +3484,27 @@ if ($internal_ips_dirty) {
     <b>DEBUG bots</b><br>
     total eventos quote_viewed revisados: <?php echo (int)$dbg_total_view_events; ?><br>
     filtrados por bot_ip_prefixes: <?php echo (int)$dbg_bot_skipped; ?> |
-    filtrados por UA bot: <?php echo (int)$dbg_bot_ua_skipped; ?>
+    filtrados por UA bot: <?php echo (int)$dbg_bot_ua_skipped; ?> |
+    ghost sessions filtradas: <?php echo (int)$dbg_ghost_filtered; ?>
+
+    <br><br><b>DEBUG events-first</b><br>
+    quotes con JS events: <?php echo (int)count(array_filter($rows, fn($r) => ($r['data_source'] ?? '') === 'events')); ?> |
+    quotes con log fallback: <?php echo (int)count(array_filter($rows, fn($r) => ($r['data_source'] ?? '') === 'log')); ?>
+
+    <br><br><b>DEBUG Fase 2: Scoring</b><br>
+    Modo: <b><?php echo esc_html($radar_modo); ?></b> |
+    FIT source: <?php echo esc_html($dbg_fit_source); ?> |
+    FIT ventas calibradas: <?php echo (int)$dbg_fit_sales; ?> |
+    Global rate: <?php echo number_format($GLOBAL_CLOSE_RATE * 100, 2); ?>%<br>
+    P80 alto importe: $<?php echo number_format($dbg_p80, 0); ?> |
+    Ciclo venta: <?php echo (int)$dbg_ciclo['dias']; ?>d (P25=<?php echo (int)$dbg_ciclo['p25']; ?>d, P75=<?php echo (int)$dbg_ciclo['p75']; ?>d, n=<?php echo (int)$dbg_ciclo['n']; ?>)
+
+    <br><br><b>DEBUG Fase 4: Infraestructura</b><br>
+    Config: JSON en wp_options |
+    Transitions tabla: <?php echo $transitions_table_exists ? 'OK' : 'NO'; ?> |
+    Transiciones loggeadas: <?php echo (int)$dbg_transitions_logged; ?> |
+    Previos cargados: <?php echo (int)count($prev_buckets); ?> |
+    API JSON: <a href="<?php echo esc_url(url_q(['format'=>'json'])); ?>">?format=json</a>
 
     <br><br><b>DEBUG internal ips</b><br>
     internal_ips en cache: <?php echo (int)$dbg_internal_ips_count; ?> |
@@ -2510,6 +3567,22 @@ foreach (['0-4.99','5-7.99','8-9.99','10-11.99','12+'] as $b) {
 </table>
 <?php endif; ?>
 
+<?php // Fase 2: Selector de modo ?>
+<div style="margin:10px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+  <b>Sensibilidad:</b>
+  <?php foreach (['agresivo'=>'Agresivo','medio'=>'Medio','ligero'=>'Ligero'] as $mk=>$ml): ?>
+    <a href="<?php echo esc_url(url_q(['modo'=>$mk])); ?>"
+       style="padding:4px 12px; border:1px solid <?php echo $radar_modo===$mk?'#1a5c38':'#ccc'; ?>; border-radius:6px; text-decoration:none; color:<?php echo $radar_modo===$mk?'#fff':'#333'; ?>; background:<?php echo $radar_modo===$mk?'#1a5c38':'#fff'; ?>; font-size:13px; font-weight:<?php echo $radar_modo===$mk?'bold':'normal'; ?>;">
+      <?php echo esc_html($ml); ?>
+    </a>
+  <?php endforeach; ?>
+  <span style="color:#666; font-size:12px; margin-left:8px;">
+    FIT: <?php echo esc_html($dbg_fit_source); ?> (<?php echo number_format($GLOBAL_CLOSE_RATE*100,2); ?>%) |
+    P80: $<?php echo number_format($p80_alto_importe,0); ?> |
+    Ciclo: <?php echo (int)$ciclo_venta['dias']; ?>d
+  </span>
+</div>
+
 <div class="btns" style="margin:10px 0;">
   <a href="<?php echo esc_url(url_q(['range'=>'all'])); ?>" class="<?php echo $range==='all'?'active':''; ?>">Todas</a>
   <a href="<?php echo esc_url(url_q(['range'=>'48h'])); ?>" class="<?php echo $range==='48h'?'active':''; ?>">48 horas</a>
@@ -2528,8 +3601,18 @@ foreach (['0-4.99','5-7.99','8-9.99','10-11.99','12+'] as $b) {
 
 <?php
 render_bucket_fixed(
+  '🎯 Probable cierre (META)',
+  'Combina señales de múltiples categorías: engagement + precio + persistencia + social. Requiere ≥2 categorías con ≥1 fuerte. Fuentes: onfire, inminente, validando precio, decisión, re-enganche caliente, predicción alta, multi-persona, alto importe.',
+  $bucket_probable_cierre,
+  false,
+  $sort,
+  $dir,
+  true
+);
+
+render_bucket_fixed(
   '🔥 Probable cierre (PRIORIDAD)',
-  'Ventana: últimas '.$hot_close_last_hours.'h + momentum ('.$hot_close_min_views24.'+ vistas/24h o '.$hot_close_min_views7d.'+ vistas/7d).',
+  'Ventana: últimas '.u('hot_close_last_hours').'h + momentum ('.u('hot_close_min_views24').'+ vistas/24h o '.u('hot_close_min_views7d').'+ vistas/7d). Modo: '.$radar_modo,
   $bucket_hot_close,
   false,
   $sort,
@@ -2539,7 +3622,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '🔥 Cierre inminente',
-  'Actividad en '.$imminent_recent_hours.'h + FIT >= '.number_format((float)$imminent_min_fit_pct,2).' + edad>='.(int)$imminent_min_age_hours.'h + guest>='.(int)$imminent_min_guest_sessions.' + mínimo '.$imminent_min_signals_total.' señales, de las cuales al menos '.$imminent_min_signals_strong.' fuerte. Ya considera misma huella insistiendo en precio y consenso multi-visitor.',
+  'Actividad en '.u('imminent_recent_hours').'h + FIT >= '.number_format((float)u('imminent_min_fit_pct'),2).' + edad>='.u('imminent_min_age_hours').'h + guest>='.u('imminent_min_guest').' + mínimo '.u('imminent_min_signals').' señales ('.u('imminent_min_strong').' fuerte). Modo: '.$radar_modo,
   $bucket_imminent,
   false,
   $sort,
@@ -2549,7 +3632,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '🔥😱 ON FIRE (tutu)',
-  'Señal premium: actividad en '.$onfire_recent_hours.'h + '.$onfire_min_sessions.'+ sesiones + scroll >= '.$onfire_min_scroll_pct.' + lectura real + foco en precio + validación por visitor.',
+  'Señal premium: actividad en '.u('onfire_recent_hours').'h + '.u('onfire_min_sessions').'+ sesiones + scroll >= '.u('onfire_min_scroll_pct').' + lectura real + foco en precio + validación por visitor. Modo: '.$radar_modo,
   $bucket_onfire,
   true,
   $sort,
@@ -2559,7 +3642,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '💸 Validando precio',
-  'Detecta foco real en precio: exige base guest y además validación individual (misma huella) o compartida (multi-visitor), con lectura razonable o señales de totales/loop/revisita.',
+  'Detecta foco real en precio: exige base guest + validación individual o compartida. Modo: '.$radar_modo,
   $bucket_price_validating,
   false,
   $sort,
@@ -2569,7 +3652,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '❌ No abierta',
-  'Cotizaciones creadas en los últimos '.$not_opened_max_age_days.' días sin evidencia técnica de apertura (ni vistas externas registradas ni eventos JS). Útil como alerta comercial, no como certeza absoluta.',
+  'Cotizaciones creadas en los últimos '.u('not_opened_max_age_days').' días sin evidencia técnica de apertura.',
   $bucket_not_opened,
   false,
   $sort,
@@ -2579,7 +3662,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '🔮 Predicción alta (Accepted)',
-  'Regla: FIT >= '.number_format((float)$predict_fit_threshold_pct,2).'% y reciente ('.$predict_recent_days.'d).',
+  'FIT >= '.number_format((float)u('predict_min_fit_pct'),2).'% y ventana adaptativa: '.$predict_window.'d (ciclo venta: '.$ciclo_venta['dias'].'d, modo: '.$radar_modo.').',
   $bucket_predict_high,
   false,
   $sort,
@@ -2588,8 +3671,8 @@ render_bucket_fixed(
 );
 
 render_bucket_fixed(
-  '💰 Alto importe 48h',
-  'Importe >= $'.number_format($high_amount_threshold,0).' y vista en últimas '.$high_amount_recent_hours.'h.',
+  '💰 Alto importe',
+  'Importe >= $'.number_format($p80_alto_importe,0).' (P80 dinámico) y vista en últimas '.u('high_amount_recent_hours').'h. Modo: '.$radar_modo,
   $bucket_high_amount,
   false,
   $sort,
@@ -2599,7 +3682,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '🧠 Decisión activa',
-  'Señal: '.$decision_min_views48.'+ vistas en '.$decision_window_hours.'h y regresos reales (span >= '.$decision_min_span_hours.'h).',
+  'Señal: '.u('decision_min_views48').'+ vistas en '.u('decision_window_h').'h y regresos reales (span >= '.u('decision_min_span_h').'h). Modo: '.$radar_modo,
   $bucket_decision,
   false,
   $sort,
@@ -2609,7 +3692,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '🟣 Re-enganche decisivo',
-  'Gap >= '.$reeng_gap_days.'d y last < '.$reeng_recent_hours.'h + (guest_24h >= '.$reeng_min_guest_24h.' o vistas24 >= '.$reeng_min_views24.') + FIT% >= '.number_format((float)$reeng_min_fit_pct,2).'%.',
+  'Gap >= '.u('reeng_gap_days').'d y last < '.u('reeng_recent_hours').'h + interés reciente. Modo: '.$radar_modo,
   $bucket_reengage_decisive,
   true,
   $sort,
@@ -2618,8 +3701,18 @@ render_bucket_fixed(
 );
 
 render_bucket_fixed(
+  '🔥🟣 Re-enganche caliente',
+  'Re-enganche + interacción de precio (loop, revisita totales, precio focus, o PSS >= 3.0). Modo: '.$radar_modo,
+  $bucket_reengage_hot,
+  true,
+  $sort,
+  $dir,
+  false
+);
+
+render_bucket_fixed(
   '👥 Revisión multi-persona',
-  'Last < '.$multip_recent_hours.'h + 2+ visitors o IPs post primer guest/'.$multip_ip_window_min.'m + guest_total >= '.$multip_min_guest_total.'. Visitor pesa más que IP cuando hay consenso de precio.',
+  'Last < '.u('multip_recent_hours').'h + 2+ visitors o IPs post primer guest/'.u('multip_ip_window_min').'m + guest_total >= '.u('multip_min_guest_total').'. Modo: '.$radar_modo,
   $bucket_multi_persona,
   false,
   $sort,
@@ -2629,7 +3722,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '🧾 Revisión profunda',
-  'Ya no solo es frecuencia: exige lectura real (visible) y foco en precio/totales. Debe representar análisis serio, no solo muchas vistas.',
+  'Lectura real (visible) y foco en precio/totales. Modo: '.$radar_modo,
   $bucket_deep_review,
   false,
   $sort,
@@ -2639,7 +3732,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '🟠 Hesitación',
-  'Pausa entre 24h y 7d, con repetición guest limitada y al menos una señal de fricción real en precio/totales.',
+  'Pausa entre '.u('hes_last_min_hours').'h y '.u('hes_last_max_days').'d, con fricción real en precio/totales. Modo: '.$radar_modo,
   $bucket_hesitation,
   false,
   $sort,
@@ -2649,7 +3742,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '🟤 Sobre-análisis',
-  'guest_total >= '.$over_min_guest_total.' y sesiones >= '.$over_min_sessions_total.' y edad >= '.$over_min_age_days.'d y last < '.$over_recent_days.'d + poca expansión post guest. Permite fricción real de una misma huella sin depender tanto de FIT bajo.',
+  'guest >= '.u('over_min_guest').' y sesiones >= '.u('over_min_sessions').' y edad >= '.u('over_min_age_days').'d y last < '.u('over_recent_days').'d. Modo: '.$radar_modo,
   $bucket_over_analysis,
   false,
   $sort,
@@ -2659,7 +3752,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '🟩 Vistas múltiples',
-  'Señal: ('.$multi_min_ips.'+ IPs en '.$multi_window_hours.'h) O ('.$multi_min_views24.'+ vistas en 24h) y última vista en '.$multi_recent_hours.'h.',
+  'Señal: ('.u('multi_min_ips').'+ IPs en '.u('multi_recent_hours').'h) O ('.u('multi_min_views24').'+ vistas en 24h). Modo: '.$radar_modo,
   $bucket_multi,
   false,
   $sort,
@@ -2669,7 +3762,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '🟠 Comparando / Compartiendo (señal exclusiva)',
-  'Señal: '.$compare_min_ips.'+ IPs distintas en '.$compare_window_hours.'h y última vista en '.$compare_recent_hours.'h.',
+  'Señal: '.u('compare_min_ips').'+ IPs distintas en '.u('compare_window_h').'h + engagement gate. Modo: '.$radar_modo,
   $bucket_compare,
   false,
   $sort,
@@ -2679,7 +3772,7 @@ render_bucket_fixed(
 
 render_bucket_fixed(
   '💜 Revivió cotización vieja (señal exclusiva)',
-  'Volvió tras '.$revive_gap_days.'+ días sin verla y última vista en '.$revive_recent_hours.'h. Incluye “gap”.',
+  'Volvió tras '.u('revive_gap_days').'+ días y última vista en '.u('revive_recent_hours').'h. Modo: '.$radar_modo,
   $bucket_revive_old,
   true,
   $sort,
@@ -2688,8 +3781,8 @@ render_bucket_fixed(
 );
 
 render_bucket_fixed(
-  '🟣 Regreso después de +'.$return_gap_days.' días (señal exclusiva)',
-  'Volvió tras '.$return_gap_days.'+ días sin verla y última vista en '.$return_recent_hours.'h. Incluye “gap”.',
+  '🟣 Regreso después de +'.u('return_gap_days').' días (señal exclusiva)',
+  'Volvió tras '.u('return_gap_days').'+ días y última vista en '.u('return_recent_hours').'h. Modo: '.$radar_modo,
   $bucket_return4d,
   true,
   $sort,
@@ -2704,7 +3797,7 @@ unset($cool_row);
 
 render_bucket_fixed(
   '🔵 Enfriándose (señal exclusiva)',
-  'Tuvo '.$cooling_min_total_sessions.'+ vistas históricas pero no se ha visto en 48h. Distingue si ya había foco en precio o no.',
+  'Tuvo '.u('cooling_min_sessions').'+ vistas + engagement real pero no se ha visto en '.u('cooling_days').'d. Modo: '.$radar_modo,
   $bucket_cooling,
   false,
   $sort,
@@ -2751,6 +3844,12 @@ render_bucket_fixed(
     <div class="titlewrap">
       <?php
       $title_icons = '';
+      // Fase 3: momentum + meta-bucket icons
+      $m = $r['momentum'] ?? 'none';
+      if ($m === 'stable')  $title_icons .= '↑';
+      elseif ($m === 'cooling') $title_icons .= '↓';
+      if (!empty($r['is_probable_cierre'])) $title_icons .= '🎯';
+      if (!empty($r['is_reengage_hot']))    $title_icons .= '🔥';
       if (!empty($r['has_coupon_icon'])) $title_icons .= '🎟️';
       if (!empty($r['has_promo_icon']))  $title_icons .= '💣';
       if (!empty($r['has_price_icon']))  $title_icons .= '💸';
@@ -2758,8 +3857,16 @@ render_bucket_fixed(
       if (!empty($r['event_multi_visitor_price_flag'])) $title_icons .= '👥';
       if (!empty($r['is_not_opened'])) $title_icons .= '❌';
       $title_show = trim($title_icons . ' ' . ($r['title'] ?? ''));
+
+      // Señales tooltip
+      $senales_text = '';
+      if (!empty($r['senales']) && is_array($r['senales'])) {
+        $parts = [];
+        foreach ($r['senales'] as $s) { $parts[] = ($s['desc'] ?? ''); }
+        $senales_text = implode(' | ', $parts);
+      }
       ?>
-      <div class="titletext"><?php echo esc_html($title_show); ?></div>
+      <div class="titletext" <?php echo $senales_text ? 'title="'.esc_attr($senales_text).'"' : ''; ?>><?php echo esc_html($title_show); ?></div>
       <div class="amount"><?php echo esc_html($r['amount_fmt']); ?></div>
     </div>
   </td>
