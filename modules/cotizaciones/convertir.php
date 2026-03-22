@@ -44,17 +44,19 @@ try {
     $token_vta  = generar_token(32);
 
     // Crear venta
+    $venta_vendedor = (int)($cot['vendedor_id'] ?? $cot['usuario_id'] ?? Auth::id());
     $venta_id = DB::insert(
         "INSERT INTO ventas
-         (empresa_id, cotizacion_id, cliente_id, usuario_id,
+         (empresa_id, cotizacion_id, cliente_id, usuario_id, vendedor_id,
           numero, titulo, slug, token,
           total, pagado, saldo, estado)
-         VALUES (?,?,?,?,?,?,?,?,?,0,?,?)",
+         VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)",
         [
             $empresa_id,
             $cot_id,
             $cot['cliente_id'],
             Auth::id(),
+            $venta_vendedor,
             $numero_vta,
             $cot['titulo'],
             $slug_vta,

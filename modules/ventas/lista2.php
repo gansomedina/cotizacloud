@@ -21,7 +21,7 @@ $solo_propias = !Auth::puede('ver_todas_ventas');
 // ─── Conteos ─────────────────────────────────────────────
 $cnt_w = ["v.empresa_id = ?"];
 $cnt_p = [$empresa_id];
-if ($solo_propias) { $cnt_w[] = "v.usuario_id = ?"; $cnt_p[] = Auth::id(); }
+if ($solo_propias) { $cnt_w[] = "(v.usuario_id = ? OR v.vendedor_id = ?)"; $cnt_p[] = Auth::id(); $cnt_p[] = Auth::id(); }
 
 $conteos = ['todas' => 0];
 foreach (DB::query("SELECT estado, COUNT(*) n FROM ventas v WHERE " . implode(' AND ', $cnt_w) . " GROUP BY estado", $cnt_p) as $r) {
@@ -33,7 +33,7 @@ foreach (DB::query("SELECT estado, COUNT(*) n FROM ventas v WHERE " . implode(' 
 $where  = ["v.empresa_id = ?"];
 $params = [$empresa_id];
 if ($estado !== 'todas') { $where[] = "v.estado = ?"; $params[] = $estado; }
-if ($solo_propias)       { $where[] = "v.usuario_id = ?"; $params[] = Auth::id(); }
+if ($solo_propias)       { $where[] = "(v.usuario_id = ? OR v.vendedor_id = ?)"; $params[] = Auth::id(); $params[] = Auth::id(); }
 if ($busqueda !== '') {
     $where[] = "(v.titulo LIKE ? OR v.numero LIKE ? OR cl.nombre LIKE ? OR cl.telefono LIKE ?)";
     $like    = '%' . $busqueda . '%';

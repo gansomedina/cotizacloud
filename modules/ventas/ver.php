@@ -24,7 +24,7 @@ $venta = DB::row(
      FROM ventas v
      LEFT JOIN clientes cl    ON cl.id = v.cliente_id
      LEFT JOIN cotizaciones c ON c.id  = v.cotizacion_id
-     LEFT JOIN usuarios uc    ON uc.id = c.usuario_id
+     LEFT JOIN usuarios uc    ON uc.id = COALESCE(v.vendedor_id, c.usuario_id)
      WHERE v.id = ? AND v.empresa_id = ?",
     [$venta_id, $empresa_id]
 );
