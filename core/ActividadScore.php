@@ -136,56 +136,72 @@ class ActividadScore
         //  SEÑALES CRUDAS (últimos 30 días)
         // ═══════════════════════════════════════════════════
 
+        // ── Detectar días de importación masiva (>20 cotizaciones en 1 día) ──
+        // Estas cotizaciones no son trabajo real del vendedor
+        $import_dates = DB::query(
+            "SELECT DATE(created_at) AS d, COUNT(*) AS n
+             FROM cotizaciones
+             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             GROUP BY DATE(created_at) HAVING n > 20",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $excl_dates = array_map(fn($r) => "'" . $r['d'] . "'", $import_dates);
+        $no_import = $excl_dates
+            ? "AND DATE(created_at) NOT IN (" . implode(',', $excl_dates) . ")"
+            : "";
+
         // ── Cotizaciones del vendedor ──
         $cw = "COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?";
 
         $cot_asignadas = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw AND total > 0
+             AND estado != 'borrador' $no_import
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $cot_vistas = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw AND total > 0
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw AND total > 0 $no_import
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND (estado IN ('vista','aceptada','convertida','aceptada_cliente') OR visitas > 0)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $dormidas_7d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
              AND estado='enviada' AND visitas=0
              AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $dormidas_14d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
              AND estado='enviada' AND visitas=0
              AND created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $dormidas_21d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
              AND estado='enviada' AND visitas=0
              AND created_at < DATE_SUB(NOW(), INTERVAL 21 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $cierres_total = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $cierres_bucket = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND radar_bucket IS NOT NULL",
             [$usuario_id, $empresa_id, $periodo]
         );
         $cierres_sin_dto = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND (cupon_pct IS NULL OR cupon_pct=0)
@@ -313,7 +329,7 @@ class ActividadScore
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND accion_at IS NOT NULL AND total > 0",
+             AND accion_at IS NOT NULL AND total > 0 $no_import",
             [$usuario_id, $empresa_id, $periodo]
         ) : null;
 
@@ -365,7 +381,8 @@ class ActividadScore
              FROM cotizaciones c
              WHERE COALESCE(c.vendedor_id, c.usuario_id)=? AND c.empresa_id=?
              AND c.estado IN ('aceptada','convertida','aceptada_cliente')
-             AND c.accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+             AND c.accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             $no_import",
             [$usuario_id, $empresa_id, $periodo]
         );
 
@@ -509,7 +526,7 @@ class ActividadScore
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND total > 0",
+             AND total > 0 $no_import",
             [$usuario_id, $empresa_id, $periodo]
         );
         $total_semanas = max(round($periodo / 7), 1);
