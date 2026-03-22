@@ -895,8 +895,8 @@ class ActividadScore
                 ? ''
                 : ' Tip: verificar que los datos de contacto del cliente sean correctos.',
             'seg'  => $seg < 0.10
-                ? ' Tip: entrar al Radar al menos 2 veces por semana para detectar oportunidades.'
-                : ' Tip: revisar el Radar cuando haya señales calientes.',
+                ? ' Tip: el Radar detecta clientes interesados en tiempo real — revisarlo frecuentemente marca la diferencia.'
+                : ' Tip: revisar el Radar con frecuencia para no perder oportunidades calientes.',
             'conv' => $cierres === 0
                 ? ' Tip: dar seguimiento personalizado a las cotizaciones más vistas.'
                 : ' Tip: enfocarse en cotizaciones con alta actividad del cliente.',
