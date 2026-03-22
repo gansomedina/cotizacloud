@@ -144,11 +144,12 @@ $GLOBALS['BKT_HINTS'] = [
     'no_abierta'           => 'Cotización enviada pero nunca abierta por el cliente',
 ];
 
-function rbadge(?string $b,?int $sc,array $BM): string {
+function rbadge(?string $b,?int $sc,array $BM,string $momentum='stable'): string {
     if(!$b) return '<span style="color:var(--t3);font-size:11px">—</span>';
     [$ico,$col,$bg,$lbl]=$BM[$b]??['⬜','#64748b','#f1f5f9',ucfirst($b)];
     $s=$sc?" · {$sc}":'';
-    return "<span style='display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-weight:700;font-size:11px;background:{$bg};color:{$col};white-space:nowrap'>{$ico} {$lbl}{$s}</span>";
+    $decay = $momentum==='cooling' ? ' <span title="Sin actividad reciente — perdiendo momentum" style="font-size:13px;opacity:.7">↓</span>' : '';
+    return "<span style='display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-weight:700;font-size:11px;background:{$bg};color:{$col};white-space:nowrap'>{$ico} {$lbl}{$decay}{$s}</span>";
 }
 
 // PRIORIDAD v3: probable_cierre es #1 (cross-bucket agregador)
@@ -177,6 +178,8 @@ foreach ($raw as $c) {
     $all_buckets = $senales['buckets'] ?? [];
     $pc_source = $senales['pc_source'] ?? null;
 
+    $momentum = $senales['momentum'] ?? 'stable';
+
     $row = [
         'id'          => (int)$c['id'],
         'titulo'      => $c['titulo'] ?? '—',
@@ -190,6 +193,7 @@ foreach ($raw as $c) {
         'fit_pct'     => max(0,min(100,(float)$score*0.65)),
         'priority_pct'=> (float)$score,
         'bucket'      => $bucket,
+        'momentum'    => $momentum,
         'senales'     => $senales,
         'last_ts'     => $last_ts,
         'visitas'     => (int)($c['visitas'] ?? 0),
@@ -287,9 +291,11 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         if (!empty($r_icons['sv_price']))   $r_ico_str .= '👤';
         if (!empty($r_icons['mv_price']))   $r_ico_str .= '👥';
         if (!empty($r_icons['not_opened'])) $r_ico_str .= '❌';
+        $r_momentum = $r['momentum'] ?? 'stable';
+        $r_decay_ico = $r_momentum === 'cooling' ? '<span class="momentum-down" title="Sin actividad reciente — perdiendo momentum">↓</span>' : '';
         $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo']);
         $cot_url = '/cotizaciones/'.(int)$r['id'];
-        echo "<td><a href='{$cot_url}' class='rtit-link'><div class='rtit'>{$r_title_show}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
+        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit'>{$r_title_show}</div>{$r_decay_ico}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
         if ($motivo) {
             $reason_key = $r['reason'] ?? '';
             $reason_meta = $BM[$reason_key] ?? null;
@@ -445,6 +451,10 @@ ob_start();
 .bno{display:inline-block;padding:1px 6px;border-radius:8px;font-weight:700;font-size:10px;background:var(--bg);border:1px solid var(--border);color:var(--t2)}
 .rlnk{font-weight:600;font-size:12px;color:var(--g);text-decoration:none}
 .rlnk:hover{text-decoration:underline}
+
+/* Momentum decay indicator */
+.momentum-down{display:inline-block;color:#dc2626;font-weight:800;font-size:14px;line-height:1;vertical-align:middle;margin-left:3px;animation:pulseDown 2s ease-in-out infinite}
+@keyframes pulseDown{0%,100%{opacity:.5}50%{opacity:1}}
 
 /* Debug rows */
 .dbg-row td{cursor:default!important}
@@ -771,7 +781,7 @@ render_bkt('🟡 Activos 48h (todos los activos)',
       <td class="tr"><b><?= number_format($r['priority_pct'],1) ?>%</b></td>
       <td class="tr"><?= $r['visitas']>0 ? '<b>'.$r['visitas'].'</b>' : '—' ?></td>
       <td><?= date('m-d H:i',$r['last_ts']) ?> <span class="ago">(<?= rhace($r['last_ts']) ?>)</span></td>
-      <td><?= rbadge($r['bucket'],$r['score'],$BM) ?></td>
+      <td><?= rbadge($r['bucket'],$r['score'],$BM,$r['momentum'] ?? 'stable') ?></td>
       <td><a href="/cotizaciones/<?= (int)$r['id'] ?>" class="rlnk">Editar</a></td>
     </tr>
     <?php if ($debug_mode):
