@@ -59,10 +59,11 @@ class ActividadScore
 
         // ═══ SEÑALES CRUDAS (últimos 30 días) ═══
 
-        // Días activos (logins distintos)
+        // Días activos (solo lunes-viernes)
         $dias_activos = (int)DB::val(
             "SELECT COUNT(DISTINCT DATE(created_at)) FROM actividad_log
-             WHERE usuario_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+             WHERE usuario_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND DAYOFWEEK(created_at) BETWEEN 2 AND 6",
             [$usuario_id, $periodo]
         );
 
@@ -93,7 +94,13 @@ class ActividadScore
 
         // ═══ DIMENSIÓN 1: TASAS PROPORCIONALES A CARGA ═══
 
-        $dias_laborales = max(($periodo / 7) * self::DIAS_SEMANA, 1);
+        // Contar solo lunes-viernes en el período
+        $dias_laborales = 0;
+        for ($d = 0; $d < $periodo; $d++) {
+            $dow = (int)date('N', strtotime("-{$d} days"));
+            if ($dow <= 5) $dias_laborales++;
+        }
+        $dias_laborales = max($dias_laborales, 1);
         $semanas        = max($periodo / 7, 1);
         $carga          = max($carga_activa, 1); // evitar /0
 

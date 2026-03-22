@@ -415,6 +415,11 @@ ob_start();
 .lb-info-inner p{margin:6px 0}
 .lb-info-inner ul{margin:4px 0;padding-left:18px}
 .lb-info-inner li{margin-bottom:2px}
+/* Leaderboard collapsible */
+#lb-body{overflow:hidden;max-height:2000px;transition:max-height .3s ease}
+#lb-body.lb-collapsed{max-height:0}
+.lb-chevron{flex-shrink:0;transition:transform .25s;transform:rotate(-90deg)}
+.lb-chevron.lb-chevron-open{transform:rotate(0)}
 @media(max-width:700px){.lb-stats{display:none}.lb-row{grid-template-columns:24px 30px 1fr auto}}
 /* KPI GRID */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
@@ -614,7 +619,7 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
       </div>
       <div class="thermo-bars">
         <div style="flex:1">
-          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round($ts['dias_activos'] / 22 * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
+          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round($ts['dias_activos'] / max(1, (int)((30/7)*5)) * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
           <div class="thermo-bar-lbl">Presencia</div>
         </div>
         <div style="flex:1">
@@ -631,13 +636,15 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
 
 <?php if ($es_admin_dash && count($equipo_scores) > 0): ?>
   <div class="lb">
-    <div class="lb-head">
+    <div class="lb-head" onclick="var b=document.getElementById('lb-body');b.classList.toggle('lb-collapsed');this.querySelector('.lb-chevron').classList.toggle('lb-chevron-open')" style="cursor:pointer;user-select:none">
       <div style="flex:1">
         <div class="lb-title">Ranking del equipo</div>
-        <div class="lb-sub">30 días · auto-ajustable</div>
+        <div class="lb-sub">30 días · auto-ajustable · <?= count($equipo_scores) ?> miembros</div>
       </div>
-      <button onclick="document.getElementById('lb-info').classList.toggle('lb-info-open')" style="background:none;border:1px solid var(--border);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font:600 12px var(--body);flex-shrink:0" title="¿Cómo funciona?">?</button>
+      <svg class="lb-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <button onclick="event.stopPropagation();document.getElementById('lb-info').classList.toggle('lb-info-open')" style="background:none;border:1px solid var(--border);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font:600 12px var(--body);flex-shrink:0;margin-left:6px" title="¿Cómo funciona?">?</button>
     </div>
+    <div id="lb-body" class="lb-collapsed">
     <div id="lb-info" class="lb-info">
       <div class="lb-info-inner">
         <b>¿Qué mide este ranking?</b>
@@ -689,6 +696,7 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
       </div>
     </div>
     <?php endforeach; ?>
+    </div><!-- /lb-body -->
   </div>
 <?php endif; ?>
 
