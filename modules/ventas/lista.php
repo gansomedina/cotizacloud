@@ -51,9 +51,12 @@ $ventas = DB::query(
     "SELECT v.id, v.numero, v.titulo, v.slug, v.estado,
             v.total, v.pagado, v.saldo, v.created_at,
             cl.nombre AS cnombre, cl.telefono AS ctel,
+            COALESCE(uv.nombre, u.nombre) AS vendedor,
             (SELECT COUNT(*) FROM recibos r WHERE r.venta_id=v.id AND r.cancelado=0) AS num_pagos
      FROM ventas v
      LEFT JOIN clientes cl ON cl.id = v.cliente_id
+     LEFT JOIN usuarios u  ON u.id = v.usuario_id
+     LEFT JOIN usuarios uv ON uv.id = v.vendedor_id
      WHERE $where_sql ORDER BY $order_sql LIMIT 100",
     $params
 );
@@ -134,7 +137,7 @@ ob_start();
 @media(min-width:761px){
   .vtbl-header{
     display:grid;
-    grid-template-columns:minmax(0,2fr) 160px 100px minmax(110px,1fr) 100px;
+    grid-template-columns:minmax(0,2fr) 140px minmax(90px,1fr) 100px minmax(110px,1fr) 100px;
     align-items:center;padding:9px 20px;
     border-bottom:2px solid var(--border);background:var(--bg)
   }
@@ -142,7 +145,7 @@ ob_start();
 
   .venta-row{
     display:grid;
-    grid-template-columns:minmax(0,2fr) 160px 100px minmax(110px,1fr) 100px;
+    grid-template-columns:minmax(0,2fr) 140px minmax(90px,1fr) 100px minmax(110px,1fr) 100px;
     align-items:center;gap:0;padding:14px 20px
   }
 
@@ -160,7 +163,11 @@ ob_start();
   .venta-col-cliente .vc-nombre{font:500 14px var(--body);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .venta-col-cliente .vc-fecha{font:400 12px var(--num);color:var(--t3);margin-top:3px}
 
-  /* Col 3: estatus */
+  /* Col 3: asesor */
+  .venta-col-asesor{min-width:0;padding-right:10px}
+  .venta-col-asesor .vc-nombre{font:500 13px var(--body);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* Col 4: estatus */
   .venta-col-status{}
 
   /* Col 4: monto+saldo+barra */
@@ -173,11 +180,11 @@ ob_start();
   .venta-r{display:none!important}
 
   /* Cols desktop: mostrar */
-  .venta-col-cliente,.venta-col-status,.venta-col-monto{display:block}
+  .venta-col-cliente,.venta-col-asesor,.venta-col-status,.venta-col-monto{display:block}
 }
 
 @media(max-width:760px){
-  .venta-col-cliente,.venta-col-status,
+  .venta-col-cliente,.venta-col-asesor,.venta-col-status,
   .venta-col-monto,.venta-col-accion{display:none}
   .venta-title{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 }
@@ -224,6 +231,7 @@ foreach ($elabels as $k => $lbl):
 <div class="vtbl-header">
   <span>Proyecto / Folio</span>
   <span>Cliente</span>
+  <span>Asesor</span>
   <span>Estatus</span>
   <span>Total / Saldo</span>
   <span style="text-align:right">Acciones</span>
@@ -258,7 +266,12 @@ foreach ($elabels as $k => $lbl):
     <div class="vc-fecha"><?= $fecha_f ?></div>
   </div>
 
-  <!-- Col 3: estatus (desktop) -->
+  <!-- Col 3: asesor (desktop) -->
+  <div class="venta-col-asesor">
+    <div class="vc-nombre"><?= e($v['vendedor'] ?? '—') ?></div>
+  </div>
+
+  <!-- Col 4: estatus (desktop) -->
   <div class="venta-col-status"><?= vst_badge($v['estado']) ?></div>
 
   <!-- Col 4: monto + saldo (desktop) -->

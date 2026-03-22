@@ -74,10 +74,12 @@ $rows = DB::query(
             c.total, c.created_at, c.valida_hasta, c.visitas,
             c.radar_bucket, c.radar_score,
             cl.nombre AS cnombre, cl.telefono AS ctel,
-            u.nombre AS asesor
+            u.nombre AS asesor, c.vendedor_id,
+            COALESCE(uv.nombre, u.nombre) AS vendedor
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id=c.cliente_id
      LEFT JOIN usuarios u  ON u.id=c.usuario_id
+     LEFT JOIN usuarios uv ON uv.id=c.vendedor_id
      WHERE $where_sql ORDER BY $order_sql LIMIT ? OFFSET ?",
     array_merge($params, [$por_pag, $pag['offset']])
 );
@@ -229,7 +231,7 @@ ob_start();
 .mob-actions .act-btn{height:30px;width:34px;padding:0;justify-content:center;font-size:15px}
 
 /* ocultar columnas desktop */
-.cot-col-cliente,.cot-col-status,.cot-col-monto,.cot-col-fechas,.cot-col-vistas,.desk-actions{display:none}
+.cot-col-cliente,.cot-col-asesor,.cot-col-status,.cot-col-monto,.cot-col-fechas,.cot-col-vistas,.desk-actions{display:none}
 
 /* =============================================
    DESKTOP — 5 columnas: título | cliente | estatus | monto+vistas | acciones
@@ -239,7 +241,7 @@ ob_start();
 
   .tbl-header{
     display:grid;
-    grid-template-columns:minmax(180px,2fr) minmax(130px,1.4fr) 90px minmax(110px,1fr) 140px;
+    grid-template-columns:minmax(180px,2fr) minmax(120px,1.2fr) minmax(90px,1fr) 90px minmax(110px,1fr) 140px;
     align-items:center;padding:8px 18px;
     border-bottom:2px solid var(--border);background:var(--bg)
   }
@@ -247,7 +249,7 @@ ob_start();
 
   .cot-row{
     display:grid;
-    grid-template-columns:minmax(180px,2fr) minmax(130px,1.4fr) 90px minmax(110px,1fr) 140px;
+    grid-template-columns:minmax(180px,2fr) minmax(120px,1.2fr) minmax(90px,1fr) 90px minmax(110px,1fr) 140px;
     align-items:center;padding:11px 18px;
   }
 
@@ -263,6 +265,8 @@ ob_start();
   .cot-col-cliente{display:block;min-width:0;padding-right:10px}
   .cot-col-cliente .cc-n{font:500 13px var(--body);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cot-col-cliente .cc-t{font:400 11px var(--num);color:var(--t3);margin-top:1px}
+  .cot-col-asesor{display:block;min-width:0;padding-right:10px}
+  .cot-col-asesor .cc-n{font:500 13px var(--body);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
   /* col 3: estatus */
   .cot-col-status{display:block}
@@ -345,7 +349,7 @@ foreach ($chips as $k => $lbl):
 <div class="cot-list">
 
   <div class="tbl-header">
-    <span>Proyecto</span><span>Cliente</span><span>Estatus</span><span>Importe</span><span>Acciones</span>
+    <span>Proyecto</span><span>Cliente</span><span>Asesor</span><span>Estatus</span><span>Importe</span><span>Acciones</span>
   </div>
 
   <?php foreach ($rows as $c):
@@ -385,7 +389,7 @@ foreach ($chips as $k => $lbl):
       <!-- MOBILE: panel expandido (oculto por defecto) -->
       <div class="mob-expand" id="exp-<?= (int)$c['id'] ?>" onclick="event.stopPropagation()">
         <div class="exp-meta">
-          <?php if ($c['asesor']): ?><span class="exp-meta-item">Asesor: <?= e($c['asesor']) ?></span><?php endif ?>
+          <?php if ($c['vendedor']): ?><span class="exp-meta-item">Asesor: <?= e($c['vendedor']) ?></span><?php endif ?>
           <span class="exp-meta-item">Creada: <?= date('d M Y', strtotime($c['created_at'])) ?></span>
           <?php if ($c['valida_hasta']): ?>
           <?php
@@ -413,7 +417,12 @@ foreach ($chips as $k => $lbl):
       <?php if ($c['ctel']): ?><div class="cc-t"><?= e($c['ctel']) ?></div><?php endif ?>
     </div>
 
-    <!-- col 3 desktop: estatus -->
+    <!-- col 3 desktop: asesor -->
+    <div class="cot-col-asesor">
+      <div class="cc-n"><?= e($c['vendedor'] ?? '—') ?></div>
+    </div>
+
+    <!-- col 4 desktop: estatus -->
     <div class="cot-col-status"><?= st_badge($c['estado']) ?></div>
 
     <!-- col 4 desktop: monto + radar/vistas debajo -->
