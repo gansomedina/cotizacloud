@@ -619,7 +619,7 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
       </div>
       <div class="thermo-bars">
         <div style="flex:1">
-          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round($ts['dias_activos'] / max(1, (int)((30/7)*5)) * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
+          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round($ts['dias_activos'] / 30 * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
           <div class="thermo-bar-lbl">Presencia</div>
         </div>
         <div style="flex:1">
