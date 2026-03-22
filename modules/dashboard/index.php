@@ -736,6 +736,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <?= e($es['nombre']) ?>
         <div class="lb-diag"><?= e($es_diag) ?></div>
       </div>
+      <?php if ($es['nivel'] !== 'nuevo'): ?>
       <div class="lb-stats">
         <div class="lb-stat"><span class="lb-stat-val"><?= (int)($es['cot_vistas'] ?? 0) ?>/<?= (int)($es['cot_asignadas'] ?? 0) ?></span><span class="lb-stat-lbl">Abiertas</span></div>
         <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['conversiones'] ?></span><span class="lb-stat-lbl">Cierres</span></div>
@@ -747,6 +748,12 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <span style="color:<?= $es_mom_c ?>;font-size:12px"><?= $es_arrow ?></span>
         <span class="lb-nivel" style="color:<?= $es_color ?>;background:<?= $es_bg ?>"><?= $es_lbl ?></span>
       </div>
+      <?php else: ?>
+      <div class="lb-stats"></div>
+      <div class="lb-score">
+        <span class="lb-nivel" style="color:<?= $es_color ?>;background:<?= $es_bg ?>"><?= $es_lbl ?></span>
+      </div>
+      <?php endif; ?>
     </div>
     <?php endforeach; ?>
     </div><!-- /lb-body -->
