@@ -697,14 +697,16 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div id="lb-info" class="lb-info">
       <div class="lb-info-inner">
         <b>¿Qué mide este ranking?</b>
-        <p>Algoritmo APC (Productividad Comercial) — 30 días rolling, auto-ajustable:</p>
+        <p>Algoritmo APC v3.2 (Productividad Comercial) — 30 días rolling, auto-ajustable por empresa:</p>
         <ul>
-          <li><b>Activación (20%)</b> — ¿Las cotizaciones llegan al cliente? Mínimo esperado, no un logro. Penaliza dormidas.</li>
-          <li><b>Seguimiento (35%)</b> — ¿Usa el radar para dar seguimiento? Premia transiciones frío→caliente. Penaliza señales ignoradas y buckets estancados.</li>
-          <li><b>Conversión (45%)</b> — ¿Cierra ventas? Lo que más pesa. Penaliza fuerte cotizar mucho sin cerrar. Cierres desde buckets fríos valen más. Descuentos reducen puntaje.</li>
+          <li><b>Activación (20%)</b> — ¿Las cotizaciones llegan al cliente? Es el mínimo esperado. Penaliza cotizaciones dormidas (enviadas sin abrir en 7, 14 y 21 días).</li>
+          <li><b>Seguimiento (35%)</b> — ¿Da seguimiento activo? Mide uso del Radar, revisión de cotizaciones, velocidad de reacción cuando un cliente abre una cotización (dentro de 48h), y transiciones de bucket frío→caliente. Penaliza señales calientes ignoradas y buckets estancados.</li>
+          <li><b>Conversión (45%)</b> — ¿Cierra ventas? Lo que más pesa. Mide tasa de cierre, calidad (cierres desde buckets fríos valen más), velocidad de cierre vs promedio de la empresa, y consistencia semanal. Descuentos reducen puntaje. Penaliza cotizar mucho sin cerrar.</li>
         </ul>
-        <p>Se auto-ajusta en 3 ejes: contra el propio historial (momentum), contra el equipo (percentil), y por volumen de trabajo (normalización).</p>
-        <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Índice algorítmico basado en datos de uso de la plataforma. Referencia de adopción del software, no evaluación personal.</p>
+        <p><b>Auto-ajuste:</b> Los benchmarks se calculan de los datos reales de tu empresa (no son valores fijos). Si un vendedor cierra excepcionalmente bien, el seguimiento pesa menos — los resultados hablan solos.</p>
+        <p><b>Score final:</b> Combina el puntaje proporcional (50%) + tendencia vs historial propio (25%) + posición en el equipo (25%). Flechas: ↑ mejorando, → estable, ↓ decayendo.</p>
+        <p><b>Niveles:</b> Top (86-100) · Activo (61-85) · Regular (31-60) · Bajo (0-30) · Nuevo (primeros 7 días, recopilando datos).</p>
+        <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Índice algorítmico basado en datos de uso de la plataforma. Referencia de productividad comercial, no evaluación personal.</p>
       </div>
     </div>
     <?php
