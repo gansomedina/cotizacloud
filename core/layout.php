@@ -53,6 +53,15 @@ $S = [
     'sal'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
     'ham'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
     'ayu'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    'shi'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+];
+
+// Mapa feather icon name → SVG key para sidebar
+$feather_map = [
+    'home' => 'home', 'users' => 'cli', 'file-text' => 'cot',
+    'shopping-bag' => 'ven', 'trending-down' => 'cos', 'activity' => 'rad',
+    'bar-chart-2' => 'rep', 'settings' => 'cfg', 'help-circle' => 'ayu',
+    'log-out' => 'sal', 'shield' => 'shi',
 ];
 
 // Rutas del drawer "Más"
@@ -105,7 +114,7 @@ foreach ($mas_rutas as $r) {
 body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;font-size:14px;line-height:1.5}
 
         /* ── SIDEBAR ── */
-        #sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:200;transition:transform .22s cubic-bezier(.4,0,.2,1)}
+        #sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:200}
         .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
         .sidebar-logo img{height:32px;object-fit:contain}
         .sidebar-logo-text{font-size:18px;font-weight:700;color:var(--g);letter-spacing:-.3px}
@@ -114,7 +123,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-sm);color:var(--t2);text-decoration:none;font-size:13.5px;font-weight:500;transition:background .12s,color .12s;margin-bottom:2px}
         .nav-item:hover{background:var(--bg);color:var(--text)}
         .nav-item.active{background:var(--g-bg);color:var(--g);font-weight:600}
-        .nav-item svg{width:16px;height:16px;flex-shrink:0}
+        .nav-item svg,.nav-item i[data-feather]{width:16px;height:16px;flex-shrink:0;display:inline-block}
         .sidebar-footer{padding:12px 10px;border-top:1px solid var(--border)}
 
         /* Overlay sidebar mobile */
@@ -223,7 +232,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         @media(max-width:768px){
             html{height:100%;overflow:hidden}
             body{height:100%;overflow:hidden;font-size:15px}
-            #sidebar{transform:translateX(-100%);width:80vw;max-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.13)}
+            #sidebar{transform:translateX(-100%);width:80vw;max-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.13);transition:transform .22s cubic-bezier(.4,0,.2,1)}
             #sidebar.open{transform:translateX(0)}
             #main{margin-left:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
             #topbar{display:flex}
@@ -286,7 +295,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             <a href="<?= e($item['href']) ?>"
                class="nav-item <?= menu_activo($item['href'], $path) ? 'active' : '' ?>"
                onclick="closeSidebar()">
-                <i data-feather="<?= e($item['icon']) ?>"></i>
+                <?= $S[$feather_map[$item['icon']] ?? ''] ?? '<i data-feather="'.e($item['icon']).'"></i>' ?>
                 <?= e($item['label']) ?>
             </a>
         <?php endforeach; ?>
@@ -318,7 +327,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         </div>
         <?php endif; ?>
         <a href="/logout" class="nav-item" style="color:var(--danger)">
-            <i data-feather="log-out"></i>
+            <?= $S['sal'] ?>
             Cerrar sesión
         </a>
     </div>
