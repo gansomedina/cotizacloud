@@ -574,11 +574,22 @@ class ActividadScore
             $w_seg  = 0.00;
             $w_conv = 0.80;
         } else {
-            // El sistema YA registra. Si el vendedor no entra al radar, es SU culpa.
-            // Pesos completos: Seguimiento con su score real (que será bajo/0)
+            // El sistema YA registra. Pesos base.
             $w_act  = 0.20;
             $w_seg  = 0.35;
             $w_conv = 0.45;
+
+            // Pesos adaptativos: si el vendedor cierra excepcionalmente bien
+            // (>2x benchmark empresa), los resultados hablan por sí solos.
+            // Seguimiento pierde peso proporcional a qué tanto supera el benchmark.
+            // Ejemplo: tasa_cierre = 1.0 (100%), bench = 0.15 → ratio 6.67
+            //   reducción = min((6.67 - 2) * 0.05, 0.20) = 0.20 → seg baja a 0.15
+            if ($bench['close_rate'] > 0 && $tasa_cierre > $bench['close_rate'] * 2) {
+                $ratio_sobre_bench = $tasa_cierre / $bench['close_rate'];
+                $reduccion_seg = min(($ratio_sobre_bench - 2) * 0.05, 0.20);
+                $w_seg  -= $reduccion_seg;
+                $w_conv += $reduccion_seg;
+            }
         }
 
         $proporcional = $s_activacion * $w_act
@@ -869,10 +880,21 @@ class ActividadScore
         }
 
         // ── SEGUIMIENTO ──
+        // Distinguir: ¿tiene acciones (quote_view+radar) pero 0 cierres desde radar?
+        // Si acciones > 0 pero cierres_bucket = 0 y score bajo, es que revisa cotizaciones
+        // pero no usa radar específicamente.
+        $acciones_total = (int)($s['acciones'] ?? 0);
+        $usa_radar = $cbkt > 0 || $tup > 0; // tiene cierres radar o transiciones up
         if ($seg >= 0.70) {
-            $frases[] = "da buen seguimiento con el radar";
+            $frases[] = $usa_radar ? "da buen seguimiento con el radar" : "responde bien a los clientes, buen seguimiento";
         } elseif ($seg >= 0.35) {
-            $frases[] = "seguimiento moderado, puede usar más el radar";
+            if ($usa_radar) {
+                $frases[] = "seguimiento moderado, puede usar más el radar";
+            } elseif ($acciones_total > 0) {
+                $frases[] = "revisa cotizaciones pero no usa el radar — le serviría para priorizar";
+            } else {
+                $frases[] = "seguimiento moderado, puede usar más el radar";
+            }
         } elseif ($seg > 0.05) {
             $frases[] = "poco seguimiento — rara vez revisa el radar";
         } else {
