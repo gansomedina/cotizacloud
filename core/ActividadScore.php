@@ -136,71 +136,107 @@ class ActividadScore
         //  SEÑALES CRUDAS (últimos 30 días)
         // ═══════════════════════════════════════════════════
 
-        // ── QUERY CONSOLIDADA: cotizaciones del vendedor (14 queries → 1) ──
+        // ── Cotizaciones del vendedor ──
         $cw = "COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?";
-        $stats = DB::row(
-            "SELECT
-              SUM(total > 0 AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS asignadas,
-              SUM(total > 0 AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                  AND (estado IN ('vista','aceptada','convertida','aceptada_cliente') OR visitas > 0)) AS vistas,
-              SUM(estado = 'enviada' AND visitas = 0
-                  AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
-                  AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS dorm7,
-              SUM(estado = 'enviada' AND visitas = 0
-                  AND created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)
-                  AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS dorm14,
-              SUM(estado = 'enviada' AND visitas = 0
-                  AND created_at < DATE_SUB(NOW(), INTERVAL 21 DAY)
-                  AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS dorm21,
-              SUM(estado IN ('aceptada','convertida','aceptada_cliente')
-                  AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS cierres,
-              SUM(estado IN ('aceptada','convertida','aceptada_cliente')
-                  AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                  AND radar_bucket IS NOT NULL) AS cierres_bkt,
-              SUM(estado IN ('aceptada','convertida','aceptada_cliente')
-                  AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                  AND (cupon_pct IS NULL OR cupon_pct = 0)
-                  AND (descuento_auto_pct IS NULL OR descuento_auto_pct = 0)) AS cierres_sdto,
-              SUM(estado IN ('borrador','enviada','vista')) AS pipeline,
-              SUM(radar_bucket IS NOT NULL AND radar_bucket != 'no_abierta'
-                  AND estado IN ('enviada','vista')
-                  AND radar_updated_at < DATE_SUB(NOW(), INTERVAL 14 DAY)) AS bkt_estanc,
-              SUM(valida_hasta IS NOT NULL AND valida_hasta < CURDATE()
-                  AND estado IN ('enviada','vista') AND accion_at IS NULL) AS vencidas,
-              SUM(estado IN ('enviada','vista')
-                  AND COALESCE(radar_updated_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 21 DAY)
-                  AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)) AS zm
-             FROM cotizaciones WHERE $cw",
-            [$usuario_id, $empresa_id,
-             $periodo, $periodo, $periodo, $periodo, $periodo,
-             $periodo, $periodo, $periodo, $periodo]
-        );
-        $cot_asignadas     = (int)($stats['asignadas'] ?? 0);
-        $cot_vistas        = (int)($stats['vistas'] ?? 0);
-        $dormidas_7d       = (int)($stats['dorm7'] ?? 0);
-        $dormidas_14d      = (int)($stats['dorm14'] ?? 0);
-        $dormidas_21d      = (int)($stats['dorm21'] ?? 0);
-        $cierres_total     = (int)($stats['cierres'] ?? 0);
-        $cierres_bucket    = (int)($stats['cierres_bkt'] ?? 0);
-        $cierres_sin_dto   = (int)($stats['cierres_sdto'] ?? 0);
-        $carga_activa      = (int)($stats['pipeline'] ?? 0);
-        $buckets_estancados = (int)($stats['bkt_estanc'] ?? 0);
-        $vencidas_sin_accion = (int)($stats['vencidas'] ?? 0);
-        $zona_muerta       = (int)($stats['zm'] ?? 0);
 
-        // ── QUERY CONSOLIDADA: actividad_log (3 queries → 1) ──
-        $alog = DB::row(
-            "SELECT
-              SUM(tipo = 'radar_view') AS radar,
-              SUM(tipo IN ('quote_view','client_view')) AS consultas,
-              COUNT(DISTINCT CASE WHEN tipo IN ('radar_view','quote_view','client_view') THEN DATE(created_at) END) AS dias
-             FROM actividad_log
-             WHERE usuario_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+        $cot_asignadas = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw AND total > 0
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $cot_vistas = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw AND total > 0
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND (estado IN ('vista','aceptada','convertida','aceptada_cliente') OR visitas > 0)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $dormidas_7d = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+             AND estado='enviada' AND visitas=0
+             AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $dormidas_14d = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+             AND estado='enviada' AND visitas=0
+             AND created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $dormidas_21d = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+             AND estado='enviada' AND visitas=0
+             AND created_at < DATE_SUB(NOW(), INTERVAL 21 DAY)
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $cierres_total = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+             AND estado IN ('aceptada','convertida','aceptada_cliente')
+             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $cierres_bucket = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+             AND estado IN ('aceptada','convertida','aceptada_cliente')
+             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND radar_bucket IS NOT NULL",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $cierres_sin_dto = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+             AND estado IN ('aceptada','convertida','aceptada_cliente')
+             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND (cupon_pct IS NULL OR cupon_pct=0)
+             AND (descuento_auto_pct IS NULL OR descuento_auto_pct=0)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $carga_activa = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+             AND estado IN ('borrador','enviada','vista')",
+            [$usuario_id, $empresa_id]
+        );
+        $buckets_estancados = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+             AND radar_bucket IS NOT NULL AND radar_bucket != 'no_abierta'
+             AND estado IN ('enviada','vista')
+             AND radar_updated_at < DATE_SUB(NOW(), INTERVAL 14 DAY)",
+            [$usuario_id, $empresa_id]
+        );
+        $vencidas_sin_accion = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+             AND valida_hasta IS NOT NULL AND valida_hasta < CURDATE()
+             AND estado IN ('enviada','vista') AND accion_at IS NULL",
+            [$usuario_id, $empresa_id]
+        );
+        $zona_muerta = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+             AND estado IN ('enviada','vista')
+             AND COALESCE(radar_updated_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 21 DAY)
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+
+        // ── Actividad del vendedor ──
+        $radar_sessions = (int)DB::val(
+            "SELECT COUNT(*) FROM actividad_log
+             WHERE usuario_id=? AND tipo='radar_view'
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $periodo]
         );
-        $radar_sessions = (int)($alog['radar'] ?? 0);
-        $consultas      = (int)($alog['consultas'] ?? 0);
-        $dias_activos   = (int)($alog['dias'] ?? 0);
+        $consultas = (int)DB::val(
+            "SELECT COUNT(*) FROM actividad_log
+             WHERE usuario_id=? AND tipo IN ('quote_view','client_view')
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $periodo]
+        );
+        $dias_activos = (int)DB::val(
+            "SELECT COUNT(DISTINCT DATE(created_at)) FROM actividad_log
+             WHERE usuario_id=? AND tipo IN ('radar_view','quote_view','client_view')
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $periodo]
+        );
 
         // Señales calientes ignoradas (FIX: 2 queries, no N+1)
         // Cotizaciones con 3+ visitas recientes = cliente interesado
