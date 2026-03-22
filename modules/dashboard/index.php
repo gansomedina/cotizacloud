@@ -373,11 +373,7 @@ ob_start();
 ?>
 <style>
 /* TERMÓMETRO */
-/* SCORE ROW: termómetro + leaderboard side by side */
-.score-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
-@media(max-width:900px){.score-row{grid-template-columns:1fr}}
-
-.thermo{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);display:flex;align-items:center;gap:16px}
+.thermo{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;box-shadow:var(--sh);margin-bottom:16px;display:flex;align-items:center;gap:16px}
 .thermo-gauge{position:relative;width:48px;height:48px;flex-shrink:0}
 .thermo-gauge svg{transform:rotate(-90deg)}
 .thermo-gauge-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 16px var(--num);letter-spacing:-.02em}
@@ -392,34 +388,34 @@ ob_start();
 @media(max-width:600px){.thermo{flex-direction:column;text-align:center;gap:10px}.thermo-bars{justify-content:center}}
 
 /* LEADERBOARD */
-.lb{background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
-.lb-head{padding:10px 14px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.lb{background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:16px;overflow:hidden}
+.lb-head{padding:10px 16px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
 .lb-title{font:700 13px var(--body);letter-spacing:-.01em}
 .lb-sub{font:400 11px var(--body);color:var(--t3)}
-.lb-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);transition:background .1s}
+.lb-row{display:grid;grid-template-columns:24px 30px 1fr auto auto;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);transition:background .1s}
 .lb-row:last-child{border-bottom:none}
 .lb-row:hover{background:var(--bg)}
-.lb-rank{font:800 14px var(--num);color:var(--t3);width:20px;text-align:center;flex-shrink:0}
+.lb-rank{font:800 14px var(--num);color:var(--t3);text-align:center}
 .lb-rank-1{color:#f59e0b}
 .lb-rank-2{color:#94a3b8}
 .lb-rank-3{color:#cd7f32}
-.lb-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff;flex-shrink:0}
-.lb-name{font:600 13px var(--body);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lb-stats{display:flex;gap:12px;align-items:center;flex-shrink:0}
+.lb-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff}
+.lb-name{font:600 13px var(--body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-stats{display:grid;grid-template-columns:repeat(4,48px);gap:4px}
 .lb-stat{text-align:center}
 .lb-stat-val{font:700 12px var(--num);display:block}
 .lb-stat-lbl{font:400 9px var(--body);color:var(--t3);display:block}
-.lb-score{display:flex;align-items:center;gap:4px;flex-shrink:0}
-.lb-score-num{font:800 15px var(--num)}
+.lb-score{display:flex;align-items:center;gap:5px;min-width:70px;justify-content:flex-end}
+.lb-score-num{font:800 16px var(--num)}
 .lb-nivel{font:600 9px var(--body);letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:8px}
 .lb-info{max-height:0;overflow:hidden;transition:max-height .25s ease}
 .lb-info.lb-info-open{max-height:400px}
-.lb-info-inner{padding:10px 14px 12px;background:var(--bg);border-bottom:1px solid var(--border);font:400 12px/1.6 var(--body);color:var(--t2)}
+.lb-info-inner{padding:10px 16px 12px;background:var(--bg);border-bottom:1px solid var(--border);font:400 12px/1.6 var(--body);color:var(--t2)}
 .lb-info-inner b{font-weight:600;color:var(--text)}
 .lb-info-inner p{margin:6px 0}
 .lb-info-inner ul{margin:4px 0;padding-left:18px}
 .lb-info-inner li{margin-bottom:2px}
-@media(max-width:600px){.lb-stats{display:none}}
+@media(max-width:700px){.lb-stats{display:none}.lb-row{grid-template-columns:24px 30px 1fr auto}}
 /* KPI GRID */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .kpi-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh);position:relative;overflow:hidden}
@@ -601,8 +597,7 @@ $ts_mom   = $ts['momentum'];
 $ts_arrow = $ts_mom >= 1.05 ? '↑' : ($ts_mom <= 0.95 ? '↓' : '→');
 $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b7280');
 ?>
-<div class="score-row">
-  <div class="thermo">
+<div class="thermo">
     <div class="thermo-gauge">
       <svg width="48" height="48" viewBox="0 0 48 48">
         <circle cx="24" cy="24" r="20" fill="none" stroke="var(--border)" stroke-width="4"/>
@@ -688,18 +683,14 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
         <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['carga_activa'] ?></span><span class="lb-stat-lbl">Pipeline</span></div>
       </div>
       <div class="lb-score">
-        <svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="#e5e7eb" stroke-width="2.5"/><circle cx="13" cy="13" r="10" fill="none" stroke="<?= $es_color ?>" stroke-width="2.5" stroke-dasharray="<?= round(2*M_PI*10*$es_score/100,1) ?> <?= round(2*M_PI*10,1) ?>" stroke-linecap="round" transform="rotate(-90 13 13)"/></svg>
-        <div>
-          <span class="lb-score-num" style="color:<?= $es_color ?>"><?= $es_score ?></span>
-          <span style="color:<?= $es_mom_c ?>;font-size:12px"><?= $es_arrow ?></span>
-          <br><span class="lb-nivel" style="color:<?= $es_color ?>;background:<?= $es_bg ?>"><?= $es_lbl ?></span>
-        </div>
+        <span class="lb-score-num" style="color:<?= $es_color ?>"><?= $es_score ?></span>
+        <span style="color:<?= $es_mom_c ?>;font-size:12px"><?= $es_arrow ?></span>
+        <span class="lb-nivel" style="color:<?= $es_color ?>;background:<?= $es_bg ?>"><?= $es_lbl ?></span>
       </div>
     </div>
     <?php endforeach; ?>
   </div>
 <?php endif; ?>
-</div>
 
 <!-- ══ KPIs FINANCIEROS ══ -->
 <div class="slabel">Resumen financiero · <?= e($mes_lbl_cap) ?></div>
