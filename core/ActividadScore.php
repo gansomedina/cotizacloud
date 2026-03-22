@@ -1,37 +1,34 @@
 <?php
 // ============================================================
-//  CotizaApp — core/ActividadScore.php  v2.1
+//  CotizaApp — core/ActividadScore.php  v3.0
 //  APC: Algoritmo de Productividad Comercial (Auto-ajustable)
 //
-//  4 ÁNGULOS:
-//    1. Asesor vs su histórico     (EMA + momentum por dimensión)
-//    2. Asesor vs el equipo        (percentil por dimensión)
-//    3. Uso vs Resultados          (ratio efectividad)
-//    4. Capas de profundidad       (peso progresivo + penalizaciones)
+//  3 DIMENSIONES (pesos dinámicos según datos disponibles):
+//    Activación   (20%) — ¿las cotizaciones llegan al cliente? (mínimo esperado)
+//    Seguimiento  (35%) — radar 30% + consultas 15% + reacción 35% + transiciones 20%
+//    Conversión   (45%) — close_rate 40% + quality 35% + velocidad 25%
 //
-//  3 DIMENSIONES:
-//    Activación   (20%) — ¿las cotizaciones asignadas llegan al cliente? (mínimo esperado)
-//    Seguimiento  (35%) — ¿usa el radar para dar seguimiento?
-//    Conversión   (45%) — ¿el software le ayuda a cerrar ventas? (lo que importa)
+//  AUTO-AJUSTE (Fix 12):
+//    - Benchmarks por empresa: close_rate, apertura, radar_weekly, avg_monto, time_to_close
+//    - Sigmoid midpoints = promedio de la empresa (no hardcoded)
+//    - Steepness auto-escalado: 2.0/midpoint
+//    - EMA time-weighted (Fix 9): alpha escala por horas desde último cálculo
 //
-//  PENALIZACIONES:
-//    - Cotizaciones dormidas (sin abrir >7d, escala con tiempo)
-//    - Señales calientes ignoradas (cliente abrió 3+ veces, vendedor no revisó)
-//    - Buckets estancados >14 días
-//    - Cotizaciones vencidas sin acción
-//    - Zona muerta del pipeline (>21d sin movimiento)
+//  MÉTRICAS NUEVAS (v3):
+//    - Velocidad de cierre (Fix 1): días vs benchmark empresa
+//    - Tasa de reacción (Fix 11): % de cotizaciones con actividad del cliente
+//      donde el vendedor revisó radar/cotización dentro de 48h
+//    - Monto relativo (Fix 2): bonus por cerrar sobre el promedio empresa
+//    - Transiciones con reacción (Fix 4): solo premia si el vendedor revisó radar
+//      en las 48h PREVIAS a la transición del bucket
 //
-//  BONUSES:
-//    - Cierre desde bucket frío → máximo (vendedor rescató la venta)
-//    - Cierre desde bucket caliente → menor (venta venía sola)
-//    - Transiciones frío→caliente (vendedor movió la aguja)
-//    - Reacción rápida a señal caliente
-//    - Descuento reduce puntaje del cierre (empresa cedió margen)
-//
-//  AUTO-AJUSTE:
-//    - EMA α=0.3 con decay exponencial
-//    - Percentil en equipo (umbrales relativos, no fijos)
-//    - Normalización por volumen (sigmoid)
+//  CORRECCIONES (v3):
+//    - Fix 3:  N+1 señales → 2 queries
+//    - Fix 5:  cierre_quality = avg_mult/max (no auto-referencial)
+//    - Fix 6:  Filtra cotizaciones vacías (total > 0)
+//    - Fix 7:  Dormidas: solo 'enviada', no 'borrador'
+//    - Fix 8:  Percentil: sorted index, no float array_search
+//    - Fix 10: Zona muerta alineada a período rolling (no 90d)
 // ============================================================
 
 class ActividadScore
@@ -557,12 +554,19 @@ class ActividadScore
         // ═══════════════════════════════════════════════════
 
         $prev = DB::row(
-            "SELECT ema_activacion, ema_seguimiento, ema_conversion, ema_gestion, ema_presencia
+            "SELECT ema_activacion, ema_seguimiento, ema_conversion, ema_gestion, ema_presencia, updated_at
              FROM usuario_score WHERE usuario_id=?",
             [$usuario_id]
         );
 
-        $alpha = self::EMA_ALPHA;
+        // Fix 9: EMA time-weighted — alpha se escala por tiempo desde último cálculo
+        // 5 min → alpha ~0.001 (casi no cambia), 24h+ → alpha completo (0.3)
+        // Evita dilución por recálculos frecuentes (dashboard cache 5 min)
+        $base_alpha = self::EMA_ALPHA;
+        $hours_since = ($prev && $prev['updated_at'])
+            ? (time() - strtotime($prev['updated_at'])) / 3600.0
+            : 24.0;
+        $alpha = $base_alpha * min($hours_since / 24.0, 1.0);
 
         if ($prev && ((float)($prev['ema_activacion'] ?? 0) > 0 || (float)($prev['ema_gestion'] ?? 0) > 0)) {
             $ema_act  = $alpha * $s_activacion  + (1 - $alpha) * (float)($prev['ema_activacion'] ?? $s_activacion);
