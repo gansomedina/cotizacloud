@@ -17,6 +17,21 @@ if (!$mi_score || (time() - strtotime($mi_score['updated_at'])) > 300) {
     $mi_score = ActividadScore::calcular(Auth::id(), $empresa_id);
 }
 
+// ─── Leaderboard (solo admin, recalcula toda la empresa) ──
+$es_admin_dash = Auth::es_admin();
+$equipo_scores = [];
+if ($es_admin_dash) {
+    // Recalcular empresa si el score más viejo tiene >10 min
+    $oldest = DB::val(
+        "SELECT MIN(updated_at) FROM usuario_score WHERE empresa_id=?",
+        [$empresa_id]
+    );
+    if (!$oldest || (time() - strtotime($oldest)) > 600) {
+        ActividadScore::recalcular_empresa($empresa_id);
+    }
+    $equipo_scores = ActividadScore::equipo($empresa_id);
+}
+
 // ─── Período seleccionado ────────────────────────────────
 $periodo = $_GET['periodo'] ?? 'mes_actual';
 $periodos_validos = ['mes_actual','mes_ant','30_dias','90_dias','anio'];
@@ -371,6 +386,29 @@ ob_start();
 .thermo-bar-fill{height:100%;border-radius:3px;transition:width .4s}
 .thermo-bar-lbl{font:500 10px var(--body);color:var(--t3);margin-top:3px;text-align:center}
 @media(max-width:600px){.thermo{flex-direction:column;text-align:center;gap:14px}.thermo-bars{justify-content:center}}
+
+/* LEADERBOARD */
+.lb{background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:20px;overflow:hidden}
+.lb-head{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.lb-title{font:700 15px var(--body);letter-spacing:-.01em}
+.lb-sub{font:400 12px var(--body);color:var(--t3)}
+.lb-row{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--border);transition:background .1s}
+.lb-row:last-child{border-bottom:none}
+.lb-row:hover{background:var(--bg)}
+.lb-rank{font:800 16px var(--num);color:var(--t3);width:24px;text-align:center;flex-shrink:0}
+.lb-rank-1{color:#f59e0b}
+.lb-rank-2{color:#94a3b8}
+.lb-rank-3{color:#cd7f32}
+.lb-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 13px var(--body);color:#fff;flex-shrink:0}
+.lb-name{font:600 14px var(--body);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-stats{display:flex;gap:16px;align-items:center;flex-shrink:0}
+.lb-stat{text-align:center}
+.lb-stat-val{font:700 14px var(--num);display:block}
+.lb-stat-lbl{font:400 10px var(--body);color:var(--t3);display:block;margin-top:1px}
+.lb-score{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.lb-score-num{font:800 18px var(--num)}
+.lb-nivel{font:600 10px var(--body);letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:10px}
+@media(max-width:600px){.lb-stats{display:none}}
 /* KPI GRID */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .kpi-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh);position:relative;overflow:hidden}
@@ -586,6 +624,59 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
     </div>
   </div>
 </div>
+
+<!-- ══ LEADERBOARD (solo admin) ══ -->
+<?php if ($es_admin_dash && count($equipo_scores) > 0): ?>
+<div class="lb">
+  <div class="lb-head">
+    <div>
+      <div class="lb-title">Actividad del equipo</div>
+      <div class="lb-sub">Últimos 30 días · Score auto-ajustable</div>
+    </div>
+  </div>
+  <?php
+  $rank = 0;
+  foreach ($equipo_scores as $es):
+    $rank++;
+    $es_score = (int)$es['score'];
+    $es_color = match($es['nivel']) {
+        'top' => '#2563eb', 'activo' => '#16a34a', 'regular' => '#d97706', default => '#dc2626'
+    };
+    $es_bg = match($es['nivel']) {
+        'top' => '#eff6ff', 'activo' => '#f0fdf4', 'regular' => '#fffbeb', default => '#fef2f2'
+    };
+    $es_lbl = match($es['nivel']) {
+        'top' => 'Top', 'activo' => 'Activo', 'regular' => 'Regular', default => 'Bajo'
+    };
+    $es_ini = strtoupper(mb_substr($es['nombre'], 0, 1));
+    $es_av_bg = $es['rol'] === 'admin' ? 'var(--g)' : '#64748b';
+    $es_mom = (float)$es['momentum'];
+    $es_arrow = $es_mom >= 1.05 ? '↑' : ($es_mom <= 0.95 ? '↓' : '→');
+    $es_mom_c = $es_mom >= 1.05 ? '#16a34a' : ($es_mom <= 0.95 ? '#dc2626' : '#9ca3af');
+    $rank_cls = $rank <= 3 ? "lb-rank-{$rank}" : '';
+  ?>
+  <div class="lb-row">
+    <div class="lb-rank <?= $rank_cls ?>"><?= $rank ?></div>
+    <div class="lb-av" style="background:<?= $es_av_bg ?>"><?= e($es_ini) ?></div>
+    <div class="lb-name"><?= e($es['nombre']) ?></div>
+    <div class="lb-stats">
+      <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['dias_activos'] ?></span><span class="lb-stat-lbl">Días</span></div>
+      <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['acciones'] ?></span><span class="lb-stat-lbl">Acciones</span></div>
+      <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['conversiones'] ?></span><span class="lb-stat-lbl">Cierres</span></div>
+      <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['carga_activa'] ?></span><span class="lb-stat-lbl">Pipeline</span></div>
+    </div>
+    <div class="lb-score">
+      <svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle cx="16" cy="16" r="13" fill="none" stroke="<?= $es_color ?>" stroke-width="3" stroke-dasharray="<?= round(2*M_PI*13*$es_score/100,1) ?> <?= round(2*M_PI*13,1) ?>" stroke-linecap="round" transform="rotate(-90 16 16)"/></svg>
+      <div>
+        <span class="lb-score-num" style="color:<?= $es_color ?>"><?= $es_score ?></span>
+        <span style="color:<?= $es_mom_c ?>;font-size:14px"><?= $es_arrow ?></span>
+        <br><span class="lb-nivel" style="color:<?= $es_color ?>;background:<?= $es_bg ?>"><?= $es_lbl ?></span>
+      </div>
+    </div>
+  </div>
+  <?php endforeach; ?>
+</div>
+<?php endif; ?>
 
 <!-- ══ KPIs FINANCIEROS ══ -->
 <div class="slabel">Resumen financiero · <?= e($mes_lbl_cap) ?></div>
