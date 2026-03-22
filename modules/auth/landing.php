@@ -11,9 +11,9 @@ defined('COTIZAAPP') or die;
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cotiza.cloud — Sabes quien va a comprar antes de que te llame</title>
-<meta name="description" content="Manda cotizaciones y sabe cuales se van a cerrar. El Radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando esta listo para comprar.">
-<meta property="og:title" content="Cotiza.cloud — Sabes quien va a comprar antes de que te llame">
+<title>Cotiza.cloud — ¿Sabes quien va a comprar antes de que te llame?</title>
+<meta name="description" content="Manda cotizaciones y sabe ¿cuales se van a cerrar? El Radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando esta listo para comprar.">
+<meta property="og:title" content="Cotiza.cloud — ¿Sabes quien va a comprar antes de que te llame?">
 <meta property="og:description" content="Manda cotizaciones y sabe cuales se van a cerrar. Radar de inteligencia de ventas en tiempo real.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://cotiza.cloud">
@@ -319,8 +319,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <!-- HERO -->
 <section class="hero">
   <div class="hero-badge"><div class="hero-badge-dot"></div>Radar de inteligencia de ventas</div>
-  <h1>Sabes quien va a comprar<br><em>antes de que te llame</em></h1>
-  <p class="hero-sub">Mandas cotizaciones y esperas? Nosotros te decimos <strong>cuales se van a cerrar</strong>. El radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando esta listo.</p>
+  <h1>¿Sabes quien va a comprar<br><em>antes de que te llame?</em></h1>
+  <p class="hero-sub">¿Mandas cotizaciones y esperas? Nosotros te decimos <strong>cuales se van a cerrar</strong>. El radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando esta listo.</p>
   <div class="hero-btns">
     <a href="/registro" class="btn-hero btn-hero-primary">Probar el Radar gratis</a>
     <a href="#como-funciona" class="btn-hero btn-hero-secondary">Ver como funciona</a>
@@ -388,7 +388,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <!-- FLOW -->
 <section class="flow">
   <span class="section-label">Tu proceso, potenciado</span>
-  <div class="section-title">Tu expertise cierra ventas.<br>Nosotros te decimos a quien llamar primero.</div>
+  <div class="section-title">Tu expertise cierra ventas.<br>Nosotros te decimos ¿a quien llamar primero?</div>
   <p class="section-sub">Cinco pasos que convierten cada cotizacion en inteligencia de ventas para tu negocio.</p>
 
   <div class="flow-steps">
@@ -504,47 +504,38 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <svg viewBox="0 0 24 24" stroke="#1d4ed8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </div>
       <div class="feat-title">Multi-usuario y permisos</div>
-      <div class="feat-desc">Agrega vendedores con permisos granulares. Controla quien cotiza y quien ve los numeros.</div>
+      <div class="feat-desc">Agrega vendedores con permisos granulares. Controla ¿quien cotiza y quien ve los numeros?</div>
     </div>
   </div>
 </section>
 
 <!-- TERMÓMETRO — sección compacta, visual -->
 <section class="features" style="padding-top:60px;padding-bottom:20px">
-  <div class="section-title">Sabe quien vende bien — y quien necesita ayuda</div>
+  <div class="section-title">¿Sabes quien vende bien — y quien necesita ayuda?</div>
   <p class="section-sub">Cada vendedor recibe un score en tiempo real con diagnostico automatico. Tu solo lees el resultado.</p>
 
-  <div style="max-width:520px;margin:32px auto 0;background:#fff;border:2px solid #bfdbfe;border-radius:16px;padding:28px 24px;box-shadow:var(--sh-md)">
-    <div style="display:flex;flex-direction:column;gap:16px">
-
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:32px;height:32px;border-radius:9px;background:var(--g);display:flex;align-items:center;justify-content:center;font:700 13px var(--body);color:#fff;flex-shrink:0">M</div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;justify-content:space-between"><span style="font:600 14px var(--body)">Maria Lopez</span><span style="font:700 18px var(--num);color:#16a34a">87 <span style="font:400 11px var(--body);color:#16a34a">Top</span></span></div>
-          <div style="font:400 12px var(--body);color:var(--t3);margin-top:2px">Excelente cierre. Usa el Radar. Todos a precio completo.</div>
-        </div>
+  <div style="max-width:420px;margin:24px auto 0;background:#fff;border:1.5px solid #bfdbfe;border-radius:12px;padding:16px 18px;box-shadow:var(--sh)">
+    <div style="display:flex;flex-direction:column;gap:10px;font:400 13px var(--body)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:26px;height:26px;border-radius:7px;background:var(--g);display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff;flex-shrink:0">M</div>
+        <span style="flex:1;font-weight:600">Maria Lopez</span>
+        <span style="font:700 15px var(--num);color:#16a34a">87</span>
       </div>
-
+      <div style="color:var(--t3);font-size:12px;margin:-4px 0 0 36px">Excelente cierre. Usa el Radar. Tendencia en mejora.</div>
       <div style="height:1px;background:var(--border)"></div>
-
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:32px;height:32px;border-radius:9px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 13px var(--body);color:#fff;flex-shrink:0">C</div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;justify-content:space-between"><span style="font:600 14px var(--body)">Carlos Ruiz</span><span style="font:700 18px var(--num);color:#d97706">48 <span style="font:400 11px var(--body);color:#d97706">Regular</span></span></div>
-          <div style="font:400 12px var(--body);color:var(--t3);margin-top:2px">Cotiza bien pero no cierra. No revisa el Radar.</div>
-        </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:26px;height:26px;border-radius:7px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff;flex-shrink:0">C</div>
+        <span style="flex:1;font-weight:600">Carlos Ruiz</span>
+        <span style="font:700 15px var(--num);color:#d97706">48</span>
       </div>
-
+      <div style="color:var(--t3);font-size:12px;margin:-4px 0 0 36px">Cotiza bien pero no cierra. No revisa el Radar.</div>
       <div style="height:1px;background:var(--border)"></div>
-
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:32px;height:32px;border-radius:9px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 13px var(--body);color:#fff;flex-shrink:0">R</div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;justify-content:space-between"><span style="font:600 14px var(--body)">Roberto Diaz</span><span style="font:700 18px var(--num);color:#dc2626">19 <span style="font:400 11px var(--body);color:#dc2626">Bajo</span></span></div>
-          <div style="font:400 12px var(--body);color:var(--t3);margin-top:2px">Sus cotizaciones no se abren. Ignora senales de clientes interesados.</div>
-        </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:26px;height:26px;border-radius:7px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff;flex-shrink:0">R</div>
+        <span style="flex:1;font-weight:600">Roberto Diaz</span>
+        <span style="font:700 15px var(--num);color:#dc2626">19</span>
       </div>
-
+      <div style="color:var(--t3);font-size:12px;margin:-4px 0 0 36px">Sus cotizaciones no se abren. Ignora senales calientes.</div>
     </div>
   </div>
 </section>
@@ -553,7 +544,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <section class="audience">
   <span class="section-label">Para quien es</span>
   <div class="section-title">Si cotizas para vender, esto es para ti</div>
-  <p class="section-sub">Profesionales que mandan cotizaciones y quieren saber que pasa despues.</p>
+  <p class="section-sub">Profesionales que mandan cotizaciones y quieren saber ¿que pasa despues?</p>
 
   <div class="audience-grid">
     <div class="aud-card">
@@ -615,7 +606,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <!-- PRICING -->
 <section class="pricing" id="precios">
   <span class="section-label">Planes y precios</span>
-  <div class="section-title">Elige el plan que mueve tu negocio</div>
+  <div class="section-title">¿Cual plan mueve tu negocio?</div>
   <p class="section-sub">Todos incluyen Radar. La diferencia esta en cuanto quieres crecer.</p>
 
   <div class="pricing-toggle">
