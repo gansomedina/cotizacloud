@@ -583,6 +583,8 @@ class ActividadScore
         //  ÁNGULO 2: PERCENTIL EN EQUIPO
         // ═══════════════════════════════════════════════════
 
+        // Solo usuarios que realmente venden (tienen al menos 1 cotización asignada)
+        // Excluye admins, usuarios base, cuentas de sistema que no cotizan
         $team = DB::query(
             "SELECT u.id, COALESCE(us.score, 0) AS sc,
                     COALESCE(us.s_activacion, 0) AS sa,
@@ -590,8 +592,14 @@ class ActividadScore
                     COALESCE(us.s_conversion, 0) AS scv
              FROM usuarios u
              LEFT JOIN usuario_score us ON us.usuario_id = u.id
-             WHERE u.empresa_id = ? AND u.activo = 1",
-            [$empresa_id]
+             WHERE u.empresa_id = ? AND u.activo = 1
+             AND EXISTS (
+                SELECT 1 FROM cotizaciones c
+                WHERE COALESCE(c.vendedor_id, c.usuario_id) = u.id
+                AND c.empresa_id = ? AND c.total > 0
+                AND c.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             )",
+            [$empresa_id, $empresa_id, $periodo]
         );
 
         $team_size = count($team);
@@ -712,9 +720,19 @@ class ActividadScore
     // ─── Recalcular toda la empresa ───────────────────────
     public static function recalcular_empresa(int $empresa_id): void
     {
+        unset(self::$_bench[$empresa_id]);
+        $periodo = self::PERIODO;
+        // Solo recalcular usuarios que realmente tienen cotizaciones asignadas
         $usuarios = DB::query(
-            "SELECT id FROM usuarios WHERE empresa_id = ? AND activo = 1",
-            [$empresa_id]
+            "SELECT DISTINCT u.id FROM usuarios u
+             WHERE u.empresa_id = ? AND u.activo = 1
+             AND EXISTS (
+                SELECT 1 FROM cotizaciones c
+                WHERE COALESCE(c.vendedor_id, c.usuario_id) = u.id
+                AND c.empresa_id = ? AND c.total > 0
+                AND c.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             )",
+            [$empresa_id, $empresa_id, $periodo]
         );
         foreach ($usuarios as $u) {
             self::calcular((int)$u['id'], $empresa_id);
