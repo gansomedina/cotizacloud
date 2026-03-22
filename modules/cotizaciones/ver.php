@@ -28,7 +28,7 @@ if (!$cot) {
 }
 
 // Verificar permiso de acceso
-if (!Auth::puede('ver_todas_cots') && (int)$cot['usuario_id'] !== (int)Auth::id()) {
+if (!Auth::puede('ver_todas_cots') && (int)$cot['usuario_id'] !== (int)Auth::id() && (int)($cot['vendedor_id'] ?? 0) !== (int)Auth::id()) {
     flash('error', 'No tienes acceso a esta cotización');
     redirect('/cotizaciones');
 }

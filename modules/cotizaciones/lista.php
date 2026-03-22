@@ -30,7 +30,7 @@ if ($estado !== 'todas') {
         $params[] = $estado;
     }
 }
-if (!Auth::puede('ver_todas_cots')) { $where[] = "c.usuario_id = ?"; $params[] = $usuario['id']; }
+if (!Auth::puede('ver_todas_cots')) { $where[] = "(c.usuario_id = ? OR c.vendedor_id = ?)"; $params[] = $usuario['id']; $params[] = $usuario['id']; }
 if ($busqueda !== '') {
     $where[] = "(c.titulo LIKE ? OR c.numero LIKE ? OR cl.nombre LIKE ? OR cl.telefono LIKE ?)";
     $like = '%'.$busqueda.'%';
@@ -47,7 +47,7 @@ $order_sql = match($orden) {
 
 // Conteos por estado
 $cw = ["c.empresa_id = ?"]; $cp = [$empresa_id];
-if (!Auth::puede('ver_todas_cots')) { $cw[] = "c.usuario_id = ?"; $cp[] = $usuario['id']; }
+if (!Auth::puede('ver_todas_cots')) { $cw[] = "(c.usuario_id = ? OR c.vendedor_id = ?)"; $cp[] = $usuario['id']; $cp[] = $usuario['id']; }
 $raw = DB::query("SELECT estado, COUNT(*) AS n FROM cotizaciones c WHERE ".implode(' AND ',$cw)." GROUP BY estado", $cp);
 $conteos = ['todas' => 0, 'vencida' => 0];
 foreach ($raw as $r) { $conteos[$r['estado']] = (int)$r['n']; $conteos['todas'] += (int)$r['n']; }

@@ -27,7 +27,7 @@ $cot = DB::row(
 if (!$cot) json_error('Cotización no encontrada', 404);
 
 // Verificar acceso
-if (!Auth::puede('ver_todas_cots') && (int)$cot['usuario_id'] !== (int)Auth::id()) {
+if (!Auth::puede('ver_todas_cots') && (int)$cot['usuario_id'] !== (int)Auth::id() && (int)($cot['vendedor_id'] ?? 0) !== (int)Auth::id()) {
     json_error('Sin acceso', 403);
 }
 
