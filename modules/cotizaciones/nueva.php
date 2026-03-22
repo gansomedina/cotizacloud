@@ -74,8 +74,18 @@ $vigencia_default = (int)($empresa['cot_vigencia_dias'] ?? 30);
 $fecha_hoy        = date('Y-m-d');
 $fecha_vence      = date('Y-m-d', strtotime("+{$vigencia_default} days"));
 
-$puede_editar_precios = Auth::puede('editar_precios');
-$puede_descuentos     = Auth::puede('aplicar_descuentos');
+$puede_editar_precios    = Auth::puede('editar_precios');
+$puede_descuentos        = Auth::puede('aplicar_descuentos');
+$puede_asignar           = Auth::puede('asignar_cotizaciones');
+
+// Lista de vendedores activos (para asignación)
+$vendedores = [];
+if ($puede_asignar) {
+    $vendedores = DB::query(
+        "SELECT id, nombre FROM usuarios WHERE empresa_id = ? AND activo = 1 ORDER BY nombre",
+        [$empresa_id]
+    );
+}
 
 // JSON para JS
 $articulos_js = json_encode(array_map(fn($a) => [
@@ -383,6 +393,16 @@ $page_title = 'Nueva cotización';
                 <input type="text" id="cot-titulo" placeholder="Titulo del Proyecto"
                        oninput="actualizarEstado()">
             </div>
+            <?php if ($puede_asignar && count($vendedores) > 1): ?>
+            <div class="field">
+                <div class="field-lbl">Vendedor asignado</div>
+                <select id="cot-vendedor" style="width:100%;border:none;background:transparent;font:400 15px var(--body);color:var(--text);padding:0;outline:none;cursor:pointer">
+                    <?php foreach ($vendedores as $v): ?>
+                    <option value="<?= (int)$v['id'] ?>" <?= (int)$v['id'] === (int)Auth::id() ? 'selected' : '' ?>><?= e($v['nombre']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php endif; ?>
             <div style="display:flex">
                 <div class="field" style="flex:1;border-bottom:none;border-right:1px solid var(--border)">
                     <div class="field-lbl">Fecha</div>
@@ -1101,9 +1121,11 @@ async function guardarCotizacion() {
         return document.getElementById(deskId)?.checked || document.getElementById(mobId)?.checked || false;
     };
 
+    const vendedorSel = document.getElementById('cot-vendedor');
     const payload = {
         titulo,
         cliente_id:            clienteSeleccionado?.id || null,
+        vendedor_id:           vendedorSel ? parseInt(vendedorSel.value) : null,
         valida_hasta:          document.getElementById('cot-vence')?.value || null,
         notas_cliente:         getVal('notas-cliente-desk', 'notas-cliente-mob'),
         notas_internas:        getVal('notas-internas-desk', 'notas-internas-mob'),

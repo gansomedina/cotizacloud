@@ -28,7 +28,7 @@ if (!$cot) {
 }
 
 // Verificar permiso de acceso
-if (!Auth::puede('ver_todas_cots') && (int)$cot['usuario_id'] !== (int)Auth::id()) {
+if (!Auth::puede('ver_todas_cots') && (int)$cot['usuario_id'] !== (int)Auth::id() && (int)($cot['vendedor_id'] ?? 0) !== (int)Auth::id()) {
     flash('error', 'No tienes acceso a esta cotización');
     redirect('/cotizaciones');
 }
@@ -83,6 +83,16 @@ $cupones = DB::query(
 
 $puede_editar_precios = Auth::puede('editar_precios');
 $puede_descuentos     = Auth::puede('aplicar_descuentos');
+$puede_asignar        = Auth::puede('asignar_cotizaciones');
+
+// Lista de vendedores activos (para asignación)
+$vendedores = [];
+if ($puede_asignar) {
+    $vendedores = DB::query(
+        "SELECT id, nombre FROM usuarios WHERE empresa_id = ? AND activo = 1 ORDER BY nombre",
+        [$empresa_id]
+    );
+}
 
 $es_editable = in_array($cot['estado'], ['borrador', 'enviada', 'vista']);
 
@@ -131,6 +141,7 @@ $cot_js = json_encode([
     'notas_internas'       => $cot['notas_internas'] ?? '',
     'estado'               => $cot['estado'],
     'slug'                 => $cot['slug'],
+    'vendedor_id'          => (int)($cot['vendedor_id'] ?? $cot['usuario_id']),
 ]);
 
 $url_publica = Router::url_publica('/c/' . $cot['slug']);
@@ -272,6 +283,17 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <input type="text" id="cot-titulo" value="<?= e($cot['titulo']) ?>"
                        <?= !$es_editable ? 'readonly' : '' ?>>
             </div>
+            <?php if ($puede_asignar && count($vendedores) > 1 && $es_editable): ?>
+            <div class="field">
+                <div class="field-lbl">Vendedor asignado</div>
+                <select id="cot-vendedor" style="width:100%;border:none;background:transparent;font:400 15px var(--body);color:var(--text);padding:0;outline:none;cursor:pointer">
+                    <?php $vid_actual = (int)($cot['vendedor_id'] ?? $cot['usuario_id']); ?>
+                    <?php foreach ($vendedores as $v): ?>
+                    <option value="<?= (int)$v['id'] ?>" <?= (int)$v['id'] === $vid_actual ? 'selected' : '' ?>><?= e($v['nombre']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php endif; ?>
             <div style="display:flex">
                 <div class="field" style="flex:1;border-bottom:none;border-right:1px solid var(--border)">
                     <div class="field-lbl">Fecha</div>
@@ -678,7 +700,8 @@ async function guardarCotizacion(preview){
     const btn=document.getElementById('btn-guardar');
     if(btn){btn.disabled=true;btn.textContent='Guardando...';}
     try{
-        const r=await fetch('/cotizaciones/'+COT_ID,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:JSON.stringify({titulo,cliente_id:clienteSeleccionado?.id||null,valida_hasta:document.getElementById('cot-vence').value,cupon_id:cuponSeleccionado?.id||null,descuento_auto_activo:descAutoActivo?1:0,descuento_auto_pct:descAutoPct,notas_cliente:document.getElementById('notas-cliente-desk')?.value||'',notas_internas:document.getElementById('notas-internas-desk')?.value||'',items,preview})});
+        const vendedorSel=document.getElementById('cot-vendedor');
+        const r=await fetch('/cotizaciones/'+COT_ID,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:JSON.stringify({titulo,cliente_id:clienteSeleccionado?.id||null,vendedor_id:vendedorSel?parseInt(vendedorSel.value):null,valida_hasta:document.getElementById('cot-vence').value,cupon_id:cuponSeleccionado?.id||null,descuento_auto_activo:descAutoActivo?1:0,descuento_auto_pct:descAutoPct,notas_cliente:document.getElementById('notas-cliente-desk')?.value||'',notas_internas:document.getElementById('notas-internas-desk')?.value||'',items,preview})});
         const data=await r.json();
         if(!data.ok){alert(data.error||'Error al guardar');if(btn){btn.disabled=false;btn.textContent='Guardar cambios';}return;}
         if(btn){btn.textContent='¡Guardado!';setTimeout(()=>{btn.disabled=false;btn.textContent='Guardar cambios';},1800);}

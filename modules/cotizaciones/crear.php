@@ -41,6 +41,17 @@ if ($cliente_id) {
     if (!$existe_cliente) $cliente_id = null;
 }
 
+// Vendedor asignado (default = usuario actual)
+$vendedor_id = Auth::id();
+if (!empty($body['vendedor_id']) && Auth::puede('asignar_cotizaciones')) {
+    $vid = (int)$body['vendedor_id'];
+    $existe_vendedor = DB::val(
+        "SELECT id FROM usuarios WHERE id = ? AND empresa_id = ? AND activo = 1",
+        [$vid, $empresa_id]
+    );
+    if ($existe_vendedor) $vendedor_id = $vid;
+}
+
 // Fechas
 $fecha_hoy  = date('Y-m-d');
 $valida_hasta = $body['valida_hasta'] ?? null;
@@ -152,16 +163,16 @@ try {
     // Insertar cotización
     $cot_id = DB::insert(
         "INSERT INTO cotizaciones
-         (empresa_id, cliente_id, usuario_id, cupon_id,
+         (empresa_id, cliente_id, usuario_id, vendedor_id, cupon_id,
           numero, titulo, slug, token, estado,
           subtotal,
           cupon_codigo, cupon_pct, cupon_monto,
           descuento_auto_activo, descuento_auto_pct, descuento_auto_expira, descuento_auto_amt,
           impuesto_modo, impuesto_pct, impuesto_amt,
           total, valida_hasta, notas_cliente, notas_internas)
-         VALUES (?,?,?,?,?,?,?,?,'enviada',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+         VALUES (?,?,?,?,?,?,?,?,?,'enviada',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [
-            $empresa_id, $cliente_id, Auth::id(), $cupon_id,
+            $empresa_id, $cliente_id, Auth::id(), $vendedor_id, $cupon_id,
             $numero, $titulo, $slug, $token,
             $subtotal,
             $cupon_codigo, $cupon_pct, $cupon_monto,

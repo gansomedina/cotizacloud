@@ -139,7 +139,7 @@ elseif ($accion === 'agregar-item') {
 //  GUARDAR NOTAS INTERNAS
 // ════════════════════════════════════════════════════════════
 elseif ($accion === 'notas') {
-    if (!Auth::puede('ver_todas_ventas') && (int)$venta['usuario_id'] !== (int)Auth::id()) {
+    if (!Auth::puede('ver_todas_ventas') && (int)$venta['usuario_id'] !== (int)Auth::id() && (int)($venta['vendedor_id'] ?? 0) !== (int)Auth::id()) {
         json_error('Sin permiso', 403);
     }
 

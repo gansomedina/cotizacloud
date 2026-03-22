@@ -49,7 +49,7 @@ if (!$ult || $ult < date('Y-m-d H:i:s', time()-60) || $_icons_missing > 0 || $de
 }
 
 // Stats globales (sin LIMIT)
-$uw = $uid_filtro ? "AND c.usuario_id=$uid_filtro" : '';
+$uw = $uid_filtro ? "AND c.vendedor_id=$uid_filtro" : '';
 $stat_total = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones c
      WHERE c.empresa_id=? AND c.estado NOT IN ('borrador') $uw",
@@ -76,7 +76,7 @@ $raw = DB::query(
             u.nombre  AS asesor
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id=c.cliente_id
-     LEFT JOIN usuarios  u  ON u.id=c.usuario_id
+     LEFT JOIN usuarios  u  ON u.id=COALESCE(c.vendedor_id, c.usuario_id)
      WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada','rechazada') $uw
      ORDER BY c.radar_score IS NULL ASC, c.radar_score DESC, c.ultima_vista_at DESC
      LIMIT 500",

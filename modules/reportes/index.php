@@ -55,8 +55,8 @@ $f_ini_dt = $f_ini . ' 00:00:00';
 $f_fin_dt = $f_fin . ' 23:59:59';
 
 // Filtro asesor si no es admin
-$usr_filter     = $es_admin ? '' : "AND v.usuario_id = {$usuario['id']}";
-$usr_filter_c   = $es_admin ? '' : "AND c.usuario_id = {$usuario['id']}";
+$usr_filter     = $es_admin ? '' : "AND (v.usuario_id = {$usuario['id']} OR v.vendedor_id = {$usuario['id']})";
+$usr_filter_c   = $es_admin ? '' : "AND (c.usuario_id = {$usuario['id']} OR c.vendedor_id = {$usuario['id']})";
 
 $tab = in_array($_GET['tab'] ?? '', ['financiero','asesores','cotizaciones','costos','recibos'])
     ? $_GET['tab'] : 'financiero';
@@ -144,7 +144,7 @@ if ($es_admin) {
                 COALESCE(sc.aceptadas, 0)   AS aceptadas
          FROM usuarios u
          LEFT JOIN (
-             SELECT v.usuario_id,
+             SELECT COALESCE(v.vendedor_id, v.usuario_id) AS vid,
                     COUNT(*)              AS num_ventas,
                     SUM(v.total)          AS ingresos,
                     COALESCE(SUM(gv.total_gasto), 0) AS costos
@@ -156,16 +156,16 @@ if ($es_admin) {
              ) gv ON gv.venta_id = v.id
              WHERE v.empresa_id=? AND v.estado != 'cancelada'
                AND v.created_at BETWEEN ? AND ?
-             GROUP BY v.usuario_id
-         ) sv ON sv.usuario_id = u.id
+             GROUP BY vid
+         ) sv ON sv.vid = u.id
          LEFT JOIN (
-             SELECT c.usuario_id,
+             SELECT COALESCE(c.vendedor_id, c.usuario_id) AS vid,
                     COUNT(*)              AS num_cots,
                     SUM(CASE WHEN c.estado IN ('aceptada','convertida') THEN 1 ELSE 0 END) AS aceptadas
              FROM cotizaciones c
              WHERE c.empresa_id=? AND c.created_at BETWEEN ? AND ?
-             GROUP BY c.usuario_id
-         ) sc ON sc.usuario_id = u.id
+             GROUP BY vid
+         ) sc ON sc.vid = u.id
          WHERE u.empresa_id=? AND u.activo=1
          ORDER BY ingresos DESC",
         [$empresa_id, $empresa_id, $f_ini_dt, $f_fin_dt,
