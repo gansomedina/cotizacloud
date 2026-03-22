@@ -373,41 +373,45 @@ ob_start();
 ?>
 <style>
 /* TERMÓMETRO */
-.thermo{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--sh);margin-bottom:20px;display:flex;align-items:center;gap:24px}
-.thermo-gauge{position:relative;width:64px;height:64px;flex-shrink:0}
+/* SCORE ROW: termómetro + leaderboard side by side */
+.score-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:900px){.score-row{grid-template-columns:1fr}}
+
+.thermo{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);display:flex;align-items:center;gap:16px}
+.thermo-gauge{position:relative;width:48px;height:48px;flex-shrink:0}
 .thermo-gauge svg{transform:rotate(-90deg)}
-.thermo-gauge-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 20px var(--num);letter-spacing:-.02em}
+.thermo-gauge-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 16px var(--num);letter-spacing:-.02em}
 .thermo-info{flex:1;min-width:0}
-.thermo-nivel{font:700 15px var(--body);margin-bottom:4px}
-.thermo-detail{font:400 13px var(--body);color:var(--t3);line-height:1.5}
+.thermo-nivel{font:700 13px var(--body);margin-bottom:2px}
+.thermo-detail{font:400 12px var(--body);color:var(--t3);line-height:1.4}
 .thermo-detail b{color:var(--text);font-weight:600}
-.thermo-bars{display:flex;gap:8px;margin-top:10px}
-.thermo-bar{flex:1;height:6px;border-radius:3px;background:var(--border)}
-.thermo-bar-fill{height:100%;border-radius:3px;transition:width .4s}
-.thermo-bar-lbl{font:500 10px var(--body);color:var(--t3);margin-top:3px;text-align:center}
-@media(max-width:600px){.thermo{flex-direction:column;text-align:center;gap:14px}.thermo-bars{justify-content:center}}
+.thermo-bars{display:flex;gap:6px;margin-top:6px}
+.thermo-bar{flex:1;height:4px;border-radius:2px;background:var(--border)}
+.thermo-bar-fill{height:100%;border-radius:2px;transition:width .4s}
+.thermo-bar-lbl{font:500 9px var(--body);color:var(--t3);margin-top:2px;text-align:center}
+@media(max-width:600px){.thermo{flex-direction:column;text-align:center;gap:10px}.thermo-bars{justify-content:center}}
 
 /* LEADERBOARD */
-.lb{background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:20px;overflow:hidden}
-.lb-head{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.lb-title{font:700 15px var(--body);letter-spacing:-.01em}
-.lb-sub{font:400 12px var(--body);color:var(--t3)}
-.lb-row{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--border);transition:background .1s}
+.lb{background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.lb-head{padding:10px 14px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.lb-title{font:700 13px var(--body);letter-spacing:-.01em}
+.lb-sub{font:400 11px var(--body);color:var(--t3)}
+.lb-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);transition:background .1s}
 .lb-row:last-child{border-bottom:none}
 .lb-row:hover{background:var(--bg)}
-.lb-rank{font:800 16px var(--num);color:var(--t3);width:24px;text-align:center;flex-shrink:0}
+.lb-rank{font:800 14px var(--num);color:var(--t3);width:20px;text-align:center;flex-shrink:0}
 .lb-rank-1{color:#f59e0b}
 .lb-rank-2{color:#94a3b8}
 .lb-rank-3{color:#cd7f32}
-.lb-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 13px var(--body);color:#fff;flex-shrink:0}
-.lb-name{font:600 14px var(--body);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lb-stats{display:flex;gap:16px;align-items:center;flex-shrink:0}
+.lb-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff;flex-shrink:0}
+.lb-name{font:600 13px var(--body);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-stats{display:flex;gap:12px;align-items:center;flex-shrink:0}
 .lb-stat{text-align:center}
-.lb-stat-val{font:700 14px var(--num);display:block}
-.lb-stat-lbl{font:400 10px var(--body);color:var(--t3);display:block;margin-top:1px}
-.lb-score{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.lb-score-num{font:800 18px var(--num)}
-.lb-nivel{font:600 10px var(--body);letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:10px}
+.lb-stat-val{font:700 12px var(--num);display:block}
+.lb-stat-lbl{font:400 9px var(--body);color:var(--t3);display:block}
+.lb-score{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.lb-score-num{font:800 15px var(--num)}
+.lb-nivel{font:600 9px var(--body);letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:8px}
 @media(max-width:600px){.lb-stats{display:none}}
 /* KPI GRID */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
@@ -568,7 +572,7 @@ ob_start();
   </form>
 </div>
 
-<!-- ══ TERMÓMETRO DE ACTIVIDAD ══ -->
+<!-- ══ TERMÓMETRO + LEADERBOARD ══ -->
 <?php
 $ts = $mi_score;
 $ts_color = match($ts['nivel']) {
@@ -578,105 +582,103 @@ $ts_color = match($ts['nivel']) {
     default   => '#dc2626',
 };
 $ts_label = match($ts['nivel']) {
-    'top'     => 'Rendimiento excepcional',
+    'top'     => 'Excepcional',
     'activo'  => 'Buen ritmo',
     'regular' => 'Puede mejorar',
     default   => 'Necesita atención',
 };
 $ts_pct   = $ts['score'];
-$ts_circ  = 2 * M_PI * 28; // circumference r=28
+$ts_circ  = 2 * M_PI * 20; // circumference r=20
 $ts_dash  = $ts_circ * ($ts_pct / 100);
 $ts_mom   = $ts['momentum'];
 $ts_arrow = $ts_mom >= 1.05 ? '↑' : ($ts_mom <= 0.95 ? '↓' : '→');
 $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b7280');
 ?>
-<div class="thermo">
-  <div class="thermo-gauge">
-    <svg width="64" height="64" viewBox="0 0 64 64">
-      <circle cx="32" cy="32" r="28" fill="none" stroke="var(--border)" stroke-width="5"/>
-      <circle cx="32" cy="32" r="28" fill="none" stroke="<?= $ts_color ?>" stroke-width="5"
-              stroke-dasharray="<?= round($ts_dash, 1) ?> <?= round($ts_circ, 1) ?>"
-              stroke-linecap="round"/>
-    </svg>
-    <div class="thermo-gauge-num" style="color:<?= $ts_color ?>"><?= $ts_pct ?></div>
-  </div>
-  <div class="thermo-info">
-    <div class="thermo-nivel" style="color:<?= $ts_color ?>"><?= $ts_label ?> <span style="color:<?= $ts_mom_c ?>;font-size:16px"><?= $ts_arrow ?></span></div>
-    <div class="thermo-detail">
-      <b><?= $ts['dias_activos'] ?></b> días activo ·
-      <b><?= $ts['acciones'] ?></b> acciones ·
-      <b><?= $ts['conversiones'] ?></b> conversiones ·
-      <b><?= $ts['carga_activa'] ?></b> en pipeline
+<div class="score-row">
+  <div class="thermo">
+    <div class="thermo-gauge">
+      <svg width="48" height="48" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="20" fill="none" stroke="var(--border)" stroke-width="4"/>
+        <circle cx="24" cy="24" r="20" fill="none" stroke="<?= $ts_color ?>" stroke-width="4"
+                stroke-dasharray="<?= round($ts_dash, 1) ?> <?= round($ts_circ, 1) ?>"
+                stroke-linecap="round"/>
+      </svg>
+      <div class="thermo-gauge-num" style="color:<?= $ts_color ?>"><?= $ts_pct ?></div>
     </div>
-    <div class="thermo-bars">
-      <div style="flex:1">
-        <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round($ts['dias_activos'] / 22 * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
-        <div class="thermo-bar-lbl">Presencia</div>
+    <div class="thermo-info">
+      <div class="thermo-nivel" style="color:<?= $ts_color ?>"><?= $ts_label ?> <span style="color:<?= $ts_mom_c ?>;font-size:14px"><?= $ts_arrow ?></span></div>
+      <div class="thermo-detail">
+        <b><?= $ts['dias_activos'] ?></b> días · <b><?= $ts['acciones'] ?></b> acciones · <b><?= $ts['conversiones'] ?></b> cierres · <b><?= $ts['carga_activa'] ?></b> pipeline
       </div>
-      <div style="flex:1">
-        <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round(min($ts['tasa_gestion'] / 2, 1) * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
-        <div class="thermo-bar-lbl">Gestión</div>
-      </div>
-      <div style="flex:1">
-        <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts['carga_activa'] > 0 ? min(100, round($ts['conversiones'] / max($ts['carga_activa'],1) * 100 / 0.3)) : 0 ?>%;background:<?= $ts_color ?>"></div></div>
-        <div class="thermo-bar-lbl">Conversión</div>
+      <div class="thermo-bars">
+        <div style="flex:1">
+          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round($ts['dias_activos'] / 22 * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
+          <div class="thermo-bar-lbl">Presencia</div>
+        </div>
+        <div style="flex:1">
+          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= min(100, round(min($ts['tasa_gestion'] / 2, 1) * 100)) ?>%;background:<?= $ts_color ?>"></div></div>
+          <div class="thermo-bar-lbl">Gestión</div>
+        </div>
+        <div style="flex:1">
+          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts['carga_activa'] > 0 ? min(100, round($ts['conversiones'] / max($ts['carga_activa'],1) * 100 / 0.3)) : 0 ?>%;background:<?= $ts_color ?>"></div></div>
+          <div class="thermo-bar-lbl">Conversión</div>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- ══ LEADERBOARD (solo admin) ══ -->
 <?php if ($es_admin_dash && count($equipo_scores) > 0): ?>
-<div class="lb">
-  <div class="lb-head">
-    <div>
-      <div class="lb-title">Actividad del equipo</div>
-      <div class="lb-sub">Últimos 30 días · Score auto-ajustable</div>
-    </div>
-  </div>
-  <?php
-  $rank = 0;
-  foreach ($equipo_scores as $es):
-    $rank++;
-    $es_score = (int)$es['score'];
-    $es_color = match($es['nivel']) {
-        'top' => '#2563eb', 'activo' => '#16a34a', 'regular' => '#d97706', default => '#dc2626'
-    };
-    $es_bg = match($es['nivel']) {
-        'top' => '#eff6ff', 'activo' => '#f0fdf4', 'regular' => '#fffbeb', default => '#fef2f2'
-    };
-    $es_lbl = match($es['nivel']) {
-        'top' => 'Top', 'activo' => 'Activo', 'regular' => 'Regular', default => 'Bajo'
-    };
-    $es_ini = strtoupper(mb_substr($es['nombre'], 0, 1));
-    $es_av_bg = $es['rol'] === 'admin' ? 'var(--g)' : '#64748b';
-    $es_mom = (float)$es['momentum'];
-    $es_arrow = $es_mom >= 1.05 ? '↑' : ($es_mom <= 0.95 ? '↓' : '→');
-    $es_mom_c = $es_mom >= 1.05 ? '#16a34a' : ($es_mom <= 0.95 ? '#dc2626' : '#9ca3af');
-    $rank_cls = $rank <= 3 ? "lb-rank-{$rank}" : '';
-  ?>
-  <div class="lb-row">
-    <div class="lb-rank <?= $rank_cls ?>"><?= $rank ?></div>
-    <div class="lb-av" style="background:<?= $es_av_bg ?>"><?= e($es_ini) ?></div>
-    <div class="lb-name"><?= e($es['nombre']) ?></div>
-    <div class="lb-stats">
-      <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['dias_activos'] ?></span><span class="lb-stat-lbl">Días</span></div>
-      <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['acciones'] ?></span><span class="lb-stat-lbl">Acciones</span></div>
-      <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['conversiones'] ?></span><span class="lb-stat-lbl">Cierres</span></div>
-      <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['carga_activa'] ?></span><span class="lb-stat-lbl">Pipeline</span></div>
-    </div>
-    <div class="lb-score">
-      <svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle cx="16" cy="16" r="13" fill="none" stroke="<?= $es_color ?>" stroke-width="3" stroke-dasharray="<?= round(2*M_PI*13*$es_score/100,1) ?> <?= round(2*M_PI*13,1) ?>" stroke-linecap="round" transform="rotate(-90 16 16)"/></svg>
+  <div class="lb">
+    <div class="lb-head">
       <div>
-        <span class="lb-score-num" style="color:<?= $es_color ?>"><?= $es_score ?></span>
-        <span style="color:<?= $es_mom_c ?>;font-size:14px"><?= $es_arrow ?></span>
-        <br><span class="lb-nivel" style="color:<?= $es_color ?>;background:<?= $es_bg ?>"><?= $es_lbl ?></span>
+        <div class="lb-title">Ranking del equipo</div>
+        <div class="lb-sub">30 días · auto-ajustable</div>
       </div>
     </div>
+    <?php
+    $rank = 0;
+    foreach ($equipo_scores as $es):
+      $rank++;
+      $es_score = (int)$es['score'];
+      $es_color = match($es['nivel']) {
+          'top' => '#2563eb', 'activo' => '#16a34a', 'regular' => '#d97706', default => '#dc2626'
+      };
+      $es_bg = match($es['nivel']) {
+          'top' => '#eff6ff', 'activo' => '#f0fdf4', 'regular' => '#fffbeb', default => '#fef2f2'
+      };
+      $es_lbl = match($es['nivel']) {
+          'top' => 'Top', 'activo' => 'Activo', 'regular' => 'Regular', default => 'Bajo'
+      };
+      $es_ini = strtoupper(mb_substr($es['nombre'], 0, 1));
+      $es_av_bg = $es['rol'] === 'admin' ? 'var(--g)' : '#64748b';
+      $es_mom = (float)$es['momentum'];
+      $es_arrow = $es_mom >= 1.05 ? '↑' : ($es_mom <= 0.95 ? '↓' : '→');
+      $es_mom_c = $es_mom >= 1.05 ? '#16a34a' : ($es_mom <= 0.95 ? '#dc2626' : '#9ca3af');
+      $rank_cls = $rank <= 3 ? "lb-rank-{$rank}" : '';
+    ?>
+    <div class="lb-row">
+      <div class="lb-rank <?= $rank_cls ?>"><?= $rank ?></div>
+      <div class="lb-av" style="background:<?= $es_av_bg ?>"><?= e($es_ini) ?></div>
+      <div class="lb-name"><?= e($es['nombre']) ?></div>
+      <div class="lb-stats">
+        <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['dias_activos'] ?></span><span class="lb-stat-lbl">Días</span></div>
+        <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['acciones'] ?></span><span class="lb-stat-lbl">Acciones</span></div>
+        <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['conversiones'] ?></span><span class="lb-stat-lbl">Cierres</span></div>
+        <div class="lb-stat"><span class="lb-stat-val"><?= (int)$es['carga_activa'] ?></span><span class="lb-stat-lbl">Pipeline</span></div>
+      </div>
+      <div class="lb-score">
+        <svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="#e5e7eb" stroke-width="2.5"/><circle cx="13" cy="13" r="10" fill="none" stroke="<?= $es_color ?>" stroke-width="2.5" stroke-dasharray="<?= round(2*M_PI*10*$es_score/100,1) ?> <?= round(2*M_PI*10,1) ?>" stroke-linecap="round" transform="rotate(-90 13 13)"/></svg>
+        <div>
+          <span class="lb-score-num" style="color:<?= $es_color ?>"><?= $es_score ?></span>
+          <span style="color:<?= $es_mom_c ?>;font-size:12px"><?= $es_arrow ?></span>
+          <br><span class="lb-nivel" style="color:<?= $es_color ?>;background:<?= $es_bg ?>"><?= $es_lbl ?></span>
+        </div>
+      </div>
+    </div>
+    <?php endforeach; ?>
   </div>
-  <?php endforeach; ?>
-</div>
 <?php endif; ?>
+</div>
 
 <!-- ══ KPIs FINANCIEROS ══ -->
 <div class="slabel">Resumen financiero · <?= e($mes_lbl_cap) ?></div>
