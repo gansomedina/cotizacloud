@@ -371,16 +371,45 @@ $events_js_min_ts = $now - ($events_js_lookback_days * 86400);
  *  "ligero"   = umbrales más exigentes  (solo señales sólidas)
  *  ========================= */
 
-// Modo activo: leer de wp_options, default 'medio'
-// Admin puede cambiar via ?modo=agresivo|medio|ligero
+/** =========================
+ *  FASE 4: Config persistente (JSON en wp_options)
+ *  ========================= */
+function radar_config_load() {
+  $defaults = [
+    'sensibilidad'     => 'medio',
+    'calibracion_auto' => true,
+    'excluir_internos' => true,
+    'filtrar_bots'     => true,
+    'deduplicar_30min' => true,
+  ];
+
+  $raw = get_option('radar_config', '');
+  if ($raw) {
+    $cfg = json_decode($raw, true);
+    if (is_array($cfg)) {
+      return array_merge($defaults, $cfg);
+    }
+  }
+  return $defaults;
+}
+
+function radar_config_save($cfg) {
+  update_option('radar_config', wp_json_encode($cfg, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), false);
+}
+
+$radar_config = radar_config_load();
+
+// Admin puede cambiar modo via ?modo=agresivo|medio|ligero
 if (
   current_user_can('manage_options') &&
   isset($_GET['modo']) &&
   in_array($_GET['modo'], ['agresivo', 'medio', 'ligero'], true)
 ) {
-  update_option('radar_modo', sanitize_text_field($_GET['modo']), false);
+  $radar_config['sensibilidad'] = sanitize_text_field($_GET['modo']);
+  radar_config_save($radar_config);
 }
-$radar_modo = get_option('radar_modo', 'medio');
+
+$radar_modo = $radar_config['sensibilidad'];
 if (!in_array($radar_modo, ['agresivo', 'medio', 'ligero'], true)) {
   $radar_modo = 'medio';
 }
@@ -1195,6 +1224,33 @@ function render_bucket_fixed($title, $hint, $items, $show_gap = false, $sort = '
 }
 
 /** =========================
+ *  FASE 4: Endpoint de configuración (admin only)
+ *  POST radar_config_action=toggle&key=calibracion_auto
+ *  ========================= */
+if (
+  isset($_POST['radar_config_action']) &&
+  current_user_can('manage_options') &&
+  is_user_logged_in()
+) {
+  $cfg_action = sanitize_text_field(wp_unslash($_POST['radar_config_action']));
+  $cfg_key    = sanitize_text_field(wp_unslash($_POST['config_key'] ?? ''));
+
+  if ($cfg_action === 'toggle' && in_array($cfg_key, ['calibracion_auto','excluir_internos','filtrar_bots','deduplicar_30min'], true)) {
+    $cfg = radar_config_load();
+    $cfg[$cfg_key] = empty($cfg[$cfg_key]);
+    radar_config_save($cfg);
+    wp_send_json_success(['key' => $cfg_key, 'value' => $cfg[$cfg_key]]);
+  }
+
+  if ($cfg_action === 'recalibrar') {
+    $recal = radar_fit_calibrar($wpdb, $quote_ids, $accepted_ids);
+    wp_send_json_success(['recalibrado' => !empty($recal), 'data' => $recal]);
+  }
+
+  wp_send_json_error(['message' => 'Acción inválida'], 400);
+}
+
+/** =========================
  *  ENDPOINT DIRECTO USO RADAR
  *  ========================= */
 if (
@@ -1448,6 +1504,56 @@ $dbg_fit_source = (!empty($fit_cal['updated'])) ? 'calibrado' : 'defaults';
 $dbg_fit_sales  = (int)($fit_cal['sales'] ?? 0);
 $dbg_p80        = $p80_alto_importe;
 $dbg_ciclo      = $ciclo_venta;
+
+/** =========================
+ *  FASE 4: Bucket transitions log
+ *  Tabla para auditoría de cambios de bucket
+ *  ========================= */
+$transitions_table = $wpdb->prefix . 'radar_bucket_transitions';
+$transitions_table_exists = ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $transitions_table)) === $transitions_table);
+
+if (!$transitions_table_exists && current_user_can('manage_options')) {
+  $charset = $wpdb->get_charset_collate();
+  $wpdb->query("
+    CREATE TABLE {$transitions_table} (
+      id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      quote_id bigint(20) unsigned NOT NULL,
+      bucket_anterior varchar(64) DEFAULT NULL,
+      bucket_nuevo varchar(64) DEFAULT NULL,
+      score_anterior decimal(6,2) DEFAULT NULL,
+      score_nuevo decimal(6,2) DEFAULT NULL,
+      fit_anterior decimal(6,4) DEFAULT NULL,
+      fit_nuevo decimal(6,4) DEFAULT NULL,
+      created_at datetime NOT NULL,
+      created_ts int(10) unsigned NOT NULL,
+      PRIMARY KEY (id),
+      KEY idx_quote (quote_id),
+      KEY idx_created (created_ts)
+    ) {$charset}
+  ");
+  $transitions_table_exists = ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $transitions_table)) === $transitions_table);
+}
+
+// Cargar buckets previos (último bucket por quote, últimas 24h)
+$prev_buckets = [];
+if ($transitions_table_exists) {
+  $prev_rows = $wpdb->get_results($wpdb->prepare(
+    "SELECT quote_id, bucket_nuevo
+     FROM {$transitions_table}
+     WHERE created_ts >= %d
+     ORDER BY id DESC",
+    $now - 86400
+  ), ARRAY_A);
+
+  foreach ($prev_rows as $pr) {
+    $qid = (int)$pr['quote_id'];
+    if (!isset($prev_buckets[$qid])) {
+      $prev_buckets[$qid] = (string)$pr['bucket_nuevo'];
+    }
+  }
+}
+
+$dbg_transitions_logged = 0;
 
 /** =========================
  *  EVENTS TABLE AGGREGATION
@@ -2888,6 +2994,51 @@ foreach ($quote_ids as $id) {
     'senales'                       => $senales,
   ];
 
+  // ── Fase 4: Determinar bucket principal y loggear transición ──
+  $current_bucket = null;
+  if ($is_probable_cierre)      $current_bucket = 'probable_cierre';
+  elseif ($is_onfire)           $current_bucket = 'onfire';
+  elseif ($is_imminent)         $current_bucket = 'inminente';
+  elseif ($is_price_validating) $current_bucket = 'validando_precio';
+  elseif ($is_reengage_hot)     $current_bucket = 're_enganche_caliente';
+  elseif ($is_predict_high)     $current_bucket = 'prediccion_alta';
+  elseif ($is_decision)         $current_bucket = 'decision_activa';
+  elseif ($is_reengage_decisive) $current_bucket = 're_enganche';
+  elseif ($is_multi_persona)    $current_bucket = 'multi_persona';
+  elseif ($is_deep_review)      $current_bucket = 'revision_profunda';
+  elseif ($is_high_amount)      $current_bucket = 'alto_importe';
+  elseif ($is_hot_close)        $current_bucket = 'probable_cierre_base';
+  elseif ($is_hesitation)       $current_bucket = 'hesitacion';
+  elseif ($is_over_analysis)    $current_bucket = 'sobre_analisis';
+  elseif ($is_revive)           $current_bucket = 'revivio';
+  elseif ($is_return4d)         $current_bucket = 'regreso';
+  elseif ($is_compare)          $current_bucket = 'comparando';
+  elseif ($is_cooling)          $current_bucket = 'enfriandose';
+  elseif ($is_not_opened)       $current_bucket = 'no_abierta';
+  elseif ($is_active48)         $current_bucket = 'activo48';
+
+  $row['bucket'] = $current_bucket;
+
+  // Log transición si cambió de bucket
+  if ($transitions_table_exists && $current_bucket !== null) {
+    $old_bucket = $prev_buckets[(int)$id] ?? null;
+
+    if ($old_bucket !== null && $old_bucket !== $current_bucket) {
+      $wpdb->insert($transitions_table, [
+        'quote_id'        => (int)$id,
+        'bucket_anterior' => $old_bucket,
+        'bucket_nuevo'    => $current_bucket,
+        'score_anterior'  => null,
+        'score_nuevo'     => round($priority_pct, 2),
+        'fit_anterior'    => null,
+        'fit_nuevo'       => round($fit_prob, 4),
+        'created_at'      => current_time('mysql'),
+        'created_ts'      => $now,
+      ], ['%d','%s','%s','%s','%s','%s','%s','%s','%d']);
+      $dbg_transitions_logged++;
+    }
+  }
+
   $rows[] = $row;
 
   $total_all++;
@@ -2969,6 +3120,65 @@ usort($rows, $sorter);
 $rows = array_slice($rows, 0, $limit);
 
 $close_global_pct = ($total_all > 0) ? (100.0 * $total_sales / $total_all) : 0.0;
+
+/** =========================
+ *  FASE 4: Retorno estructurado (JSON API)
+ *  ?format=json devuelve datos puros sin HTML
+ *  Desacopla scoring de rendering — permite mobile, integraciones, etc.
+ *  ========================= */
+if (isset($_GET['format']) && $_GET['format'] === 'json' && (current_user_can('manage_options') || $login === 'ontime')) {
+  // Limpiar senales para serialización (ya son arrays simples)
+  $clean_row = function($r) {
+    // Remover campos internos pesados que no se necesitan en API
+    unset($r['amount_raw']);
+    return $r;
+  };
+
+  $json_response = [
+    'meta' => [
+      'modo'           => $radar_modo,
+      'config'         => $radar_config,
+      'fit_source'     => $dbg_fit_source,
+      'global_rate'    => round($GLOBAL_CLOSE_RATE, 4),
+      'p80'            => $p80_alto_importe,
+      'ciclo_venta'    => $ciclo_venta,
+      'total_quotes'   => $total_all,
+      'total_sales'    => $total_sales,
+      'close_pct'      => round($close_global_pct, 2),
+      'band_counts'    => $band_counts,
+      'generated_at'   => current_time('mysql'),
+      'transitions_logged' => $dbg_transitions_logged,
+    ],
+    'buckets' => [
+      'probable_cierre'       => array_map($clean_row, $bucket_probable_cierre),
+      'hot_close'             => array_map($clean_row, $bucket_hot_close),
+      'inminente'             => array_map($clean_row, $bucket_imminent),
+      'onfire'                => array_map($clean_row, $bucket_onfire),
+      'validando_precio'      => array_map($clean_row, $bucket_price_validating),
+      'no_abierta'            => array_map($clean_row, $bucket_not_opened),
+      'prediccion_alta'       => array_map($clean_row, $bucket_predict_high),
+      'alto_importe'          => array_map($clean_row, $bucket_high_amount),
+      'decision_activa'       => array_map($clean_row, $bucket_decision),
+      're_enganche'           => array_map($clean_row, $bucket_reengage_decisive),
+      're_enganche_caliente'  => array_map($clean_row, $bucket_reengage_hot),
+      'multi_persona'         => array_map($clean_row, $bucket_multi_persona),
+      'revision_profunda'     => array_map($clean_row, $bucket_deep_review),
+      'hesitacion'            => array_map($clean_row, $bucket_hesitation),
+      'sobre_analisis'        => array_map($clean_row, $bucket_over_analysis),
+      'vistas_multiples'      => array_map($clean_row, $bucket_multi),
+      'comparando'            => array_map($clean_row, $bucket_compare),
+      'revivio'               => array_map($clean_row, $bucket_revive_old),
+      'regreso'               => array_map($clean_row, $bucket_return4d),
+      'enfriandose'           => array_map($clean_row, $bucket_cooling),
+      'activos48'             => array_map($clean_row, $bucket_active48),
+    ],
+    'ranking' => array_map($clean_row, $rows),
+  ];
+
+  header('Content-Type: application/json; charset=utf-8');
+  echo wp_json_encode($json_response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+  exit;
+}
 
 $thermo_user_id = (int)$current_user->ID;
 $thermo_user_login = $login;
@@ -3288,6 +3498,13 @@ if ($internal_ips_dirty) {
     Global rate: <?php echo number_format($GLOBAL_CLOSE_RATE * 100, 2); ?>%<br>
     P80 alto importe: $<?php echo number_format($dbg_p80, 0); ?> |
     Ciclo venta: <?php echo (int)$dbg_ciclo['dias']; ?>d (P25=<?php echo (int)$dbg_ciclo['p25']; ?>d, P75=<?php echo (int)$dbg_ciclo['p75']; ?>d, n=<?php echo (int)$dbg_ciclo['n']; ?>)
+
+    <br><br><b>DEBUG Fase 4: Infraestructura</b><br>
+    Config: JSON en wp_options |
+    Transitions tabla: <?php echo $transitions_table_exists ? 'OK' : 'NO'; ?> |
+    Transiciones loggeadas: <?php echo (int)$dbg_transitions_logged; ?> |
+    Previos cargados: <?php echo (int)count($prev_buckets); ?> |
+    API JSON: <a href="<?php echo esc_url(url_q(['format'=>'json'])); ?>">?format=json</a>
 
     <br><br><b>DEBUG internal ips</b><br>
     internal_ips en cache: <?php echo (int)$dbg_internal_ips_count; ?> |
