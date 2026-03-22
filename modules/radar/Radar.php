@@ -1117,11 +1117,24 @@ class Radar
 
     public static function recalcular(int $cotizacion_id, int $empresa_id): void
     {
-        $cot = DB::row("SELECT estado, radar_bucket, titulo, numero FROM cotizaciones WHERE id=? AND empresa_id=?", [$cotizacion_id, $empresa_id]);
+        $cot = DB::row("SELECT estado, radar_bucket, radar_score, vendedor_id, titulo, numero FROM cotizaciones WHERE id=? AND empresa_id=?", [$cotizacion_id, $empresa_id]);
         if (!$cot || !in_array($cot['estado'], ['enviada','vista','aceptada'])) return;
 
         $old_bucket = $cot['radar_bucket'];
+        $old_rscore = $cot['radar_score'];
         $r = self::score($cotizacion_id, $empresa_id);
+
+        // Registrar transición de bucket si cambió
+        if ($r['bucket'] !== $old_bucket) {
+            try {
+                DB::execute(
+                    "INSERT INTO bucket_transitions (cotizacion_id, empresa_id, vendedor_id, bucket_anterior, bucket_nuevo, radar_score_ant, radar_score_new)
+                     VALUES (?,?,?,?,?,?,?)",
+                    [$cotizacion_id, $empresa_id, $cot['vendedor_id'], $old_bucket, $r['bucket'], $old_rscore, $r['score']]
+                );
+            } catch (\Throwable $e) { /* tabla aún no migrada */ }
+        }
+
         DB::execute(
             "UPDATE cotizaciones SET radar_score=?, radar_bucket=?, radar_senales=?, radar_updated_at=NOW() WHERE id=?",
             [
