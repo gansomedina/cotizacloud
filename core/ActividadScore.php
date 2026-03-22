@@ -152,7 +152,7 @@ class ActividadScore
              AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND visitas = 0
-             AND estado IN ('borrador','enviada')",
+             AND estado = 'enviada'",
             [$usuario_id, $empresa_id, $periodo]
         );
 
@@ -162,7 +162,7 @@ class ActividadScore
              AND created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND visitas = 0
-             AND estado IN ('borrador','enviada')",
+             AND estado = 'enviada'",
             [$usuario_id, $empresa_id, $periodo]
         );
 
@@ -172,7 +172,7 @@ class ActividadScore
              AND created_at < DATE_SUB(NOW(), INTERVAL 21 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND visitas = 0
-             AND estado IN ('borrador','enviada')",
+             AND estado = 'enviada'",
             [$usuario_id, $empresa_id, $periodo]
         );
 
@@ -266,34 +266,31 @@ class ActividadScore
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
              AND estado IN ('enviada','vista')
              AND COALESCE(radar_updated_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 21 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)",
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+
+        // Señales calientes ignoradas (FIX: 2 queries, no N+1)
+        // Cotizaciones con 3+ visitas recientes = cliente interesado
+        $cot_calientes = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones
+             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
+             AND estado IN ('enviada','vista')
+             AND visitas >= 3
+             AND ultima_vista_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)",
             [$usuario_id, $empresa_id]
         );
 
-        // Señales calientes ignoradas: cotización con 3+ visitas en 48h
-        // pero vendedor no entró al radar en esos 2 días
-        $senales_calientes = DB::query(
-            "SELECT c.id FROM cotizaciones c
-             WHERE COALESCE(c.vendedor_id, c.usuario_id)=? AND c.empresa_id=?
-             AND c.estado IN ('enviada','vista')
-             AND c.visitas >= 3
-             AND c.ultima_vista_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)",
-            [$usuario_id, $empresa_id]
+        // ¿El vendedor revisó el radar en las últimas 48h?
+        $radar_48h = (int)DB::val(
+            "SELECT COUNT(*) FROM actividad_log
+             WHERE usuario_id=? AND tipo='radar_view'
+             AND created_at >= DATE_SUB(NOW(), INTERVAL 48 HOUR)",
+            [$usuario_id]
         );
 
-        $senales_ignoradas = 0;
-        foreach ($senales_calientes as $sc) {
-            // ¿El vendedor revisó el radar después de la señal caliente?
-            $reviso = DB::val(
-                "SELECT COUNT(*) FROM actividad_log
-                 WHERE usuario_id=? AND tipo='radar_view'
-                 AND created_at >= DATE_SUB(NOW(), INTERVAL 2 DAY)",
-                [$usuario_id]
-            );
-            if ((int)$reviso === 0) {
-                $senales_ignoradas++;
-            }
-        }
+        // Si hay cotizaciones calientes Y el vendedor no revisó radar → todas ignoradas
+        $senales_ignoradas = ($cot_calientes > 0 && $radar_48h === 0) ? $cot_calientes : 0;
 
         // Transiciones de bucket frío→caliente (vendedor movió la aguja)
         $transiciones_up = 0;
@@ -531,16 +528,19 @@ class ActividadScore
 
         if ($team_size >= 2) {
             $scores_equipo = [];
-            foreach ($team as $t) {
+            $mi_idx = 0;
+            foreach ($team as $i => $t) {
                 if ((int)$t['id'] === $usuario_id) {
-                    $scores_equipo[] = $proporcional;
+                    $scores_equipo[] = ['s' => $proporcional, 'me' => true];
                 } else {
-                    $scores_equipo[] = (float)$t['sa'] * $w_act + (float)$t['ss'] * $w_seg + (float)$t['scv'] * $w_conv;
+                    $scores_equipo[] = ['s' => (float)$t['sa'] * $w_act + (float)$t['ss'] * $w_seg + (float)$t['scv'] * $w_conv, 'me' => false];
                 }
             }
-            sort($scores_equipo);
-            $pos = array_search($proporcional, $scores_equipo);
-            if ($pos === false) $pos = 0;
+            usort($scores_equipo, fn($a, $b) => $a['s'] <=> $b['s']);
+            $pos = 0;
+            foreach ($scores_equipo as $i => $se) {
+                if ($se['me']) { $pos = $i; break; }
+            }
             $percentil = $team_size > 1 ? $pos / ($team_size - 1) : 0.50;
         }
 
