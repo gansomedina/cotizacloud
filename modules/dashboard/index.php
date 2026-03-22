@@ -664,10 +664,10 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <div class="lb-title">Ranking del equipo</div>
         <div class="lb-sub">30 días · auto-ajustable · <?= count($equipo_scores) ?> miembros</div>
       </div>
-      <svg class="lb-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg class="lb-chevron lb-chevron-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       <button onclick="event.stopPropagation();document.getElementById('lb-info').classList.toggle('lb-info-open')" style="background:none;border:1px solid var(--border);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font:600 12px var(--body);flex-shrink:0;margin-left:6px" title="¿Cómo funciona?">?</button>
     </div>
-    <div id="lb-body" class="lb-collapsed">
+    <div id="lb-body">
     <div id="lb-info" class="lb-info">
       <div class="lb-info-inner">
         <b>¿Qué mide este ranking?</b>

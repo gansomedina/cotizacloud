@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-//  CotizaApp — core/ActividadScore.php  v3.0
+//  CotizaApp — core/ActividadScore.php  v3.1
 //  APC: Algoritmo de Productividad Comercial (Auto-ajustable)
 //
 //  3 DIMENSIONES (pesos dinámicos según datos disponibles):
@@ -321,9 +321,16 @@ class ActividadScore
                 [$usuario_id, $empresa_id, $usuario_id]
             );
         }
-        $tasa_reaccion = $cot_con_actividad_cliente > 0
-            ? $cot_con_reaccion_vendor / $cot_con_actividad_cliente
-            : 0.5; // neutro si no hay actividad del cliente
+        // Fix P7: si no hay actividad del cliente, evaluar según carga activa.
+        // Sin cotizaciones activas = 0.0 (no hay mérito). Con cotizaciones pero sin
+        // actividad del cliente = 0.3 (neutro-bajo, no castiga si es nuevo).
+        if ($cot_con_actividad_cliente > 0) {
+            $tasa_reaccion = $cot_con_reaccion_vendor / $cot_con_actividad_cliente;
+        } elseif ($cot_asignadas === 0) {
+            $tasa_reaccion = 0.0;
+        } else {
+            $tasa_reaccion = 0.3;
+        }
 
         // Fix 1: Velocidad de cierre — tiempo promedio vs benchmark empresa
         $avg_ttc_vendedor = $cierres_total > 0 ? DB::val(
@@ -578,6 +585,11 @@ class ActividadScore
                       + $s_seguimiento * $w_seg
                       + $s_conversion * $w_conv;
 
+        // Fix P15: Cap global — las penalizaciones acumuladas no deben dejar
+        // el proporcional por debajo de 0.05, para que vendedores malos en
+        // distintas dimensiones aún se diferencien entre sí.
+        $proporcional = max(0.05, $proporcional);
+
         // ═══════════════════════════════════════════════════
         //  ÁNGULO 1: MOMENTUM (vs su propio histórico)
         // ═══════════════════════════════════════════════════
@@ -588,16 +600,20 @@ class ActividadScore
             [$usuario_id]
         );
 
-        // Fix 9: EMA time-weighted — alpha se escala por tiempo desde último cálculo
-        // 5 min → alpha ~0.001 (casi no cambia), 24h+ → alpha completo (0.3)
-        // Evita dilución por recálculos frecuentes (dashboard cache 5 min)
+        // Fix 9 + P13: EMA time-weighted con piso y techo equitativo.
+        // Alpha escala por horas, pero con min=0.03 (siempre evoluciona algo,
+        // incluso en recálculos rápidos) y max=0.25 (no salta demasiado aunque
+        // pasen días sin entrar). Esto iguala vendedores frecuentes vs intermitentes.
         $base_alpha = self::EMA_ALPHA;
         $hours_since = ($prev && $prev['updated_at'])
             ? (time() - strtotime($prev['updated_at'])) / 3600.0
             : 24.0;
         $alpha = $base_alpha * min($hours_since / 24.0, 1.0);
+        $alpha = max(0.03, min($alpha, 0.25));
 
-        if ($prev && ((float)($prev['ema_activacion'] ?? 0) > 0 || (float)($prev['ema_gestion'] ?? 0) > 0)) {
+        // Fix P17: verificar por updated_at (= ya fue calculado antes), no por
+        // valores numéricos. Un vendedor inactivo tiene EMA=0 pero SÍ tiene historial.
+        if ($prev && $prev['updated_at']) {
             $ema_act  = $alpha * $s_activacion  + (1 - $alpha) * (float)($prev['ema_activacion'] ?? $s_activacion);
             $ema_seg  = $alpha * $s_seguimiento + (1 - $alpha) * (float)($prev['ema_seguimiento'] ?? $s_seguimiento);
             $ema_conv = $alpha * $s_conversion  + (1 - $alpha) * (float)($prev['ema_conversion'] ?? $s_conversion);
@@ -648,14 +664,19 @@ class ActividadScore
         $team_size = count($team);
         $percentil = 0.50;
 
+        // Fix P14: usar score final guardado (no dimensiones sueltas) para comparar
+        // con el equipo. Esto es más justo porque el score final ya incluye momentum
+        // y penalizaciones. Para el usuario actual, usar su proporcional recién calculado.
         if ($team_size >= 2) {
             $scores_equipo = [];
-            $mi_idx = 0;
-            foreach ($team as $i => $t) {
+            foreach ($team as $t) {
                 if ((int)$t['id'] === $usuario_id) {
                     $scores_equipo[] = ['s' => $proporcional, 'me' => true];
                 } else {
-                    $scores_equipo[] = ['s' => (float)$t['sa'] * $w_act + (float)$t['ss'] * $w_seg + (float)$t['scv'] * $w_conv, 'me' => false];
+                    // Usar tasa_gestion (proporcional guardado) en vez de reconstruir
+                    // desde dimensiones individuales que pueden estar desfasadas
+                    $s_other = (float)($t['sc'] ?? 0) / 100.0;
+                    $scores_equipo[] = ['s' => $s_other, 'me' => false];
                 }
             }
             usort($scores_equipo, fn($a, $b) => $a['s'] <=> $b['s']);
@@ -728,7 +749,9 @@ class ActividadScore
                 round($s_activacion, 3), round($s_seguimiento, 3), round($s_conversion, 3),
                 round($total_pen, 3), round($total_bonus, 3),
                 round($proporcional, 3),
-                round($proporcional, 3), round($s_activacion, 3), round($ema_conv, 3),
+                // Fix P16: ema_gestion = EMA del proporcional, ema_presencia = EMA de activación
+                round($alpha * $proporcional + (1 - $alpha) * (float)($prev['ema_gestion'] ?? $proporcional), 3),
+                round($ema_act, 3), round($ema_conv, 3),
                 round($ema_act, 3), round($ema_seg, 3),
                 round($momentum, 2), round($percentil, 2),
             ]
@@ -780,6 +803,8 @@ class ActividadScore
         foreach ($usuarios as $u) {
             self::calcular((int)$u['id'], $empresa_id);
         }
+        // Actualizar snapshot mensual para reportes históricos
+        self::snapshot_mensual($empresa_id);
     }
 
     // ─── Obtener score guardado (sin recalcular) ──────────
@@ -876,12 +901,36 @@ class ActividadScore
         if ($ign > 0) {
             $frases[] = "clientes activos sin atender — $ign señales calientes ignoradas";
         }
+        // Fix P3: Mencionar descuentos si cierra mayormente con descuento
+        if ($cierres > 0 && $sdto < $cierres) {
+            $con_dto = $cierres - $sdto;
+            $pct_dto = round($con_dto / $cierres * 100);
+            if ($pct_dto >= 70) {
+                $frases[] = "$pct_dto% de cierres con descuento — afecta puntaje de conversión";
+            } elseif ($pct_dto >= 40) {
+                $frases[] = "$con_dto de $cierres cierres con descuento";
+            }
+        }
 
         // ── MOMENTUM ──
         if ($mom >= 1.20) {
             $frases[] = "tendencia en mejora";
         } elseif ($mom <= 0.80) {
             $frases[] = "tendencia a la baja vs su historial";
+        }
+
+        // Fix P5: Meta concreta para subir de nivel
+        $nivel_actual = $s['nivel'] ?? 'bajo';
+        $score_actual = (int)($s['score'] ?? 0);
+        if ($nivel_actual === 'bajo' && $score_actual < 31) {
+            $faltan = 31 - $score_actual;
+            $frases[] = "necesita $faltan puntos para subir a Regular";
+        } elseif ($nivel_actual === 'regular' && $score_actual < 61) {
+            $faltan = 61 - $score_actual;
+            $frases[] = "a $faltan puntos de nivel Activo";
+        } elseif ($nivel_actual === 'activo' && $score_actual < 86) {
+            $faltan = 86 - $score_actual;
+            $frases[] = "a $faltan puntos de nivel Top";
         }
 
         // Construir frase final — capitalizar primera letra
@@ -893,7 +942,7 @@ class ActividadScore
         $reco = match($peor) {
             'act'  => $asig - $vist <= 2
                 ? ''
-                : ' Tip: verificar que los datos de contacto del cliente sean correctos.',
+                : ' Tip: confirmar WhatsApp/email del cliente, reenviar por otro canal o llamar para verificar recepción.',
             'seg'  => $seg < 0.10
                 ? ' Tip: el Radar detecta clientes interesados en tiempo real — revisarlo frecuentemente marca la diferencia.'
                 : ' Tip: revisar el Radar con frecuencia para no perder oportunidades calientes.',
@@ -972,9 +1021,63 @@ class ActividadScore
         return self::$_bench[$empresa_id];
     }
 
+    // ─── Snapshot mensual para reportes ────────────────────
+    // Guarda/actualiza el snapshot del mes actual para cada vendedor.
+    // Se llama al final de recalcular_empresa().
+    public static function snapshot_mensual(int $empresa_id): void
+    {
+        $periodo_actual = date('Y-m');
+        $scores = self::equipo($empresa_id);
+        $rank = 0;
+        $team_size = count($scores);
+
+        foreach ($scores as $s) {
+            $rank++;
+            try {
+                DB::execute(
+                    "INSERT INTO score_historial
+                     (usuario_id, empresa_id, periodo, score, nivel,
+                      s_activacion, s_seguimiento, s_conversion,
+                      cot_asignadas, cot_vistas, cot_dormidas,
+                      conversiones, cierres_bucket, cierres_sin_dto,
+                      transiciones_up, senales_ignoradas,
+                      penalizaciones, bonuses, momentum, percentil,
+                      ranking, team_size)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                     ON DUPLICATE KEY UPDATE
+                      score=VALUES(score), nivel=VALUES(nivel),
+                      s_activacion=VALUES(s_activacion), s_seguimiento=VALUES(s_seguimiento),
+                      s_conversion=VALUES(s_conversion),
+                      cot_asignadas=VALUES(cot_asignadas), cot_vistas=VALUES(cot_vistas),
+                      cot_dormidas=VALUES(cot_dormidas), conversiones=VALUES(conversiones),
+                      cierres_bucket=VALUES(cierres_bucket), cierres_sin_dto=VALUES(cierres_sin_dto),
+                      transiciones_up=VALUES(transiciones_up), senales_ignoradas=VALUES(senales_ignoradas),
+                      penalizaciones=VALUES(penalizaciones), bonuses=VALUES(bonuses),
+                      momentum=VALUES(momentum), percentil=VALUES(percentil),
+                      ranking=VALUES(ranking), team_size=VALUES(team_size)",
+                    [
+                        (int)$s['usuario_id'], $empresa_id, $periodo_actual,
+                        (int)$s['score'], $s['nivel'],
+                        (float)$s['s_activacion'], (float)$s['s_seguimiento'], (float)$s['s_conversion'],
+                        (int)($s['cot_asignadas'] ?? 0), (int)($s['cot_vistas'] ?? 0), (int)($s['cot_dormidas'] ?? 0),
+                        (int)($s['conversiones'] ?? 0), (int)($s['cierres_bucket'] ?? 0), (int)($s['cierres_sin_dto'] ?? 0),
+                        (int)($s['transiciones_up'] ?? 0), (int)($s['senales_ignoradas'] ?? 0),
+                        (float)($s['penalizaciones'] ?? 0), (float)($s['bonuses'] ?? 0),
+                        (float)($s['momentum'] ?? 1), (float)($s['percentil'] ?? 0.5),
+                        $rank, $team_size,
+                    ]
+                );
+            } catch (\Throwable $e) { /* tabla aún no migrada */ }
+        }
+    }
+
     // ─── Sigmoid helper ───────────────────────────────────
+    // Fix P12: steepness se clampea a [1.5, 8.0] para evitar step-functions
+    // con midpoints muy bajos (ej: close_rate=0.03 → steepness=66 → binario)
+    // y sigmoid planas con midpoints muy altos.
     private static function sigmoid(float $x, float $midpoint, float $steepness): float
     {
+        $steepness = max(1.5, min($steepness, 8.0));
         return 1.0 / (1.0 + exp(-$steepness * ($x - $midpoint)));
     }
 }
