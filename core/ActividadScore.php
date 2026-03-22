@@ -435,27 +435,43 @@ class ActividadScore
 
         // ═══════════════════════════════════════════════════
         //  SCORE PROPORCIONAL — PESOS DINÁMICOS
-        //  Si no hay datos de actividad_log (radar/consultas),
-        //  Seguimiento no tiene base para medirse → redistribuir
-        //  peso solo entre las dimensiones con datos reales.
+        //
+        //  Distinguir dos casos:
+        //  a) Sistema nuevo: actividad_log no tiene datos de NADIE
+        //     en la empresa → no es culpa del vendedor → neutro
+        //  b) El vendedor no usa el radar: hay logins registrados
+        //     (el sistema ya registra) pero 0 radar_view → negativo
         // ═══════════════════════════════════════════════════
 
-        // ¿Hay datos de actividad_log para este usuario?
-        $total_log_entries = (int)DB::val(
+        // ¿El sistema ya estaba registrando? Checar si ALGUIEN en la empresa tiene logs
+        $empresa_tiene_logs = (int)DB::val(
             "SELECT COUNT(*) FROM actividad_log
-             WHERE usuario_id=? AND tipo IN ('radar_view','quote_view','client_view')
+             WHERE empresa_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             LIMIT 1",
+            [$empresa_id, $periodo]
+        );
+
+        // ¿El usuario tiene al menos logins registrados?
+        $usuario_tiene_logins = (int)DB::val(
+            "SELECT COUNT(*) FROM actividad_log
+             WHERE usuario_id=? AND tipo='login'
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $periodo]
         );
 
-        // Confianza en seguimiento: necesita al menos 5 registros para ser confiable
-        $confianza_seg = min($total_log_entries / 5.0, 1.0);
-
-        // Pesos base: Activación=20%, Seguimiento=35%, Conversión=45%
-        // Si no hay datos de seguimiento, redistribuir su peso a conversión
-        $w_act  = 0.20;
-        $w_seg  = 0.35 * $confianza_seg;
-        $w_conv = 1.0 - $w_act - $w_seg; // absorbe lo que seguimiento no puede medir
+        if ($empresa_tiene_logs === 0) {
+            // Sistema nuevo — nadie tiene logs → Seguimiento es neutro, no medible
+            // Redistribuir peso: 20% Activación + 80% Conversión
+            $w_act  = 0.20;
+            $w_seg  = 0.00;
+            $w_conv = 0.80;
+        } else {
+            // El sistema YA registra. Si el vendedor no entra al radar, es SU culpa.
+            // Pesos completos: Seguimiento con su score real (que será bajo/0)
+            $w_act  = 0.20;
+            $w_seg  = 0.35;
+            $w_conv = 0.45;
+        }
 
         $proporcional = $s_activacion * $w_act
                       + $s_seguimiento * $w_seg
