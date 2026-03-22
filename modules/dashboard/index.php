@@ -588,6 +588,31 @@ ob_start();
 <!-- ══ TERMÓMETRO + LEADERBOARD ══ -->
 <?php
 $ts = $mi_score;
+$ts_en_gracia = ($ts['nivel'] ?? '') === 'nuevo' || !empty($ts['en_gracia']);
+
+if ($ts_en_gracia):
+  $ts_dias_rest = (int)($ts['dias_restantes'] ?? 0);
+?>
+<div class="thermo" style="justify-content:center;text-align:center;padding:24px 18px">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div style="width:48px;height:48px;border-radius:50%;background:#f0f9ff;display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div>
+        <div style="font:700 14px var(--body);color:#1e40af;margin-bottom:4px">Analizando tu actividad</div>
+        <div style="font:400 13px var(--body);color:var(--t2);line-height:1.5;max-width:360px">
+          Estamos recopilando información para calcular tu índice de productividad.
+          <?php if ($ts_dias_rest > 0): ?>
+          Tu score se activará en <b><?= $ts_dias_rest ?> día<?= $ts_dias_rest > 1 ? 's' : '' ?></b>.
+          <?php else: ?>
+          Tu score se activará pronto.
+          <?php endif; ?>
+        </div>
+        <div style="font:400 12px var(--body);color:var(--t3);margin-top:8px">Sigue cotizando y usando la plataforma con normalidad.</div>
+      </div>
+    </div>
+</div>
+<?php else:
 $ts_color = match($ts['nivel']) {
     'top'     => '#2563eb',
     'activo'  => '#16a34a',
@@ -656,6 +681,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
       <div class="thermo-diag"><?= e($ts_diag) ?></div>
     </div>
   </div>
+<?php endif; ?>
 
 <?php if ($es_admin_dash && count($equipo_scores) > 0): ?>
   <div class="lb">
@@ -687,13 +713,13 @@ $ts_diag  = ActividadScore::diagnostico($ts);
       $rank++;
       $es_score = (int)$es['score'];
       $es_color = match($es['nivel']) {
-          'top' => '#2563eb', 'activo' => '#16a34a', 'regular' => '#d97706', default => '#dc2626'
+          'top' => '#2563eb', 'activo' => '#16a34a', 'regular' => '#d97706', 'nuevo' => '#6b7280', default => '#dc2626'
       };
       $es_bg = match($es['nivel']) {
-          'top' => '#eff6ff', 'activo' => '#f0fdf4', 'regular' => '#fffbeb', default => '#fef2f2'
+          'top' => '#eff6ff', 'activo' => '#f0fdf4', 'regular' => '#fffbeb', 'nuevo' => '#f9fafb', default => '#fef2f2'
       };
       $es_lbl = match($es['nivel']) {
-          'top' => 'Top', 'activo' => 'Activo', 'regular' => 'Regular', default => 'Bajo'
+          'top' => 'Top', 'activo' => 'Activo', 'regular' => 'Regular', 'nuevo' => 'Nuevo', default => 'Bajo'
       };
       $es_ini = strtoupper(mb_substr($es['nombre'], 0, 1));
       $es_av_bg = $es['rol'] === 'admin' ? 'var(--g)' : '#64748b';

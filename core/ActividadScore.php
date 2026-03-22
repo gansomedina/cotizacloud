@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-//  CotizaApp — core/ActividadScore.php  v3.1
+//  CotizaApp — core/ActividadScore.php  v3.2
 //  APC: Algoritmo de Productividad Comercial (Auto-ajustable)
 //
 //  3 DIMENSIONES (pesos dinámicos según datos disponibles):
@@ -116,9 +116,60 @@ class ActividadScore
         );
     }
 
+    private const GRACIA_DIAS = 7; // días mínimos antes de calcular score
+
     // ─── Calcular score completo de un usuario ───────────
     public static function calcular(int $usuario_id, int $empresa_id): array
     {
+        // ═══════════════════════════════════════════════════
+        //  PERÍODO DE GRACIA — 7 días
+        //  No evaluar vendedores nuevos. No hay datos suficientes
+        //  para un score justo. Mostrar "Recopilando información".
+        // ═══════════════════════════════════════════════════
+        $primer_cot = DB::val(
+            "SELECT MIN(created_at) FROM cotizaciones
+             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=? AND total > 0",
+            [$usuario_id, $empresa_id]
+        );
+        $primer_log = DB::val(
+            "SELECT MIN(created_at) FROM actividad_log WHERE usuario_id=?",
+            [$usuario_id]
+        );
+        // Tomar la fecha más antigua entre primera cotización y primer log
+        $fecha_inicio = null;
+        if ($primer_cot && $primer_log) {
+            $fecha_inicio = min($primer_cot, $primer_log);
+        } else {
+            $fecha_inicio = $primer_cot ?: $primer_log;
+        }
+
+        $dias_en_plataforma = $fecha_inicio
+            ? (int)ceil((time() - strtotime($fecha_inicio)) / 86400)
+            : 0;
+
+        if ($dias_en_plataforma < self::GRACIA_DIAS) {
+            $dias_restantes = self::GRACIA_DIAS - $dias_en_plataforma;
+            $resultado_gracia = [
+                'score' => 0, 'nivel' => 'nuevo',
+                'dias_activos' => 0, 'acciones' => 0, 'conversiones' => 0,
+                'carga_activa' => 0, 'cot_asignadas' => 0, 'cot_vistas' => 0,
+                'cot_dormidas' => 0, 'cierres_bucket' => 0, 'cierres_sin_dto' => 0,
+                'transiciones_up' => 0, 'senales_ignoradas' => 0,
+                's_activacion' => 0, 's_seguimiento' => 0, 's_conversion' => 0,
+                'penalizaciones' => 0, 'bonuses' => 0, 'tasa_gestion' => 0,
+                'momentum' => 1.0, 'percentil' => 0.50, 'team_size' => 0,
+                'en_gracia' => true, 'dias_restantes' => $dias_restantes,
+            ];
+            // Guardar en BD para que obtener() también lo refleje
+            DB::execute(
+                "INSERT INTO usuario_score (usuario_id, empresa_id, score, nivel, momentum, percentil)
+                 VALUES (?,?,0,'nuevo',1.00,0.50)
+                 ON DUPLICATE KEY UPDATE score=0, nivel='nuevo', updated_at=NOW()",
+                [$usuario_id, $empresa_id]
+            );
+            return $resultado_gracia;
+        }
+
         // Período base 30d, pero auto-escala si el ciclo de venta de la empresa es largo
         // Primero calcular benchmarks con 30d, luego ajustar si time_to_close > 20d
         $bench = self::_benchmarks($empresa_id, self::PERIODO);
@@ -255,18 +306,6 @@ class ActividadScore
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $periodo]
         );
-
-        // ── Antigüedad del usuario en la plataforma ──
-        // Un usuario con <7 días no ha tenido tiempo de aprender las herramientas.
-        // No penalizar señales ignoradas ni declarar tendencias de momentum.
-        $primer_actividad = DB::val(
-            "SELECT MIN(created_at) FROM actividad_log WHERE usuario_id=?",
-            [$usuario_id]
-        );
-        $dias_en_plataforma = $primer_actividad
-            ? (int)ceil((time() - strtotime($primer_actividad)) / 86400)
-            : $dias_activos;
-        $es_usuario_nuevo = $dias_en_plataforma < 7;
 
         // Señales calientes ignoradas (FIX: 2 queries, no N+1)
         // Cotizaciones con 3+ visitas recientes = cliente interesado
@@ -649,12 +688,6 @@ class ActividadScore
                 ? $cur_composite / $ema_composite
                 : ($cur_composite > 0 ? 2.0 : 1.0);
             $momentum = max(0.1, min(10.0, $ratio)); // clamp para evitar log(0)
-
-            // Usuarios nuevos (<7 días): forzar momentum neutro.
-            // No hay suficiente historial para declarar tendencia.
-            if ($es_usuario_nuevo) {
-                $momentum = 1.0;
-            }
         } else {
             // Primera vez
             $ema_act  = $s_activacion;
@@ -723,7 +756,10 @@ class ActividadScore
         if ($team_size >= 2) {
             $final = $proporcional * 0.50 + $momentum_score * 0.25 + $percentil * 0.25;
         } else {
-            $final = $proporcional * 0.65 + $momentum_score * 0.35;
+            // Vendedor solo: proporcional domina (80%). Momentum complementa (20%).
+            // Permite llegar a Top (90+) con rendimiento consistente.
+            // Antes era 65/35 → máximo 82 con momentum estable.
+            $final = $proporcional * 0.80 + $momentum_score * 0.20;
         }
 
         $score = (int)round($final * 100);
@@ -880,6 +916,8 @@ class ActividadScore
         $score = (int)($s['score'] ?? 0);
         $pen  = (float)($s['penalizaciones'] ?? 0);
 
+        // Período de gracia
+        if (($s['nivel'] ?? '') === 'nuevo') return 'Recopilando información — score en proceso de activación.';
         // Sin datos suficientes
         if ($asig === 0) return 'Sin cotizaciones en el período.';
 
