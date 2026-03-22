@@ -295,23 +295,35 @@ class ActividadScore
         // Si hay cotizaciones calientes Y el vendedor no revisó radar → todas ignoradas
         $senales_ignoradas = ($cot_calientes > 0 && $radar_48h === 0) ? $cot_calientes : 0;
 
-        // Transiciones de bucket frío→caliente (vendedor movió la aguja)
+        // Fix 4: Transiciones — premiar REACCIÓN del vendedor, no la transición del cliente
+        // Una transición frío→caliente la causa el cliente. Lo que importa es si el vendedor
+        // revisó el radar dentro de las 48h PREVIAS a esa transición (causó la acción del cliente).
         $transiciones_up = 0;
         $transiciones_down = 0;
+        $transiciones_con_reaccion = 0;
         try {
             $trans = DB::query(
-                "SELECT bucket_anterior, bucket_nuevo FROM bucket_transitions
-                 WHERE vendedor_id=? AND empresa_id=?
-                 AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+                "SELECT bt.bucket_anterior, bt.bucket_nuevo, bt.created_at AS bt_at
+                 FROM bucket_transitions bt
+                 WHERE bt.vendedor_id=? AND bt.empresa_id=?
+                 AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
                 [$usuario_id, $empresa_id, $periodo]
             );
+            $order = ['frio' => 0, 'tibio' => 1, 'caliente' => 2];
             foreach ($trans as $t) {
                 $temp_ant = self::BUCKET_TEMP[$t['bucket_anterior']] ?? null;
                 $temp_new = self::BUCKET_TEMP[$t['bucket_nuevo']] ?? null;
                 if (!$temp_ant || !$temp_new) continue;
-                $order = ['frio' => 0, 'tibio' => 1, 'caliente' => 2];
                 if (($order[$temp_new] ?? 0) > ($order[$temp_ant] ?? 0)) {
                     $transiciones_up++;
+                    // ¿El vendedor revisó radar en las 48h ANTES de esta transición?
+                    $reacted = (int)DB::val(
+                        "SELECT COUNT(*) FROM actividad_log
+                         WHERE usuario_id=? AND tipo IN ('radar_view','quote_view')
+                         AND created_at BETWEEN DATE_SUB(?, INTERVAL 48 HOUR) AND ?",
+                        [$usuario_id, $t['bt_at'], $t['bt_at']]
+                    );
+                    if ($reacted > 0) $transiciones_con_reaccion++;
                 } elseif (($order[$temp_new] ?? 0) < ($order[$temp_ant] ?? 0)) {
                     $transiciones_down++;
                 }
@@ -320,7 +332,7 @@ class ActividadScore
 
         // Puntos de cierre ponderados por bucket y descuento
         $cierres_con_bucket = DB::query(
-            "SELECT c.radar_bucket,
+            "SELECT c.radar_bucket, c.total AS monto_cierre,
                     COALESCE(c.cupon_pct, 0) AS cupon_pct,
                     COALESCE(c.descuento_auto_pct, 0) AS dto_auto_pct
              FROM cotizaciones c
@@ -332,12 +344,23 @@ class ActividadScore
 
         $puntos_cierre = 0.0;
         $base_cierre = 10.0;
+        $bonus_monto_total = 0.0;
         foreach ($cierres_con_bucket as $cc) {
             $bucket = $cc['radar_bucket'];
             $mult_bucket = self::CIERRE_MULT[$bucket] ?? 1.0;
             $tiene_dto = ((float)$cc['cupon_pct'] > 0 || (float)$cc['dto_auto_pct'] > 0);
             $mult_dto = $tiene_dto ? self::DESCUENTO_FACTOR : 1.0;
             $puntos_cierre += $base_cierre * $mult_bucket * $mult_dto;
+            // Fix 2: monto relativo — bonus si cierra por encima del promedio empresa
+            $monto = (float)$cc['monto_cierre'];
+            if ($monto > 0 && $bench['avg_monto'] > 0) {
+                $ratio_monto = $monto / $bench['avg_monto'];
+                // ratio > 1 = por encima del promedio → bonus (cap 2x)
+                // ratio < 1 = por debajo → sin penalización (no es culpa del vendedor)
+                if ($ratio_monto > 1.0) {
+                    $bonus_monto_total += min(($ratio_monto - 1.0) * 0.05, 0.15);
+                }
+            }
         }
 
         // ═══════════════════════════════════════════════════
@@ -381,8 +404,8 @@ class ActividadScore
         $s_radar = self::sigmoid($radar_por_semana, $bench['radar_weekly'], 2.0 / max($bench['radar_weekly'], 0.1));
         $s_consultas = self::sigmoid($consultas_por_semana, $bench['radar_weekly'] * 2.5, 0.5);
 
-        // Bonus por transiciones frío→caliente
-        $bonus_transiciones = min($transiciones_up * 0.08, 0.3);
+        // Fix 4: bonus solo por transiciones donde el vendedor REACCIONÓ
+        $bonus_transiciones = min($transiciones_con_reaccion * 0.10, 0.3);
 
         // Penalización por buckets estancados
         $pen_buckets = min($buckets_estancados * 0.06, 0.3);
@@ -407,9 +430,11 @@ class ActividadScore
         $cot_vistas_safe = max($cot_vistas, 1);
         $tasa_cierre = $cierres_total / $cot_vistas_safe;
 
-        // Puntos de cierre normalizados (con ponderación bucket + descuento)
-        $max_puntos_posibles = max($cierres_total, 1) * $base_cierre * 2.0;
-        $cierre_quality = $puntos_cierre / $max_puntos_posibles;
+        // Fix 5: calidad = multiplicador promedio por cierre, normalizado al máximo (2.0)
+        // Vendedor que solo cierra ventas fáciles (onfire=0.8) → quality=0.40
+        // Vendedor que rescata ventas frías (enfriandose=2.0) → quality=1.00
+        $avg_mult = $cierres_total > 0 ? ($puntos_cierre / $cierres_total / $base_cierre) : 0;
+        $cierre_quality = min($avg_mult / 2.0, 1.0);
 
         // Penalización por vencidas sin acción
         $pen_vencidas = min($vencidas_sin_accion * 0.08, 0.3);
@@ -569,7 +594,7 @@ class ActividadScore
 
         // Total penalizaciones y bonuses (para display)
         $total_pen = $pen_dormidas + $pen_buckets + $pen_senales + $pen_vencidas + $pen_zona_muerta + $pen_trans_down + $pen_volumen_sin_cierre;
-        $total_bonus = $bonus_transiciones + ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0);
+        $total_bonus = $bonus_transiciones + ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0) + $bonus_monto_total;
 
         // ═══════════════════════════════════════════════════
         //  GUARDAR
