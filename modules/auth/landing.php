@@ -549,36 +549,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   </div>
 </section>
 
-<!-- TERMÓMETRO — sección compacta, visual -->
-<section class="features" style="padding-top:60px;padding-bottom:20px">
-  <div class="section-title">¿Sabes quien vende bien — y quien necesita ayuda?</div>
-  <p class="section-sub">Cada vendedor recibe un score en tiempo real con diagnostico automatico. Tu solo lees el resultado.</p>
-
-  <div style="max-width:420px;margin:24px auto 0;background:#fff;border:1.5px solid #bfdbfe;border-radius:12px;padding:16px 18px;box-shadow:var(--sh)">
-    <div style="display:flex;flex-direction:column;gap:10px;font:400 13px var(--body)">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:26px;height:26px;border-radius:7px;background:var(--g);display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff;flex-shrink:0">M</div>
-        <span style="flex:1;font-weight:600">Maria Lopez</span>
-        <span style="font:700 15px var(--num);color:#16a34a">87</span>
-      </div>
-      <div style="color:var(--t3);font-size:12px;margin:-4px 0 0 36px">Excelente cierre. Usa el Radar. Tendencia en mejora.</div>
-      <div style="height:1px;background:var(--border)"></div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:26px;height:26px;border-radius:7px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff;flex-shrink:0">C</div>
-        <span style="flex:1;font-weight:600">Carlos Ruiz</span>
-        <span style="font:700 15px var(--num);color:#d97706">48</span>
-      </div>
-      <div style="color:var(--t3);font-size:12px;margin:-4px 0 0 36px">Cotiza bien pero no cierra. No revisa el Radar.</div>
-      <div style="height:1px;background:var(--border)"></div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:26px;height:26px;border-radius:7px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff;flex-shrink:0">R</div>
-        <span style="flex:1;font-weight:600">Roberto Diaz</span>
-        <span style="font:700 15px var(--num);color:#dc2626">19</span>
-      </div>
-      <div style="color:var(--t3);font-size:12px;margin:-4px 0 0 36px">Sus cotizaciones no se abren. Ignora senales calientes.</div>
-    </div>
-  </div>
-</section>
 
 <!-- AUDIENCE -->
 <section class="audience">
@@ -690,41 +660,53 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     </div>
     <div class="apc-right">
       <div class="apc-demo">
-        <div class="apc-demo-header">
-          <div class="apc-demo-gauge">
-            <?php
-            $demo_pct = 87;
-            $demo_circ = 2 * M_PI * 26;
-            $demo_dash = $demo_circ * ($demo_pct / 100);
-            ?>
-            <svg width="64" height="64" viewBox="0 0 64 64">
-              <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5"/>
-              <circle cx="32" cy="32" r="26" fill="none" stroke="#2563eb" stroke-width="5"
-                      stroke-dasharray="<?= round($demo_dash, 1) ?> <?= round($demo_circ, 1) ?>"
-                      stroke-linecap="round"/>
-            </svg>
-            <div class="apc-demo-num"><?= $demo_pct ?></div>
+        <!-- Pregunta que engancha -->
+        <div style="text-align:center;margin-bottom:20px">
+          <div style="font:800 18px var(--body);color:#fff;line-height:1.3">¿Sabes quien vende bien<br>y quien necesita ayuda?</div>
+          <div style="font:400 12px var(--body);color:#64748b;margin-top:6px">Diagnostico automatico por vendedor. Tu solo lees el resultado.</div>
+        </div>
+
+        <!-- Vendedor #1 — Top -->
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.15);border-radius:10px;margin-bottom:8px">
+          <div style="width:28px;height:28px;border-radius:8px;background:#16a34a;display:flex;align-items:center;justify-content:center;font:700 12px var(--body);color:#fff;flex-shrink:0">M</div>
+          <div style="flex:1;min-width:0">
+            <div style="font:600 13px var(--body);color:#fff">Maria Lopez</div>
+            <div style="font:400 11px var(--body);color:#94a3b8;margin-top:1px">Excelente cierre. Usa el Radar. Tendencia en mejora.</div>
           </div>
-          <div class="apc-demo-info">
-            <div class="apc-demo-nivel">Excepcional <span style="color:#16a34a">&#8593;</span></div>
-            <div class="apc-demo-detail"><b>12</b>/14 abiertas · <b>8</b> cierres · <b>3</b> desde radar</div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font:800 18px var(--num);color:#2563eb">87</div>
+            <div style="font:600 9px var(--body);color:#2563eb;background:rgba(37,99,235,.15);padding:1px 6px;border-radius:6px;letter-spacing:.04em">TOP</div>
           </div>
         </div>
-        <div class="apc-demo-bars">
-          <div class="apc-demo-bar-wrap">
-            <div class="apc-demo-bar"><div class="apc-demo-bar-fill" style="width:92%;background:#16a34a"></div></div>
-            <div class="apc-demo-bar-lbl">Activacion</div>
+
+        <!-- Vendedor #2 — Regular -->
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;margin-bottom:8px">
+          <div style="width:28px;height:28px;border-radius:8px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 12px var(--body);color:#fff;flex-shrink:0">C</div>
+          <div style="flex:1;min-width:0">
+            <div style="font:600 13px var(--body);color:#fff">Carlos Ruiz</div>
+            <div style="font:400 11px var(--body);color:#94a3b8;margin-top:1px">Cotiza bien pero no cierra. No revisa el Radar.</div>
           </div>
-          <div class="apc-demo-bar-wrap">
-            <div class="apc-demo-bar"><div class="apc-demo-bar-fill" style="width:78%;background:#16a34a"></div></div>
-            <div class="apc-demo-bar-lbl">Seguimiento</div>
-          </div>
-          <div class="apc-demo-bar-wrap">
-            <div class="apc-demo-bar"><div class="apc-demo-bar-fill" style="width:90%;background:#16a34a"></div></div>
-            <div class="apc-demo-bar-lbl">Conversion</div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font:800 18px var(--num);color:#d97706">48</div>
+            <div style="font:600 9px var(--body);color:#d97706;background:rgba(217,119,6,.12);padding:1px 6px;border-radius:6px;letter-spacing:.04em">REGULAR</div>
           </div>
         </div>
-        <div class="apc-demo-diag">Casi todo lo que envia llega al cliente. Da buen seguimiento con el radar. <b>Excelente tasa de cierre</b> — 3 cierres asistidos por radar, todos a precio completo. Tendencia en mejora. <span style="color:#60a5fa">Tip: mantener el ritmo actual.</span></div>
+
+        <!-- Vendedor #3 — Bajo -->
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;margin-bottom:16px">
+          <div style="width:28px;height:28px;border-radius:8px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 12px var(--body);color:#fff;flex-shrink:0">R</div>
+          <div style="flex:1;min-width:0">
+            <div style="font:600 13px var(--body);color:#fff">Roberto Diaz</div>
+            <div style="font:400 11px var(--body);color:#94a3b8;margin-top:1px">Sus cotizaciones no se abren. Ignora senales calientes.</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font:800 18px var(--num);color:#dc2626">19</div>
+            <div style="font:600 9px var(--body);color:#dc2626;background:rgba(220,38,38,.12);padding:1px 6px;border-radius:6px;letter-spacing:.04em">BAJO</div>
+          </div>
+        </div>
+
+        <!-- Insight del algoritmo -->
+        <div class="apc-demo-diag">El algoritmo detecta que <b>Carlos cotiza mucho pero no cierra</b> — necesita coaching de seguimiento. <b>Roberto</b> tiene problemas de entrega. Cada vendedor recibe tips personalizados.</div>
       </div>
     </div>
   </div>
