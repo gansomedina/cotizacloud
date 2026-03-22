@@ -154,9 +154,11 @@ class ActividadScore
         // ── Cotizaciones del vendedor ──
         $cw = "COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?";
 
+        // Cuenta TODAS las cotizaciones que salieron del borrador, incluyendo
+        // canceladas/rechazadas — para que borrar/cancelar no mejore el score
         $cot_asignadas = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw AND total > 0
-             AND estado != 'borrador' $no_import
+             AND (estado != 'borrador' OR visitas > 0) $no_import
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );

@@ -26,36 +26,13 @@ if ($es_admin_dash) {
         "SELECT MIN(updated_at) FROM usuario_score WHERE empresa_id=?",
         [$empresa_id]
     );
-    if (!$oldest || (time() - strtotime($oldest)) > 60) {
+    if (!$oldest || (time() - strtotime($oldest)) > 600) {
         ActividadScore::recalcular_empresa($empresa_id);
     }
     $equipo_scores = ActividadScore::equipo($empresa_id);
 }
 
-// Debug: ?debug_score=1 muestra datos crudos del algoritmo
-if (isset($_GET['debug_score']) && $es_admin_dash) {
-    echo '<pre style="background:#111;color:#0f0;padding:20px;font-size:12px;overflow:auto;max-height:600px">';
-    echo "=== DEBUG APC v3.2 ===\n\n";
-    foreach ($equipo_scores as $es) {
-        echo "▸ {$es['nombre']} (uid={$es['usuario_id']})\n";
-        echo "  score={$es['score']} nivel={$es['nivel']} momentum={$es['momentum']}\n";
-        echo "  asignadas={$es['cot_asignadas']} vistas={$es['cot_vistas']} dormidas={$es['cot_dormidas']}\n";
-        echo "  cierres={$es['conversiones']} bucket={$es['cierres_bucket']} sin_dto={$es['cierres_sin_dto']}\n";
-        echo "  s_act={$es['s_activacion']} s_seg={$es['s_seguimiento']} s_conv={$es['s_conversion']}\n";
-        echo "  pen={$es['penalizaciones']} bonus={$es['bonuses']} percentil={$es['percentil']}\n\n";
-    }
-    // Cotizaciones raw por usuario
-    $periodo = 60;
-    foreach ($equipo_scores as $es) {
-        $uid = $es['usuario_id'];
-        $raw = DB::val("SELECT COUNT(*) FROM cotizaciones WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=? AND total > 0 AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)", [$uid, $empresa_id, $periodo]);
-        $raw_all = DB::val("SELECT COUNT(*) FROM cotizaciones WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?", [$uid, $empresa_id]);
-        $raw_uid = DB::val("SELECT COUNT(*) FROM cotizaciones WHERE usuario_id=? AND empresa_id=?", [$uid, $empresa_id]);
-        $raw_vid = DB::val("SELECT COUNT(*) FROM cotizaciones WHERE vendedor_id=? AND empresa_id=?", [$uid, $empresa_id]);
-        echo "RAW {$es['nombre']} (uid=$uid): coalesce_60d=$raw coalesce_all=$raw_all usuario_id=$raw_uid vendedor_id=$raw_vid\n";
-    }
-    echo '</pre>';
-}
+
 
 
 // ─── Período seleccionado ────────────────────────────────
