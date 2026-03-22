@@ -373,7 +373,7 @@ class ActividadScore
 
         // Puntos de cierre ponderados por bucket y descuento
         $cierres_con_bucket = DB::query(
-            "SELECT c.radar_bucket, c.total AS monto_cierre,
+            "SELECT c.radar_bucket,
                     COALESCE(c.cupon_pct, 0) AS cupon_pct,
                     COALESCE(c.descuento_auto_pct, 0) AS dto_auto_pct
              FROM cotizaciones c
@@ -385,23 +385,12 @@ class ActividadScore
 
         $puntos_cierre = 0.0;
         $base_cierre = 10.0;
-        $bonus_monto_total = 0.0;
         foreach ($cierres_con_bucket as $cc) {
             $bucket = $cc['radar_bucket'];
             $mult_bucket = self::CIERRE_MULT[$bucket] ?? 1.0;
             $tiene_dto = ((float)$cc['cupon_pct'] > 0 || (float)$cc['dto_auto_pct'] > 0);
             $mult_dto = $tiene_dto ? self::DESCUENTO_FACTOR : 1.0;
             $puntos_cierre += $base_cierre * $mult_bucket * $mult_dto;
-            // Fix 2: monto relativo — bonus si cierra por encima del promedio empresa
-            $monto = (float)$cc['monto_cierre'];
-            if ($monto > 0 && $bench['avg_monto'] > 0) {
-                $ratio_monto = $monto / $bench['avg_monto'];
-                // ratio > 1 = por encima del promedio → bonus (cap 2x)
-                // ratio < 1 = por debajo → sin penalización (no es culpa del vendedor)
-                if ($ratio_monto > 1.0) {
-                    $bonus_monto_total += min(($ratio_monto - 1.0) * 0.05, 0.15);
-                }
-            }
         }
 
         // ═══════════════════════════════════════════════════
@@ -647,7 +636,7 @@ class ActividadScore
 
         // Total penalizaciones y bonuses (para display)
         $total_pen = $pen_dormidas + $pen_buckets + $pen_senales + $pen_vencidas + $pen_zona_muerta + $pen_trans_down + $pen_volumen_sin_cierre;
-        $total_bonus = $bonus_transiciones + ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0) + $bonus_monto_total;
+        $total_bonus = $bonus_transiciones + ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0);
 
         // ═══════════════════════════════════════════════════
         //  GUARDAR
@@ -803,21 +792,11 @@ class ActividadScore
         );
         $apertura = $emp_asig >= 5 ? $emp_vistas / $emp_asig : 0.70;
 
-        // Monto promedio de cierre (para bonus relativo)
-        $avg_monto = DB::val(
-            "SELECT AVG(total) FROM cotizaciones
-             WHERE empresa_id=? AND total > 0
-             AND estado IN ('aceptada','convertida','aceptada_cliente')
-             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$empresa_id, $periodo]
-        );
-
         self::$_bench[$empresa_id] = [
             'close_rate'    => max((float)$close_rate, 0.03),
             'time_to_close' => max((float)($avg_ttc ?? 14), 3),
             'radar_weekly'  => max((float)($avg_radar ?? 2.0), 0.5),
             'apertura'      => max((float)$apertura, 0.30),
-            'avg_monto'     => max((float)($avg_monto ?? 0), 1),
         ];
         return self::$_bench[$empresa_id];
     }
