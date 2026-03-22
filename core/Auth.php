@@ -274,6 +274,7 @@ class Auth
             'eliminar_items_venta',
             'cancelar_recibos',
             'capturar_pagos',
+            'asignar_cotizaciones',
         ];
 
         if (!in_array($permiso, $permisos_validos)) return false;

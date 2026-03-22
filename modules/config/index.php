@@ -675,6 +675,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <?php if ($usr['puede_aplicar_descuentos']): ?><span class="ubadge ubadge-perm">Aplica descuentos</span><?php endif; ?>
           <?php if ($usr['puede_ver_todas_cots']): ?><span class="ubadge ubadge-perm">Ve todas las cots</span><?php endif; ?>
           <?php if (!empty($usr['puede_capturar_pagos'])): ?><span class="ubadge ubadge-perm">Captura pagos</span><?php endif; ?>
+          <?php if (!empty($usr['puede_asignar_cotizaciones'])): ?><span class="ubadge ubadge-perm">Asigna cots</span><?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
@@ -1040,9 +1041,13 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <div><div class="perm-lbl">Cancelar recibos</div></div>
           <label class="toggle"><input type="checkbox" id="perm_cancelar_recibos"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
-        <div class="perm-row" style="border-bottom:none">
+        <div class="perm-row">
           <div><div class="perm-lbl">Capturar pagos / abonos</div><div class="perm-sub">Registrar abonos a ventas</div></div>
           <label class="toggle"><input type="checkbox" id="perm_capturar_pagos"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row" style="border-bottom:none">
+          <div><div class="perm-lbl">Asignar cotizaciones</div><div class="perm-sub">Asignar cotizaciones a otros vendedores</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_asignar_cotizaciones"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
       </div>
     </div>
@@ -1383,6 +1388,7 @@ function nuevoUsuario() {
     document.getElementById('perm_eliminar_items').checked = false;
     document.getElementById('perm_cancelar_recibos').checked= false;
     document.getElementById('perm_capturar_pagos').checked = false;
+    document.getElementById('perm_asignar_cotizaciones').checked = false;
     openSheet('shUsr');
 }
 function editarUsuario(id, data) {
@@ -1402,6 +1408,7 @@ function editarUsuario(id, data) {
     document.getElementById('perm_eliminar_items').checked  = !!parseInt(data.puede_eliminar_items_venta);
     document.getElementById('perm_cancelar_recibos').checked= !!parseInt(data.puede_cancelar_recibos);
     document.getElementById('perm_capturar_pagos').checked = !!parseInt(data.puede_capturar_pagos);
+    document.getElementById('perm_asignar_cotizaciones').checked = !!parseInt(data.puede_asignar_cotizaciones);
     togglePerms(data.rol);
     openSheet('shUsr');
 }
@@ -1428,6 +1435,7 @@ async function guardarUsuario() {
         puede_eliminar_items_venta:  document.getElementById('perm_eliminar_items').checked ? 1 : 0,
         puede_cancelar_recibos:      document.getElementById('perm_cancelar_recibos').checked ? 1 : 0,
         puede_capturar_pagos:        document.getElementById('perm_capturar_pagos').checked ? 1 : 0,
+        puede_asignar_cotizaciones:  document.getElementById('perm_asignar_cotizaciones').checked ? 1 : 0,
     };
     if (pass) payload.password = pass;
     const url = id ? '/config/usuario/' + id : '/config/usuario';

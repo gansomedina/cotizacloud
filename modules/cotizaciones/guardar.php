@@ -48,6 +48,17 @@ if (!$cliente_id) json_error('El cliente es requerido');
 $ok = DB::val("SELECT id FROM clientes WHERE id = ? AND empresa_id = ?", [$cliente_id, $empresa_id]);
 if (!$ok) json_error('Cliente no válido');
 
+// Vendedor asignado (solo si tiene permiso)
+$vendedor_id = (int)($cot['vendedor_id'] ?? $cot['usuario_id']);
+if (!empty($body['vendedor_id']) && Auth::puede('asignar_cotizaciones')) {
+    $vid = (int)$body['vendedor_id'];
+    $existe_vendedor = DB::val(
+        "SELECT id FROM usuarios WHERE id = ? AND empresa_id = ? AND activo = 1",
+        [$vid, $empresa_id]
+    );
+    if ($existe_vendedor) $vendedor_id = $vid;
+}
+
 $valida_hasta = trim($body['valida_hasta'] ?? '');
 // Validar formato, rango razonable y que no sea fecha cero
 if ($valida_hasta && preg_match('/^\d{4}-\d{2}-\d{2}$/', $valida_hasta) && $valida_hasta > '2000-01-01') {
@@ -134,7 +145,7 @@ try {
 
     DB::execute(
         "UPDATE cotizaciones SET
-            titulo=?, cliente_id=?, cupon_id=?,
+            titulo=?, cliente_id=?, vendedor_id=?, cupon_id=?,
             subtotal=?, cupon_codigo=?, cupon_pct=?, cupon_monto=?,
             descuento_auto_activo=?, descuento_auto_pct=?, descuento_auto_expira=?, descuento_auto_amt=?,
             impuesto_modo=?, impuesto_pct=?, impuesto_amt=?,
@@ -142,7 +153,7 @@ try {
             updated_at=NOW()
          WHERE id=?",
         [
-            $titulo, $cliente_id, $cupon_id,
+            $titulo, $cliente_id, $vendedor_id, $cupon_id,
             $subtotal, $cupon_codigo, $cupon_pct, $cupon_monto,
             $desc_auto_activo, $desc_auto_pct, $desc_auto_expira, $desc_auto_amt,
             $impuesto_modo, $impuesto_pct, $impuesto_amt,
