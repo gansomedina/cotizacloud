@@ -412,6 +412,13 @@ ob_start();
 .lb-score{display:flex;align-items:center;gap:4px;flex-shrink:0}
 .lb-score-num{font:800 15px var(--num)}
 .lb-nivel{font:600 9px var(--body);letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:8px}
+.lb-info{max-height:0;overflow:hidden;transition:max-height .25s ease}
+.lb-info.lb-info-open{max-height:400px}
+.lb-info-inner{padding:10px 14px 12px;background:var(--bg);border-bottom:1px solid var(--border);font:400 12px/1.6 var(--body);color:var(--t2)}
+.lb-info-inner b{font-weight:600;color:var(--text)}
+.lb-info-inner p{margin:6px 0}
+.lb-info-inner ul{margin:4px 0;padding-left:18px}
+.lb-info-inner li{margin-bottom:2px}
 @media(max-width:600px){.lb-stats{display:none}}
 /* KPI GRID */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
@@ -630,9 +637,23 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
 <?php if ($es_admin_dash && count($equipo_scores) > 0): ?>
   <div class="lb">
     <div class="lb-head">
-      <div>
+      <div style="flex:1">
         <div class="lb-title">Ranking del equipo</div>
         <div class="lb-sub">30 días · auto-ajustable</div>
+      </div>
+      <button onclick="document.getElementById('lb-info').classList.toggle('lb-info-open')" style="background:none;border:1px solid var(--border);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font:600 12px var(--body);flex-shrink:0" title="¿Cómo funciona?">?</button>
+    </div>
+    <div id="lb-info" class="lb-info">
+      <div class="lb-info-inner">
+        <b>¿Qué mide este ranking?</b>
+        <p>Combina tres indicadores de los últimos 30 días:</p>
+        <ul>
+          <li><b>Presencia</b> — Días con actividad en la plataforma</li>
+          <li><b>Gestión</b> — Interacciones con cotizaciones y clientes, proporcional al volumen de trabajo asignado</li>
+          <li><b>Conversión</b> — Cotizaciones cerradas respecto a las activas</li>
+        </ul>
+        <p>El score se auto-ajusta: compara a cada usuario contra su propio historial y contra el equipo. Un score alto significa consistencia y resultados, no solo volumen.</p>
+        <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Este índice es una referencia generada por algoritmo basada en datos de uso de la plataforma. No pretende medir ni evaluar el desempeño físico, la productividad real ni el comportamiento personal de ningún colaborador.</p>
       </div>
     </div>
     <?php
