@@ -509,92 +509,46 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   </div>
 </section>
 
-<!-- TERMÓMETRO DE PRODUCTIVIDAD -->
-<section class="predictive">
-  <div class="pred-layout">
-    <div class="pred-left">
-      <span class="section-label" style="color:#1d4ed8">Exclusivo Business</span>
-      <div class="pred-headline">Tu equipo vende.<br>Pero, <em>quien vende bien?</em></div>
-      <p class="pred-sub">El Termometro de Productividad analiza automaticamente a cada vendedor en 3 dimensiones y te dice exactamente donde esta la oportunidad de mejora — sin que tu tengas que revisar cotizacion por cotizacion.</p>
-      <div class="pred-states">
-        <div class="pred-state">
-          <span class="pred-state-dot" style="background:#dc2626"></span>
-          <div class="pred-state-text"><strong>Activacion</strong>¿Sus cotizaciones llegan al cliente? Detecta envios sin abrir y cuellos de botella.</div>
-        </div>
-        <div class="pred-state">
-          <span class="pred-state-dot" style="background:#f59e0b"></span>
-          <div class="pred-state-text"><strong>Seguimiento</strong>¿Usa el Radar? ¿Reacciona cuando un cliente muestra interes? Mide velocidad de reaccion.</div>
-        </div>
-        <div class="pred-state">
-          <span class="pred-state-dot" style="background:#16a34a"></span>
-          <div class="pred-state-text"><strong>Conversion</strong>¿Cierra ventas? ¿A precio completo o con descuento? ¿Rapido o lento? El cierre es lo que importa.</div>
+<!-- TERMÓMETRO — sección compacta, visual -->
+<section class="features" style="padding-top:60px;padding-bottom:20px">
+  <span class="section-label" style="color:#1d4ed8">Business</span>
+  <div class="section-title">Sabe quien vende bien — y quien necesita ayuda</div>
+  <p class="section-sub">El sistema analiza a cada vendedor y te da un diagnostico claro, sin revisar cotizacion por cotizacion.</p>
+
+  <div style="max-width:520px;margin:32px auto 0;background:#fff;border:2px solid #bfdbfe;border-radius:16px;padding:28px 24px;box-shadow:var(--sh-md)">
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:32px;height:32px;border-radius:9px;background:var(--g);display:flex;align-items:center;justify-content:center;font:700 13px var(--body);color:#fff;flex-shrink:0">M</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between"><span style="font:600 14px var(--body)">Maria Lopez</span><span style="font:700 18px var(--num);color:#16a34a">87 <span style="font:400 11px var(--body);color:#16a34a">Top</span></span></div>
+          <div style="font:400 12px var(--body);color:var(--t3);margin-top:2px">Excelente cierre. Usa el Radar. Todos a precio completo.</div>
         </div>
       </div>
-    </div>
-    <div class="pred-right">
-      <div style="background:#fff;border-radius:16px;padding:24px;box-shadow:var(--sh-md);max-width:340px">
-        <!-- Mini leaderboard mockup -->
-        <div style="font:700 13px var(--body);color:var(--t2);margin-bottom:16px;display:flex;align-items:center;gap:8px">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-          Ranking del equipo
+
+      <div style="height:1px;background:var(--border)"></div>
+
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:32px;height:32px;border-radius:9px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 13px var(--body);color:#fff;flex-shrink:0">C</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between"><span style="font:600 14px var(--body)">Carlos Ruiz</span><span style="font:700 18px var(--num);color:#d97706">48 <span style="font:400 11px var(--body);color:#d97706">Regular</span></span></div>
+          <div style="font:400 12px var(--body);color:var(--t3);margin-top:2px">Cotiza bien pero no cierra. No revisa el Radar.</div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:14px">
-          <!-- Vendedor 1 -->
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <div style="width:28px;height:28px;border-radius:8px;background:var(--g);display:flex;align-items:center;justify-content:center;font:700 12px var(--body);color:#fff;flex-shrink:0">M</div>
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;justify-content:space-between">
-                <span style="font:600 13px var(--body)">Maria Lopez</span>
-                <span style="font:700 16px var(--num);color:#16a34a">87</span>
-              </div>
-              <div style="font:400 11px var(--body);color:var(--t3);margin-top:3px;line-height:1.35">Excelente tasa de cierre. 4 cierres asistidos por Radar. Todos a precio completo. Tendencia en mejora.</div>
-              <div style="display:flex;gap:4px;margin-top:6px">
-                <div style="flex:1;height:3px;border-radius:2px;background:#e5e5e0"><div style="width:92%;height:100%;border-radius:2px;background:#16a34a"></div></div>
-                <div style="flex:1;height:3px;border-radius:2px;background:#e5e5e0"><div style="width:78%;height:100%;border-radius:2px;background:#16a34a"></div></div>
-                <div style="flex:1;height:3px;border-radius:2px;background:#e5e5e0"><div style="width:85%;height:100%;border-radius:2px;background:#16a34a"></div></div>
-              </div>
-            </div>
-          </div>
-          <!-- Vendedor 2 -->
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <div style="width:28px;height:28px;border-radius:8px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 12px var(--body);color:#fff;flex-shrink:0">C</div>
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;justify-content:space-between">
-                <span style="font:600 13px var(--body)">Carlos Ruiz</span>
-                <span style="font:700 16px var(--num);color:#d97706">48</span>
-              </div>
-              <div style="font:400 11px var(--body);color:var(--t3);margin-top:3px;line-height:1.35">Cotiza bien pero no cierra — 12 abiertas sin resultado. No usa el Radar. Tip: revisar el Radar con frecuencia.</div>
-              <div style="display:flex;gap:4px;margin-top:6px">
-                <div style="flex:1;height:3px;border-radius:2px;background:#e5e5e0"><div style="width:88%;height:100%;border-radius:2px;background:#16a34a"></div></div>
-                <div style="flex:1;height:3px;border-radius:2px;background:#e5e5e0"><div style="width:15%;height:100%;border-radius:2px;background:#dc2626"></div></div>
-                <div style="flex:1;height:3px;border-radius:2px;background:#e5e5e0"><div style="width:20%;height:100%;border-radius:2px;background:#dc2626"></div></div>
-              </div>
-            </div>
-          </div>
-          <!-- Vendedor 3 -->
-          <div style="display:flex;align-items:flex-start;gap:10px">
-            <div style="width:28px;height:28px;border-radius:8px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 12px var(--body);color:#fff;flex-shrink:0">R</div>
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;justify-content:space-between">
-                <span style="font:600 13px var(--body)">Roberto Diaz</span>
-                <span style="font:700 16px var(--num);color:#dc2626">19</span>
-              </div>
-              <div style="font:400 11px var(--body);color:var(--t3);margin-top:3px;line-height:1.35">Muchas cotizaciones no se abren. 5 senales calientes ignoradas. Tendencia a la baja.</div>
-              <div style="display:flex;gap:4px;margin-top:6px">
-                <div style="flex:1;height:3px;border-radius:2px;background:#e5e5e0"><div style="width:30%;height:100%;border-radius:2px;background:#dc2626"></div></div>
-                <div style="flex:1;height:3px;border-radius:2px;background:#e5e5e0"><div style="width:10%;height:100%;border-radius:2px;background:#dc2626"></div></div>
-                <div style="flex:1;height:3px;border-radius:2px;background:#e5e5e0"><div style="width:5%;height:100%;border-radius:2px;background:#dc2626"></div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="font:500 10px var(--body);color:var(--t3);text-align:center;margin-top:14px">Auto-ajustable · Se adapta a tu industria</div>
       </div>
+
+      <div style="height:1px;background:var(--border)"></div>
+
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:32px;height:32px;border-radius:9px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 13px var(--body);color:#fff;flex-shrink:0">R</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between"><span style="font:600 14px var(--body)">Roberto Diaz</span><span style="font:700 18px var(--num);color:#dc2626">19 <span style="font:400 11px var(--body);color:#dc2626">Bajo</span></span></div>
+          <div style="font:400 12px var(--body);color:var(--t3);margin-top:2px">Sus cotizaciones no se abren. Ignora senales de clientes interesados.</div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
-
-<div class="divider"><div class="divider-line"></div></div>
 
 <!-- AUDIENCE -->
 <section class="audience">
