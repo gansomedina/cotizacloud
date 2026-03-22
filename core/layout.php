@@ -101,7 +101,8 @@ foreach ($mas_rutas as $r) {
         }
 
         *,*::before,*::after{box-sizing:border-box}
-        body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;font-size:14px;line-height:1.5}
+        html{scrollbar-gutter:stable}
+body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;font-size:14px;line-height:1.5}
 
         /* ── SIDEBAR ── */
         #sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:200;transition:transform .22s cubic-bezier(.4,0,.2,1)}
@@ -121,7 +122,7 @@ foreach ($mas_rutas as $r) {
         #sidebar-overlay.on{display:block}
 
         /* ── MAIN ── */
-        #main{margin-left:var(--sidebar-w);min-height:100dvh;display:flex;flex-direction:column;overflow-y:auto;scrollbar-gutter:stable}
+        #main{margin-left:var(--sidebar-w);min-height:100dvh;display:flex;flex-direction:column}
 
         /* ── TOPBAR (mobile only) ── */
         #topbar{display:none;background:var(--white);border-bottom:1px solid var(--border);padding:0 14px;height:52px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
