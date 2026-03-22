@@ -101,7 +101,7 @@ foreach ($mas_rutas as $r) {
         }
 
         *,*::before,*::after{box-sizing:border-box}
-        html{scrollbar-gutter:stable}
+        html{overflow-y:scroll}
 body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;font-size:14px;line-height:1.5}
 
         /* ── SIDEBAR ── */

@@ -59,7 +59,7 @@ class ActividadScore
 
         // ═══ SEÑALES CRUDAS (últimos 30 días) ═══
 
-        // Días activos (logins distintos)
+        // Días activos (cualquier día que entró)
         $dias_activos = (int)DB::val(
             "SELECT COUNT(DISTINCT DATE(created_at)) FROM actividad_log
              WHERE usuario_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
@@ -93,7 +93,7 @@ class ActividadScore
 
         // ═══ DIMENSIÓN 1: TASAS PROPORCIONALES A CARGA ═══
 
-        $dias_laborales = max(($periodo / 7) * self::DIAS_SEMANA, 1);
+        $dias_laborales = $periodo; // todos los días cuentan, cada negocio tiene su horario
         $semanas        = max($periodo / 7, 1);
         $carga          = max($carga_activa, 1); // evitar /0
 
