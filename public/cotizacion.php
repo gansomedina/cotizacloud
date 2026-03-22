@@ -23,7 +23,7 @@ $cot = DB::row(
      FROM cotizaciones c
      JOIN empresas  e  ON e.id = c.empresa_id
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
-     LEFT JOIN usuarios u  ON u.id  = c.usuario_id
+     LEFT JOIN usuarios u  ON u.id  = COALESCE(c.vendedor_id, c.usuario_id)
      WHERE c.slug = ? AND c.empresa_id = ?",
     [$slug, EMPRESA_ID]
 );
