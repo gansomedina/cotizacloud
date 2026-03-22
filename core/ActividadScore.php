@@ -430,11 +430,20 @@ class ActividadScore
         //  ÁNGULO 1: MOMENTUM (vs su propio histórico)
         // ═══════════════════════════════════════════════════
 
-        $prev = DB::row(
-            "SELECT ema_activacion, ema_seguimiento, ema_conversion, ema_gestion, ema_presencia
-             FROM usuario_score WHERE usuario_id=?",
-            [$usuario_id]
-        );
+        try {
+            $prev = DB::row(
+                "SELECT ema_activacion, ema_seguimiento, ema_conversion, ema_gestion, ema_presencia
+                 FROM usuario_score WHERE usuario_id=?",
+                [$usuario_id]
+            );
+        } catch (\Throwable $e) {
+            // Columnas nuevas aún no migradas — fallback a columnas originales
+            $prev = DB::row(
+                "SELECT ema_gestion, ema_presencia, ema_conversion
+                 FROM usuario_score WHERE usuario_id=?",
+                [$usuario_id]
+            );
+        }
 
         $alpha = self::EMA_ALPHA;
 
@@ -464,16 +473,28 @@ class ActividadScore
         //  ÁNGULO 2: PERCENTIL EN EQUIPO
         // ═══════════════════════════════════════════════════
 
-        $team = DB::query(
-            "SELECT u.id, COALESCE(us.score, 0) AS sc,
-                    COALESCE(us.s_activacion, 0) AS sa,
-                    COALESCE(us.s_seguimiento, 0) AS ss,
-                    COALESCE(us.s_conversion, 0) AS scv
-             FROM usuarios u
-             LEFT JOIN usuario_score us ON us.usuario_id = u.id
-             WHERE u.empresa_id = ? AND u.activo = 1",
-            [$empresa_id]
-        );
+        try {
+            $team = DB::query(
+                "SELECT u.id, COALESCE(us.score, 0) AS sc,
+                        COALESCE(us.s_activacion, 0) AS sa,
+                        COALESCE(us.s_seguimiento, 0) AS ss,
+                        COALESCE(us.s_conversion, 0) AS scv
+                 FROM usuarios u
+                 LEFT JOIN usuario_score us ON us.usuario_id = u.id
+                 WHERE u.empresa_id = ? AND u.activo = 1",
+                [$empresa_id]
+            );
+        } catch (\Throwable $e) {
+            // Columnas nuevas no migradas — fallback
+            $team = DB::query(
+                "SELECT u.id, COALESCE(us.score, 0) AS sc,
+                        0 AS sa, 0 AS ss, 0 AS scv
+                 FROM usuarios u
+                 LEFT JOIN usuario_score us ON us.usuario_id = u.id
+                 WHERE u.empresa_id = ? AND u.activo = 1",
+                [$empresa_id]
+            );
+        }
 
         $team_size = count($team);
         $percentil = 0.50;
@@ -520,46 +541,74 @@ class ActividadScore
         //  GUARDAR
         // ═══════════════════════════════════════════════════
 
-        DB::execute(
-            "INSERT INTO usuario_score
-             (usuario_id, empresa_id, score, nivel, dias_activos, acciones, conversiones,
-              carga_activa, cot_asignadas, cot_vistas, cot_dormidas,
-              cierres_bucket, cierres_sin_dto, transiciones_up, senales_ignoradas,
-              s_activacion, s_seguimiento, s_conversion, penalizaciones, bonuses,
-              tasa_gestion,
-              ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
-              momentum, percentil)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-             ON DUPLICATE KEY UPDATE
-              score=VALUES(score), nivel=VALUES(nivel),
-              dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
-              conversiones=VALUES(conversiones), carga_activa=VALUES(carga_activa),
-              cot_asignadas=VALUES(cot_asignadas), cot_vistas=VALUES(cot_vistas),
-              cot_dormidas=VALUES(cot_dormidas),
-              cierres_bucket=VALUES(cierres_bucket), cierres_sin_dto=VALUES(cierres_sin_dto),
-              transiciones_up=VALUES(transiciones_up), senales_ignoradas=VALUES(senales_ignoradas),
-              s_activacion=VALUES(s_activacion), s_seguimiento=VALUES(s_seguimiento),
-              s_conversion=VALUES(s_conversion),
-              penalizaciones=VALUES(penalizaciones), bonuses=VALUES(bonuses),
-              tasa_gestion=VALUES(tasa_gestion),
-              ema_gestion=VALUES(ema_gestion), ema_presencia=VALUES(ema_presencia),
-              ema_conversion=VALUES(ema_conversion),
-              ema_activacion=VALUES(ema_activacion), ema_seguimiento=VALUES(ema_seguimiento),
-              momentum=VALUES(momentum), percentil=VALUES(percentil),
-              updated_at=NOW()",
-            [
-                $usuario_id, $empresa_id, $score, $nivel,
-                $dias_activos, $consultas + $radar_sessions, $cierres_total,
-                $carga_activa, $cot_asignadas, $cot_vistas, $dormidas_7d,
-                $cierres_bucket, $cierres_sin_dto, $transiciones_up, $senales_ignoradas,
-                round($s_activacion, 3), round($s_seguimiento, 3), round($s_conversion, 3),
-                round($total_pen, 3), round($total_bonus, 3),
-                round($proporcional, 3),
-                round($proporcional, 3), round($s_activacion, 3), round($ema_conv, 3),
-                round($ema_act, 3), round($ema_seg, 3),
-                round($momentum, 2), round($percentil, 2),
-            ]
-        );
+        try {
+            DB::execute(
+                "INSERT INTO usuario_score
+                 (usuario_id, empresa_id, score, nivel, dias_activos, acciones, conversiones,
+                  carga_activa, cot_asignadas, cot_vistas, cot_dormidas,
+                  cierres_bucket, cierres_sin_dto, transiciones_up, senales_ignoradas,
+                  s_activacion, s_seguimiento, s_conversion, penalizaciones, bonuses,
+                  tasa_gestion,
+                  ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
+                  momentum, percentil)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 ON DUPLICATE KEY UPDATE
+                  score=VALUES(score), nivel=VALUES(nivel),
+                  dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
+                  conversiones=VALUES(conversiones), carga_activa=VALUES(carga_activa),
+                  cot_asignadas=VALUES(cot_asignadas), cot_vistas=VALUES(cot_vistas),
+                  cot_dormidas=VALUES(cot_dormidas),
+                  cierres_bucket=VALUES(cierres_bucket), cierres_sin_dto=VALUES(cierres_sin_dto),
+                  transiciones_up=VALUES(transiciones_up), senales_ignoradas=VALUES(senales_ignoradas),
+                  s_activacion=VALUES(s_activacion), s_seguimiento=VALUES(s_seguimiento),
+                  s_conversion=VALUES(s_conversion),
+                  penalizaciones=VALUES(penalizaciones), bonuses=VALUES(bonuses),
+                  tasa_gestion=VALUES(tasa_gestion),
+                  ema_gestion=VALUES(ema_gestion), ema_presencia=VALUES(ema_presencia),
+                  ema_conversion=VALUES(ema_conversion),
+                  ema_activacion=VALUES(ema_activacion), ema_seguimiento=VALUES(ema_seguimiento),
+                  momentum=VALUES(momentum), percentil=VALUES(percentil),
+                  updated_at=NOW()",
+                [
+                    $usuario_id, $empresa_id, $score, $nivel,
+                    $dias_activos, $consultas + $radar_sessions, $cierres_total,
+                    $carga_activa, $cot_asignadas, $cot_vistas, $dormidas_7d,
+                    $cierres_bucket, $cierres_sin_dto, $transiciones_up, $senales_ignoradas,
+                    round($s_activacion, 3), round($s_seguimiento, 3), round($s_conversion, 3),
+                    round($total_pen, 3), round($total_bonus, 3),
+                    round($proporcional, 3),
+                    round($proporcional, 3), round($s_activacion, 3), round($ema_conv, 3),
+                    round($ema_act, 3), round($ema_seg, 3),
+                    round($momentum, 2), round($percentil, 2),
+                ]
+            );
+        } catch (\Throwable $e) {
+            // Columnas nuevas no migradas — guardar solo columnas originales
+            DB::execute(
+                "INSERT INTO usuario_score
+                 (usuario_id, empresa_id, score, nivel, dias_activos, acciones, conversiones,
+                  carga_activa, tasa_gestion,
+                  ema_gestion, ema_presencia, ema_conversion,
+                  momentum, percentil)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 ON DUPLICATE KEY UPDATE
+                  score=VALUES(score), nivel=VALUES(nivel),
+                  dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
+                  conversiones=VALUES(conversiones), carga_activa=VALUES(carga_activa),
+                  tasa_gestion=VALUES(tasa_gestion),
+                  ema_gestion=VALUES(ema_gestion), ema_presencia=VALUES(ema_presencia),
+                  ema_conversion=VALUES(ema_conversion),
+                  momentum=VALUES(momentum), percentil=VALUES(percentil),
+                  updated_at=NOW()",
+                [
+                    $usuario_id, $empresa_id, $score, $nivel,
+                    $dias_activos, $consultas + $radar_sessions, $cierres_total,
+                    $carga_activa, round($proporcional, 3),
+                    round($proporcional, 3), round($s_activacion, 3), round($ema_conv, 3),
+                    round($momentum, 2), round($percentil, 2),
+                ]
+            );
+        }
 
         return [
             'score'             => $score,
