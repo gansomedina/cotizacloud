@@ -78,100 +78,47 @@ $en_gracia = ($dias_en_plataforma < $GRACIA_DIAS);
 $periodo_start = date('Y-m-d', $now - $PERIODO * 86400);
 $radar_stats = get_option('apc_radar_stats', null);
 
-$accepted_term = get_term_by('slug', 'accepted', 'quote_status');
+// ── COTIZACIONES: contar quotes en el período ──
+$total_cots = (int)$wpdb->get_var(
+    "SELECT COUNT(*) FROM {$wpdb->posts}
+     WHERE post_type='sliced_quote' AND post_status IN ('publish','draft','private')
+     AND YEAR(post_date) BETWEEN 2020 AND 2030"
+);
+$cots_periodo = (int)$wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM {$wpdb->posts}
+     WHERE post_type='sliced_quote' AND post_status IN ('publish','draft','private')
+     AND post_date >= %s", $periodo_start
+));
 
+// ── VENTAS: contar invoices directo (cada invoice = 1 venta) ──
+$ventas_total = (int)$wpdb->get_var(
+    "SELECT COUNT(*) FROM {$wpdb->posts}
+     WHERE post_type='sliced_invoice' AND post_status IN ('publish','draft','private')
+     AND YEAR(post_date) BETWEEN 2020 AND 2030"
+);
+$ventas_periodo = (int)$wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM {$wpdb->posts}
+     WHERE post_type='sliced_invoice' AND post_status IN ('publish','draft','private')
+     AND post_date >= %s", $periodo_start
+));
+
+// ── VISTAS (del radar stats si hay, sino se calcula abajo) ──
+$cot_vistas_radar = 0;
 if ($radar_stats && is_array($radar_stats)) {
-    // Datos del radar (fuente confiable, ya filtrada)
-    $total_cots      = (int)($radar_stats['total_quotes'] ?? 0);
-    $ventas_total    = (int)($radar_stats['total_sales'] ?? 0);
-    $cots_periodo    = (int)($radar_stats['quotes_periodo'] ?? 0);
-    $ventas_periodo  = (int)($radar_stats['accepted_periodo'] ?? 0);
     $cot_vistas_radar = (int)($radar_stats['quotes_con_vista'] ?? 0);
-    $ciclo_venta     = $radar_stats['ciclo_venta'] ?? null;
-
-    $bench_close_rate = $total_cots > 0
-        ? max(0.03, $ventas_total / $total_cots)
-        : 0.10;
-    $bench_apertura = $cots_periodo > 0
-        ? max(0.10, $cot_vistas_radar / $cots_periodo)
-        : 0.60;
+    $ciclo_venta = $radar_stats['ciclo_venta'] ?? null;
     $bench_ttc_from_radar = ($ciclo_venta && isset($ciclo_venta['dias']))
         ? max(3.0, (float)$ciclo_venta['dias'])
         : 14.0;
 } else {
-    // Sin stats del radar — fallback conservador
-    $total_cots = (int)$wpdb->get_var(
-        "SELECT COUNT(*) FROM {$wpdb->posts}
-         WHERE post_type='sliced_quote' AND post_status IN ('publish','draft','private')
-         AND YEAR(post_date) BETWEEN 2020 AND 2030"
-    );
-    $cots_periodo = (int)$wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM {$wpdb->posts}
-         WHERE post_type='sliced_quote' AND post_status IN ('publish','draft','private')
-         AND post_date >= %s", $periodo_start
-    ));
-    $ventas_total = 0;
-    $ventas_periodo = 0;
-    if ($accepted_term) {
-        $ventas_total = (int)$wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(DISTINCT tr.object_id) FROM {$wpdb->term_relationships} tr
-             INNER JOIN {$wpdb->posts} p ON p.ID = tr.object_id
-             WHERE tr.term_taxonomy_id = %d AND p.post_type = 'sliced_quote'
-             AND YEAR(p.post_date) BETWEEN 2020 AND 2030",
-            $accepted_term->term_taxonomy_id
-        ));
-        $ventas_periodo = (int)$wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(DISTINCT tr.object_id) FROM {$wpdb->term_relationships} tr
-             INNER JOIN {$wpdb->posts} p ON p.ID = tr.object_id
-             WHERE tr.term_taxonomy_id = %d AND p.post_type = 'sliced_quote' AND p.post_date >= %s",
-            $accepted_term->term_taxonomy_id, $periodo_start
-        ));
-    }
-    $cot_vistas_radar = 0;
-    $bench_close_rate = $total_cots > 0 ? max(0.03, $ventas_total / $total_cots) : 0.10;
-    $bench_apertura = 0.60;
     $bench_ttc_from_radar = 14.0;
 }
 
-// Sumar quotes "draft" que tienen invoice (ventas no marcadas como accepted)
-// FIX: contar invoices (no quotes) para evitar inflar cuando varios quotes comparten título
-$ventas_ocultas_total = (int)$wpdb->get_var(
-    "SELECT COUNT(DISTINCT i.ID) FROM {$wpdb->posts} i
-     WHERE i.post_type = 'sliced_invoice'
-     AND i.post_status IN ('publish','draft','private')
-     AND EXISTS (
-         SELECT 1 FROM {$wpdb->posts} q
-         WHERE q.post_type = 'sliced_quote'
-         AND q.post_title = i.post_title
-         AND q.post_status IN ('publish','draft','private')
-         AND YEAR(q.post_date) BETWEEN 2020 AND 2030
-         AND q.ID NOT IN (
-             SELECT tr.object_id FROM {$wpdb->term_relationships} tr
-             WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
-         )
-     )"
-);
-$ventas_ocultas_periodo = (int)$wpdb->get_var($wpdb->prepare(
-    "SELECT COUNT(DISTINCT i.ID) FROM {$wpdb->posts} i
-     WHERE i.post_type = 'sliced_invoice'
-     AND i.post_status IN ('publish','draft','private')
-     AND EXISTS (
-         SELECT 1 FROM {$wpdb->posts} q
-         WHERE q.post_type = 'sliced_quote'
-         AND q.post_title = i.post_title
-         AND q.post_status IN ('publish','draft','private')
-         AND q.post_date >= %s
-         AND q.ID NOT IN (
-             SELECT tr.object_id FROM {$wpdb->term_relationships} tr
-             WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
-         )
-     )",
-    $periodo_start
-));
-$ventas_total   += $ventas_ocultas_total;
-$ventas_periodo += $ventas_ocultas_periodo;
-// Recalcular bench_close_rate con ventas corregidas
+// ── BENCHMARKS ──
 $bench_close_rate = $total_cots > 0 ? max(0.03, $ventas_total / $total_cots) : 0.10;
+$bench_apertura = ($cots_periodo > 0 && $cot_vistas_radar > 0)
+    ? max(0.10, $cot_vistas_radar / $cots_periodo)
+    : 0.60;
 
 // Radar sessions por semana (benchmark — promedio per-user como CotizaCloud)
 // CotizaCloud: SUM(radar_views) / num_usuarios / weeks
@@ -249,41 +196,32 @@ if ($has_events) {
 // Mínimo: ventas del período (si fue aceptada, fue vista)
 $cot_vistas = max($cot_vistas, $ventas_periodo);
 
-// IDs de cotizaciones aceptadas (para queries posteriores)
-$accepted_ids = [];
-if ($accepted_term) {
-    $accepted_posts = get_posts([
-        'post_type'      => 'sliced_quote',
-        'post_status'    => ['publish','draft','private'],
-        'posts_per_page' => 8000,
-        'fields'         => 'ids',
-        'tax_query'      => [[
-            'taxonomy' => 'quote_status',
-            'field'    => 'slug',
-            'terms'    => ['accepted'],
-        ]],
-    ]);
-    foreach ($accepted_posts as $aqid) {
-        $accepted_ids[(int)$aqid] = true;
-    }
+// IDs de cotizaciones cerradas (accepted/declined/cancelled) — para excluir de dormidas/estancados
+$closed_quote_ids = [];
+$closed_statuses_slugs = ['accepted', 'declined', 'cancelled'];
+$closed_posts = get_posts([
+    'post_type'      => 'sliced_quote',
+    'post_status'    => ['publish','draft','private'],
+    'posts_per_page' => 8000,
+    'fields'         => 'ids',
+    'tax_query'      => [[
+        'taxonomy' => 'quote_status',
+        'field'    => 'slug',
+        'terms'    => $closed_statuses_slugs,
+    ]],
+]);
+foreach ($closed_posts as $cqid) {
+    $closed_quote_ids[(int)$cqid] = true;
 }
-// Agregar quotes draft-con-invoice como ventas reales
-// FIX: para cada título con invoice, tomar solo la quote más reciente (MAX ID)
-$ocultas_ids = $wpdb->get_col(
-    "SELECT MAX(q.ID) FROM {$wpdb->posts} q
-     INNER JOIN {$wpdb->posts} i ON i.post_type = 'sliced_invoice'
-         AND i.post_title = q.post_title
-         AND i.post_status IN ('publish','draft','private')
-     WHERE q.post_type = 'sliced_quote'
-     AND q.post_status IN ('publish','draft','private')
-     AND q.ID NOT IN (
-         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
-         WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
-     )
-     GROUP BY i.ID"
+// También marcar como cerradas las quotes que tienen un invoice asociado
+$quotes_con_invoice = $wpdb->get_col(
+    "SELECT DISTINCT q.ID FROM {$wpdb->posts} q
+     WHERE q.post_type = 'sliced_quote' AND q.post_status IN ('publish','draft','private')
+     AND EXISTS (SELECT 1 FROM {$wpdb->posts} i WHERE i.post_type='sliced_invoice'
+                 AND i.post_title = q.post_title AND i.post_status IN ('publish','draft','private'))"
 );
-foreach ($ocultas_ids as $oid) {
-    $accepted_ids[(int)$oid] = true;
+foreach ($quotes_con_invoice as $qid) {
+    $closed_quote_ids[(int)$qid] = true;
 }
 
 // Cotizaciones dormidas escalonadas: enviadas sin vista por el cliente
@@ -473,7 +411,7 @@ if ($has_transitions) {
         $temp = $bucket_temp[$lb['bucket_nuevo']] ?? null;
         if (!$temp || $temp === 'frio') continue;
         // Solo contar si la cotización sigue activa (no aceptada/rechazada)
-        if (!isset($accepted_ids[(int)$lb['quote_id']])) {
+        if (!isset($closed_quote_ids[(int)$lb['quote_id']])) {
             $buckets_estancados++;
         }
     }
@@ -614,56 +552,67 @@ $descuento_factor = 0.6; // cierre con descuento vale 60%
 $cot_vistas_safe = max($cot_vistas, 1);
 $tasa_cierre = $cierres_total / $cot_vistas_safe;
 
-// ── Calidad de cierre: puntos ponderados por bucket ──
-// Obtener último bucket de cada cotización aceptada en el período
+// ── Calidad de cierre + TTC: basado en invoices del período ──
+// Obtener invoices creados en el período (cada invoice = 1 venta)
+$invoices_periodo = $wpdb->get_results($wpdb->prepare(
+    "SELECT i.ID, i.post_title, i.post_date FROM {$wpdb->posts} i
+     WHERE i.post_type = 'sliced_invoice'
+     AND i.post_status IN ('publish','draft','private')
+     AND i.post_date >= %s
+     ORDER BY i.post_date DESC",
+    $periodo_start
+), ARRAY_A);
+
 $cierres_con_bucket = [];
 $cierres_bucket_count = 0;
 $cierres_sin_dto = 0;
+$vendor_ttc_diffs = [];
+$base_cierre = 10.0;
 
-if ($has_transitions) {
-    // IDs de cotizaciones aceptadas en el período (term accepted + ocultas con invoice)
-    $accepted_periodo = $wpdb->get_results($wpdb->prepare(
-        "SELECT DISTINCT p.ID AS qid FROM {$wpdb->posts} p
-         WHERE p.post_type = 'sliced_quote'
-         AND p.post_status IN ('publish','draft','private')
-         AND p.post_date >= %s
-         AND p.ID IN (
-             SELECT a_id FROM (
-                 " . ($accepted_term ? "SELECT tr.object_id AS a_id FROM {$wpdb->term_relationships} tr WHERE tr.term_taxonomy_id = " . (int)$accepted_term->term_taxonomy_id : "SELECT 0 AS a_id WHERE 1=0") . "
-                 UNION
-                 SELECT MAX(q3.ID) AS a_id FROM {$wpdb->posts} q3
-                 INNER JOIN {$wpdb->posts} i3 ON i3.post_type='sliced_invoice' AND i3.post_title=q3.post_title
-                     AND i3.post_status IN ('publish','draft','private')
-                 WHERE q3.post_type='sliced_quote' AND q3.post_status IN ('publish','draft','private')
-                 GROUP BY i3.ID
-             ) AS all_accepted
-         )",
-        $periodo_start
-    ), ARRAY_A);
+foreach ($invoices_periodo as $inv) {
+    $inv_id = (int)$inv['ID'];
 
-    foreach ($accepted_periodo as $ap) {
-        $qid = (int)$ap['qid'];
-        // Último bucket antes del cierre
-        $last_bucket = $wpdb->get_var($wpdb->prepare(
-            "SELECT bucket_nuevo FROM {$transitions_table}
-             WHERE quote_id = %d ORDER BY created_ts DESC LIMIT 1",
-            $qid
+    // 1) Bucket: buscar la quote con mismo título y su último bucket del radar
+    $last_bucket = null;
+    if ($has_transitions) {
+        $quote_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT ID FROM {$wpdb->posts}
+             WHERE post_type='sliced_quote' AND post_title=%s
+             AND post_status IN ('publish','draft','private')
+             ORDER BY post_date DESC LIMIT 1",
+            $inv['post_title']
         ));
+        if ($quote_id) {
+            $last_bucket = $wpdb->get_var($wpdb->prepare(
+                "SELECT bucket_nuevo FROM {$transitions_table}
+                 WHERE quote_id = %d ORDER BY created_ts DESC LIMIT 1",
+                (int)$quote_id
+            ));
 
-        // Verificar si tuvo descuento (meta de Sliced Invoices)
-        $tiene_dto = false; // OnTime no tiene cupones automáticos por ahora
-
-        $cierres_con_bucket[] = [
-            'bucket' => $last_bucket,
-            'tiene_dto' => $tiene_dto,
-        ];
-        if ($last_bucket !== null) $cierres_bucket_count++;
-        if (!$tiene_dto) $cierres_sin_dto++;
+            // TTC: diferencia entre fecha del invoice y fecha del quote
+            $quote_post = get_post((int)$quote_id);
+            if ($quote_post) {
+                $diff_days = (strtotime($inv['post_date']) - strtotime($quote_post->post_date)) / 86400;
+                if ($diff_days > 0 && $diff_days <= 365) {
+                    $vendor_ttc_diffs[] = $diff_days;
+                }
+            }
+        }
     }
+
+    // 2) Descuento: leer _sliced_discount del invoice (> 0 = tiene descuento)
+    $discount = get_post_meta($inv_id, '_sliced_discount', true);
+    $tiene_dto = ($discount && (float)$discount > 0);
+
+    $cierres_con_bucket[] = [
+        'bucket' => $last_bucket,
+        'tiene_dto' => $tiene_dto,
+    ];
+    if ($last_bucket !== null) $cierres_bucket_count++;
+    if (!$tiene_dto) $cierres_sin_dto++;
 }
 
 // Calcular calidad: multiplicador promedio normalizado
-$base_cierre = 10.0;
 $puntos_cierre = 0.0;
 $cierres_con_radar = 0;
 $puntos_con_radar = 0.0;
@@ -684,44 +633,17 @@ if ($cierres_con_radar > 0) {
     $avg_mult = $puntos_con_radar / $cierres_con_radar / $base_cierre;
     $cierre_quality = min($avg_mult / 2.0, 1.0);
 } else {
-    $cierre_quality = 0.50; // neutro, sin datos de radar
+    $cierre_quality = 0.50;
 }
 
 // ── Velocidad de cierre (TTC) vs benchmark empresa ──
-// Tiempo promedio del vendedor vs promedio empresa
-// Benchmark TTC: usar ciclo de venta del radar (fuente confiable)
-$bench_ttc = $bench_ttc_from_radar; // ya calculado arriba desde apc_radar_stats
-
-// TTC del vendedor: usar _sliced_invoice_created - _sliced_quote_created (fechas reales)
+$bench_ttc = $bench_ttc_from_radar;
 $ttc_score = 0.5; // neutro
-if ($cierres_total > 0 && !empty($accepted_periodo)) {
-    $vendor_ttc_diffs = [];
-    foreach ($accepted_periodo as $ap) {
-        $qid = (int)$ap['qid'];
-        // Buscar invoice con mismo título para obtener _sliced_invoice_created
-        $post = get_post($qid);
-        if (!$post) continue;
-        $quote_created = get_post_meta($qid, '_sliced_quote_created', true);
-        if (!$quote_created) continue;
-        $invoice = $wpdb->get_var($wpdb->prepare(
-            "SELECT p.ID FROM {$wpdb->posts} p
-             WHERE p.post_type = 'sliced_invoice' AND p.post_title = %s LIMIT 1",
-            $post->post_title
-        ));
-        if (!$invoice) continue;
-        $invoice_created = get_post_meta((int)$invoice, '_sliced_invoice_created', true);
-        if (!$invoice_created) continue;
-        $diff_days = ((int)$invoice_created - (int)$quote_created) / 86400;
-        if ($diff_days > 0 && $diff_days <= 365) {
-            $vendor_ttc_diffs[] = $diff_days;
-        }
-    }
-    if (count($vendor_ttc_diffs) > 0) {
-        $avg_ttc_vendor = array_sum($vendor_ttc_diffs) / count($vendor_ttc_diffs);
-        if ($avg_ttc_vendor > 0) {
-            $ratio_ttc = $bench_ttc / $avg_ttc_vendor;
-            $ttc_score = apc_sigmoid($ratio_ttc, 1.0, 3.0);
-        }
+if (count($vendor_ttc_diffs) > 0) {
+    $avg_ttc_vendor = array_sum($vendor_ttc_diffs) / count($vendor_ttc_diffs);
+    if ($avg_ttc_vendor > 0) {
+        $ratio_ttc = $bench_ttc / $avg_ttc_vendor;
+        $ttc_score = apc_sigmoid($ratio_ttc, 1.0, 3.0);
     }
 }
 
@@ -774,19 +696,14 @@ $s_conversion = (
 $s_conversion = max(0.0, min(1.0, $s_conversion));
 
 // ── Consistencia semanal ──
-// Solo contar semanas con cierre DENTRO del período (no todas las históricas)
+// Contar semanas distintas con invoices creados en el período
 $semanas_con_cierre = 0;
 $total_semanas = max(round($PERIODO / 7), 1);
-if ($accepted_term && $cierres_total > 0 && !empty($accepted_periodo)) {
+if ($cierres_total > 0) {
     $weeks_seen = [];
-    foreach ($accepted_periodo as $ap) {
-        $post = get_post((int)$ap['qid']);
-        if (!$post) continue;
-        // Usar post_modified como proxy de fecha de aceptación (WP lo actualiza al cambiar status)
-        $mod_ts = strtotime($post->post_modified);
-        if ($mod_ts >= ($now - $PERIODO * 86400)) {
-            $weeks_seen[date('Y-W', $mod_ts)] = true;
-        }
+    foreach ($invoices_periodo as $inv) {
+        $inv_ts = strtotime($inv['post_date']);
+        $weeks_seen[date('Y-W', $inv_ts)] = true;
     }
     $semanas_con_cierre = count($weeks_seen);
 }
