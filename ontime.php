@@ -492,13 +492,14 @@ $U = [
   'multip_boost_vis_max'       => [8000,  12000, 16000],
 
   // ── Bucket: Revisión profunda ────────────────────────
-  // Fix: medio aflojado (3→2 views, 3→1.5h span) para que no quede en 0
+  // Fix: medio aflojado para funcionar con volumen bajo de JS events
+  // agresivo: 2 views, 0.5h span | medio: 2 views, 0.5h span | ligero: 3 views, 2h span
   'deep_recent_hours'          => [96,    72,    48   ],
-  'deep_min_views48'           => [2,     2,     4    ],
-  'deep_min_span_h'            => [1.5,   1.5,   4    ],
+  'deep_min_views48'           => [2,     2,     3    ],
+  'deep_min_span_h'            => [0.5,   0.5,   2    ],
   'deep_min_guest_48h'         => [1,     1,     2    ],
-  'deep_min_vis_max'           => [6000,  8000,  15000],
-  'deep_min_vis_sum'           => [10000, 14000, 25000],
+  'deep_min_vis_max'           => [5000,  6000,  15000],
+  'deep_min_vis_sum'           => [8000,  10000, 25000],
 
   // ── Bucket: Hesitación ───────────────────────────────
   'hes_min_guest_7d'           => [1,     2,     3    ],
