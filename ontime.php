@@ -578,7 +578,7 @@ $FIT_DEFAULTS = [
 ];
 
 $FIT_MIN = 0.005;
-$FIT_MAX = 0.35;
+$FIT_MAX = 0.25;
 
 // Laplace smoothing alpha — previene overfitting con pocos datos
 $FIT_LAPLACE_ALPHA = 5;
@@ -1086,16 +1086,27 @@ function compute_fit_prob($sessions, $uniq_ips_total, $gap_days, $GLOBAL_CLOSE_R
   $ri = $RATE_IPS[$li]  ?? $GLOBAL_CLOSE_RATE;
   $rg = $RATE_GAP[$lg]  ?? $GLOBAL_CLOSE_RATE;
 
-  // Lifts con caps [0.3, 3.0] — evita swings extremos
-  $lift_s = ($GLOBAL_CLOSE_RATE > 0) ? ($rs / $GLOBAL_CLOSE_RATE) : 1.0;
-  $lift_i = ($GLOBAL_CLOSE_RATE > 0) ? ($ri / $GLOBAL_CLOSE_RATE) : 1.0;
-  $lift_g = ($GLOBAL_CLOSE_RATE > 0) ? ($rg / $GLOBAL_CLOSE_RATE) : 1.0;
+  // Modelo aditivo ponderado — evita inflación multiplicativa
+  // Pesos: sesiones 50%, IPs 30%, gap 20%
+  $w_s = 0.50;
+  $w_i = 0.30;
+  $w_g = 0.20;
 
-  $lift_s = max($FIT_MULT_MIN, min($FIT_MULT_MAX, $lift_s));
-  $lift_i = max($FIT_MULT_MIN, min($FIT_MULT_MAX, $lift_i));
-  $lift_g = max($FIT_MULT_MIN, min($FIT_MULT_MAX, $lift_g));
+  $fit = ($rs * $w_s) + ($ri * $w_i) + ($rg * $w_g);
 
-  $fit = $GLOBAL_CLOSE_RATE * $lift_s * $lift_i * $lift_g;
+  // Penalización por sesiones excesivas: si el bucket 13+ tiene rate menor
+  // que el global, es señal de curiosos/bots — aplicar descuento proporcional
+  if ($ls === '13+' && $rs < $GLOBAL_CLOSE_RATE && $GLOBAL_CLOSE_RATE > 0) {
+    $penalty = $rs / $GLOBAL_CLOSE_RATE; // e.g. 0.074/0.082 = 0.90
+    $fit *= $penalty;
+  }
+
+  // Lo mismo para IPs excesivas (4+) si su rate es menor que global
+  if ($li === '4+' && $ri < $GLOBAL_CLOSE_RATE && $GLOBAL_CLOSE_RATE > 0) {
+    $penalty_ip = $ri / $GLOBAL_CLOSE_RATE;
+    $fit *= $penalty_ip;
+  }
+
   if ($fit < $FIT_MIN) $fit = $FIT_MIN;
   if ($fit > $FIT_MAX) $fit = $FIT_MAX;
 
