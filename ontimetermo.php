@@ -102,7 +102,8 @@ if ($radar_stats && is_array($radar_stats)) {
     // Sin stats del radar — fallback conservador
     $total_cots = (int)$wpdb->get_var(
         "SELECT COUNT(*) FROM {$wpdb->posts}
-         WHERE post_type='sliced_quote' AND post_status IN ('publish','draft','private')"
+         WHERE post_type='sliced_quote' AND post_status IN ('publish','draft','private')
+         AND YEAR(post_date) BETWEEN 2020 AND 2030"
     );
     $cots_periodo = (int)$wpdb->get_var($wpdb->prepare(
         "SELECT COUNT(*) FROM {$wpdb->posts}
@@ -115,7 +116,8 @@ if ($radar_stats && is_array($radar_stats)) {
         $ventas_total = (int)$wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(DISTINCT tr.object_id) FROM {$wpdb->term_relationships} tr
              INNER JOIN {$wpdb->posts} p ON p.ID = tr.object_id
-             WHERE tr.term_taxonomy_id = %d AND p.post_type = 'sliced_quote'",
+             WHERE tr.term_taxonomy_id = %d AND p.post_type = 'sliced_quote'
+             AND YEAR(p.post_date) BETWEEN 2020 AND 2030",
             $accepted_term->term_taxonomy_id
         ));
         $ventas_periodo = (int)$wpdb->get_var($wpdb->prepare(
@@ -137,6 +139,7 @@ $ventas_ocultas_total = (int)$wpdb->get_var(
      INNER JOIN {$wpdb->posts} i ON i.post_type = 'sliced_invoice' AND i.post_title = q.post_title
      WHERE q.post_type = 'sliced_quote'
      AND q.post_status IN ('publish','draft','private')
+     AND YEAR(q.post_date) BETWEEN 2020 AND 2030
      AND q.ID NOT IN (
          SELECT tr.object_id FROM {$wpdb->term_relationships} tr
          WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
