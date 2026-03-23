@@ -90,15 +90,24 @@ $cots_periodo = (int)$wpdb->get_var($wpdb->prepare(
      AND post_date >= %s", $periodo_start
 ));
 
-// ── VENTAS: contar invoices directo (cada invoice = 1 venta) ──
+// ── VENTAS: invoices con invoice_status = draft o paid (ventas reales) ──
+// Subquery: IDs de invoices con taxonomy invoice_status IN ('draft','paid')
+// Subquery reutilizable: requiere que el post sea referenciado como columna pasada
+$_inv_status_subq = "SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+    INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+    INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+    WHERE tt.taxonomy = 'invoice_status' AND t.slug IN ('draft','paid')";
+
 $ventas_total = (int)$wpdb->get_var(
     "SELECT COUNT(*) FROM {$wpdb->posts}
      WHERE post_type='sliced_invoice' AND post_status IN ('publish','draft','private')
+     AND ID IN ({$_inv_status_subq})
      AND YEAR(post_date) BETWEEN 2020 AND 2030"
 );
 $ventas_periodo = (int)$wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(*) FROM {$wpdb->posts}
      WHERE post_type='sliced_invoice' AND post_status IN ('publish','draft','private')
+     AND ID IN ({$_inv_status_subq})
      AND post_date >= %s", $periodo_start
 ));
 
@@ -218,7 +227,8 @@ $quotes_con_invoice = $wpdb->get_col(
     "SELECT DISTINCT q.ID FROM {$wpdb->posts} q
      WHERE q.post_type = 'sliced_quote' AND q.post_status IN ('publish','draft','private')
      AND EXISTS (SELECT 1 FROM {$wpdb->posts} i WHERE i.post_type='sliced_invoice'
-                 AND i.post_title = q.post_title AND i.post_status IN ('publish','draft','private'))"
+                 AND i.post_title = q.post_title AND i.post_status IN ('publish','draft','private')
+                 AND i.ID IN ({$_inv_status_subq}))"
 );
 foreach ($quotes_con_invoice as $qid) {
     $closed_quote_ids[(int)$qid] = true;
@@ -248,7 +258,7 @@ $sin_vista_base = "FROM {$wpdb->posts} p
     AND p.post_status IN ('publish','draft','private')
     AND p.post_date >= %s
     AND p.ID NOT IN ({$closed_statuses_sql})
-    AND NOT EXISTS (SELECT 1 FROM {$wpdb->posts} i2 WHERE i2.post_type='sliced_invoice' AND i2.post_title=p.post_title AND i2.post_status IN ('publish','draft','private'))
+    AND NOT EXISTS (SELECT 1 FROM {$wpdb->posts} i2 WHERE i2.post_type='sliced_invoice' AND i2.post_title=p.post_title AND i2.post_status IN ('publish','draft','private') AND i2.ID IN ({$_inv_status_subq}))
     " . ($has_events ? "AND NOT EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)" : "") . "
     AND NOT EXISTS (
         SELECT 1 FROM {$wpdb->postmeta} pm
@@ -558,6 +568,7 @@ $invoices_periodo = $wpdb->get_results($wpdb->prepare(
     "SELECT i.ID, i.post_title, i.post_date FROM {$wpdb->posts} i
      WHERE i.post_type = 'sliced_invoice'
      AND i.post_status IN ('publish','draft','private')
+     AND i.ID IN ({$_inv_status_subq})
      AND i.post_date >= %s
      ORDER BY i.post_date DESC",
     $periodo_start
@@ -903,7 +914,7 @@ $debug = [
     'ttc_score' => round($ttc_score, 3),
     'ttc_diffs' => count($vendor_ttc_diffs) . ' matches',
     'bench_ttc' => round($bench_ttc, 1) . ' días',
-    'consistencia' => round($consistencia, 2) . " ({$semanas_con_cierre}/{$total_semanas} sem)",
+    'consistencia' => round($consistencia, 2) . " ({$semanas_con_cierre}/{$total_semanas} sem) weeks:" . implode(',', array_keys($weeks_seen ?? [])),
     'zona_muerta' => $zona_muerta,
     'carga_activa' => $carga_activa,
     'vencidas_sin_accion' => $vencidas_sin_accion,
