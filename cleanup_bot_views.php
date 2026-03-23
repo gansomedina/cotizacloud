@@ -2,16 +2,37 @@
 /**
  * cleanup_bot_views.php — Elimina vistas de bots/crawlers de _sliced_log
  *
- * Uso:
- *   php cleanup_bot_views.php          → modo preview (no modifica nada)
- *   php cleanup_bot_views.php --apply  → aplica los cambios
+ * Abrir en navegador:
+ *   tudominio.com/cleanup_bot_views.php?key=limpiar2026   → preview
+ *   tudominio.com/cleanup_bot_views.php?key=limpiar2026&apply=1  → aplicar
  *
- * Subir a la raíz de WordPress (junto a wp-load.php) y ejecutar.
+ * IMPORTANTE: Borrar este archivo del servidor después de usarlo.
  */
 require_once __DIR__ . '/wp-load.php';
 global $wpdb;
 
-$apply = in_array('--apply', $argv ?? []);
+// ═══ Protección: solo con clave correcta ═══
+$secret = 'limpiar2026';
+if (($_GET['key'] ?? '') !== $secret) {
+    http_response_code(403);
+    die('Acceso denegado.');
+}
+
+// Detectar modo (web o CLI)
+$is_web = php_sapi_name() !== 'cli';
+if ($is_web) {
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html><head><title>Cleanup Bot Views</title>'
+       . '<style>body{font-family:monospace;background:#1a1a2e;color:#e0e0e0;padding:20px;line-height:1.6}'
+       . '.removed{color:#ff6b6b}.kept{color:#51cf66}.title{color:#74c0fc;font-size:18px}'
+       . '.btn{display:inline-block;margin-top:20px;padding:10px 20px;background:#e03131;color:#fff;text-decoration:none;border-radius:5px;font-weight:bold}'
+       . '.btn:hover{background:#c92a2a}.summary{background:#2d2d44;padding:15px;border-radius:8px;margin-top:15px}'
+       . '</style></head><body>';
+}
+
+$apply = isset($_GET['apply']) || in_array('--apply', $argv ?? []);
+$nl = $is_web ? '<br>' : "\n";
+$bold = function($t) use ($is_web) { return $is_web ? "<b>$t</b>" : $t; };
 
 // ══════════════════════════════════════════════════════
 //  IPs conocidas de bots/crawlers (prefijos)
@@ -37,11 +58,6 @@ $bot_prefixes = [
     '66.220.149.',
 ];
 
-// ══════════════════════════════════════════════════════
-//  Regla de burst: vistas sin IP (N/A) en ráfaga
-//  Si un quote tiene >5 vistas sin IP en un día → son bots
-// ══════════════════════════════════════════════════════
-
 $stats = [
     'quotes_revisadas'  => 0,
     'quotes_modificadas' => 0,
@@ -62,9 +78,11 @@ $logs = $wpdb->get_results(
     ARRAY_A
 );
 
-echo "=== Limpieza de vistas de bots en _sliced_log ===\n";
-echo "Modo: " . ($apply ? "APLICAR CAMBIOS" : "PREVIEW (sin cambios)") . "\n";
-echo "Quotes con _sliced_log: " . count($logs) . "\n\n";
+echo $is_web ? '<div class="title">' : '';
+echo "=== Limpieza de vistas de bots en _sliced_log ==={$nl}";
+echo "Modo: " . ($apply ? "⚡ APLICAR CAMBIOS" : "👁 PREVIEW (sin cambios)") . $nl;
+echo "Quotes con _sliced_log: " . count($logs) . $nl . $nl;
+echo $is_web ? '</div>' : '';
 
 foreach ($logs as $row) {
     $meta_id = (int)$row['meta_id'];
@@ -85,7 +103,6 @@ foreach ($logs as $row) {
 
         $type = $entry['type'] ?? '';
 
-        // Solo filtrar quote_viewed
         if ($type !== 'quote_viewed') {
             $cleaned[$ts] = $entry;
             continue;
@@ -94,7 +111,6 @@ foreach ($logs as $row) {
         $ip = trim($entry['ip'] ?? '');
         $by = (int)($entry['by'] ?? 0);
 
-        // Solo filtrar guests (by=0), no usuarios internos (ya filtrados por ontime.php)
         if ($by !== 0) {
             $cleaned[$ts] = $entry;
             continue;
@@ -114,22 +130,22 @@ foreach ($logs as $row) {
         if ($is_bot_ip) {
             $stats['vistas_bot_ip']++;
             $removed++;
-            continue; // No agregar a $cleaned
+            continue;
         }
 
-        // Regla 2: Sin IP = sospechoso (Sliced no capturó IP)
+        // Regla 2: Sin IP
         if ($ip === '') {
             $stats['vistas_sin_ip']++;
             $removed++;
             continue;
         }
 
-        // Vista legítima (guest con IP no-bot)
+        // Vista legítima
         $cleaned[$ts] = $entry;
         $stats['vistas_conservadas']++;
     }
 
-    // Regla 3: Detección de burst — si quedan >10 vistas guest del mismo día, eliminar
+    // Regla 3: Detección de burst
     $by_day = [];
     foreach ($cleaned as $ts => $entry) {
         if (!is_array($entry)) continue;
@@ -140,7 +156,6 @@ foreach ($logs as $row) {
     }
     foreach ($by_day as $day => $timestamps) {
         if (count($timestamps) > 10) {
-            // Burst: >10 vistas guest en un día = bot con IP nueva
             foreach ($timestamps as $ts) {
                 unset($cleaned[$ts]);
                 $stats['vistas_burst']++;
@@ -155,7 +170,11 @@ foreach ($logs as $row) {
     $stats['total_eliminadas'] += $removed;
 
     $new_count = count($cleaned);
-    echo "  Quote #{$post_id}: {$original_count} → {$new_count} entries (-{$removed} bots)\n";
+    $line = "Quote #{$post_id}: {$original_count} → {$new_count} entries ";
+    $line .= $is_web
+        ? "<span class=\"removed\">(-{$removed} bots)</span>"
+        : "(-{$removed} bots)";
+    echo $line . $nl;
 
     if ($apply) {
         $new_value = serialize($cleaned);
@@ -167,18 +186,30 @@ foreach ($logs as $row) {
     }
 }
 
-echo "\n=== Resumen ===\n";
-echo "Quotes revisadas:   {$stats['quotes_revisadas']}\n";
-echo "Quotes modificadas: {$stats['quotes_modificadas']}\n";
-echo "Eliminadas por IP bot:  {$stats['vistas_bot_ip']}\n";
-echo "Eliminadas sin IP:      {$stats['vistas_sin_ip']}\n";
-echo "Eliminadas por burst:   {$stats['vistas_burst']}\n";
-echo "Total eliminadas:       {$stats['total_eliminadas']}\n";
-echo "Vistas conservadas:     {$stats['vistas_conservadas']}\n";
+echo $is_web ? '<div class="summary">' : '';
+echo "{$nl}=== Resumen ==={$nl}";
+echo "Quotes revisadas:   {$stats['quotes_revisadas']}{$nl}";
+echo "Quotes modificadas: {$stats['quotes_modificadas']}{$nl}";
+echo $is_web ? "<span class=\"removed\">" : '';
+echo "Eliminadas por IP bot:  {$stats['vistas_bot_ip']}{$nl}";
+echo "Eliminadas sin IP:      {$stats['vistas_sin_ip']}{$nl}";
+echo "Eliminadas por burst:   {$stats['vistas_burst']}{$nl}";
+echo "Total eliminadas:       {$stats['total_eliminadas']}{$nl}";
+echo $is_web ? "</span>" : '';
+echo $is_web ? "<span class=\"kept\">" : '';
+echo "Vistas conservadas:     {$stats['vistas_conservadas']}{$nl}";
+echo $is_web ? "</span>" : '';
+echo $is_web ? '</div>' : '';
 
-if (!$apply) {
-    echo "\n>>> Para aplicar: php cleanup_bot_views.php --apply\n";
-} else {
-    echo "\n>>> Cambios aplicados. Limpia cache del radar:\n";
-    echo "    wp option delete apc_radar_stats\n";
+if (!$apply && $stats['total_eliminadas'] > 0) {
+    $apply_url = '?key=' . urlencode($secret) . '&apply=1';
+    if ($is_web) {
+        echo "<a class=\"btn\" href=\"{$apply_url}\" onclick=\"return confirm('¿Seguro? Esto modificará la base de datos.')\">⚡ APLICAR CAMBIOS</a>";
+    } else {
+        echo "{$nl}>>> Para aplicar: php cleanup_bot_views.php --apply{$nl}";
+    }
+} elseif ($apply) {
+    echo "{$nl}✅ Cambios aplicados exitosamente.{$nl}";
 }
+
+if ($is_web) echo '</body></html>';
