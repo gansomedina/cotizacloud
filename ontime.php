@@ -737,6 +737,7 @@ function radar_fit_calibrar($wpdb, $quote_ids_all, $accepted_ids_all) {
   $gap_keys  = ['4+d', '1-3d', 'sin'];
 
   $cal = [
+    'version' => 2, // v2 = power-scaled NB + isotonic PAV
     'global'  => round($global_rate, 4),
     'sess'    => $isotonic($raw_sess, $sess_keys),
     'ips'     => $isotonic($raw_ips,  $ips_keys),
@@ -760,7 +761,8 @@ function radar_fit_load() {
   $raw = get_option('radar_fit_calibracion', '');
   if ($raw) {
     $cal = json_decode($raw, true);
-    if (is_array($cal) && !empty($cal['global'])) {
+    // Invalidar cache si es versión vieja (pre-isotonic)
+    if (is_array($cal) && !empty($cal['global']) && ((int)($cal['version'] ?? 0)) >= 2) {
       return $cal;
     }
   }
@@ -772,6 +774,15 @@ function radar_fit_load() {
  * Fase 2: Verificar si hay que recalibrar (trigger proporcional)
  */
 function radar_fit_check_auto($wpdb, $quote_ids_all, $accepted_ids_all) {
+  // Forzar recalibración si cache es versión vieja (pre-isotonic)
+  $raw = get_option('radar_fit_calibracion', '');
+  if ($raw) {
+    $check = json_decode($raw, true);
+    if (is_array($check) && ((int)($check['version'] ?? 0)) < 2) {
+      return radar_fit_calibrar($wpdb, $quote_ids_all, $accepted_ids_all);
+    }
+  }
+
   $cal = radar_fit_load();
   $prev_sales = (int)($cal['sales'] ?? 0);
   $prev_updated = (int)($cal['updated'] ?? 0);
