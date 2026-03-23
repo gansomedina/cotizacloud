@@ -3560,6 +3560,8 @@ if ($internal_ips_dirty) {
 
     <div class="radar-thermo-foot">
       Última actividad: <?php echo esc_html($radar_usage_summary['last_activity_human']); ?>
+      &nbsp;·&nbsp;
+      <a href="ontimetermo.php" style="color:#6d28d9; font-weight:600; text-decoration:none;">📊 Ver Termómetro APC completo →</a>
     </div>
   </div>
 </div>
