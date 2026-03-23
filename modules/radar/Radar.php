@@ -1,7 +1,8 @@
 <?php
 // ============================================================
-//  CotizaApp — modules/radar/Radar.php  v2.4
+//  CotizaApp — modules/radar/Radar.php  v3.0
 //  Motor de scoring e intención — 17 buckets × 3 modos
+//  v3.0: FIT scoring v3 — power-scaled Naive Bayes + isotonic PAV + decididos.
 //  v2.4: Momentum — indicador visual de frescura por bucket.
 //        Vigencia estable = mitad de la ventana _recent_hours del bucket.
 //        Si última actividad excede vigencia → momentum='cooling' (↓ en UI).
@@ -169,7 +170,7 @@ class Radar
     // ============================================================
     const FIT_GLOBAL  = 0.10;   // 10% — promedio neutro servicios B2B/B2C
     const FIT_MIN     = 0.005;  // 0.5% mínimo absoluto
-    const FIT_MAX     = 0.350;  // 35% máximo absoluto
+    const FIT_MAX     = 0.250;  // 25% máximo absoluto (v3: ajustado por power-scaled NB)
 
     // Tasas relativas neutras: más sesiones/IPs = mayor probabilidad de cierre
     // Se calibran con datos reales de la empresa en cuanto hay suficientes ventas
@@ -297,14 +298,14 @@ class Radar
         $ri = $ri_map[self::bk_ips($uniq_ips)]    ?? $global;
         $rg = $rg_map[self::bk_gap($gap_days)]    ?? $global;
 
-        $ls = $global > 0 ? $rs / $global : 1.0;
-        $li = $global > 0 ? $ri / $global : 1.0;
-        $lg = $global > 0 ? $rg / $global : 1.0;
+        // v3: Power-scaled Naive Bayes — corrige correlación sesiones/IPs
+        // Exponentes suman 1.0 (no 3.0) → dampea inflación multiplicativa
+        $gr = max(0.001, $global);
+        $lift_s = max(0.1, $rs / $gr);
+        $lift_i = max(0.1, $ri / $gr);
+        $lift_g = max(0.1, $rg / $gr);
 
-        // Cap multiplicadores individuales a [0.3, 3.0] para amortiguar
-        // correlación entre sesiones/IPs/gap (no son independientes)
-        $cap = fn($x) => max(0.3, min(3.0, $x));
-        $fit = $global * $cap($ls) * $cap($li) * $cap($lg);
+        $fit = $gr * pow($lift_s, 0.50) * pow($lift_i, 0.30) * pow($lift_g, 0.20);
         return max(self::FIT_MIN, min(self::FIT_MAX, $fit));
     }
 
@@ -521,8 +522,15 @@ class Radar
         if ($e_sv_sess)     $pss += 0.50;
         if ($e_sv_page)     $pss += 0.50;
 
-        // ── H. FIT + Priority (igual que en radar original) ───
-        $fit_prob    = self::fit_prob($sessions, $uniq_ips_total, $gap_days, $empresa_id);
+        // ── H. FIT + Priority ───
+        // v3: Compradores decididos (≤1 sesión) → FIT neutral (sin patrón medible)
+        $is_decided_buyer = ($sessions <= 1);
+        if ($is_decided_buyer) {
+            $cal_row = self::$fit_cal_cache[$empresa_id] ?? null;
+            $fit_prob = $cal_row ? (float)($cal_row['global_rate'] ?? self::FIT_GLOBAL) : self::FIT_GLOBAL;
+        } else {
+            $fit_prob = self::fit_prob($sessions, $uniq_ips_total, $gap_days, $empresa_id);
+        }
         $fit_pct     = min(100.0, $fit_prob * 100.0);
 
         // recency_bonus — v2.1: escalón 72h para alto ticket (vigencia 30d)
@@ -1274,8 +1282,15 @@ class Radar
 
         $bk_sess = []; $bk_ips = []; $bk_gap = [];
         foreach ($cots as $c) {
+            $sess = (int)$c['num_sess'];
             $closed = in_array($c['estado'], ['aceptada','convertida'], true);
-            $bs = self::bk_sess((int)$c['num_sess']);
+
+            // v3: Excluir "compradores decididos" (≤1 sesión) de calibración.
+            // Son clientes recomendados, repetidores, o que cerraron por otro canal.
+            // No tienen patrón de engagement medible → contaminan los buckets.
+            if ($sess <= 1) continue;
+
+            $bs = self::bk_sess($sess);
             $bi = self::bk_ips((int)$c['num_ips']);
             $bg = self::bk_gap($c['gap_d'] !== null ? (int)$c['gap_d'] : null);
             $bk_sess[$bs] = ($bk_sess[$bs] ?? [0,0]); $bk_sess[$bs][0]++; if ($closed) $bk_sess[$bs][1]++;
@@ -1293,9 +1308,44 @@ class Radar
                 : $fallback,
             $bk
         );
-        $rate_sess = $to_rate($bk_sess, $base);
-        $rate_ips  = $to_rate($bk_ips,  $base);
-        $rate_gap  = $to_rate($bk_gap,  $base);
+        $raw_sess = $to_rate($bk_sess, $base);
+        $raw_ips  = $to_rate($bk_ips,  $base);
+        $raw_gap  = $to_rate($bk_gap,  $base);
+
+        // v3: Isotonic regression (Pool Adjacent Violators)
+        // Fuerza monotonicidad: más engagement = rate >= bucket anterior
+        $isotonic = function(array $rates, array $ordered_keys): array {
+            $vals = [];
+            foreach ($ordered_keys as $k) $vals[] = $rates[$k] ?? 0;
+            $n = count($vals);
+            $blocks = [];
+            for ($i = 0; $i < $n; $i++) {
+                $blocks[] = ['sum' => $vals[$i], 'cnt' => 1];
+                while (count($blocks) >= 2) {
+                    $last = $blocks[count($blocks) - 1];
+                    $prev = $blocks[count($blocks) - 2];
+                    if (($last['sum'] / $last['cnt']) >= ($prev['sum'] / $prev['cnt'])) break;
+                    array_pop($blocks);
+                    $blocks[count($blocks) - 1] = [
+                        'sum' => $prev['sum'] + $last['sum'],
+                        'cnt' => $prev['cnt'] + $last['cnt'],
+                    ];
+                }
+            }
+            $result = []; $idx = 0;
+            foreach ($blocks as $b) {
+                $avg = round($b['sum'] / $b['cnt'], 4);
+                for ($j = 0; $j < $b['cnt']; $j++) {
+                    $result[$ordered_keys[$idx]] = $avg;
+                    $idx++;
+                }
+            }
+            return $result;
+        };
+
+        $rate_sess = $isotonic($raw_sess, ['1','2','3-4','5-7','8-12','13+']);
+        $rate_ips  = $isotonic($raw_ips,  ['1','2','3','4+']);
+        $rate_gap  = $isotonic($raw_gap,  ['4+d','1-3d','sin']);
 
         // Bandas por monto — auto-calculadas por percentiles de cada empresa
         $bandas = [];
