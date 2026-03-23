@@ -1547,6 +1547,11 @@ radar_fit_check_auto($wpdb, $quote_ids, $accepted_ids);
 
 // Recargar después de posible recalibración
 $fit_cal = radar_fit_load();
+
+// Safety: si después de check_auto la calibración aún no es v2, forzar ahora
+if (((int)($fit_cal['version'] ?? 0)) < 2 && count($accepted_ids) >= 3) {
+  $fit_cal = radar_fit_calibrar($wpdb, $quote_ids, $accepted_ids);
+}
 $GLOBAL_CLOSE_RATE = (float)($fit_cal['global'] ?? $FIT_DEFAULTS['global']);
 $RATE_SESS = $fit_cal['sess'] ?? $FIT_DEFAULTS['sess'];
 $RATE_IPS  = $fit_cal['ips']  ?? $FIT_DEFAULTS['ips'];
