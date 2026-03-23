@@ -153,24 +153,47 @@ if ($has_usage) {
 //  SEÑALES CRUDAS DEL VENDEDOR
 // ============================================================
 
-// Cotizaciones del vendedor en el período
 // En OnTime con 1 vendedor, todas las cotizaciones son suyas
 $cot_asignadas = $cots_periodo;
 
-// Cotizaciones vistas por el cliente (tienen log de quote_viewed)
+// Cotizaciones vistas por el cliente (tienen log o visitas en events)
 $cot_vistas = (int)$wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
-     INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = '_sliced_log'
      WHERE p.post_type = 'sliced_quote'
      AND p.post_status IN ('publish','draft','private')
-     AND p.post_date >= %s",
+     AND p.post_date >= %s
+     AND (
+         EXISTS (SELECT 1 FROM {$wpdb->postmeta} pm WHERE pm.post_id = p.ID AND pm.meta_key = '_sliced_log' AND pm.meta_value IS NOT NULL AND pm.meta_value != '')
+         " . ($has_events ? "OR EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)" : "") . "
+     )",
     $periodo_start
 ));
 
-// Cotizaciones dormidas (enviadas sin vista, >7 días)
+// IDs de cotizaciones aceptadas (para queries posteriores)
+$accepted_ids = [];
+if ($accepted_term) {
+    $accepted_posts = get_posts([
+        'post_type'      => 'sliced_quote',
+        'post_status'    => ['publish','draft','private'],
+        'posts_per_page' => 8000,
+        'fields'         => 'ids',
+        'tax_query'      => [[
+            'taxonomy' => 'quote_status',
+            'field'    => 'slug',
+            'terms'    => ['accepted'],
+        ]],
+    ]);
+    foreach ($accepted_posts as $aqid) {
+        $accepted_ids[(int)$aqid] = true;
+    }
+}
+
+// Cotizaciones dormidas escalonadas: enviadas sin vista, >7d / >14d / >21d
+// (como CotizaCloud: penalización creciente por antigüedad)
 $dormidas_7d = 0;
 $dormidas_14d = 0;
-// Buscar cotizaciones sin vistas en el período
+$dormidas_21d = 0;
+
 $sin_vista = $wpdb->get_results($wpdb->prepare(
     "SELECT p.ID, p.post_date FROM {$wpdb->posts} p
      WHERE p.post_type = 'sliced_quote'
@@ -180,18 +203,65 @@ $sin_vista = $wpdb->get_results($wpdb->prepare(
          SELECT 1 FROM {$wpdb->postmeta} pm
          WHERE pm.post_id = p.ID AND pm.meta_key = '_sliced_log'
          AND pm.meta_value IS NOT NULL AND pm.meta_value != ''
+     )
+     " . ($has_events ? "AND NOT EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)" : "") . "
+     AND p.ID NOT IN (
+         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+         WHERE tr.term_taxonomy_id IN (
+             SELECT tt.term_taxonomy_id FROM {$wpdb->term_taxonomy} tt
+             INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+             WHERE tt.taxonomy = 'quote_status' AND t.slug IN ('accepted','declined','cancelled')
+         )
      )",
     $periodo_start
 ), ARRAY_A);
 
 foreach ($sin_vista as $sv) {
     $age = ($now - strtotime($sv['post_date'])) / 86400;
-    if ($age >= 14) $dormidas_14d++;
+    if ($age >= 21) $dormidas_21d++;
+    elseif ($age >= 14) $dormidas_14d++;
     elseif ($age >= 7) $dormidas_7d++;
 }
 
 // Cierres del período
 $cierres_total = $ventas_periodo;
+
+// Carga activa (cotizaciones no cerradas, no rechazadas)
+$carga_activa = (int)$wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM {$wpdb->posts} p
+     WHERE p.post_type = 'sliced_quote'
+     AND p.post_status IN ('publish','draft','private')
+     AND p.post_date >= %s
+     AND p.ID NOT IN (
+         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+         WHERE tr.term_taxonomy_id IN (
+             SELECT tt.term_taxonomy_id FROM {$wpdb->term_taxonomy} tt
+             INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+             WHERE tt.taxonomy = 'quote_status' AND t.slug IN ('accepted','declined','cancelled')
+         )
+     )",
+    $periodo_start
+));
+
+// Vencidas sin acción (tienen fecha de vencimiento pasada y no están cerradas)
+$vencidas_sin_accion = (int)$wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
+     INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = '_sliced_quote_valid_until'
+     WHERE p.post_type = 'sliced_quote'
+     AND p.post_status IN ('publish','draft','private')
+     AND p.post_date >= %s
+     AND pm.meta_value != '' AND pm.meta_value < %s
+     AND p.ID NOT IN (
+         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+         WHERE tr.term_taxonomy_id IN (
+             SELECT tt.term_taxonomy_id FROM {$wpdb->term_taxonomy} tt
+             INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+             WHERE tt.taxonomy = 'quote_status' AND t.slug IN ('accepted','declined','cancelled')
+         )
+     )",
+    $periodo_start,
+    date('Y-m-d')
+));
 
 // Sesiones de radar del vendedor
 $radar_sessions = 0;
@@ -277,13 +347,28 @@ function apc_sigmoid(float $x, float $midpoint, float $steepness): float {
 
 // ============================================================
 //  DIMENSIÓN 1: ACTIVACIÓN (20%)
+//  "¿Las cotizaciones llegan al cliente?"
+//  Tasa de apertura + penalización escalonada por dormidas.
+//  Sigmoid con midpoint = benchmark empresa (auto-ajustable).
 // ============================================================
 $asignadas_safe = max($cot_asignadas, 1);
 $tasa_apertura = $cot_vistas / $asignadas_safe;
 
+// Penalización escalonada por dormidas (más viejas = peor)
+// dormidas_solo_7  = las que tienen entre 7-14 días sin abrir
+// dormidas_solo_14 = las que tienen entre 14-21 días
+// dormidas_solo_21 = las que tienen 21+ días
+$dormidas_solo_7  = $dormidas_7d;   // ya son solo 7-14
+$dormidas_solo_14 = $dormidas_14d;  // ya son solo 14-21
+$dormidas_solo_21 = $dormidas_21d;  // ya son 21+
+
 $pen_dormidas = 0.0;
 if ($asignadas_safe > 0) {
-    $pen_dormidas = (($dormidas_7d * 6) + ($dormidas_14d * 10)) / ($asignadas_safe * 15);
+    $pen_dormidas = (
+        ($dormidas_solo_7  * 6) +
+        ($dormidas_solo_14 * 10) +
+        ($dormidas_solo_21 * 15)
+    ) / ($asignadas_safe * 15);
 }
 $pen_dormidas = min($pen_dormidas, 1.0);
 
