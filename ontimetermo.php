@@ -87,7 +87,7 @@ $total_cots = (int)$wpdb->get_var(
 $cots_periodo = (int)$wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(*) FROM {$wpdb->posts}
      WHERE post_type='sliced_quote' AND post_status IN ('publish','draft','private')
-     AND post_date >= %s", $periodo_start
+     AND post_date >= %s AND post_date <= NOW()", $periodo_start
 ));
 
 // ── VENTAS: invoices con invoice_status = draft o paid (ventas reales) ──
@@ -108,7 +108,7 @@ $ventas_periodo = (int)$wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(*) FROM {$wpdb->posts}
      WHERE post_type='sliced_invoice' AND post_status IN ('publish','draft','private')
      AND ID IN ({$_inv_status_subq})
-     AND post_date >= %s", $periodo_start
+     AND post_date >= %s AND post_date <= NOW()", $periodo_start
 ));
 
 // ── VISTAS (del radar stats si hay, sino se calcula abajo) ──
@@ -167,7 +167,7 @@ if ($has_events) {
         "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
          WHERE p.post_type = 'sliced_quote'
          AND p.post_status IN ('publish','draft','private')
-         AND p.post_date >= %s
+         AND p.post_date >= %s AND p.post_date <= NOW()
          AND (
              EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)
              OR p.ID IN (
@@ -187,7 +187,7 @@ if ($has_events) {
         "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
          WHERE p.post_type = 'sliced_quote'
          AND p.post_status IN ('publish','draft','private')
-         AND p.post_date >= %s
+         AND p.post_date >= %s AND p.post_date <= NOW()
          AND (
              EXISTS (SELECT 1 FROM {$wpdb->postmeta} pm WHERE pm.post_id = p.ID AND pm.meta_key = '_sliced_log' AND pm.meta_value IS NOT NULL AND pm.meta_value != '')
              OR p.ID IN (
@@ -256,7 +256,7 @@ $closed_statuses_sql = "SELECT tr.object_id FROM {$wpdb->term_relationships} tr
 $sin_vista_base = "FROM {$wpdb->posts} p
     WHERE p.post_type = 'sliced_quote'
     AND p.post_status IN ('publish','draft','private')
-    AND p.post_date >= %s
+    AND p.post_date >= %s AND p.post_date <= NOW()
     AND p.ID NOT IN ({$closed_statuses_sql})
     AND NOT EXISTS (SELECT 1 FROM {$wpdb->posts} i2 WHERE i2.post_type='sliced_invoice' AND i2.post_title=p.post_title AND i2.post_status IN ('publish','draft','private') AND i2.ID IN ({$_inv_status_subq}))
     " . ($has_events ? "AND NOT EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)" : "") . "
@@ -290,7 +290,7 @@ $carga_activa = (int)$wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(*) FROM {$wpdb->posts} p
      WHERE p.post_type = 'sliced_quote'
      AND p.post_status IN ('publish','draft','private')
-     AND p.post_date >= %s
+     AND p.post_date >= %s AND p.post_date <= NOW()
      AND p.ID NOT IN (
          SELECT tr.object_id FROM {$wpdb->term_relationships} tr
          WHERE tr.term_taxonomy_id IN (
@@ -569,7 +569,7 @@ $invoices_periodo = $wpdb->get_results($wpdb->prepare(
      WHERE i.post_type = 'sliced_invoice'
      AND i.post_status IN ('publish','draft','private')
      AND i.ID IN ({$_inv_status_subq})
-     AND i.post_date >= %s
+     AND i.post_date >= %s AND i.post_date <= NOW()
      ORDER BY i.post_date DESC",
     $periodo_start
 ), ARRAY_A);
