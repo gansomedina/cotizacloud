@@ -253,18 +253,15 @@ $closed_statuses_sql = "SELECT tr.object_id FROM {$wpdb->term_relationships} tr
     )";
 
 // Quotes sin vista del cliente: ni JS events ni aceptadas ni con invoice
+// NOTA: _sliced_log es log interno de Sliced Invoices (creación/edición), NO indica vista del cliente.
+// Solo usamos JS events de la tabla quote_events como indicador real de apertura por el cliente.
 $sin_vista_base = "FROM {$wpdb->posts} p
     WHERE p.post_type = 'sliced_quote'
     AND p.post_status IN ('publish','draft','private')
     AND p.post_date >= %s AND p.post_date <= NOW()
     AND p.ID NOT IN ({$closed_statuses_sql})
     AND NOT EXISTS (SELECT 1 FROM {$wpdb->posts} i2 WHERE i2.post_type='sliced_invoice' AND i2.post_title=p.post_title AND i2.post_status IN ('publish','draft','private') AND i2.ID IN ({$_inv_status_subq}))
-    " . ($has_events ? "AND NOT EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)" : "") . "
-    AND NOT EXISTS (
-        SELECT 1 FROM {$wpdb->postmeta} pm
-        WHERE pm.post_id = p.ID AND pm.meta_key = '_sliced_log'
-        AND pm.meta_value IS NOT NULL AND pm.meta_value != ''
-    )";
+    " . ($has_events ? "AND NOT EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)" : "");
 
 // >= 7 días sin abrir (acumulativo)
 $dormidas_7d = (int)$wpdb->get_var($wpdb->prepare(
@@ -903,41 +900,6 @@ $_dbg_has = "ev=" . ($has_events ? 'Y' : 'N') . " tr=" . ($has_transitions ? 'Y'
 $_dbg_trans_count = $has_transitions ? (int)$wpdb->get_var("SELECT COUNT(*) FROM {$transitions_table} WHERE created_ts >= " . ($now - $PERIODO * 86400)) : 'N/A';
 $_dbg_events_7d = $has_events ? (int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(DISTINCT quote_id) FROM {$events_table} WHERE ts_unix >= %d", $now - 7 * 86400)) : 'N/A';
 
-// Debug dormidas: contar sin las exclusiones de log/events para ver qué filtra
-$_dbg_dormidas_sin_filtro = (int)$wpdb->get_var($wpdb->prepare(
-    "SELECT COUNT(*) FROM {$wpdb->posts} p
-     WHERE p.post_type = 'sliced_quote'
-     AND p.post_status IN ('publish','draft','private')
-     AND p.post_date >= %s AND p.post_date <= NOW()
-     AND p.ID NOT IN ({$closed_statuses_sql})
-     AND p.post_date < %s",
-    $periodo_start, date('Y-m-d', $now - 7 * 86400)
-));
-// Sin invoice match
-$_dbg_dormidas_sin_inv = (int)$wpdb->get_var($wpdb->prepare(
-    "SELECT COUNT(*) FROM {$wpdb->posts} p
-     WHERE p.post_type = 'sliced_quote'
-     AND p.post_status IN ('publish','draft','private')
-     AND p.post_date >= %s AND p.post_date <= NOW()
-     AND p.ID NOT IN ({$closed_statuses_sql})
-     AND NOT EXISTS (SELECT 1 FROM {$wpdb->posts} i2 WHERE i2.post_type='sliced_invoice' AND i2.post_title=p.post_title AND i2.post_status IN ('publish','draft','private') AND i2.ID IN ({$_inv_status_subq}))
-     AND p.post_date < %s",
-    $periodo_start, date('Y-m-d', $now - 7 * 86400)
-));
-// Con _sliced_log
-$_dbg_have_log = (int)$wpdb->get_var($wpdb->prepare(
-    "SELECT COUNT(*) FROM {$wpdb->posts} p
-     WHERE p.post_type = 'sliced_quote'
-     AND p.post_status IN ('publish','draft','private')
-     AND p.post_date >= %s AND p.post_date <= NOW()
-     AND EXISTS (
-         SELECT 1 FROM {$wpdb->postmeta} pm
-         WHERE pm.post_id = p.ID AND pm.meta_key = '_sliced_log'
-         AND pm.meta_value IS NOT NULL AND pm.meta_value != ''
-     )",
-    $periodo_start
-));
-
 $debug = [
     'periodo' => $PERIODO,
     'target_user' => $target_login,
@@ -945,7 +907,6 @@ $debug = [
     'cot_asignadas' => $cot_asignadas,
     'cot_vistas' => $cot_vistas,
     'dormidas' => "{$dormidas_solo_7}/{$dormidas_solo_14}/{$dormidas_solo_21} (solo 7-14/14-21/21+d) acum:{$dormidas_7d}",
-    'dormidas_debug' => "sin_filtro:{$_dbg_dormidas_sin_filtro} sin_inv:{$_dbg_dormidas_sin_inv} have_log:{$_dbg_have_log}",
     'trans_periodo' => $_dbg_trans_count,
     'events_7d' => $_dbg_events_7d,
     'ventas_total' => $ventas_total,
