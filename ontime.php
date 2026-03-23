@@ -1590,6 +1590,8 @@ $p80_alto_importe = radar_p80_alto_importe($wpdb);
 
 // Ciclo de venta adaptativo: mediana de días quote→accepted
 $ciclo_venta = radar_ciclo_venta($wpdb, $accepted_ids);
+// Persistir para que el termómetro APC lo use
+update_option('radar_ciclo_venta', $ciclo_venta, false);
 
 // Debug info
 $dbg_fit_source = (!empty($fit_cal['updated'])) ? 'calibrado' : 'defaults';

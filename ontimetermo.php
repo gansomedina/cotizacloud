@@ -151,18 +151,38 @@ if ($has_usage) {
 // En OnTime con 1 vendedor, todas las cotizaciones son suyas
 $cot_asignadas = $cots_periodo;
 
-// Cotizaciones vistas por el cliente (tienen log o visitas en events)
-$cot_vistas = (int)$wpdb->get_var($wpdb->prepare(
+// Cotizaciones vistas por el cliente
+// _sliced_log existe en casi todas (Sliced lo crea al guardar), así que no sirve como proxy.
+// Usamos: quote_events (JS tracking) + accepted (si fue aceptada, fue vista).
+// Para quotes sin events ni aceptación, parseamos _sliced_log buscando 'quote_viewed' real.
+$cot_vistas_events = 0;
+if ($has_events) {
+    $cot_vistas_events = (int)$wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(DISTINCT e.quote_id) FROM {$events_table} e
+         INNER JOIN {$wpdb->posts} p ON p.ID = e.quote_id
+         WHERE p.post_type = 'sliced_quote' AND p.post_date >= %s",
+        $periodo_start
+    ));
+}
+
+// Aceptadas del período = vistas por definición
+$cot_vistas_accepted = $ventas_periodo;
+
+// Fallback: contar quotes con _sliced_log que contengan 'quote_viewed'
+// (serialized log, buscamos el string literal como proxy rápido)
+$cot_vistas_log = (int)$wpdb->get_var($wpdb->prepare(
     "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
+     INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = '_sliced_log'
      WHERE p.post_type = 'sliced_quote'
      AND p.post_status IN ('publish','draft','private')
      AND p.post_date >= %s
-     AND (
-         EXISTS (SELECT 1 FROM {$wpdb->postmeta} pm WHERE pm.post_id = p.ID AND pm.meta_key = '_sliced_log' AND pm.meta_value IS NOT NULL AND pm.meta_value != '')
-         " . ($has_events ? "OR EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)" : "") . "
-     )",
-    $periodo_start
+     AND pm.meta_value LIKE %s",
+    $periodo_start,
+    '%quote_viewed%'
 ));
+
+// Total vistas = max de las fuentes (hay overlap, no sumar)
+$cot_vistas = max($cot_vistas_events, $cot_vistas_log, $cot_vistas_accepted);
 
 // IDs de cotizaciones aceptadas (para queries posteriores)
 $accepted_ids = [];
@@ -238,25 +258,9 @@ $carga_activa = (int)$wpdb->get_var($wpdb->prepare(
     $periodo_start
 ));
 
-// Vencidas sin acción (tienen fecha de vencimiento pasada y no están cerradas)
-$vencidas_sin_accion = (int)$wpdb->get_var($wpdb->prepare(
-    "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
-     INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = '_sliced_quote_valid_until'
-     WHERE p.post_type = 'sliced_quote'
-     AND p.post_status IN ('publish','draft','private')
-     AND p.post_date >= %s
-     AND pm.meta_value != '' AND pm.meta_value < %s
-     AND p.ID NOT IN (
-         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
-         WHERE tr.term_taxonomy_id IN (
-             SELECT tt.term_taxonomy_id FROM {$wpdb->term_taxonomy} tt
-             INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
-             WHERE tt.taxonomy = 'quote_status' AND t.slug IN ('accepted','declined','cancelled')
-         )
-     )",
-    $periodo_start,
-    date('Y-m-d')
-));
+// Vencidas sin acción — Sliced Invoices no tiene fecha de vencimiento estándar
+// OnTime no usa esta métrica (0 = sin penalización)
+$vencidas_sin_accion = 0;
 
 // Sesiones de radar del vendedor
 $radar_sessions = 0;
@@ -583,32 +587,42 @@ if ($cierres_con_radar > 0) {
 
 // ── Velocidad de cierre (TTC) vs benchmark empresa ──
 // Tiempo promedio del vendedor vs promedio empresa
-$bench_ttc = 14.0; // default
-if ($accepted_term) {
-    // Benchmark empresa: promedio de días entre creación y cierre
-    $all_accepted_ids = array_keys($accepted_ids);
-    if (count($all_accepted_ids) >= 3) {
-        $ttc_diffs = [];
-        foreach ($all_accepted_ids as $aqid) {
-            $post = get_post($aqid);
-            if (!$post) continue;
-            $created_ts = strtotime($post->post_date);
-            // Buscar fecha de cierre en log
-            $log_val = get_post_meta($aqid, '_sliced_log', true);
-            $log = is_array($log_val) ? $log_val : @unserialize($log_val ?: '');
-            if (!is_array($log)) $log = [];
-            $last_ts = 0;
-            foreach ($log as $ts => $entry) {
-                $ts = (int)$ts;
-                if ($ts > $last_ts) $last_ts = $ts;
+// Usar ciclo de venta del radar (ya calculado en wp_options por ontime.php)
+$ciclo_venta_opt = get_option('radar_ciclo_venta', null);
+if ($ciclo_venta_opt && is_array($ciclo_venta_opt) && isset($ciclo_venta_opt['dias'])) {
+    $bench_ttc = max(3.0, (float)$ciclo_venta_opt['dias']);
+} else {
+    // Fallback: calcular desde _sliced_log con sanity check
+    $bench_ttc = 14.0;
+    if ($accepted_term) {
+        $all_accepted_ids = array_keys($accepted_ids);
+        if (count($all_accepted_ids) >= 3) {
+            $ttc_diffs = [];
+            foreach ($all_accepted_ids as $aqid) {
+                $post = get_post($aqid);
+                if (!$post) continue;
+                $created_ts = strtotime($post->post_date);
+                if ($created_ts <= 0) continue;
+                $log_val = get_post_meta($aqid, '_sliced_log', true);
+                $log = is_array($log_val) ? $log_val : @unserialize($log_val ?: '');
+                if (!is_array($log)) $log = [];
+                $last_ts = 0;
+                foreach ($log as $ts => $entry) {
+                    $ts_int = (int)$ts;
+                    if ($ts_int > $last_ts) $last_ts = $ts_int;
+                }
+                if ($last_ts > $created_ts) {
+                    $diff_days = ($last_ts - $created_ts) / 86400;
+                    // Sanity: ignorar si >365 días (dato corrupto)
+                    if ($diff_days > 0 && $diff_days <= 365) {
+                        $ttc_diffs[] = $diff_days;
+                    }
+                }
             }
-            if ($last_ts > $created_ts) {
-                $ttc_diffs[] = ($last_ts - $created_ts) / 86400;
+            if (count($ttc_diffs) >= 3) {
+                sort($ttc_diffs);
+                $bench_ttc = max(3.0, array_sum($ttc_diffs) / count($ttc_diffs));
             }
-        }
-        if (count($ttc_diffs) >= 3) {
-            sort($ttc_diffs);
-            $bench_ttc = max(3.0, array_sum($ttc_diffs) / count($ttc_diffs));
         }
     }
 }
@@ -632,7 +646,10 @@ if ($cierres_total > 0) {
             if ($ts_int > $last_ts) $last_ts = $ts_int;
         }
         if ($last_ts > $created_ts) {
-            $vendor_ttc_diffs[] = ($last_ts - $created_ts) / 86400;
+            $diff_days = ($last_ts - $created_ts) / 86400;
+            if ($diff_days > 0 && $diff_days <= 365) {
+                $vendor_ttc_diffs[] = $diff_days;
+            }
         }
     }
     if (count($vendor_ttc_diffs) > 0) {
@@ -825,6 +842,78 @@ if ($score >= 86) {
     $nivel = 'regular'; $nivel_label = 'Regular'; $nivel_color = '#ca8a04'; $nivel_bg = '#fefce8'; $nivel_emoji = '🟡';
 }
 
+// ============================================================
+//  DIAGNÓSTICO TEXTUAL (tips como CotizaCloud)
+// ============================================================
+$tips = [];
+
+if ($cot_asignadas === 0) {
+    $tips[] = 'Sin cotizaciones en el período.';
+} else {
+    // Activación
+    $tasa_ap = $cot_vistas / max($cot_asignadas, 1);
+    if ($tasa_ap >= 0.90) {
+        $tips[] = "Casi todo lo que envía llega al cliente";
+    } elseif ($tasa_ap >= 0.60) {
+        $sin_abrir = $cot_asignadas - $cot_vistas;
+        $tips[] = "Buena tasa de entrega, {$sin_abrir} cotizaciones sin abrir";
+    } elseif ($tasa_ap >= 0.30) {
+        $tips[] = "Muchas cotizaciones no se abren — revisar canal de envío";
+    } else {
+        $tips[] = "La mayoría de sus cotizaciones no llegan al cliente";
+    }
+
+    // Seguimiento
+    if ($s_seguimiento >= 0.70) {
+        $tips[] = "Buen seguimiento con el radar";
+    } elseif ($s_seguimiento >= 0.35) {
+        $tips[] = "Seguimiento moderado, puede usar más el radar";
+    } elseif ($s_seguimiento > 0.05) {
+        $tips[] = "Poco seguimiento — rara vez revisa el radar";
+    } elseif ($w_seg > 0) {
+        $tips[] = "No usa el radar para dar seguimiento";
+    }
+
+    // Conversión
+    if ($cierres_total === 0 && $cot_vistas >= 3) {
+        $tips[] = "Cotiza pero no cierra — {$cot_vistas} abiertas sin resultado";
+    } elseif ($cierres_total === 0) {
+        $tips[] = "Aún sin cierres en el período";
+    } elseif ($s_conversion >= 0.70) {
+        $tips[] = "Excelente tasa de cierre";
+        if ($cierres_bucket_count > 0) $tips[] = "{$cierres_bucket_count} cierres asistidos por radar";
+    } elseif ($s_conversion >= 0.40) {
+        $tips[] = "{$cierres_total} cierres, ritmo aceptable";
+    } else {
+        $tips[] = "Cierra poco para el volumen que maneja";
+    }
+
+    // Señales específicas
+    $total_dormidas = $dormidas_7d + $dormidas_14d + $dormidas_21d;
+    if ($total_dormidas > 0) {
+        $tips[] = "{$total_dormidas} cotizaciones enviadas que nadie abrió en 7+ días";
+    }
+    if ($senales_ignoradas > 0) {
+        $tips[] = "{$senales_ignoradas} señales calientes ignoradas — clientes activos sin atender";
+    }
+
+    // Momentum
+    if ($momentum >= 1.20) {
+        $tips[] = "Tendencia en mejora";
+    } elseif ($momentum <= 0.80) {
+        $tips[] = "Tendencia a la baja vs su historial";
+    }
+
+    // Meta para subir
+    if ($nivel === 'bajo' && $score < 31) {
+        $tips[] = "Necesita " . (31 - $score) . " puntos para subir a Regular";
+    } elseif ($nivel === 'regular' && $score < 61) {
+        $tips[] = "A " . (61 - $score) . " puntos de nivel Activo";
+    } elseif ($nivel === 'activo' && $score < 86) {
+        $tips[] = "A " . (86 - $score) . " puntos de nivel Top";
+    }
+}
+
 // Datos para debug
 $debug = [
     'periodo' => $PERIODO,
@@ -907,6 +996,13 @@ $debug = [
   .dim-val { font-size: 20px; font-weight: 700; }
   .dim-peso { font-size: 11px; color: #94a3b8; }
 
+  /* Tips */
+  .tips { background: #fff; border-radius: 12px; padding: 16px 20px; margin: 24px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid <?php echo $nivel_color; ?>; }
+  .tips-title { font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tips ul { list-style: none; padding: 0; }
+  .tips li { font-size: 13px; color: #475569; padding: 4px 0; padding-left: 16px; position: relative; }
+  .tips li::before { content: ''; position: absolute; left: 0; top: 11px; width: 6px; height: 6px; border-radius: 50%; background: <?php echo $nivel_color; ?>; }
+
   /* KPIs */
   .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 24px 0; }
   .kpi { background: #fff; border-radius: 10px; padding: 14px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
@@ -975,6 +1071,17 @@ $debug = [
   </div>
   <?php endforeach; ?>
 </div>
+
+<?php if (!empty($tips)): ?>
+<div class="tips">
+  <div class="tips-title">Diagnóstico</div>
+  <ul>
+    <?php foreach ($tips as $tip): ?>
+    <li><?php echo esc_html($tip); ?></li>
+    <?php endforeach; ?>
+  </ul>
+</div>
+<?php endif; ?>
 
 <div class="kpis">
   <div class="kpi">
