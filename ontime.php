@@ -1628,22 +1628,22 @@ if (!$transitions_table_exists && current_user_can('manage_options')) {
   $transitions_table_exists = ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $transitions_table)) === $transitions_table);
 }
 
-// Cargar buckets previos (último bucket por quote, últimas 24h)
+// Cargar buckets previos (último bucket por quote — sin límite de tiempo)
 $prev_buckets = [];
 if ($transitions_table_exists) {
-  $prev_rows = $wpdb->get_results($wpdb->prepare(
-    "SELECT quote_id, bucket_nuevo
-     FROM {$transitions_table}
-     WHERE created_ts >= %d
-     ORDER BY id DESC",
-    $now - 86400
-  ), ARRAY_A);
+  $prev_rows = $wpdb->get_results(
+    "SELECT bt.quote_id, bt.bucket_nuevo
+     FROM {$transitions_table} bt
+     INNER JOIN (
+       SELECT quote_id, MAX(id) AS max_id
+       FROM {$transitions_table}
+       GROUP BY quote_id
+     ) latest ON bt.id = latest.max_id",
+    ARRAY_A
+  );
 
   foreach ($prev_rows as $pr) {
-    $qid = (int)$pr['quote_id'];
-    if (!isset($prev_buckets[$qid])) {
-      $prev_buckets[$qid] = (string)$pr['bucket_nuevo'];
-    }
+    $prev_buckets[(int)$pr['quote_id']] = (string)$pr['bucket_nuevo'];
   }
 }
 
@@ -3120,14 +3120,14 @@ foreach ($quote_ids as $id) {
 
   $row['bucket'] = $current_bucket;
 
-  // Log transición si cambió de bucket
+  // Log transición: escribir cuando cambió de bucket O cuando es primera vez (seed)
   if ($transitions_table_exists && $current_bucket !== null) {
     $old_bucket = $prev_buckets[(int)$id] ?? null;
 
-    if ($old_bucket !== null && $old_bucket !== $current_bucket) {
+    if ($old_bucket === null || $old_bucket !== $current_bucket) {
       $wpdb->insert($transitions_table, [
         'quote_id'        => (int)$id,
-        'bucket_anterior' => $old_bucket,
+        'bucket_anterior' => $old_bucket, // null en primera vez = seed
         'bucket_nuevo'    => $current_bucket,
         'score_anterior'  => null,
         'score_nuevo'     => round($priority_pct, 2),
