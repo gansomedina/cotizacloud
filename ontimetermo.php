@@ -499,12 +499,238 @@ $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
 
 // ============================================================
 //  DIMENSIÓN 3: CONVERSIÓN (45%)
+//  "¿Cierra ventas? Esto es lo que importa."
+//  Pesos internos: close_rate 40% + quality 35% + velocidad 25%
+//  Penalizaciones: vencidas, zona muerta, volumen sin resultado
+//  Consistencia semanal ajusta el resultado final.
 // ============================================================
+
+// ── Multiplicadores por bucket para cierres (invertido: frío = más mérito) ──
+$cierre_mult = [
+    'enfriandose'     => 2.0, 'no_abierta'      => 2.0, 'hesitacion'      => 1.8,
+    'sobre_analisis'  => 1.6, 'comparando'      => 1.5, 'regreso'         => 1.4,
+    'revivio'         => 1.3, 're_enganche'     => 1.3, 'revision_profunda' => 1.2,
+    'vistas_multiples' => 1.2, 're_enganche_caliente' => 1.1, 'multi_persona' => 1.1,
+    'alto_importe'    => 1.0, 'decision_activa' => 1.0, 'prediccion_alta' => 1.0,
+    'validando_precio' => 0.9, 'inminente'      => 0.9, 'onfire'          => 0.8,
+    'probable_cierre'  => 0.8, 'probable_cierre_base' => 0.8, 'activo48' => 1.0,
+];
+$descuento_factor = 0.6; // cierre con descuento vale 60%
+
+// Tasa de cierre sobre cotizaciones vistas (justo)
 $cot_vistas_safe = max($cot_vistas, 1);
 $tasa_cierre = $cierres_total / $cot_vistas_safe;
 
-$s_conversion = apc_sigmoid($tasa_cierre, $bench_close_rate, 2.0 / max($bench_close_rate, 0.01));
+// ── Calidad de cierre: puntos ponderados por bucket ──
+// Obtener último bucket de cada cotización aceptada en el período
+$cierres_con_bucket = [];
+$cierres_bucket_count = 0;
+$cierres_sin_dto = 0;
+
+if ($accepted_term && $has_transitions) {
+    // IDs de cotizaciones aceptadas en el período
+    $accepted_periodo = $wpdb->get_results($wpdb->prepare(
+        "SELECT DISTINCT tr.object_id AS qid
+         FROM {$wpdb->term_relationships} tr
+         INNER JOIN {$wpdb->posts} p ON p.ID = tr.object_id
+         WHERE tr.term_taxonomy_id = %d
+         AND p.post_type = 'sliced_quote'
+         AND p.post_date >= %s",
+        $accepted_term->term_taxonomy_id,
+        $periodo_start
+    ), ARRAY_A);
+
+    foreach ($accepted_periodo as $ap) {
+        $qid = (int)$ap['qid'];
+        // Último bucket antes del cierre
+        $last_bucket = $wpdb->get_var($wpdb->prepare(
+            "SELECT bucket_nuevo FROM {$transitions_table}
+             WHERE quote_id = %d ORDER BY created_ts DESC LIMIT 1",
+            $qid
+        ));
+
+        // Verificar si tuvo descuento (meta de Sliced Invoices)
+        $tiene_dto = false; // OnTime no tiene cupones automáticos por ahora
+
+        $cierres_con_bucket[] = [
+            'bucket' => $last_bucket,
+            'tiene_dto' => $tiene_dto,
+        ];
+        if ($last_bucket !== null) $cierres_bucket_count++;
+        if (!$tiene_dto) $cierres_sin_dto++;
+    }
+}
+
+// Calcular calidad: multiplicador promedio normalizado
+$base_cierre = 10.0;
+$puntos_cierre = 0.0;
+$cierres_con_radar = 0;
+$puntos_con_radar = 0.0;
+
+foreach ($cierres_con_bucket as $cc) {
+    $mult_bucket = $cierre_mult[$cc['bucket']] ?? 1.0;
+    $mult_dto = $cc['tiene_dto'] ? $descuento_factor : 1.0;
+    $puntos_cierre += $base_cierre * $mult_bucket * $mult_dto;
+
+    if ($cc['bucket'] !== null) {
+        $cierres_con_radar++;
+        $puntos_con_radar += $base_cierre * $mult_bucket * $mult_dto;
+    }
+}
+
+// Quality: avg_mult/max. Sin bucket = neutro (0.50). Frío = alto. Caliente = bajo.
+if ($cierres_con_radar > 0) {
+    $avg_mult = $puntos_con_radar / $cierres_con_radar / $base_cierre;
+    $cierre_quality = min($avg_mult / 2.0, 1.0);
+} else {
+    $cierre_quality = 0.50; // neutro, sin datos de radar
+}
+
+// ── Velocidad de cierre (TTC) vs benchmark empresa ──
+// Tiempo promedio del vendedor vs promedio empresa
+$bench_ttc = 14.0; // default
+if ($accepted_term) {
+    // Benchmark empresa: promedio de días entre creación y cierre
+    $all_accepted_ids = array_keys($accepted_ids);
+    if (count($all_accepted_ids) >= 3) {
+        $ttc_diffs = [];
+        foreach ($all_accepted_ids as $aqid) {
+            $post = get_post($aqid);
+            if (!$post) continue;
+            $created_ts = strtotime($post->post_date);
+            // Buscar fecha de cierre en log
+            $log_val = get_post_meta($aqid, '_sliced_log', true);
+            $log = is_array($log_val) ? $log_val : @unserialize($log_val ?: '');
+            if (!is_array($log)) $log = [];
+            $last_ts = 0;
+            foreach ($log as $ts => $entry) {
+                $ts = (int)$ts;
+                if ($ts > $last_ts) $last_ts = $ts;
+            }
+            if ($last_ts > $created_ts) {
+                $ttc_diffs[] = ($last_ts - $created_ts) / 86400;
+            }
+        }
+        if (count($ttc_diffs) >= 3) {
+            sort($ttc_diffs);
+            $bench_ttc = max(3.0, array_sum($ttc_diffs) / count($ttc_diffs));
+        }
+    }
+}
+
+// TTC del vendedor en el período
+$ttc_score = 0.5; // neutro
+if ($cierres_total > 0) {
+    $vendor_ttc_diffs = [];
+    foreach ($cierres_con_bucket as $cc_idx => $cc) {
+        $qid = (int)($accepted_periodo[$cc_idx]['qid'] ?? 0);
+        if (!$qid) continue;
+        $post = get_post($qid);
+        if (!$post) continue;
+        $created_ts = strtotime($post->post_date);
+        $log_val = get_post_meta($qid, '_sliced_log', true);
+        $log = is_array($log_val) ? $log_val : @unserialize($log_val ?: '');
+        if (!is_array($log)) $log = [];
+        $last_ts = 0;
+        foreach ($log as $ts => $entry) {
+            $ts_int = (int)$ts;
+            if ($ts_int > $last_ts) $last_ts = $ts_int;
+        }
+        if ($last_ts > $created_ts) {
+            $vendor_ttc_diffs[] = ($last_ts - $created_ts) / 86400;
+        }
+    }
+    if (count($vendor_ttc_diffs) > 0) {
+        $avg_ttc_vendor = array_sum($vendor_ttc_diffs) / count($vendor_ttc_diffs);
+        if ($avg_ttc_vendor > 0) {
+            $ratio_ttc = $bench_ttc / $avg_ttc_vendor;
+            $ttc_score = apc_sigmoid($ratio_ttc, 1.0, 3.0);
+        }
+    }
+}
+
+// ── Penalizaciones de conversión ──
+$pen_vencidas = min($vencidas_sin_accion * 0.08, 0.3);
+
+// Zona muerta: cotizaciones activas sin movimiento >21 días en el período
+$zona_muerta = 0;
+if ($has_events) {
+    // Cotizaciones del período sin eventos en 21+ días
+    $zona_results = $wpdb->get_results($wpdb->prepare(
+        "SELECT p.ID FROM {$wpdb->posts} p
+         WHERE p.post_type = 'sliced_quote'
+         AND p.post_status IN ('publish','draft','private')
+         AND p.post_date >= %s
+         AND p.ID NOT IN (
+             SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+             WHERE tr.term_taxonomy_id IN (
+                 SELECT tt.term_taxonomy_id FROM {$wpdb->term_taxonomy} tt
+                 INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+                 WHERE tt.taxonomy = 'quote_status' AND t.slug IN ('accepted','declined','cancelled')
+             )
+         )
+         AND NOT EXISTS (
+             SELECT 1 FROM {$events_table} e
+             WHERE e.quote_id = p.ID AND e.ts_unix >= %d
+         )",
+        $periodo_start,
+        $now - 21 * 86400
+    ), ARRAY_A);
+    $zona_muerta = count($zona_results);
+}
+$pen_zona_muerta = min($zona_muerta * 0.05, 0.25);
+
+// Volumen sin resultado: muchas vistas pero 0 cierres
+$pen_volumen_sin_cierre = 0.0;
+$half_bench = $bench_close_rate / 2;
+if ($cierres_total === 0 && $cot_vistas >= 3) {
+    $pen_volumen_sin_cierre = min(($cot_vistas - 2) * 0.08, 0.5);
+} elseif ($cot_vistas >= 5 && $tasa_cierre < $half_bench) {
+    $pen_volumen_sin_cierre = min((1.0 - $tasa_cierre / max($half_bench, 0.01)) * 0.3, 0.3);
+}
+
+// ── Score de conversión: close_rate 40% + quality 35% + velocidad 25% ──
+$pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre, 0.65);
+$s_conversion = (
+    apc_sigmoid($tasa_cierre, $bench_close_rate, 2.0 / max($bench_close_rate, 0.01)) * 0.40
+    + $cierre_quality * 0.35
+    + $ttc_score * 0.25
+) - $pen_conversion;
 $s_conversion = max(0.0, min(1.0, $s_conversion));
+
+// ── Consistencia semanal ──
+// Un vendedor que cierra 1-2/semana constante > uno que cierra 5 en semana 1 y 0 las demás
+$semanas_con_cierre = 0;
+if ($accepted_term && $cierres_total > 0) {
+    // Contar semanas distintas en las que hubo cierre
+    $accepted_periodo_ids = array_map(fn($a) => (int)$a['qid'], $accepted_periodo ?? []);
+    $weeks_seen = [];
+    foreach ($accepted_periodo_ids as $aqid) {
+        $post = get_post($aqid);
+        if (!$post) continue;
+        $log_val = get_post_meta($aqid, '_sliced_log', true);
+        $log = is_array($log_val) ? $log_val : @unserialize($log_val ?: '');
+        if (!is_array($log)) $log = [];
+        $last_ts = 0;
+        foreach ($log as $ts => $entry) {
+            $ts_int = (int)$ts;
+            if ($ts_int > $last_ts) $last_ts = $ts_int;
+        }
+        if ($last_ts > 0) {
+            $weeks_seen[date('Y-W', $last_ts)] = true;
+        }
+    }
+    $semanas_con_cierre = count($weeks_seen);
+}
+
+$total_semanas = max(round($PERIODO / 7), 1);
+$consistencia = $cierres_total > 0 ? $semanas_con_cierre / $total_semanas : 0;
+
+// Ajustar conversión: bonus si es consistente, penalización si es irregular
+if ($cierres_total >= 2) {
+    $s_conversion = $s_conversion * (0.80 + 0.20 * $consistencia);
+    $s_conversion = max(0.0, min(1.0, $s_conversion));
+}
 
 // ============================================================
 //  SCORE FINAL
@@ -550,6 +776,13 @@ $debug = [
     'cot_vistas' => $cot_vistas,
     'dormidas' => "{$dormidas_7d}/{$dormidas_14d}/{$dormidas_21d} (7/14/21d)",
     'cierres' => $cierres_total,
+    'cierres_bucket' => $cierres_bucket_count,
+    'cierres_sin_dto' => $cierres_sin_dto,
+    'cierre_quality' => round($cierre_quality, 3),
+    'ttc_score' => round($ttc_score, 3),
+    'bench_ttc' => round($bench_ttc, 1) . ' días',
+    'consistencia' => round($consistencia, 2) . " ({$semanas_con_cierre}/{$total_semanas} sem)",
+    'zona_muerta' => $zona_muerta,
     'carga_activa' => $carga_activa,
     'vencidas_sin_accion' => $vencidas_sin_accion,
     'radar_sessions' => $radar_sessions,
