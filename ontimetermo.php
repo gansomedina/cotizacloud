@@ -575,20 +575,28 @@ if ($cierres_con_radar > 0) {
 // Benchmark TTC: usar ciclo de venta del radar (fuente confiable)
 $bench_ttc = $bench_ttc_from_radar; // ya calculado arriba desde apc_radar_stats
 
-// TTC del vendedor: usar post_modified - post_date como proxy (WP actualiza modified al cambiar status)
+// TTC del vendedor: usar _sliced_invoice_created - _sliced_quote_created (fechas reales)
 $ttc_score = 0.5; // neutro
 if ($cierres_total > 0 && !empty($accepted_periodo)) {
     $vendor_ttc_diffs = [];
     foreach ($accepted_periodo as $ap) {
-        $post = get_post((int)$ap['qid']);
+        $qid = (int)$ap['qid'];
+        // Buscar invoice con mismo título para obtener _sliced_invoice_created
+        $post = get_post($qid);
         if (!$post) continue;
-        $created_ts = strtotime($post->post_date);
-        $modified_ts = strtotime($post->post_modified);
-        if ($modified_ts > $created_ts && $created_ts > 0) {
-            $diff_days = ($modified_ts - $created_ts) / 86400;
-            if ($diff_days > 0 && $diff_days <= 365) {
-                $vendor_ttc_diffs[] = $diff_days;
-            }
+        $quote_created = get_post_meta($qid, '_sliced_quote_created', true);
+        if (!$quote_created) continue;
+        $invoice = $wpdb->get_var($wpdb->prepare(
+            "SELECT p.ID FROM {$wpdb->posts} p
+             WHERE p.post_type = 'sliced_invoice' AND p.post_title = %s LIMIT 1",
+            $post->post_title
+        ));
+        if (!$invoice) continue;
+        $invoice_created = get_post_meta((int)$invoice, '_sliced_invoice_created', true);
+        if (!$invoice_created) continue;
+        $diff_days = ((int)$invoice_created - (int)$quote_created) / 86400;
+        if ($diff_days > 0 && $diff_days <= 365) {
+            $vendor_ttc_diffs[] = $diff_days;
         }
     }
     if (count($vendor_ttc_diffs) > 0) {
