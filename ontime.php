@@ -1106,6 +1106,22 @@ function row_class($last_ts){
   return '';
 }
 
+function apc_bucket_emoji($bucket) {
+  $map = [
+    'inminente' => '🔥', 'onfire' => '🔥',
+    'validando_precio' => '💸', 'probable_cierre' => '🎯', 'probable_cierre_base' => '📈',
+    'decision_activa' => '🧠', 'prediccion_alta' => '📊',
+    're_enganche_caliente' => '🔥', 're_enganche' => '💜',
+    'multi_persona' => '👥', 'revision_profunda' => '🔍',
+    'alto_importe' => '💰', 'vistas_multiples' => '👀',
+    'revivio' => '💜', 'regreso' => '🟣',
+    'comparando' => '⚖️', 'sobre_analisis' => '🔄',
+    'hesitacion' => '⏸️', 'enfriandose' => '🧊',
+    'no_abierta' => '❌', 'activo48' => '📈',
+  ];
+  return $map[$bucket] ?? '🎯';
+}
+
 function hot_reason_priority($is_imminent, $is_decision, $is_revive, $is_multi, $is_return4d, $is_price_validating = false){
   if ($is_imminent) return '🔥 inminente';
   if ($is_price_validating) return '💸 precio';
@@ -2979,7 +2995,7 @@ foreach ($quote_ids as $id) {
     'is_decided_buyer' => $is_decided_buyer,
     'priority_pct'  => $priority_pct,
     'reason'        => $is_probable_cierre
-      ? '🎯 ' . str_replace('_', ' ', $pc_source)
+      ? apc_bucket_emoji($pc_source) . ' ' . str_replace('_', ' ', $pc_source)
       : ($is_hot_close ? hot_reason_priority($is_imminent, $is_decision, $is_revive, $is_multi, $is_return4d, $is_price_validating) : ''),
 
     'event_uniq_visitors'                => $event_uniq_visitors,
