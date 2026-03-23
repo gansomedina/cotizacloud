@@ -492,12 +492,13 @@ $U = [
   'multip_boost_vis_max'       => [8000,  12000, 16000],
 
   // ── Bucket: Revisión profunda ────────────────────────
+  // Fix: medio aflojado (3→2 views, 3→1.5h span) para que no quede en 0
   'deep_recent_hours'          => [96,    72,    48   ],
-  'deep_min_views48'           => [2,     3,     4    ],
-  'deep_min_span_h'            => [2,     3,     4    ],
+  'deep_min_views48'           => [2,     2,     4    ],
+  'deep_min_span_h'            => [1.5,   1.5,   4    ],
   'deep_min_guest_48h'         => [1,     1,     2    ],
-  'deep_min_vis_max'           => [8000,  10000, 15000],
-  'deep_min_vis_sum'           => [14000, 18000, 25000],
+  'deep_min_vis_max'           => [6000,  8000,  15000],
+  'deep_min_vis_sum'           => [10000, 14000, 25000],
 
   // ── Bucket: Hesitación ───────────────────────────────
   'hes_min_guest_7d'           => [1,     2,     3    ],
@@ -2619,13 +2620,13 @@ foreach ($quote_ids as $id) {
     $event_same_visitor_price_focus_flag
   );
 
+  // Fix: deep_read_ok OR deep_price_focus_ok (antes era AND, demasiado restrictivo)
   $is_deep_review = (
     $views48 >= u('deep_min_views48') &&
     $span48 >= (u('deep_min_span_h') * 3600) &&
     $last_ts >= $now - (u('deep_recent_hours') * 3600) &&
     $guest_48h >= u('deep_min_guest_48h') &&
-    $deep_read_ok &&
-    $deep_price_focus_ok &&
+    ($deep_read_ok || $deep_price_focus_ok) &&
     !$accepted
   );
 
@@ -2949,8 +2950,7 @@ foreach ($quote_ids as $id) {
         $last_ts >= $now - (u('deep_recent_hours') * 3600) &&
         $guest_48h >= u('deep_min_guest_48h') &&
         !$accepted &&
-        !empty($deep_read_ok) &&
-        !empty($deep_price_focus_ok)
+        (!empty($deep_read_ok) || !empty($deep_price_focus_ok))
       ) {
         $dbg_deep['c3']++;
         if ($is_deep_review) $dbg_deep['final']++;
