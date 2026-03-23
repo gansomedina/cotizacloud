@@ -583,10 +583,6 @@ $FIT_MAX = 0.25;
 // Laplace smoothing alpha — previene overfitting con pocos datos
 $FIT_LAPLACE_ALPHA = 5;
 
-// Caps de multiplicadores — evita swings extremos
-$FIT_MULT_MIN = 0.3;
-$FIT_MULT_MAX = 3.0;
-
 /**
  * Fase 2: Auto-calibración FIT
  * Calcula tasas de cierre reales desde quotes accepted en WordPress.
@@ -688,11 +684,63 @@ function radar_fit_calibrar($wpdb, $quote_ids_all, $accepted_ids_all) {
     return $result;
   };
 
+  // Isotonic monotonicity: fuerza que buckets de mayor engagement
+  // tengan rate >= que los de menor engagement.
+  // Si "13+" tiene rate menor que "8-12", se sube al rate de "8-12".
+  // Esto corrige la inversión causada por bots/curiosos residuales.
+  $isotonic = function($rates, $ordered_keys) {
+    $vals = [];
+    foreach ($ordered_keys as $k) {
+      $vals[] = $rates[$k] ?? 0;
+    }
+    // Pool Adjacent Violators (PAV) — algoritmo isotónico estándar
+    $n = count($vals);
+    $blocks = [];
+    for ($i = 0; $i < $n; $i++) {
+      $blocks[] = ['sum' => $vals[$i], 'cnt' => 1];
+      // Merge hacia atrás si viola monotonicidad
+      while (count($blocks) >= 2) {
+        $last = $blocks[count($blocks) - 1];
+        $prev = $blocks[count($blocks) - 2];
+        $avg_last = $last['sum'] / $last['cnt'];
+        $avg_prev = $prev['sum'] / $prev['cnt'];
+        if ($avg_last >= $avg_prev) break; // OK, monótono
+        // Merge: fusionar último con penúltimo
+        array_pop($blocks);
+        $blocks[count($blocks) - 1] = [
+          'sum' => $prev['sum'] + $last['sum'],
+          'cnt' => $prev['cnt'] + $last['cnt'],
+        ];
+      }
+    }
+    // Reconstruir resultado
+    $result = [];
+    $idx = 0;
+    foreach ($blocks as $b) {
+      $avg = round($b['sum'] / $b['cnt'], 4);
+      for ($j = 0; $j < $b['cnt']; $j++) {
+        $result[$ordered_keys[$idx]] = $avg;
+        $idx++;
+      }
+    }
+    return $result;
+  };
+
+  $raw_sess = $smooth($by_sess, $FIT_DEFAULTS['sess'], $global_rate);
+  $raw_ips  = $smooth($by_ips,  $FIT_DEFAULTS['ips'],  $global_rate);
+  $raw_gap  = $smooth($by_gap,  $FIT_DEFAULTS['gap'],  $global_rate);
+
+  // Aplicar monotonicidad: rates deben crecer con engagement
+  $sess_keys = ['1', '2', '3-4', '5-7', '8-12', '13+'];
+  $ips_keys  = ['1', '2', '3', '4+'];
+  // Gap: menor gap = más reciente = mejor señal → orden inverso
+  $gap_keys  = ['4+d', '1-3d', 'sin'];
+
   $cal = [
     'global'  => round($global_rate, 4),
-    'sess'    => $smooth($by_sess, $FIT_DEFAULTS['sess'], $global_rate),
-    'ips'     => $smooth($by_ips,  $FIT_DEFAULTS['ips'],  $global_rate),
-    'gap'     => $smooth($by_gap,  $FIT_DEFAULTS['gap'],  $global_rate),
+    'sess'    => $isotonic($raw_sess, $sess_keys),
+    'ips'     => $isotonic($raw_ips,  $ips_keys),
+    'gap'     => $isotonic($raw_gap,  $gap_keys),
     'total'   => $total,
     'sales'   => $sales,
     'updated' => time(),
@@ -1076,7 +1124,6 @@ function bucket_gap_label($gap_days){
  * Usa datos calibrados de la empresa si existen, sino defaults
  */
 function compute_fit_prob($sessions, $uniq_ips_total, $gap_days, $GLOBAL_CLOSE_RATE, $RATE_SESS, $RATE_IPS, $RATE_GAP, $FIT_MIN, $FIT_MAX){
-  global $FIT_MULT_MIN, $FIT_MULT_MAX;
 
   $ls = bucket_sessions_label($sessions);
   $li = bucket_ips_label($uniq_ips_total);
@@ -1086,26 +1133,16 @@ function compute_fit_prob($sessions, $uniq_ips_total, $gap_days, $GLOBAL_CLOSE_R
   $ri = $RATE_IPS[$li]  ?? $GLOBAL_CLOSE_RATE;
   $rg = $RATE_GAP[$lg]  ?? $GLOBAL_CLOSE_RATE;
 
-  // Modelo aditivo ponderado — evita inflación multiplicativa
-  // Pesos: sesiones 50%, IPs 30%, gap 20%
-  $w_s = 0.50;
-  $w_i = 0.30;
-  $w_g = 0.20;
+  // Power-scaled Naive Bayes — corrige correlación entre sesiones e IPs
+  // Exponentes suman 1.0 → dampea la inflación multiplicativa
+  // Sesiones: 0.50 (más informativo), IPs: 0.30, Gap: 0.20
+  $GR = max(0.001, $GLOBAL_CLOSE_RATE);
 
-  $fit = ($rs * $w_s) + ($ri * $w_i) + ($rg * $w_g);
+  $lift_s = max(0.1, $rs / $GR);
+  $lift_i = max(0.1, $ri / $GR);
+  $lift_g = max(0.1, $rg / $GR);
 
-  // Penalización por sesiones excesivas: si el bucket 13+ tiene rate menor
-  // que el global, es señal de curiosos/bots — aplicar descuento proporcional
-  if ($ls === '13+' && $rs < $GLOBAL_CLOSE_RATE && $GLOBAL_CLOSE_RATE > 0) {
-    $penalty = $rs / $GLOBAL_CLOSE_RATE; // e.g. 0.074/0.082 = 0.90
-    $fit *= $penalty;
-  }
-
-  // Lo mismo para IPs excesivas (4+) si su rate es menor que global
-  if ($li === '4+' && $ri < $GLOBAL_CLOSE_RATE && $GLOBAL_CLOSE_RATE > 0) {
-    $penalty_ip = $ri / $GLOBAL_CLOSE_RATE;
-    $fit *= $penalty_ip;
-  }
+  $fit = $GR * pow($lift_s, 0.50) * pow($lift_i, 0.30) * pow($lift_g, 0.20);
 
   if ($fit < $FIT_MIN) $fit = $FIT_MIN;
   if ($fit > $FIT_MAX) $fit = $FIT_MAX;
@@ -3508,7 +3545,11 @@ if ($internal_ips_dirty) {
     FIT ventas calibradas: <?php echo (int)$dbg_fit_sales; ?> |
     Global rate: <?php echo number_format($GLOBAL_CLOSE_RATE * 100, 2); ?>%<br>
     P80 alto importe: $<?php echo number_format($dbg_p80, 0); ?> |
-    Ciclo venta: <?php echo (int)$dbg_ciclo['dias']; ?>d (P25=<?php echo (int)$dbg_ciclo['p25']; ?>d, P75=<?php echo (int)$dbg_ciclo['p75']; ?>d, n=<?php echo (int)$dbg_ciclo['n']; ?>)
+    Ciclo venta: <?php echo (int)$dbg_ciclo['dias']; ?>d (P25=<?php echo (int)$dbg_ciclo['p25']; ?>d, P75=<?php echo (int)$dbg_ciclo['p75']; ?>d, n=<?php echo (int)$dbg_ciclo['n']; ?>)<br>
+    FIT model: <b>power-scaled NB (s^0.5 × i^0.3 × g^0.2) + isotonic PAV</b><br>
+    Sess rates (isotonic): <?php echo esc_html(implode(', ', array_map(fn($k,$v) => "$k=" . number_format($v*100,2) . "%", array_keys($RATE_SESS), $RATE_SESS))); ?><br>
+    IPs rates (isotonic): <?php echo esc_html(implode(', ', array_map(fn($k,$v) => "$k=" . number_format($v*100,2) . "%", array_keys($RATE_IPS), $RATE_IPS))); ?><br>
+    Gap rates (isotonic): <?php echo esc_html(implode(', ', array_map(fn($k,$v) => "$k=" . number_format($v*100,2) . "%", array_keys($RATE_GAP), $RATE_GAP))); ?>
 
     <br><br><b>DEBUG Fase 4: Infraestructura</b><br>
     Config: JSON en wp_options |
