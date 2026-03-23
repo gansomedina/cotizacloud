@@ -733,39 +733,101 @@ if ($cierres_total >= 2) {
 }
 
 // ============================================================
-//  SCORE FINAL
+//  SCORE PROPORCIONAL — PESOS DINÁMICOS
+//  Distinguir:
+//  a) Sin datos de radar → seguimiento no medible → redistribuir
+//  b) Con datos → pesos adaptativos si cierra >2x benchmark
 // ============================================================
 $w_act = 0.20;
 $w_seg = 0.35;
 $w_conv = 0.45;
 
-// Si no hay datos de uso del radar, redistribuir peso
 if (!$has_usage || $radar_sessions === 0) {
-    $w_act = 0.25;
-    $w_seg = 0.00;
-    $w_conv = 0.75;
+    // Sin datos de radar → redistribuir
+    $w_act  = 0.20;
+    $w_seg  = 0.00;
+    $w_conv = 0.80;
+} else {
+    // Pesos adaptativos: si cierra >2x benchmark, seguimiento pierde peso
+    // (los resultados hablan por sí solos)
+    if ($bench_close_rate > 0 && $tasa_cierre > $bench_close_rate * 2) {
+        $ratio_sobre_bench = $tasa_cierre / $bench_close_rate;
+        $reduccion_seg = min(($ratio_sobre_bench - 2) * 0.05, 0.20);
+        $w_seg  -= $reduccion_seg;
+        $w_conv += $reduccion_seg;
+    }
 }
 
-$score_raw = $s_activacion * $w_act + $s_seguimiento * $w_seg + $s_conversion * $w_conv;
-$score_raw = max(0.05, $score_raw);
-$score = (int)round($score_raw * 100);
-$score = min(100, max(0, $score));
+$proporcional = $s_activacion * $w_act + $s_seguimiento * $w_seg + $s_conversion * $w_conv;
+$proporcional = max(0.05, $proporcional); // piso global
 
-// Nivel y color
-$nivel = 'frio';
+// ============================================================
+//  MOMENTUM (EMA vs su propio histórico)
+//  Compara score actual vs promedio móvil exponencial.
+//  Mejorar = momentum positivo. Empeorar = momentum negativo.
+//  Persistido en wp_options para sobrevivir entre pageloads.
+// ============================================================
+$EMA_ALPHA = 0.3;
+$ema_option_key = 'apc_ema_' . $target_user_id;
+$prev_ema = get_option($ema_option_key, null);
+
+if ($prev_ema && is_array($prev_ema) && isset($prev_ema['updated_at'])) {
+    $hours_since = (time() - (int)$prev_ema['updated_at']) / 3600.0;
+    $alpha = $EMA_ALPHA * min($hours_since / 24.0, 1.0);
+    $alpha = max(0.03, min($alpha, 0.25));
+
+    $ema_act  = $alpha * $s_activacion  + (1 - $alpha) * (float)($prev_ema['ema_act']  ?? $s_activacion);
+    $ema_seg  = $alpha * $s_seguimiento + (1 - $alpha) * (float)($prev_ema['ema_seg']  ?? $s_seguimiento);
+    $ema_conv = $alpha * $s_conversion  + (1 - $alpha) * (float)($prev_ema['ema_conv'] ?? $s_conversion);
+
+    $ema_composite = $ema_act * $w_act + $ema_seg * $w_seg + $ema_conv * $w_conv;
+    $cur_composite = $proporcional;
+
+    $ratio = $ema_composite > 0
+        ? $cur_composite / $ema_composite
+        : ($cur_composite > 0 ? 2.0 : 1.0);
+    $momentum = max(0.1, min(10.0, $ratio));
+} else {
+    // Primera vez
+    $ema_act  = $s_activacion;
+    $ema_seg  = $s_seguimiento;
+    $ema_conv = $s_conversion;
+    $momentum = 1.0;
+}
+
+// Guardar EMA en wp_options
+update_option($ema_option_key, [
+    'ema_act'    => round($ema_act, 4),
+    'ema_seg'    => round($ema_seg, 4),
+    'ema_conv'   => round($ema_conv, 4),
+    'updated_at' => time(),
+], false);
+
+// Convertir momentum a score 0-1 con sigmoid sobre log(ratio)
+// log(1.0)=0 → 0.50 (estable), log(2.0)=0.69 → ~0.80, log(0.5)=-0.69 → ~0.20
+$momentum_score = 1.0 / (1.0 + exp(-3.0 * log($momentum)));
+
+// ============================================================
+//  SCORE FINAL
+//  Vendedor solo (OnTime = 2 usuarios): proporcional 80% + momentum 20%
+// ============================================================
+$final = $proporcional * 0.80 + $momentum_score * 0.20;
+$score = (int)round($final * 100);
+$score = max(0, min(100, $score));
+
+// Nivel y color (mismos umbrales que CotizaCloud)
+$nivel = 'bajo';
 $nivel_label = 'Hay oportunidad';
-$nivel_color = '#3b82f6'; // azul
+$nivel_color = '#3b82f6';
 $nivel_bg = '#eff6ff';
 $nivel_emoji = '🧊';
 
-if ($score >= 85) {
-    $nivel = 'onfire'; $nivel_label = 'On Fire'; $nivel_color = '#dc2626'; $nivel_bg = '#fef2f2'; $nivel_emoji = '🔥';
-} elseif ($score >= 70) {
-    $nivel = 'caliente'; $nivel_label = 'Caliente'; $nivel_color = '#ea580c'; $nivel_bg = '#fff7ed'; $nivel_emoji = '🟠';
-} elseif ($score >= 55) {
-    $nivel = 'tibio'; $nivel_label = 'Tibio'; $nivel_color = '#ca8a04'; $nivel_bg = '#fefce8'; $nivel_emoji = '🟡';
-} elseif ($score >= 35) {
-    $nivel = 'fresco'; $nivel_label = 'En seguimiento'; $nivel_color = '#0891b2'; $nivel_bg = '#ecfeff'; $nivel_emoji = '🔵';
+if ($score >= 86) {
+    $nivel = 'top'; $nivel_label = 'Top'; $nivel_color = '#dc2626'; $nivel_bg = '#fef2f2'; $nivel_emoji = '🔥';
+} elseif ($score >= 61) {
+    $nivel = 'activo'; $nivel_label = 'Activo'; $nivel_color = '#ea580c'; $nivel_bg = '#fff7ed'; $nivel_emoji = '🟠';
+} elseif ($score >= 31) {
+    $nivel = 'regular'; $nivel_label = 'Regular'; $nivel_color = '#ca8a04'; $nivel_bg = '#fefce8'; $nivel_emoji = '🟡';
 }
 
 // Datos para debug
@@ -799,7 +861,11 @@ $debug = [
     's_activacion' => round($s_activacion, 3),
     's_seguimiento' => round($s_seguimiento, 3),
     's_conversion' => round($s_conversion, 3),
+    'proporcional' => round($proporcional, 3),
+    'momentum' => round($momentum, 3),
+    'momentum_score' => round($momentum_score, 3),
     'pesos' => "act={$w_act} seg={$w_seg} conv={$w_conv}",
+    'formula' => "prop*0.80 + mom*0.20 = " . round($final, 3),
 ];
 
 // ============================================================
