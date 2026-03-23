@@ -134,27 +134,43 @@ if ($radar_stats && is_array($radar_stats)) {
 }
 
 // Sumar quotes "draft" que tienen invoice (ventas no marcadas como accepted)
+// FIX: contar invoices distintos y matchear solo 1 quote por invoice (la más reciente)
+// para evitar inflar ventas cuando varios quotes comparten título
 $ventas_ocultas_total = (int)$wpdb->get_var(
-    "SELECT COUNT(DISTINCT q.ID) FROM {$wpdb->posts} q
-     INNER JOIN {$wpdb->posts} i ON i.post_type = 'sliced_invoice' AND i.post_title = q.post_title
-     WHERE q.post_type = 'sliced_quote'
-     AND q.post_status IN ('publish','draft','private')
-     AND YEAR(q.post_date) BETWEEN 2020 AND 2030
-     AND q.ID NOT IN (
-         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
-         WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
-     )"
+    "SELECT COUNT(*) FROM (
+         SELECT i.ID,
+                (SELECT q2.ID FROM {$wpdb->posts} q2
+                 WHERE q2.post_type = 'sliced_quote'
+                 AND q2.post_status IN ('publish','draft','private')
+                 AND q2.post_title = i.post_title
+                 AND YEAR(q2.post_date) BETWEEN 2020 AND 2030
+                 AND q2.ID NOT IN (
+                     SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+                     WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
+                 )
+                 ORDER BY q2.post_date DESC LIMIT 1) AS qid
+         FROM {$wpdb->posts} i
+         WHERE i.post_type = 'sliced_invoice'
+         AND i.post_status IN ('publish','draft','private')
+     ) AS sub WHERE sub.qid IS NOT NULL"
 );
 $ventas_ocultas_periodo = (int)$wpdb->get_var($wpdb->prepare(
-    "SELECT COUNT(DISTINCT q.ID) FROM {$wpdb->posts} q
-     INNER JOIN {$wpdb->posts} i ON i.post_type = 'sliced_invoice' AND i.post_title = q.post_title
-     WHERE q.post_type = 'sliced_quote'
-     AND q.post_status IN ('publish','draft','private')
-     AND q.post_date >= %s
-     AND q.ID NOT IN (
-         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
-         WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
-     )",
+    "SELECT COUNT(*) FROM (
+         SELECT i.ID,
+                (SELECT q2.ID FROM {$wpdb->posts} q2
+                 WHERE q2.post_type = 'sliced_quote'
+                 AND q2.post_status IN ('publish','draft','private')
+                 AND q2.post_title = i.post_title
+                 AND q2.post_date >= %s
+                 AND q2.ID NOT IN (
+                     SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+                     WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
+                 )
+                 ORDER BY q2.post_date DESC LIMIT 1) AS qid
+         FROM {$wpdb->posts} i
+         WHERE i.post_type = 'sliced_invoice'
+         AND i.post_status IN ('publish','draft','private')
+     ) AS sub WHERE sub.qid IS NOT NULL",
     $periodo_start
 ));
 $ventas_total   += $ventas_ocultas_total;
@@ -257,15 +273,23 @@ if ($accepted_term) {
     }
 }
 // Agregar quotes draft-con-invoice como ventas reales
+// FIX: solo matchear 1 quote (la más reciente) por invoice para evitar duplicados
 $ocultas_ids = $wpdb->get_col(
-    "SELECT DISTINCT q.ID FROM {$wpdb->posts} q
-     INNER JOIN {$wpdb->posts} i ON i.post_type = 'sliced_invoice' AND i.post_title = q.post_title
-     WHERE q.post_type = 'sliced_quote'
-     AND q.post_status IN ('publish','draft','private')
-     AND q.ID NOT IN (
-         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
-         WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
-     )"
+    "SELECT sub.qid FROM (
+         SELECT
+             (SELECT q2.ID FROM {$wpdb->posts} q2
+              WHERE q2.post_type = 'sliced_quote'
+              AND q2.post_status IN ('publish','draft','private')
+              AND q2.post_title = i.post_title
+              AND q2.ID NOT IN (
+                  SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+                  WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
+              )
+              ORDER BY q2.post_date DESC LIMIT 1) AS qid
+         FROM {$wpdb->posts} i
+         WHERE i.post_type = 'sliced_invoice'
+         AND i.post_status IN ('publish','draft','private')
+     ) AS sub WHERE sub.qid IS NOT NULL"
 );
 foreach ($ocultas_ids as $oid) {
     $accepted_ids[(int)$oid] = true;
@@ -295,7 +319,7 @@ $sin_vista_base = "FROM {$wpdb->posts} p
     AND p.post_status IN ('publish','draft','private')
     AND p.post_date >= %s
     AND p.ID NOT IN ({$closed_statuses_sql})
-    AND p.ID NOT IN (SELECT q2.ID FROM {$wpdb->posts} q2 INNER JOIN {$wpdb->posts} i2 ON i2.post_type='sliced_invoice' AND i2.post_title=q2.post_title WHERE q2.post_type='sliced_quote')
+    AND NOT EXISTS (SELECT 1 FROM {$wpdb->posts} i2 WHERE i2.post_type='sliced_invoice' AND i2.post_title=p.post_title AND i2.post_status IN ('publish','draft','private'))
     " . ($has_events ? "AND NOT EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)" : "") . "
     AND NOT EXISTS (
         SELECT 1 FROM {$wpdb->postmeta} pm
@@ -616,9 +640,14 @@ if ($has_transitions) {
              SELECT a_id FROM (
                  " . ($accepted_term ? "SELECT tr.object_id AS a_id FROM {$wpdb->term_relationships} tr WHERE tr.term_taxonomy_id = " . (int)$accepted_term->term_taxonomy_id : "SELECT 0 AS a_id WHERE 1=0") . "
                  UNION
-                 SELECT q3.ID AS a_id FROM {$wpdb->posts} q3
-                 INNER JOIN {$wpdb->posts} i3 ON i3.post_type='sliced_invoice' AND i3.post_title=q3.post_title
-                 WHERE q3.post_type='sliced_quote'
+                 SELECT sub3.qid AS a_id FROM (
+                     SELECT (SELECT q3.ID FROM {$wpdb->posts} q3
+                             WHERE q3.post_type='sliced_quote' AND q3.post_title=i3.post_title
+                             AND q3.post_status IN ('publish','draft','private')
+                             ORDER BY q3.post_date DESC LIMIT 1) AS qid
+                     FROM {$wpdb->posts} i3
+                     WHERE i3.post_type='sliced_invoice' AND i3.post_status IN ('publish','draft','private')
+                 ) AS sub3 WHERE sub3.qid IS NOT NULL
              ) AS all_accepted
          )",
         $periodo_start
