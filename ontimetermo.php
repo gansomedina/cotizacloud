@@ -162,8 +162,9 @@ $ventas_periodo += $ventas_ocultas_periodo;
 // Recalcular bench_close_rate con ventas corregidas
 $bench_close_rate = $total_cots > 0 ? max(0.03, $ventas_total / $total_cots) : 0.10;
 
-// Radar sessions por semana (benchmark — desde usage_events, confiable)
-$bench_radar_weekly = 3.0;
+// Radar sessions por semana (benchmark — promedio per-user como CotizaCloud)
+// CotizaCloud: SUM(radar_views) / num_usuarios / weeks
+$bench_radar_weekly = 3.0; // fallback
 if ($has_usage) {
     $total_radar = (int)$wpdb->get_var($wpdb->prepare(
         "SELECT COUNT(*) FROM {$usage_table}
@@ -171,8 +172,15 @@ if ($has_usage) {
          AND created_ts >= %d",
         $now - $PERIODO * 86400
     ));
+    $num_radar_users = (int)$wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(DISTINCT user_id) FROM {$usage_table}
+         WHERE event_type IN ('radar_open','radar_refresh')
+         AND created_ts >= %d",
+        $now - $PERIODO * 86400
+    ));
+    $num_radar_users = max($num_radar_users, 1);
     $semanas = max($PERIODO / 7, 1);
-    $bench_radar_weekly = max(1.0, $total_radar / $semanas);
+    $bench_radar_weekly = max(1.0, $total_radar / $num_radar_users / $semanas);
 }
 
 // ============================================================
@@ -182,23 +190,53 @@ if ($has_usage) {
 // En OnTime con 1 vendedor, todas las cotizaciones son suyas
 $cot_asignadas = $cots_periodo;
 
-// Cotizaciones vistas por el cliente — usar dato del radar (ya filtrado bots/internos)
-if ($cot_vistas_radar > 0) {
-    $cot_vistas = $cot_vistas_radar;
+// Cotizaciones vistas por el cliente — contar desde JS events (fuente de verdad)
+// CotizaCloud usa: visitas > 0 OR estado IN (vista, aceptada, convertida)
+// OnTime equivalente: tiene registro en sliced_quote_events (sesión de cliente)
+// O está en status accepted/declined (si fue aceptada, fue vista)
+$cot_vistas = 0;
+if ($has_events) {
+    $cot_vistas = (int)$wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
+         WHERE p.post_type = 'sliced_quote'
+         AND p.post_status IN ('publish','draft','private')
+         AND p.post_date >= %s
+         AND (
+             EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)
+             OR p.ID IN (
+                 SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+                 WHERE tr.term_taxonomy_id IN (
+                     SELECT tt.term_taxonomy_id FROM {$wpdb->term_taxonomy} tt
+                     INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+                     WHERE tt.taxonomy = 'quote_status' AND t.slug IN ('accepted','declined')
+                 )
+             )
+         )",
+        $periodo_start
+    ));
 } else {
-    // Sin stats del radar — contar desde quote_events (JS tracking real)
-    $cot_vistas = 0;
-    if ($has_events) {
-        $cot_vistas = (int)$wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(DISTINCT e.quote_id) FROM {$events_table} e
-             INNER JOIN {$wpdb->posts} p ON p.ID = e.quote_id
-             WHERE p.post_type = 'sliced_quote' AND p.post_date >= %s",
-            $periodo_start
-        ));
-    }
-    // Mínimo: aceptadas del período (si fue aceptada, fue vista)
-    $cot_vistas = max($cot_vistas, $ventas_periodo);
+    // Sin tabla de events — usar _sliced_log como proxy de vista
+    $cot_vistas = (int)$wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(DISTINCT p.ID) FROM {$wpdb->posts} p
+         WHERE p.post_type = 'sliced_quote'
+         AND p.post_status IN ('publish','draft','private')
+         AND p.post_date >= %s
+         AND (
+             EXISTS (SELECT 1 FROM {$wpdb->postmeta} pm WHERE pm.post_id = p.ID AND pm.meta_key = '_sliced_log' AND pm.meta_value IS NOT NULL AND pm.meta_value != '')
+             OR p.ID IN (
+                 SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+                 WHERE tr.term_taxonomy_id IN (
+                     SELECT tt.term_taxonomy_id FROM {$wpdb->term_taxonomy} tt
+                     INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+                     WHERE tt.taxonomy = 'quote_status' AND t.slug IN ('accepted','declined')
+                 )
+             )
+         )",
+        $periodo_start
+    ));
 }
+// Mínimo: ventas del período (si fue aceptada, fue vista)
+$cot_vistas = max($cot_vistas, $ventas_periodo);
 
 // IDs de cotizaciones aceptadas (para queries posteriores)
 $accepted_ids = [];
@@ -233,40 +271,53 @@ foreach ($ocultas_ids as $oid) {
     $accepted_ids[(int)$oid] = true;
 }
 
-// Cotizaciones dormidas escalonadas: enviadas sin vista, >7d / >14d / >21d
-// (como CotizaCloud: penalización creciente por antigüedad)
-$dormidas_7d = 0;
-$dormidas_14d = 0;
-$dormidas_21d = 0;
+// Cotizaciones dormidas escalonadas: enviadas sin vista por el cliente
+// CotizaCloud: estado='enviada' AND visitas=0 AND created_at < X days
+// OnTime equiv: sin JS events, sin _sliced_log, no aceptada/rechazada/cancelada
+// Y no tiene invoice asociado (descarta ventas no marcadas)
+//
+// ACUMULATIVO como CotizaCloud: dormidas_14d incluye las de 21+
+$dormidas_7d = 0;  // acum: >= 7 días
+$dormidas_14d = 0; // acum: >= 14 días
+$dormidas_21d = 0; // acum: >= 21 días
 
-$sin_vista = $wpdb->get_results($wpdb->prepare(
-    "SELECT p.ID, p.post_date FROM {$wpdb->posts} p
-     WHERE p.post_type = 'sliced_quote'
-     AND p.post_status IN ('publish','draft','private')
-     AND p.post_date >= %s
-     AND NOT EXISTS (
-         SELECT 1 FROM {$wpdb->postmeta} pm
-         WHERE pm.post_id = p.ID AND pm.meta_key = '_sliced_log'
-         AND pm.meta_value IS NOT NULL AND pm.meta_value != ''
-     )
-     " . ($has_events ? "AND NOT EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)" : "") . "
-     AND p.ID NOT IN (
-         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
-         WHERE tr.term_taxonomy_id IN (
-             SELECT tt.term_taxonomy_id FROM {$wpdb->term_taxonomy} tt
-             INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
-             WHERE tt.taxonomy = 'quote_status' AND t.slug IN ('accepted','declined','cancelled')
-         )
-     )",
-    $periodo_start
-), ARRAY_A);
+// Subquery para excluir accepted/declined/cancelled
+$closed_statuses_sql = "SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+    WHERE tr.term_taxonomy_id IN (
+        SELECT tt.term_taxonomy_id FROM {$wpdb->term_taxonomy} tt
+        INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+        WHERE tt.taxonomy = 'quote_status' AND t.slug IN ('accepted','declined','cancelled')
+    )";
 
-foreach ($sin_vista as $sv) {
-    $age = ($now - strtotime($sv['post_date'])) / 86400;
-    if ($age >= 21) $dormidas_21d++;
-    elseif ($age >= 14) $dormidas_14d++;
-    elseif ($age >= 7) $dormidas_7d++;
-}
+// Quotes sin vista del cliente: ni JS events ni aceptadas ni con invoice
+$sin_vista_base = "FROM {$wpdb->posts} p
+    WHERE p.post_type = 'sliced_quote'
+    AND p.post_status IN ('publish','draft','private')
+    AND p.post_date >= %s
+    AND p.ID NOT IN ({$closed_statuses_sql})
+    AND p.ID NOT IN (SELECT q2.ID FROM {$wpdb->posts} q2 INNER JOIN {$wpdb->posts} i2 ON i2.post_type='sliced_invoice' AND i2.post_title=q2.post_title WHERE q2.post_type='sliced_quote')
+    " . ($has_events ? "AND NOT EXISTS (SELECT 1 FROM {$events_table} e WHERE e.quote_id = p.ID)" : "") . "
+    AND NOT EXISTS (
+        SELECT 1 FROM {$wpdb->postmeta} pm
+        WHERE pm.post_id = p.ID AND pm.meta_key = '_sliced_log'
+        AND pm.meta_value IS NOT NULL AND pm.meta_value != ''
+    )";
+
+// >= 7 días sin abrir (acumulativo)
+$dormidas_7d = (int)$wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) {$sin_vista_base} AND p.post_date < %s",
+    $periodo_start, date('Y-m-d', $now - 7 * 86400)
+));
+// >= 14 días sin abrir (acumulativo, subset de 7d)
+$dormidas_14d = (int)$wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) {$sin_vista_base} AND p.post_date < %s",
+    $periodo_start, date('Y-m-d', $now - 14 * 86400)
+));
+// >= 21 días sin abrir (acumulativo, subset de 14d)
+$dormidas_21d = (int)$wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) {$sin_vista_base} AND p.post_date < %s",
+    $periodo_start, date('Y-m-d', $now - 21 * 86400)
+));
 
 // Cierres del período
 $cierres_total = $ventas_periodo;
@@ -478,12 +529,10 @@ $asignadas_safe = max($cot_asignadas, 1);
 $tasa_apertura = $cot_vistas / $asignadas_safe;
 
 // Penalización escalonada por dormidas (más viejas = peor)
-// dormidas_solo_7  = las que tienen entre 7-14 días sin abrir
-// dormidas_solo_14 = las que tienen entre 14-21 días
-// dormidas_solo_21 = las que tienen 21+ días
-$dormidas_solo_7  = $dormidas_7d;   // ya son solo 7-14
-$dormidas_solo_14 = $dormidas_14d;  // ya son solo 14-21
-$dormidas_solo_21 = $dormidas_21d;  // ya son 21+
+// Ahora acumulativas como CotizaCloud: restar para obtener exclusivas
+$dormidas_solo_7  = $dormidas_7d - $dormidas_14d;   // 7-14 días
+$dormidas_solo_14 = $dormidas_14d - $dormidas_21d;   // 14-21 días
+$dormidas_solo_21 = $dormidas_21d;                    // 21+ días
 
 $pen_dormidas = 0.0;
 if ($asignadas_safe > 0) {
@@ -556,16 +605,22 @@ $cierres_con_bucket = [];
 $cierres_bucket_count = 0;
 $cierres_sin_dto = 0;
 
-if ($accepted_term && $has_transitions) {
-    // IDs de cotizaciones aceptadas en el período
+if ($has_transitions) {
+    // IDs de cotizaciones aceptadas en el período (term accepted + ocultas con invoice)
     $accepted_periodo = $wpdb->get_results($wpdb->prepare(
-        "SELECT DISTINCT tr.object_id AS qid
-         FROM {$wpdb->term_relationships} tr
-         INNER JOIN {$wpdb->posts} p ON p.ID = tr.object_id
-         WHERE tr.term_taxonomy_id = %d
-         AND p.post_type = 'sliced_quote'
-         AND p.post_date >= %s",
-        $accepted_term->term_taxonomy_id,
+        "SELECT DISTINCT p.ID AS qid FROM {$wpdb->posts} p
+         WHERE p.post_type = 'sliced_quote'
+         AND p.post_status IN ('publish','draft','private')
+         AND p.post_date >= %s
+         AND p.ID IN (
+             SELECT a_id FROM (
+                 " . ($accepted_term ? "SELECT tr.object_id AS a_id FROM {$wpdb->term_relationships} tr WHERE tr.term_taxonomy_id = " . (int)$accepted_term->term_taxonomy_id : "SELECT 0 AS a_id WHERE 1=0") . "
+                 UNION
+                 SELECT q3.ID AS a_id FROM {$wpdb->posts} q3
+                 INNER JOIN {$wpdb->posts} i3 ON i3.post_type='sliced_invoice' AND i3.post_title=q3.post_title
+                 WHERE q3.post_type='sliced_quote'
+             ) AS all_accepted
+         )",
         $periodo_start
     ), ARRAY_A);
 
@@ -872,7 +927,7 @@ if ($cot_asignadas === 0) {
     }
 
     // Señales específicas
-    $total_dormidas = $dormidas_7d + $dormidas_14d + $dormidas_21d;
+    $total_dormidas = $dormidas_7d; // acumulativo: >= 7 días ya incluye 14d y 21d
     if ($total_dormidas > 0) {
         $tips[] = "{$total_dormidas} cotizaciones enviadas que nadie abrió en 7+ días";
     }
@@ -903,7 +958,7 @@ $debug = [
     'target_user' => $target_login,
     'cot_asignadas' => $cot_asignadas,
     'cot_vistas' => $cot_vistas,
-    'dormidas' => "{$dormidas_7d}/{$dormidas_14d}/{$dormidas_21d} (7/14/21d)",
+    'dormidas' => "{$dormidas_solo_7}/{$dormidas_solo_14}/{$dormidas_solo_21} (solo 7-14/14-21/21+d) acum:{$dormidas_7d}",
     'cierres' => $cierres_total,
     'cierres_bucket' => $cierres_bucket_count,
     'cierres_sin_dto' => $cierres_sin_dto,
