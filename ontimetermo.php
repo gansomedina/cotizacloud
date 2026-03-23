@@ -131,6 +131,34 @@ if ($radar_stats && is_array($radar_stats)) {
     $bench_ttc_from_radar = 14.0;
 }
 
+// Sumar quotes "draft" que tienen invoice (ventas no marcadas como accepted)
+$ventas_ocultas_total = (int)$wpdb->get_var(
+    "SELECT COUNT(DISTINCT q.ID) FROM {$wpdb->posts} q
+     INNER JOIN {$wpdb->posts} i ON i.post_type = 'sliced_invoice' AND i.post_title = q.post_title
+     WHERE q.post_type = 'sliced_quote'
+     AND q.post_status IN ('publish','draft','private')
+     AND q.ID NOT IN (
+         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+         WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
+     )"
+);
+$ventas_ocultas_periodo = (int)$wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(DISTINCT q.ID) FROM {$wpdb->posts} q
+     INNER JOIN {$wpdb->posts} i ON i.post_type = 'sliced_invoice' AND i.post_title = q.post_title
+     WHERE q.post_type = 'sliced_quote'
+     AND q.post_status IN ('publish','draft','private')
+     AND q.post_date >= %s
+     AND q.ID NOT IN (
+         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+         WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
+     )",
+    $periodo_start
+));
+$ventas_total   += $ventas_ocultas_total;
+$ventas_periodo += $ventas_ocultas_periodo;
+// Recalcular bench_close_rate con ventas corregidas
+$bench_close_rate = $total_cots > 0 ? max(0.03, $ventas_total / $total_cots) : 0.10;
+
 // Radar sessions por semana (benchmark — desde usage_events, confiable)
 $bench_radar_weekly = 3.0;
 if ($has_usage) {
@@ -186,6 +214,20 @@ if ($accepted_term) {
     foreach ($accepted_posts as $aqid) {
         $accepted_ids[(int)$aqid] = true;
     }
+}
+// Agregar quotes draft-con-invoice como ventas reales
+$ocultas_ids = $wpdb->get_col(
+    "SELECT DISTINCT q.ID FROM {$wpdb->posts} q
+     INNER JOIN {$wpdb->posts} i ON i.post_type = 'sliced_invoice' AND i.post_title = q.post_title
+     WHERE q.post_type = 'sliced_quote'
+     AND q.post_status IN ('publish','draft','private')
+     AND q.ID NOT IN (
+         SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+         WHERE tr.term_taxonomy_id = " . ($accepted_term ? (int)$accepted_term->term_taxonomy_id : 0) . "
+     )"
+);
+foreach ($ocultas_ids as $oid) {
+    $accepted_ids[(int)$oid] = true;
 }
 
 // Cotizaciones dormidas escalonadas: enviadas sin vista, >7d / >14d / >21d
