@@ -646,6 +646,16 @@ function radar_fit_calibrar($wpdb, $quote_ids_all, $accepted_ids_all) {
 
     if ($sess_count <= 0) continue;
 
+    // Excluir "compradores decididos" de la calibración:
+    // Quotes con ≤1 sesión que cerraron son clientes recomendados,
+    // repetidores, o que cerraron por teléfono. No tienen patrón de
+    // engagement medible → contaminan los buckets si se incluyen.
+    if ($sess_count <= 1 && $is_sale) continue;
+
+    // También excluir quotes sin engagement (0-1 sesión sin venta)
+    // — no aportan señal al modelo
+    if ($sess_count <= 1) continue;
+
     $ip_count = count($ips_seen);
     sort($sess_ts);
     $gap = null;
@@ -737,7 +747,7 @@ function radar_fit_calibrar($wpdb, $quote_ids_all, $accepted_ids_all) {
   $gap_keys  = ['4+d', '1-3d', 'sin'];
 
   $cal = [
-    'version' => 2, // v2 = power-scaled NB + isotonic PAV
+    'version' => 3, // v3 = power-scaled NB + isotonic PAV + excluir decididos
     'global'  => round($global_rate, 4),
     'sess'    => $isotonic($raw_sess, $sess_keys),
     'ips'     => $isotonic($raw_ips,  $ips_keys),
@@ -762,7 +772,7 @@ function radar_fit_load() {
   if ($raw) {
     $cal = json_decode($raw, true);
     // Invalidar cache si es versión vieja (pre-isotonic)
-    if (is_array($cal) && !empty($cal['global']) && ((int)($cal['version'] ?? 0)) >= 2) {
+    if (is_array($cal) && !empty($cal['global']) && ((int)($cal['version'] ?? 0)) >= 3) {
       return $cal;
     }
   }
@@ -778,7 +788,7 @@ function radar_fit_check_auto($wpdb, $quote_ids_all, $accepted_ids_all) {
   $raw = get_option('radar_fit_calibracion', '');
   if ($raw) {
     $check = json_decode($raw, true);
-    if (is_array($check) && ((int)($check['version'] ?? 0)) < 2) {
+    if (is_array($check) && ((int)($check['version'] ?? 0)) < 3) {
       return radar_fit_calibrar($wpdb, $quote_ids_all, $accepted_ids_all);
     }
   }
@@ -1549,7 +1559,7 @@ radar_fit_check_auto($wpdb, $quote_ids, $accepted_ids);
 $fit_cal = radar_fit_load();
 
 // Safety: si después de check_auto la calibración aún no es v2, forzar ahora
-if (((int)($fit_cal['version'] ?? 0)) < 2 && count($accepted_ids) >= 3) {
+if (((int)($fit_cal['version'] ?? 0)) < 3 && count($accepted_ids) >= 3) {
   $fit_cal = radar_fit_calibrar($wpdb, $quote_ids, $accepted_ids);
 }
 $GLOBAL_CLOSE_RATE = (float)($fit_cal['global'] ?? $FIT_DEFAULTS['global']);
@@ -2326,7 +2336,14 @@ foreach ($quote_ids as $id) {
 
   $cooling_reason = $cooling_price_touched ? '💸 con precio' : '🧊 sin precio';
 
-  $fit_prob = compute_fit_prob($sessions, $uniq_ips_total, $gap_days, $GLOBAL_CLOSE_RATE, $RATE_SESS, $RATE_IPS, $RATE_GAP, $FIT_MIN, $FIT_MAX);
+  // Compradores decididos: ≤1 sesión → FIT neutral (sin patrón medible)
+  // Son clientes recomendados, repetidores, o que cerraron por otro canal.
+  // Su engagement real puede estar en otra cotización anterior.
+  $is_decided_buyer = ($sessions <= 1);
+
+  $fit_prob = $is_decided_buyer
+    ? $GLOBAL_CLOSE_RATE  // neutral: sin señal de engagement
+    : compute_fit_prob($sessions, $uniq_ips_total, $gap_days, $GLOBAL_CLOSE_RATE, $RATE_SESS, $RATE_IPS, $RATE_GAP, $FIT_MIN, $FIT_MAX);
   $fit_pct  = max(0.0, min(100.0, $fit_prob * 100.0));
 
   $priority_pct = $fit_pct + recency_bonus_pct($last_ts);
@@ -2958,6 +2975,7 @@ foreach ($quote_ids as $id) {
     'fit_prob'      => $fit_prob,
     'data_source'   => $data_source,  // 'events' o 'log'
     'fit_pct'       => $fit_pct,
+    'is_decided_buyer' => $is_decided_buyer,
     'priority_pct'  => $priority_pct,
     'reason'        => $is_probable_cierre
       ? '🎯 ' . str_replace('_', ' ', $pc_source)
@@ -3108,14 +3126,18 @@ foreach ($quote_ids as $id) {
   $total_all++;
   if ($accepted) $total_sales++;
 
-  $band = '12+';
-  if ($fit_pct < 5) $band = '0-4.99';
-  else if ($fit_pct < 8) $band = '5-7.99';
-  else if ($fit_pct < 10) $band = '8-9.99';
-  else if ($fit_pct < 12) $band = '10-11.99';
+  // Excluir compradores decididos de validación por bandas —
+  // no tienen patrón de engagement, contaminan la correlación
+  if (!$is_decided_buyer) {
+    $band = '12+';
+    if ($fit_pct < 5) $band = '0-4.99';
+    else if ($fit_pct < 8) $band = '5-7.99';
+    else if ($fit_pct < 10) $band = '8-9.99';
+    else if ($fit_pct < 12) $band = '10-11.99';
 
-  $band_counts[$band]['total']++;
-  if ($accepted) $band_counts[$band]['sales']++;
+    $band_counts[$band]['total']++;
+    if ($accepted) $band_counts[$band]['sales']++;
+  }
 
   if ($is_active48)          $bucket_active48[] = $row;
   if ($is_hot_close)         $bucket_hot_close[] = $row;
@@ -3602,7 +3624,15 @@ if ($internal_ips_dirty) {
 <?php endif; ?>
 
 <div class="mini">
+  <?php
+    $decided_total = count(array_filter($rows, fn($r) => !empty($r['is_decided_buyer'])));
+    $decided_sales = count(array_filter($rows, fn($r) => !empty($r['is_decided_buyer']) && !empty($r['accepted'])));
+    $band_total_sum = 0; $band_sales_sum = 0;
+    foreach ($band_counts as $bc) { $band_total_sum += $bc['total']; $band_sales_sum += $bc['sales']; }
+  ?>
   <b>Validación Score% vs Ventas (Accepted)</b> — Total: <?php echo (int)$total_all; ?> | Ventas: <?php echo (int)$total_sales; ?> | Cierre global: <?php echo number_format($close_global_pct, 2); ?>%<br>
+  <b>Compradores decididos</b> (≤1 sesión, excluidos de bandas): <?php echo (int)$decided_total; ?> cotiz. | <?php echo (int)$decided_sales; ?> ventas<?php echo $decided_total > 0 ? ' | cierre: ' . number_format(100.0 * $decided_sales / $decided_total, 2) . '%' : ''; ?><br>
+  <b>En bandas FIT</b> (≥2 sesiones): <?php echo (int)$band_total_sum; ?> cotiz. | <?php echo (int)$band_sales_sum; ?> ventas<?php echo $band_total_sum > 0 ? ' | cierre: ' . number_format(100.0 * $band_sales_sum / $band_total_sum, 2) . '%' : ''; ?><br>
   <b>Score%</b> = <b>FIT%</b> (probabilidad “fría” por patrón accepted: sesiones + IPs + gap, con caps). <b>Prioridad%</b> = FIT% + recencia + intención de precio/visitor.<br>
   <b>Visitor</b> se usa como capa de identidad operativa. Los eventos JS se leen con ventana de <?php echo (int)$events_js_lookback_days; ?> días.
 </div>
