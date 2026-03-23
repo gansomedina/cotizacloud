@@ -3226,6 +3226,31 @@ $rows = array_slice($rows, 0, $limit);
 
 $close_global_pct = ($total_all > 0) ? (100.0 * $total_sales / $total_all) : 0.0;
 
+// Persistir stats para el termómetro APC (ontimetermo.php)
+// Cuenta quotes con vistas reales (sessions > 0, ya filtrados bots/internos)
+$apc_quotes_con_vista = 0;
+$apc_quotes_periodo = 0;
+$apc_accepted_periodo = 0;
+$periodo_start_ts = $now - (30 * 86400);
+foreach ($rows as $r) {
+    if ((int)($r['created_ts'] ?? 0) >= $periodo_start_ts) {
+        $apc_quotes_periodo++;
+        if ((int)($r['sessions'] ?? 0) > 0) $apc_quotes_con_vista++;
+        if (!empty($r['accepted'])) $apc_accepted_periodo++;
+    }
+}
+update_option('apc_radar_stats', [
+    'total_quotes'       => $total_all,
+    'total_sales'        => $total_sales,
+    'close_rate'         => $close_global_pct,
+    'ciclo_venta'        => $ciclo_venta,
+    'p80_alto_importe'   => $p80_alto_importe,
+    'quotes_periodo'     => $apc_quotes_periodo,
+    'quotes_con_vista'   => $apc_quotes_con_vista,
+    'accepted_periodo'   => $apc_accepted_periodo,
+    'updated_at'         => $now,
+], false);
+
 /** =========================
  *  FASE 4: Retorno estructurado (JSON API)
  *  ?format=json devuelve datos puros sin HTML
