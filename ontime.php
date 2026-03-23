@@ -492,13 +492,14 @@ $U = [
   'multip_boost_vis_max'       => [8000,  12000, 16000],
 
   // ── Bucket: Revisión profunda ────────────────────────
-  // Fix: medio aflojado (3→2 views, 3→1.5h span) para que no quede en 0
+  // Fix: medio aflojado para funcionar con volumen bajo de JS events
+  // agresivo: 2 views, 0.5h span | medio: 2 views, 0.5h span | ligero: 3 views, 2h span
   'deep_recent_hours'          => [96,    72,    48   ],
-  'deep_min_views48'           => [2,     2,     4    ],
-  'deep_min_span_h'            => [1.5,   1.5,   4    ],
+  'deep_min_views48'           => [2,     2,     3    ],
+  'deep_min_span_h'            => [0.5,   0.5,   2    ],
   'deep_min_guest_48h'         => [1,     1,     2    ],
-  'deep_min_vis_max'           => [6000,  8000,  15000],
-  'deep_min_vis_sum'           => [10000, 14000, 25000],
+  'deep_min_vis_max'           => [5000,  6000,  15000],
+  'deep_min_vis_sum'           => [8000,  10000, 25000],
 
   // ── Bucket: Hesitación ───────────────────────────────
   'hes_min_guest_7d'           => [1,     2,     3    ],
@@ -1103,6 +1104,22 @@ function row_class($last_ts){
   if ($last_ts >= $now - 30*60) return 'hot30';
   if ($last_ts >= $now - 4*3600) return 'hot4h';
   return '';
+}
+
+function apc_bucket_emoji($bucket) {
+  $map = [
+    'inminente' => '🔥', 'onfire' => '🔥',
+    'validando_precio' => '💸', 'probable_cierre' => '🎯', 'probable_cierre_base' => '📈',
+    'decision_activa' => '🧠', 'prediccion_alta' => '📊',
+    're_enganche_caliente' => '🔥', 're_enganche' => '💜',
+    'multi_persona' => '👥', 'revision_profunda' => '🔍',
+    'alto_importe' => '💰', 'vistas_multiples' => '👀',
+    'revivio' => '💜', 'regreso' => '🟣',
+    'comparando' => '⚖️', 'sobre_analisis' => '🔄',
+    'hesitacion' => '⏸️', 'enfriandose' => '🧊',
+    'no_abierta' => '❌', 'activo48' => '📈',
+  ];
+  return $map[$bucket] ?? '🎯';
 }
 
 function hot_reason_priority($is_imminent, $is_decision, $is_revive, $is_multi, $is_return4d, $is_price_validating = false){
@@ -2978,7 +2995,7 @@ foreach ($quote_ids as $id) {
     'is_decided_buyer' => $is_decided_buyer,
     'priority_pct'  => $priority_pct,
     'reason'        => $is_probable_cierre
-      ? '🎯 ' . str_replace('_', ' ', $pc_source)
+      ? apc_bucket_emoji($pc_source) . ' ' . str_replace('_', ' ', $pc_source)
       : ($is_hot_close ? hot_reason_priority($is_imminent, $is_decision, $is_revive, $is_multi, $is_return4d, $is_price_validating) : ''),
 
     'event_uniq_visitors'                => $event_uniq_visitors,
