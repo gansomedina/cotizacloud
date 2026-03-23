@@ -33,18 +33,13 @@ $GRACIA_DIAS = 7;
 // Usuario a evaluar: admin ve al vendedor, vendedor se ve a sí mismo
 $is_admin = current_user_can('manage_options');
 
-// Buscar el vendedor (usuario no-admin con acceso al radar)
-$vendedor_user = null;
-$all_users = get_users(['role__not_in' => ['subscriber']]);
-foreach ($all_users as $u) {
-    if (!user_can($u, 'manage_options') || strtolower($u->user_login) === 'ontime') {
-        $vendedor_user = $u;
-        break;
-    }
-}
-// Fallback: si no encuentra vendedor separado, evalúa al usuario actual
+// Vendedor = usuario 815 (ontime). Hardcoded porque solo hay 1 vendedor.
+$vendedor_user = get_user_by('id', 815);
 if (!$vendedor_user) {
-    $vendedor_user = $current_user;
+    $vendedor_user = get_user_by('login', 'ontime');
+}
+if (!$vendedor_user) {
+    $vendedor_user = $current_user; // fallback último recurso
 }
 
 $target_user_id = $is_admin ? (int)$vendedor_user->ID : (int)$current_user->ID;
