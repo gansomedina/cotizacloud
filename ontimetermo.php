@@ -307,24 +307,28 @@ if ($has_events) {
     }
 }
 
-// Transiciones de bucket
+// Clasificación de buckets por temperatura
+$bucket_temp = [
+    'enfriandose' => 'frio', 'no_abierta' => 'frio', 'hesitacion' => 'frio',
+    'sobre_analisis' => 'tibio', 'comparando' => 'tibio', 'regreso' => 'tibio',
+    'revivio' => 'tibio', 're_enganche' => 'tibio', 'revision_profunda' => 'tibio',
+    'vistas_multiples' => 'tibio', 're_enganche_caliente' => 'caliente',
+    'multi_persona' => 'caliente', 'alto_importe' => 'caliente',
+    'decision_activa' => 'caliente', 'prediccion_alta' => 'caliente',
+    'validando_precio' => 'caliente', 'inminente' => 'caliente',
+    'onfire' => 'caliente', 'probable_cierre' => 'caliente',
+    'probable_cierre_base' => 'caliente', 'activo48' => 'tibio',
+];
+$temp_order = ['frio' => 0, 'tibio' => 1, 'caliente' => 2];
+
+// Transiciones de bucket — con detección de reacción del vendedor
 $transiciones_up = 0;
 $transiciones_down = 0;
+$transiciones_con_reaccion = 0;
 if ($has_transitions) {
-    $bucket_temp = [
-        'enfriandose' => 'frio', 'no_abierta' => 'frio', 'hesitacion' => 'frio',
-        'sobre_analisis' => 'tibio', 'comparando' => 'tibio', 'regreso' => 'tibio',
-        'revivio' => 'tibio', 're_enganche' => 'tibio', 'revision_profunda' => 'tibio',
-        'vistas_multiples' => 'tibio', 're_enganche_caliente' => 'caliente',
-        'multi_persona' => 'caliente', 'alto_importe' => 'caliente',
-        'decision_activa' => 'caliente', 'prediccion_alta' => 'caliente',
-        'validando_precio' => 'caliente', 'inminente' => 'caliente',
-        'onfire' => 'caliente', 'probable_cierre' => 'caliente',
-    ];
-    $temp_order = ['frio' => 0, 'tibio' => 1, 'caliente' => 2];
-
+    // Traer transiciones con timestamp para cruzar con uso del radar
     $trans = $wpdb->get_results($wpdb->prepare(
-        "SELECT bucket_anterior, bucket_nuevo FROM {$transitions_table}
+        "SELECT bucket_anterior, bucket_nuevo, created_ts FROM {$transitions_table}
          WHERE created_ts >= %d",
         $now - $PERIODO * 86400
     ), ARRAY_A);
@@ -333,9 +337,99 @@ if ($has_transitions) {
         $ta = $bucket_temp[$t['bucket_anterior']] ?? null;
         $tn = $bucket_temp[$t['bucket_nuevo']] ?? null;
         if (!$ta || !$tn) continue;
-        if (($temp_order[$tn] ?? 0) > ($temp_order[$ta] ?? 0)) $transiciones_up++;
-        elseif (($temp_order[$tn] ?? 0) < ($temp_order[$ta] ?? 0)) $transiciones_down++;
+
+        if (($temp_order[$tn] ?? 0) > ($temp_order[$ta] ?? 0)) {
+            $transiciones_up++;
+            // ¿El vendedor revisó el radar en las 48h PREVIAS a la transición?
+            if ($has_usage) {
+                $reacciono = (int)$wpdb->get_var($wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$usage_table}
+                     WHERE user_id=%d AND event_type IN ('radar_open','radar_refresh')
+                     AND created_ts BETWEEN %d AND %d LIMIT 1",
+                    $target_user_id,
+                    (int)$t['created_ts'] - 48 * 3600,
+                    (int)$t['created_ts']
+                ));
+                if ($reacciono > 0) $transiciones_con_reaccion++;
+            }
+        } elseif (($temp_order[$tn] ?? 0) < ($temp_order[$ta] ?? 0)) {
+            $transiciones_down++;
+        }
     }
+}
+
+// Buckets estancados: cotizaciones con bucket tibio/caliente pero sin movimiento >14 días
+$buckets_estancados = 0;
+if ($has_transitions) {
+    // Último bucket de cada cotización activa
+    $last_buckets = $wpdb->get_results($wpdb->prepare(
+        "SELECT bt.quote_id, bt.bucket_nuevo, bt.created_ts
+         FROM {$transitions_table} bt
+         INNER JOIN (
+             SELECT quote_id, MAX(created_ts) AS max_ts
+             FROM {$transitions_table}
+             GROUP BY quote_id
+         ) latest ON bt.quote_id = latest.quote_id AND bt.created_ts = latest.max_ts
+         WHERE bt.created_ts < %d",
+        $now - 14 * 86400
+    ), ARRAY_A);
+
+    foreach ($last_buckets as $lb) {
+        $temp = $bucket_temp[$lb['bucket_nuevo']] ?? null;
+        if (!$temp || $temp === 'frio') continue;
+        // Solo contar si la cotización sigue activa (no aceptada/rechazada)
+        if (!isset($accepted_ids[(int)$lb['quote_id']])) {
+            $buckets_estancados++;
+        }
+    }
+}
+
+// Tasa de reacción: de cotizaciones con actividad del cliente en 7 días,
+// ¿en cuántas el vendedor revisó el radar dentro de 48h?
+$cot_con_actividad_cliente = 0;
+$cot_con_reaccion_vendor = 0;
+$tasa_reaccion = 0.3; // neutro por defecto
+
+if ($has_events && $has_usage) {
+    // Cotizaciones con actividad del cliente en últimos 7 días
+    $cots_activas_cliente = $wpdb->get_results($wpdb->prepare(
+        "SELECT quote_id, MAX(ts_unix) AS last_event_ts
+         FROM {$events_table}
+         WHERE ts_unix >= %d
+         GROUP BY quote_id",
+        $now - 7 * 86400
+    ), ARRAY_A);
+
+    $cot_con_actividad_cliente = count($cots_activas_cliente);
+
+    if ($cot_con_actividad_cliente > 0) {
+        foreach ($cots_activas_cliente as $ca) {
+            // ¿El vendedor revisó radar/cotización dentro de 48h después de la actividad?
+            $reacciono = (int)$wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$usage_table}
+                 WHERE user_id=%d AND event_type IN ('radar_open','radar_refresh')
+                 AND created_ts BETWEEN %d AND %d LIMIT 1",
+                $target_user_id,
+                (int)$ca['last_event_ts'],
+                (int)$ca['last_event_ts'] + 48 * 3600
+            ));
+            if ($reacciono > 0) $cot_con_reaccion_vendor++;
+        }
+        $tasa_reaccion = $cot_con_reaccion_vendor / $cot_con_actividad_cliente;
+    }
+} elseif ($carga_activa === 0) {
+    $tasa_reaccion = 0.0;
+}
+
+// Consultas (visitas a cotizaciones individuales desde el radar)
+$consultas = 0;
+if ($has_usage) {
+    $consultas = (int)$wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM {$usage_table}
+         WHERE user_id=%d AND event_type IN ('radar_scroll','radar_ping')
+         AND created_ts >= %d",
+        $target_user_id, $now - $PERIODO * 86400
+    ));
 }
 
 // ============================================================
@@ -378,18 +472,29 @@ $s_activacion = max(0.0, min(1.0, $s_activacion));
 
 // ============================================================
 //  DIMENSIÓN 2: SEGUIMIENTO (35%)
+//  "¿Usa el radar para dar seguimiento?"
+//  Pesos internos: radar 30% + consultas 15% + reacción 35% + transiciones 20%
+//  Penalizaciones: buckets estancados, señales ignoradas, transiciones down
 // ============================================================
 $semanas = max($PERIODO / 7, 1);
 $radar_por_semana = $radar_sessions / $semanas;
+$consultas_por_semana = $consultas / $semanas;
 
 $s_radar = apc_sigmoid($radar_por_semana, $bench_radar_weekly, 2.0 / max($bench_radar_weekly, 0.1));
+$s_consultas = apc_sigmoid($consultas_por_semana, $bench_radar_weekly * 2.5, 0.5);
+
+// Bonus solo por transiciones donde el vendedor REACCIONÓ (revisó radar antes)
+$bonus_transiciones = min($transiciones_con_reaccion * 0.10, 0.3);
 
 // Penalizaciones
+$pen_buckets = min($buckets_estancados * 0.06, 0.3);
 $pen_senales = min($senales_ignoradas * 0.10, 0.4);
 $pen_trans_down = min($transiciones_down * 0.05, 0.2);
-$bonus_trans_up = min($transiciones_up * 0.08, 0.2);
 
-$s_seguimiento = ($s_radar * 0.60 + $bonus_trans_up * 0.40) - ($pen_senales + $pen_trans_down);
+// tasa_reaccion entra con 35% del peso de seguimiento
+$pen_seguimiento = min($pen_buckets + $pen_senales + $pen_trans_down, 0.60); // cap 0.60
+$s_seguimiento = ($s_radar * 0.30 + $s_consultas * 0.15 + $tasa_reaccion * 0.35 + $bonus_transiciones * 0.20)
+                 - $pen_seguimiento;
 $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
 
 // ============================================================
@@ -443,16 +548,20 @@ $debug = [
     'target_user' => $target_login,
     'cot_asignadas' => $cot_asignadas,
     'cot_vistas' => $cot_vistas,
-    'dormidas_7d' => $dormidas_7d,
-    'dormidas_14d' => $dormidas_14d,
+    'dormidas' => "{$dormidas_7d}/{$dormidas_14d}/{$dormidas_21d} (7/14/21d)",
     'cierres' => $cierres_total,
+    'carga_activa' => $carga_activa,
+    'vencidas_sin_accion' => $vencidas_sin_accion,
     'radar_sessions' => $radar_sessions,
+    'consultas' => $consultas,
     'dias_activos' => $dias_activos,
     'senales_ignoradas' => $senales_ignoradas,
-    'trans_up' => $transiciones_up,
+    'buckets_estancados' => $buckets_estancados,
+    'tasa_reaccion' => round($tasa_reaccion, 2) . " ({$cot_con_reaccion_vendor}/{$cot_con_actividad_cliente})",
+    'trans_up' => "{$transiciones_up} ({$transiciones_con_reaccion} con reacción)",
     'trans_down' => $transiciones_down,
-    'bench_close_rate' => round($bench_close_rate * 100, 2),
-    'bench_apertura' => round($bench_apertura * 100, 2),
+    'bench_close_rate' => round($bench_close_rate * 100, 2) . '%',
+    'bench_apertura' => round($bench_apertura * 100, 2) . '%',
     'bench_radar_weekly' => round($bench_radar_weekly, 1),
     's_activacion' => round($s_activacion, 3),
     's_seguimiento' => round($s_seguimiento, 3),
