@@ -229,7 +229,7 @@ $permite_null = DB::val(
 
 $gastos_generales = [];
 $total_generales  = 0;
-if ($permite_null) {
+if ($permite_null && $es_business) {
     $gastos_generales = DB::query(
         "SELECT gv.*, cc.nombre AS cat_nombre, cc.color AS cat_color" .
         ($has_prov_col ?? false ? ", p.nombre AS prov_nombre" : "") .
@@ -434,7 +434,7 @@ ob_start();
 <div class="page-toolbar">
   <div class="tab-bar">
     <button class="ctab on" id="ctab-ventas"     onclick="cTab('ventas',this)">Costos por venta</button>
-    <?php if ($permite_null): ?>
+    <?php if ($permite_null && $es_business): ?>
     <button class="ctab"   id="ctab-generales"   onclick="cTab('generales',this)">Gastos generales<?php if ($total_generales > 0): ?> <span style="font:600 11px var(--num);color:var(--danger);margin-left:2px"><?= fmt_c_short($total_generales) ?></span><?php endif; ?></button>
     <?php endif; ?>
     <button class="ctab"   id="ctab-categorias"  onclick="cTab('categorias',this)">Categorías</button>
@@ -579,7 +579,7 @@ ob_start();
 
 </div><!-- /ctab-panel-ventas -->
 
-<?php if ($permite_null): ?>
+<?php if ($permite_null && $es_business): ?>
 <!-- ══ TAB: GASTOS GENERALES ══ -->
 <div class="tab-panel" id="ctab-panel-generales">
 
@@ -853,9 +853,13 @@ ob_start();
   <div class="sh-body">
     <input type="hidden" id="shCostoId" value="">
     <div class="sh-field">
-      <div class="sh-lbl">Venta (dejar vacío para gasto general)</div>
+      <div class="sh-lbl">Venta <?= $es_business ? '(dejar vacío para gasto general)' : '<span style="color:var(--danger)">*</span>' ?></div>
       <select class="sh-select" id="shCostoVenta">
+        <?php if ($es_business): ?>
         <option value="">— Gasto general (sin venta) —</option>
+        <?php else: ?>
+        <option value="">Seleccionar venta…</option>
+        <?php endif; ?>
         <?php foreach ($ventas_raw as $vc): ?>
         <option value="<?= (int)$vc['id'] ?>"><?= e($vc['numero']) ?> · <?= e(mb_substr($vc['titulo'],0,40)) ?> — <?= e($vc['cliente_nombre']??'') ?></option>
         <?php endforeach; ?>
@@ -1007,8 +1011,9 @@ async function guardarCosto() {
     const importe  = parseFloat(document.getElementById('shCostoImporte').value);
     const fecha    = document.getElementById('shCostoFecha').value;
     const nota     = document.getElementById('shCostoNota').value.trim();
-    if (!cat_id || !concepto || !importe || importe <= 0) {
-        alert('Completa los campos obligatorios (categoría, concepto, importe).'); return;
+    const ES_BUSINESS = <?= $es_business ? 'true' : 'false' ?>;
+    if ((!ES_BUSINESS && !venta_id) || !cat_id || !concepto || !importe || importe <= 0) {
+        alert('Completa los campos obligatorios.'); return;
     }
     const url = id ? '/costos/gasto/'+id : '/costos/gasto';
     const prov_id = HAS_PROV_IDX ? parseInt(document.getElementById('shCostoProv')?.value) || 0 : 0;
