@@ -70,11 +70,15 @@
 - Cuenta de prueba para Apple Review: `review@cotiza.cloud` / `Review2026!`
   - Script: `migrations/create_review_user.php` (ejecutar en servidor antes de que Apple revise)
   - Crea empresa "Apple Review Demo" (slug: `apple-review`) con cliente y cotización de ejemplo
-- **App enviada a revisión el 20 marzo 2026** — esperando respuesta de Apple (24-48 hrs)
+- **App enviada a revisión el 20 marzo 2026**
+- Build 1 rechazado (2.1.0 App Completeness) — crash en iPad Air al tomar foto
+- `ITSAppUsesNonExemptEncryption = NO` agregado al Info.plist (Build 2)
+- `NSCameraUsageDescription` y `NSPhotoLibraryUsageDescription` agregados al Info.plist (Build 2)
+- Fix crash iPad: `CAPBridgeViewController` envuelto en `UINavigationController` en `AppDelegate.swift` (Capacitor issue #7106)
+- Build 2 (v1.0 build 2) subido a App Store Connect
 
 ### Pendiente
-1. Esperar aprobación de Apple (o corregir si rechazan)
-2. Agregar `ITSAppUsesNonExemptEncryption = NO` al Info.plist para evitar pregunta de compliance en futuros builds
+1. Reenviar Build 2 a revisión de Apple (pendiente de usuario)
 3. Probar push notifications en dispositivo real
 4. Cambiar `aps-environment` en `App.entitlements` de `development` a `production`
 5. Android: carpeta `android/` ya existe, falta probar y publicar en Google Play
