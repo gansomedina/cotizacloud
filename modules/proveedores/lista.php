@@ -13,6 +13,9 @@ $empresa    = Auth::empresa();
 $plan = trial_info($empresa_id);
 if (!$plan['es_business']) { redirect('/costos'); }
 
+// Permiso de módulo por usuario
+if (!Auth::es_admin() && !Auth::puede('ver_proveedores')) { redirect('/dashboard'); }
+
 // ── Auto-migración tabla proveedores ────────────────────────
 $tabla_existe = DB::val(
     "SELECT 1 FROM information_schema.TABLES

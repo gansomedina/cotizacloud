@@ -15,7 +15,7 @@ $gasto_id   = isset($id) ? (int)$id : 0;  // :id del router si es edición
 $body = json_decode(file_get_contents('php://input'), true);
 if (!$body) { echo json_encode(['ok'=>false,'error'=>'Payload inválido']); exit; }
 
-$venta_id     = (int)($body['venta_id']     ?? 0);
+$venta_id     = (int)($body['venta_id']     ?? 0) ?: null;
 $categoria_id = (int)($body['categoria_id'] ?? 0);
 $concepto     = trim($body['concepto']      ?? '');
 $importe      = (float)($body['importe']    ?? 0);
@@ -29,19 +29,21 @@ $has_prov_col = DB::val(
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'gastos_venta' AND COLUMN_NAME = 'proveedor_id' LIMIT 1"
 );
 
-// Validaciones
-if (!$venta_id || !$categoria_id || $concepto === '' || $importe <= 0) {
+// Validaciones — venta_id es opcional (gastos generales no tienen venta)
+if (!$categoria_id || $concepto === '' || $importe <= 0) {
     echo json_encode(['ok'=>false,'error'=>'Faltan campos obligatorios']); exit;
 }
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
     $fecha = date('Y-m-d');
 }
 
-// Verificar que la venta pertenece a la empresa (y al usuario si no es admin)
-$venta = DB::row("SELECT id, usuario_id, vendedor_id FROM ventas WHERE id=? AND empresa_id=? AND estado != 'cancelada'", [$venta_id, $empresa_id]);
-if (!$venta) { echo json_encode(['ok'=>false,'error'=>'Venta no encontrada']); exit; }
-if (!Auth::es_admin() && !Auth::puede('ver_todas_ventas') && (int)$venta['usuario_id'] !== Auth::id() && (int)($venta['vendedor_id'] ?? 0) !== Auth::id()) {
-    echo json_encode(['ok'=>false,'error'=>'Sin permiso']); exit;
+// Verificar venta si se proporcionó
+if ($venta_id) {
+    $venta = DB::row("SELECT id, usuario_id, vendedor_id FROM ventas WHERE id=? AND empresa_id=? AND estado != 'cancelada'", [$venta_id, $empresa_id]);
+    if (!$venta) { echo json_encode(['ok'=>false,'error'=>'Venta no encontrada']); exit; }
+    if (!Auth::es_admin() && !Auth::puede('ver_todas_ventas') && (int)$venta['usuario_id'] !== Auth::id() && (int)($venta['vendedor_id'] ?? 0) !== Auth::id()) {
+        echo json_encode(['ok'=>false,'error'=>'Sin permiso']); exit;
+    }
 }
 
 // Verificar categoría

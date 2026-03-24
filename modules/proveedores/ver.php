@@ -14,6 +14,9 @@ $proveedor_id = (int)($id ?? 0);
 $plan = trial_info($empresa_id);
 if (!$plan['es_business']) { redirect('/costos'); }
 
+// Permiso de módulo por usuario
+if (!Auth::es_admin() && !Auth::puede('ver_proveedores')) { redirect('/dashboard'); }
+
 if (!$proveedor_id) redirect('/proveedores');
 
 $prov = DB::row(

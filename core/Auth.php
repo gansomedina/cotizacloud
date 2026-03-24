@@ -278,6 +278,8 @@ class Auth
             'cancelar_recibos',
             'capturar_pagos',
             'asignar_cotizaciones',
+            'ver_costos',
+            'ver_proveedores',
         ];
 
         if (!in_array($permiso, $permisos_validos)) return false;

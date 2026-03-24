@@ -207,6 +207,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 .ubadge-admin{background:#ede9fe;color:#6d28d9}
 .ubadge-asesor{background:var(--slate-bg);color:var(--slate)}
 .ubadge-perm{background:var(--g-bg);color:var(--g)}
+.ubadge-off{background:var(--danger-bg);color:var(--danger)}
 .ubadge-off{background:#fff7ed;color:#9a3412}
 .usr-meta{flex-shrink:0;text-align:right}
 
@@ -739,7 +740,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
       $es_admin = $usr['rol'] === 'admin';
       $usr_score = $scores_equipo[(int)$usr['id']] ?? null;
     ?>
-    <div class="usr-row" onclick='editarUsuario(<?= (int)$usr["id"] ?>, <?= htmlspecialchars(json_encode(["nombre"=>$usr["nombre"],"usuario"=>$usr["usuario"],"email"=>$usr["email"]??'',"rol"=>$usr["rol"],"activo"=>$usr["activo"],"puede_editar_precios"=>$usr["puede_editar_precios"],"puede_aplicar_descuentos"=>$usr["puede_aplicar_descuentos"],"puede_ver_todas_cots"=>$usr["puede_ver_todas_cots"],"puede_ver_todas_ventas"=>$usr["puede_ver_todas_ventas"],"puede_eliminar_items_venta"=>$usr["puede_eliminar_items_venta"],"puede_cancelar_recibos"=>$usr["puede_cancelar_recibos"],"puede_capturar_pagos"=>$usr["puede_capturar_pagos"]??0,"puede_asignar_cotizaciones"=>$usr["puede_asignar_cotizaciones"]??0]), ENT_QUOTES) ?>)'>
+    <div class="usr-row" onclick='editarUsuario(<?= (int)$usr["id"] ?>, <?= htmlspecialchars(json_encode(["nombre"=>$usr["nombre"],"usuario"=>$usr["usuario"],"email"=>$usr["email"]??'',"rol"=>$usr["rol"],"activo"=>$usr["activo"],"puede_editar_precios"=>$usr["puede_editar_precios"],"puede_aplicar_descuentos"=>$usr["puede_aplicar_descuentos"],"puede_ver_todas_cots"=>$usr["puede_ver_todas_cots"],"puede_ver_todas_ventas"=>$usr["puede_ver_todas_ventas"],"puede_eliminar_items_venta"=>$usr["puede_eliminar_items_venta"],"puede_cancelar_recibos"=>$usr["puede_cancelar_recibos"],"puede_capturar_pagos"=>$usr["puede_capturar_pagos"]??0,"puede_asignar_cotizaciones"=>$usr["puede_asignar_cotizaciones"]??0,"puede_ver_costos"=>$usr["puede_ver_costos"]??1,"puede_ver_proveedores"=>$usr["puede_ver_proveedores"]??1]), ENT_QUOTES) ?>)'>
       <div class="usr-av <?= $es_admin?'':'asesor' ?> <?= !$usr['activo']?'inactivo':'' ?>">
         <?= e($ini) ?>
       </div>
@@ -756,6 +757,8 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <?php if ($usr['puede_ver_todas_cots']): ?><span class="ubadge ubadge-perm">Ve todas las cots</span><?php endif; ?>
           <?php if (!empty($usr['puede_capturar_pagos'])): ?><span class="ubadge ubadge-perm">Captura pagos</span><?php endif; ?>
           <?php if (!empty($usr['puede_asignar_cotizaciones'])): ?><span class="ubadge ubadge-perm">Asigna cots</span><?php endif; ?>
+          <?php if (empty($usr['puede_ver_costos'] ?? 1)): ?><span class="ubadge ubadge-off">Sin costos</span><?php endif; ?>
+          <?php if (empty($usr['puede_ver_proveedores'] ?? 1)): ?><span class="ubadge ubadge-off">Sin proveedores</span><?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
@@ -1140,9 +1143,20 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <div><div class="perm-lbl">Capturar pagos / abonos</div><div class="perm-sub">Registrar abonos a ventas</div></div>
           <label class="toggle"><input type="checkbox" id="perm_capturar_pagos"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
-        <div class="perm-row" style="border-bottom:none">
+        <div class="perm-row">
           <div><div class="perm-lbl">Asignar cotizaciones</div><div class="perm-sub">Asignar cotizaciones a otros vendedores</div></div>
           <label class="toggle"><input type="checkbox" id="perm_asignar_cotizaciones"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+      </div>
+      <div class="sh-field">
+        <div class="sh-lbl" style="margin-bottom:10px">Acceso a módulos</div>
+        <div class="perm-row">
+          <div><div class="perm-lbl">Costos</div><div class="perm-sub">Ver costos, registrar gastos, análisis</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_ver_costos" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row" style="border-bottom:none">
+          <div><div class="perm-lbl">Proveedores</div><div class="perm-sub">Ver y gestionar proveedores</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_ver_proveedores" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
       </div>
     </div>
@@ -1502,6 +1516,8 @@ function nuevoUsuario() {
     document.getElementById('perm_cancelar_recibos').checked= false;
     document.getElementById('perm_capturar_pagos').checked = false;
     document.getElementById('perm_asignar_cotizaciones').checked = false;
+    document.getElementById('perm_ver_costos').checked = true;
+    document.getElementById('perm_ver_proveedores').checked = true;
     openSheet('shUsr');
 }
 function editarUsuario(id, data) {
@@ -1522,6 +1538,8 @@ function editarUsuario(id, data) {
     document.getElementById('perm_cancelar_recibos').checked= !!parseInt(data.puede_cancelar_recibos);
     document.getElementById('perm_capturar_pagos').checked = !!parseInt(data.puede_capturar_pagos);
     document.getElementById('perm_asignar_cotizaciones').checked = !!parseInt(data.puede_asignar_cotizaciones);
+    document.getElementById('perm_ver_costos').checked = !!parseInt(data.puede_ver_costos ?? 1);
+    document.getElementById('perm_ver_proveedores').checked = !!parseInt(data.puede_ver_proveedores ?? 1);
     togglePerms(data.rol);
     openSheet('shUsr');
 }
@@ -1549,6 +1567,8 @@ async function guardarUsuario() {
         puede_cancelar_recibos:      document.getElementById('perm_cancelar_recibos').checked ? 1 : 0,
         puede_capturar_pagos:        document.getElementById('perm_capturar_pagos').checked ? 1 : 0,
         puede_asignar_cotizaciones:  document.getElementById('perm_asignar_cotizaciones').checked ? 1 : 0,
+        puede_ver_costos:            document.getElementById('perm_ver_costos').checked ? 1 : 0,
+        puede_ver_proveedores:       document.getElementById('perm_ver_proveedores').checked ? 1 : 0,
     };
     if (pass) payload.password = pass;
     const url = id ? '/config/usuario/' + id : '/config/usuario';

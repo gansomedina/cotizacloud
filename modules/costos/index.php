@@ -6,6 +6,9 @@
 
 defined('COTIZAAPP') or die;
 
+// Permiso de módulo
+if (!Auth::es_admin() && !Auth::puede('ver_costos')) { redirect('/dashboard'); }
+
 $empresa_id = EMPRESA_ID;
 $es_admin   = Auth::es_admin();
 $solo_mias  = !$es_admin && !Auth::puede('ver_todas_ventas');
@@ -217,6 +220,30 @@ if ($es_business) {
     }
 }
 
+// ─── Gastos generales (sin venta asociada) ─────────────────
+// Check if venta_id allows NULL
+$permite_null = DB::val(
+    "SELECT IS_NULLABLE FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gastos_venta' AND COLUMN_NAME='venta_id' LIMIT 1"
+) === 'YES';
+
+$gastos_generales = [];
+$total_generales  = 0;
+if ($permite_null) {
+    $gastos_generales = DB::query(
+        "SELECT gv.*, cc.nombre AS cat_nombre, cc.color AS cat_color" .
+        ($has_prov_col ?? false ? ", p.nombre AS prov_nombre" : "") .
+        " FROM gastos_venta gv
+         LEFT JOIN categorias_costos cc ON cc.id = gv.categoria_id" .
+        ($has_prov_col ?? false ? " LEFT JOIN proveedores p ON p.id = gv.proveedor_id" : "") .
+        " WHERE gv.empresa_id = ? AND gv.venta_id IS NULL
+         ORDER BY gv.fecha DESC, gv.id DESC
+         LIMIT 100",
+        [$empresa_id]
+    );
+    $total_generales = array_sum(array_column($gastos_generales, 'importe'));
+}
+
 // ─── Helpers ────────────────────────────────────────────────
 function ini_c(string $n): string {
     $p = array_filter(explode(' ', $n));
@@ -407,6 +434,9 @@ ob_start();
 <div class="page-toolbar">
   <div class="tab-bar">
     <button class="ctab on" id="ctab-ventas"     onclick="cTab('ventas',this)">Costos por venta</button>
+    <?php if ($permite_null): ?>
+    <button class="ctab"   id="ctab-generales"   onclick="cTab('generales',this)">Gastos generales<?php if ($total_generales > 0): ?> <span style="font:600 11px var(--num);color:var(--danger);margin-left:2px"><?= fmt_c_short($total_generales) ?></span><?php endif; ?></button>
+    <?php endif; ?>
     <button class="ctab"   id="ctab-categorias"  onclick="cTab('categorias',this)">Categorías</button>
     <?php if ($es_business): ?>
     <button class="ctab"   id="ctab-analisis"    onclick="cTab('analisis',this)">Análisis</button>
@@ -548,6 +578,79 @@ ob_start();
   <?php endif; ?>
 
 </div><!-- /ctab-panel-ventas -->
+
+<?php if ($permite_null): ?>
+<!-- ══ TAB: GASTOS GENERALES ══ -->
+<div class="tab-panel" id="ctab-panel-generales">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <p style="font:400 13px var(--body);color:var(--t3);line-height:1.6">
+      Gastos que no están asociados a una venta específica: renta, nómina, servicios, seguros, etc.
+    </p>
+    <button class="new-btn" onclick="abrirGastoGeneral()" style="flex-shrink:0">+ Gasto general</button>
+  </div>
+
+  <?php if ($total_generales > 0): ?>
+  <div class="kpi-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:14px">
+    <div class="kpi-card">
+      <div class="kpi-lbl">Total gastos generales</div>
+      <div class="kpi-val red"><?= fmt_c($total_generales) ?></div>
+      <div class="kpi-sub"><?= count($gastos_generales) ?> gasto<?= count($gastos_generales) != 1 ? 's' : '' ?></div>
+    </div>
+    <?php if ($kpi_global_ventas > 0): ?>
+    <div class="kpi-card">
+      <div class="kpi-lbl">% sobre ventas totales</div>
+      <div class="kpi-val amber"><?= round(($total_generales / $kpi_global_ventas) * 100, 1) ?>%</div>
+      <div class="kpi-sub">de <?= fmt_c_short($kpi_global_ventas) ?> en ventas</div>
+    </div>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
+
+  <div class="list-card">
+    <?php if (empty($gastos_generales)): ?>
+    <div class="empty-state">
+      <div class="empty-ico" style="font-size:28px">📋</div>
+      <div class="empty-tit">Sin gastos generales</div>
+      <div class="empty-sub">Registra gastos fijos como renta, nómina, servicios, seguros, etc.</div>
+    </div>
+    <?php else: ?>
+    <div class="tbl-header" style="grid-template-columns:10px minmax(0,2fr) 130px 100px 90px 70px">
+      <span></span>
+      <span>Concepto</span>
+      <span>Categoría</span>
+      <span>Fecha</span>
+      <span style="text-align:right">Importe</span>
+      <span></span>
+    </div>
+    <?php foreach ($gastos_generales as $gg):
+      $gg_color = preg_match('/^#[0-9a-f]{3,6}$/i', $gg['cat_color'] ?? '') ? $gg['cat_color'] : '#94a3b8';
+      $gg_fecha = $gg['fecha'] ? date('j M Y', strtotime($gg['fecha'])) : '—';
+    ?>
+    <div class="cost-row" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border)">
+      <div style="width:8px;height:8px;border-radius:4px;flex-shrink:0;background:<?= $gg_color ?>"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 13px var(--body)"><?= e($gg['concepto']) ?></div>
+        <div style="font:400 11px var(--num);color:var(--t3);margin-top:2px">
+          <?= e($gg['cat_nombre'] ?? '—') ?>
+          <?php if (!empty($gg['prov_nombre'])): ?> · <?= e($gg['prov_nombre']) ?><?php endif; ?>
+          · <?= $gg_fecha ?>
+        </div>
+      </div>
+      <div style="font:600 14px var(--num);color:var(--danger);flex-shrink:0;white-space:nowrap"><?= fmt_c((float)$gg['importe']) ?></div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--t3)"
+                onclick='editarGastoGeneral(<?= (int)$gg["id"] ?>, <?= htmlspecialchars(json_encode(["categoria_id"=>(int)$gg["categoria_id"],"proveedor_id"=>(int)($gg["proveedor_id"]??0),"concepto"=>$gg["concepto"],"importe"=>$gg["importe"],"fecha"=>$gg["fecha"],"nota"=>$gg["nota"]??""]), ENT_QUOTES) ?>)'>✎</button>
+        <button style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--t3)"
+                onclick="eliminarGastoGeneral(<?= (int)$gg['id'] ?>, this)">✕</button>
+      </div>
+    </div>
+    <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
+
+</div><!-- /ctab-panel-generales -->
+<?php endif; ?>
 
 <!-- ══ TAB: CATEGORÍAS ══ -->
 <div class="tab-panel" id="ctab-panel-categorias">
@@ -750,9 +853,9 @@ ob_start();
   <div class="sh-body">
     <input type="hidden" id="shCostoId" value="">
     <div class="sh-field">
-      <div class="sh-lbl">Venta <span style="color:var(--danger)">*</span></div>
+      <div class="sh-lbl">Venta (dejar vacío para gasto general)</div>
       <select class="sh-select" id="shCostoVenta">
-        <option value="">Seleccionar venta…</option>
+        <option value="">— Gasto general (sin venta) —</option>
         <?php foreach ($ventas_raw as $vc): ?>
         <option value="<?= (int)$vc['id'] ?>"><?= e($vc['numero']) ?> · <?= e(mb_substr($vc['titulo'],0,40)) ?> — <?= e($vc['cliente_nombre']??'') ?></option>
         <?php endforeach; ?>
@@ -904,8 +1007,8 @@ async function guardarCosto() {
     const importe  = parseFloat(document.getElementById('shCostoImporte').value);
     const fecha    = document.getElementById('shCostoFecha').value;
     const nota     = document.getElementById('shCostoNota').value.trim();
-    if (!venta_id || !cat_id || !concepto || !importe || importe <= 0) {
-        alert('Completa todos los campos obligatorios.'); return;
+    if (!cat_id || !concepto || !importe || importe <= 0) {
+        alert('Completa los campos obligatorios (categoría, concepto, importe).'); return;
     }
     const url = id ? '/costos/gasto/'+id : '/costos/gasto';
     const prov_id = HAS_PROV_IDX ? parseInt(document.getElementById('shCostoProv')?.value) || 0 : 0;
@@ -960,6 +1063,38 @@ function buscar(q) {
         u.searchParams.set('q', q);
         location.href = u.toString();
     }, 320);
+}
+
+// ── Gastos generales ─────────────────────────────────────
+function abrirGastoGeneral() {
+    document.getElementById('shCostoId').value = '';
+    document.getElementById('shCostoTitulo').textContent = 'Gasto general';
+    document.getElementById('shCostoConcepto').value = '';
+    document.getElementById('shCostoImporte').value  = '';
+    document.getElementById('shCostoNota').value     = '';
+    document.getElementById('shCostoFecha').value    = '<?= date('Y-m-d') ?>';
+    document.getElementById('shCostoVenta').value    = '';  // sin venta
+    document.getElementById('shCostoCat').value      = '';
+    if (HAS_PROV_IDX) document.getElementById('shCostoProv').value = '';
+    abrirSheet('shCosto');
+}
+function editarGastoGeneral(id, data) {
+    document.getElementById('shCostoId').value = id;
+    document.getElementById('shCostoTitulo').textContent = 'Editar gasto general';
+    document.getElementById('shCostoVenta').value    = '';
+    document.getElementById('shCostoCat').value      = data.categoria_id;
+    if (HAS_PROV_IDX) document.getElementById('shCostoProv').value = data.proveedor_id || '';
+    document.getElementById('shCostoConcepto').value = data.concepto;
+    document.getElementById('shCostoImporte').value  = data.importe;
+    document.getElementById('shCostoFecha').value    = data.fecha;
+    document.getElementById('shCostoNota').value     = data.nota || '';
+    abrirSheet('shCosto');
+}
+async function eliminarGastoGeneral(id, el) {
+    if (!confirm('¿Eliminar este gasto?')) return;
+    const d = await api('/costos/gasto/'+id+'/eliminar');
+    if (d.ok) location.reload();
+    else alert(d.error || 'Error.');
 }
 
 // ── Responsive ───────────────────────────────────────────

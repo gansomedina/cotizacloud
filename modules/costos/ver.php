@@ -6,6 +6,9 @@
 
 defined('COTIZAAPP') or die;
 
+// Permiso de módulo
+if (!Auth::es_admin() && !Auth::puede('ver_costos')) { redirect('/dashboard'); }
+
 $venta_id   = (int)($id ?? 0);
 $empresa_id = EMPRESA_ID;
 
