@@ -439,12 +439,13 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <?php
           $theme_actual = $empresa['cot_theme'] ?? 'verde';
           $theme_opts = [
-              'verde'  => ['#1a6b3c','Verde'],
-              'azul'   => ['#1d4ed8','Azul'],
-              'rojo'   => ['#b91c1c','Rojo'],
-              'dorado' => ['#92400e','Dorado'],
-              'morado' => ['#6d28d9','Morado'],
-              'oscuro' => ['#1e293b','Oscuro'],
+              'verde'   => ['#1a6b3c','Verde'],
+              'azul'    => ['#1d4ed8','Azul'],
+              'rojo'    => ['#b91c1c','Rojo'],
+              'naranja' => ['#d97706','Naranja'],
+              'dorado'  => ['#92400e','Dorado'],
+              'morado'  => ['#6d28d9','Morado'],
+              'oscuro'  => ['#1e293b','Oscuro'],
           ];
           foreach ($theme_opts as $key => [$color, $label]):
           ?>
