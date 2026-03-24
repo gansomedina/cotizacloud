@@ -7,7 +7,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Wrap CAPBridgeViewController in UINavigationController to fix iPad
+        // camera/file-picker popover crash (Capacitor issue #7106).
+        if let window = self.window,
+           let rootVC = window.rootViewController {
+            let nav = UINavigationController(rootViewController: rootVC)
+            nav.isNavigationBarHidden = true
+            window.rootViewController = nav
+        }
         return true
     }
 
