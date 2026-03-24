@@ -6,6 +6,9 @@
 
 defined('COTIZAAPP') or die;
 
+// Permiso de módulo
+if (!Auth::es_admin() && !Auth::puede('ver_costos')) { redirect('/dashboard'); }
+
 $empresa_id = EMPRESA_ID;
 $es_admin   = Auth::es_admin();
 $solo_mias  = !$es_admin && !Auth::puede('ver_todas_ventas');
@@ -134,6 +137,112 @@ $ant_margen  = $ant_ventas > 0
 // Para tabla seguimos usando todos (sin filtro de fecha)
 $kpi_global_ventas = array_sum(array_column($ventas_raw, 'total'));
 $kpi_global_costos = array_sum(array_column($ventas_raw, 'total_costos'));
+
+// ─── Análisis avanzado (Business) ──────────────────────────
+$plan_costos = trial_info($empresa_id);
+$es_business = $plan_costos['es_business'];
+
+$analisis_por_cat    = [];
+$analisis_por_prov   = [];
+$analisis_tendencia  = [];
+
+if ($es_business) {
+    // Costos por categoría con margen
+    $analisis_por_cat = DB::query(
+        "SELECT cc.id, cc.nombre, cc.color,
+                COUNT(gv.id) AS num_gastos,
+                COALESCE(SUM(gv.importe), 0) AS total_cat
+         FROM categorias_costos cc
+         LEFT JOIN gastos_venta gv ON gv.categoria_id = cc.id AND gv.empresa_id = cc.empresa_id
+         WHERE cc.empresa_id = ? AND cc.activa = 1
+         GROUP BY cc.id
+         HAVING total_cat > 0
+         ORDER BY total_cat DESC",
+        [$empresa_id]
+    );
+
+    // Top proveedores
+    $has_prov_col = DB::val(
+        "SELECT 1 FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gastos_venta' AND COLUMN_NAME='proveedor_id' LIMIT 1"
+    );
+    $has_prov_table = DB::val(
+        "SELECT 1 FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='proveedores' LIMIT 1"
+    );
+    if ($has_prov_col && $has_prov_table) {
+        $analisis_por_prov = DB::query(
+            "SELECT p.id, p.nombre,
+                    COUNT(gv.id) AS num_gastos,
+                    COALESCE(SUM(gv.importe), 0) AS total_prov
+             FROM proveedores p
+             INNER JOIN gastos_venta gv ON gv.proveedor_id = p.id AND gv.empresa_id = p.empresa_id
+             WHERE p.empresa_id = ? AND p.activo = 1
+             GROUP BY p.id
+             ORDER BY total_prov DESC
+             LIMIT 10",
+            [$empresa_id]
+        );
+    }
+
+    // Tendencia últimos 6 meses
+    $analisis_tendencia = DB::query(
+        "SELECT DATE_FORMAT(gv.fecha, '%Y-%m') AS mes,
+                COALESCE(SUM(gv.importe), 0) AS total_costos,
+                COALESCE(SUM(v.total), 0) AS total_ventas_raw
+         FROM gastos_venta gv
+         LEFT JOIN ventas v ON v.id = gv.venta_id
+         WHERE gv.empresa_id = ? AND gv.fecha >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+         GROUP BY mes
+         ORDER BY mes ASC",
+        [$empresa_id]
+    );
+    // Also get ventas totals per month for proper margin calc
+    $ventas_por_mes = DB::query(
+        "SELECT DATE_FORMAT(v.created_at, '%Y-%m') AS mes,
+                COALESCE(SUM(v.total), 0) AS total_ventas
+         FROM ventas v
+         WHERE v.empresa_id = ? AND v.estado != 'cancelada'
+               AND v.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+         GROUP BY mes
+         ORDER BY mes ASC",
+        [$empresa_id]
+    );
+    $ventas_mes_map = array_column($ventas_por_mes, 'total_ventas', 'mes');
+
+    // Proveedores for sheet selector
+    $proveedores_lista = [];
+    if ($has_prov_table) {
+        $proveedores_lista = DB::query(
+            "SELECT id, nombre FROM proveedores WHERE empresa_id=? AND activo=1 ORDER BY nombre",
+            [$empresa_id]
+        );
+    }
+}
+
+// ─── Gastos generales (sin venta asociada) ─────────────────
+// Check if venta_id allows NULL
+$permite_null = DB::val(
+    "SELECT IS_NULLABLE FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='gastos_venta' AND COLUMN_NAME='venta_id' LIMIT 1"
+) === 'YES';
+
+$gastos_generales = [];
+$total_generales  = 0;
+if ($permite_null && $es_business) {
+    $gastos_generales = DB::query(
+        "SELECT gv.*, cc.nombre AS cat_nombre, cc.color AS cat_color" .
+        ($has_prov_col ?? false ? ", p.nombre AS prov_nombre" : "") .
+        " FROM gastos_venta gv
+         LEFT JOIN categorias_costos cc ON cc.id = gv.categoria_id" .
+        ($has_prov_col ?? false ? " LEFT JOIN proveedores p ON p.id = gv.proveedor_id" : "") .
+        " WHERE gv.empresa_id = ? AND gv.venta_id IS NULL
+         ORDER BY gv.fecha DESC, gv.id DESC
+         LIMIT 100",
+        [$empresa_id]
+    );
+    $total_generales = array_sum(array_column($gastos_generales, 'importe'));
+}
 
 // ─── Helpers ────────────────────────────────────────────────
 function ini_c(string $n): string {
@@ -303,6 +412,11 @@ ob_start();
 .sh-btn-save{flex:1;padding:13px;border-radius:var(--r-sm);border:none;background:var(--g);font:700 14px var(--body);color:#fff;cursor:pointer}
 .sh-btn-cancel{padding:13px 18px;border-radius:var(--r-sm);border:1px solid var(--border);background:transparent;font:600 14px var(--body);color:var(--t2);cursor:pointer}
 
+/* Análisis */
+.slabel{font:700 11px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t2);margin:20px 0 10px;display:flex;align-items:center;gap:10px}
+.slabel::after{content:'';flex:1;height:1.5px;background:var(--border)}
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+
 /* Vacío */
 .empty-state{text-align:center;padding:40px 20px}
 .empty-ico{font-size:36px;margin-bottom:10px}
@@ -320,7 +434,13 @@ ob_start();
 <div class="page-toolbar">
   <div class="tab-bar">
     <button class="ctab on" id="ctab-ventas"     onclick="cTab('ventas',this)">Costos por venta</button>
+    <?php if ($permite_null && $es_business): ?>
+    <button class="ctab"   id="ctab-generales"   onclick="cTab('generales',this)">Gastos generales<?php if ($total_generales > 0): ?> <span style="font:600 11px var(--num);color:var(--danger);margin-left:2px"><?= fmt_c_short($total_generales) ?></span><?php endif; ?></button>
+    <?php endif; ?>
     <button class="ctab"   id="ctab-categorias"  onclick="cTab('categorias',this)">Categorías</button>
+    <?php if ($es_business): ?>
+    <button class="ctab"   id="ctab-analisis"    onclick="cTab('analisis',this)">Análisis</button>
+    <?php endif; ?>
   </div>
   <button class="new-btn" onclick="abrirCosto()">+ Registrar costo</button>
 </div>
@@ -459,6 +579,79 @@ ob_start();
 
 </div><!-- /ctab-panel-ventas -->
 
+<?php if ($permite_null && $es_business): ?>
+<!-- ══ TAB: GASTOS GENERALES ══ -->
+<div class="tab-panel" id="ctab-panel-generales">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <p style="font:400 13px var(--body);color:var(--t3);line-height:1.6">
+      Gastos que no están asociados a una venta específica: renta, nómina, servicios, seguros, etc.
+    </p>
+    <button class="new-btn" onclick="abrirGastoGeneral()" style="flex-shrink:0">+ Gasto general</button>
+  </div>
+
+  <?php if ($total_generales > 0): ?>
+  <div class="kpi-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:14px">
+    <div class="kpi-card">
+      <div class="kpi-lbl">Total gastos generales</div>
+      <div class="kpi-val red"><?= fmt_c($total_generales) ?></div>
+      <div class="kpi-sub"><?= count($gastos_generales) ?> gasto<?= count($gastos_generales) != 1 ? 's' : '' ?></div>
+    </div>
+    <?php if ($kpi_global_ventas > 0): ?>
+    <div class="kpi-card">
+      <div class="kpi-lbl">% sobre ventas totales</div>
+      <div class="kpi-val amber"><?= round(($total_generales / $kpi_global_ventas) * 100, 1) ?>%</div>
+      <div class="kpi-sub">de <?= fmt_c_short($kpi_global_ventas) ?> en ventas</div>
+    </div>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
+
+  <div class="list-card">
+    <?php if (empty($gastos_generales)): ?>
+    <div class="empty-state">
+      <div class="empty-ico" style="font-size:28px">📋</div>
+      <div class="empty-tit">Sin gastos generales</div>
+      <div class="empty-sub">Registra gastos fijos como renta, nómina, servicios, seguros, etc.</div>
+    </div>
+    <?php else: ?>
+    <div class="tbl-header" style="grid-template-columns:10px minmax(0,2fr) 130px 100px 90px 70px">
+      <span></span>
+      <span>Concepto</span>
+      <span>Categoría</span>
+      <span>Fecha</span>
+      <span style="text-align:right">Importe</span>
+      <span></span>
+    </div>
+    <?php foreach ($gastos_generales as $gg):
+      $gg_color = preg_match('/^#[0-9a-f]{3,6}$/i', $gg['cat_color'] ?? '') ? $gg['cat_color'] : '#94a3b8';
+      $gg_fecha = $gg['fecha'] ? date('j M Y', strtotime($gg['fecha'])) : '—';
+    ?>
+    <div class="cost-row" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border)">
+      <div style="width:8px;height:8px;border-radius:4px;flex-shrink:0;background:<?= $gg_color ?>"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 13px var(--body)"><?= e($gg['concepto']) ?></div>
+        <div style="font:400 11px var(--num);color:var(--t3);margin-top:2px">
+          <?= e($gg['cat_nombre'] ?? '—') ?>
+          <?php if (!empty($gg['prov_nombre'])): ?> · <?= e($gg['prov_nombre']) ?><?php endif; ?>
+          · <?= $gg_fecha ?>
+        </div>
+      </div>
+      <div style="font:600 14px var(--num);color:var(--danger);flex-shrink:0;white-space:nowrap"><?= fmt_c((float)$gg['importe']) ?></div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--t3)"
+                onclick='editarGastoGeneral(<?= (int)$gg["id"] ?>, <?= htmlspecialchars(json_encode(["categoria_id"=>(int)$gg["categoria_id"],"proveedor_id"=>(int)($gg["proveedor_id"]??0),"concepto"=>$gg["concepto"],"importe"=>$gg["importe"],"fecha"=>$gg["fecha"],"nota"=>$gg["nota"]??""]), ENT_QUOTES) ?>)'>✎</button>
+        <button style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--t3)"
+                onclick="eliminarGastoGeneral(<?= (int)$gg['id'] ?>, this)">✕</button>
+      </div>
+    </div>
+    <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
+
+</div><!-- /ctab-panel-generales -->
+<?php endif; ?>
+
 <!-- ══ TAB: CATEGORÍAS ══ -->
 <div class="tab-panel" id="ctab-panel-categorias">
 
@@ -499,6 +692,156 @@ ob_start();
 </div><!-- /ctab-panel-categorias -->
 
 
+<?php if ($es_business): ?>
+<!-- ══ TAB: ANÁLISIS (Business) ══ -->
+<div class="tab-panel" id="ctab-panel-analisis">
+
+  <!-- ── Costos por categoría ──────────────────────────────── -->
+  <div class="slabel" style="margin-top:4px">Costos por categoría</div>
+  <?php if (empty($analisis_por_cat)): ?>
+  <div class="card" style="padding:30px 20px;text-align:center;color:var(--t3);font:400 13px var(--body)">
+    Sin costos registrados aún.
+  </div>
+  <?php else: ?>
+  <?php
+    $total_all_cats = array_sum(array_column($analisis_por_cat, 'total_cat'));
+    $max_cat = max(array_column($analisis_por_cat, 'total_cat'));
+  ?>
+  <div class="card">
+    <?php foreach ($analisis_por_cat as $ac):
+      $pct_cat = $total_all_cats > 0 ? round(($ac['total_cat'] / $total_all_cats) * 100, 1) : 0;
+      $bar_w   = $max_cat > 0 ? round(($ac['total_cat'] / $max_cat) * 100) : 0;
+      $c_hex   = preg_match('/^#[0-9a-f]{3,6}$/i', $ac['color']) ? $ac['color'] : '#94a3b8';
+    ?>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="width:10px;height:10px;border-radius:5px;flex-shrink:0;background:<?= $c_hex ?>"></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font:600 13px var(--body)"><?= e($ac['nombre']) ?></span>
+          <span style="font:600 14px var(--num);color:var(--danger)"><?= fmt_c((float)$ac['total_cat']) ?></span>
+        </div>
+        <div style="height:6px;border-radius:3px;background:var(--border);overflow:hidden">
+          <div style="height:100%;border-radius:3px;background:<?= $c_hex ?>;width:<?= $bar_w ?>%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:3px">
+          <span style="font:400 11px var(--num);color:var(--t3)"><?= (int)$ac['num_gastos'] ?> gasto<?= $ac['num_gastos'] != 1 ? 's' : '' ?></span>
+          <span style="font:600 11px var(--num);color:var(--t3)"><?= $pct_cat ?>%</span>
+        </div>
+      </div>
+    </div>
+    <?php endforeach; ?>
+    <div style="display:flex;justify-content:space-between;padding:12px 16px;background:var(--bg);font:700 13px var(--body)">
+      <span>Total costos</span>
+      <span style="font:700 15px var(--num);color:var(--danger)"><?= fmt_c($total_all_cats) ?></span>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <!-- ── Margen por categoría ──────────────────────────────── -->
+  <?php if (!empty($analisis_por_cat) && $kpi_global_ventas > 0): ?>
+  <div class="slabel">Impacto en margen</div>
+  <div class="card" style="padding:16px">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <?php foreach ($analisis_por_cat as $ac):
+        $impacto = round(((float)$ac['total_cat'] / $kpi_global_ventas) * 100, 1);
+        $c_hex = preg_match('/^#[0-9a-f]{3,6}$/i', $ac['color']) ? $ac['color'] : '#94a3b8';
+      ?>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:8px;height:8px;border-radius:4px;flex-shrink:0;background:<?= $c_hex ?>"></div>
+        <span style="flex:1;font:500 13px var(--body);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= e($ac['nombre']) ?></span>
+        <span style="font:700 13px var(--num);color:var(--danger);white-space:nowrap">-<?= $impacto ?>%</span>
+      </div>
+      <?php endforeach; ?>
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <span style="font:700 13px var(--body)">Margen neto</span>
+      <?php
+        $margen_neto = round((($kpi_global_ventas - $kpi_global_costos) / $kpi_global_ventas) * 100, 1);
+        $mn_color = $margen_neto >= 30 ? 'var(--g)' : ($margen_neto >= 15 ? '#b45309' : 'var(--danger)');
+      ?>
+      <span style="font:700 18px var(--num);color:<?= $mn_color ?>"><?= $margen_neto ?>%</span>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <!-- ── Top proveedores ───────────────────────────────────── -->
+  <div class="slabel">Top proveedores</div>
+  <?php if (empty($analisis_por_prov)): ?>
+  <div class="card" style="padding:30px 20px;text-align:center;color:var(--t3);font:400 13px var(--body)">
+    Sin gastos asociados a proveedores.
+    <br><a href="/proveedores" style="color:var(--g);font-weight:600;text-decoration:none">Ir a Proveedores →</a>
+  </div>
+  <?php else: ?>
+  <?php $max_prov = max(array_column($analisis_por_prov, 'total_prov')); ?>
+  <div class="card">
+    <?php foreach ($analisis_por_prov as $i => $ap):
+      $bar_pw = $max_prov > 0 ? round(($ap['total_prov'] / $max_prov) * 100) : 0;
+      $ini_p = strtoupper(substr($ap['nombre'], 0, 1));
+      if (strpos($ap['nombre'], ' ') !== false) {
+          $pp = explode(' ', $ap['nombre']);
+          $ini_p = strtoupper($pp[0][0] . ($pp[1][0] ?? ''));
+      }
+    ?>
+    <a href="/proveedores/<?= (int)$ap['id'] ?>" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background .12s" onmouseover="this.style.background='#fafaf8'" onmouseout="this.style.background=''">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--g);display:flex;align-items:center;justify-content:center;font:700 12px var(--body);color:#fff;flex-shrink:0"><?= e($ini_p) ?></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font:600 13px var(--body)"><?= e($ap['nombre']) ?></span>
+          <span style="font:600 14px var(--num);color:var(--danger)"><?= fmt_c((float)$ap['total_prov']) ?></span>
+        </div>
+        <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden">
+          <div style="height:100%;border-radius:2px;background:var(--g);width:<?= $bar_pw ?>%"></div>
+        </div>
+        <div style="font:400 11px var(--num);color:var(--t3);margin-top:3px"><?= (int)$ap['num_gastos'] ?> gasto<?= $ap['num_gastos'] != 1 ? 's' : '' ?></div>
+      </div>
+    </a>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
+
+  <!-- ── Tendencia mensual ─────────────────────────────────── -->
+  <?php if (!empty($analisis_tendencia)): ?>
+  <div class="slabel">Tendencia mensual</div>
+  <div class="card" style="padding:16px">
+    <?php
+      $max_tend = 0;
+      foreach ($analisis_tendencia as $t) {
+          $max_tend = max($max_tend, (float)$t['total_costos']);
+      }
+      $meses_es = ['01'=>'Ene','02'=>'Feb','03'=>'Mar','04'=>'Abr','05'=>'May','06'=>'Jun','07'=>'Jul','08'=>'Ago','09'=>'Sep','10'=>'Oct','11'=>'Nov','12'=>'Dic'];
+    ?>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <?php foreach ($analisis_tendencia as $t):
+        $parts = explode('-', $t['mes']);
+        $mes_lbl = ($meses_es[$parts[1]] ?? $parts[1]) . ' ' . $parts[0];
+        $bar_tw = $max_tend > 0 ? round(((float)$t['total_costos'] / $max_tend) * 100) : 0;
+        $venta_mes = (float)($ventas_mes_map[$t['mes']] ?? 0);
+        $margen_mes = $venta_mes > 0 ? round((($venta_mes - (float)$t['total_costos']) / $venta_mes) * 100, 1) : null;
+        $m_color = $margen_mes !== null ? ($margen_mes >= 30 ? 'var(--g)' : ($margen_mes >= 15 ? '#b45309' : 'var(--danger)')) : 'var(--t3)';
+      ?>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="font:500 12px var(--body);color:var(--t2)"><?= $mes_lbl ?></span>
+          <div style="display:flex;gap:12px;align-items:center">
+            <span style="font:600 13px var(--num);color:var(--danger)"><?= fmt_c_short((float)$t['total_costos']) ?></span>
+            <?php if ($margen_mes !== null): ?>
+            <span style="font:600 11px var(--num);color:<?= $m_color ?>"><?= $margen_mes ?>%</span>
+            <?php endif; ?>
+          </div>
+        </div>
+        <div style="height:6px;border-radius:3px;background:var(--border);overflow:hidden">
+          <div style="height:100%;border-radius:3px;background:var(--danger);opacity:.6;width:<?= $bar_tw ?>%"></div>
+        </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+
+</div><!-- /ctab-panel-analisis -->
+<?php endif; ?>
+
+
 <!-- SHEET: REGISTRAR / EDITAR COSTO -->
 <div class="sh-overlay" id="ov-shCosto" onclick="cerrarSheet('shCosto')"></div>
 <div class="bottom-sheet" id="shCosto">
@@ -510,9 +853,13 @@ ob_start();
   <div class="sh-body">
     <input type="hidden" id="shCostoId" value="">
     <div class="sh-field">
-      <div class="sh-lbl">Venta <span style="color:var(--danger)">*</span></div>
+      <div class="sh-lbl">Venta <?= $es_business ? '(dejar vacío para gasto general)' : '<span style="color:var(--danger)">*</span>' ?></div>
       <select class="sh-select" id="shCostoVenta">
+        <?php if ($es_business): ?>
+        <option value="">— Gasto general (sin venta) —</option>
+        <?php else: ?>
         <option value="">Seleccionar venta…</option>
+        <?php endif; ?>
         <?php foreach ($ventas_raw as $vc): ?>
         <option value="<?= (int)$vc['id'] ?>"><?= e($vc['numero']) ?> · <?= e(mb_substr($vc['titulo'],0,40)) ?> — <?= e($vc['cliente_nombre']??'') ?></option>
         <?php endforeach; ?>
@@ -527,6 +874,17 @@ ob_start();
         <?php endforeach; ?>
       </select>
     </div>
+    <?php if ($es_business && !empty($proveedores_lista)): ?>
+    <div class="sh-field">
+      <div class="sh-lbl">Proveedor (opcional)</div>
+      <select class="sh-select" id="shCostoProv">
+        <option value="">Sin proveedor</option>
+        <?php foreach ($proveedores_lista as $pv): ?>
+        <option value="<?= (int)$pv['id'] ?>"><?= e($pv['nombre']) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <?php endif; ?>
     <div class="sh-field">
       <div class="sh-lbl">Concepto <span style="color:var(--danger)">*</span></div>
       <input class="sh-input" type="text" id="shCostoConcepto" placeholder="Ej. Herrajes, Flete materiales…" maxlength="200">
@@ -620,6 +978,8 @@ function cerrarSheet(id) {
 }
 
 // ── Costo sheet ───────────────────────────────────────────
+const HAS_PROV_IDX = !!document.getElementById('shCostoProv');
+
 function abrirCosto(ventaId) {
     document.getElementById('shCostoId').value = '';
     document.getElementById('shCostoTitulo').textContent = 'Registrar costo';
@@ -629,6 +989,7 @@ function abrirCosto(ventaId) {
     document.getElementById('shCostoFecha').value    = '<?= date('Y-m-d') ?>';
     document.getElementById('shCostoVenta').value    = ventaId || '';
     document.getElementById('shCostoCat').value      = '';
+    if (HAS_PROV_IDX) document.getElementById('shCostoProv').value = '';
     abrirSheet('shCosto');
 }
 function abrirCostoEditar(costoId, data) {
@@ -650,11 +1011,13 @@ async function guardarCosto() {
     const importe  = parseFloat(document.getElementById('shCostoImporte').value);
     const fecha    = document.getElementById('shCostoFecha').value;
     const nota     = document.getElementById('shCostoNota').value.trim();
-    if (!venta_id || !cat_id || !concepto || !importe || importe <= 0) {
-        alert('Completa todos los campos obligatorios.'); return;
+    const ES_BUSINESS = <?= $es_business ? 'true' : 'false' ?>;
+    if ((!ES_BUSINESS && !venta_id) || !cat_id || !concepto || !importe || importe <= 0) {
+        alert('Completa los campos obligatorios.'); return;
     }
     const url = id ? '/costos/gasto/'+id : '/costos/gasto';
-    const d = await api(url, {venta_id:+venta_id, categoria_id:+cat_id, concepto, importe, fecha, nota});
+    const prov_id = HAS_PROV_IDX ? parseInt(document.getElementById('shCostoProv')?.value) || 0 : 0;
+    const d = await api(url, {venta_id:+venta_id, categoria_id:+cat_id, proveedor_id:prov_id, concepto, importe, fecha, nota});
     if (d.ok) { cerrarSheet('shCosto'); location.reload(); }
     else alert(d.error || 'Error al guardar.');
 }
@@ -705,6 +1068,38 @@ function buscar(q) {
         u.searchParams.set('q', q);
         location.href = u.toString();
     }, 320);
+}
+
+// ── Gastos generales ─────────────────────────────────────
+function abrirGastoGeneral() {
+    document.getElementById('shCostoId').value = '';
+    document.getElementById('shCostoTitulo').textContent = 'Gasto general';
+    document.getElementById('shCostoConcepto').value = '';
+    document.getElementById('shCostoImporte').value  = '';
+    document.getElementById('shCostoNota').value     = '';
+    document.getElementById('shCostoFecha').value    = '<?= date('Y-m-d') ?>';
+    document.getElementById('shCostoVenta').value    = '';  // sin venta
+    document.getElementById('shCostoCat').value      = '';
+    if (HAS_PROV_IDX) document.getElementById('shCostoProv').value = '';
+    abrirSheet('shCosto');
+}
+function editarGastoGeneral(id, data) {
+    document.getElementById('shCostoId').value = id;
+    document.getElementById('shCostoTitulo').textContent = 'Editar gasto general';
+    document.getElementById('shCostoVenta').value    = '';
+    document.getElementById('shCostoCat').value      = data.categoria_id;
+    if (HAS_PROV_IDX) document.getElementById('shCostoProv').value = data.proveedor_id || '';
+    document.getElementById('shCostoConcepto').value = data.concepto;
+    document.getElementById('shCostoImporte').value  = data.importe;
+    document.getElementById('shCostoFecha').value    = data.fecha;
+    document.getElementById('shCostoNota').value     = data.nota || '';
+    abrirSheet('shCosto');
+}
+async function eliminarGastoGeneral(id, el) {
+    if (!confirm('¿Eliminar este gasto?')) return;
+    const d = await api('/costos/gasto/'+id+'/eliminar');
+    if (d.ok) location.reload();
+    else alert(d.error || 'Error.');
 }
 
 // ── Responsive ───────────────────────────────────────────

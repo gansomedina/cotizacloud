@@ -175,6 +175,12 @@ class Router
         self::post('/superadmin/empresa/:id/plan',   fn($p) => self::superadmin('toggle_plan', $p));
         self::post('/superadmin/ticket/:id/estado',   fn($p) => self::superadmin('ticket_estado', $p));
 
+        self::get('/proveedores',                          fn()   => self::app('proveedores', 'lista'));
+        self::post('/proveedores',                         fn()   => self::app('proveedores', 'crear'));
+        self::get('/proveedores/:id',                      fn($p) => self::app('proveedores', 'ver',    $p));
+        self::post('/proveedores/:id',                     fn($p) => self::app('proveedores', 'crear',  $p));
+        self::post('/proveedores/:id/toggle',              fn($p) => self::app('proveedores', 'toggle', $p));
+
         self::get('/costos',                             fn()   => self::app('costos', 'index'));
         self::get('/costos/:id',                         fn($p) => self::app('costos', 'ver',            $p));
         self::post('/costos/gasto',                      fn()   => self::app('costos', 'nuevo_gasto'));
