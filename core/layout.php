@@ -18,7 +18,6 @@ $menu = [
     ['href' => '/cotizaciones', 'icon' => 'file-text',     'label' => 'Cotizaciones'],
     ['href' => '/ventas',       'icon' => 'shopping-bag',  'label' => 'Ventas'],
     ['href' => '/costos',       'icon' => 'trending-down', 'label' => 'Costos',       'perm' => 'ver_costos'],
-    ['href' => '/proveedores',  'icon' => 'truck',         'label' => 'Proveedores', 'business' => true, 'perm' => 'ver_proveedores'],
     ['href' => '/radar',        'icon' => 'activity',      'label' => 'Radar'],
     ['href' => '/reportes',     'icon' => 'bar-chart-2',   'label' => 'Reportes'],
     ['href' => '/config',       'icon' => 'settings',      'label' => 'Configuración'],
