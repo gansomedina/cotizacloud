@@ -15,7 +15,7 @@ $cot = DB::row(
             e.telefono AS emp_tel, e.email AS emp_email,
             e.website AS emp_web, e.moneda, e.logo_url AS emp_logo,
             e.impuesto_modo, e.impuesto_pct, e.impuesto_nombre AS impuesto_label,
-            e.cot_terminos AS terminos, e.cot_footer,
+            e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado,
             e.texto_aceptar, e.texto_rechazar,
             e.slug AS emp_slug,
             cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.email AS cli_email,
@@ -64,6 +64,13 @@ if (!empty($cot['suspendida'])) {
 // ─── Líneas ──────────────────────────────────────────────
 $lineas = DB::query(
     "SELECT * FROM cotizacion_lineas WHERE cotizacion_id = ? ORDER BY orden ASC",
+    [$cot['id']]
+);
+
+// ─── Archivos adjuntos ─────────────────────────────────────
+$adjuntos = DB::query(
+    "SELECT nombre_original, nombre_archivo, mime_type, tamano_bytes
+     FROM cotizacion_archivos WHERE cotizacion_id = ? ORDER BY id ASC LIMIT 3",
     [$cot['id']]
 );
 
@@ -249,7 +256,18 @@ $badge_map = [
 <title>Cotización · <?= e($cot['emp_nombre']) ?></title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--g:#1a6b3c;--glt:#edf7f2;--gbd:#b6ddc7;--text:#111;--t2:#444;--t3:#888;--bd:#d8d8d8;--bg:#f7f7f5;--white:#fff;--amb:#92400e;--red:#b91c1c;--r:6px}
+<?php
+$themes = [
+    'verde'   => ['g'=>'#1a6b3c','glt'=>'#edf7f2','gbd'=>'#b6ddc7'],
+    'azul'    => ['g'=>'#1d4ed8','glt'=>'#eff6ff','gbd'=>'#bfdbfe'],
+    'rojo'    => ['g'=>'#b91c1c','glt'=>'#fef2f2','gbd'=>'#fecaca'],
+    'dorado'  => ['g'=>'#92400e','glt'=>'#fffbeb','gbd'=>'#fde68a'],
+    'morado'  => ['g'=>'#6d28d9','glt'=>'#f5f3ff','gbd'=>'#c4b5fd'],
+    'oscuro'  => ['g'=>'#1e293b','glt'=>'#f1f5f9','gbd'=>'#cbd5e1'],
+];
+$th = $themes[$cot['cot_theme'] ?? 'verde'] ?? $themes['verde'];
+?>
+:root{--g:<?=$th['g']?>;--glt:<?=$th['glt']?>;--gbd:<?=$th['gbd']?>;--text:#111;--t2:#444;--t3:#888;--bd:#d8d8d8;--bg:#f7f7f5;--white:#fff;--amb:#92400e;--red:#b91c1c;--r:6px}
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:17px;-webkit-text-size-adjust:100%}
 body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -606,6 +624,21 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     </div>
   </div>
 
+  <!-- ENCABEZADO / SALUDO -->
+  <?php
+  $encabezado_raw = trim($cot['cot_encabezado'] ?? '');
+  if ($encabezado_raw !== ''):
+      $encabezado = str_replace(
+          ['{{cliente}}', '{{empresa}}', '{{asesor}}'],
+          [e($cot['cliente_nombre'] ?? ''), e($cot['emp_nombre']), e($cot['asesor_nombre'] ?? '')],
+          e($encabezado_raw)
+      );
+  ?>
+  <div style="margin:24px 0 8px;padding:20px 24px;background:var(--white);border:1px solid var(--bd);border-radius:var(--r);font:400 15px/1.7 'Plus Jakarta Sans',sans-serif;color:var(--text)">
+    <?= nl2br($encabezado) ?>
+  </div>
+  <?php endif; ?>
+
   <!-- ARTÍCULOS DESKTOP -->
   <div id="itemsBlock">
   <div class="slbl">Artículos incluidos</div>
@@ -720,6 +753,33 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     </div>
   </div>
   <?php endif; ?>
+
+  <!-- ADJUNTOS -->
+  <?php if (!empty($adjuntos)): ?>
+  <div class="slbl">Archivos adjuntos</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <?php foreach ($adjuntos as $adj):
+        $ext = strtolower(pathinfo($adj['nombre_original'], PATHINFO_EXTENSION));
+        $is_img = in_array($ext, ['jpg','jpeg','png','gif']);
+        $ico_map = ['pdf'=>'📄','doc'=>'📝','docx'=>'📝','xls'=>'📊','xlsx'=>'📊'];
+        $ico = $is_img ? '🖼' : ($ico_map[$ext] ?? '📎');
+        $size_kb = round($adj['tamano_bytes'] / 1024);
+        $size_txt = $size_kb >= 1024 ? number_format($size_kb/1024, 1).' MB' : $size_kb.' KB';
+        $file_url = UPLOADS_URL . '/' . $adj['nombre_archivo'];
+    ?>
+    <a href="<?= e($file_url) ?>" target="_blank" rel="noopener"
+       style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--white);border:1.5px solid var(--bd);border-radius:var(--r);text-decoration:none;transition:border-color .15s"
+       onmouseover="this.style.borderColor='var(--g)'" onmouseout="this.style.borderColor='var(--bd)'">
+      <span style="font-size:24px;flex-shrink:0"><?= $ico ?></span>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 14px 'Plus Jakarta Sans',sans-serif;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= e($adj['nombre_original']) ?></div>
+        <div style="font:400 12px 'Plus Jakarta Sans',sans-serif;color:var(--t3);margin-top:2px"><?= $size_txt ?> · <?= strtoupper($ext) ?></div>
+      </div>
+      <span style="font:600 12px 'Plus Jakarta Sans',sans-serif;color:var(--g);white-space:nowrap;padding:6px 12px;background:var(--glt);border-radius:var(--r)">Ver archivo</span>
+    </a>
+    <?php endforeach ?>
+  </div>
+  <?php endif ?>
 
   <!-- CTAs -->
   <?php if ($es_activa): ?>

@@ -84,6 +84,13 @@ $cupones = DB::query(
     [$empresa_id]
 );
 
+// ─── Archivos adjuntos ─────────────────────────────────────
+$adjuntos = DB::query(
+    "SELECT id, nombre_original, nombre_archivo, mime_type, tamano_bytes
+     FROM cotizacion_archivos WHERE cotizacion_id = ? ORDER BY id ASC",
+    [$cot_id]
+);
+
 $puede_editar_precios = Auth::puede('editar_precios');
 $puede_descuentos     = Auth::puede('aplicar_descuentos');
 $puede_asignar        = Auth::puede('asignar_cotizaciones');
@@ -180,6 +187,15 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     .log-evento { font-weight:600; color:var(--text); flex-shrink:0; }
     .log-detalle { color:var(--t3); flex:1; }
     .log-ts { color:var(--t3); font:400 11px var(--num); flex-shrink:0; }
+
+    /* Adjuntos */
+    .adj-row { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg); border-radius:var(--r-sm); }
+    .adj-ico { font-size:20px; flex-shrink:0; }
+    .adj-info { flex:1; min-width:0; }
+    .adj-name { font:500 13px var(--body); color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .adj-size { font:400 11px var(--num); color:var(--t3); margin-top:1px; }
+    .adj-del { width:28px; height:28px; border-radius:var(--r-sm); border:1px solid var(--border); background:var(--white); font-size:13px; color:var(--t3); cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .12s; }
+    .adj-del:hover { border-color:var(--danger); color:var(--danger); background:var(--danger-bg); }
 
     /* Badge de estado inline */
     .badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:99px; font:600 12px var(--body); }
@@ -329,6 +345,44 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar artículo
         </button>
         <?php endif; ?>
+
+        <!-- ADJUNTOS -->
+        <div class="slabel">Archivos adjuntos</div>
+        <div class="card" style="padding:16px">
+          <div id="adjuntos-list" style="display:flex;flex-direction:column;gap:8px">
+            <?php foreach ($adjuntos as $adj):
+                $ext = strtolower(pathinfo($adj['nombre_original'], PATHINFO_EXTENSION));
+                $ico_map = ['pdf'=>'📄','doc'=>'📝','docx'=>'📝','xls'=>'📊','xlsx'=>'📊',
+                            'jpg'=>'🖼','jpeg'=>'🖼','png'=>'🖼','gif'=>'🖼'];
+                $ico = $ico_map[$ext] ?? '📎';
+                $size_kb = round($adj['tamano_bytes'] / 1024);
+                $size_txt = $size_kb >= 1024 ? number_format($size_kb/1024, 1).' MB' : $size_kb.' KB';
+            ?>
+            <div class="adj-row" id="adj-<?= (int)$adj['id'] ?>">
+              <span class="adj-ico"><?= $ico ?></span>
+              <div class="adj-info">
+                <div class="adj-name"><?= e($adj['nombre_original']) ?></div>
+                <div class="adj-size"><?= $size_txt ?></div>
+              </div>
+              <?php if ($es_editable): ?>
+              <button class="adj-del" onclick="eliminarAdj(<?= (int)$adj['id'] ?>,this)" title="Eliminar">✕</button>
+              <?php endif ?>
+            </div>
+            <?php endforeach ?>
+          </div>
+          <?php if ($es_editable): ?>
+          <div style="margin-top:<?= count($adjuntos) ? '10px' : '0' ?>">
+            <input type="file" id="adj-input" style="display:none"
+                   accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx"
+                   onchange="subirAdj(this)">
+            <button class="add-item-btn" onclick="document.getElementById('adj-input').click()"
+                    id="adj-btn" <?= count($adjuntos) >= 3 ? 'style="display:none"' : '' ?>>
+              <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              Adjuntar archivo (<?= count($adjuntos) ?>/3)
+            </button>
+          </div>
+          <?php endif ?>
+        </div>
 
         <!-- PANEL MÓVIL (igual que nueva.php, omitido por brevedad — se comparte) -->
 
@@ -745,6 +799,44 @@ async function convertirAVenta(){
     const data=await r.json();
     if(data.ok)window.location.href='/ventas/'+data.data.venta_id;
     else alert(data.error||'Error');
+}
+
+async function subirAdj(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { alert('Archivo mayor a 10MB'); input.value=''; return; }
+    const fd = new FormData();
+    fd.append('archivo', file);
+    fd.append('_csrf', CSRF_TOKEN);
+    try {
+        const r = await fetch('/cotizaciones/' + COT_ID + '/adjuntos', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': CSRF_TOKEN },
+            body: fd
+        });
+        const d = await r.json();
+        if (d.ok) window.location.reload();
+        else alert(d.error || 'Error al subir');
+    } catch(e) { alert('Error de conexión'); }
+    input.value = '';
+}
+
+async function eliminarAdj(id, btn) {
+    if (!confirm('¿Eliminar este archivo adjunto?')) return;
+    try {
+        const r = await fetch('/cotizaciones/' + COT_ID + '/adjuntos/quitar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+            body: JSON.stringify({ archivo_id: id })
+        });
+        const d = await r.json();
+        if (d.ok) {
+            document.getElementById('adj-' + id).remove();
+            const cnt = document.querySelectorAll('.adj-row').length;
+            const btn2 = document.getElementById('adj-btn');
+            if (btn2) { btn2.style.display = ''; btn2.textContent = '+ Adjuntar archivo (' + cnt + '/3)'; }
+        } else alert(d.error || 'Error');
+    } catch(e) { alert('Error de conexión'); }
 }
 
 async function suspenderCotizacion(){
