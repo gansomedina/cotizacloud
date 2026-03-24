@@ -218,6 +218,25 @@ if ($es_business) {
             [$empresa_id]
         );
     }
+
+    // Proveedores full list for tab
+    $proveedores_full = [];
+    if ($has_prov_table) {
+        $proveedores_full = DB::query(
+            "SELECT p.*,
+                    COALESCE(g.num_gastos, 0)    AS num_gastos,
+                    COALESCE(g.total_gastos, 0)  AS total_gastos
+             FROM proveedores p
+             LEFT JOIN (
+                 SELECT proveedor_id, COUNT(*) AS num_gastos, SUM(importe) AS total_gastos
+                 FROM gastos_venta WHERE empresa_id = ?
+                 GROUP BY proveedor_id
+             ) g ON g.proveedor_id = p.id
+             WHERE p.empresa_id = ? AND p.activo = 1
+             ORDER BY p.nombre ASC",
+            [$empresa_id, $empresa_id]
+        );
+    }
 }
 
 // ─── Gastos generales (sin venta asociada) ─────────────────
@@ -428,6 +447,11 @@ ob_start();
   .kpi-row .kpi-card:last-child{grid-column:1/-1}
   .sh-row2{grid-template-columns:1fr}
 }
+
+/* Proveedores list items */
+.prov-item { display:flex; align-items:center; gap:12px; padding:13px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s; }
+.prov-item:last-child { border-bottom:none; }
+.prov-item:hover { background:#fafaf8; }
 </style>
 
 <!-- Toolbar: tabs + botón -->
@@ -440,6 +464,7 @@ ob_start();
     <button class="ctab"   id="ctab-categorias"  onclick="cTab('categorias',this)">Categorías</button>
     <?php if ($es_business): ?>
     <button class="ctab"   id="ctab-analisis"    onclick="cTab('analisis',this)">Análisis</button>
+    <button class="ctab"   id="ctab-proveedores" onclick="cTab('proveedores',this)">Proveedores<?php if (!empty($proveedores_full)): ?> <span style="font:600 11px var(--num);color:var(--t3);margin-left:2px"><?= count($proveedores_full) ?></span><?php endif; ?></button>
     <?php endif; ?>
   </div>
   <button class="new-btn" onclick="abrirCosto()">+ Registrar costo</button>
@@ -769,7 +794,7 @@ ob_start();
   <?php if (empty($analisis_por_prov)): ?>
   <div class="card" style="padding:30px 20px;text-align:center;color:var(--t3);font:400 13px var(--body)">
     Sin gastos asociados a proveedores.
-    <br><a href="/proveedores" style="color:var(--g);font-weight:600;text-decoration:none">Ir a Proveedores →</a>
+    <br><a href="javascript:void(0)" onclick="cTab('proveedores',document.getElementById('ctab-proveedores'))" style="color:var(--g);font-weight:600;text-decoration:none">Ver Proveedores →</a>
   </div>
   <?php else: ?>
   <?php $max_prov = max(array_column($analisis_por_prov, 'total_prov')); ?>
@@ -839,6 +864,64 @@ ob_start();
   <?php endif; ?>
 
 </div><!-- /ctab-panel-analisis -->
+
+<!-- ══ TAB: PROVEEDORES (Business) ══ -->
+<div class="tab-panel" id="ctab-panel-proveedores">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <p style="font:400 13px var(--body);color:var(--t3);margin:0">
+        <?= count($proveedores_full) ?> proveedor<?= count($proveedores_full) != 1 ? 'es' : '' ?> activo<?= count($proveedores_full) != 1 ? 's' : '' ?>
+    </p>
+    <button onclick="abrirProv(null)"
+            style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-sm);border:none;background:var(--g);font:700 12px var(--body);color:#fff;cursor:pointer;transition:opacity .15s"
+            onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+        + Nuevo proveedor
+    </button>
+  </div>
+
+  <?php if (empty($proveedores_full)): ?>
+  <div class="card" style="text-align:center;padding:50px 20px;color:var(--t3)">
+    <div style="font:700 15px var(--body);color:var(--t2);margin-bottom:6px">Sin proveedores aún</div>
+    <div style="font:400 13px var(--body)">Agrega tu primer proveedor con el botón de arriba.</div>
+  </div>
+  <?php else: ?>
+  <div class="card">
+    <?php foreach ($proveedores_full as $pv):
+        $ini_p = strtoupper(substr($pv['nombre'], 0, 1));
+        if (strpos($pv['nombre'], ' ') !== false) {
+            $pp = explode(' ', $pv['nombre']);
+            $ini_p = strtoupper($pp[0][0] . ($pp[1][0] ?? ''));
+        }
+        $total_fmt = $pv['total_gastos'] > 0 ? fmt_c((float)$pv['total_gastos']) : '—';
+    ?>
+    <div class="prov-item" onclick="abrirProv(<?= htmlspecialchars(json_encode([
+        'id'        => (int)$pv['id'],
+        'nombre'    => $pv['nombre'],
+        'contacto'  => $pv['contacto'] ?? '',
+        'telefono'  => $pv['telefono'] ?? '',
+        'email'     => $pv['email'] ?? '',
+        'direccion' => $pv['direccion'] ?? '',
+        'nota'      => $pv['nota'] ?? '',
+    ]), ENT_QUOTES) ?>)">
+      <div style="width:36px;height:36px;border-radius:9px;background:var(--g);display:flex;align-items:center;justify-content:center;font:700 13px var(--body);color:#fff;flex-shrink:0"><?= e($ini_p) ?></div>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 14px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= e($pv['nombre']) ?></div>
+        <div style="font:400 12px var(--body);color:var(--t3);margin-top:2px">
+          <?= e($pv['contacto'] ?? $pv['telefono'] ?? $pv['email'] ?? '') ?>
+          <?php if ((int)$pv['num_gastos'] > 0): ?>
+           · <?= (int)$pv['num_gastos'] ?> gasto<?= $pv['num_gastos'] != 1 ? 's' : '' ?>
+          <?php endif; ?>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font:600 14px var(--num);color:<?= $pv['total_gastos'] > 0 ? 'var(--danger)' : 'var(--t3)' ?>"><?= $total_fmt ?></div>
+      </div>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
+
+</div><!-- /ctab-panel-proveedores -->
 <?php endif; ?>
 
 
@@ -943,6 +1026,51 @@ ob_start();
     <button class="sh-btn-save" onclick="guardarCategoria()">Guardar</button>
   </div>
 </div>
+
+<?php if ($es_business): ?>
+<!-- SHEET: PROVEEDOR -->
+<div class="sh-overlay" id="ov-shProv" onclick="cerrarSheet('shProv')"></div>
+<div class="bottom-sheet" id="shProv">
+  <div class="sh-handle"></div>
+  <div class="sh-header">
+    <div class="sh-title" id="shProvTitulo">Nuevo proveedor</div>
+    <button class="sh-close" onclick="cerrarSheet('shProv')">✕</button>
+  </div>
+  <div class="sh-body">
+    <input type="hidden" id="shProvId" value="">
+    <div class="sh-field">
+      <div class="sh-lbl">Nombre / empresa <span style="color:var(--danger)">*</span></div>
+      <input class="sh-input" type="text" id="shProvNombre" placeholder="Ej. Ferretería López" maxlength="150">
+    </div>
+    <div class="sh-field">
+      <div class="sh-lbl">Persona de contacto</div>
+      <input class="sh-input" type="text" id="shProvContacto" placeholder="Nombre del vendedor o contacto" maxlength="150">
+    </div>
+    <div class="sh-field sh-row2">
+      <div>
+        <div class="sh-lbl">Teléfono</div>
+        <input class="sh-input" type="tel" id="shProvTelefono" placeholder="662 000 0000" style="font-family:var(--num)" maxlength="30">
+      </div>
+      <div>
+        <div class="sh-lbl">Email</div>
+        <input class="sh-input" type="email" id="shProvEmail" placeholder="ventas@proveedor.com" maxlength="150">
+      </div>
+    </div>
+    <div class="sh-field">
+      <div class="sh-lbl">Dirección</div>
+      <input class="sh-input" type="text" id="shProvDireccion" placeholder="Calle, colonia, ciudad…" maxlength="255">
+    </div>
+    <div class="sh-field" style="border-bottom:none">
+      <div class="sh-lbl">Nota (opcional)</div>
+      <textarea class="sh-input" id="shProvNota" style="min-height:60px;resize:none" placeholder="Horarios, condiciones de pago, RFC…" maxlength="500"></textarea>
+    </div>
+  </div>
+  <div class="sh-footer">
+    <button class="sh-btn-cancel" onclick="cerrarSheet('shProv')">Cancelar</button>
+    <button class="sh-btn-save" id="btnGuardarProv" onclick="guardarProv()">Guardar</button>
+  </div>
+</div>
+<?php endif; ?>
 
 <script>
 const CSRF_TOKEN = '<?= csrf_token() ?>';
@@ -1100,6 +1228,45 @@ async function eliminarGastoGeneral(id, el) {
     const d = await api('/costos/gasto/'+id+'/eliminar');
     if (d.ok) location.reload();
     else alert(d.error || 'Error.');
+}
+
+// ── Proveedor sheet ──────────────────────────────────────
+function abrirProv(data) {
+    document.getElementById('shProvId').value        = data?.id        ?? '';
+    document.getElementById('shProvNombre').value    = data?.nombre    ?? '';
+    document.getElementById('shProvContacto').value  = data?.contacto  ?? '';
+    document.getElementById('shProvTelefono').value  = data?.telefono  ?? '';
+    document.getElementById('shProvEmail').value     = data?.email     ?? '';
+    document.getElementById('shProvDireccion').value = data?.direccion ?? '';
+    document.getElementById('shProvNota').value      = data?.nota      ?? '';
+    document.getElementById('shProvTitulo').textContent = data?.id ? 'Editar proveedor' : 'Nuevo proveedor';
+    abrirSheet('shProv');
+    setTimeout(() => document.getElementById('shProvNombre').focus(), 100);
+}
+async function guardarProv() {
+    const id        = document.getElementById('shProvId').value;
+    const nombre    = document.getElementById('shProvNombre').value.trim();
+    const contacto  = document.getElementById('shProvContacto').value.trim();
+    const telefono  = document.getElementById('shProvTelefono').value.trim();
+    const email     = document.getElementById('shProvEmail').value.trim();
+    const direccion = document.getElementById('shProvDireccion').value.trim();
+    const nota      = document.getElementById('shProvNota').value.trim();
+
+    if (!nombre) { alert('El nombre es requerido'); return; }
+
+    const btn = document.getElementById('btnGuardarProv');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+
+    try {
+        const url = id ? '/proveedores/' + id : '/proveedores';
+        const d = await api(url, { nombre, contacto, telefono, email, direccion, nota });
+        if (!d.ok) { alert(d.error || 'Error al guardar'); btn.disabled=false; btn.textContent='Guardar'; return; }
+        cerrarSheet('shProv');
+        location.reload();
+    } catch(e) {
+        alert('Error de conexión');
+        btn.disabled=false; btn.textContent='Guardar';
+    }
 }
 
 // ── Responsive ───────────────────────────────────────────

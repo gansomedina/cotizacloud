@@ -9,9 +9,8 @@ defined('COTIZAAPP') or die;
 $empresa_id = EMPRESA_ID;
 $empresa    = Auth::empresa();
 
-// ── Plan check: solo Business ──────────────────────────────
-$plan = trial_info($empresa_id);
-if (!$plan['es_business']) { redirect('/costos'); }
+// Proveedores ahora es un tab dentro de Costos
+redirect('/costos');
 
 // Permiso de módulo por usuario
 if (!Auth::es_admin() && !Auth::puede('ver_proveedores')) { redirect('/dashboard'); }
