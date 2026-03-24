@@ -15,7 +15,7 @@ $cot = DB::row(
             e.telefono AS emp_tel, e.email AS emp_email,
             e.website AS emp_web, e.moneda, e.logo_url AS emp_logo,
             e.impuesto_modo, e.impuesto_pct, e.impuesto_nombre AS impuesto_label,
-            e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado,
+            e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado, e.cot_theme,
             e.texto_aceptar, e.texto_rechazar,
             e.slug AS emp_slug,
             cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.email AS cli_email,
