@@ -146,6 +146,34 @@ Complementa al módulo Radar. Radar trackea aperturas de cotizaciones; Marketing
 - Config UI en módulo Configuración > Marketing (solo Business)
 - UTM capture en registro/creación de clientes
 
+## Termómetro APC (ontimetermo.php) — Radar OnTime
+
+### Arquitectura
+- `ontime.php` — Radar principal. Calcula buckets por cotización, escribe transiciones a `wp_radar_bucket_transitions`, agrega stats a `wp_options`
+- `ontimetermo.php` — Termómetro de productividad del vendedor. Lee transiciones, events, usage para calcular score 0-100
+- Tablas clave: `wp_radar_bucket_transitions` (historial de cambios de bucket), `wp_sliced_quote_events` (JS events del cliente), `wp_radar_usage_events` (actividad del vendedor)
+
+### Bugs corregidos (23 marzo 2026)
+1. **dormidas=0**: El filtro `NOT EXISTS _sliced_log` excluía TODAS las cotizaciones porque `_sliced_log` es log interno de Sliced Invoices (se crea al editar/crear), NO indica vista del cliente. Eliminado — solo JS events de `quote_events` son indicador real de apertura.
+2. **Transiciones chicken-and-egg**: La tabla `radar_bucket_transitions` estaba vacía. `prev_buckets` se cargaba de ella, pero solo escribía transición cuando `old_bucket !== null`. Tabla vacía = nunca se escribe la primera. Fix: escribir seed con `bucket_anterior=NULL` la primera vez. También cambié query de `prev_buckets` de últimas 24h a último bucket sin límite de tiempo.
+3. **cierres_bucket=0**: Consecuencia de tabla de transiciones vacía. Se resuelve solo después del primer seed.
+
+### Resultados post-fix
+- dormidas: 0 → 35 (3/13/19 en bandas 7-14d/14-21d/21+d)
+- trans_periodo: 0 → 31 (seeds iniciales)
+- cierres_bucket: 0 → 2
+- Score: 53 (Regular) → 61 (Activo)
+
+### Métricas que siguen en 0 (legítimamente)
+- `trans_up/trans_down`: Necesitan >1 refresh del radar para detectar cambios de bucket
+- `buckets_estancados`: Necesitan >14 días sin movimiento desde el seed
+- `senales_ignoradas`: 0 porque el vendedor revisa radar dentro de 24h (tasa_reaccion=0.8)
+
+### Pendiente termómetro
+- Tras varios días de uso, verificar que trans_up/down y buckets_estancados empiecen a poblar
+- `vencidas_sin_accion` está hardcoded a 0 (Sliced Invoices no tiene fecha de vencimiento estándar)
+- Branch de trabajo: `claude/debug-connection-issues-Lc1Jr`
+
 ## Comandos Útiles
 ```bash
 # Sincronizar cambios web con iOS

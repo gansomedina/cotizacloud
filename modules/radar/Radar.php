@@ -70,6 +70,7 @@ class Radar
         'imminent_signal_coupon'     => [1,     1,     1    ],
         'imminent_min_signals'       => [1,     2,     3    ],
         'imminent_min_strong'        => [1,     1,     2    ],
+        'imminent_min_span48_h'      => [0.5,   1.0,   2.0  ],  // regreso real: distancia mínima entre sesiones en 48h
 
         // ── Bucket 3: On Fire ────────────────────────────────
         'onfire_recent_hours'        => [96,    72,    48   ],
@@ -614,6 +615,7 @@ class Radar
             $fit_pct   >= (float)self::u('imminent_min_fit_pct', $modo) &&
             $age_hours >= (float)self::u('imminent_min_age_hours', $modo) &&
             $guest_sessions >= (int)self::u('imminent_min_guest', $modo) &&
+            $span48    >= (float)self::u('imminent_min_span48_h', $modo) * 3600 &&  // regreso real, no cambio de red
             ($total_sig >= (int)self::u('imminent_min_signals', $modo) || $promo_boost) &&
             $strong >= (int)self::u('imminent_min_strong', $modo)
         ) {
