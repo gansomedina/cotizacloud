@@ -59,12 +59,12 @@ $GLOBALS['PLAYBOOK'] = [
     'inminente' => [
         'priority'   => 'crítica',
         'tone'       => 'danger',
-        'summary'    => 'Señales fuertes de decisión. Aquí sí vale actuar el mismo día.',
-        'psychology' => 'Está evaluando si ya da el paso. No es curiosidad — ya hubo lectura real, revisión de precio, o regreso con intención. Lo que busca ahora es sentir que el siguiente paso es fácil y sin riesgo.',
+        'summary'    => 'Señales fuertes de decisión. Este cliente regresó a revisar tu cotización después de pensarlo — actúa hoy.',
+        'psychology' => 'Este cliente no solo leyó tu cotización — se fue, lo pensó, y regresó. Ese patrón de "abrir → cerrar → volver después" es el indicador más fuerte de que está tomando una decisión real. Lo que necesita ahora no es más información sino sentir que el siguiente paso es fácil y sin riesgo.',
         'meaning'    => [
-            'No es interés casual — hay intención real.',
-            'La oportunidad de cierre es cercana.',
-            'El cliente espera que alguien haga el movimiento.',
+            'Regresó después de al menos 1 hora — estaba pensándolo.',
+            'No es interés casual — hay intención de compra real.',
+            'La oportunidad de cierre es cercana — cada hora cuenta.',
         ],
         'do' => [
             'Actuar hoy mismo.',
