@@ -444,6 +444,26 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
+      <div class="field-row h">
+        <div>
+          <div class="field-lbl">Auto-suspender cotizaciones</div>
+          <div class="field-sub">Suspender automáticamente cotizaciones sin actividad después de X días. El cliente no podrá ver la cotización y se excluye del Radar.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_auto_suspender_activo" <?= !empty($empresa['auto_suspender_activo'])?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="field-row h" id="auto_susp_dias_row" style="<?= empty($empresa['auto_suspender_activo'])?'opacity:.4;pointer-events:none':'' ?>">
+        <div>
+          <div class="field-lbl">Días sin actividad para suspender</div>
+          <div class="field-sub">Se cuentan desde la última vista del cliente</div>
+        </div>
+        <div class="in-row">
+          <input class="num-in" id="e_auto_suspender_dias" type="number" min="7" max="365" value="<?= (int)($empresa['auto_suspender_dias'] ?? 30) ?>">
+          <span style="font:500 14px var(--body);color:var(--t2)">días</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1193,6 +1213,8 @@ async function guardarEmpresa() {
         notif_email_rechaza:document.getElementById('e_notif_rechaza').checked ? 1 : 0,
         cot_vigencia_dias:  parseInt(document.getElementById('e_cot_vigencia_dias').value) || 30,
         allow_precio_edit:  document.getElementById('e_allow_precio_edit').checked ? 1 : 0,
+        auto_suspender_activo: document.getElementById('e_auto_suspender_activo').checked ? 1 : 0,
+        auto_suspender_dias: parseInt(document.getElementById('e_auto_suspender_dias').value) || 30,
         cot_msg_acepta:     document.getElementById('e_cot_msg_acepta').value,
         cot_msg_rechaza:    document.getElementById('e_cot_msg_rechaza').value,
         cot_terminos:       document.getElementById('e_cot_terminos').value,
@@ -1212,6 +1234,13 @@ async function guardarEmpresa() {
         else alert(d.error || 'Error al guardar.');
     } catch(e) { alert('Error de conexión.'); }
 }
+
+// ── Toggle auto-suspender días row ───────────────────────────
+document.getElementById('e_auto_suspender_activo').addEventListener('change', function(){
+    const row = document.getElementById('auto_susp_dias_row');
+    row.style.opacity = this.checked ? '1' : '.4';
+    row.style.pointerEvents = this.checked ? 'auto' : 'none';
+});
 
 // ── Guardar radar ────────────────────────────────────────────
 async function guardarRadar() {
