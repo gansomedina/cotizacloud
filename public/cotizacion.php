@@ -67,6 +67,13 @@ $lineas = DB::query(
     [$cot['id']]
 );
 
+// ─── Archivos adjuntos ─────────────────────────────────────
+$adjuntos = DB::query(
+    "SELECT nombre_original, nombre_archivo, mime_type, tamano_bytes
+     FROM cotizacion_archivos WHERE cotizacion_id = ? ORDER BY id ASC LIMIT 3",
+    [$cot['id']]
+);
+
 // ─── Descuento automático activo ─────────────────────────
 $adc_on  = (bool)$cot['descuento_auto_activo'];
 $adc_pct = (float)$cot['descuento_auto_pct'];
@@ -746,6 +753,33 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     </div>
   </div>
   <?php endif; ?>
+
+  <!-- ADJUNTOS -->
+  <?php if (!empty($adjuntos)): ?>
+  <div class="slbl">Archivos adjuntos</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <?php foreach ($adjuntos as $adj):
+        $ext = strtolower(pathinfo($adj['nombre_original'], PATHINFO_EXTENSION));
+        $is_img = in_array($ext, ['jpg','jpeg','png','gif']);
+        $ico_map = ['pdf'=>'📄','doc'=>'📝','docx'=>'📝','xls'=>'📊','xlsx'=>'📊'];
+        $ico = $is_img ? '🖼' : ($ico_map[$ext] ?? '📎');
+        $size_kb = round($adj['tamano_bytes'] / 1024);
+        $size_txt = $size_kb >= 1024 ? number_format($size_kb/1024, 1).' MB' : $size_kb.' KB';
+        $file_url = UPLOADS_URL . '/' . $adj['nombre_archivo'];
+    ?>
+    <a href="<?= e($file_url) ?>" target="_blank" rel="noopener"
+       style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--white);border:1.5px solid var(--bd);border-radius:var(--r);text-decoration:none;transition:border-color .15s"
+       onmouseover="this.style.borderColor='var(--g)'" onmouseout="this.style.borderColor='var(--bd)'">
+      <span style="font-size:24px;flex-shrink:0"><?= $ico ?></span>
+      <div style="flex:1;min-width:0">
+        <div style="font:600 14px 'Plus Jakarta Sans',sans-serif;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= e($adj['nombre_original']) ?></div>
+        <div style="font:400 12px 'Plus Jakarta Sans',sans-serif;color:var(--t3);margin-top:2px"><?= $size_txt ?> · <?= strtoupper($ext) ?></div>
+      </div>
+      <span style="font:600 12px 'Plus Jakarta Sans',sans-serif;color:var(--g);white-space:nowrap;padding:6px 12px;background:var(--glt);border-radius:var(--r)">Ver archivo</span>
+    </a>
+    <?php endforeach ?>
+  </div>
+  <?php endif ?>
 
   <!-- CTAs -->
   <?php if ($es_activa): ?>
