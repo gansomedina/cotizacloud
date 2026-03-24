@@ -185,3 +185,18 @@ open ~/cotizacloud/ios/App/App.xcodeproj
 # Sincronizar Android
 npx cap sync android
 ```
+
+## Sesión 24 marzo 2026
+
+### Completado
+1. **Tema Naranja** — Agregado color naranja-amarillo (#d97706) como opción de tema para cotizaciones
+   - `modules/config/index.php` — botón en picker de temas
+   - `public/cotizacion.php` — colores del tema en vista pública
+   - `modules/config/guardar_empresa.php` — validación del valor
+   - No requiere migración BD (columna es VARCHAR(20))
+
+2. **Landing - Business plan** — Agregado "Archivos adjuntos en cotizaciones" como feature del plan Business en la sección de precios de la landing page
+   - `modules/auth/landing.php`
+
+### Branch de trabajo
+- `claude/debug-connection-issues-Lc1Jr` — commits pusheados
