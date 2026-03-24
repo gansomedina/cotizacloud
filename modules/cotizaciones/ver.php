@@ -804,7 +804,7 @@ async function convertirAVenta(){
 async function subirAdj(input) {
     const file = input.files[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { alert('Archivo mayor a 10MB'); input.value=''; return; }
+    if (file.size > 1 * 1024 * 1024) { alert('El archivo no debe superar 1 MB'); input.value=''; return; }
     const fd = new FormData();
     fd.append('archivo', file);
     fd.append('_csrf', CSRF_TOKEN);
