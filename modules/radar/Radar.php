@@ -1127,8 +1127,8 @@ class Radar
 
     public static function recalcular(int $cotizacion_id, int $empresa_id): void
     {
-        $cot = DB::row("SELECT estado, radar_bucket, radar_score, vendedor_id, titulo, numero FROM cotizaciones WHERE id=? AND empresa_id=?", [$cotizacion_id, $empresa_id]);
-        if (!$cot || !in_array($cot['estado'], ['enviada','vista','aceptada'])) return;
+        $cot = DB::row("SELECT estado, suspendida, radar_bucket, radar_score, vendedor_id, titulo, numero FROM cotizaciones WHERE id=? AND empresa_id=?", [$cotizacion_id, $empresa_id]);
+        if (!$cot || !in_array($cot['estado'], ['enviada','vista','aceptada']) || !empty($cot['suspendida'])) return;
 
         $old_bucket = $cot['radar_bucket'];
         $old_rscore = $cot['radar_score'];
@@ -1188,9 +1188,39 @@ class Radar
 
     public static function recalcular_empresa(int $empresa_id): int
     {
-        $cots = DB::query("SELECT id FROM cotizaciones WHERE empresa_id=? AND estado IN ('enviada','vista','aceptada')", [$empresa_id]);
+        // Auto-suspender cotizaciones si la empresa lo tiene activo
+        self::auto_suspender($empresa_id);
+
+        $cots = DB::query("SELECT id FROM cotizaciones WHERE empresa_id=? AND estado IN ('enviada','vista','aceptada') AND suspendida = 0", [$empresa_id]);
         foreach ($cots as $c) self::recalcular((int)$c['id'], $empresa_id);
         return count($cots);
+    }
+
+    /**
+     * Auto-suspender cotizaciones sin actividad después de X días.
+     * Se ejecuta antes de recalcular para excluirlas del radar.
+     */
+    public static function auto_suspender(int $empresa_id): int
+    {
+        $emp = DB::row("SELECT auto_suspender_activo, auto_suspender_dias FROM empresas WHERE id=?", [$empresa_id]);
+        if (!$emp || empty($emp['auto_suspender_activo'])) return 0;
+
+        $dias = max(7, (int)$emp['auto_suspender_dias']);
+
+        // Suspender cotizaciones enviadas/vista sin actividad en X días
+        // Usa ultima_vista_at si existe, sino created_at
+        $affected = DB::execute(
+            "UPDATE cotizaciones
+             SET suspendida = 1, suspendida_at = NOW(),
+                 radar_bucket = NULL, radar_score = NULL, radar_senales = NULL
+             WHERE empresa_id = ?
+               AND estado IN ('enviada','vista')
+               AND suspendida = 0
+               AND COALESCE(ultima_vista_at, created_at) < DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$empresa_id, $dias]
+        );
+
+        return $affected;
     }
 
     // ============================================================
@@ -1266,7 +1296,7 @@ class Radar
         $cerr = (int)DB::val("SELECT COUNT(*) FROM ventas WHERE empresa_id=? AND estado != 'cancelada'", [$empresa_id]);
         if ($cerr < 3) return ['ok'=>false,'msg'=>'Se necesitan al menos 3 ventas para calibrar.'];
 
-        $total = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado NOT IN ('borrador')", [$empresa_id]);
+        $total = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado NOT IN ('borrador') AND suspendida = 0", [$empresa_id]);
         $base  = $total > 0 ? $cerr / $total : self::FIT_GLOBAL;
 
         $cots = DB::query(
@@ -1278,7 +1308,7 @@ class Radar
                         (SELECT qs4.created_at FROM quote_sessions qs4 WHERE qs4.cotizacion_id=c.id ORDER BY qs4.created_at DESC LIMIT 1 OFFSET 1)
                     ) AS gap_d
              FROM cotizaciones c
-             WHERE c.empresa_id=? AND c.estado NOT IN ('borrador')",
+             WHERE c.empresa_id=? AND c.estado NOT IN ('borrador') AND c.suspendida = 0",
             [$empresa_id]
         );
 

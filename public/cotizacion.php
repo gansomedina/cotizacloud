@@ -30,6 +30,37 @@ $cot = DB::row(
 
 if (!$cot) { http_response_code(404); die('Cotización no encontrada'); }
 
+// ─── Cotización suspendida — bloquear acceso público ───────
+if (!empty($cot['suspendida'])) {
+    http_response_code(200);
+    $emp_nombre = htmlspecialchars($cot['emp_nombre'], ENT_QUOTES, 'UTF-8');
+    $emp_tel    = htmlspecialchars($cot['emp_tel'] ?? '', ENT_QUOTES, 'UTF-8');
+    $emp_email  = htmlspecialchars($cot['emp_email'] ?? '', ENT_QUOTES, 'UTF-8');
+    echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Cotización no disponible</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8f8f6;font-family:"Plus Jakarta Sans",sans-serif;padding:24px}
+      .card{background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.08);max-width:420px;width:100%;padding:40px 32px;text-align:center}
+      .ico{width:56px;height:56px;border-radius:50%;background:#fff7ed;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:28px}
+      h1{font-size:18px;font-weight:700;color:#1a1a1a;margin-bottom:8px}
+      p{font-size:14px;color:#6a6a64;line-height:1.6;margin-bottom:20px}
+      .contact{display:flex;flex-direction:column;gap:8px}
+      .contact a{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;background:#f0fdf4;color:#1a5c38;font-weight:600;font-size:13px;text-decoration:none;transition:background .15s}
+      .contact a:hover{background:#dcfce7}
+    </style></head><body>
+    <div class="card">
+      <div class="ico">⏸</div>
+      <h1>Cotización no disponible</h1>
+      <p>Para activar esta cotización, favor de contactar a su asesor.</p>
+      <div class="contact">';
+    if ($emp_tel) echo "<a href=\"tel:{$emp_tel}\">📞 {$emp_tel}</a>";
+    if ($emp_email) echo "<a href=\"mailto:{$emp_email}\">✉ {$emp_email}</a>";
+    echo '</div></div></body></html>';
+    exit;
+}
+
 // ─── Líneas ──────────────────────────────────────────────
 $lineas = DB::query(
     "SELECT * FROM cotizacion_lineas WHERE cotizacion_id = ? ORDER BY orden ASC",

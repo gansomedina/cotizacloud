@@ -14,7 +14,7 @@ $orden    = $_GET['orden']   ?? 'reciente';
 $pagina   = max(1, (int)($_GET['p'] ?? 1));
 $por_pag  = 20;
 
-$estados_validos = ['todas','borrador','enviada','vista','aceptada','rechazada','vencida','convertida'];
+$estados_validos = ['todas','borrador','enviada','vista','aceptada','rechazada','vencida','convertida','suspendida'];
 if (!in_array($estado, $estados_validos)) $estado = 'todas';
 $ordenes_validos = ['reciente','antigua','monto_asc','monto_desc','cliente'];
 if (!in_array($orden, $ordenes_validos)) $orden = 'reciente';
@@ -25,6 +25,8 @@ if ($estado !== 'todas') {
     if ($estado === 'vencida') {
         // Vencida no es un valor del ENUM — es un estado calculado
         $where[] = "c.estado IN ('enviada','vista') AND c.valida_hasta IS NOT NULL AND c.valida_hasta < NOW()";
+    } elseif ($estado === 'suspendida') {
+        $where[] = "c.suspendida = 1";
     } else {
         $where[] = "c.estado = ?";
         $params[] = $estado;
@@ -57,6 +59,11 @@ $conteos['vencida'] = (int)DB::val(
     ." AND c.estado IN ('enviada','vista') AND c.valida_hasta IS NOT NULL AND c.valida_hasta < NOW()",
     $cp
 );
+// Contar suspendidas
+$conteos['suspendida'] = (int)DB::val(
+    "SELECT COUNT(*) FROM cotizaciones c WHERE ".implode(' AND ',$cw)." AND c.suspendida = 1",
+    $cp
+);
 
 $total_rows = (int)DB::val("SELECT COUNT(*) FROM cotizaciones c LEFT JOIN clientes cl ON cl.id=c.cliente_id WHERE $where_sql", $params);
 $pag = paginar($total_rows, $pagina, $por_pag);
@@ -72,7 +79,7 @@ $rows = DB::query(
             END AS estado,
             c.estado AS estado_real,
             c.total, c.created_at, c.valida_hasta, c.visitas,
-            c.radar_bucket, c.radar_score,
+            c.radar_bucket, c.radar_score, c.suspendida,
             cl.nombre AS cnombre, cl.telefono AS ctel,
             u.nombre AS asesor, c.vendedor_id,
             COALESCE(uv.nombre, u.nombre) AS vendedor
@@ -111,7 +118,10 @@ function radar_badge(?string $bucket, ?int $score, int $vistas = 0): string {
     return "<span style=\"display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:12px;font:700 10px var(--body);background:{$bg};color:{$color};white-space:nowrap\">{$ico} {$lbl}{$eye}</span>";
 }
 
-function st_badge(string $e): string {
+function st_badge(string $e, bool $suspendida = false): string {
+    if ($suspendida) {
+        return "<span class='st st-suspendida'><span class='st-dot'></span>Suspendida</span>";
+    }
     $m = ['borrador'=>'st-borrador','enviada'=>'st-enviada','vista'=>'st-vista',
           'aceptada'=>'st-aceptada','rechazada'=>'st-rechazada','vencida'=>'st-vencida','convertida'=>'st-aceptada'];
     $c = $m[$e] ?? 'st-borrador';
@@ -165,6 +175,7 @@ ob_start();
 .st-aceptada{background:var(--g-light);color:var(--g)}.st-aceptada .st-dot{background:var(--g)}
 .st-rechazada{background:var(--danger-bg);color:var(--danger)}.st-rechazada .st-dot{background:var(--danger)}
 .st-vencida{background:var(--amb-bg);color:var(--amb)}.st-vencida .st-dot{background:#f59e0b}
+.st-suspendida{background:#fef3c7;color:#92400e}.st-suspendida .st-dot{background:#d97706}
 
 /* BOTONES */
 .act-btn{height:30px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--white);font:600 13px var(--body);color:var(--t2);cursor:pointer;transition:all .12s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px;text-decoration:none}
@@ -320,7 +331,7 @@ ob_start();
 <div class="filter-bar">
 <?php
 $chips = ['todas'=>'Todas','enviada'=>'Enviada','vista'=>'Vista','aceptada'=>'Aceptada',
-          'rechazada'=>'Rechazada','vencida'=>'Vencida','borrador'=>'Borrador','convertida'=>'Convertida'];
+          'rechazada'=>'Rechazada','vencida'=>'Vencida','suspendida'=>'Suspendida','borrador'=>'Borrador','convertida'=>'Convertida'];
 foreach ($chips as $k => $lbl):
     $cnt = $conteos[$k] ?? 0;
     if ($k !== 'todas' && $cnt === 0) continue;
@@ -355,6 +366,8 @@ foreach ($chips as $k => $lbl):
   <?php foreach ($rows as $c):
     $url    = 'https://'.EMPRESA_SLUG.'.'.BASE_DOMAIN.'/c/'.$c['slug'];
     $puedeX = !in_array($c['estado'], ['aceptada','aceptada_cliente','convertida']);
+    $esSusp = !empty($c['suspendida']);
+    $puedeS = in_array($c['estado_real'] ?? $c['estado'], ['enviada','vista','rechazada','borrador','vencida']) || $esSusp;
     $vistas = (int)($c['visitas'] ?? 0);
     $vis_txt = $vistas > 0 ? ico('eye',12,'#6a6a64').' '.$vistas : '—';
     $radar  = radar_badge($c['radar_bucket'], (int)($c['radar_score'] ?? 0), $vistas);
@@ -368,7 +381,7 @@ foreach ($chips as $k => $lbl):
       <span class="cot-numero-desk"><?= e($c['numero']) ?></span>
       <div class="mob-l1">
         <div class="cot-titulo"><?= e($c['titulo']) ?></div>
-        <?= st_badge($c['estado']) ?>
+        <?= st_badge($c['estado'], $esSusp) ?>
       </div>
       <!-- MOBILE: línea 2 — cliente · tel -->
       <div class="mob-l2">
@@ -404,6 +417,11 @@ foreach ($chips as $k => $lbl):
           <a href="<?= $ed_url ?>" class="exp-btn"><?= ico('edit',12) ?> Editar</a>
           <a href="<?= e($url) ?>" target="_blank" class="exp-btn"><?= ico('link',12) ?> Ver</a>
           <button class="exp-btn" onclick="copyLink('<?= e($url) ?>')"><?= ico('copy',12) ?> Copiar</button>
+          <?php if ($puedeS): ?>
+          <button class="exp-btn <?= $esSusp ? '' : 'exp-btn-danger' ?>" onclick="suspenderCot(<?= (int)$c['id'] ?>,this)">
+            <?= $esSusp ? '▶ Reactivar' : '⏸ Suspender' ?>
+          </button>
+          <?php endif ?>
           <?php if ($puedeX): ?>
           <button class="exp-btn exp-btn-danger" onclick="eliminarCot(<?= (int)$c['id'] ?>,this)">✕ Borrar</button>
           <?php endif ?>
@@ -423,7 +441,7 @@ foreach ($chips as $k => $lbl):
     </div>
 
     <!-- col 4 desktop: estatus -->
-    <div class="cot-col-status"><?= st_badge($c['estado']) ?></div>
+    <div class="cot-col-status"><?= st_badge($c['estado'], $esSusp) ?></div>
 
     <!-- col 4 desktop: monto + radar/vistas debajo -->
     <div class="cot-col-monto">
@@ -448,6 +466,11 @@ foreach ($chips as $k => $lbl):
       <a href="<?= $ed_url ?>" class="act-btn"><?= ico('edit',12) ?> Editar</a>
       <a href="<?= e($url) ?>" target="_blank" class="act-btn"><?= ico('link',12) ?> Ver</a>
       <button class="act-btn" onclick="copyLink('<?= e($url) ?>')"><?= ico('copy',12) ?></button>
+      <?php if ($puedeS): ?>
+      <button class="act-btn <?= $esSusp ? '' : 'danger' ?>" onclick="suspenderCot(<?= (int)$c['id'] ?>,this)" title="<?= $esSusp ? 'Reactivar' : 'Suspender' ?>">
+        <?= $esSusp ? '▶' : '⏸' ?>
+      </button>
+      <?php endif ?>
       <?php if ($puedeX): ?>
       <button class="act-btn danger" onclick="eliminarCot(<?= (int)$c['id'] ?>,this)">✕</button>
       <?php endif ?>
@@ -520,6 +543,22 @@ async function eliminarCot(id, btn) {
     const d = await r.json();
     if (d.ok) btn.closest('.cot-row').remove();
     else alert(d.error || 'Error al eliminar');
+  } catch(e) { alert('Error de conexión') }
+}
+
+async function suspenderCot(id, btn) {
+  const isSusp = btn.textContent.includes('Reactivar');
+  const msg = isSusp ? '¿Reactivar esta cotización?' : '¿Suspender esta cotización? El cliente no podrá verla.';
+  if (!confirm(msg)) return;
+  try {
+    const r = await fetch('/cotizaciones/' + id + '/suspender', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+      body: JSON.stringify({})
+    });
+    const d = await r.json();
+    if (d.ok) window.location.reload();
+    else alert(d.error || 'Error');
   } catch(e) { alert('Error de conexión') }
 }
 </script>

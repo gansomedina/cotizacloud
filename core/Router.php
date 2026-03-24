@@ -140,6 +140,7 @@ class Router
         self::post('/cotizaciones/:id/enviar',fn($p)=> self::app('cotizaciones', 'enviar',  $p));
         self::post('/cotizaciones/:id/convertir', fn($p) => self::app('cotizaciones', 'convertir', $p));
         self::post('/cotizaciones/:id/eliminar',  fn($p) => self::app('cotizaciones', 'eliminar',  $p));
+        self::post('/cotizaciones/:id/suspender', fn($p) => self::app('cotizaciones', 'suspender', $p));
 
         self::get('/clientes',               fn()   => self::app('clientes', 'lista'));
         self::post('/clientes',              fn()   => self::app('clientes', 'crear'));

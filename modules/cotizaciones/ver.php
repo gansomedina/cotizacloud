@@ -97,7 +97,9 @@ if ($puede_asignar) {
     );
 }
 
-$es_editable = in_array($cot['estado'], ['borrador', 'enviada', 'vista']);
+$es_editable = in_array($cot['estado'], ['borrador', 'enviada', 'vista']) && empty($cot['suspendida']);
+$es_suspendida = !empty($cot['suspendida']);
+$puede_suspender = in_array($cot['estado'], ['borrador', 'enviada', 'vista', 'rechazada']) || $es_suspendida;
 
 // JSON para JS
 $articulos_js = json_encode(array_map(fn($a) => [
@@ -207,6 +209,11 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             <?php endif; ?>
             <button class="accion-btn topbar-secondary" onclick="navigator.clipboard.writeText('<?= e($url_publica) ?>');this.textContent='✓';setTimeout(()=>this.textContent='Copiar',2000)">Copiar</button>
             <a href="<?= e($url_publica) ?>" target="_blank" class="accion-btn topbar-secondary">Ver</a>
+            <?php if ($puede_suspender): ?>
+                <button class="accion-btn topbar-secondary" style="color:<?= $es_suspendida ? 'var(--g)' : '#d97706' ?>;border-color:<?= $es_suspendida ? 'var(--g)' : '#d97706' ?>" onclick="suspenderCotizacion()">
+                    <?= $es_suspendida ? '▶ Reactivar' : '⏸ Suspender' ?>
+                </button>
+            <?php endif; ?>
             <?php if (Auth::es_admin() && $cot['estado'] !== 'convertida'): ?>
                 <button class="accion-btn topbar-secondary" style="color:var(--danger);border-color:var(--danger)" onclick="eliminarCotizacion()">Eliminar</button>
             <?php endif; ?>
@@ -225,7 +232,11 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     ];
     $badge_class = $badge_map[$cot['estado']] ?? 'badge-slate';
     ?>
+    <?php if ($es_suspendida): ?>
+    <span class="badge" style="background:#fef3c7;color:#92400e">⏸ Suspendida</span>
+    <?php else: ?>
     <span class="badge <?= $badge_class ?>"><?= ucfirst(e($cot['estado'])) ?></span>
+    <?php endif; ?>
     <?php if ($cot['cliente_nombre']): ?>
         <span style="color:var(--t3)">·</span>
         <span style="font-weight:600"><?= e($cot['cliente_nombre']) ?></span>
@@ -734,6 +745,18 @@ async function convertirAVenta(){
     const data=await r.json();
     if(data.ok)window.location.href='/ventas/'+data.data.venta_id;
     else alert(data.error||'Error');
+}
+
+async function suspenderCotizacion(){
+    const isSusp = <?= $es_suspendida ? 'true' : 'false' ?>;
+    const msg = isSusp ? '¿Reactivar esta cotización?' : '¿Suspender esta cotización? El cliente no podrá verla.';
+    if(!confirm(msg))return;
+    try{
+        const r=await fetch('/cotizaciones/'+COT_ID+'/suspender',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:JSON.stringify({})});
+        const data=await r.json();
+        if(data.ok)window.location.reload();
+        else alert(data.error||'Error');
+    }catch(e){alert('Error de conexión');}
 }
 
 async function eliminarCotizacion(){

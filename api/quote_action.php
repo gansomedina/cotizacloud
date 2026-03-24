@@ -25,11 +25,14 @@ if (!in_array($accion, $acciones_validas)) {
 
 // ─── Cargar cotización ───────────────────────────────────
 $cot = DB::row(
-    "SELECT id, empresa_id, estado, cliente_id, titulo FROM cotizaciones WHERE id = ? AND empresa_id = ?",
+    "SELECT id, empresa_id, estado, suspendida, cliente_id, titulo FROM cotizaciones WHERE id = ? AND empresa_id = ?",
     [$cot_id, EMPRESA_ID]
 );
 if (!$cot) {
     http_response_code(404); echo json_encode(['ok'=>false,'error'=>'Cotización no encontrada']); exit;
+}
+if (!empty($cot['suspendida'])) {
+    echo json_encode(['ok'=>false,'error'=>'Esta cotización está suspendida']); exit;
 }
 
 $estado_actual = $cot['estado'];

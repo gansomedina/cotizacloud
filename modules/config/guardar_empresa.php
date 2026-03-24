@@ -19,6 +19,8 @@ $impuesto_modo = in_array($body['impuesto_modo']??'', ['ninguno','suma','incluid
 $impuesto_pct  = max(0, min(99, (float)($body['impuesto_pct'] ?? 16)));
 $vigencia_dias = max(1, min(365, (int)($body['cot_vigencia_dias'] ?? 30)));
 
+$auto_susp_dias = max(7, min(365, (int)($body['auto_suspender_dias'] ?? 30)));
+
 DB::execute(
     "UPDATE empresas SET
         nombre             = ?,
@@ -35,6 +37,8 @@ DB::execute(
         notif_email_rechaza= ?,
         cot_vigencia_dias  = ?,
         allow_precio_edit  = ?,
+        auto_suspender_activo = ?,
+        auto_suspender_dias   = ?,
         cot_msg_acepta     = ?,
         cot_msg_rechaza    = ?,
         cot_terminos       = ?,
@@ -57,6 +61,8 @@ DB::execute(
         (int)($body['notif_email_rechaza'] ?? 0),
         $vigencia_dias,
         (int)($body['allow_precio_edit']   ?? 1),
+        (int)($body['auto_suspender_activo'] ?? 0),
+        $auto_susp_dias,
         mb_substr($body['cot_msg_acepta']  ?? '', 0, 2000),
         mb_substr($body['cot_msg_rechaza'] ?? '', 0, 2000),
         $body['cot_terminos'] ?? '',
