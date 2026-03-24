@@ -50,6 +50,11 @@ if ($total >= 3) json_error('Máximo 3 archivos adjuntos por cotización', 422);
 
 if (empty($_FILES['archivo'])) json_error('No se recibió archivo', 400);
 
+// Límite de 1MB para adjuntos de cotización
+if ($_FILES['archivo']['size'] > 1 * 1024 * 1024) {
+    json_error('El archivo no debe superar 1 MB', 422);
+}
+
 $res = upload_archivo($_FILES['archivo'], $empresa_id, 'adjuntos');
 if (!$res['ok']) json_error($res['error'], 422);
 
