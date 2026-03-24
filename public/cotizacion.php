@@ -261,6 +261,7 @@ $themes = [
     'verde'   => ['g'=>'#1a6b3c','glt'=>'#edf7f2','gbd'=>'#b6ddc7'],
     'azul'    => ['g'=>'#1d4ed8','glt'=>'#eff6ff','gbd'=>'#bfdbfe'],
     'rojo'    => ['g'=>'#b91c1c','glt'=>'#fef2f2','gbd'=>'#fecaca'],
+    'naranja' => ['g'=>'#d97706','glt'=>'#fffbeb','gbd'=>'#fde68a'],
     'dorado'  => ['g'=>'#92400e','glt'=>'#fffbeb','gbd'=>'#fde68a'],
     'morado'  => ['g'=>'#6d28d9','glt'=>'#f5f3ff','gbd'=>'#c4b5fd'],
     'oscuro'  => ['g'=>'#1e293b','glt'=>'#f1f5f9','gbd'=>'#cbd5e1'],
