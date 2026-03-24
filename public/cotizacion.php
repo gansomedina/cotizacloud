@@ -15,7 +15,7 @@ $cot = DB::row(
             e.telefono AS emp_tel, e.email AS emp_email,
             e.website AS emp_web, e.moneda, e.logo_url AS emp_logo,
             e.impuesto_modo, e.impuesto_pct, e.impuesto_nombre AS impuesto_label,
-            e.cot_terminos AS terminos, e.cot_footer,
+            e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado,
             e.texto_aceptar, e.texto_rechazar,
             e.slug AS emp_slug,
             cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.email AS cli_email,
@@ -605,6 +605,21 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       </div>
     </div>
   </div>
+
+  <!-- ENCABEZADO / SALUDO -->
+  <?php
+  $encabezado_raw = trim($cot['cot_encabezado'] ?? '');
+  if ($encabezado_raw !== ''):
+      $encabezado = str_replace(
+          ['{{cliente}}', '{{empresa}}', '{{asesor}}'],
+          [e($cot['cliente_nombre'] ?? ''), e($cot['emp_nombre']), e($cot['asesor_nombre'] ?? '')],
+          e($encabezado_raw)
+      );
+  ?>
+  <div style="margin:24px 0 8px;padding:20px 24px;background:var(--white);border:1px solid var(--bd);border-radius:var(--r);font:400 15px/1.7 'Plus Jakarta Sans',sans-serif;color:var(--text)">
+    <?= nl2br($encabezado) ?>
+  </div>
+  <?php endif; ?>
 
   <!-- ARTÍCULOS DESKTOP -->
   <div id="itemsBlock">

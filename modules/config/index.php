@@ -472,6 +472,16 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <div class="sec-lbl">Mensajes — Cotizaciones</div>
     <div class="card">
       <div class="field-row">
+        <div class="field-lbl">Encabezado / Saludo</div>
+        <div class="field-sub">Texto que aparece antes de los artículos en la cotización pública. Ej: "Gracias por su interés, es un placer atenderle..."</div>
+        <textarea class="field-box" id="e_cot_encabezado" style="margin-top:10px;min-height:70px;resize:none" oninput="autoResize(this)"><?= e($empresa['cot_encabezado'] ?? '') ?></textarea>
+        <div class="msg-vars">
+          <div class="msg-var" onclick="insertVar('e_cot_encabezado','{{cliente}}')">{{cliente}}</div>
+          <div class="msg-var" onclick="insertVar('e_cot_encabezado','{{empresa}}')">{{empresa}}</div>
+          <div class="msg-var" onclick="insertVar('e_cot_encabezado','{{asesor}}')">{{asesor}}</div>
+        </div>
+      </div>
+      <div class="field-row">
         <div class="field-lbl">Mensaje al aceptar</div>
         <div class="field-sub">El cliente lo ve en pantalla al dar clic en "Aceptar"</div>
         <textarea class="field-box" id="e_cot_msg_acepta" style="margin-top:10px;min-height:80px;resize:none" oninput="autoResize(this)"><?= e($empresa['cot_msg_acepta'] ?? '') ?></textarea>
@@ -1215,6 +1225,7 @@ async function guardarEmpresa() {
         allow_precio_edit:  document.getElementById('e_allow_precio_edit').checked ? 1 : 0,
         auto_suspender_activo: document.getElementById('e_auto_suspender_activo').checked ? 1 : 0,
         auto_suspender_dias: parseInt(document.getElementById('e_auto_suspender_dias').value) || 30,
+        cot_encabezado:     document.getElementById('e_cot_encabezado').value,
         cot_msg_acepta:     document.getElementById('e_cot_msg_acepta').value,
         cot_msg_rechaza:    document.getElementById('e_cot_msg_rechaza').value,
         cot_terminos:       document.getElementById('e_cot_terminos').value,
