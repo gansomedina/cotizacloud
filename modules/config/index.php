@@ -124,6 +124,14 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 .toggle input:checked~.toggle-track{background:var(--g)}
 .toggle input:checked~.toggle-thumb{transform:translateX(18px)}
 
+/* ─── Theme picker ───────────────────────────────────────── */
+.theme-btn{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:var(--r-sm);border:2px solid var(--border);background:var(--white);cursor:pointer;transition:all .15s}
+.theme-btn:hover{border-color:var(--tc)}
+.theme-btn.on{border-color:var(--tc);background:color-mix(in srgb, var(--tc) 8%, white)}
+.theme-dot{width:20px;height:20px;border-radius:50%;background:var(--tc);flex-shrink:0}
+.theme-lbl{font:600 13px var(--body);color:var(--t2)}
+.theme-btn.on .theme-lbl{color:var(--tc);font-weight:700}
+
 /* ─── Logo ───────────────────────────────────────────────── */
 .logo-wrap{padding:16px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border)}
 .logo-preview{width:80px;height:80px;border-radius:var(--r);border:1.5px solid var(--border2);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:30px;overflow:hidden;flex-shrink:0}
@@ -416,6 +424,39 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <input type="checkbox" id="e_notif_rechaza" <?= $empresa['notif_email_rechaza']?'checked':'' ?>>
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theme cotización pública -->
+  <div class="sec">
+    <div class="sec-lbl">Apariencia — Cotización pública</div>
+    <div class="card">
+      <div class="field-row">
+        <div class="field-lbl">Color de la cotización</div>
+        <div class="field-sub">Este color se aplica en el enlace público que ve tu cliente</div>
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap" id="theme-picker">
+          <?php
+          $theme_actual = $empresa['cot_theme'] ?? 'verde';
+          $theme_opts = [
+              'verde'  => ['#1a6b3c','Verde'],
+              'azul'   => ['#1d4ed8','Azul'],
+              'rojo'   => ['#b91c1c','Rojo'],
+              'dorado' => ['#92400e','Dorado'],
+              'morado' => ['#6d28d9','Morado'],
+              'oscuro' => ['#1e293b','Oscuro'],
+          ];
+          foreach ($theme_opts as $key => [$color, $label]):
+          ?>
+          <button type="button" class="theme-btn <?= $key === $theme_actual ? 'on' : '' ?>"
+                  data-theme="<?= $key ?>" onclick="selTheme(this)"
+                  style="--tc:<?= $color ?>">
+            <span class="theme-dot"></span>
+            <span class="theme-lbl"><?= $label ?></span>
+          </button>
+          <?php endforeach ?>
+        </div>
+        <input type="hidden" id="e_cot_theme" value="<?= e($theme_actual) ?>">
       </div>
     </div>
   </div>
@@ -1225,6 +1266,7 @@ async function guardarEmpresa() {
         allow_precio_edit:  document.getElementById('e_allow_precio_edit').checked ? 1 : 0,
         auto_suspender_activo: document.getElementById('e_auto_suspender_activo').checked ? 1 : 0,
         auto_suspender_dias: parseInt(document.getElementById('e_auto_suspender_dias').value) || 30,
+        cot_theme:          document.getElementById('e_cot_theme').value,
         cot_encabezado:     document.getElementById('e_cot_encabezado').value,
         cot_msg_acepta:     document.getElementById('e_cot_msg_acepta').value,
         cot_msg_rechaza:    document.getElementById('e_cot_msg_rechaza').value,
@@ -1244,6 +1286,13 @@ async function guardarEmpresa() {
         if (d.ok) flashOk('Cambios guardados');
         else alert(d.error || 'Error al guardar.');
     } catch(e) { alert('Error de conexión.'); }
+}
+
+// ── Theme picker ─────────────────────────────────────────────
+function selTheme(btn) {
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    document.getElementById('e_cot_theme').value = btn.dataset.theme;
 }
 
 // ── Toggle auto-suspender días row ───────────────────────────

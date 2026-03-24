@@ -249,7 +249,18 @@ $badge_map = [
 <title>Cotización · <?= e($cot['emp_nombre']) ?></title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--g:#1a6b3c;--glt:#edf7f2;--gbd:#b6ddc7;--text:#111;--t2:#444;--t3:#888;--bd:#d8d8d8;--bg:#f7f7f5;--white:#fff;--amb:#92400e;--red:#b91c1c;--r:6px}
+<?php
+$themes = [
+    'verde'   => ['g'=>'#1a6b3c','glt'=>'#edf7f2','gbd'=>'#b6ddc7'],
+    'azul'    => ['g'=>'#1d4ed8','glt'=>'#eff6ff','gbd'=>'#bfdbfe'],
+    'rojo'    => ['g'=>'#b91c1c','glt'=>'#fef2f2','gbd'=>'#fecaca'],
+    'dorado'  => ['g'=>'#92400e','glt'=>'#fffbeb','gbd'=>'#fde68a'],
+    'morado'  => ['g'=>'#6d28d9','glt'=>'#f5f3ff','gbd'=>'#c4b5fd'],
+    'oscuro'  => ['g'=>'#1e293b','glt'=>'#f1f5f9','gbd'=>'#cbd5e1'],
+];
+$th = $themes[$cot['cot_theme'] ?? 'verde'] ?? $themes['verde'];
+?>
+:root{--g:<?=$th['g']?>;--glt:<?=$th['glt']?>;--gbd:<?=$th['gbd']?>;--text:#111;--t2:#444;--t3:#888;--bd:#d8d8d8;--bg:#f7f7f5;--white:#fff;--amb:#92400e;--red:#b91c1c;--r:6px}
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:17px;-webkit-text-size-adjust:100%}
 body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}

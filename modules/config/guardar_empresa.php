@@ -20,6 +20,8 @@ $impuesto_pct  = max(0, min(99, (float)($body['impuesto_pct'] ?? 16)));
 $vigencia_dias = max(1, min(365, (int)($body['cot_vigencia_dias'] ?? 30)));
 
 $auto_susp_dias = max(7, min(365, (int)($body['auto_suspender_dias'] ?? 30)));
+$themes_validos = ['verde','azul','rojo','dorado','morado','oscuro'];
+$cot_theme = in_array($body['cot_theme'] ?? '', $themes_validos) ? $body['cot_theme'] : 'verde';
 
 DB::execute(
     "UPDATE empresas SET
@@ -39,6 +41,7 @@ DB::execute(
         allow_precio_edit  = ?,
         auto_suspender_activo = ?,
         auto_suspender_dias   = ?,
+        cot_theme          = ?,
         cot_encabezado     = ?,
         cot_msg_acepta     = ?,
         cot_msg_rechaza    = ?,
@@ -64,6 +67,7 @@ DB::execute(
         (int)($body['allow_precio_edit']   ?? 1),
         (int)($body['auto_suspender_activo'] ?? 0),
         $auto_susp_dias,
+        $cot_theme,
         mb_substr($body['cot_encabezado'] ?? '', 0, 2000),
         mb_substr($body['cot_msg_acepta']  ?? '', 0, 2000),
         mb_substr($body['cot_msg_rechaza'] ?? '', 0, 2000),
