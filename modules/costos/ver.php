@@ -32,6 +32,19 @@ $categorias = DB::query(
 );
 $cats_map = array_column($categorias, null, 'id');
 
+// ─── Proveedores (Business) ─────────────────────────────────
+$plan_info = trial_info($empresa_id);
+$proveedores = [];
+if ($plan_info['es_business']) {
+    $prov_tabla = DB::val("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='proveedores' LIMIT 1");
+    if ($prov_tabla) {
+        $proveedores = DB::query(
+            "SELECT id, nombre FROM proveedores WHERE empresa_id=? AND activo=1 ORDER BY nombre",
+            [$empresa_id]
+        );
+    }
+}
+
 // ─── Gastos de esta venta ─────────────────────────────────────
 $gastos = DB::query(
     "SELECT gv.*, cc.nombre AS cat_nombre, cc.color AS cat_color
@@ -265,7 +278,7 @@ ob_start();
         <div class="cost-monto"><?= fmt_v((float)$g['importe']) ?></div>
         <div class="cost-actions">
           <button class="cost-btn edi"
-                  onclick='openSheetEdit(<?= (int)$g['id'] ?>, <?= htmlspecialchars(json_encode(['venta_id'=>$venta_id,'categoria_id'=>(int)$g['categoria_id'],'concepto'=>$g['concepto'],'importe'=>$g['importe'],'fecha'=>$g['fecha'],'nota'=>$g['nota']??'']), ENT_QUOTES) ?>)'
+                  onclick='openSheetEdit(<?= (int)$g['id'] ?>, <?= htmlspecialchars(json_encode(['venta_id'=>$venta_id,'categoria_id'=>(int)$g['categoria_id'],'proveedor_id'=>(int)($g['proveedor_id']??0),'concepto'=>$g['concepto'],'importe'=>$g['importe'],'fecha'=>$g['fecha'],'nota'=>$g['nota']??'']), ENT_QUOTES) ?>)'
                   title="Editar">✎</button>
           <button class="cost-btn del"
                   onclick="eliminarCosto(<?= (int)$g['id'] ?>, this)"
@@ -356,6 +369,17 @@ ob_start();
         <?php endforeach; ?>
       </select>
     </div>
+    <?php if (!empty($proveedores)): ?>
+    <div class="sh-field">
+      <div class="sh-lbl">Proveedor (opcional)</div>
+      <select class="sh-select" id="shCostoProv">
+        <option value="">Sin proveedor</option>
+        <?php foreach ($proveedores as $pv): ?>
+        <option value="<?= (int)$pv['id'] ?>"><?= e($pv['nombre']) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <?php endif; ?>
     <div class="sh-field">
       <div class="sh-lbl">Concepto <span style="color:var(--danger)">*</span></div>
       <input class="sh-input" type="text" id="shCostoConcepto" placeholder="Ej. Herrajes, Instalación…" maxlength="200">
@@ -384,10 +408,13 @@ ob_start();
 <script>
 const VENTA_ID = <?= $venta_id ?>;
 
+const HAS_PROV = !!document.getElementById('shCostoProv');
+
 function openSheetNew() {
     document.getElementById('shCostoId').value      = '';
     document.getElementById('shCostoTit').textContent = 'Agregar costo';
     document.getElementById('shCostoCat').value     = '';
+    if (HAS_PROV) document.getElementById('shCostoProv').value = '';
     document.getElementById('shCostoConcepto').value= '';
     document.getElementById('shCostoImporte').value = '';
     document.getElementById('shCostoFecha').value   = '<?= date('Y-m-d') ?>';
@@ -399,6 +426,7 @@ function openSheetEdit(id, data) {
     document.getElementById('shCostoId').value       = id;
     document.getElementById('shCostoTit').textContent = 'Editar costo';
     document.getElementById('shCostoCat').value      = data.categoria_id;
+    if (HAS_PROV) document.getElementById('shCostoProv').value = data.proveedor_id || '';
     document.getElementById('shCostoConcepto').value = data.concepto;
     document.getElementById('shCostoImporte').value  = data.importe;
     document.getElementById('shCostoFecha').value    = data.fecha || '<?= date('Y-m-d') ?>';
@@ -424,12 +452,14 @@ async function guardarCosto() {
         return;
     }
 
+    const prov_id = HAS_PROV ? parseInt(document.getElementById('shCostoProv').value) || 0 : 0;
+
     const url = id ? '/costos/gasto/' + id : '/costos/gasto';
     try {
         const r = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ venta_id: VENTA_ID, categoria_id: parseInt(cat_id), concepto, importe, fecha, nota })
+            body: JSON.stringify({ venta_id: VENTA_ID, categoria_id: parseInt(cat_id), proveedor_id: prov_id, concepto, importe, fecha, nota })
         });
         const d = await r.json();
         if (d.ok) { closeSheet('shCosto'); location.reload(); }

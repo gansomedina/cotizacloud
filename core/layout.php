@@ -18,6 +18,7 @@ $menu = [
     ['href' => '/cotizaciones', 'icon' => 'file-text',     'label' => 'Cotizaciones'],
     ['href' => '/ventas',       'icon' => 'shopping-bag',  'label' => 'Ventas'],
     ['href' => '/costos',       'icon' => 'trending-down', 'label' => 'Costos'],
+    ['href' => '/proveedores',  'icon' => 'truck',         'label' => 'Proveedores', 'business' => true],
     ['href' => '/radar',        'icon' => 'activity',      'label' => 'Radar'],
     ['href' => '/reportes',     'icon' => 'bar-chart-2',   'label' => 'Reportes'],
     ['href' => '/config',       'icon' => 'settings',      'label' => 'Configuración'],
@@ -291,7 +292,11 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         <div class="empresa-nombre"><?= e($empresa['nombre'] ?? '') ?></div>
     </div>
     <nav class="sidebar-nav">
-        <?php foreach ($menu as $item): ?>
+        <?php
+        $plan_sidebar = trial_info(EMPRESA_ID);
+        foreach ($menu as $item):
+            if (!empty($item['business']) && !$plan_sidebar['es_business']) continue;
+        ?>
             <a href="<?= e($item['href']) ?>"
                class="nav-item <?= menu_activo($item['href'], $path) ? 'active' : '' ?>"
                onclick="closeSidebar()">
