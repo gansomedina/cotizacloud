@@ -412,6 +412,13 @@ $page_title = 'Nueva cotización';
             <span style="font-size:18px">+</span> Agregar artículo
         </button>
 
+        <!-- ADJUNTOS (disponible después de guardar) -->
+        <div class="slabel">Archivos adjuntos</div>
+        <div style="padding:20px;background:var(--bg);border:1.5px dashed var(--border2);border-radius:var(--r);text-align:center">
+          <div style="font:500 13px var(--body);color:var(--t3)">Guarda la cotización primero para adjuntar archivos</div>
+          <div style="font:400 12px var(--body);color:var(--t3);margin-top:4px">Máximo 3 archivos, 1 MB cada uno</div>
+        </div>
+
         <!-- PANEL MÓVIL -->
         <div class="mobile-panel">
             <div class="slabel" style="margin-top:24px">Opciones</div>
