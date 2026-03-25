@@ -57,6 +57,13 @@ if ($accion === 'aceptar') {
     try {
         DB::beginTransaction();
 
+        // Lock para prevenir aceptación duplicada concurrente
+        $cot_lock = DB::row("SELECT estado FROM cotizaciones WHERE id=? FOR UPDATE", [$cot_id]);
+        if (!$cot_lock || !in_array($cot_lock['estado'], $estados_activos)) {
+            DB::rollback();
+            echo json_encode(['ok'=>false,'error'=>'Esta cotización ya no está activa']); exit;
+        }
+
         // Total final (con descuentos aplicados)
         $total_guardar = $total_final > 0 ? $total_final : (float)DB::val("SELECT total FROM cotizaciones WHERE id=?", [$cot_id]);
 
@@ -161,6 +168,13 @@ if ($accion === 'rechazar') {
 
     try {
         DB::beginTransaction();
+
+        // Lock para prevenir acción duplicada concurrente
+        $cot_lock = DB::row("SELECT estado FROM cotizaciones WHERE id=? FOR UPDATE", [$cot_id]);
+        if (!$cot_lock || !in_array($cot_lock['estado'], $estados_activos)) {
+            DB::rollback();
+            echo json_encode(['ok'=>false,'error'=>'Esta cotización ya no está activa']); exit;
+        }
 
         DB::execute(
             "UPDATE cotizaciones SET

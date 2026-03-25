@@ -33,13 +33,12 @@ $titulo = trim($body['titulo'] ?? '');
 if (empty($titulo)) json_error('El título es requerido');
 
 $cliente_id = isset($body['cliente_id']) ? (int)$body['cliente_id'] : null;
-if ($cliente_id) {
-    $existe_cliente = DB::val(
-        "SELECT id FROM clientes WHERE id = ? AND empresa_id = ?",
-        [$cliente_id, $empresa_id]
-    );
-    if (!$existe_cliente) $cliente_id = null;
-}
+if (!$cliente_id) json_error('El cliente es requerido');
+$existe_cliente = DB::val(
+    "SELECT id FROM clientes WHERE id = ? AND empresa_id = ?",
+    [$cliente_id, $empresa_id]
+);
+if (!$existe_cliente) json_error('Cliente no válido');
 
 // Vendedor asignado (default = usuario actual)
 $vendedor_id = Auth::id();
