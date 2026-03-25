@@ -49,6 +49,18 @@ if (preg_match('#^/assets/(.+)$#', $req_uri, $m)) {
     }
 }
 
+// ─── Service Worker (Web Push) — debe servirse desde raíz ───
+if ($req_uri === '/sw.js') {
+    $swFile = __DIR__ . '/public/sw.js';
+    if (is_file($swFile)) {
+        header('Content-Type: application/javascript');
+        header('Cache-Control: no-cache');
+        header('Service-Worker-Allowed: /');
+        readfile($swFile);
+        exit;
+    }
+}
+
 require_once __DIR__ . '/config.php';
 
 // Iniciar sesión y detectar empresa
