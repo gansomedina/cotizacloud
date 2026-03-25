@@ -245,4 +245,37 @@ HTML;
 HTML;
         return self::enviar($email_vendedor, $nombre_vendedor, $asunto, $body);
     }
+
+    /**
+     * Email de notificación al superadmin
+     */
+    public static function enviar_superadmin(
+        string $email,
+        string $tipo,
+        string $titulo,
+        string $detalle
+    ): bool {
+        $color = match($tipo) {
+            'nueva_empresa'       => '#1a5c38',
+            'solicitud_licencia'  => '#b45309',
+            'nuevo_ticket'        => '#2563eb',
+            default               => '#475569',
+        };
+        $label = match($tipo) {
+            'nueva_empresa'       => 'Nueva Empresa',
+            'solicitud_licencia'  => 'Solicitud de Licencia',
+            'nuevo_ticket'        => 'Ticket de Soporte',
+            default               => 'Notificación',
+        };
+        $asunto = "[CotizaCloud Admin] {$label}: {$titulo}";
+        $body = <<<HTML
+<h2 style="margin:0 0 16px;font-size:20px;color:{$color}">{$label}</h2>
+<p style="font-size:15px;margin:0 0 12px"><strong>{$titulo}</strong></p>
+<p style="font-size:14px;color:#6a6a64;margin:0 0 20px">{$detalle}</p>
+<div style="text-align:center;margin:24px 0">
+    <a href="https://cotiza.cloud/superadmin" style="display:inline-block;background:{$color};color:#fff;padding:12px 28px;border-radius:8px;font-weight:700;font-size:14px;text-decoration:none">Ver en panel</a>
+</div>
+HTML;
+        return self::enviar($email, 'Admin', $asunto, $body);
+    }
 }

@@ -103,7 +103,11 @@ VentaLog::registrar(
     Auth::id()
 );
 
-// ─── Push notification de abono ──────────────────────────────
+// ─── Notificaciones de abono ─────────────────────────────────
+$ncfg_abono = notif_config($empresa_id);
+if ($ncfg_abono['abono_registrado']) {
+
+// Push
 try {
     $venta_num = $venta['numero'] ?? 'VTA-' . $venta_id;
     $push_titulo = 'Abono registrado: $' . number_format($monto, 2);
@@ -119,7 +123,7 @@ try {
     if (defined('DEBUG') && DEBUG) error_log('Push abono error: ' . $e->getMessage());
 }
 
-// ─── Email de notificación de abono ─────────────────────────
+// Email
 try {
     $notif_email = $empresa['notif_email'] ?? '';
     if ($notif_email) {
@@ -148,6 +152,8 @@ try {
 } catch (\Exception $e) {
     if (DEBUG) error_log('Email abono error: ' . $e->getMessage());
 }
+
+} // cierre if notif abono_registrado
 
 ob_end_clean();
 json_ok([

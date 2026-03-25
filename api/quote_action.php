@@ -148,25 +148,30 @@ if ($accion === 'aceptar') {
 
         DB::commit();
 
+        // Verificar si las notificaciones están activas
+        $ncfg = notif_config(EMPRESA_ID);
+
         // Push notification a los usuarios de la empresa
-        try {
-            PushNotification::enviar_a_empresa(
-                EMPRESA_ID,
-                'cotizacion_aceptada',
-                'Cotización aceptada',
-                $nombre . ' aceptó la cotización: ' . $cot['titulo'],
-                ['cotizacion_id' => $cot_id, 'url' => '/cotizaciones/' . $cot_id]
-            );
-        } catch (\Exception $e) {
-            // No romper el flujo principal si falla el push
-            if (DEBUG) error_log('Push error: ' . $e->getMessage());
+        if ($ncfg['cotizacion_aceptada']) {
+            try {
+                PushNotification::enviar_a_empresa(
+                    EMPRESA_ID,
+                    'cotizacion_aceptada',
+                    'Cotización aceptada',
+                    $nombre . ' aceptó la cotización: ' . $cot['titulo'],
+                    ['cotizacion_id' => $cot_id, 'url' => '/cotizaciones/' . $cot_id]
+                );
+            } catch (\Exception $e) {
+                if (DEBUG) error_log('Push error: ' . $e->getMessage());
+            }
         }
 
         // Email al correo de notificaciones de la empresa
-        try {
-            $empresa_mail = DB::row("SELECT nombre, moneda, notif_email, notif_email_acepta FROM empresas WHERE id=?", [EMPRESA_ID]);
-            $notif_email = $empresa_mail['notif_email'] ?? '';
-            if ($notif_email && !empty($empresa_mail['notif_email_acepta'])) {
+        if ($ncfg['cotizacion_aceptada']) {
+            try {
+                $empresa_mail = DB::row("SELECT nombre, moneda, notif_email FROM empresas WHERE id=?", [EMPRESA_ID]);
+                $notif_email = $empresa_mail['notif_email'] ?? '';
+                if ($notif_email) {
                 Mailer::enviar_cotizacion_aceptada(
                     $notif_email,
                     $empresa_mail['nombre'] ?? '',
@@ -178,6 +183,7 @@ if ($accion === 'aceptar') {
             }
         } catch (\Exception $e) {
             if (DEBUG) error_log('Email aceptada error: ' . $e->getMessage());
+        }
         }
     } catch (Exception $e) {
         DB::rollback();
@@ -225,6 +231,8 @@ if ($accion === 'rechazar') {
         DB::commit();
 
         // Push notification a los usuarios de la empresa
+        $ncfg_r = notif_config(EMPRESA_ID);
+        if ($ncfg_r['cotizacion_rechazada']) {
         try {
             PushNotification::enviar_a_empresa(
                 EMPRESA_ID,
@@ -239,9 +247,9 @@ if ($accion === 'rechazar') {
 
         // Email al correo de notificaciones de la empresa
         try {
-            $empresa_mail = DB::row("SELECT nombre, notif_email, notif_email_rechaza FROM empresas WHERE id=?", [EMPRESA_ID]);
+            $empresa_mail = DB::row("SELECT nombre, notif_email FROM empresas WHERE id=?", [EMPRESA_ID]);
             $notif_email = $empresa_mail['notif_email'] ?? '';
-            if ($notif_email && !empty($empresa_mail['notif_email_rechaza'])) {
+            if ($notif_email) {
                 Mailer::enviar_cotizacion_rechazada(
                     $notif_email,
                     $empresa_mail['nombre'] ?? '',
@@ -252,6 +260,7 @@ if ($accion === 'rechazar') {
         } catch (\Exception $e) {
             if (DEBUG) error_log('Email rechazada error: ' . $e->getMessage());
         }
+        } // cierre if ncfg cotizacion_rechazada
     } catch (Exception $e) {
         DB::rollback();
         if (DEBUG) throw $e;

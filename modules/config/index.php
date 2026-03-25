@@ -421,31 +421,52 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   </div>
 
   <!-- Notificaciones -->
+  <?php $ncfg = notif_config($empresa_id); ?>
   <div class="sec">
-    <div class="sec-lbl">Notificaciones por email</div>
+    <div class="sec-lbl">Notificaciones</div>
     <div class="card">
       <div class="field-row">
         <div class="field-lbl">Email de notificaciones</div>
-        <div class="field-sub">Recibe avisos cuando un cliente acepta o rechaza una cotización. Puede ser distinto al email principal.</div>
+        <div class="field-sub">Recibe avisos de tu negocio. Puede ser distinto al email principal.</div>
         <input class="field-box" id="e_notif_email" type="email" placeholder="alertas@tuempresa.com" style="margin-top:10px" value="<?= e($empresa['notif_email'] ?? '') ?>">
       </div>
       <div class="field-row h">
         <div>
-          <div class="field-lbl">Notificar al aceptar</div>
-          <div class="field-sub">Email al asesor + al correo de notificaciones</div>
+          <div class="field-lbl">Cotización aceptada</div>
+          <div class="field-sub">Aviso cuando un cliente acepta una cotización</div>
         </div>
         <label class="toggle">
-          <input type="checkbox" id="e_notif_acepta" <?= $empresa['notif_email_acepta']?'checked':'' ?>>
+          <input type="checkbox" id="e_notif_acepta" <?= ($ncfg['cotizacion_aceptada'] ?? true)?'checked':'' ?>>
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
       <div class="field-row h">
         <div>
-          <div class="field-lbl">Notificar al rechazar</div>
-          <div class="field-sub">Email al asesor que generó la cotización</div>
+          <div class="field-lbl">Cotización rechazada</div>
+          <div class="field-sub">Aviso cuando un cliente rechaza una cotización</div>
         </div>
         <label class="toggle">
-          <input type="checkbox" id="e_notif_rechaza" <?= $empresa['notif_email_rechaza']?'checked':'' ?>>
+          <input type="checkbox" id="e_notif_rechaza" <?= ($ncfg['cotizacion_rechazada'] ?? true)?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="field-row h">
+        <div>
+          <div class="field-lbl">Abono registrado</div>
+          <div class="field-sub">Aviso cuando se registra un pago en una venta</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_notif_abono" <?= ($ncfg['abono_registrado'] ?? true)?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="field-row h">
+        <div>
+          <div class="field-lbl">Alertas del Radar</div>
+          <div class="field-sub">Aviso cuando una cotización tiene actividad importante</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_notif_radar" <?= ($ncfg['radar_alerta'] ?? true)?'checked':'' ?>>
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
@@ -1352,6 +1373,12 @@ async function guardarEmpresa() {
         notif_email:        document.getElementById('e_notif_email').value.trim(),
         notif_email_acepta: document.getElementById('e_notif_acepta').checked ? 1 : 0,
         notif_email_rechaza:document.getElementById('e_notif_rechaza').checked ? 1 : 0,
+        notif_config: {
+            cotizacion_aceptada:  document.getElementById('e_notif_acepta').checked,
+            cotizacion_rechazada: document.getElementById('e_notif_rechaza').checked,
+            abono_registrado:     document.getElementById('e_notif_abono').checked,
+            radar_alerta:         document.getElementById('e_notif_radar').checked,
+        },
         cot_vigencia_dias:  parseInt(document.getElementById('e_cot_vigencia_dias').value) || 30,
         allow_precio_edit:  document.getElementById('e_allow_precio_edit').checked ? 1 : 0,
         auto_suspender_activo: document.getElementById('e_auto_suspender_activo').checked ? 1 : 0,

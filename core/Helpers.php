@@ -478,6 +478,41 @@ function upload_archivo(array $file, int $empresa_id, string $sub = 'adjuntos'):
     ];
 }
 
+// ─── Configuración de notificaciones de la empresa ──────────
+function notif_config(int $empresa_id): array
+{
+    static $cache = [];
+    if (isset($cache[$empresa_id])) return $cache[$empresa_id];
+
+    $empresa = DB::row("SELECT notif_config, notif_email_acepta, notif_email_rechaza FROM empresas WHERE id=?", [$empresa_id]);
+
+    // Si hay JSON, usar eso
+    $json = $empresa['notif_config'] ?? null;
+    if ($json) {
+        $cfg = json_decode($json, true) ?: [];
+    } else {
+        // Compatibilidad con los booleanos anteriores
+        $cfg = [
+            'cotizacion_aceptada'  => (bool)($empresa['notif_email_acepta'] ?? 1),
+            'cotizacion_rechazada' => (bool)($empresa['notif_email_rechaza'] ?? 0),
+            'abono_registrado'     => true,
+            'radar_alerta'         => true,
+        ];
+    }
+
+    // Defaults: todo activo si no está definido
+    $defaults = [
+        'cotizacion_aceptada'  => true,
+        'cotizacion_rechazada' => true,
+        'abono_registrado'     => true,
+        'radar_alerta'         => true,
+    ];
+
+    $result = array_merge($defaults, $cfg);
+    $cache[$empresa_id] = $result;
+    return $result;
+}
+
 // ─── Íconos SVG inline (reemplazo de emojis para WebView iOS) ──
 function ico(string $name, int $size = 16, string $color = 'currentColor'): string
 {
