@@ -49,9 +49,7 @@ DB::execute(
 // Marcar token como usado
 DB::execute("UPDATE password_resets SET usado = 1 WHERE id = ?", [$reset['id']]);
 
-// Invalidar todas las sesiones del usuario (forzar re-login)
-DB::execute("DELETE FROM user_sessions WHERE empresa_id = ? AND token IN (
-    SELECT token FROM user_sessions WHERE empresa_id = ?
-)", [$reset['empresa_id'], $reset['empresa_id']]);
+// Invalidar solo las sesiones del usuario afectado (no toda la empresa)
+DB::execute("DELETE FROM user_sessions WHERE usuario_id = ?", [$reset['uid']]);
 
 redirect('/reset-password?exito=1&token=used');

@@ -21,17 +21,7 @@ if (!$venta_id) json_error('ID inválido', 400);
 $body = json_decode(file_get_contents('php://input'), true);
 if (!$body) json_error('Payload inválido', 400);
 
-// ─── Cargar venta ────────────────────────────────────────
-$venta = DB::row(
-    "SELECT * FROM ventas WHERE id = ? AND empresa_id = ?",
-    [$venta_id, $empresa_id]
-);
-if (!$venta) json_error('Venta no encontrada', 404);
-if (in_array($venta['estado'], ['cancelada', 'entregada'])) {
-    json_error('No se puede abonar a una venta ' . $venta['estado'], 422);
-}
-
-// ─── Validar ─────────────────────────────────────────────
+// ─── Validar input antes de tocar BD ─────────────────────
 $formas_validas = ['efectivo', 'transferencia', 'tarjeta'];
 $forma_pago = $body['forma_pago'] ?? 'efectivo';
 if (!in_array($forma_pago, $formas_validas)) json_error('Forma de pago inválida');
@@ -42,12 +32,24 @@ if ($monto <= 0) json_error('El monto debe ser mayor a 0');
 $concepto   = substr(trim($body['concepto']   ?? ''), 0, 255);
 $referencia = substr(trim($body['referencia'] ?? ''), 0, 255);
 
-// ─── Generar folio recibo ────────────────────────────────
+// ─── Transacción con lock ────────────────────────────────
 try {
     DB::beginTransaction();
 
-    $cnt_rec    = (int)DB::val("SELECT COUNT(*) FROM recibos WHERE empresa_id=?", [$empresa_id]);
-    $numero_rec = 'REC-' . date('Y') . '-' . str_pad($cnt_rec + 1, 4, '0', STR_PAD_LEFT);
+    // Cargar venta con lock para prevenir pagos concurrentes
+    $venta = DB::row(
+        "SELECT * FROM ventas WHERE id = ? AND empresa_id = ? FOR UPDATE",
+        [$venta_id, $empresa_id]
+    );
+    if (!$venta) { DB::rollback(); json_error('Venta no encontrada', 404); }
+    if (in_array($venta['estado'], ['cancelada', 'entregada'])) {
+        DB::rollback();
+        json_error('No se puede abonar a una venta ' . $venta['estado'], 422);
+    }
+
+    // Folio atómico
+    $max_rec    = (int)DB::val("SELECT COALESCE(MAX(id),0) FROM recibos WHERE empresa_id=?", [$empresa_id]);
+    $numero_rec = 'REC-' . date('Y') . '-' . str_pad($max_rec + 1, 4, '0', STR_PAD_LEFT);
     $token_rec  = generar_token(32);
 
     // Calcular nuevo pagado y saldo
