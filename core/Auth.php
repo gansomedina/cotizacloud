@@ -421,7 +421,7 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
                     trim($datos['nombre'] ?? $datos['usuario']),
                     trim($datos['usuario']),
                     trim($datos['email'] ?? ''),
-                    password_hash($datos['password'], PASSWORD_BCRYPT),
+                    password_hash($datos['password'], PASSWORD_BCRYPT, ['cost' => 12]),
                 ]
             );
 

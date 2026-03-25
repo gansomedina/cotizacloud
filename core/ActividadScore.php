@@ -257,8 +257,8 @@ class ActividadScore
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND (cupon_pct IS NULL OR cupon_pct=0)
-             AND (descuento_auto_pct IS NULL OR descuento_auto_pct=0)",
+             AND cupon_pct = 0
+             AND descuento_auto_pct = 0",
             [$usuario_id, $empresa_id, $periodo]
         );
         $carga_activa = (int)DB::val(
