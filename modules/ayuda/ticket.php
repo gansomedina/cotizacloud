@@ -71,6 +71,9 @@ try {
             "{$empresa_nombre} solicita renovación/activación de licencia",
             ['url' => '/superadmin']
         );
+        if (defined('SUPERADMIN_EMAIL') && SUPERADMIN_EMAIL) {
+            Mailer::enviar_superadmin(SUPERADMIN_EMAIL, 'solicitud_licencia', $empresa_nombre, 'Solicita renovación/activación de licencia');
+        }
     } else {
         PushNotification::enviar_a_superadmin(
             'nuevo_ticket',
@@ -78,6 +81,9 @@ try {
             "{$empresa_nombre}: {$titulo}",
             ['url' => '/superadmin']
         );
+        if (defined('SUPERADMIN_EMAIL') && SUPERADMIN_EMAIL) {
+            Mailer::enviar_superadmin(SUPERADMIN_EMAIL, 'nuevo_ticket', $empresa_nombre, htmlspecialchars($titulo));
+        }
     }
 } catch (Exception $e) {
     // No bloquear el ticket si falla la notificación

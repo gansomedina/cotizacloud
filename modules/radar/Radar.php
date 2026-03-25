@@ -1168,7 +1168,8 @@ class Radar
                    AND datos LIKE ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
                 [$empresa_id, '%"cotizacion_id":' . $cotizacion_id . '%']
             );
-            if ($ya_enviado === 0) {
+            $ncfg_radar = notif_config($empresa_id);
+            if ($ya_enviado === 0 && ($ncfg_radar['radar_alerta'] ?? true)) {
                 try {
                     $label = self::PUSH_BUCKETS[$r['bucket']];
                     $ref = $cot['numero'] ?: $cot['titulo'] ?: "#{$cotizacion_id}";

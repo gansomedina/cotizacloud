@@ -155,6 +155,14 @@ try {
         "{$nombre_empresa} ({$slug_raw}) — {$nombre} <{$email}>",
         ['url' => '/superadmin']
     );
+    if (defined('SUPERADMIN_EMAIL') && SUPERADMIN_EMAIL) {
+        Mailer::enviar_superadmin(
+            SUPERADMIN_EMAIL,
+            'nueva_empresa',
+            $nombre_empresa,
+            "{$slug_raw} — {$nombre} &lt;{$email}&gt;"
+        );
+    }
 } catch (Exception $e) {}
 
 // ─── Redirigir al login centralizado ─────────────
