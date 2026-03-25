@@ -163,7 +163,7 @@ function csrf_check(): void
             die(json_encode(['ok' => false, 'error' => 'Token inválido, recarga la página']));
         }
         flash('error', 'Sesión expirada, intenta de nuevo.');
-        redirect($_SERVER['HTTP_REFERER'] ?? '/');
+        redirect_back('/');
     }
 }
 
@@ -212,6 +212,51 @@ function redirect_back(string $fallback = '/'): never
     $host = parse_url($ref, PHP_URL_HOST);
     $safe = !empty($ref) && (!$host || $host === ($_SERVER['HTTP_HOST'] ?? ''));
     redirect($safe ? $ref : $fallback);
+}
+
+// ─── Rate limiting ────────────────────────────────────────────
+/**
+ * Verifica si una IP excedió el límite de intentos para una acción.
+ * @return array ['ok'=>true] si puede continuar, ['ok'=>false,'error'=>string,'wait'=>int] si bloqueado
+ */
+function rate_check(string $accion, int $max_intentos = 5, int $ventana_min = 15): array
+{
+    $ip = ip_real();
+    $ventana_seg = $ventana_min * 60;
+
+    // Limpiar intentos viejos (>24h) aprovechando el check
+    DB::execute("DELETE FROM rate_limits WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+
+    // Contar intentos en la ventana
+    $intentos = (int)DB::val(
+        "SELECT COUNT(*) FROM rate_limits
+         WHERE ip=? AND accion=? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)",
+        [$ip, $accion, $ventana_seg]
+    );
+
+    if ($intentos >= $max_intentos) {
+        // Calcular cuánto falta para que se libere el primer intento
+        $primer = DB::val(
+            "SELECT created_at FROM rate_limits
+             WHERE ip=? AND accion=? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)
+             ORDER BY created_at ASC LIMIT 1",
+            [$ip, $accion, $ventana_seg]
+        );
+        $wait = $primer ? max(1, $ventana_seg - (time() - strtotime($primer))) : $ventana_seg;
+        $wait_min = (int)ceil($wait / 60);
+        return ['ok' => false, 'error' => "Demasiados intentos. Espera {$wait_min} minutos.", 'wait' => $wait];
+    }
+
+    return ['ok' => true];
+}
+
+/** Registra un intento de rate limit */
+function rate_hit(string $accion): void
+{
+    DB::execute(
+        "INSERT INTO rate_limits (ip, accion) VALUES (?, ?)",
+        [ip_real(), $accion]
+    );
 }
 
 // ─── Flash messages ──────────────────────────────────────────

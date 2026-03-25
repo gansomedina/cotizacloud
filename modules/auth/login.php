@@ -17,6 +17,7 @@ $errores = [
     'empresa'      => 'Empresa no encontrada. Verifica tu subdominio.',
     'inactivo'     => 'Tu cuenta está desactivada. Contacta al administrador.',
     'sesion'       => 'Tu sesión expiró. Ingresa de nuevo.',
+    'rate'         => 'Demasiados intentos. Espera unos minutos e intenta de nuevo.',
 ];
 
 $msg_error    = $error && isset($errores[$error]) ? $errores[$error] : null;
