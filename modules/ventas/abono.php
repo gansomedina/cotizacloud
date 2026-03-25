@@ -125,7 +125,8 @@ try {
             $moneda,
             $nuevo_saldo,
             $forma_pago,
-            $url_recibo
+            $url_recibo,
+            $concepto
         );
     }
 } catch (\Exception $e) {
