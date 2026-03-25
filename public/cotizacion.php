@@ -17,7 +17,7 @@ $cot = DB::row(
             e.impuesto_modo, e.impuesto_pct, e.impuesto_nombre AS impuesto_label,
             e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado, e.cot_theme,
             e.texto_aceptar, e.texto_rechazar,
-            e.slug AS emp_slug,
+            e.slug AS emp_slug, e.ocultar_cant_pu,
             cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.email AS cli_email,
             u.nombre  AS asesor_nombre
      FROM cotizaciones c
@@ -267,6 +267,7 @@ $themes = [
     'oscuro'  => ['g'=>'#1e293b','glt'=>'#f1f5f9','gbd'=>'#cbd5e1'],
 ];
 $th = $themes[$cot['cot_theme'] ?? 'verde'] ?? $themes['verde'];
+$ocultar_cp = !empty($cot['ocultar_cant_pu']);
 ?>
 :root{--g:<?=$th['g']?>;--glt:<?=$th['glt']?>;--gbd:<?=$th['gbd']?>;--text:#111;--t2:#444;--t3:#888;--bd:#d8d8d8;--bg:#f7f7f5;--white:#fff;--amb:#92400e;--red:#b91c1c;--r:6px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -644,7 +645,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <div id="itemsBlock">
   <div class="slbl">Artículos incluidos</div>
   <table class="tbl">
-    <thead><tr><th>Descripción</th><th>Cantidad</th><th class="r">Total</th></tr></thead>
+    <thead><tr><th>Descripción</th><?php if (!$ocultar_cp): ?><th>Cantidad</th><?php endif; ?><th class="r">Total</th></tr></thead>
     <tbody>
     <?php foreach ($lineas as $l): ?>
     <tr>
@@ -653,7 +654,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
         <?php if ($l['sku']): ?><div class="isku"><?= e($l['sku']) ?></div><?php endif; ?>
         <?php if ($l['descripcion']): ?><div class="idesc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
       </td>
+      <?php if (!$ocultar_cp): ?>
       <td class="tqty"><?= $l['precio_unit'] > 0 ? number_format($l['cantidad'],2).' × '.fmt_pub($l['precio_unit']) : '—' ?></td>
+      <?php endif; ?>
       <td class="tamt"><?= $l['precio_unit'] > 0 ? fmt_pub($l['subtotal']) : fmt_pub(0) ?></td>
     </tr>
     <?php endforeach; ?>
@@ -669,10 +672,14 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       <?php if ($l['descripcion']): ?><div class="im-desc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
       <?php if ($l['precio_unit'] > 0): ?>
       <div class="im-meta">
+        <?php if (!$ocultar_cp): ?>
         <div class="im-meta-left">
           <div class="im-meta-chip">Cant. <span><?= number_format($l['cantidad'],2) ?></span></div>
           <div class="im-meta-chip">P.U. <span><?= fmt_pub($l['precio_unit']) ?></span></div>
         </div>
+        <?php else: ?>
+        <div class="im-meta-left"></div>
+        <?php endif; ?>
         <div class="im-meta-total"><?= fmt_pub($l['subtotal']) ?></div>
       </div>
       <?php else: ?>
