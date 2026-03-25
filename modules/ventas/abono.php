@@ -103,24 +103,21 @@ VentaLog::registrar(
     Auth::id()
 );
 
-// ─── Email al admin/vendedor de la empresa ─────────────────
+// ─── Email de notificación de abono ─────────────────────────
 try {
-    $cliente_info = DB::row(
-        "SELECT cl.nombre FROM clientes cl
-         JOIN ventas v ON v.cliente_id = cl.id
-         WHERE v.id = ? AND cl.empresa_id = ?",
-        [$venta_id, $empresa_id]
-    );
-    $admins = DB::query(
-        "SELECT email, nombre FROM usuarios WHERE empresa_id = ? AND activo = 1 AND rol = 'admin'",
-        [$empresa_id]
-    );
-    $moneda = $empresa['moneda'] ?? 'MXN';
-    $emp_slug = $empresa['slug'] ?? '';
-    $url_recibo = 'https://' . $emp_slug . '.' . BASE_DOMAIN . '/r/' . $token_rec;
-    foreach ($admins as $admin) {
+    $notif_email = $empresa['notif_email'] ?? '';
+    if ($notif_email) {
+        $cliente_info = DB::row(
+            "SELECT cl.nombre FROM clientes cl
+             JOIN ventas v ON v.cliente_id = cl.id
+             WHERE v.id = ? AND cl.empresa_id = ?",
+            [$venta_id, $empresa_id]
+        );
+        $moneda = $empresa['moneda'] ?? 'MXN';
+        $emp_slug = $empresa['slug'] ?? '';
+        $url_recibo = 'https://' . $emp_slug . '.' . BASE_DOMAIN . '/r/' . $token_rec;
         Mailer::enviar_abono(
-            $admin['email'],
+            $notif_email,
             $cliente_info['nombre'] ?? 'Cliente',
             $empresa['nombre'] ?? 'CotizaCloud',
             $numero_rec,
