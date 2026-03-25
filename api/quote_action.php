@@ -63,9 +63,10 @@ if ($accion === 'aceptar') {
         // 1. Actualizar estado cotización
         DB::execute(
             "UPDATE cotizaciones SET
-                estado    = 'aceptada',
-                accion_at = NOW(),
-                total     = ?
+                estado      = 'aceptada',
+                aceptada_at = NOW(),
+                accion_at   = NOW(),
+                total       = ?
              WHERE id = ?",
             [$total_guardar, $cot_id]
         );
@@ -163,8 +164,9 @@ if ($accion === 'rechazar') {
 
         DB::execute(
             "UPDATE cotizaciones SET
-                estado    = 'rechazada',
-                accion_at = NOW(),
+                estado         = 'rechazada',
+                rechazada_at   = NOW(),
+                accion_at      = NOW(),
                 motivo_rechazo = ?
              WHERE id = ?",
             [$motivo ?: null, $cot_id]
