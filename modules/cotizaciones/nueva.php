@@ -10,6 +10,11 @@ $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $empresa_id = EMPRESA_ID;
 
+// ── Verificar permiso para crear cotizaciones ───────────
+if (!Auth::es_admin() && !Auth::puede('crear_cotizaciones')) {
+    redirect('/cotizaciones');
+}
+
 // ── Verificar límite plan Free ──────────────────────────
 $trial = trial_info($empresa_id);
 if ($trial['agotado']) {

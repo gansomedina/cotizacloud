@@ -307,7 +307,9 @@ ob_start();
     <h1 style="font:800 22px var(--body);letter-spacing:-.02em">Cotizaciones</h1>
     <p style="font:400 13px var(--body);color:var(--t3);margin-top:3px"><?= number_format($conteos['todas']) ?> en total</p>
   </div>
+  <?php if (Auth::es_admin() || Auth::puede('crear_cotizaciones')): ?>
   <a href="/cotizaciones/nueva" class="btn btn-primary"><i data-feather="plus"></i> Nueva cotización</a>
+  <?php endif; ?>
 </div>
 
 <!-- Toolbar -->

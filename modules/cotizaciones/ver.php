@@ -104,7 +104,8 @@ if ($puede_asignar) {
     );
 }
 
-$es_editable = in_array($cot['estado'], ['borrador', 'enviada', 'vista']) && empty($cot['suspendida']);
+$puede_editar_cot = Auth::es_admin() || Auth::puede('editar_cotizaciones');
+$es_editable = in_array($cot['estado'], ['borrador', 'enviada', 'vista']) && empty($cot['suspendida']) && $puede_editar_cot;
 $es_suspendida = !empty($cot['suspendida']);
 $puede_suspender = in_array($cot['estado'], ['borrador', 'enviada', 'vista', 'rechazada']) || $es_suspendida;
 

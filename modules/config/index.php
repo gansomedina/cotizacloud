@@ -1212,6 +1212,14 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
       <div class="sh-field">
         <div class="sh-lbl" style="margin-bottom:10px">Permisos del asesor</div>
         <div class="perm-row">
+          <div><div class="perm-lbl">Crear cotizaciones</div><div class="perm-sub">Puede crear nuevas cotizaciones</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_crear_cots" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row">
+          <div><div class="perm-lbl">Editar cotizaciones</div><div class="perm-sub">Puede editar cotizaciones existentes</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_editar_cots" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row">
           <div><div class="perm-lbl">Editar precios unitarios</div><div class="perm-sub">Sujeto al permiso global de empresa</div></div>
           <label class="toggle"><input type="checkbox" id="perm_precio" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
@@ -1610,6 +1618,8 @@ function nuevoUsuario() {
     document.getElementById('shUsrPassNote').textContent = 'Mín. 8 caracteres';
     togglePerms('asesor');
     // Defaults permisos
+    document.getElementById('perm_crear_cots').checked      = true;
+    document.getElementById('perm_editar_cots').checked     = true;
     document.getElementById('perm_precio').checked         = true;
     document.getElementById('perm_descuento').checked      = true;
     document.getElementById('perm_ver_cots').checked       = false;
@@ -1632,6 +1642,8 @@ function editarUsuario(id, data) {
     document.getElementById('shUsrPassNote').textContent = 'Deja en blanco para no cambiarla';
     document.getElementById('shUsrRol').value      = data.rol;
     document.getElementById('shUsrActivo').checked = !!parseInt(data.activo);
+    document.getElementById('perm_crear_cots').checked       = !!parseInt(data.puede_crear_cotizaciones ?? 1);
+    document.getElementById('perm_editar_cots').checked      = !!parseInt(data.puede_editar_cotizaciones ?? 1);
     document.getElementById('perm_precio').checked          = !!parseInt(data.puede_editar_precios);
     document.getElementById('perm_descuento').checked       = !!parseInt(data.puede_aplicar_descuentos);
     document.getElementById('perm_ver_cots').checked        = !!parseInt(data.puede_ver_todas_cots);
@@ -1661,6 +1673,8 @@ async function guardarUsuario() {
     if (id && pass && pass.length < 8) { alert('La nueva contraseña debe tener al menos 8 caracteres.'); return; }
     const payload = {
         nombre, usuario, email, rol, activo,
+        puede_crear_cotizaciones:    document.getElementById('perm_crear_cots').checked ? 1 : 0,
+        puede_editar_cotizaciones:   document.getElementById('perm_editar_cots').checked ? 1 : 0,
         puede_editar_precios:        document.getElementById('perm_precio').checked ? 1 : 0,
         puede_aplicar_descuentos:    document.getElementById('perm_descuento').checked ? 1 : 0,
         puede_ver_todas_cots:        document.getElementById('perm_ver_cots').checked ? 1 : 0,

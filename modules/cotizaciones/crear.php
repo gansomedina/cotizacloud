@@ -14,6 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 csrf_check();
 
+if (!Auth::es_admin() && !Auth::puede('crear_cotizaciones')) {
+    json_error('Sin permiso para crear cotizaciones', 403);
+}
+
 $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $empresa_id = EMPRESA_ID;
