@@ -19,14 +19,16 @@ class Mailer
     {
         $mail = new PHPMailer(true);
         $mail->isSMTP();
-        $mail->Host       = SMTP_HOST;
+        $mail->Host       = defined('SMTP_HOST')      ? SMTP_HOST      : 'mail.cotiza.cloud';
         $mail->SMTPAuth   = true;
-        $mail->Username   = SMTP_USER;
-        $mail->Password   = SMTP_PASS;
-        $mail->SMTPSecure = SMTP_SECURE;
-        $mail->Port       = SMTP_PORT;
+        $mail->Username   = defined('SMTP_USER')      ? SMTP_USER      : 'noreply@cotiza.cloud';
+        $mail->Password   = defined('SMTP_PASS')      ? SMTP_PASS      : '';
+        $mail->SMTPSecure = defined('SMTP_SECURE')    ? SMTP_SECURE    : 'ssl';
+        $mail->Port       = defined('SMTP_PORT')      ? SMTP_PORT      : 465;
         $mail->CharSet    = 'UTF-8';
-        $mail->setFrom(SMTP_FROM, SMTP_FROM_NAME);
+        $from      = defined('SMTP_FROM')      ? SMTP_FROM      : 'noreply@cotiza.cloud';
+        $from_name = defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'CotizaCloud';
+        $mail->setFrom($from, $from_name);
         return $mail;
     }
 
