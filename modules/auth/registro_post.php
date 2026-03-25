@@ -26,26 +26,12 @@ if (!empty($_POST['website_url'])) {
 }
 
 // ─── Anti-spam: Rate limit (3 registros por IP por hora) ─
-$ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-$rate_dir = sys_get_temp_dir() . '/cotizacloud_rate';
-if (!is_dir($rate_dir)) @mkdir($rate_dir, 0700, true);
-$rate_file = $rate_dir . '/' . md5($ip) . '.json';
-$rate_window = 3600; // 1 hora
-$rate_max = 3;
-
-$attempts = [];
-if (file_exists($rate_file)) {
-    $attempts = json_decode(file_get_contents($rate_file), true) ?: [];
-    $attempts = array_filter($attempts, function($t) use ($rate_window) {
-        return $t > time() - $rate_window;
-    });
-}
-if (count($attempts) >= $rate_max) {
-    $_SESSION['registro_errores'] = ['general' => 'Demasiados intentos de registro. Intenta de nuevo en 1 hora.'];
+$rate = rate_check('registro', 3, 60);
+if (!$rate['ok']) {
+    $_SESSION['registro_errores'] = ['general' => $rate['error']];
     redirect('/registro');
 }
-$attempts[] = time();
-file_put_contents($rate_file, json_encode(array_values($attempts)));
+rate_hit('registro');
 
 // ─── Recoger y limpiar valores ───────────────────────────
 $nombre_empresa = trim($_POST['nombre_empresa'] ?? '');

@@ -17,6 +17,13 @@ $usuario_str  = trim($_POST['usuario'] ?? '');
 $password     = $_POST['password'] ?? '';
 $recordar     = !empty($_POST['recordar']);
 
+// Rate limit: máximo 5 intentos de login por IP cada 15 minutos
+$rate = rate_check('login', 5, 15);
+if (!$rate['ok']) {
+    flash('error', $rate['error']);
+    redirect('/login?error=rate&empresa=' . urlencode($empresa_slug));
+}
+
 if (empty($empresa_slug)) {
     redirect('/login?error=empresa&empresa=' . urlencode($empresa_slug));
 }
@@ -28,6 +35,8 @@ if (empty($usuario_str) || empty($password)) {
 $resultado = Auth::login($empresa_slug, $usuario_str, $password, $recordar);
 
 if (!$resultado['ok']) {
+    rate_hit('login'); // Registrar intento fallido
+
     $error_msg = $resultado['error'] ?? '';
     if (str_contains($error_msg, 'Empresa')) {
         $error = 'empresa';
