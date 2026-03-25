@@ -87,8 +87,26 @@ $kfi = DB::row(
     [$empresa_id, $empresa_id, $f_ini_dt, $f_fin_dt]
 );
 $ingresos     = (float)$kfi['ingresos'];
+$num_ventas   = (int)$kfi['num_ventas'];
 $total_costos = (float)$kfi['total_costos'];
-$utilidad_bruta = $ingresos - $total_costos;
+
+// En modo empresa, usar gastos generales para utilidad/margen del financiero
+if ($costos_modo === 'empresa') {
+    $total_costos_fin = (float)DB::val(
+        "SELECT COALESCE(SUM(importe),0) FROM gastos_venta
+         WHERE empresa_id=? AND venta_id IS NULL AND fecha BETWEEN ? AND ?",
+        [$empresa_id, $f_ini, $f_fin]
+    );
+} elseif ($costos_modo === 'ambos') {
+    $total_costos_fin = (float)DB::val(
+        "SELECT COALESCE(SUM(importe),0) FROM gastos_venta
+         WHERE empresa_id=? AND fecha BETWEEN ? AND ?",
+        [$empresa_id, $f_ini, $f_fin]
+    );
+} else {
+    $total_costos_fin = $total_costos;
+}
+$utilidad_bruta = $ingresos - $total_costos_fin;
 $margen_pct   = $ingresos > 0 ? round($utilidad_bruta / $ingresos * 100, 1) : 0;
 
 // Cotizaciones del período
@@ -245,9 +263,11 @@ $total_gastos_gen = 0;
 if (in_array($costos_modo, ['empresa', 'ambos'])) {
     $gastos_generales_rep = DB::query(
         "SELECT gv.id, gv.concepto, gv.importe, gv.fecha, gv.nota,
-                cc.nombre AS categoria, cc.color
+                cc.nombre AS categoria, cc.color,
+                p.nombre AS proveedor
          FROM gastos_venta gv
          LEFT JOIN categorias_costos cc ON cc.id = gv.categoria_id
+         LEFT JOIN proveedores p ON p.id = gv.proveedor_id
          WHERE gv.empresa_id=? AND gv.venta_id IS NULL
            AND gv.fecha BETWEEN ? AND ?
          ORDER BY gv.fecha DESC
@@ -512,7 +532,7 @@ ob_start();
     <div class="kpi-card">
       <div class="kpi-label">Utilidad bruta</div>
       <div class="kpi-val <?= $utilidad_bruta>=0?'green':'danger' ?>"><?= rp($utilidad_bruta) ?></div>
-      <div class="kpi-sub">Costos: <?= rp($total_costos) ?></div>
+      <div class="kpi-sub">Costos: <?= rp($total_costos_fin) ?></div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Margen bruto</div>
@@ -605,7 +625,7 @@ ob_start();
       </div>
       <div class="stat-row">
         <span class="stat-lbl">Costos registrados</span>
-        <span class="stat-val" style="color:#b45309"><?= rp($total_costos) ?></span>
+        <span class="stat-val" style="color:#b45309"><?= rp($total_costos_fin) ?></span>
       </div>
       <div class="stat-row">
         <span class="stat-lbl">Utilidad bruta</span>
@@ -1112,6 +1132,7 @@ ob_start();
           <tr>
             <th>Concepto</th>
             <th>Categoría</th>
+            <th>Proveedor</th>
             <th class="r">Importe</th>
             <th>Fecha</th>
             <th>Nota</th>
@@ -1131,6 +1152,7 @@ ob_start();
               <span style="color:var(--t3);font-size:12px">Sin categoría</span>
               <?php endif; ?>
             </td>
+            <td style="font-size:12px;color:var(--t3)"><?= e($gg['proveedor'] ?? '—') ?></td>
             <td class="tbl-num" style="color:#b45309"><?= rp((float)$gg['importe']) ?></td>
             <td style="font:400 12px var(--num);color:var(--t3);white-space:nowrap">
               <?= date('d/m/Y', strtotime($gg['fecha'])) ?>
