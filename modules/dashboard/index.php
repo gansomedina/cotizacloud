@@ -270,7 +270,7 @@ if (!$_radar_ult || $_radar_ult < date('Y-m-d H:i:s', time()-300)) {
 // Cotizaciones activas con su bucket radar
 $radar_buckets_raw = DB::query(
     "SELECT c.id, c.titulo, c.numero, c.total,
-            c.radar_bucket, c.radar_score, c.visitas, c.ultima_vista_at,
+            c.radar_bucket, c.radar_score, c.radar_senales, c.visitas, c.ultima_vista_at,
             cl.nombre AS cliente_nombre,
             qs.sesiones, qs.scroll_max
      FROM cotizaciones c
@@ -288,15 +288,19 @@ $radar_buckets_raw = DB::query(
     [$empresa_id]
 );
 
-// Agrupar por bucket — los intermedios van a "en_movimiento"
-$buckets = ['onfire' => [], 'inminente' => [], 'probable_cierre' => [], 'en_movimiento' => []];
-$buckets_calientes = ['onfire','inminente','probable_cierre'];
+// Agrupar por bucket — replicar lógica del Radar (probable_cierre va a ambos)
+$buckets = ['onfire' => [], 'inminente' => [], 'probable_cierre' => [], 'validando_precio' => []];
 foreach ($radar_buckets_raw as $r) {
     $b = $r['radar_bucket'];
-    if (in_array($b, $buckets_calientes, true)) {
+    $senales = is_string($r['radar_senales']) ? (json_decode($r['radar_senales'], true) ?? []) : [];
+    $all_b   = $senales['buckets'] ?? [];
+    $pc_src  = $senales['pc_source'] ?? null;
+
+    if ($b === 'probable_cierre' && $pc_src) {
+        $buckets['probable_cierre'][] = $r;
+        if (isset($buckets[$pc_src])) $buckets[$pc_src][] = $r;
+    } elseif (isset($buckets[$b])) {
         $buckets[$b][] = $r;
-    } else {
-        $buckets['en_movimiento'][] = $r;
     }
 }
 
@@ -497,7 +501,7 @@ ob_start();
 .bucket-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
 .bucket-header{padding:12px 14px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .bucket-title{font:700 13px var(--body);display:flex;align-items:center;gap:7px}
-.b-movimiento .bucket-header{background:#eff6ff}.b-probable .bucket-header{background:#fffbeb}.b-inminente .bucket-header{background:#fff7ed}.b-onfire .bucket-header{background:#fff1f2}
+.b-probable .bucket-header{background:#fffbeb}.b-inminente .bucket-header{background:#fff7ed}.b-onfire .bucket-header{background:#fff1f2}.b-precio .bucket-header{background:#eff6ff}
 .bucket-total{font:600 12px var(--num);color:var(--t3)}
 .bucket-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background .1s}
 .bucket-row:last-child{border-bottom:none}
@@ -1022,17 +1026,17 @@ $ts_diag  = ActividadScore::diagnostico($ts);
 
 <!-- ══ RADAR BUCKETS ══ -->
 <?php
-$hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !empty($buckets['probable_cierre']) || !empty($buckets['en_movimiento']);
+$hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !empty($buckets['probable_cierre']) || !empty($buckets['validando_precio']);
 ?>
 <div class="slabel">Radar · oportunidades activas</div>
 <div class="buckets-grid">
 
   <?php
   $bucket_def = [
-      'en_movimiento'   => [ico('blue',10),   'En movimiento',       'b-movimiento'],
-      'probable_cierre' => [ico('yellow',10), 'Probable cierre',    'b-probable'],
-      'inminente'       => [ico('orange',10), 'Cierre inminente',   'b-inminente'],
-      'onfire'          => [ico('red',10),    'On Fire',             'b-onfire'],
+      'probable_cierre'  => [ico('yellow',10), 'Probable cierre',    'b-probable'],
+      'inminente'        => [ico('orange',10), 'Cierre inminente',   'b-inminente'],
+      'onfire'           => [ico('red',10),    'On Fire',             'b-onfire'],
+      'validando_precio' => [ico('blue',10),   'Validando precio',    'b-precio'],
   ];
   foreach ($bucket_def as $bkey => [$ico, $blbl, $bcls]):
       $items     = $buckets[$bkey];
@@ -1040,7 +1044,7 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
       $count_b   = count($items);
 
       // Colores de avatar según bucket
-      $av_colors = ['en_movimiento'=>'#2563eb', 'probable_cierre'=>'var(--g)', 'inminente'=>'#c2410c', 'onfire'=>'#991b1b'];
+      $av_colors = ['probable_cierre'=>'var(--g)', 'inminente'=>'#c2410c', 'onfire'=>'#991b1b', 'validando_precio'=>'#2563eb'];
       $av_bg     = $av_colors[$bkey] ?? '#6b7280';
   ?>
   <div class="bucket-card <?= $bcls ?>">
