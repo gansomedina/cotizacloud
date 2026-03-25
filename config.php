@@ -36,6 +36,15 @@ define('APNS_TEAM_ID',   getenv('APNS_TEAM_ID')   ?: 'T3LPNPVHZ2');
 define('APNS_BUNDLE_ID', getenv('APNS_BUNDLE_ID') ?: 'com.cotizacloud.app');
 define('APNS_ENV',       getenv('APNS_ENV')       ?: 'production');
 
+// ─── Email SMTP (cPanel) ────────────────────────────────────
+define('SMTP_HOST',     getenv('SMTP_HOST')     ?: 'mail.cotiza.cloud');
+define('SMTP_PORT',     (int)(getenv('SMTP_PORT') ?: 465));
+define('SMTP_SECURE',   getenv('SMTP_SECURE')   ?: 'ssl');
+define('SMTP_USER',     getenv('SMTP_USER')     ?: 'noreply@cotiza.cloud');
+define('SMTP_PASS',     getenv('SMTP_PASS')     ?: 'CAMBIAR_CONTRASENA');
+define('SMTP_FROM',     getenv('SMTP_FROM')     ?: 'noreply@cotiza.cloud');
+define('SMTP_FROM_NAME',getenv('SMTP_FROM_NAME')?: 'CotizaCloud');
+
 // ─── Paths ───────────────────────────────────────────────────
 define('ROOT_PATH',    dirname(__FILE__));
 define('MODULES_PATH', ROOT_PATH . '/modules');
