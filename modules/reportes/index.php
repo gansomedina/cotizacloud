@@ -1349,7 +1349,7 @@ ob_start();
   <?php
     // Filtrar ventas que tienen costos registrados y ordenar por margen
     $ventas_con_costos = array_filter($ventas_con_margen, fn($v) => (float)$v['costos'] > 0);
-    usort($ventas_con_costos, fn($a, $b) => {
+    usort($ventas_con_costos, function($a, $b) {
         $ma = (float)$a['total'] > 0 ? ((float)$a['total'] - (float)$a['costos']) / (float)$a['total'] : 0;
         $mb = (float)$b['total'] > 0 ? ((float)$b['total'] - (float)$b['costos']) / (float)$b['total'] : 0;
         return $mb <=> $ma;
