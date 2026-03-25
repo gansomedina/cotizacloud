@@ -480,12 +480,12 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="abo-forma"><?= $notas_r ?: ucfirst($forma) ?></div>
         <div class="abo-btns">
           <div class="abo-folio <?= $es_cancelacion?'abo-folio-cancel':'' ?>"
-               onclick="openRec(<?= htmlspecialchars($rec_data, ENT_QUOTES) ?>)">
+               data-rec="<?= e($rec_data) ?>" onclick="openRec(JSON.parse(this.dataset.rec))">
                🧾 Ver recibo <?= e($r['numero']) ?>
           </div>
           <?php if ($rec_cancel_data): ?>
           <div class="abo-folio abo-folio-cancel" style="margin-left:6px"
-               onclick="openRec(<?= htmlspecialchars($rec_cancel_data, ENT_QUOTES) ?>)">
+               data-rec="<?= e($rec_cancel_data) ?>" onclick="openRec(JSON.parse(this.dataset.rec))">
                Cancelación →
           </div>
           <?php endif; ?>

@@ -15,11 +15,13 @@ $accion = $accion ?? 'subir'; // inyectado por Router
 if ($accion === 'quitar') {
     $emp = DB::row("SELECT logo_url FROM empresas WHERE id=?", [$eid]);
     if ($emp['logo_url']) {
-        $path = ROOT_PATH . parse_url($emp['logo_url'], PHP_URL_PATH);
-        if (file_exists($path)) @unlink($path);
+        $uploads_base = realpath(ROOT_PATH . '/uploads');
+        $path = realpath(ROOT_PATH . parse_url($emp['logo_url'], PHP_URL_PATH));
+        if ($path && $uploads_base && str_starts_with($path, $uploads_base)) @unlink($path);
         // Fallback: buscar en public/ por logos antiguos
-        $path2 = ROOT_PATH . '/public' . parse_url($emp['logo_url'], PHP_URL_PATH);
-        if (file_exists($path2)) @unlink($path2);
+        $pub_base = realpath(ROOT_PATH . '/public/uploads');
+        $path2 = realpath(ROOT_PATH . '/public' . parse_url($emp['logo_url'], PHP_URL_PATH));
+        if ($path2 && $pub_base && str_starts_with($path2, $pub_base)) @unlink($path2);
     }
     DB::execute("UPDATE empresas SET logo_url=NULL WHERE id=?", [$eid]);
     echo json_encode(['ok' => true]);
@@ -58,11 +60,12 @@ if (!move_uploaded_file($file['tmp_name'], $dest)) {
 // Borrar logo anterior si existe
 $emp = DB::row("SELECT logo_url FROM empresas WHERE id=?", [$eid]);
 if ($emp['logo_url']) {
-    $old = ROOT_PATH . parse_url($emp['logo_url'], PHP_URL_PATH);
-    if (file_exists($old)) @unlink($old);
-    // Fallback: buscar en public/ por logos antiguos
-    $old2 = ROOT_PATH . '/public' . parse_url($emp['logo_url'], PHP_URL_PATH);
-    if (file_exists($old2)) @unlink($old2);
+    $uploads_base = realpath(ROOT_PATH . '/uploads');
+    $old = realpath(ROOT_PATH . parse_url($emp['logo_url'], PHP_URL_PATH));
+    if ($old && $uploads_base && str_starts_with($old, $uploads_base)) @unlink($old);
+    $pub_base = realpath(ROOT_PATH . '/public/uploads');
+    $old2 = realpath(ROOT_PATH . '/public' . parse_url($emp['logo_url'], PHP_URL_PATH));
+    if ($old2 && $pub_base && str_starts_with($old2, $pub_base)) @unlink($old2);
 }
 
 $url = '/uploads/logos/' . $filename;
