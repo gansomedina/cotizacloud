@@ -78,16 +78,23 @@ if ($accion === 'aceptar') {
             [$total_guardar, $cot_id]
         );
 
-        // 2. Guardar cupón aplicado si hay
-        if ($cupon_codigo && $cupon_pct > 0) {
-            DB::execute(
-                "UPDATE cotizaciones SET cupon_codigo=?, cupon_pct=? WHERE id=?",
-                [$cupon_codigo, $cupon_pct, $cot_id]
-            );
-            DB::execute(
-                "UPDATE cupones SET usos=usos+1 WHERE empresa_id=? AND codigo=?",
+        // 2. Guardar cupón aplicado si hay — validar % contra BD, no confiar en el cliente
+        if ($cupon_codigo) {
+            $cupon_real = DB::row(
+                "SELECT id, porcentaje FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
                 [EMPRESA_ID, $cupon_codigo]
             );
+            if ($cupon_real) {
+                $cupon_pct = (float)$cupon_real['porcentaje'];
+                DB::execute(
+                    "UPDATE cotizaciones SET cupon_codigo=?, cupon_pct=? WHERE id=?",
+                    [$cupon_codigo, $cupon_pct, $cot_id]
+                );
+                DB::execute(
+                    "UPDATE cupones SET usos=usos+1 WHERE id=?",
+                    [$cupon_real['id']]
+                );
+            }
         }
 
         // 3. Crear venta automáticamente — mismo momento que la aceptación
