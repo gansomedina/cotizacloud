@@ -1073,7 +1073,6 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
       }
     ?>
     <a href="/cotizaciones/<?= (int)$item['id'] ?>" class="bucket-row">
-      <div class="bucket-av" style="background:<?= $av_bg ?>"><?= e($ini_b) ?></div>
       <div class="bucket-info">
         <div class="bucket-client"><?= e($item['cliente_nombre'] ?? '—') ?></div>
         <div class="bucket-proyecto"><?= e(mb_substr($item['titulo'],0,40)) ?></div>
