@@ -101,7 +101,7 @@ class WebPush
         }
 
         $pemPath = defined('VAPID_PRIVATE_PEM') ? VAPID_PRIVATE_PEM : '';
-        $subject = defined('VAPID_SUBJECT') ? VAPID_SUBJECT : 'mailto:hola@cotiza.cloud';
+        $subject = defined('VAPID_SUBJECT') ? VAPID_SUBJECT : 'mailto:noreply@cotiza.cloud';
 
         $pem = file_get_contents($pemPath);
         if (!$pem) throw new \Exception('No se pudo leer VAPID private key');
