@@ -133,6 +133,7 @@ $base = $subtotal;
 $cupon_monto = 0.0;
 if ($cupon_id) { $cupon_monto = $subtotal * ($cupon_pct / 100); $base -= $cupon_monto; }
 if ($desc_auto_activo) { $desc_auto_amt = $base * ($desc_auto_pct / 100); $base -= $desc_auto_amt; }
+$base = max(0, $base); // Nunca permitir total negativo
 
 $impuesto_modo = $empresa['impuesto_modo'];
 $impuesto_pct  = (float)$empresa['impuesto_pct'];
