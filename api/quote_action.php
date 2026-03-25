@@ -157,17 +157,14 @@ if ($accion === 'aceptar') {
             if (DEBUG) error_log('Push error: ' . $e->getMessage());
         }
 
-        // Email a admins de la empresa
+        // Email al correo de notificaciones de la empresa
         try {
-            $empresa_mail = DB::row("SELECT nombre, moneda FROM empresas WHERE id=?", [EMPRESA_ID]);
-            $admins = DB::query(
-                "SELECT email, nombre FROM usuarios WHERE empresa_id=? AND activo=1 AND rol='admin'",
-                [EMPRESA_ID]
-            );
-            foreach ($admins as $admin) {
+            $empresa_mail = DB::row("SELECT nombre, moneda, notif_email, notif_email_acepta FROM empresas WHERE id=?", [EMPRESA_ID]);
+            $notif_email = $empresa_mail['notif_email'] ?? '';
+            if ($notif_email && !empty($empresa_mail['notif_email_acepta'])) {
                 Mailer::enviar_cotizacion_aceptada(
-                    $admin['email'],
-                    $admin['nombre'],
+                    $notif_email,
+                    $empresa_mail['nombre'] ?? '',
                     $cot['titulo'],
                     $nombre,
                     $total_guardar,
@@ -235,16 +232,14 @@ if ($accion === 'rechazar') {
             if (DEBUG) error_log('Push error: ' . $e->getMessage());
         }
 
-        // Email a admins de la empresa
+        // Email al correo de notificaciones de la empresa
         try {
-            $admins = DB::query(
-                "SELECT email, nombre FROM usuarios WHERE empresa_id=? AND activo=1 AND rol='admin'",
-                [EMPRESA_ID]
-            );
-            foreach ($admins as $admin) {
+            $empresa_mail = DB::row("SELECT nombre, notif_email, notif_email_rechaza FROM empresas WHERE id=?", [EMPRESA_ID]);
+            $notif_email = $empresa_mail['notif_email'] ?? '';
+            if ($notif_email && !empty($empresa_mail['notif_email_rechaza'])) {
                 Mailer::enviar_cotizacion_rechazada(
-                    $admin['email'],
-                    $admin['nombre'],
+                    $notif_email,
+                    $empresa_mail['nombre'] ?? '',
                     $cot['titulo'],
                     $motivo
                 );
