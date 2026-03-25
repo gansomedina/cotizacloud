@@ -128,6 +128,11 @@ class Auth
         // Registrar actividad: login
         ActividadScore::registrar((int)$usuario['id'], (int)$usuario['empresa_id'], 'login');
 
+        // Regenerar ID de sesión para prevenir session fixation
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
+
         // Setear cookie
         setcookie(SESSION_NAME, $token, [
             'expires'  => time() + $duracion,
