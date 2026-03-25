@@ -194,7 +194,13 @@ class Auth
     private static function cargar_usuario_desde_token_completo(string $token): void
     {
         $sesion = DB::row(
-            "SELECT s.usuario_id, s.empresa_id, s.expires_at, u.*
+            "SELECT s.usuario_id, s.empresa_id, s.expires_at,
+                    u.id, u.nombre, u.email, u.usuario, u.rol, u.activo,
+                    u.puede_editar_precios, u.puede_aplicar_descuentos,
+                    u.puede_ver_todas_cots, u.puede_ver_todas_ventas,
+                    u.puede_eliminar_items_venta, u.puede_cancelar_recibos,
+                    u.puede_capturar_pagos,
+                    u.ultimo_login, u.password_hash
              FROM user_sessions s
              JOIN usuarios u ON u.id = s.usuario_id
              WHERE s.token = ?
