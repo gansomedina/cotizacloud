@@ -1168,6 +1168,176 @@ ob_start();
   </div>
   <?php endif; ?>
 
+  <?php if (in_array($costos_modo, ['empresa', 'ambos'])): ?>
+  <!-- ── Punto de equilibrio (modo empresa y ambos) ── -->
+  <?php
+    // Calcular promedio mensual de gastos generales (últimos 6 meses)
+    $gastos_6m = DB::query(
+        "SELECT DATE_FORMAT(fecha, '%Y-%m') AS mes, SUM(importe) AS total
+         FROM gastos_venta
+         WHERE empresa_id=? AND venta_id IS NULL
+           AND fecha >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+         GROUP BY mes ORDER BY mes DESC",
+        [$empresa_id]
+    );
+    $meses_con_gastos = count($gastos_6m);
+    $promedio_gastos_mes = $meses_con_gastos > 0
+        ? array_sum(array_column($gastos_6m, 'total')) / $meses_con_gastos
+        : 0;
+
+    // Promedio de ingresos mensuales (últimos 6 meses)
+    $ingresos_6m = DB::query(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m') AS mes, SUM(total) AS total
+         FROM ventas
+         WHERE empresa_id=? AND estado != 'cancelada'
+           AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+         GROUP BY mes ORDER BY mes DESC",
+        [$empresa_id]
+    );
+    $meses_con_ventas = count($ingresos_6m);
+    $promedio_ingresos_mes = $meses_con_ventas > 0
+        ? array_sum(array_column($ingresos_6m, 'total')) / $meses_con_ventas
+        : 0;
+
+    // Ventas promedio por mes (cantidad)
+    $promedio_num_ventas = $meses_con_ventas > 0
+        ? (int)DB::val(
+            "SELECT COUNT(*) FROM ventas
+             WHERE empresa_id=? AND estado != 'cancelada'
+               AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)",
+            [$empresa_id]
+          ) / $meses_con_ventas
+        : 0;
+
+    // Ticket promedio
+    $ticket_prom = $promedio_num_ventas > 0
+        ? $promedio_ingresos_mes / $promedio_num_ventas
+        : 0;
+
+    // Si modo ambos, restar también costos directos promedio
+    $costos_directos_prom = 0;
+    if ($costos_modo === 'ambos' && $meses_con_ventas > 0) {
+        $costos_directos_prom = (float)DB::val(
+            "SELECT COALESCE(SUM(importe),0) / ? FROM gastos_venta
+             WHERE empresa_id=? AND venta_id IS NOT NULL
+               AND fecha >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)",
+            [$meses_con_ventas, $empresa_id]
+        );
+    }
+
+    // Margen bruto % (después de costos directos)
+    $margen_prom_pct = $promedio_ingresos_mes > 0
+        ? ($promedio_ingresos_mes - $costos_directos_prom) / $promedio_ingresos_mes
+        : 0;
+
+    // Punto de equilibrio = Gastos fijos / Margen bruto %
+    $punto_eq = ($margen_prom_pct > 0) ? $promedio_gastos_mes / $margen_prom_pct : 0;
+    $ventas_eq = ($ticket_prom > 0) ? ceil($punto_eq / $ticket_prom) : 0;
+
+    // Cobertura actual: ingresos del período / gastos del período
+    $cobertura = ($promedio_gastos_mes > 0)
+        ? round($promedio_ingresos_mes / $promedio_gastos_mes, 2)
+        : 0;
+  ?>
+  <?php if ($promedio_gastos_mes > 0): ?>
+  <div class="sec-lbl">Punto de equilibrio</div>
+  <div class="card" style="padding:20px">
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:16px">
+      <div class="kpi-card" style="border:none;padding:12px">
+        <div class="kpi-label">Gastos fijos mensuales</div>
+        <div class="kpi-val amber" style="font-size:18px"><?= rp($promedio_gastos_mes) ?></div>
+        <div class="kpi-sub">Promedio <?= $meses_con_gastos ?> mes<?= $meses_con_gastos!=1?'es':'' ?></div>
+      </div>
+      <div class="kpi-card" style="border:none;padding:12px">
+        <div class="kpi-label">Necesitas vender</div>
+        <div class="kpi-val green" style="font-size:18px"><?= rp($punto_eq) ?>/mes</div>
+        <div class="kpi-sub"><?= $ventas_eq ?> venta<?= $ventas_eq!=1?'s':'' ?> al ticket prom. de <?= rp($ticket_prom) ?></div>
+      </div>
+      <div class="kpi-card" style="border:none;padding:12px">
+        <div class="kpi-label">Cobertura actual</div>
+        <div class="kpi-val <?= $cobertura>=1.0?'green':'danger' ?>" style="font-size:18px"><?= number_format($cobertura, 1) ?>x</div>
+        <div class="kpi-sub"><?= $cobertura >= 1.0 ? 'Cubres tus gastos' : 'No cubres gastos fijos' ?></div>
+      </div>
+    </div>
+    <!-- Barra visual de punto de equilibrio -->
+    <?php
+      $pct_eq = ($punto_eq > 0 && $promedio_ingresos_mes > 0)
+          ? min(150, round($promedio_ingresos_mes / $punto_eq * 100))
+          : 0;
+      $bar_color = $pct_eq >= 100 ? 'var(--g)' : 'var(--danger)';
+    ?>
+    <div style="position:relative;margin-top:8px">
+      <div style="font:400 12px var(--body);color:var(--t3);margin-bottom:6px">Ingresos promedio vs punto de equilibrio</div>
+      <div style="height:24px;background:#f1f5f9;border-radius:6px;overflow:hidden;position:relative">
+        <div style="height:100%;width:<?= min(100, $pct_eq) ?>%;background:<?= $bar_color ?>;border-radius:6px;transition:width .3s"></div>
+        <div style="position:absolute;left:<?= min(95, round($punto_eq / max(1,$promedio_ingresos_mes,$punto_eq) * 100)) ?>%;top:0;bottom:0;width:2px;background:#dc2626" title="Punto de equilibrio: <?= rp($punto_eq) ?>"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;font:400 11px var(--num);color:var(--t3)">
+        <span>$0</span>
+        <span style="color:#dc2626;font-weight:600">P.E. <?= rp($punto_eq) ?></span>
+        <span><?= rp(max($promedio_ingresos_mes, $punto_eq)) ?></span>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
+  <?php endif; ?>
+
+  <?php if (in_array($costos_modo, ['venta', 'ambos']) && count($ventas_con_margen) > 1): ?>
+  <!-- ── Ranking de rentabilidad (modo venta y ambos) ── -->
+  <?php
+    // Filtrar ventas que tienen costos registrados y ordenar por margen
+    $ventas_con_costos = array_filter($ventas_con_margen, fn($v) => (float)$v['costos'] > 0);
+    usort($ventas_con_costos, fn($a, $b) => {
+        $ma = (float)$a['total'] > 0 ? ((float)$a['total'] - (float)$a['costos']) / (float)$a['total'] : 0;
+        $mb = (float)$b['total'] > 0 ? ((float)$b['total'] - (float)$b['costos']) / (float)$b['total'] : 0;
+        return $mb <=> $ma;
+    });
+    $top_rentables  = array_slice($ventas_con_costos, 0, 5);
+    $peor_rentables = array_slice(array_reverse($ventas_con_costos), 0, 5);
+  ?>
+  <?php if (count($ventas_con_costos) >= 2): ?>
+  <div class="sec-lbl">Ranking de rentabilidad</div>
+  <div class="costos-layout">
+    <!-- Top 5 más rentables -->
+    <div class="stat-card">
+      <div style="font:700 13px var(--body);color:var(--g);margin-bottom:12px"><?= ico('check', 14, '#16a34a') ?> Más rentables</div>
+      <?php foreach ($top_rentables as $tr):
+        $mg_r = (float)$tr['total'] > 0 ? round(((float)$tr['total'] - (float)$tr['costos']) / (float)$tr['total'] * 100, 1) : 0;
+      ?>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font:600 12px var(--num);color:var(--g)"><?= e($tr['numero']) ?></div>
+          <div style="font:400 12px var(--body);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= e(mb_substr($tr['titulo'],0,35)) ?></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font:700 13px var(--num);color:var(--g)"><?= rpp($mg_r) ?></div>
+          <div style="font:400 11px var(--num);color:var(--t3)">Util. <?= rp((float)$tr['utilidad']) ?></div>
+        </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+    <!-- Top 5 menos rentables -->
+    <div class="stat-card">
+      <div style="font:700 13px var(--body);color:var(--danger);margin-bottom:12px"><?= ico('alert', 14, '#dc2626') ?> Menos rentables</div>
+      <?php foreach ($peor_rentables as $pr):
+        $mg_p = (float)$pr['total'] > 0 ? round(((float)$pr['total'] - (float)$pr['costos']) / (float)$pr['total'] * 100, 1) : 0;
+      ?>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font:600 12px var(--num);color:var(--danger)"><?= e($pr['numero']) ?></div>
+          <div style="font:400 12px var(--body);color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= e(mb_substr($pr['titulo'],0,35)) ?></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font:700 13px var(--num);color:<?= $mg_p>=15?'#b45309':'var(--danger)' ?>"><?= rpp($mg_p) ?></div>
+          <div style="font:400 11px var(--num);color:var(--t3)">Util. <?= rp((float)$pr['utilidad']) ?></div>
+        </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+  <?php endif; ?>
+
   <?php endif; ?>
 </div><!-- /panel-costos -->
 
