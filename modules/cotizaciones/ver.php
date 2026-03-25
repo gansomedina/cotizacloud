@@ -616,6 +616,7 @@ const COT_ID      = <?= $cot_id ?>;
 const ES_EDITABLE = <?= $es_editable ? 'true' : 'false' ?>;
 const PUEDE_PRECIOS    = <?= $puede_editar_precios ? 'true' : 'false' ?>;
 const PUEDE_DESCUENTOS = <?= $puede_descuentos ? 'true' : 'false' ?>;
+const PUEDE_VER_CANT   = <?= (Auth::es_admin() || Auth::puede('ver_cantidades')) ? 'true' : 'false' ?>;
 const URL_PUBLICA = '<?= e($url_publica) ?>';
 
 let clienteSeleccionado = COT.cliente_id
@@ -742,8 +743,8 @@ function agregarItem(titulo, sku, desc, precio, articulo_id, editable=true){
             <div class="item-field"><div class="item-field-lbl">SKU</div><input type="text" data-campo="sku" value="${esc(sku)}" ${!editable?'readonly':''}></div>
             <div class="item-field"><div class="item-field-lbl">Descripción</div><textarea data-campo="descripcion" oninput="autoResize(this)" ${!editable?'readonly':''}>${esc(desc)}</textarea></div>
             <div class="item-nums">
-                <div class="item-field"><div class="item-field-lbl">Cantidad</div><input type="number" data-campo="cantidad" value="1" min="0" step="any" ${!editable?'readonly':''} oninput="calcItemTotal(this)"></div>
-                <div class="item-field"><div class="item-field-lbl">Precio unit.</div><input type="number" data-campo="precio" value="${precio}" min="0" step="any" ${ro} oninput="calcItemTotal(this)"></div>
+                ${PUEDE_VER_CANT ? `<div class="item-field"><div class="item-field-lbl">Cantidad</div><input type="number" data-campo="cantidad" value="1" min="0" step="any" ${!editable?'readonly':''} oninput="calcItemTotal(this)"></div>` : `<input type="hidden" data-campo="cantidad" value="1">`}
+                ${PUEDE_VER_CANT ? `<div class="item-field"><div class="item-field-lbl">Precio unit.</div><input type="number" data-campo="precio" value="${precio}" min="0" step="any" ${ro} oninput="calcItemTotal(this)"></div>` : `<input type="hidden" data-campo="precio" value="${precio}">`}
                 <div class="item-field item-total"><div class="item-field-lbl">Total</div><input type="text" data-campo="total" value="${amt}" readonly></div>
             </div>
         </div>

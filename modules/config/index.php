@@ -533,6 +533,16 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
       </div>
       <div class="field-row h">
         <div>
+          <div class="field-lbl">Ocultar cantidad y precio unitario al cliente</div>
+          <div class="field-sub">En las vistas públicas (links de cotización y venta) solo se muestra descripción y total por línea</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_ocultar_cant_pu" <?= !empty($empresa['ocultar_cant_pu'])?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="field-row h">
+        <div>
           <div class="field-lbl">Auto-suspender cotizaciones</div>
           <div class="field-sub">Suspender automáticamente cotizaciones sin actividad después de X días. El cliente no podrá ver la cotización y se excluye del Radar.</div>
         </div>
@@ -1220,6 +1230,10 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <label class="toggle"><input type="checkbox" id="perm_editar_cots" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
         <div class="perm-row">
+          <div><div class="perm-lbl">Ver cantidad y precio unitario</div><div class="perm-sub">Si está apagado, solo ve descripción y total</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_ver_cantidades" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row">
           <div><div class="perm-lbl">Editar precios unitarios</div><div class="perm-sub">Sujeto al permiso global de empresa</div></div>
           <label class="toggle"><input type="checkbox" id="perm_precio" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
@@ -1389,6 +1403,7 @@ async function guardarEmpresa() {
         },
         cot_vigencia_dias:  parseInt(document.getElementById('e_cot_vigencia_dias').value) || 30,
         allow_precio_edit:  document.getElementById('e_allow_precio_edit').checked ? 1 : 0,
+        ocultar_cant_pu:    document.getElementById('e_ocultar_cant_pu').checked ? 1 : 0,
         auto_suspender_activo: document.getElementById('e_auto_suspender_activo').checked ? 1 : 0,
         auto_suspender_dias: parseInt(document.getElementById('e_auto_suspender_dias').value) || 30,
         cot_theme:          document.getElementById('e_cot_theme').value,
@@ -1620,6 +1635,7 @@ function nuevoUsuario() {
     // Defaults permisos
     document.getElementById('perm_crear_cots').checked      = true;
     document.getElementById('perm_editar_cots').checked     = true;
+    document.getElementById('perm_ver_cantidades').checked  = true;
     document.getElementById('perm_precio').checked         = true;
     document.getElementById('perm_descuento').checked      = true;
     document.getElementById('perm_ver_cots').checked       = false;
@@ -1644,6 +1660,7 @@ function editarUsuario(id, data) {
     document.getElementById('shUsrActivo').checked = !!parseInt(data.activo);
     document.getElementById('perm_crear_cots').checked       = !!parseInt(data.puede_crear_cotizaciones ?? 1);
     document.getElementById('perm_editar_cots').checked      = !!parseInt(data.puede_editar_cotizaciones ?? 1);
+    document.getElementById('perm_ver_cantidades').checked   = !!parseInt(data.puede_ver_cantidades ?? 1);
     document.getElementById('perm_precio').checked          = !!parseInt(data.puede_editar_precios);
     document.getElementById('perm_descuento').checked       = !!parseInt(data.puede_aplicar_descuentos);
     document.getElementById('perm_ver_cots').checked        = !!parseInt(data.puede_ver_todas_cots);
@@ -1675,6 +1692,7 @@ async function guardarUsuario() {
         nombre, usuario, email, rol, activo,
         puede_crear_cotizaciones:    document.getElementById('perm_crear_cots').checked ? 1 : 0,
         puede_editar_cotizaciones:   document.getElementById('perm_editar_cots').checked ? 1 : 0,
+        puede_ver_cantidades:        document.getElementById('perm_ver_cantidades').checked ? 1 : 0,
         puede_editar_precios:        document.getElementById('perm_precio').checked ? 1 : 0,
         puede_aplicar_descuentos:    document.getElementById('perm_descuento').checked ? 1 : 0,
         puede_ver_todas_cots:        document.getElementById('perm_ver_cots').checked ? 1 : 0,

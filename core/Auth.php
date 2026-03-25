@@ -287,6 +287,7 @@ class Auth
             'ver_proveedores',
             'crear_cotizaciones',
             'editar_cotizaciones',
+            'ver_cantidades',
         ];
 
         if (!in_array($permiso, $permisos_validos)) return false;

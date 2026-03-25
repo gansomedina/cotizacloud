@@ -483,8 +483,10 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
   <div class="card" id="lineas-card">
     <div class="item-hdr">
       <span>Descripción</span>
+      <?php if (Auth::es_admin() || Auth::puede('ver_cantidades')): ?>
       <span style="text-align:right">Cant.</span>
       <span style="text-align:right">P. Unit.</span>
+      <?php endif; ?>
       <span style="text-align:right">Total</span>
     </div>
     <div id="lineas-list"><!-- renderizado por JS --></div>
@@ -751,7 +753,8 @@ function closeRec(){
 
   <?php if (!empty($lineas)): ?>
   <table class="fac-tbl">
-    <thead><tr><th style="width:16pt">#</th><th>Descripción</th><th class="r" style="width:60pt">Cant.</th><th class="r" style="width:70pt">P. Unit.</th><th class="r" style="width:80pt">Total</th></tr></thead>
+    <?php $ocultar_cp_pdf = !empty($empresa['ocultar_cant_pu']); ?>
+    <thead><tr><th style="width:16pt">#</th><th>Descripción</th><?php if (!$ocultar_cp_pdf): ?><th class="r" style="width:60pt">Cant.</th><th class="r" style="width:70pt">P. Unit.</th><?php endif; ?><th class="r" style="width:80pt">Total</th></tr></thead>
     <tbody>
     <?php foreach ($lineas as $i => $l): ?>
     <tr>
@@ -761,8 +764,10 @@ function closeRec(){
         <?php if ($l['sku']): ?><div class="td-sku"><?= e($l['sku']) ?></div><?php endif; ?>
         <?php if ($l['descripcion']): ?><div class="td-desc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
       </td>
+      <?php if (!$ocultar_cp_pdf): ?>
       <td class="td-qty"><?= number_format($l['cantidad'],2) ?> pz.</td>
       <td class="td-pu"><?= $l['precio_unit'] > 0 ? format_money($l['precio_unit'], $empresa['moneda']) : '—' ?></td>
+      <?php endif; ?>
       <td class="td-total"><?= $l['precio_unit'] > 0 ? format_money($l['subtotal'], $empresa['moneda']) : format_money(0, $empresa['moneda']) ?></td>
     </tr>
     <?php endforeach; ?>
@@ -877,10 +882,15 @@ function closeRec(){
     <div class="sh-field"><div class="sh-lbl">Nombre *</div><input class="sh-input" type="text" id="el-titulo" placeholder="Nombre del artículo"></div>
     <div class="sh-field"><div class="sh-lbl">SKU</div><input class="sh-input" type="text" id="el-sku"></div>
     <div class="sh-field"><div class="sh-lbl">Descripción</div><textarea class="sh-input" id="el-desc" style="min-height:50px;resize:none"></textarea></div>
+    <?php if (Auth::es_admin() || Auth::puede('ver_cantidades')): ?>
     <div class="sh-field sh-row2">
       <div><div class="sh-lbl">Cantidad</div><input class="sh-input" type="number" id="el-cant" value="1" min="0.01" step="0.01"></div>
       <div><div class="sh-lbl">Precio unitario</div><input class="sh-input" type="number" id="el-precio" placeholder="0.00" step="0.01"></div>
     </div>
+    <?php else: ?>
+    <input type="hidden" id="el-cant" value="1">
+    <input type="hidden" id="el-precio" value="0">
+    <?php endif; ?>
     <div id="el-preview" style="text-align:right;font:600 13px var(--num);color:var(--g);padding:4px 0"></div>
   </div>
   <div class="sh-footer">
@@ -1036,6 +1046,7 @@ const VENTA_ID   = <?= $venta_id ?>;
 const URL_VTA    = '<?= e($url_vta) ?>';
 const CSRF_TOKEN = '<?= csrf_token() ?>';
 const ES_ADMIN   = <?= $puede_admin ? 'true' : 'false' ?>;
+const PUEDE_VER_CANT = <?= (Auth::es_admin() || Auth::puede('ver_cantidades')) ? 'true' : 'false' ?>;
 const MONEDA     = '<?= e($empresa['moneda']) ?>';
 const IMP_MODO   = '<?= e($impuesto_modo) ?>';
 const IMP_PCT    = <?= (float)$impuesto_pct ?>;
@@ -1109,14 +1120,14 @@ function renderLineas(){
         ${desc}
         <!-- MOBILE: fila de métricas debajo de descripción -->
         <div class="item-nums-row">
-          <div class="item-num-cell">
+          ${PUEDE_VER_CANT ? `<div class="item-num-cell">
             <span class="item-num-lbl">Cant.</span>
             <span class="item-num-val">${cant}</span>
           </div>
           <div class="item-num-cell">
             <span class="item-num-lbl">P. Unit.</span>
             <span class="item-num-val">${pu}</span>
-          </div>
+          </div>` : ''}
           <div class="item-num-cell">
             <span class="item-num-lbl">Total</span>
             <span class="item-num-val total">${tot}</span>
@@ -1124,8 +1135,8 @@ function renderLineas(){
         </div>
       </div>
       <!-- DESKTOP: celdas 2-4 -->
-      <div class="item-cell">${cant}</div>
-      <div class="item-cell">${pu}</div>
+      ${PUEDE_VER_CANT ? `<div class="item-cell">${cant}</div>
+      <div class="item-cell">${pu}</div>` : ''}
       <div class="item-total">${tot}</div>
     </div>`;
   }).join('');

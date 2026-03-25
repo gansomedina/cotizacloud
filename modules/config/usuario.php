@@ -40,6 +40,7 @@ if (!preg_match('/^[a-z0-9._\-]{1,60}$/', $usuario)) {
 $perms = [
     'puede_crear_cotizaciones'   => (int)($body['puede_crear_cotizaciones']   ?? 1),
     'puede_editar_cotizaciones'  => (int)($body['puede_editar_cotizaciones']  ?? 1),
+    'puede_ver_cantidades'       => (int)($body['puede_ver_cantidades']       ?? 1),
     'puede_editar_precios'       => (int)($body['puede_editar_precios']       ?? 1),
     'puede_aplicar_descuentos'   => (int)($body['puede_aplicar_descuentos']   ?? 1),
     'puede_ver_todas_cots'       => (int)($body['puede_ver_todas_cots']       ?? 0),
