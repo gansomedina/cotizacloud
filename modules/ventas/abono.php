@@ -150,7 +150,7 @@ try {
         );
     }
 } catch (\Exception $e) {
-    if (DEBUG) error_log('Email abono error: ' . $e->getMessage());
+    if (defined('DEBUG') && DEBUG) error_log('Email abono error: ' . $e->getMessage());
 }
 
 } // cierre if notif abono_registrado

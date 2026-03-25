@@ -76,6 +76,7 @@ if ($usr_id > 0) {
     }
 
     $set = "nombre=?, usuario=?, email=?, rol=?, activo=?,
+            puede_crear_cotizaciones=?, puede_editar_cotizaciones=?, puede_ver_cantidades=?,
             puede_editar_precios=?, puede_aplicar_descuentos=?,
             puede_ver_todas_cots=?, puede_ver_todas_ventas=?,
             puede_eliminar_items_venta=?, puede_cancelar_recibos=?,
@@ -83,6 +84,7 @@ if ($usr_id > 0) {
             puede_ver_costos=?, puede_ver_proveedores=?";
     $vals = [
         $nombre, $usuario, $email, $rol, $activo,
+        $perms['puede_crear_cotizaciones'], $perms['puede_editar_cotizaciones'], $perms['puede_ver_cantidades'],
         $perms['puede_editar_precios'], $perms['puede_aplicar_descuentos'],
         $perms['puede_ver_todas_cots'], $perms['puede_ver_todas_ventas'],
         $perms['puede_eliminar_items_venta'], $perms['puede_cancelar_recibos'],
@@ -110,16 +112,18 @@ if ($usr_id > 0) {
     $nuevo = DB::insert(
         "INSERT INTO usuarios
          (empresa_id, nombre, usuario, email, password_hash, rol, activo,
+          puede_crear_cotizaciones, puede_editar_cotizaciones, puede_ver_cantidades,
           puede_editar_precios, puede_aplicar_descuentos,
           puede_ver_todas_cots, puede_ver_todas_ventas,
           puede_eliminar_items_venta, puede_cancelar_recibos,
           puede_capturar_pagos, puede_asignar_cotizaciones,
           puede_ver_costos, puede_ver_proveedores)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [
             $eid, $nombre, $usuario, $email,
             password_hash($pass, PASSWORD_DEFAULT),
             $rol, $activo,
+            $perms['puede_crear_cotizaciones'], $perms['puede_editar_cotizaciones'], $perms['puede_ver_cantidades'],
             $perms['puede_editar_precios'], $perms['puede_aplicar_descuentos'],
             $perms['puede_ver_todas_cots'], $perms['puede_ver_todas_ventas'],
             $perms['puede_eliminar_items_venta'], $perms['puede_cancelar_recibos'],
