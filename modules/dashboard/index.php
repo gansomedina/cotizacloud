@@ -270,7 +270,7 @@ if (!$_radar_ult || $_radar_ult < date('Y-m-d H:i:s', time()-300)) {
 // Cotizaciones activas con su bucket radar
 $radar_buckets_raw = DB::query(
     "SELECT c.id, c.titulo, c.numero, c.total,
-            c.radar_bucket, c.radar_score, c.visitas, c.ultima_vista_at,
+            c.radar_bucket, c.radar_score, c.radar_senales, c.visitas, c.ultima_vista_at,
             cl.nombre AS cliente_nombre,
             qs.sesiones, qs.scroll_max
      FROM cotizaciones c
@@ -282,17 +282,26 @@ $radar_buckets_raw = DB::query(
          FROM quote_sessions
          GROUP BY cotizacion_id
      ) qs ON qs.cotizacion_id = c.id
-     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada') $c_where
+     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista') $c_where
        AND c.radar_bucket IS NOT NULL
      ORDER BY c.radar_score DESC LIMIT 20",
     [$empresa_id]
 );
 
-// Agrupar por bucket
+// Agrupar por bucket — replicar lógica del Radar (probable_cierre va a ambos)
 $buckets = ['onfire' => [], 'inminente' => [], 'probable_cierre' => [], 'validando_precio' => []];
 foreach ($radar_buckets_raw as $r) {
     $b = $r['radar_bucket'];
-    if (isset($buckets[$b])) $buckets[$b][] = $r;
+    $senales = is_string($r['radar_senales']) ? (json_decode($r['radar_senales'], true) ?? []) : [];
+    $all_b   = $senales['buckets'] ?? [];
+    $pc_src  = $senales['pc_source'] ?? null;
+
+    if ($b === 'probable_cierre' && $pc_src) {
+        $buckets['probable_cierre'][] = $r;
+        if (isset($buckets[$pc_src])) $buckets[$pc_src][] = $r;
+    } elseif (isset($buckets[$b])) {
+        $buckets[$b][] = $r;
+    }
 }
 
 // ═══════════════════════════════════════════════════════
