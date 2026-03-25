@@ -101,6 +101,12 @@ class Router
         self::get('/logout',   fn() => self::load('auth', 'logout'));
         self::get('/registro', fn() => self::load('auth', 'registro'));
         self::post('/registro', fn() => self::load('auth', 'registro_post'));
+        self::get('/recuperar',       fn() => self::load('auth', 'recuperar'));
+        self::post('/recuperar',      fn() => self::load('auth', 'recuperar_post'));
+        self::get('/reset-password',  fn() => self::load('auth', 'reset_password'));
+        self::post('/reset-password', fn() => self::load('auth', 'reset_password_post'));
+        self::get('/verificar-email', fn() => self::load('auth', 'verificar_email'));
+        self::post('/verificar-email',fn() => self::load('auth', 'verificar_email_post'));
 
         // Landing page pública
         self::get('/landing', fn() => Auth::logueado()

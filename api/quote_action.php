@@ -156,6 +156,27 @@ if ($accion === 'aceptar') {
             // No romper el flujo principal si falla el push
             if (DEBUG) error_log('Push error: ' . $e->getMessage());
         }
+
+        // Email a admins de la empresa
+        try {
+            $empresa_mail = DB::row("SELECT nombre, moneda FROM empresas WHERE id=?", [EMPRESA_ID]);
+            $admins = DB::query(
+                "SELECT email, nombre FROM usuarios WHERE empresa_id=? AND activo=1 AND rol='admin'",
+                [EMPRESA_ID]
+            );
+            foreach ($admins as $admin) {
+                Mailer::enviar_cotizacion_aceptada(
+                    $admin['email'],
+                    $admin['nombre'],
+                    $cot['titulo'],
+                    $nombre,
+                    $total_guardar,
+                    $empresa_mail['moneda'] ?? 'MXN'
+                );
+            }
+        } catch (\Exception $e) {
+            if (DEBUG) error_log('Email aceptada error: ' . $e->getMessage());
+        }
     } catch (Exception $e) {
         DB::rollback();
         if (DEBUG) throw $e;
@@ -212,6 +233,24 @@ if ($accion === 'rechazar') {
             );
         } catch (\Exception $e) {
             if (DEBUG) error_log('Push error: ' . $e->getMessage());
+        }
+
+        // Email a admins de la empresa
+        try {
+            $admins = DB::query(
+                "SELECT email, nombre FROM usuarios WHERE empresa_id=? AND activo=1 AND rol='admin'",
+                [EMPRESA_ID]
+            );
+            foreach ($admins as $admin) {
+                Mailer::enviar_cotizacion_rechazada(
+                    $admin['email'],
+                    $admin['nombre'],
+                    $cot['titulo'],
+                    $motivo
+                );
+            }
+        } catch (\Exception $e) {
+            if (DEBUG) error_log('Email rechazada error: ' . $e->getMessage());
         }
     } catch (Exception $e) {
         DB::rollback();

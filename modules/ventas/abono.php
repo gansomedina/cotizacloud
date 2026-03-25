@@ -102,6 +102,39 @@ VentaLog::registrar(
     '$' . number_format($monto, 2) . ' · ' . ($concepto ?: ucfirst($forma_pago)) . ($notas_rec ? ' · ' . $notas_rec : ''),
     Auth::id()
 );
+
+// ─── Email al admin/vendedor de la empresa ─────────────────
+try {
+    $cliente_info = DB::row(
+        "SELECT cl.nombre FROM clientes cl
+         JOIN ventas v ON v.cliente_id = cl.id
+         WHERE v.id = ? AND cl.empresa_id = ?",
+        [$venta_id, $empresa_id]
+    );
+    $admins = DB::query(
+        "SELECT email, nombre FROM usuarios WHERE empresa_id = ? AND activo = 1 AND rol = 'admin'",
+        [$empresa_id]
+    );
+    $moneda = $empresa['moneda'] ?? 'MXN';
+    $emp_slug = $empresa['slug'] ?? '';
+    $url_recibo = 'https://' . $emp_slug . '.' . BASE_DOMAIN . '/r/' . $token_rec;
+    foreach ($admins as $admin) {
+        Mailer::enviar_abono(
+            $admin['email'],
+            $cliente_info['nombre'] ?? 'Cliente',
+            $empresa['nombre'] ?? 'CotizaCloud',
+            $numero_rec,
+            $monto,
+            $moneda,
+            $nuevo_saldo,
+            $forma_pago,
+            $url_recibo
+        );
+    }
+} catch (\Exception $e) {
+    if (DEBUG) error_log('Email abono error: ' . $e->getMessage());
+}
+
 ob_end_clean();
 json_ok([
     'recibo_id' => $recibo_id,
