@@ -59,7 +59,7 @@ try {
     if ($nuevo_saldo <= 0) {
         $nuevo_estado   = 'pagada';
         $nuevo_saldo    = 0;
-        $nuevo_pagado   = (float)$venta['total'];
+        // pagado conserva el monto real (puede ser > total si hubo sobrepago)
     } elseif ($nuevo_pagado > 0) {
         $nuevo_estado = 'parcial';
     }
