@@ -197,6 +197,24 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     .adj-del { width:28px; height:28px; border-radius:var(--r-sm); border:1px solid var(--border); background:var(--white); font-size:13px; color:var(--t3); cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .12s; }
     .adj-del:hover { border-color:var(--danger); color:var(--danger); background:var(--danger-bg); }
 
+    /* Sheets propios de ver.php — overlay=contenedor, sheet=hijo */
+    .vsheet-backdrop {
+        display:none; position:fixed; inset:0; z-index:9999;
+        background:rgba(0,0,0,.5); align-items:flex-end; justify-content:center;
+    }
+    .vsheet-backdrop.open { display:flex; }
+    .vsheet {
+        background:var(--white); border-radius:20px 20px 0 0;
+        max-height:90vh; width:100%; max-width:720px;
+        display:flex; flex-direction:column;
+        box-shadow:0 -8px 32px rgba(0,0,0,.15);
+        animation:vsheetUp .25s ease-out;
+    }
+    @keyframes vsheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    @media(max-width:820px){
+        .vsheet-backdrop { padding-bottom:64px; }
+    }
+
     /* Badge de estado inline */
     .badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:99px; font:600 12px var(--body); }
     .badge-slate  { background:var(--slate-bg);  color:var(--slate); }
@@ -553,39 +571,41 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     </div>
 </div>
 
-<!-- Sheets de catálogo y cliente (iguales que nueva.php) -->
-<div class="sh-overlay" id="catalogOverlay" onclick="closeSheet('catalogSheet','catalogOverlay')"></div>
-<div class="bottom-sheet" id="catalogSheet">
-    <div class="sh-handle"></div>
-    <div class="sh-header">
-        <span class="sh-title">Agregar artículo</span>
-        <button class="sh-close" onclick="closeSheet('catalogSheet','catalogOverlay')"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
-    </div>
-    <div class="sh-search">
-        <div class="sh-search-wrap">
-            <input type="text" placeholder="Buscar en catálogo..." id="catalog-search" oninput="filtrarCatalogo(this.value)">
+<!-- Sheets: overlay=contenedor, sheet=hijo. Sin conflicto de z-index. -->
+<div class="vsheet-backdrop" id="catalogOverlay" onclick="closeVSheet('catalogOverlay')">
+    <div class="vsheet" onclick="event.stopPropagation()">
+        <div class="sh-handle"></div>
+        <div class="sh-header">
+            <span class="sh-title">Agregar artículo</span>
+            <button class="sh-close" onclick="closeVSheet('catalogOverlay')"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
         </div>
+        <div class="sh-search">
+            <div class="sh-search-wrap">
+                <input type="text" placeholder="Buscar en catálogo..." id="catalog-search" oninput="filtrarCatalogo(this.value)">
+            </div>
+        </div>
+        <button onclick="agregarItemVacio()" style="margin:0 16px 10px;width:calc(100% - 32px);padding:12px 14px;border-radius:var(--r-sm);border:1.5px dashed var(--border2);background:transparent;display:flex;align-items:center;gap:8px;font:600 14px var(--body);color:var(--t2);cursor:pointer;">
+            <span>+</span> Ítem libre
+        </button>
+        <div class="sh-list" id="catalog-list"></div>
     </div>
-    <button onclick="agregarItemVacio()" style="margin:0 16px 10px;width:calc(100% - 32px);padding:12px 14px;border-radius:var(--r-sm);border:1.5px dashed var(--border2);background:transparent;display:flex;align-items:center;gap:8px;font:600 14px var(--body);color:var(--t2);cursor:pointer;">
-        <span>+</span> Ítem libre
-    </button>
-    <div class="sh-list" id="catalog-list"></div>
 </div>
 
-<div class="sh-overlay" id="clientOverlay" onclick="closeSheet('clientSheet','clientOverlay')"></div>
-<div class="bottom-sheet" id="clientSheet">
-    <div class="sh-handle"></div>
-    <div class="sh-header">
-        <span class="sh-title">Seleccionar cliente</span>
-        <button class="sh-close" onclick="closeSheet('clientSheet','clientOverlay')"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
-    </div>
-    <div class="sh-search">
-        <div class="sh-search-wrap">
-            <input type="text" placeholder="Buscar cliente..." id="client-search"
-                   oninput="renderClientList(this.value)">
+<div class="vsheet-backdrop" id="clientOverlay" onclick="closeVSheet('clientOverlay')">
+    <div class="vsheet" onclick="event.stopPropagation()">
+        <div class="sh-handle"></div>
+        <div class="sh-header">
+            <span class="sh-title">Seleccionar cliente</span>
+            <button class="sh-close" onclick="closeVSheet('clientOverlay')"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
         </div>
+        <div class="sh-search">
+            <div class="sh-search-wrap">
+                <input type="text" placeholder="Buscar cliente..." id="client-search"
+                       oninput="renderClientList(this.value)">
+            </div>
+        </div>
+        <div class="sh-list" id="client-list" style="padding-top:8px"></div>
     </div>
-    <div class="sh-list" id="client-list" style="padding-top:8px"></div>
 </div>
 
 <script src="/assets/js/feather.min.js"></script>
@@ -636,16 +656,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Reutilizar las mismas funciones de nueva.php ──
 // (En producción se extraen a /public/assets/js/builder.js)
 
-function openSheet(s,o){
-    document.getElementById(o).classList.add('open');
-    document.getElementById(s).classList.add('open');
+// Sheets de ver.php: un solo contenedor (backdrop) con el sheet adentro
+function openVSheet(id){
+    document.getElementById(id).classList.add('open');
     document.body.style.overflow='hidden';
 }
-function closeSheet(s,o){
-    document.getElementById(o).classList.remove('open');
-    document.getElementById(s).classList.remove('open');
+function closeVSheet(id){
+    document.getElementById(id).classList.remove('open');
     document.body.style.overflow='';
 }
+// Alias para compatibilidad con botones que usan openSheet(sheet,overlay)
+function openSheet(s,o){ openVSheet(o); }
+function closeSheet(s,o){ closeVSheet(o); }
 function autoResize(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function toggleMob(hdr){hdr.closest('.mob-section').classList.toggle('open');}
 function fmt(n){const sym=EMPRESA_CFG.moneda==='USD'?'USD ':'$';return sym+parseFloat(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});}
