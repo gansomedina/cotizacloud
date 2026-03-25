@@ -25,7 +25,7 @@ if (!in_array($accion, $acciones_validas)) {
 
 // ─── Cargar cotización ───────────────────────────────────
 $cot = DB::row(
-    "SELECT id, empresa_id, estado, suspendida, cliente_id, titulo FROM cotizaciones WHERE id = ? AND empresa_id = ?",
+    "SELECT id, empresa_id, estado, suspendida, cliente_id, titulo, usuario_id, vendedor_id FROM cotizaciones WHERE id = ? AND empresa_id = ?",
     [$cot_id, EMPRESA_ID]
 );
 if (!$cot) {
@@ -108,17 +108,22 @@ if ($accion === 'aceptar') {
             $cnt_vta     = (int)DB::val("SELECT COUNT(*) FROM ventas WHERE empresa_id=?", [EMPRESA_ID]);
             $numero_vta  = 'VTA-' . $anio_vta . '-' . str_pad($cnt_vta + 1, 4, '0', STR_PAD_LEFT);
 
+            // Asesor: heredar de la cotización
+            $cot_usuario_id   = $cot['usuario_id'] ?: null;
+            $cot_vendedor_id  = $cot['vendedor_id'] ?: null;
+
             DB::execute(
                 "INSERT INTO ventas
-                 (empresa_id, cotizacion_id, cliente_id, usuario_id,
+                 (empresa_id, cotizacion_id, cliente_id, usuario_id, vendedor_id,
                   numero, titulo, slug, token,
                   total, pagado, saldo, estado, created_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,0,?,'pendiente',NOW())",
+                 VALUES (?,?,?,?,?,?,?,?,?,?,0,?,'pendiente',NOW())",
                 [
                     EMPRESA_ID,
                     $cot_id,
                     $cot['cliente_id'],
-                    null,
+                    $cot_usuario_id,
+                    $cot_vendedor_id,
                     $numero_vta,
                     $cot['titulo'],
                     $slug_vta,
