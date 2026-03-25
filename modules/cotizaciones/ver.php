@@ -337,7 +337,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 <?php
     $vence_val = '';
     if (!empty($cot['valida_hasta']) && $cot['valida_hasta'] > '2000-01-01') {
-        $vence_val = $cot['valida_hasta'];
+        $vence_val = substr($cot['valida_hasta'], 0, 10); // solo YYYY-MM-DD para input date
     } elseif ($es_editable) {
         // Sin fecha válida → calcular desde configuración de empresa
         $vigencia_dias = (int)($empresa['cot_vigencia_dias'] ?? 30);

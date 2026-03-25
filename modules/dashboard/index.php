@@ -282,7 +282,7 @@ $radar_buckets_raw = DB::query(
          FROM quote_sessions
          GROUP BY cotizacion_id
      ) qs ON qs.cotizacion_id = c.id
-     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista') $c_where
+     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista') AND c.suspendida = 0 $c_where
        AND c.radar_bucket IS NOT NULL
      ORDER BY c.radar_score DESC LIMIT 20",
     [$empresa_id]
