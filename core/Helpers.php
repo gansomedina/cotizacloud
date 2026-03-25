@@ -209,7 +209,9 @@ function redirect(string $url, int $code = 302): never
 function redirect_back(string $fallback = '/'): never
 {
     $ref = $_SERVER['HTTP_REFERER'] ?? '';
-    redirect(!empty($ref) ? $ref : $fallback);
+    $host = parse_url($ref, PHP_URL_HOST);
+    $safe = !empty($ref) && (!$host || $host === ($_SERVER['HTTP_HOST'] ?? ''));
+    redirect($safe ? $ref : $fallback);
 }
 
 // ─── Flash messages ──────────────────────────────────────────
