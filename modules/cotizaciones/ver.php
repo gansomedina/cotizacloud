@@ -288,7 +288,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
         <div class="slabel">Cliente</div>
         <div class="card">
             <button class="client-btn" id="client-btn"
-                    onclick="<?= $es_editable ? "openSheet('clientSheet','clientOverlay')" : 'void(0)' ?>">
+                    onclick="openSheet('clientSheet','clientOverlay')">
                 <div class="client-avatar <?= $cot['cliente_nombre'] ? '' : 'empty' ?>" id="client-avatar">
                     <?= $cot['cliente_nombre']
                         ? strtoupper(substr($cot['cliente_nombre'], 0, 1))
@@ -300,9 +300,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                     </div>
                     <div class="client-phone" id="client-phone"><?= e($cot['cliente_telefono'] ?? '') ?></div>
                 </div>
-                <?php if ($es_editable): ?>
                 <i data-feather="chevron-right" style="width:16px;height:16px;" class="client-chevron"></i>
-                <?php endif; ?>
             </button>
         </div>
 
@@ -556,8 +554,8 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 </div>
 
 <!-- Sheets de catálogo y cliente (iguales que nueva.php) -->
-<div class="sh-overlay" id="catalogOverlay" onclick="closeSheet('catalogSheet','catalogOverlay')"></div>
-<div class="bottom-sheet" id="catalogSheet">
+<div class="sh-overlay" id="catalogOverlay" style="z-index:9998" onclick="closeSheet('catalogSheet','catalogOverlay')"></div>
+<div class="bottom-sheet" id="catalogSheet" style="z-index:9999">
     <div class="sh-handle"></div>
     <div class="sh-header">
         <span class="sh-title">Agregar artículo</span>
@@ -574,8 +572,8 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     <div class="sh-list" id="catalog-list"></div>
 </div>
 
-<div class="sh-overlay" id="clientOverlay" onclick="closeSheet('clientSheet','clientOverlay')"></div>
-<div class="bottom-sheet" id="clientSheet">
+<div class="sh-overlay" id="clientOverlay" style="z-index:9998" onclick="closeSheet('clientSheet','clientOverlay')"></div>
+<div class="bottom-sheet" id="clientSheet" style="z-index:9999">
     <div class="sh-handle"></div>
     <div class="sh-header">
         <span class="sh-title">Seleccionar cliente</span>
@@ -689,6 +687,14 @@ function seleccionarCliente(id){
     document.getElementById('client-name').textContent=c.nombre;
     document.getElementById('client-phone').textContent=c.telefono;
     closeSheet('clientSheet','clientOverlay');
+    // Guardar cliente inmediatamente via endpoint dedicado
+    fetch('/cotizaciones/'+COT_ID+'/cliente',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+        body:JSON.stringify({cliente_id:c.id})
+    }).then(r=>r.json()).then(d=>{
+        if(!d.ok) alert(d.error||'Error al asignar cliente');
+    }).catch(()=>alert('Error de conexión'));
 }
 
 function toggleCupon(el){
