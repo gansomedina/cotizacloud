@@ -15,7 +15,7 @@ $plan = trial_info($empresa_id);
 
 if (!$plan['es_pagado']) json_error('Función no disponible en plan Free', 403);
 
-$body = json_decode(file_get_contents('php://input'), true);
+$body = json_decode(file_get_contents('php://input'), true) ?? [];
 $modo = $body['costos_modo'] ?? '';
 
 // Pro: solo venta o empresa. Business: venta, empresa o ambos
