@@ -216,6 +216,7 @@ class Router
         self::post('/config/usuario/:id',                 fn($p) => self::app('config', 'usuario', $p));
         self::post('/config/radar',                       fn()   => self::app('config', 'guardar_radar'));
         self::post('/config/radar/calibrar',              fn()   => self::app('config', 'calibrar_radar'));
+        self::post('/config/costos-modo',                  fn()   => self::app('config', 'guardar_costos_modo'));
         self::post('/config/ip-interna',                  fn()   => self::app_extra('config', 'ip_interna', [],  ['accion'=>'crear']));
         self::post('/config/ip-interna/:id/eliminar',     fn($p) => self::app_extra('config', 'ip_interna', $p, ['accion'=>'eliminar']));
     }
