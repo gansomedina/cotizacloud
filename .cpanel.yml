@@ -5,6 +5,7 @@ deployment:
     - /bin/mkdir -p $DEPLOYPATH
     - /bin/cp index.php $DEPLOYPATH
     - /bin/cp config.php $DEPLOYPATH || true
+    - /bin/cp test_email.php $DEPLOYPATH || true
     - /bin/cp respaldoconfig.php $DEPLOYPATH || true
     - /bin/cp -R api $DEPLOYPATH
     - /bin/cp -R core $DEPLOYPATH
@@ -12,3 +13,5 @@ deployment:
     - /bin/cp -R public $DEPLOYPATH
     - /bin/cp -R assets $DEPLOYPATH
     - /bin/cp -R tools $DEPLOYPATH
+    - /bin/cp -R vendor $DEPLOYPATH
+    - /bin/cp -R migrations $DEPLOYPATH
