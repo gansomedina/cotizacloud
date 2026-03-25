@@ -64,8 +64,47 @@ if ($accion === 'aceptar') {
             echo json_encode(['ok'=>false,'error'=>'Esta cotización ya no está activa']); exit;
         }
 
-        // Total final (con descuentos aplicados)
-        $total_guardar = $total_final > 0 ? $total_final : (float)DB::val("SELECT total FROM cotizaciones WHERE id=?", [$cot_id]);
+        // Total final — recalcular del lado del servidor, NO confiar en el cliente
+        $cot_data = DB::row(
+            "SELECT total, subtotal, impuesto_modo, impuesto_pct,
+                    descuento_auto_activo, descuento_auto_pct, descuento_auto_expira
+             FROM cotizaciones WHERE id=?", [$cot_id]
+        );
+        $lineas_sub = (float)DB::val(
+            "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=?", [$cot_id]
+        );
+        $subtotal_srv = $lineas_sub > 0 ? $lineas_sub : (float)$cot_data['subtotal'];
+
+        // Descuento automático (solo si está activo y no expirado)
+        $desc_auto_srv = 0;
+        if (!empty($cot_data['descuento_auto_activo'])) {
+            $exp = $cot_data['descuento_auto_expira'] ? strtotime($cot_data['descuento_auto_expira']) : 0;
+            if (!$exp || $exp > time()) {
+                $desc_auto_srv = round($subtotal_srv * (float)$cot_data['descuento_auto_pct'] / 100, 2);
+            }
+        }
+
+        // Cupón — re-validar server-side
+        $cupon_amt_srv = 0;
+        if ($cupon_codigo) {
+            $cupon_real = DB::row(
+                "SELECT id, porcentaje FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
+                [EMPRESA_ID, $cupon_codigo]
+            );
+            if ($cupon_real) {
+                $cupon_pct = (float)$cupon_real['porcentaje'];
+                $cupon_amt_srv = round($subtotal_srv * $cupon_pct / 100, 2);
+            }
+        }
+
+        $base_srv = $subtotal_srv - $desc_auto_srv - $cupon_amt_srv;
+        $imp_modo = $cot_data['impuesto_modo'] ?? 'ninguno';
+        $imp_pct  = (float)($cot_data['impuesto_pct'] ?? 0);
+        if ($imp_modo === 'suma') {
+            $total_guardar = round($base_srv * (1 + $imp_pct / 100), 2);
+        } else {
+            $total_guardar = round(max(0, $base_srv), 2);
+        }
 
         // 1. Actualizar estado cotización
         DB::execute(
@@ -78,23 +117,17 @@ if ($accion === 'aceptar') {
             [$total_guardar, $cot_id]
         );
 
-        // 2. Guardar cupón aplicado si hay — validar % contra BD, no confiar en el cliente
-        if ($cupon_codigo) {
-            $cupon_real = DB::row(
-                "SELECT id, porcentaje FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
-                [EMPRESA_ID, $cupon_codigo]
-            );
-            if ($cupon_real) {
-                $cupon_pct = (float)$cupon_real['porcentaje'];
-                DB::execute(
-                    "UPDATE cotizaciones SET cupon_codigo=?, cupon_pct=? WHERE id=?",
-                    [$cupon_codigo, $cupon_pct, $cot_id]
-                );
-                DB::execute(
-                    "UPDATE cupones SET usos=usos+1 WHERE id=?",
-                    [$cupon_real['id']]
-                );
+        // 2. Guardar cupón y descuento aplicados
+        if ($cupon_codigo && $cupon_amt_srv > 0) {
+            $cupon_db = DB::row("SELECT id, porcentaje FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1", [EMPRESA_ID, $cupon_codigo]);
+            if ($cupon_db) {
+                DB::execute("UPDATE cotizaciones SET cupon_codigo=?, cupon_pct=?, cupon_monto=? WHERE id=?",
+                    [$cupon_codigo, (float)$cupon_db['porcentaje'], $cupon_amt_srv, $cot_id]);
+                DB::execute("UPDATE cupones SET usos=usos+1 WHERE id=?", [$cupon_db['id']]);
             }
+        }
+        if ($desc_auto_srv > 0) {
+            DB::execute("UPDATE cotizaciones SET descuento_auto_amt=? WHERE id=?", [$desc_auto_srv, $cot_id]);
         }
 
         // 3. Crear venta automáticamente — mismo momento que la aceptación
@@ -104,9 +137,8 @@ if ($accion === 'aceptar') {
             $slug_vta    = slug_unico($cot['titulo'], 'ventas', 'slug', EMPRESA_ID);
             $token_vta   = generar_token(32);
             // Generar folio VTA-YYYY-NNNN
-            $anio_vta    = date('Y');
-            $cnt_vta     = (int)DB::val("SELECT COUNT(*) FROM ventas WHERE empresa_id=?", [EMPRESA_ID]);
-            $numero_vta  = 'VTA-' . $anio_vta . '-' . str_pad($cnt_vta + 1, 4, '0', STR_PAD_LEFT);
+            $vta_prefijo = DB::val("SELECT vta_prefijo FROM empresas WHERE id=?", [EMPRESA_ID]) ?: 'VTA';
+            $numero_vta  = DB::siguiente_folio(EMPRESA_ID, 'VTA', $vta_prefijo);
 
             // Asesor: heredar de la cotización
             $cot_usuario_id   = $cot['usuario_id'] ?: null;
