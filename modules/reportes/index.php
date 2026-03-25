@@ -60,8 +60,13 @@ $f_fin_dt = $f_fin . ' 23:59:59';
 $usr_filter     = $es_admin ? '' : "AND (v.usuario_id = {$usuario['id']} OR v.vendedor_id = {$usuario['id']})";
 $usr_filter_c   = $es_admin ? '' : "AND (c.usuario_id = {$usuario['id']} OR c.vendedor_id = {$usuario['id']})";
 
-$tab = in_array($_GET['tab'] ?? '', ['financiero','asesores','cotizaciones','costos','recibos'])
+$tab = in_array($_GET['tab'] ?? '', ['financiero','asesores','cotizaciones','costos','recibos','proveedores'])
     ? $_GET['tab'] : 'financiero';
+
+// Proveedores solo Business
+$plan_rep = trial_info($empresa_id);
+$es_business_rep = $plan_rep['es_business'];
+if ($tab === 'proveedores' && !$es_business_rep) $tab = 'financiero';
 
 // ─────────────────────────────────────────────────────────────
 //  TAB 1: FINANCIERO
@@ -278,6 +283,60 @@ if (in_array($costos_modo, ['empresa', 'ambos'])) {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  TAB 6: PROVEEDORES (Business)
+// ─────────────────────────────────────────────────────────────
+$prov_top = [];
+$prov_mensual = [];
+$prov_total_periodo = 0;
+$prov_lista_rep = [];
+
+if ($es_business_rep) {
+    // Top proveedores por monto total en el período
+    $prov_top = DB::query(
+        "SELECT p.id, p.nombre,
+                COUNT(gv.id) AS num_gastos,
+                COALESCE(SUM(gv.importe), 0) AS total
+         FROM proveedores p
+         INNER JOIN gastos_venta gv ON gv.proveedor_id = p.id AND gv.empresa_id = p.empresa_id
+         WHERE p.empresa_id = ? AND gv.fecha BETWEEN ? AND ?
+         GROUP BY p.id, p.nombre
+         ORDER BY total DESC",
+        [$empresa_id, $f_ini, $f_fin]
+    );
+    $prov_total_periodo = array_sum(array_column($prov_top, 'total'));
+
+    // Gastos por proveedor por mes (últimos 6 meses) para gráfica
+    $prov_mensual = DB::query(
+        "SELECT p.nombre AS proveedor,
+                DATE_FORMAT(gv.fecha, '%Y-%m') AS mes,
+                COALESCE(SUM(gv.importe), 0) AS total
+         FROM gastos_venta gv
+         INNER JOIN proveedores p ON p.id = gv.proveedor_id
+         WHERE gv.empresa_id = ? AND gv.proveedor_id IS NOT NULL
+           AND gv.fecha >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+         GROUP BY p.nombre, mes
+         ORDER BY mes ASC, total DESC",
+        [$empresa_id]
+    );
+
+    // Lista detallada de gastos con proveedor en el período
+    $prov_lista_rep = DB::query(
+        "SELECT gv.id, gv.concepto, gv.importe, gv.fecha, gv.nota,
+                p.nombre AS proveedor,
+                cc.nombre AS categoria, cc.color,
+                v.numero AS venta_numero
+         FROM gastos_venta gv
+         INNER JOIN proveedores p ON p.id = gv.proveedor_id
+         LEFT JOIN categorias_costos cc ON cc.id = gv.categoria_id
+         LEFT JOIN ventas v ON v.id = gv.venta_id
+         WHERE gv.empresa_id = ? AND gv.fecha BETWEEN ? AND ?
+         ORDER BY gv.fecha DESC
+         LIMIT 300",
+        [$empresa_id, $f_ini, $f_fin]
+    );
+}
+
+// ─────────────────────────────────────────────────────────────
 //  TAB 5: RECIBOS
 // ─────────────────────────────────────────────────────────────
 $usr_filter_r = $es_admin ? '' : "AND r.usuario_id = {$usuario['id']}";
@@ -479,6 +538,9 @@ ob_start();
     <button class="rep-tab <?= $tab==='cotizaciones' ?'on':'' ?>" onclick="repTab('cotizaciones',this)">Cotizaciones</button>
     <button class="rep-tab <?= $tab==='recibos'       ?'on':'' ?>" onclick="repTab('recibos',this)">Recibos</button>
     <button class="rep-tab <?= $tab==='costos'       ?'on':'' ?>" onclick="repTab('costos',this)">Costos y márgenes</button>
+    <?php if ($es_business_rep): ?>
+    <button class="rep-tab <?= $tab==='proveedores'  ?'on':'' ?>" onclick="repTab('proveedores',this)">Proveedores</button>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -1340,6 +1402,149 @@ ob_start();
 
   <?php endif; ?>
 </div><!-- /panel-costos -->
+
+
+<?php if ($es_business_rep): ?>
+<!-- ══ TAB: PROVEEDORES ════════════════════════════════════ -->
+<div class="tab-panel <?= $tab==='proveedores'?'on':'' ?>" id="panel-proveedores">
+
+  <?php if (empty($prov_top)): ?>
+    <div class="empty card" style="padding:40px">Sin gastos con proveedor asignado en el período</div>
+  <?php else: ?>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+    <div class="kpi-card">
+      <div class="kpi-label">Total pagado a proveedores</div>
+      <div class="kpi-val amber"><?= rp($prov_total_periodo) ?></div>
+      <div class="kpi-sub"><?= array_sum(array_column($prov_top, 'num_gastos')) ?> transacciones</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Proveedores activos</div>
+      <div class="kpi-val" style="color:var(--text)"><?= count($prov_top) ?></div>
+      <div class="kpi-sub">Con gastos en el período</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Ticket promedio</div>
+      <?php $prov_num_total = array_sum(array_column($prov_top, 'num_gastos'));
+            $prov_ticket = $prov_num_total > 0 ? $prov_total_periodo / $prov_num_total : 0; ?>
+      <div class="kpi-val" style="color:var(--text)"><?= rp($prov_ticket) ?></div>
+      <div class="kpi-sub">Por transacción</div>
+    </div>
+  </div>
+
+  <!-- Top proveedores + evolución mensual -->
+  <div class="costos-layout">
+    <!-- Ranking de proveedores -->
+    <div class="stat-card">
+      <div class="sec-lbl" style="margin-bottom:12px">Top proveedores</div>
+      <?php foreach ($prov_top as $i => $pt):
+        $pct_prov = $prov_total_periodo > 0 ? round((float)$pt['total'] / $prov_total_periodo * 100, 1) : 0;
+      ?>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="width:24px;height:24px;border-radius:50%;background:<?= $i < 3 ? '#f59e0b' : '#e2e2dc' ?>;color:<?= $i < 3 ? '#fff' : 'var(--t3)' ?>;display:flex;align-items:center;justify-content:center;font:700 11px var(--num);flex-shrink:0">
+          <?= $i + 1 ?>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font:600 13px var(--body);color:var(--text)"><?= e($pt['nombre']) ?></div>
+          <div style="font:400 11px var(--body);color:var(--t3)"><?= (int)$pt['num_gastos'] ?> gasto<?= $pt['num_gastos']!=1?'s':'' ?></div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font:700 13px var(--num);color:#b45309"><?= rp((float)$pt['total']) ?></div>
+          <div style="font:400 11px var(--num);color:var(--t3)"><?= $pct_prov ?>%</div>
+        </div>
+      </div>
+      <?php endforeach; ?>
+      <!-- Barra apilada -->
+      <div style="height:10px;border-radius:5px;overflow:hidden;display:flex;margin-top:14px;gap:2px">
+        <?php
+          $colors_prov = ['#f59e0b','#f97316','#ef4444','#8b5cf6','#3b82f6','#06b6d4','#10b981','#6b7280'];
+          foreach ($prov_top as $i => $pt):
+            $w = $prov_total_periodo > 0 ? round((float)$pt['total'] / $prov_total_periodo * 100, 1) : 0;
+            $c = $colors_prov[$i % count($colors_prov)];
+        ?>
+        <div style="width:<?= $w ?>%;background:<?= $c ?>;min-width:2px" title="<?= e($pt['nombre']) ?>: <?= rp((float)$pt['total']) ?>"></div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+
+    <!-- Evolución mensual por proveedor -->
+    <div class="stat-card">
+      <div class="sec-lbl" style="margin-bottom:12px">Pagos mensuales</div>
+      <?php
+        // Construir datos: meses como columnas, proveedores como series
+        $meses_prov = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $m = date('Y-m', strtotime("-$i months"));
+            $meses_prov[$m] = ['label' => date('M', strtotime($m.'-01')), 'total' => 0];
+        }
+        foreach ($prov_mensual as $pm) {
+            if (isset($meses_prov[$pm['mes']])) {
+                $meses_prov[$pm['mes']]['total'] += (float)$pm['total'];
+            }
+        }
+        $max_prov_chart = max(1, ...array_column($meses_prov, 'total'));
+      ?>
+      <div class="bar-chart" style="height:100px">
+        <?php foreach ($meses_prov as $mp):
+          $h = $max_prov_chart > 0 ? round($mp['total'] / $max_prov_chart * 90) : 2;
+        ?>
+        <div class="bar-col">
+          <div class="bar-wrap" style="height:90px">
+            <div class="bar" style="height:<?= max(2, $h) ?>px;background:#f59e0b;flex:1" title="<?= rp($mp['total']) ?>"></div>
+          </div>
+          <div class="bar-lbl"><?= $mp['label'] ?></div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla detallada de pagos -->
+  <div class="sec-lbl">Detalle de pagos a proveedores</div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table class="tbl" id="tbl-proveedores">
+        <thead>
+          <tr>
+            <th>Proveedor</th>
+            <th>Concepto</th>
+            <th>Categoría</th>
+            <th>Venta</th>
+            <th class="r">Importe</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($prov_lista_rep as $pl): ?>
+          <tr>
+            <td style="font:600 13px var(--body)"><?= e($pl['proveedor']) ?></td>
+            <td style="font-size:12px"><?= e($pl['concepto']) ?></td>
+            <td>
+              <?php if ($pl['categoria']): ?>
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px">
+                <span style="width:8px;height:8px;border-radius:50%;background:<?= e($pl['color'] ?? '#6b7280') ?>;display:inline-block"></span>
+                <?= e($pl['categoria']) ?>
+              </span>
+              <?php else: ?>
+              <span style="color:var(--t3);font-size:12px">—</span>
+              <?php endif; ?>
+            </td>
+            <td style="font:400 12px var(--num);color:var(--t3)"><?= e($pl['venta_numero'] ?? 'General') ?></td>
+            <td class="tbl-num" style="color:#b45309"><?= rp((float)$pl['importe']) ?></td>
+            <td style="font:400 12px var(--num);color:var(--t3);white-space:nowrap">
+              <?= date('d/m/Y', strtotime($pl['fecha'])) ?>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <?php endif; ?>
+</div><!-- /panel-proveedores -->
+<?php endif; ?>
 
 
 <script>
