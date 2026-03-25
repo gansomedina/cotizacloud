@@ -10,7 +10,7 @@ $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $empresa_id = EMPRESA_ID;
 
-// ── Verificar límite trial ──────────────────────────────
+// ── Verificar límite plan Free ──────────────────────────
 $trial = trial_info($empresa_id);
 if ($trial['agotado']) {
     $page_title = 'Límite alcanzado';
@@ -20,10 +20,10 @@ if ($trial['agotado']) {
         <div style="width:64px;height:64px;border-radius:50%;background:var(--amb-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--amb)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
-        <h2 style="font-size:20px;font-weight:800;margin:0 0 8px">Límite de prueba alcanzado</h2>
+        <h2 style="font-size:20px;font-weight:800;margin:0 0 8px">Límite del plan Free alcanzado</h2>
         <p style="color:var(--t2);margin:0 0 16px;line-height:1.6">
-            Has utilizado las <strong><?= TRIAL_LIMIT ?> cotizaciones</strong> incluidas en tu período de prueba.
-            Para seguir creando cotizaciones, activa tu licencia mensual.
+            Has utilizado las <strong><?= TRIAL_LIMIT ?> cotizaciones</strong> incluidas en tu plan Free.
+            Para seguir creando cotizaciones, activa tu plan Pro.
         </p>
         <div style="background:var(--amb-bg);border:1px solid #fcd34d;border-radius:var(--r);padding:16px;margin-bottom:24px;text-align:left">
             <div style="font-size:13px;color:var(--amb)">

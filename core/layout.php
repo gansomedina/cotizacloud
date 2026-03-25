@@ -315,9 +315,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         </div>
         <?php
         $trial_layout = trial_info(EMPRESA_ID);
-        if ($trial_layout['es_trial']): ?>
+        if ($trial_layout['es_free']): ?>
         <div style="padding:6px 12px;margin-bottom:4px;font:500 11px var(--body);color:var(--t3)">
-            Plan: <span style="color:var(--amb);font-weight:700">Prueba</span>
+            Plan: <span style="color:var(--amb);font-weight:700">Free</span>
             <span style="font:400 11px var(--num);color:var(--t3);display:block;margin-top:1px"><?= $trial_layout['usadas'] ?>/<?= TRIAL_LIMIT ?> cotizaciones</span>
         </div>
         <?php elseif ($trial_layout['es_pagado']): ?>

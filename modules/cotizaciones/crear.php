@@ -18,10 +18,10 @@ $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $empresa_id = EMPRESA_ID;
 
-// ─── Verificar límite trial ──────────────────────────────
+// ─── Verificar límite plan Free ──────────────────────────
 $trial = trial_info($empresa_id);
 if ($trial['agotado']) {
-    json_error('Has alcanzado el límite de ' . TRIAL_LIMIT . ' cotizaciones de prueba. Activa tu licencia para continuar.', 402);
+    json_error('Has alcanzado el límite de ' . TRIAL_LIMIT . ' cotizaciones del plan Free. Activa Pro para continuar.', 402);
 }
 
 // ─── Leer JSON ───────────────────────────────────────────
