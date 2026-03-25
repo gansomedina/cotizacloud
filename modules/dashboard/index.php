@@ -179,7 +179,7 @@ $tiempo_cierre = (float)(DB::val(
 // Sin abrir (enviadas pero nunca vistas)
 $sin_abrir = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones c
-     WHERE c.empresa_id=? AND estado='enviada'
+     WHERE c.empresa_id=? AND estado='enviada' AND c.suspendida = 0
        AND vista_at IS NULL AND c.created_at BETWEEN ? AND ?
        AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where",
     [$empresa_id, $desde, $hasta]
@@ -236,7 +236,7 @@ $por_vencer = DB::query(
             DATEDIFF(c.valida_hasta, CURDATE()) AS dias_restantes
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
-     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista')
+     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista') AND c.suspendida = 0
        AND c.valida_hasta IS NOT NULL
        AND c.valida_hasta BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) $c_where
      ORDER BY c.valida_hasta ASC LIMIT 6",
@@ -250,7 +250,7 @@ $sin_abrir_list = DB::query(
             DATEDIFF(CURDATE(), DATE(c.enviada_at)) AS dias_sin_abrir
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
-     WHERE c.empresa_id=? AND c.estado='enviada'
+     WHERE c.empresa_id=? AND c.estado='enviada' AND c.suspendida = 0
        AND c.vista_at IS NULL AND c.enviada_at IS NOT NULL
        AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where
      ORDER BY c.enviada_at ASC LIMIT 6",
