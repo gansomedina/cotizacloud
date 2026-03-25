@@ -11,6 +11,14 @@ header('Content-Type: application/json');
 $eid    = EMPRESA_ID;
 $usr_id = isset($id) ? (int)$id : 0;
 
+// Solo Business puede crear usuarios nuevos (editar existentes sí se permite)
+if ($usr_id === 0) {
+    $plan = trial_info($eid);
+    if (!$plan['es_business']) {
+        echo json_encode(['ok'=>false,'error'=>'Crear usuarios es exclusivo del plan Business']); exit;
+    }
+}
+
 $body = json_decode(file_get_contents('php://input'), true);
 if (!$body) { echo json_encode(['ok'=>false,'error'=>'Payload inválido']); exit; }
 
