@@ -4,8 +4,8 @@ deployment:
     - export DEPLOYPATH=/home/cotizacl/public_html/
     - /bin/mkdir -p $DEPLOYPATH
     - /bin/cp index.php $DEPLOYPATH
-    - /bin/cp config.php $DEPLOYPATH || true
-    - /bin/cp respaldoconfig.php $DEPLOYPATH || true
+    - /bin/cp config.php $DEPLOYPATH
+    - /bin/cp respaldoconfig.php $DEPLOYPATH
     - /bin/cp -R api $DEPLOYPATH
     - /bin/cp -R core $DEPLOYPATH
     - /bin/cp -R modules $DEPLOYPATH
