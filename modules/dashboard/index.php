@@ -569,10 +569,10 @@ ob_start();
     <div style="flex:1">
         <?php if ($trial['vencido']): ?>
             <div style="font:700 15px var(--body);color:#c53030;margin-bottom:2px">Licencia vencida</div>
-            <div style="font:400 13px var(--body);color:#991b1b;line-height:1.5">Tu licencia PRO venció el <?= date('d/m/Y', strtotime($trial['plan_vence'])) ?>. Renueva para seguir creando cotizaciones.</div>
+            <div style="font:400 13px var(--body);color:#991b1b;line-height:1.5">Tu plan <?= $trial['plan_label'] ?> venció el <?= date('d/m/Y', strtotime($trial['plan_vence'])) ?>. Renueva para seguir creando cotizaciones.</div>
         <?php else: ?>
-            <div style="font:700 15px var(--body);color:#92400e;margin-bottom:2px">Prueba gratuita agotada</div>
-            <div style="font:400 13px var(--body);color:#78350f;line-height:1.5">Has usado las <?= TRIAL_LIMIT ?> cotizaciones de prueba. Activa tu licencia PRO para continuar.</div>
+            <div style="font:700 15px var(--body);color:#92400e;margin-bottom:2px">Plan Free agotado</div>
+            <div style="font:400 13px var(--body);color:#78350f;line-height:1.5">Has usado las <?= TRIAL_LIMIT ?> cotizaciones gratuitas. Activa tu plan Pro para continuar.</div>
         <?php endif; ?>
     </div>
     <a href="/licencia" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--r-sm);font:600 13px var(--body);background:<?= $trial['vencido'] ? '#c53030' : '#92400e' ?>;color:#fff;text-decoration:none;white-space:nowrap;transition:opacity .12s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
