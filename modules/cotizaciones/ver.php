@@ -578,8 +578,14 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 <div class="bottom-sheet" id="clientSheet">
     <div class="sh-handle"></div>
     <div class="sh-header">
-        <span class="sh-title">Cliente</span>
+        <span class="sh-title">Seleccionar cliente</span>
         <button class="sh-close" onclick="closeSheet('clientSheet','clientOverlay')"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="sh-search">
+        <div class="sh-search-wrap">
+            <input type="text" placeholder="Buscar cliente..." id="client-search"
+                   oninput="renderClientList(this.value)">
+        </div>
     </div>
     <div class="sh-list" id="client-list" style="padding-top:8px"></div>
 </div>
@@ -633,8 +639,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // (En producción se extraen a /public/assets/js/builder.js)
 
 function openSheet(s,o){
-    document.getElementById(o).classList.add('open');
-    document.getElementById(s).classList.add('open');
+    const overlay = document.getElementById(o);
+    const sheet = document.getElementById(s);
+    // Mover al body para evitar stacking context issues
+    if(overlay.parentElement !== document.body) document.body.appendChild(overlay);
+    if(sheet.parentElement !== document.body) document.body.appendChild(sheet);
+    overlay.classList.add('open');
+    sheet.classList.add('open');
     document.body.style.overflow='hidden';
 }
 function closeSheet(s,o){
