@@ -521,7 +521,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 </div>
 
 <!-- Overlay URL -->
-<div id="url-overlay" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;display:flex;align-items:flex-end;justify-content:center"
+<div id="url-overlay" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;display:none;align-items:flex-end;justify-content:center"
      onclick="closeUrlOverlay()">
     <div onclick="event.stopPropagation()" style="background:var(--white);border-radius:20px 20px 0 0;padding:20px 20px 40px;width:100%;max-width:560px;">
         <div style="width:34px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 18px"></div>
@@ -554,8 +554,8 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 </div>
 
 <!-- Sheets de catálogo y cliente (iguales que nueva.php) -->
-<div class="sh-overlay" id="catalogOverlay" style="z-index:9998" onclick="closeSheet('catalogSheet','catalogOverlay')"></div>
-<div class="bottom-sheet" id="catalogSheet" style="z-index:9999">
+<div class="sh-overlay" id="catalogOverlay" onclick="closeSheet('catalogSheet','catalogOverlay')"></div>
+<div class="bottom-sheet" id="catalogSheet">
     <div class="sh-handle"></div>
     <div class="sh-header">
         <span class="sh-title">Agregar artículo</span>
@@ -572,8 +572,8 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     <div class="sh-list" id="catalog-list"></div>
 </div>
 
-<div class="sh-overlay" id="clientOverlay" style="z-index:9998" onclick="closeSheet('clientSheet','clientOverlay')"></div>
-<div class="bottom-sheet" id="clientSheet" style="z-index:9999">
+<div class="sh-overlay" id="clientOverlay" onclick="closeSheet('clientSheet','clientOverlay')"></div>
+<div class="bottom-sheet" id="clientSheet">
     <div class="sh-handle"></div>
     <div class="sh-header">
         <span class="sh-title">Seleccionar cliente</span>
@@ -637,13 +637,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // (En producción se extraen a /public/assets/js/builder.js)
 
 function openSheet(s,o){
-    const overlay = document.getElementById(o);
-    const sheet = document.getElementById(s);
-    // Mover al body para evitar stacking context issues
-    if(overlay.parentElement !== document.body) document.body.appendChild(overlay);
-    if(sheet.parentElement !== document.body) document.body.appendChild(sheet);
-    overlay.classList.add('open');
-    sheet.classList.add('open');
+    document.getElementById(o).classList.add('open');
+    document.getElementById(s).classList.add('open');
     document.body.style.overflow='hidden';
 }
 function closeSheet(s,o){
@@ -882,11 +877,12 @@ async function eliminarCotizacion(){
 // Overlay: abrir/cerrar sin dejar pointer-events activos
 (function(){
     const ov = document.getElementById('url-overlay');
-    ov.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);transition:opacity .25s;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none';
+    ov.style.display = 'none';
     ov.addEventListener('click', function(e){ if(e.target===this) closeUrlOverlay(); });
 })();
 function openUrlOverlay(){
     const ov = document.getElementById('url-overlay');
+    ov.style.display = 'flex';
     ov.style.opacity = '1';
     ov.style.pointerEvents = 'all';
 }
@@ -894,6 +890,7 @@ function closeUrlOverlay(){
     const ov = document.getElementById('url-overlay');
     ov.style.opacity = '0';
     ov.style.pointerEvents = 'none';
+    setTimeout(()=>{ ov.style.display = 'none'; }, 250);
 }
 </script>
 </div><!-- /app-main -->
