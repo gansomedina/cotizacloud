@@ -124,6 +124,9 @@ class Router
         self::post('/api/push/register',   fn() => self::load_api('push_register'));
         self::post('/api/push/unregister', fn() => self::load_api('push_unregister'));
 
+        // ── Test email (temporal — eliminar después) ────────
+        self::get('/test-email', fn() => require ROOT_PATH . '/test_email.php');
+
         // ── Páginas legales (público) ───────────────────────
         self::get('/privacidad', fn() => self::load_public('privacidad'));
 
