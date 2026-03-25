@@ -69,12 +69,14 @@ class PushNotification
             try {
                 if ($disp['plataforma'] === 'ios') {
                     $ok = self::enviar_apns($disp['token'], $titulo, $cuerpo, $datos);
+                } elseif ($disp['plataforma'] === 'web') {
+                    $ok = WebPush::enviar($disp['token'], $titulo, $cuerpo, $datos);
                 }
                 // Android (FCM) se agregará después
             } catch (\Exception $e) {
                 $error = $e->getMessage();
-                // Si el token es inválido, desactivarlo
-                if (self::es_token_invalido($error)) {
+                // Si el token es inválido o subscription expirada, desactivarlo
+                if (self::es_token_invalido($error) || WebPush::es_subscription_expirada($error ?? '')) {
                     self::desactivar_token($disp['token']);
                 }
             }
@@ -286,10 +288,12 @@ class PushNotification
             try {
                 if ($disp['plataforma'] === 'ios') {
                     $ok = self::enviar_apns($disp['token'], $titulo, $cuerpo, $datos);
+                } elseif ($disp['plataforma'] === 'web') {
+                    $ok = WebPush::enviar($disp['token'], $titulo, $cuerpo, $datos);
                 }
             } catch (\Exception $e) {
                 $error = $e->getMessage();
-                if (self::es_token_invalido($error)) {
+                if (self::es_token_invalido($error) || WebPush::es_subscription_expirada($error ?? '')) {
                     self::desactivar_token($disp['token']);
                 }
             }

@@ -458,6 +458,12 @@ function toggleMoreDrawer(){
 <!-- Push Notifications (solo carga en app nativa Capacitor) -->
 <script src="/assets/js/push.js?v=2"></script>
 
+<!-- Web Push Notifications (solo navegador, no app nativa) -->
+<?php if (Auth::logueado()): ?>
+<script>var WEBPUSH_KEY = '<?= VAPID_PUBLIC_KEY ?>';</script>
+<script src="/assets/js/web-push.js?v=1" defer></script>
+<?php endif; ?>
+
 <script>
 // Twemoji: convierte emojis Unicode a imágenes SVG para iOS WKWebView
 if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'.svg',base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});}

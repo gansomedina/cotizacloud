@@ -13,3 +13,5 @@ deployment:
     - /bin/cp -R tools $DEPLOYPATH
     - /bin/cp -R vendor $DEPLOYPATH
     - /bin/cp -R migrations $DEPLOYPATH
+    - /bin/mkdir -p /home/cotizacl/key
+    - /bin/cp vapid_private.pem /home/cotizacl/key/vapid_private.pem || true
