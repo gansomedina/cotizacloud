@@ -1,7 +1,7 @@
 <?php
 // ============================================================
 //  cotiza.cloud — modules/config/index.php
-//  GET /config[?tab=empresa|catalogo|clientes|cupones|usuarios|radar]
+//  GET /config[?tab=empresa|catalogo|clientes|cupones|usuarios|radar|costos]
 //  Solo admin puede acceder
 // ============================================================
 
@@ -9,13 +9,19 @@ defined('COTIZAAPP') or die;
 Auth::requerir_admin();
 
 $empresa_id = EMPRESA_ID;
-$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar'])
+$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos'])
     ? $_GET['tab'] : 'empresa';
 
 // Usuarios solo disponible en plan Business
 if ($tab_activo === 'usuarios') {
     $plan_check = trial_info(EMPRESA_ID);
     if (!$plan_check['es_business']) $tab_activo = 'empresa';
+}
+
+// Costos solo disponible en plan Pro o Business
+if ($tab_activo === 'costos') {
+    $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
+    if (!$plan_check['es_pagado']) $tab_activo = 'empresa';
 }
 
 // ─── Cargar empresa ─────────────────────────────────────────
@@ -276,11 +282,25 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   .radar-modos{grid-template-columns:1fr}
   .sh-row2{grid-template-columns:1fr}
   .tax-grid{grid-template-columns:1fr}
+  .costos-modo-grid{grid-template-columns:1fr}
 }
 @media(min-width:641px){
   .grid2 .field-row{border-right:1px solid var(--border)}
   .grid2 .field-row:nth-child(2n){border-right:none}
 }
+
+/* ── Costos modo selector ── */
+.costos-modo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.costos-modo-opt{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;padding:20px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;background:var(--bg)}
+.costos-modo-opt:hover{border-color:var(--g);background:#f7faf8}
+.costos-modo-opt.sel{border-color:var(--g);background:#eef7f2;box-shadow:0 0 0 1px var(--g)}
+.cm-icon{margin-bottom:10px;color:var(--t3)}.costos-modo-opt.sel .cm-icon{color:var(--g)}
+.cm-name{font:700 15px var(--body);color:var(--text);margin-bottom:6px}
+.cm-desc{font:400 12px var(--body);color:var(--t3);line-height:1.4}
+.cm-check{display:none;position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:var(--g);color:#fff;align-items:center;justify-content:center}
+.costos-modo-opt.sel .cm-check{display:flex}
+.cm-badge{display:inline-block;margin-top:8px;padding:2px 8px;border-radius:4px;background:#3b82f6;color:#fff;font:600 10px var(--body);letter-spacing:.04em;text-transform:uppercase}
+.costos-modo-note{font-size:12px;color:var(--t3);margin:12px 0 0;display:flex;align-items:flex-start;gap:6px;line-height:1.4}
 </style>
 
 <!-- Header con botón guardar empresa -->
@@ -300,6 +320,9 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <a class="cfg-tab <?= $tab_activo==='usuarios'  ?'on':'' ?>" href="/config?tab=usuarios">Usuarios</a>
     <?php endif; ?>
     <a class="cfg-tab <?= $tab_activo==='radar'     ?'on':'' ?>" href="/config?tab=radar">Radar</a>
+    <?php if ($plan_info['es_pagado']): ?>
+    <a class="cfg-tab <?= $tab_activo==='costos'    ?'on':'' ?>" href="/config?tab=costos">Costos</a>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -926,6 +949,58 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   </div>
 
 </div><!-- /panel-radar -->
+
+
+<!-- ══ TAB: COSTOS ══════════════════════════════════════════ -->
+<?php if ($plan_info['es_pagado']):
+  $costos_modo = $empresa['costos_modo'] ?? 'venta';
+?>
+<div class="tab-panel <?= $tab_activo==='costos'?'on':'' ?>" id="panel-costos">
+  <div class="sec">
+    <div class="sec-lbl">Modo de costos</div>
+    <p style="font-size:13px;color:var(--t3);margin:0 0 16px">Elige cómo registrar los costos de tu negocio. Esto afecta el formulario de nuevo gasto y las vistas del módulo de Costos.</p>
+    <div class="card">
+      <div class="costos-modo-grid">
+
+        <!-- Opción: Por venta -->
+        <label class="costos-modo-opt <?= $costos_modo==='venta'?'sel':'' ?>" onclick="selCostosModo('venta')">
+          <input type="radio" name="costos_modo" value="venta" <?= $costos_modo==='venta'?'checked':'' ?> style="display:none">
+          <div class="cm-icon"><?= ico('file-text', 28) ?></div>
+          <div class="cm-name">Por venta</div>
+          <div class="cm-desc">Cada costo se asigna a una venta específica. Ideal para calcular margen y rentabilidad por proyecto.</div>
+          <div class="cm-check"><?= ico('check', 16) ?></div>
+        </label>
+
+        <!-- Opción: Por empresa -->
+        <label class="costos-modo-opt <?= $costos_modo==='empresa'?'sel':'' ?>" onclick="selCostosModo('empresa')">
+          <input type="radio" name="costos_modo" value="empresa" <?= $costos_modo==='empresa'?'checked':'' ?> style="display:none">
+          <div class="cm-icon"><?= ico('building', 28) ?></div>
+          <div class="cm-name">Por empresa</div>
+          <div class="cm-desc">Los costos se registran como gastos generales del negocio. Ideal para ver rentabilidad global mensual.</div>
+          <div class="cm-check"><?= ico('check', 16) ?></div>
+        </label>
+
+        <?php if ($plan_info['es_business']): ?>
+        <!-- Opción: Ambos (solo Business) -->
+        <label class="costos-modo-opt <?= $costos_modo==='ambos'?'sel':'' ?>" onclick="selCostosModo('ambos')">
+          <input type="radio" name="costos_modo" value="ambos" <?= $costos_modo==='ambos'?'checked':'' ?> style="display:none">
+          <div class="cm-icon"><?= ico('layers', 28) ?></div>
+          <div class="cm-name">Ambos</div>
+          <div class="cm-desc">Costos avanzados: registra gastos por venta y gastos generales de empresa. Máximo control y visibilidad.</div>
+          <div class="cm-badge">Business</div>
+          <div class="cm-check"><?= ico('check', 16) ?></div>
+        </label>
+        <?php endif; ?>
+
+      </div>
+
+      <p class="costos-modo-note"><?= ico('info', 14) ?> Los costos ya registrados no se eliminan al cambiar de modo. Solo afecta cómo se crean nuevos costos y qué vistas se muestran.</p>
+
+      <button class="save-btn" style="margin-top:12px" onclick="guardarCostosModo()">Guardar modo de costos</button>
+    </div>
+  </div>
+</div><!-- /panel-costos -->
+<?php endif; ?>
 
 
 <!-- ══ SHEET: ARTÍCULO ══════════════════════════════════════ -->
@@ -1578,6 +1653,28 @@ async function guardarUsuario() {
         if (d.ok) { closeSheet('shUsr'); location.reload(); }
         else alert(d.error || 'Error.');
     } catch(e) { alert('Error de conexión.'); }
+}
+
+// ── Costos modo ──
+function selCostosModo(modo){
+  document.querySelectorAll('.costos-modo-opt').forEach(el => {
+    el.classList.toggle('sel', el.querySelector('input').value === modo);
+    el.querySelector('input').checked = (el.querySelector('input').value === modo);
+  });
+}
+async function guardarCostosModo(){
+  const sel = document.querySelector('input[name="costos_modo"]:checked');
+  if (!sel) return;
+  try {
+    const r = await fetch('/config/costos-modo', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({costos_modo: sel.value})
+    });
+    const d = await r.json();
+    if (d.ok) { location.reload(); }
+    else alert(d.error || 'Error al guardar.');
+  } catch(e) { alert('Error de conexión.'); }
 }
 </script>
 
