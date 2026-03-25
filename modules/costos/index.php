@@ -478,7 +478,11 @@ ob_start();
     <button class="ctab"   id="ctab-proveedores" onclick="cTab('proveedores',this)">Proveedores<?php if (!empty($proveedores_full)): ?> <span style="font:600 11px var(--num);color:var(--t3);margin-left:2px"><?= count($proveedores_full) ?></span><?php endif; ?></button>
     <?php endif; ?>
   </div>
+  <?php if ($costos_modo === 'empresa'): ?>
+  <button class="new-btn" onclick="abrirGastoGeneral()">+ Registrar gasto</button>
+  <?php else: ?>
   <button class="new-btn" onclick="abrirCosto()">+ Registrar costo</button>
+  <?php endif; ?>
 </div>
 
 <?php if ($ver_tab_ventas): ?>
@@ -625,7 +629,9 @@ ob_start();
     <p style="font:400 13px var(--body);color:var(--t3);line-height:1.6">
       Gastos que no están asociados a una venta específica: renta, nómina, servicios, seguros, etc.
     </p>
+    <?php if ($costos_modo === 'ambos'): ?>
     <button class="new-btn" onclick="abrirGastoGeneral()" style="flex-shrink:0">+ Gasto general</button>
+    <?php endif; ?>
   </div>
 
   <?php if ($total_generales > 0): ?>
