@@ -965,7 +965,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
         <!-- Opción: Por venta -->
         <label class="costos-modo-opt <?= $costos_modo==='venta'?'sel':'' ?>" onclick="selCostosModo('venta')">
           <input type="radio" name="costos_modo" value="venta" <?= $costos_modo==='venta'?'checked':'' ?> style="display:none">
-          <div class="cm-icon"><?= ico('file-text', 28) ?></div>
+          <div class="cm-icon"><?= ico('file', 28) ?></div>
           <div class="cm-name">Por venta</div>
           <div class="cm-desc">Cada costo se asigna a una venta específica. Ideal para calcular margen y rentabilidad por proyecto.</div>
           <div class="cm-check"><?= ico('check', 16) ?></div>
@@ -974,7 +974,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
         <!-- Opción: Por empresa -->
         <label class="costos-modo-opt <?= $costos_modo==='empresa'?'sel':'' ?>" onclick="selCostosModo('empresa')">
           <input type="radio" name="costos_modo" value="empresa" <?= $costos_modo==='empresa'?'checked':'' ?> style="display:none">
-          <div class="cm-icon"><?= ico('building', 28) ?></div>
+          <div class="cm-icon"><?= ico('chart', 28) ?></div>
           <div class="cm-name">Por empresa</div>
           <div class="cm-desc">Los costos se registran como gastos generales del negocio. Ideal para ver rentabilidad global mensual.</div>
           <div class="cm-check"><?= ico('check', 16) ?></div>
@@ -984,7 +984,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
         <!-- Opción: Ambos (solo Business) -->
         <label class="costos-modo-opt <?= $costos_modo==='ambos'?'sel':'' ?>" onclick="selCostosModo('ambos')">
           <input type="radio" name="costos_modo" value="ambos" <?= $costos_modo==='ambos'?'checked':'' ?> style="display:none">
-          <div class="cm-icon"><?= ico('layers', 28) ?></div>
+          <div class="cm-icon"><?= ico('shield', 28) ?></div>
           <div class="cm-name">Ambos</div>
           <div class="cm-desc">Costos avanzados: registra gastos por venta y gastos generales de empresa. Máximo control y visibilidad.</div>
           <div class="cm-badge">Business</div>
@@ -994,7 +994,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 
       </div>
 
-      <p class="costos-modo-note"><?= ico('info', 14) ?> Los costos ya registrados no se eliminan al cambiar de modo. Solo afecta cómo se crean nuevos costos y qué vistas se muestran.</p>
+      <p class="costos-modo-note"><?= ico('alert', 14) ?> Los costos ya registrados no se eliminan al cambiar de modo. Solo afecta cómo se crean nuevos costos y qué vistas se muestran.</p>
 
       <button class="save-btn" style="margin-top:12px" onclick="guardarCostosModo()">Guardar modo de costos</button>
     </div>
