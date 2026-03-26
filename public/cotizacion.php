@@ -82,8 +82,17 @@ if ($adc_exp && $adc_exp < time()) { $adc_on = false; }
 
 // ─── Calcular totales ────────────────────────────────────
 $subtotal = array_sum(array_column($lineas, 'subtotal'));
-$desc_auto_amt = $adc_on ? round($subtotal * $adc_pct / 100, 2) : 0;
-$base = $subtotal - $desc_auto_amt;
+
+// Si ya fue aceptada, usar los valores guardados al momento de la aceptación
+if ($cot['estado'] === 'aceptada' || $cot['estado'] === 'convertida') {
+    $desc_auto_amt = (float)($cot['descuento_auto_amt'] ?? 0);
+    $cupon_monto_guardado = (float)($cot['cupon_monto'] ?? 0);
+    $base = $subtotal - $desc_auto_amt - $cupon_monto_guardado;
+} else {
+    $desc_auto_amt = $adc_on ? round($subtotal * $adc_pct / 100, 2) : 0;
+    $cupon_monto_guardado = 0;
+    $base = $subtotal - $desc_auto_amt;
+}
 $impuesto_amt = 0;
 if ($cot['impuesto_modo'] === 'suma') {
     $impuesto_amt = round($base * ((float)$cot['impuesto_pct'] / 100), 2);
@@ -693,15 +702,22 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <div class="slbl" id="resumenlbl-screen">Resumen</div>
   <div class="tots" id="totalsScreen">
     <div class="tr"><span class="tl">Subtotal</span><span class="tv" id="tSub"><?= fmt_pub($subtotal) ?></span></div>
-    <?php if ($adc_on): ?>
+    <?php if ($desc_auto_amt > 0): ?>
     <div class="tr td" id="tAR">
-      <span class="tl" id="tAL">Descuento especial (<?= number_format($adc_pct,0) ?>%)</span>
+      <span class="tl" id="tAL">Descuento especial<?= $adc_pct > 0 ? ' (' . number_format($adc_pct,0) . '%)' : '' ?></span>
       <span class="tv" id="tAV">-<?= fmt_pub($desc_auto_amt) ?></span>
     </div>
     <?php else: ?>
     <div class="tr td" id="tAR" style="display:none"><span class="tl" id="tAL">Descuento</span><span class="tv" id="tAV">—</span></div>
     <?php endif; ?>
+    <?php if ($cupon_monto_guardado > 0): ?>
+    <div class="tr td" id="tCR">
+      <span class="tl" id="tCL">Cupón <?= e($cot['cupon_codigo'] ?? '') ?><?= ($cot['cupon_pct'] ?? 0) > 0 ? ' (' . (float)$cot['cupon_pct'] . '%)' : '' ?></span>
+      <span class="tv" id="tCV">-<?= fmt_pub($cupon_monto_guardado) ?></span>
+    </div>
+    <?php else: ?>
     <div class="tr td" id="tCR" style="display:none"><span class="tl" id="tCL">Cupón</span><span class="tv" id="tCV">—</span></div>
+    <?php endif; ?>
     <?php if ($cot['impuesto_modo'] !== 'ninguno'): ?>
     <div class="tr"><span class="tl"><?= e($cot['impuesto_label'] ?: ($cot['emp_impuesto_label'] ?? 'IVA')) ?> (<?= (float)$cot['impuesto_pct'] ?>%)</span><span class="tv"><?= fmt_pub($impuesto_amt) ?></span></div>
     <?php endif; ?>
