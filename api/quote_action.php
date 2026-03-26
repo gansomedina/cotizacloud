@@ -148,8 +148,8 @@ if ($accion === 'aceptar') {
                 "INSERT INTO ventas
                  (empresa_id, cotizacion_id, cliente_id, usuario_id, vendedor_id,
                   numero, titulo, slug, token,
-                  total, pagado, saldo, estado, created_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,0,?,'pendiente',NOW())",
+                  total, pagado, saldo, descuento_auto_amt, cupon_monto, estado, created_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,?,'pendiente',NOW())",
                 [
                     EMPRESA_ID,
                     $cot_id,
@@ -162,6 +162,8 @@ if ($accion === 'aceptar') {
                     $token_vta,
                     $total_guardar,
                     $total_guardar,
+                    $desc_auto_srv,
+                    $cupon_amt_srv,
                 ]
             );
         }
