@@ -172,7 +172,8 @@ class Router
         self::get('/superadmin/empresa/:id',         fn($p) => self::superadmin('empresa', $p));
         self::post('/superadmin/impersonar',         fn()   => self::superadmin('impersonar'));
         self::post('/superadmin/empresa/:id/toggle', fn($p) => self::superadmin('toggle_empresa', $p));
-        self::post('/superadmin/empresa/:id/plan',   fn($p) => self::superadmin('toggle_plan', $p));
+        self::post('/superadmin/empresa/:id/plan',    fn($p) => self::superadmin('toggle_plan', $p));
+        self::post('/superadmin/empresa/:id/dominio', fn($p) => self::superadmin('dominio_custom', $p));
         self::post('/superadmin/ticket/:id/estado',   fn($p) => self::superadmin('ticket_estado', $p));
 
         self::get('/proveedores',                          fn()   => self::app('proveedores', 'lista'));
@@ -304,11 +305,11 @@ class Router
         return BASE_URL . '/' . ltrim($path, '/');
     }
 
-    // URL pública de cotización (usa subdominio)
+    // URL pública de cotización (usa subdominio o dominio custom)
     public static function url_publica(string $path = ''): string
     {
         if (EMPRESA_ID > 0 && EMPRESA_SLUG !== '') {
-            return 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/' . ltrim($path, '/');
+            return url_publica($path);
         }
         return BASE_URL . '/' . ltrim($path, '/');
     }
@@ -323,11 +324,11 @@ class Router
         return self::match_pattern($pattern, self::$path) !== null;
     }
 
-    // ─── Redirect public URL from root domain to correct subdomain ──
+    // ─── Redirect public URL from root domain to correct subdomain/custom domain ──
     private static function redirect_to_subdomain(string $tabla, string $columna, string $valor, string $prefix): void
     {
         $row = DB::row(
-            "SELECT e.slug AS empresa_slug
+            "SELECT e.slug AS empresa_slug, e.dominio_custom
              FROM `$tabla` t
              JOIN empresas e ON e.id = t.empresa_id AND e.activa = 1
              WHERE t.`$columna` = ?
@@ -336,7 +337,10 @@ class Router
         );
 
         if ($row && !empty($row['empresa_slug'])) {
-            $url = 'https://' . $row['empresa_slug'] . '.' . BASE_DOMAIN . $prefix . $valor;
+            $domain = !empty($row['dominio_custom'])
+                ? $row['dominio_custom']
+                : $row['empresa_slug'] . '.' . BASE_DOMAIN;
+            $url = 'https://' . $domain . $prefix . $valor;
             header('Location: ' . $url, true, 301);
             exit;
         }

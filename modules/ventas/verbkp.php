@@ -58,7 +58,7 @@ $clientes_lista = DB::query(
 $total_rec_empresa = (int)DB::val("SELECT COUNT(*) FROM recibos WHERE empresa_id=?", [$empresa_id]);
 $sig_rec = 'REC-' . date('Y') . '-' . str_pad($total_rec_empresa + 1, 4, '0', STR_PAD_LEFT);
 
-$url_vta      = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/v/' . $venta['slug'];
+$url_vta      = url_publica('v/' . $venta['slug']);
 $puede_admin  = Auth::es_admin();
 $folio        = $venta['numero'] ?? 'VTA-' . $venta_id;
 $pct          = $venta['total'] > 0 ? min(100, round($venta['pagado'] / $venta['total'] * 100)) : 0;

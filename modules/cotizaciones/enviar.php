@@ -47,5 +47,5 @@ try {
     json_error('Error al enviar', 500);
 }
 
-$url = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/c/' . $cot['slug'];
+$url = url_publica('c/' . $cot['slug']);
 json_ok(['url' => $url]);

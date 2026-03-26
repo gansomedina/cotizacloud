@@ -29,7 +29,7 @@ if (!$recibo) { flash('error', 'Recibo no encontrado'); redirect('/ventas'); }
 
 $es_cancelacion = $recibo['tipo'] === 'cancelacion';
 $cancelado      = (bool)$recibo['cancelado'];
-$url_publica    = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/r/' . $recibo['token'];
+$url_publica    = url_publica('r/' . $recibo['token']);
 
 $page_title = e($recibo['numero']);
 ob_start();

@@ -241,7 +241,7 @@ foreach ($elabels as $k => $lbl):
   $pct      = $v['total'] > 0 ? min(100, round($v['pagado'] / $v['total'] * 100)) : 0;
   $total_f  = format_money($v['total'], $empresa['moneda']);
   $saldo_f  = format_money($v['saldo'], $empresa['moneda']);
-  $url_vta  = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/v/' . $v['slug'];
+  $url_vta  = url_publica('v/' . $v['slug']);
   $ini      = strtoupper(substr($v['cnombre'] ?? $v['titulo'], 0, 2));
   $fecha_f  = fecha_humana($v['created_at']);
 ?>

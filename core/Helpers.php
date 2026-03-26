@@ -480,3 +480,34 @@ function ico(string $name, int $size = 16, string $color = 'currentColor'): stri
     if (!isset($icons[$name])) return '<span>?</span>';
     return '<svg width="'.$size.'" height="'.$size.'" viewBox="0 0 24 24" fill="none" stroke="'.$color.'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle">'.$icons[$name].'</svg>';
 }
+
+// ─── Dominio público para URLs de cotizaciones/ventas/recibos ───
+// Si la empresa tiene dominio_custom → usa ese dominio
+// Si no → usa slug.cotiza.cloud (comportamiento original)
+function dominio_publico(): string
+{
+    // Si estamos en un dominio custom, ya lo sabemos
+    if (defined('DOMINIO_CUSTOM') && DOMINIO_CUSTOM) {
+        return DOMINIO_CUSTOM;
+    }
+
+    // Revisar si la empresa tiene dominio custom en BD
+    if (defined('EMPRESA_ID') && EMPRESA_ID > 0) {
+        static $cache = null;
+        if ($cache === null) {
+            $dc = DB::val("SELECT dominio_custom FROM empresas WHERE id = ? LIMIT 1", [EMPRESA_ID]);
+            $cache = $dc ?: false;
+        }
+        if ($cache) {
+            return $cache;
+        }
+    }
+
+    // Fallback: slug.cotiza.cloud
+    return (defined('EMPRESA_SLUG') ? EMPRESA_SLUG : '') . '.' . BASE_DOMAIN;
+}
+
+function url_publica(string $path = ''): string
+{
+    return 'https://' . dominio_publico() . '/' . ltrim($path, '/');
+}

@@ -364,7 +364,7 @@ foreach ($chips as $k => $lbl):
   </div>
 
   <?php foreach ($rows as $c):
-    $url    = 'https://'.EMPRESA_SLUG.'.'.BASE_DOMAIN.'/c/'.$c['slug'];
+    $url    = url_publica('c/'.$c['slug']);
     $puedeX = !in_array($c['estado'], ['aceptada','aceptada_cliente','convertida']);
     $esSusp = !empty($c['suspendida']);
     $puedeS = in_array($c['estado_real'] ?? $c['estado'], ['enviada','vista','rechazada','borrador','vencida']) || $esSusp;
