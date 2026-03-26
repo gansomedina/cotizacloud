@@ -59,7 +59,7 @@ $GLOBALS['PLAYBOOK'] = [
     'inminente' => [
         'priority'   => 'crítica',
         'tone'       => 'danger',
-        'summary'    => 'Señales fuertes de decisión. Este cliente regresó a revisar tu cotización después de pensarlo — actúa hoy.',
+        'summary'    => 'Señales fuertes de decisión en las últimas 36h. FIT alto + señal fuerte de engagement — actúa hoy.',
         'psychology' => 'Este cliente no solo leyó tu cotización — se fue, lo pensó, y regresó. Ese patrón de "abrir → cerrar → volver después" es el indicador más fuerte de que está tomando una decisión real. Lo que necesita ahora no es más información sino sentir que el siguiente paso es fácil y sin riesgo.',
         'meaning'    => [
             'Regresó después de al menos 1 hora — estaba pensándolo.',
@@ -95,10 +95,10 @@ $GLOBALS['PLAYBOOK'] = [
     'probable_cierre' => [
         'priority'   => 'crítica',
         'tone'       => 'close',
-        'summary'    => 'Tu lista de trabajo #1. Cotizaciones con intención confirmada desde múltiples ángulos — mira el badge de motivo para saber cómo abordar.',
-        'psychology' => 'Esta persona cruzó la línea de curiosidad. No solo vio tu cotización — interactuó con el precio, volvió, o la compartió con alguien. Eso es comportamiento de comprador, no de curioso. Cada hora que pasa sin contacto es una hora donde un competidor puede cerrar.',
+        'summary'    => 'Tu lista de trabajo #1. Cotizaciones con lectura real (15s+), foco en precio y señales cruzadas de intención.',
+        'psychology' => 'Esta persona cruzó la línea de curiosidad. No solo vio tu cotización — la leyó a fondo, interactuó con el precio, volvió, o la compartió con alguien. Eso es comportamiento de comprador, no de curioso. Cada hora que pasa sin contacto es una hora donde un competidor puede cerrar.',
         'meaning'    => [
-            'Confirmación cruzada: 2+ tipos de señal distintos validan la intención.',
+            'Lectura real confirmada: 15+ segundos de atención + foco en precio.',
             'El badge "Motivo" indica QUÉ bucket la activó — úsalo para elegir tu enfoque.',
             'Estas son tus mejores oportunidades AHORA. No mañana, hoy.',
         ],
