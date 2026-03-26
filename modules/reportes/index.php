@@ -819,11 +819,11 @@ ob_start();
         if (isset($est_counts[$e])) $est_counts[$e]++;
     }
     $est_info = [
-        'enviada'  => ['lbl'=>'Enviadas',  'col'=>'var(--blue)'],
-        'vista'    => ['lbl'=>'Vistas',    'col'=>'var(--purple)'],
-        'aceptada' => ['lbl'=>'Aceptadas', 'col'=>'var(--g)'],
-        'rechazada'=> ['lbl'=>'Rechazadas','col'=>'var(--danger)'],
-        'vencida'  => ['lbl'=>'Vencidas',  'col'=>'var(--amb)'],
+        'enviada'  => ['lbl'=>'Sin abrir',   'col'=>'var(--blue)'],
+        'vista'    => ['lbl'=>'Abiertas',    'col'=>'var(--purple)'],
+        'aceptada' => ['lbl'=>'Aceptadas',   'col'=>'var(--g)'],
+        'rechazada'=> ['lbl'=>'Rechazadas',  'col'=>'var(--danger)'],
+        'vencida'  => ['lbl'=>'Vencidas',    'col'=>'var(--amb)'],
     ];
     foreach ($est_info as $ek => $ev):
     ?>
