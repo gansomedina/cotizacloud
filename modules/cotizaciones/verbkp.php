@@ -133,7 +133,7 @@ $cot_js = json_encode([
     'slug'                 => $cot['slug'],
 ]);
 
-$url_publica = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN . '/c/' . $cot['slug'];
+$url_publica = url_publica('c/' . $cot['slug']);
 
 $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 ?>

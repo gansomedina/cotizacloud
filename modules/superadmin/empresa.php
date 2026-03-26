@@ -157,7 +157,7 @@ tr:hover td{background:#fafaf8}
 <div class="emp-header">
     <div>
         <h1><?= e($emp['nombre']) ?></h1>
-        <div class="slug"><?= e($emp['slug']) ?>.cotiza.cloud</div>
+        <div class="slug"><?= !empty($emp['dominio_custom']) ? e($emp['dominio_custom']) : e($emp['slug']) . '.cotiza.cloud' ?></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
         <span class="badge <?= $emp['activa'] ? 'badge-green' : 'badge-red' ?>">
@@ -280,6 +280,31 @@ tr:hover td{background:#fafaf8}
     <div style="margin-top:8px;font-size:12px;color:var(--t3)">
         <?= $trial['usadas'] ?> cotizaciones creadas en total
     </div>
+</div>
+
+<!-- Dominio custom -->
+<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-bottom:16px;box-shadow:var(--sh)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <i data-feather="globe" style="width:16px;height:16px;color:var(--purple)"></i>
+        <span style="font-size:13px;font-weight:700;color:var(--text)">Dominio custom</span>
+    </div>
+    <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/dominio" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <?= csrf_field() ?>
+        <input type="text" name="dominio_custom" value="<?= e($emp['dominio_custom'] ?? '') ?>"
+               placeholder="ej: hmo.ontimecocinas.com"
+               style="flex:1;min-width:220px;padding:8px 12px;border:1.5px solid var(--border2);border-radius:var(--r-sm);font:500 13px var(--num);background:var(--white)">
+        <button type="submit" class="btn-enter" style="font-size:12px"><i data-feather="save" style="width:14px;height:14px"></i> Guardar</button>
+    </form>
+    <?php if (!empty($emp['dominio_custom'])): ?>
+        <div style="margin-top:8px;font-size:12px;color:var(--t3)">
+            URLs publicas: <strong style="color:var(--purple)"><?= e($emp['dominio_custom']) ?>/c/slug</strong>
+            <span style="margin-left:8px">DNS: apuntar CNAME a <code style="background:var(--slate-bg);padding:2px 6px;border-radius:4px">cotiza.cloud</code></span>
+        </div>
+    <?php else: ?>
+        <div style="margin-top:8px;font-size:12px;color:var(--t3)">
+            Sin dominio custom — usando <strong><?= e($emp['slug']) ?>.cotiza.cloud</strong>
+        </div>
+    <?php endif; ?>
 </div>
 
 <!-- Info de empresa -->
