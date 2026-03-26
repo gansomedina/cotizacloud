@@ -25,10 +25,17 @@ if (!Auth::es_admin()) {
     json_error('Solo administradores pueden eliminar cotizaciones', 403);
 }
 
-// No permitir eliminar cotizaciones convertidas (ya tienen venta asociada)
-if ($cot['estado'] === 'convertida') {
-    json_error('No se puede eliminar una cotización convertida en venta', 422);
+// Si tiene venta asociada activa (no cancelada), no permitir eliminar
+$venta_activa = DB::row(
+    "SELECT id, estado FROM ventas WHERE cotizacion_id = ? AND estado NOT IN ('cancelada')",
+    [$cot_id]
+);
+if ($venta_activa) {
+    json_error('Esta cotización tiene una venta activa (' . ($venta_activa['estado']) . '). Cancela la venta primero.', 422);
 }
+
+// Eliminar ventas canceladas ligadas (para que el FK no bloquee)
+DB::execute("DELETE FROM ventas WHERE cotizacion_id = ? AND estado = 'cancelada'", [$cot_id]);
 
 // CASCADE elimina líneas, archivos y log
 DB::execute("DELETE FROM cotizaciones WHERE id = ?", [$cot_id]);

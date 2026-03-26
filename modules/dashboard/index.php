@@ -143,6 +143,19 @@ $num_ventas_pagadas = (int)DB::val(
 );
 $num_ventas_saldo = (int)$kpi_ventas['num_ventas'] - $num_ventas_pagadas;
 
+// Ventas sin ningún pago (aceptadas/pendientes con pagado=0)
+$ventas_sin_pago = DB::query(
+    "SELECT v.id, v.numero, v.titulo, v.total, v.created_at,
+            cl.nombre AS cliente
+     FROM ventas v
+     LEFT JOIN clientes cl ON cl.id = v.cliente_id
+     WHERE v.empresa_id = ? AND v.estado IN ('pendiente','parcial')
+       AND v.pagado = 0 $v_where
+     ORDER BY v.created_at ASC
+     LIMIT 10",
+    [$empresa_id]
+);
+
 // ═══════════════════════════════════════════════════════
 //  BLOQUE 2: EMBUDO DE CONVERSIÓN
 // ═══════════════════════════════════════════════════════
@@ -839,6 +852,29 @@ $ts_diag  = ActividadScore::diagnostico($ts);
   </div>
 
 </div>
+
+<?php if (!empty($ventas_sin_pago)): ?>
+<!-- ══ VENTAS SIN PAGOS ══ -->
+<div class="slabel"><?= ico('alert', 14, '#d97706') ?> Ventas sin pagos <span style="font:400 12px var(--body);color:var(--t3)">(<?= count($ventas_sin_pago) ?>)</span></div>
+<div class="card" style="overflow:hidden">
+  <?php foreach ($ventas_sin_pago as $vsp):
+    $dias_sin = (int)((time() - strtotime($vsp['created_at'])) / 86400);
+    $color_dias = $dias_sin > 14 ? 'var(--danger)' : ($dias_sin > 7 ? '#d97706' : 'var(--t3)');
+  ?>
+  <a href="/ventas/<?= (int)$vsp['id'] ?>" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background .12s" onmouseover="this.style.background='#fafaf8'" onmouseout="this.style.background=''">
+    <div style="flex:1;min-width:0">
+      <div style="font:600 13px var(--num);color:var(--g)"><?= e($vsp['numero']) ?></div>
+      <div style="font:400 12px var(--body);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= e($vsp['titulo']) ?></div>
+      <div style="font:400 11px var(--body);color:var(--t3)"><?= e($vsp['cliente'] ?? '—') ?></div>
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div style="font:700 14px var(--num)"><?= fmt_dash((float)$vsp['total']) ?></div>
+      <div style="font:400 11px var(--body);color:<?= $color_dias ?>"><?= $dias_sin ?> día<?= $dias_sin!=1?'s':'' ?> sin pago</div>
+    </div>
+  </a>
+  <?php endforeach; ?>
+</div>
+<?php endif; ?>
 
 <!-- ══ CONVERSIÓN ══ -->
 <div class="slabel">Métricas de conversión</div>
