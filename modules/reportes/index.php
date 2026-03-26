@@ -206,7 +206,7 @@ if ($es_admin) {
 //  TAB 3: COTIZACIONES
 // ─────────────────────────────────────────────────────────────
 $lista_cots = DB::query(
-    "SELECT c.id, c.numero, c.titulo, c.total, c.estado,
+    "SELECT c.id, c.numero, c.titulo, c.total, c.estado, c.suspendida,
             c.created_at, c.aceptada_at, c.rechazada_at, c.enviada_at,
             c.valida_hasta, c.visitas,
             cl.nombre AS cliente_nombre,
@@ -810,20 +810,25 @@ ob_start();
   <?php else: ?>
 
   <!-- Resumen rápido por estado -->
-  <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
+  <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(100px,1fr))">
     <?php
-    $est_counts = ['enviada'=>0,'vista'=>0,'aceptada'=>0,'rechazada'=>0,'vencida'=>0];
+    $est_counts = ['enviada'=>0,'suspendida'=>0,'vista'=>0,'aceptada'=>0,'rechazada'=>0,'vencida'=>0];
     foreach ($lista_cots as $lc) {
+        if (!empty($lc['suspendida'])) {
+            $est_counts['suspendida']++;
+            continue;
+        }
         $e = $lc['estado'];
         if ($e === 'convertida') $e = 'aceptada';
         if (isset($est_counts[$e])) $est_counts[$e]++;
     }
     $est_info = [
-        'enviada'  => ['lbl'=>'Sin abrir',   'col'=>'var(--blue)'],
-        'vista'    => ['lbl'=>'Abiertas',    'col'=>'var(--purple)'],
-        'aceptada' => ['lbl'=>'Aceptadas',   'col'=>'var(--g)'],
-        'rechazada'=> ['lbl'=>'Rechazadas',  'col'=>'var(--danger)'],
-        'vencida'  => ['lbl'=>'Vencidas',    'col'=>'var(--amb)'],
+        'enviada'    => ['lbl'=>'Sin abrir',    'col'=>'var(--blue)'],
+        'suspendida' => ['lbl'=>'Suspendidas',  'col'=>'#94a3b8'],
+        'vista'      => ['lbl'=>'Abiertas',     'col'=>'var(--purple)'],
+        'aceptada'   => ['lbl'=>'Aceptadas',    'col'=>'var(--g)'],
+        'rechazada'  => ['lbl'=>'Rechazadas',   'col'=>'var(--danger)'],
+        'vencida'    => ['lbl'=>'Vencidas',     'col'=>'var(--amb)'],
     ];
     foreach ($est_info as $ek => $ev):
     ?>
