@@ -1350,19 +1350,22 @@ function doAgregarItem(){
 }
 
 // ── Agregar extra (simplificado: nombre + total) ──
-function doAgregarExtra(){
+async function doAgregarExtra(){
   const titulo = document.getElementById('extra-titulo').value.trim();
   if(!titulo){alert('El nombre es requerido');return;}
   const desc = document.getElementById('extra-desc').value.trim();
   const total = parseFloat(document.getElementById('extra-total').value)||0;
   if(total <= 0){alert('El total debe ser mayor a 0');return;}
-  lineas.push({id:null, titulo:'EXTRA: '+titulo, sku:'', descripcion:desc, cantidad:1, precio_unit:total, subtotal:total});
-  markDirty(true);
-  render();
-  closeSheet('shExtra');
-  document.getElementById('extra-titulo').value='';
-  document.getElementById('extra-desc').value='';
-  document.getElementById('extra-total').value='';
+  try {
+    const r = await fetch('/ventas/'+VENTA_ID+'/agregar-extra', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+      body:JSON.stringify({titulo:'EXTRA: '+titulo, descripcion:desc, total:total})
+    });
+    const d = await r.json();
+    if(d.ok){ closeSheet('shExtra'); location.reload(); }
+    else alert(d.error||'Error al agregar extra');
+  } catch(e){ alert('Error de conexión'); }
 }
 
 // ── Descuento ──

@@ -9,7 +9,7 @@ ob_start(); // Captura output accidental (warnings, notices) antes del JSON
 header('Content-Type: application/json; charset=utf-8');
 csrf_check();
 
-if (!Auth::es_admin() && !Auth::puede('agregar_extras')) json_error('Sin permiso para modificar esta venta', 403);
+if (!Auth::es_admin()) json_error('Solo administradores', 403);
 
 $empresa_id = EMPRESA_ID;
 $venta_id   = (int)($id ?? 0);
