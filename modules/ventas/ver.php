@@ -1356,7 +1356,7 @@ function doAgregarExtra(){
   const desc = document.getElementById('extra-desc').value.trim();
   const total = parseFloat(document.getElementById('extra-total').value)||0;
   if(total <= 0){alert('El total debe ser mayor a 0');return;}
-  lineas.push({id:null, titulo, sku:'', descripcion:desc, cantidad:1, precio_unit:total, subtotal:total});
+  lineas.push({id:null, titulo:'EXTRA: '+titulo, sku:'', descripcion:desc, cantidad:1, precio_unit:total, subtotal:total});
   markDirty(true);
   render();
   closeSheet('shExtra');
