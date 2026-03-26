@@ -1119,6 +1119,9 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
       <?= ico('alert', 12) ?> La configuracion de cada pixel es responsabilidad del usuario. Para obtener tu ID consulta la documentacion oficial de cada plataforma. CotizaCloud no brinda soporte sobre la configuracion de pixels de terceros.
     </p>
   </div>
+
+  <div class="sec">
+    <div class="sec-lbl">Eventos que se disparan</div>
     <div class="card" style="padding:16px">
       <p style="font:400 13px var(--body);color:var(--t3);line-height:1.6;margin:0">
         Los siguientes eventos se disparan automaticamente en las vistas publicas de tus cotizaciones y ventas:
@@ -1143,6 +1146,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   <div style="display:flex;justify-content:flex-end;padding-bottom:10px">
     <button class="save-btn" onclick="guardarMarketing()">Guardar configuracion de Marketing</button>
   </div>
+
 </div><!-- /panel-marketing -->
 <?php endif; ?>
 
