@@ -63,6 +63,7 @@ $puede_admin  = Auth::es_admin();
 $puede_pagos  = Auth::es_admin() || Auth::puede('capturar_pagos');
 $puede_cancel_rec = Auth::es_admin() || Auth::puede('cancelar_recibos');
 $puede_descuento  = Auth::es_admin() || Auth::puede('aplicar_descuentos');
+$puede_extras     = Auth::es_admin() || Auth::puede('agregar_extras');
 $folio        = $venta['numero'] ?? 'VTA-' . $venta_id;
 $pct          = $venta['total'] > 0 ? min(100, round($venta['pagado'] / $venta['total'] * 100)) : 0;
 
@@ -673,6 +674,9 @@ function closeRec(){
   <?php if ($puede_descuento && $venta['estado'] !== 'cancelada'): ?>
   <button class="action-btn" onclick="openSheet('shDescuento')"><?= ico('tag',14) ?> Agregar descuento</button>
   <?php endif ?>
+  <?php if ($puede_extras && $venta['estado'] !== 'cancelada'): ?>
+  <button class="action-btn" onclick="openSheet('shExtra')"><?= ico('edit',14) ?> Agregar extra</button>
+  <?php endif ?>
 
   <button class="action-btn" id="btn-guardar"
     onclick="guardarCambios()"
@@ -1005,6 +1009,22 @@ function closeRec(){
 </div>
 
 
+<!-- ══ SHEET: AGREGAR EXTRA ══ -->
+<div class="sh-overlay" id="ov-shExtra" onclick="closeSheet('shExtra')"></div>
+<div class="bottom-sheet" id="shExtra">
+  <div class="sh-handle"></div>
+  <div class="sh-header"><div class="sh-title">Agregar extra</div><button class="sh-close" onclick="closeSheet('shExtra')">✕</button></div>
+  <div class="sh-body">
+    <div class="sh-field"><div class="sh-lbl">Nombre del extra *</div><input class="sh-input" type="text" id="extra-titulo" placeholder="Ej: Instalación, Flete, Accesorio..."></div>
+    <div class="sh-field"><div class="sh-lbl">Descripción (opcional)</div><textarea class="sh-input" id="extra-desc" style="min-height:50px;resize:none" placeholder="Detalle del extra..."></textarea></div>
+    <div class="sh-field"><div class="sh-lbl">Total *</div><input class="sh-input" type="number" id="extra-total" placeholder="0.00" step="0.01" min="0"></div>
+  </div>
+  <div class="sh-footer">
+    <button class="sh-btn-cancel" onclick="closeSheet('shExtra')">Cancelar</button>
+    <button class="sh-btn-save" onclick="doAgregarExtra()">Agregar</button>
+  </div>
+</div>
+
 <!-- ══ SHEET: CANCELAR RECIBO ══ -->
 <div class="sh-overlay" id="ov-shCancelRec" onclick="closeSheet('shCancelRec')"></div>
 <div class="bottom-sheet" id="shCancelRec">
@@ -1327,6 +1347,22 @@ function doAgregarItem(){
   document.getElementById('item-qty').value='1';
   document.getElementById('item-precio').value='';
   document.querySelectorAll('.art-item').forEach(a=>a.classList.remove('art-sel'));
+}
+
+// ── Agregar extra (simplificado: nombre + total) ──
+function doAgregarExtra(){
+  const titulo = document.getElementById('extra-titulo').value.trim();
+  if(!titulo){alert('El nombre es requerido');return;}
+  const desc = document.getElementById('extra-desc').value.trim();
+  const total = parseFloat(document.getElementById('extra-total').value)||0;
+  if(total <= 0){alert('El total debe ser mayor a 0');return;}
+  lineas.push({id:null, titulo, sku:'', descripcion:desc, cantidad:1, precio_unit:total, subtotal:total});
+  markDirty(true);
+  render();
+  closeSheet('shExtra');
+  document.getElementById('extra-titulo').value='';
+  document.getElementById('extra-desc').value='';
+  document.getElementById('extra-total').value='';
 }
 
 // ── Descuento ──
