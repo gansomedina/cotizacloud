@@ -302,6 +302,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   .fac-nota{font:400 8pt var(--body);color:#555;margin-top:4pt}
 }
 </style>
+<?= MarketingPixels::scripts_base(EMPRESA_ID) ?>
 </head>
 <body>
 
