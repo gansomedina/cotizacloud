@@ -127,8 +127,8 @@ $GLOBALS['BM'] = $BM = [
 // Descripciones cortas de cada bucket (para playbook modal)
 $GLOBALS['BKT_HINTS'] = [
     'onfire'               => 'Actividad en 72h · 2+ sesiones · scroll ≥ 90% · lectura real · foco en precio · validación por visitor',
-    'inminente'            => 'Actividad en 24h · FIT ≥ 8.5% · edad ≥ 2h · guest ≥ 1 · mínimo 2 señales (≥1 fuerte) · misma huella insistiendo en precio',
-    'probable_cierre'      => 'Cross-bucket: confirma intención real con 2+ categorías de señal (engagement + precio + persistencia + social)',
+    'inminente'            => 'Actividad en 36h · FIT ≥ 5% · edad ≥ 3h · guest ≥ 1 · mínimo 1 señal fuerte · misma huella insistiendo en precio',
+    'probable_cierre'      => 'Cross-bucket: confirma intención real con 2+ categorías de señal + lectura real (≥15s) + foco en precio',
     'validando_precio'     => 'Foco real en precio: exige mín 2 sesiones guest + señal de lectura/precio + intent (loop/revisita)',
     'prediccion_alta'      => 'FIT ≥ 14% + edad ≤ ciclo venta real + actividad reciente. Ciclo auto-calculado con mediana de días envío→cierre',
     'decision_activa'      => 'Sesiones recientes con señales de decisión: scroll profundo, revisión de precio, múltiples vistas',
@@ -649,7 +649,7 @@ ob_start();
 <div class="tab-panel on" id="tab-urgentes">
 <?php
 render_bkt('🎯 Probable cierre',
-    'Cross-bucket: confirma intención real con 2+ categorías de señal (engagement + precio + persistencia + social)',
+    'Cross-bucket: confirma intención real con 2+ categorías de señal + lectura real (≥15s) + foco en precio',
     $buckets['probable_cierre'],$sort,$dir,false,true,'probable_cierre');
 
 render_bkt('🔥😱 ON FIRE',
@@ -657,7 +657,7 @@ render_bkt('🔥😱 ON FIRE',
     $buckets['onfire'],$sort,$dir,false,false,'onfire');
 
 render_bkt('🔥 Cierre inminente',
-    'Actividad en 24h · FIT ≥ 8.5% · edad ≥ 2h · guest ≥ 1 · mínimo 2 señales (≥1 fuerte) · misma huella insistiendo en precio',
+    'Actividad en 36h · FIT ≥ 5% · edad ≥ 3h · guest ≥ 1 · mínimo 1 señal fuerte · misma huella insistiendo en precio',
     $buckets['inminente'],$sort,$dir,false,false,'inminente');
 
 render_bkt('💸 Validando precio',
