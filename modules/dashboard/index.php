@@ -163,17 +163,20 @@ $ventas_sin_pago = DB::query(
 $funnel = DB::row(
     "SELECT
         COUNT(*) AS total,
-        SUM(estado NOT IN ('borrador')) AS enviadas,
-        SUM(estado IN ('vista','aceptada','rechazada','vencida','convertida')) AS vistas,
+        SUM(estado NOT IN ('borrador') AND suspendida = 0) AS enviadas,
+        SUM(estado IN ('vista','aceptada','rechazada','vencida','convertida') AND suspendida = 0) AS abiertas,
         SUM(estado IN ('aceptada','convertida')) AS cerradas,
-        SUM(estado = 'rechazada') AS rechazadas
+        SUM(estado = 'rechazada') AS rechazadas,
+        SUM(suspendida = 1) AS suspendidas
      FROM cotizaciones c
      WHERE c.empresa_id = ? AND c.created_at BETWEEN ? AND ? $c_where",
     [$empresa_id, $desde, $hasta]
 );
 
-$tasa_cierre = $funnel['total'] > 0
-    ? round(($funnel['cerradas'] / $funnel['total']) * 100, 1)
+// Tasa de cierre = cerradas / enviadas (no sobre total con borradores)
+$base_conversion = max(1, (int)$funnel['enviadas']);
+$tasa_cierre = $funnel['enviadas'] > 0
+    ? round(($funnel['cerradas'] / $funnel['enviadas']) * 100, 1)
     : 0;
 
 $ticket_prom = $kpi_ventas['num_ventas'] > 0
@@ -884,12 +887,12 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div class="conv-title">Embudo del período</div>
     <div class="conv-funnel">
       <?php
-      $total_f = max(1, (int)$funnel['total']);
+      $total_f = max(1, (int)$funnel['enviadas']);
       $rows_f  = [
-          ['Creadas',  'fb-total',    $funnel['total'],   100],
-          ['Enviadas', 'fb-enviadas', $funnel['enviadas'], round($funnel['enviadas']/$total_f*100)],
-          ['Vistas',   'fb-vistas',   $funnel['vistas'],   round($funnel['vistas']/$total_f*100)],
-          ['Cerradas', 'fb-cerradas', $funnel['cerradas'], round($funnel['cerradas']/$total_f*100)],
+          ['Enviadas',  'fb-total',    $funnel['enviadas'],  100],
+          ['Abiertas',  'fb-vistas',   $funnel['abiertas'],  round(($funnel['abiertas'] ?? 0)/$total_f*100)],
+          ['Aceptadas', 'fb-cerradas', $funnel['cerradas'],  round(($funnel['cerradas'] ?? 0)/$total_f*100)],
+          ['Rechazadas','fb-rechazadas',$funnel['rechazadas'],round(($funnel['rechazadas'] ?? 0)/$total_f*100)],
       ];
       foreach ($rows_f as [$lbl, $cls, $num, $pct]):
       ?>
