@@ -17,7 +17,7 @@ $nuevas_7d  = (int)DB::val("SELECT COUNT(*) FROM empresas WHERE slug != '_system
 
 // ── Empresas nuevas (últimos 30 días) ──────────────────────
 $empresas_nuevas = DB::query("
-    SELECT e.id, e.nombre, e.slug, e.activa, e.created_at,
+    SELECT e.id, e.nombre, e.slug, e.dominio_custom, e.activa, e.created_at,
         (SELECT COUNT(*) FROM usuarios u WHERE u.empresa_id = e.id) AS num_usuarios,
         (SELECT COUNT(*) FROM cotizaciones c WHERE c.empresa_id = e.id) AS num_cots
     FROM empresas e
@@ -236,7 +236,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
     <tr>
         <td>
             <div class="emp-name"><?= e($en['nombre']) ?></div>
-            <div class="emp-slug"><?= e($en['slug']) ?>.cotiza.cloud</div>
+            <div class="emp-slug"><?= !empty($en['dominio_custom']) ? e($en['dominio_custom']) : e($en['slug']) . '.cotiza.cloud' ?></div>
         </td>
         <td><span class="badge <?= $en['activa'] ? 'badge-green' : 'badge-red' ?>"><?= $en['activa'] ? 'Activa' : 'Suspendida' ?></span></td>
         <td class="num"><?= $en['num_usuarios'] ?></td>
@@ -344,7 +344,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
 <tr class="<?= $is_today ? 'new-today' : '' ?>" data-search="<?= e(strtolower($e['nombre'] . ' ' . $e['slug'])) ?>">
     <td>
         <div class="emp-name"><?= e($e['nombre']) ?></div>
-        <div class="emp-slug"><?= e($e['slug']) ?>.cotiza.cloud</div>
+        <div class="emp-slug"><?= !empty($e['dominio_custom']) ? e($e['dominio_custom']) : e($e['slug']) . '.cotiza.cloud' ?></div>
     </td>
     <td>
         <?php $plan = $e['plan'] ?? 'free'; if ($plan === 'trial') $plan = 'free'; ?>
