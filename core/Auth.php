@@ -199,7 +199,10 @@ class Auth
                     u.puede_editar_precios, u.puede_aplicar_descuentos,
                     u.puede_ver_todas_cots, u.puede_ver_todas_ventas,
                     u.puede_eliminar_items_venta, u.puede_cancelar_recibos,
-                    u.puede_capturar_pagos,
+                    u.puede_capturar_pagos, u.puede_asignar_cotizaciones,
+                    u.puede_ver_costos, u.puede_ver_proveedores,
+                    u.puede_crear_cotizaciones, u.puede_editar_cotizaciones,
+                    u.puede_ver_cantidades,
                     u.ultimo_login, u.password_hash
              FROM user_sessions s
              JOIN usuarios u ON u.id = s.usuario_id
