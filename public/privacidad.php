@@ -66,12 +66,22 @@
 </ul>
 
 <h2>7. Cookies</h2>
-<p>Utilizamos cookies de sesión necesarias para el funcionamiento de la plataforma. No utilizamos cookies de rastreo ni publicidad.</p>
+<p>Utilizamos cookies de sesión necesarias para el funcionamiento de la plataforma.</p>
 
-<h2>8. Cambios a este aviso</h2>
+<h2>8. Tecnologías de seguimiento de terceros</h2>
+<p>Algunas empresas que utilizan CotizaCloud pueden incluir tecnologías de seguimiento (pixels de seguimiento) de plataformas publicitarias como Meta (Facebook/Instagram), Google Analytics, Google Ads y TikTok en las cotizaciones y ventas que te envían.</p>
+<p>Estas tecnologías permiten a la empresa que te envió la cotización medir la efectividad de sus campañas publicitarias. La información recopilada por estos pixels está sujeta a las políticas de privacidad de cada plataforma:</p>
+<ul>
+    <li><strong>Meta:</strong> facebook.com/privacy/policy</li>
+    <li><strong>Google:</strong> policies.google.com/privacy</li>
+    <li><strong>TikTok:</strong> tiktok.com/legal/privacy-policy</li>
+</ul>
+<p>Si deseas más información sobre el uso de estas tecnologías, contacta directamente a la empresa que te envió la cotización.</p>
+
+<h2>9. Cambios a este aviso</h2>
 <p>Podemos actualizar este aviso de privacidad ocasionalmente. Publicaremos cualquier cambio en esta página con la fecha de actualización.</p>
 
-<h2>9. Contacto</h2>
+<h2>10. Contacto</h2>
 <p>Si tienes preguntas sobre este aviso de privacidad, contáctanos a través de la sección de <a href="/ayuda">Ayuda y Soporte</a> dentro de la plataforma.</p>
 
 </div>
