@@ -46,6 +46,7 @@ $perms = [
     'puede_ver_todas_cots'       => (int)($body['puede_ver_todas_cots']       ?? 0),
     'puede_ver_todas_ventas'     => (int)($body['puede_ver_todas_ventas']     ?? 0),
     'puede_eliminar_items_venta' => (int)($body['puede_eliminar_items_venta'] ?? 0),
+    'puede_agregar_extras'       => (int)($body['puede_agregar_extras']       ?? 0),
     'puede_cancelar_recibos'     => (int)($body['puede_cancelar_recibos']     ?? 0),
     'puede_capturar_pagos'       => (int)($body['puede_capturar_pagos']       ?? 0),
     'puede_asignar_cotizaciones' => (int)($body['puede_asignar_cotizaciones'] ?? 0),
@@ -79,7 +80,7 @@ if ($usr_id > 0) {
             puede_crear_cotizaciones=?, puede_editar_cotizaciones=?, puede_ver_cantidades=?,
             puede_editar_precios=?, puede_aplicar_descuentos=?,
             puede_ver_todas_cots=?, puede_ver_todas_ventas=?,
-            puede_eliminar_items_venta=?, puede_cancelar_recibos=?,
+            puede_eliminar_items_venta=?, puede_agregar_extras=?, puede_cancelar_recibos=?,
             puede_capturar_pagos=?, puede_asignar_cotizaciones=?,
             puede_ver_costos=?, puede_ver_proveedores=?";
     $vals = [
@@ -87,7 +88,7 @@ if ($usr_id > 0) {
         $perms['puede_crear_cotizaciones'], $perms['puede_editar_cotizaciones'], $perms['puede_ver_cantidades'],
         $perms['puede_editar_precios'], $perms['puede_aplicar_descuentos'],
         $perms['puede_ver_todas_cots'], $perms['puede_ver_todas_ventas'],
-        $perms['puede_eliminar_items_venta'], $perms['puede_cancelar_recibos'],
+        $perms['puede_eliminar_items_venta'], $perms['puede_agregar_extras'], $perms['puede_cancelar_recibos'],
         $perms['puede_capturar_pagos'], $perms['puede_asignar_cotizaciones'],
         $perms['puede_ver_costos'], $perms['puede_ver_proveedores'],
     ];
@@ -115,10 +116,10 @@ if ($usr_id > 0) {
           puede_crear_cotizaciones, puede_editar_cotizaciones, puede_ver_cantidades,
           puede_editar_precios, puede_aplicar_descuentos,
           puede_ver_todas_cots, puede_ver_todas_ventas,
-          puede_eliminar_items_venta, puede_cancelar_recibos,
+          puede_eliminar_items_venta, puede_agregar_extras, puede_cancelar_recibos,
           puede_capturar_pagos, puede_asignar_cotizaciones,
           puede_ver_costos, puede_ver_proveedores)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [
             $eid, $nombre, $usuario, $email,
             password_hash($pass, PASSWORD_DEFAULT),
@@ -126,7 +127,7 @@ if ($usr_id > 0) {
             $perms['puede_crear_cotizaciones'], $perms['puede_editar_cotizaciones'], $perms['puede_ver_cantidades'],
             $perms['puede_editar_precios'], $perms['puede_aplicar_descuentos'],
             $perms['puede_ver_todas_cots'], $perms['puede_ver_todas_ventas'],
-            $perms['puede_eliminar_items_venta'], $perms['puede_cancelar_recibos'],
+            $perms['puede_eliminar_items_venta'], $perms['puede_agregar_extras'], $perms['puede_cancelar_recibos'],
             $perms['puede_capturar_pagos'], $perms['puede_asignar_cotizaciones'],
             $perms['puede_ver_costos'], $perms['puede_ver_proveedores'],
         ]
