@@ -67,9 +67,10 @@ spl_autoload_register(function (string $class): void {
     }
 });
 
-// ─── Detección de empresa por subdominio ─────────────────────
-// empresa.cotiza.cloud → slug = 'empresa'
-// cotiza.cloud         → slug = null (sitio principal)
+// ─── Detección de empresa por subdominio o dominio custom ────
+// empresa.cotiza.cloud       → slug = 'empresa'
+// hmo.ontimecocinas.com      → slug (buscado por dominio_custom en BD)
+// cotiza.cloud               → slug = null (sitio principal)
 function detectar_empresa_slug(): ?string
 {
     $host = strtolower($_SERVER['HTTP_HOST'] ?? '');
@@ -81,13 +82,30 @@ function detectar_empresa_slug(): ?string
         return null;
     }
 
-    // Es un subdominio
+    // Es un subdominio de cotiza.cloud
     if (str_ends_with($host, '.' . $base)) {
         $sub = substr($host, 0, strlen($host) - strlen('.' . $base));
         // Solo un nivel de subdominio, solo alfanumérico y guión
         if (preg_match('/^[a-z0-9][a-z0-9\-]{1,58}[a-z0-9]$/', $sub)) {
             return $sub;
         }
+    }
+
+    // Dominio custom (ej: c-hmo.ontimecocinas.com) → buscar en BD
+    // Se hace antes del bootstrap de DB, así que usamos conexión directa
+    try {
+        $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+        $pdo = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $stmt = $pdo->prepare("SELECT slug FROM empresas WHERE dominio_custom = ? AND activa = 1 LIMIT 1");
+        $stmt->execute([$host]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            // Guardar el dominio custom para uso posterior en generación de URLs
+            define('DOMINIO_CUSTOM', $host);
+            return $row['slug'];
+        }
+    } catch (Throwable $e) {
+        // Si falla la consulta, continuar sin dominio custom
     }
 
     return null;
