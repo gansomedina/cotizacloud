@@ -9,7 +9,7 @@ defined('COTIZAAPP') or die;
 Auth::requerir_admin();
 
 $empresa_id = EMPRESA_ID;
-$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos'])
+$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing'])
     ? $_GET['tab'] : 'empresa';
 
 // Usuarios solo disponible en plan Business
@@ -24,8 +24,17 @@ if ($tab_activo === 'costos') {
     if (!$plan_check['es_pagado']) $tab_activo = 'empresa';
 }
 
+// Marketing solo disponible en plan Business
+if ($tab_activo === 'marketing') {
+    $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
+    if (!$plan_check['es_business']) $tab_activo = 'empresa';
+}
+
 // ─── Cargar empresa ─────────────────────────────────────────
 $empresa = DB::row("SELECT * FROM empresas WHERE id=?", [$empresa_id]);
+
+// ─── Marketing config ──────────────────────────────────────
+$mkt = DB::row("SELECT * FROM marketing_config WHERE empresa_id=?", [$empresa_id]) ?: [];
 
 // ─── Catálogo ────────────────────────────────────────────────
 $q_cat = trim($_GET['q_cat'] ?? '');
@@ -322,6 +331,9 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <a class="cfg-tab <?= $tab_activo==='radar'     ?'on':'' ?>" href="/config?tab=radar">Radar</a>
     <?php if ($plan_info['es_pagado']): ?>
     <a class="cfg-tab <?= $tab_activo==='costos'    ?'on':'' ?>" href="/config?tab=costos">Costos</a>
+    <?php endif; ?>
+    <?php if ($plan_info['es_business']): ?>
+    <a class="cfg-tab <?= $tab_activo==='marketing' ?'on':'' ?>" href="/config?tab=marketing">Marketing</a>
     <?php endif; ?>
   </div>
 </div>
@@ -1033,6 +1045,68 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 </div><!-- /panel-costos -->
 <?php endif; ?>
 
+<?php if ($plan_info['es_business']): ?>
+<!-- ══ TAB: MARKETING ══════════════════════════════════════ -->
+<div class="tab-panel <?= $tab_activo==='marketing'?'on':'' ?>" id="panel-marketing">
+  <div class="sec">
+    <div class="sec-lbl">Pixels de seguimiento</div>
+    <p style="font-size:13px;color:var(--t3);margin:0 0 16px">Agrega los IDs de tus pixels para medir el rendimiento de tus campanas publicitarias. Los scripts se inyectan automaticamente en las vistas publicas de cotizaciones y ventas.</p>
+    <div class="card">
+      <div class="field-row">
+        <div class="field-lbl">Meta Pixel (Facebook / Instagram)</div>
+        <div class="field-sub">Pixel ID de 15-16 digitos. Lo encuentras en Meta Events Manager > Data Sources > Pixel</div>
+        <input class="field-box" id="mkt_meta" type="text" placeholder="548297463810254" maxlength="20" value="<?= e($mkt['pixel_meta'] ?? '') ?>" style="margin-top:8px">
+      </div>
+      <div class="field-row">
+        <div class="field-lbl">Google Analytics 4</div>
+        <div class="field-sub">Measurement ID con formato G-XXXXXXXXXX. Lo encuentras en GA4 Admin > Data Streams</div>
+        <input class="field-box" id="mkt_ga4" type="text" placeholder="G-ABC1234DEF" maxlength="20" value="<?= e($mkt['pixel_ga4'] ?? '') ?>" style="margin-top:8px">
+      </div>
+      <div class="field-row">
+        <div class="field-lbl">Google Ads — Conversion</div>
+        <div class="field-sub">Conversion ID y Label. Los encuentras en Google Ads > Herramientas > Conversiones > Tu conversion > Configuracion de tag</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+          <input class="field-box" id="mkt_gads_id" type="text" placeholder="AW-12345678901" maxlength="20" value="<?= e($mkt['pixel_gads_id'] ?? '') ?>">
+          <input class="field-box" id="mkt_gads_label" type="text" placeholder="Label: AbCdEf_12345" maxlength="30" value="<?= e($mkt['pixel_gads_label'] ?? '') ?>">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-lbl">TikTok Pixel</div>
+        <div class="field-sub">Pixel ID. Lo encuentras en TikTok Ads Manager > Assets > Events > Web Events</div>
+        <input class="field-box" id="mkt_tiktok" type="text" placeholder="CBGD5ABC123DEF456GH" maxlength="30" value="<?= e($mkt['pixel_tiktok'] ?? '') ?>" style="margin-top:8px">
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-lbl">Eventos que se disparan</div>
+    <div class="card" style="padding:16px">
+      <p style="font:400 13px var(--body);color:var(--t3);line-height:1.6;margin:0">
+        Los siguientes eventos se disparan automaticamente en las vistas publicas de tus cotizaciones y ventas:
+      </p>
+      <table style="width:100%;margin-top:12px;font-size:12px;border-collapse:collapse">
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px 0;font-weight:600">Cliente abre cotizacion</td>
+          <td style="padding:8px 0;color:var(--t3)">ViewContent (Meta/TikTok) · page_view (GA4)</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px 0;font-weight:600">Cliente acepta cotizacion</td>
+          <td style="padding:8px 0;color:var(--t3)">Lead (Meta) · generate_lead (GA4) · Conversion (Google Ads) · SubmitForm (TikTok)</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;font-weight:600">Cliente rechaza cotizacion</td>
+          <td style="padding:8px 0;color:var(--t3)">QuoteRejected (Meta/GA4 custom event)</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;padding-bottom:10px">
+    <button class="save-btn" onclick="guardarMarketing()">Guardar configuracion de Marketing</button>
+  </div>
+</div><!-- /panel-marketing -->
+<?php endif; ?>
+
 
 <!-- ══ SHEET: ARTÍCULO ══════════════════════════════════════ -->
 <div class="sh-overlay" id="ov-shArt" onclick="closeSheet('shArt')"></div>
@@ -1732,6 +1806,26 @@ async function guardarCostosModo(){
     });
     const d = await r.json();
     if (d.ok) { location.reload(); }
+    else alert(d.error || 'Error al guardar.');
+  } catch(e) { alert('Error de conexión.'); }
+}
+
+// ── Marketing ──
+async function guardarMarketing(){
+  try {
+    const r = await fetch('/config/marketing', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        pixel_meta:       document.getElementById('mkt_meta')?.value.trim() || '',
+        pixel_ga4:        document.getElementById('mkt_ga4')?.value.trim() || '',
+        pixel_gads_id:    document.getElementById('mkt_gads_id')?.value.trim() || '',
+        pixel_gads_label: document.getElementById('mkt_gads_label')?.value.trim() || '',
+        pixel_tiktok:     document.getElementById('mkt_tiktok')?.value.trim() || '',
+      })
+    });
+    const d = await r.json();
+    if (d.ok) { alert('Configuracion de Marketing guardada'); }
     else alert(d.error || 'Error al guardar.');
   } catch(e) { alert('Error de conexión.'); }
 }

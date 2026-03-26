@@ -525,6 +525,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     color:#666; text-align:center; line-height:1.6 }
 }
 </style>
+<?= MarketingPixels::scripts_base(EMPRESA_ID) ?>
 </head>
 <body>
 
@@ -1082,6 +1083,11 @@ async function doAcc(){
         'WhatsApp: '+(EMPRESA.tel||'')+(EMPRESA.email?' · '+EMPRESA.email:'')
     );
 
+    // Marketing pixels — evento de conversión
+    var totalFinal = total_base;
+    var MONEDA = '<?= e($cot['moneda'] ?? 'MXN') ?>';
+    <?= MarketingPixels::evento_aceptar_js(EMPRESA_ID) ?>
+
     // Recargar después de 3 segundos para mostrar estado actualizado
     if(respOk) setTimeout(() => location.reload(), 3000);
 }
@@ -1113,6 +1119,7 @@ async function doRej(){
         EMPRESA.nombre+(EMPRESA.tel?' · '+EMPRESA.tel:'')
     );
     if(window.czTrack) window.czTrack('reject_confirm');
+    <?= MarketingPixels::evento_rechazar_js(EMPRESA_ID) ?>
 }
 
 // ─── Éxito ───────────────────────────────────────────────
@@ -1412,5 +1419,6 @@ calc();
   <?php if (!empty($cot['emp_web'])): ?> · <?= e(preg_replace('#^https?://#','',$cot['emp_web'])) ?><?php endif; ?><br>
   Cotización <?= e($cot['numero']) ?> generada en cotiza.cloud
 </div>
+<?= MarketingPixels::evento_view(EMPRESA_ID, $cot['numero'], (float)$total_base, $cot['moneda'] ?? 'MXN') ?>
 </body>
 </html>
