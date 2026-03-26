@@ -345,11 +345,11 @@ $recibos_hoy = DB::query(
 
 $act_cots = DB::row(
     "SELECT
-        COUNT(*) AS total,
-        COALESCE(SUM(total), 0) AS monto_total,
+        SUM(estado NOT IN ('borrador') AND suspendida = 0) AS total,
+        COALESCE(SUM(CASE WHEN estado NOT IN ('borrador') AND suspendida = 0 THEN total ELSE 0 END), 0) AS monto_total,
         SUM(estado IN ('aceptada','convertida')) AS cerradas,
         SUM(estado = 'rechazada') AS rechazadas,
-        SUM(estado IN ('enviada','vista')) AS pendientes
+        SUM(estado IN ('enviada','vista') AND suspendida = 0) AS pendientes
      FROM cotizaciones c
      WHERE c.empresa_id=? AND c.created_at BETWEEN ? AND ? $c_where",
     [$empresa_id, $desde, $hasta]
@@ -1203,7 +1203,8 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
       <span class="monthly-row-lbl">Cerradas / convertidas</span>
       <span class="monthly-row-val">
         <?= (int)$act_cots['cerradas'] ?>
-        <?= $act_cots['total'] > 0 ? '(' . round($act_cots['cerradas']/$act_cots['total']*100, 1) . '%)' : '' ?>
+        <?php $base_act = max(1, (int)$act_cots['total']); ?>
+        <?= $act_cots['total'] > 0 ? '(' . round($act_cots['cerradas']/$base_act*100, 1) . '%)' : '' ?>
       </span>
     </div>
     <div class="monthly-row">
