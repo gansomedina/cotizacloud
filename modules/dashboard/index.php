@@ -120,9 +120,9 @@ if ((float)$kpi_ventas_ant['monto_ventas'] > 0) {
 // Cotizaciones del período
 $kpi_cots = DB::row(
     "SELECT
-        COUNT(*) AS num_cots,
-        COALESCE(SUM(total), 0) AS monto_cots,
-        SUM(estado IN ('enviada','vista','aceptada','convertida')) AS num_enviadas
+        SUM(estado NOT IN ('borrador') AND suspendida = 0) AS num_cots,
+        COALESCE(SUM(CASE WHEN estado NOT IN ('borrador') AND suspendida = 0 THEN total ELSE 0 END), 0) AS monto_cots,
+        SUM(estado IN ('enviada','vista','aceptada','convertida') AND suspendida = 0) AS num_enviadas
      FROM cotizaciones c
      WHERE c.empresa_id = ? AND c.created_at BETWEEN ? AND ? $c_where",
     [$empresa_id, $desde, $hasta]

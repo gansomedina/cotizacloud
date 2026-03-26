@@ -117,16 +117,16 @@ $margen_pct   = $ingresos > 0 ? round($utilidad_bruta / $ingresos * 100, 1) : 0;
 // Cotizaciones del período
 $kfc = DB::row(
     "SELECT
-        COUNT(*)                                                      AS total,
+        SUM(estado NOT IN ('borrador') AND suspendida = 0)            AS total,
         SUM(CASE WHEN estado='aceptada' OR estado='convertida' THEN 1 ELSE 0 END) AS aceptadas,
         SUM(CASE WHEN estado='rechazada' THEN 1 ELSE 0 END)          AS rechazadas,
-        SUM(CASE WHEN estado IN ('enviada','vista') THEN 1 ELSE 0 END) AS activas,
-        COALESCE(SUM(total), 0)                                       AS monto_total
+        SUM(CASE WHEN estado IN ('enviada','vista') AND suspendida = 0 THEN 1 ELSE 0 END) AS activas,
+        COALESCE(SUM(CASE WHEN estado NOT IN ('borrador') AND suspendida = 0 THEN total ELSE 0 END), 0) AS monto_total
      FROM cotizaciones c
      WHERE empresa_id=? AND created_at BETWEEN ? AND ? $usr_filter_c",
     [$empresa_id, $f_ini_dt, $f_fin_dt]
 );
-$tasa_conv = $kfc['total'] > 0
+$tasa_conv = ($kfc['total'] ?? 0) > 0
     ? round($kfc['aceptadas'] / $kfc['total'] * 100, 1) : 0;
 
 // Serie mensual (últimos 12 meses) para gráfica de barras
