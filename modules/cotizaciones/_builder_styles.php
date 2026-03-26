@@ -162,11 +162,11 @@
     .panel-notes textarea:focus { border-color:var(--g); }
     .panel-notes textarea::placeholder { color:var(--t3); }
 
-    /* SHEETS */
-    .sh-overlay  { display:none; position:fixed; top:0; left:0; right:0; bottom:0; z-index:490; background:rgba(0,0,0,.5); }
-    .sh-overlay.open { display:block; }
-    .bottom-sheet { display:none; position:fixed; bottom:0; left:0; right:0; z-index:201; background:var(--white); border-radius:20px 20px 0 0; max-height:90vh; flex-direction:column; box-shadow:0 -8px 32px rgba(0,0,0,.1); max-width:720px; margin:0 auto; }
-    .bottom-sheet.open { display:flex; animation:sheetUp .3s cubic-bezier(.32,0,.15,1); }
+    /* SHEETS — idéntico a nueva.php */
+    .sh-overlay  { position:fixed; top:0; left:0; right:0; bottom:0; z-index:490; background:rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity .25s; display:none; }
+    .sh-overlay.open { opacity:1; pointer-events:all; display:block; }
+    .bottom-sheet { display:none; position:fixed; bottom:0; left:0; right:0; z-index:500; background:var(--white); border-radius:20px 20px 0 0; max-height:90vh; flex-direction:column; box-shadow:0 -8px 32px rgba(0,0,0,.1); max-width:720px; margin:0 auto; }
+    .bottom-sheet.open { display:flex; animation:sheetUp .28s cubic-bezier(.32,0,.15,1); }
     @keyframes sheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
     .sh-handle   { width:34px; height:4px; border-radius:2px; background:var(--border2); margin:12px auto 0; flex-shrink:0; }
     .sh-header   { padding:14px 18px 10px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }

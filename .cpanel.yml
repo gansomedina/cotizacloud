@@ -4,11 +4,14 @@ deployment:
     - export DEPLOYPATH=/home/cotizacl/public_html/
     - /bin/mkdir -p $DEPLOYPATH
     - /bin/cp index.php $DEPLOYPATH
-    - /bin/cp config.php $DEPLOYPATH
-    - /bin/cp respaldoconfig.php $DEPLOYPATH
+    - /bin/cp respaldoconfig.php $DEPLOYPATH || true
     - /bin/cp -R api $DEPLOYPATH
     - /bin/cp -R core $DEPLOYPATH
     - /bin/cp -R modules $DEPLOYPATH
     - /bin/cp -R public $DEPLOYPATH
     - /bin/cp -R assets $DEPLOYPATH
     - /bin/cp -R tools $DEPLOYPATH
+    - /bin/cp -R vendor $DEPLOYPATH
+    - /bin/cp -R migrations $DEPLOYPATH
+    - /bin/mkdir -p /home/cotizacl/key
+    - /bin/cp vapid_private.pem /home/cotizacl/key/vapid_private.pem || true

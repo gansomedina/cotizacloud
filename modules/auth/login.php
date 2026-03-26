@@ -17,6 +17,7 @@ $errores = [
     'empresa'      => 'Empresa no encontrada. Verifica tu subdominio.',
     'inactivo'     => 'Tu cuenta está desactivada. Contacta al administrador.',
     'sesion'       => 'Tu sesión expiró. Ingresa de nuevo.',
+    'rate'         => 'Demasiados intentos. Espera unos minutos e intenta de nuevo.',
 ];
 
 $msg_error    = $error && isset($errores[$error]) ? $errores[$error] : null;
@@ -249,9 +250,12 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
                 >
             </div>
 
-            <div class="remember-row">
-                <input type="checkbox" id="recordar" name="recordar" value="1">
-                <label for="recordar">Recordarme por 30 días</label>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+                <div class="remember-row">
+                    <input type="checkbox" id="recordar" name="recordar" value="1">
+                    <label for="recordar">Recordarme por 30 días</label>
+                </div>
+                <a href="/recuperar" style="font:500 12px var(--body);color:var(--g);text-decoration:none">¿Olvidaste tu contraseña?</a>
             </div>
 
             <button class="btn-submit" type="submit" id="btn-submit">Entrar</button>

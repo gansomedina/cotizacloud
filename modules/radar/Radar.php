@@ -54,8 +54,8 @@ class Radar
         'hot_close_min_views7d'      => [2,     2,     3    ],
 
         // ── Bucket 2: Inminente ──────────────────────────────
-        'imminent_recent_hours'      => [36,    24,    24   ],
-        'imminent_min_fit_pct'       => [6.0,   8.5,   11.0 ],
+        'imminent_recent_hours'      => [48,    36,    24   ],
+        'imminent_min_fit_pct'       => [4.0,   5.0,   7.0  ],
         'imminent_min_age_hours'     => [2.0,   3.0,   6.0  ],
         'imminent_min_guest'         => [1,     1,     2    ],
         'imminent_ip_window_min'     => [240,   180,   120  ],
@@ -68,7 +68,7 @@ class Radar
         'imminent_signal_views48'    => [2,     3,     4    ],
         'imminent_signal_span_h'     => [3,     6,     8    ],
         'imminent_signal_coupon'     => [1,     1,     1    ],
-        'imminent_min_signals'       => [1,     2,     3    ],
+        'imminent_min_signals'       => [1,     1,     2    ],
         'imminent_min_strong'        => [1,     1,     2    ],
         'imminent_min_span48_h'      => [0.5,   1.0,   2.0  ],  // regreso real: distancia mínima entre sesiones en 48h
 
@@ -825,22 +825,19 @@ class Radar
         elseif ($is_cooling)  $buckets[] = 'enfriandose';
 
         // ── 1. Probable cierre (CROSS-BUCKET) ──────────────────
-        // v4: Meta-bucket agregador con filtros anti-falso-positivo.
+        // v5: Meta-bucket con umbrales calibrados por arquetipo de comprador.
+        // Arquetipos: decidido (1-2 sess, lee bien), comité (multi-IP),
+        //   comparador (foco precio), analítico (muchas sesiones).
         // Requiere:
         //   - Estar en al menos 1 bucket de alta intención
         //   - Actividad reciente (72h)
-        //   - sessions >= 2 (el regreso confirma intención — commitment escalation)
-        //   - 2+ categorías de señal
-        //   - Al menos 1 categoría "fuerte" (precio O engagement)
-        //     Solo persistencia + social = consideration, no decision.
-        // Categorías de señal:
-        //   Engagement (fuerte): scroll ≥ 50%, visibilidad alta, lectura real
-        //   Precio (fuerte): precio tocado, cupón, tot_rev, loop
-        //   Persistencia: 2+ sesiones, gap/regreso
-        //   Social: multi-IP, multi-dispositivo
-        // Psicología: un curioso hace UNA cosa. Un comprador cruza categorías
-        //   y REGRESA. P(cierre|1 sess) << P(cierre|2+ sess).
-        //   P(cierre|PSS=0) << P(cierre|PSS>0).
+        //   - sessions >= 2
+        //   - 2+ categorías (agresivo/medio) o 3+ (ligero)
+        //   - Al menos 1 categoría fuerte (precio O engagement)
+        // Engagement: scroll ≥ 50-90% + visibilidad ≥ 5-20s (lectura real)
+        // Precio: pss, sv/mv_price, loops, cupones (no se endurece — respeta al decidido)
+        // Persistencia: sessions ≥ 2 o gap ≥ 1d
+        // Social: multi-IP, multi-visitor (no se endurece — respeta al comprador solo)
 
         // Buckets que califican como alta intención
         $pc_qualifying = ['onfire','inminente','validando_precio','decision_activa',
@@ -852,8 +849,11 @@ class Radar
 
         if ($pc_source !== null && !$accepted && $last_ts >= $now - 72 * 3600 && $sessions >= 2) {
             // Contar categorías de señal presentes
-            $cat_engagement  = ($e_scroll_cls >= 50 || $e_scroll_any >= 50 ||
-                                $e_vis_max >= 8 || $e_vis_sum >= 15 ||
+            // Engagement: visibilidad real (no 8ms) + scroll significativo
+            $pc_scroll_min = match($modo) { 'agresivo' => 50, 'ligero' => 90, default => 70 };
+            $pc_vis_min    = match($modo) { 'agresivo' => 5000, 'ligero' => 20000, default => 15000 };
+            $cat_engagement  = ($e_scroll_cls >= $pc_scroll_min || $e_scroll_any >= $pc_scroll_min ||
+                                $e_vis_max >= $pc_vis_min || $e_vis_sum >= ($pc_vis_min * 2) ||
                                 ($has_tot_view && $sessions >= 2));
             $cat_precio      = ($has_tot_rev || $has_loop || $e_coupons > 0 ||
                                 $e_sv_price || $e_mv_price || $pss >= 2.0);
@@ -867,7 +867,8 @@ class Radar
             // Solo persistencia + social = fase de consideration, no decision.
             $has_strong_cat = ($cat_precio || $cat_engagement);
 
-            if ($cat_count >= 2 && $has_strong_cat) {
+            $pc_min_cats = ($modo === 'ligero') ? 3 : 2;
+            if ($cat_count >= $pc_min_cats && $has_strong_cat) {
                 $buckets[] = 'probable_cierre';
             }
         }
@@ -1168,7 +1169,8 @@ class Radar
                    AND datos LIKE ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
                 [$empresa_id, '%"cotizacion_id":' . $cotizacion_id . '%']
             );
-            if ($ya_enviado === 0) {
+            $ncfg_radar = notif_config($empresa_id);
+            if ($ya_enviado === 0 && ($ncfg_radar['radar_alerta'] ?? true)) {
                 try {
                     $label = self::PUSH_BUCKETS[$r['bucket']];
                     $ref = $cot['numero'] ?: $cot['titulo'] ?: "#{$cotizacion_id}";

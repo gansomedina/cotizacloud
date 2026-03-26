@@ -104,7 +104,8 @@ if ($puede_asignar) {
     );
 }
 
-$es_editable = in_array($cot['estado'], ['borrador', 'enviada', 'vista']) && empty($cot['suspendida']);
+$puede_editar_cot = Auth::es_admin() || Auth::puede('editar_cotizaciones');
+$es_editable = in_array($cot['estado'], ['borrador', 'enviada', 'vista']) && empty($cot['suspendida']) && $puede_editar_cot;
 $es_suspendida = !empty($cot['suspendida']);
 $puede_suspender = in_array($cot['estado'], ['borrador', 'enviada', 'vista', 'rechazada']) || $es_suspendida;
 
@@ -197,6 +198,23 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     .adj-del { width:28px; height:28px; border-radius:var(--r-sm); border:1px solid var(--border); background:var(--white); font-size:13px; color:var(--t3); cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .12s; }
     .adj-del:hover { border-color:var(--danger); color:var(--danger); background:var(--danger-bg); }
 
+    /* Dialog sheets — el browser los pone en top-layer, nada los tapa */
+    .dlg-sheet {
+        border:none; padding:0; margin:auto auto 0;
+        background:var(--white); border-radius:20px 20px 0 0;
+        max-height:90vh; width:100%; max-width:720px;
+        box-shadow:0 -8px 32px rgba(0,0,0,.15);
+        animation:dlgUp .25s ease-out;
+    }
+    .dlg-sheet[open] {
+        display:flex; flex-direction:column;
+    }
+    .dlg-sheet::backdrop { background:rgba(0,0,0,.5); }
+    @keyframes dlgUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    @media(max-width:820px){
+        .dlg-sheet { margin-bottom:64px; }
+    }
+
     /* Badge de estado inline */
     .badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:99px; font:600 12px var(--body); }
     .badge-slate  { background:var(--slate-bg);  color:var(--slate); }
@@ -288,7 +306,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
         <div class="slabel">Cliente</div>
         <div class="card">
             <button class="client-btn" id="client-btn"
-                    onclick="<?= $es_editable ? "openSheet('clientSheet','clientOverlay')" : 'void(0)' ?>">
+                    onclick="clientDialog.showModal()">
                 <div class="client-avatar <?= $cot['cliente_nombre'] ? '' : 'empty' ?>" id="client-avatar">
                     <?= $cot['cliente_nombre']
                         ? strtoupper(substr($cot['cliente_nombre'], 0, 1))
@@ -300,9 +318,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                     </div>
                     <div class="client-phone" id="client-phone"><?= e($cot['cliente_telefono'] ?? '') ?></div>
                 </div>
-                <?php if ($es_editable): ?>
                 <i data-feather="chevron-right" style="width:16px;height:16px;" class="client-chevron"></i>
-                <?php endif; ?>
             </button>
         </div>
 
@@ -324,7 +340,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 <?php
     $vence_val = '';
     if (!empty($cot['valida_hasta']) && $cot['valida_hasta'] > '2000-01-01') {
-        $vence_val = $cot['valida_hasta'];
+        $vence_val = substr($cot['valida_hasta'], 0, 10); // solo YYYY-MM-DD para input date
     } elseif ($es_editable) {
         // Sin fecha válida → calcular desde configuración de empresa
         $vigencia_dias = (int)($empresa['cot_vigencia_dias'] ?? 30);
@@ -341,7 +357,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
         <div class="items-list" id="items-list"></div>
 
         <?php if ($es_editable): ?>
-        <button class="add-item-btn" onclick="openSheet('catalogSheet','catalogOverlay')">
+        <button class="add-item-btn" onclick="catalogDialog.showModal()">
             <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar artículo
         </button>
         <?php endif; ?>
@@ -523,7 +539,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 </div>
 
 <!-- Overlay URL -->
-<div id="url-overlay" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;display:flex;align-items:flex-end;justify-content:center"
+<div id="url-overlay" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s;display:none;align-items:flex-end;justify-content:center"
      onclick="closeUrlOverlay()">
     <div onclick="event.stopPropagation()" style="background:var(--white);border-radius:20px 20px 0 0;padding:20px 20px 40px;width:100%;max-width:560px;">
         <div style="width:34px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 18px"></div>
@@ -555,13 +571,12 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     </div>
 </div>
 
-<!-- Sheets de catálogo y cliente (iguales que nueva.php) -->
-<div class="sh-overlay" id="catalogOverlay" onclick="closeSheet('catalogSheet','catalogOverlay')"></div>
-<div class="bottom-sheet" id="catalogSheet">
+<!-- Dialogs nativos: el browser los renderiza en el top-layer, sin z-index -->
+<dialog id="catalogDialog" class="dlg-sheet">
     <div class="sh-handle"></div>
     <div class="sh-header">
         <span class="sh-title">Agregar artículo</span>
-        <button class="sh-close" onclick="closeSheet('catalogSheet','catalogOverlay')"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        <button class="sh-close" onclick="catalogDialog.close()"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </div>
     <div class="sh-search">
         <div class="sh-search-wrap">
@@ -572,17 +587,22 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
         <span>+</span> Ítem libre
     </button>
     <div class="sh-list" id="catalog-list"></div>
-</div>
+</dialog>
 
-<div class="sh-overlay" id="clientOverlay" onclick="closeSheet('clientSheet','clientOverlay')"></div>
-<div class="bottom-sheet" id="clientSheet">
+<dialog id="clientDialog" class="dlg-sheet">
     <div class="sh-handle"></div>
     <div class="sh-header">
-        <span class="sh-title">Cliente</span>
-        <button class="sh-close" onclick="closeSheet('clientSheet','clientOverlay')"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        <span class="sh-title">Asignar cliente</span>
+        <button class="sh-close" onclick="clientDialog.close()"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="sh-search">
+        <div class="sh-search-wrap">
+            <input type="text" placeholder="Buscar cliente..." id="client-search"
+                   oninput="renderClientList(this.value)">
+        </div>
     </div>
     <div class="sh-list" id="client-list" style="padding-top:8px"></div>
-</div>
+</dialog>
 
 <script src="/assets/js/feather.min.js"></script>
 <script>
@@ -596,6 +616,7 @@ const COT_ID      = <?= $cot_id ?>;
 const ES_EDITABLE = <?= $es_editable ? 'true' : 'false' ?>;
 const PUEDE_PRECIOS    = <?= $puede_editar_precios ? 'true' : 'false' ?>;
 const PUEDE_DESCUENTOS = <?= $puede_descuentos ? 'true' : 'false' ?>;
+const PUEDE_VER_CANT   = <?= (Auth::es_admin() || Auth::puede('ver_cantidades')) ? 'true' : 'false' ?>;
 const URL_PUBLICA = '<?= e($url_publica) ?>';
 
 let clienteSeleccionado = COT.cliente_id
@@ -632,15 +653,22 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Reutilizar las mismas funciones de nueva.php ──
 // (En producción se extraen a /public/assets/js/builder.js)
 
-function openSheet(s,o){
-    document.getElementById(o).classList.add('open');
-    document.getElementById(s).classList.add('open');
-    document.body.style.overflow='hidden';
+// Dialogs nativos — showModal() los pone en top-layer del browser
+const catalogDialog = document.getElementById('catalogDialog');
+const clientDialog  = document.getElementById('clientDialog');
+
+// Cerrar al click en backdrop
+catalogDialog.addEventListener('click', e => { if(e.target===catalogDialog) catalogDialog.close(); });
+clientDialog.addEventListener('click',  e => { if(e.target===clientDialog)  clientDialog.close(); });
+
+// Funciones para abrir
+function openSheet(sheetName, _overlay){
+    if(sheetName==='catalogSheet') catalogDialog.showModal();
+    else if(sheetName==='clientSheet') clientDialog.showModal();
 }
-function closeSheet(s,o){
-    document.getElementById(o).classList.remove('open');
-    document.getElementById(s).classList.remove('open');
-    document.body.style.overflow='';
+function closeSheet(sheetName, _overlay){
+    if(sheetName==='catalogSheet') catalogDialog.close();
+    else if(sheetName==='clientSheet') clientDialog.close();
 }
 function autoResize(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function toggleMob(hdr){hdr.closest('.mob-section').classList.toggle('open');}
@@ -678,6 +706,14 @@ function seleccionarCliente(id){
     document.getElementById('client-name').textContent=c.nombre;
     document.getElementById('client-phone').textContent=c.telefono;
     closeSheet('clientSheet','clientOverlay');
+    // Guardar cliente inmediatamente via endpoint dedicado
+    fetch('/cotizaciones/'+COT_ID+'/cliente',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+        body:JSON.stringify({cliente_id:c.id})
+    }).then(r=>r.json()).then(d=>{
+        if(!d.ok) alert(d.error||'Error al asignar cliente');
+    }).catch(()=>alert('Error de conexión'));
 }
 
 function toggleCupon(el){
@@ -707,8 +743,8 @@ function agregarItem(titulo, sku, desc, precio, articulo_id, editable=true){
             <div class="item-field"><div class="item-field-lbl">SKU</div><input type="text" data-campo="sku" value="${esc(sku)}" ${!editable?'readonly':''}></div>
             <div class="item-field"><div class="item-field-lbl">Descripción</div><textarea data-campo="descripcion" oninput="autoResize(this)" ${!editable?'readonly':''}>${esc(desc)}</textarea></div>
             <div class="item-nums">
-                <div class="item-field"><div class="item-field-lbl">Cantidad</div><input type="number" data-campo="cantidad" value="1" min="0" step="any" ${!editable?'readonly':''} oninput="calcItemTotal(this)"></div>
-                <div class="item-field"><div class="item-field-lbl">Precio unit.</div><input type="number" data-campo="precio" value="${precio}" min="0" step="any" ${ro} oninput="calcItemTotal(this)"></div>
+                ${PUEDE_VER_CANT ? `<div class="item-field"><div class="item-field-lbl">Cantidad</div><input type="number" data-campo="cantidad" value="1" min="0" step="any" ${!editable?'readonly':''} oninput="calcItemTotal(this)"></div>` : `<input type="hidden" data-campo="cantidad" value="1">`}
+                ${PUEDE_VER_CANT ? `<div class="item-field"><div class="item-field-lbl">Precio unit.</div><input type="number" data-campo="precio" value="${precio}" min="0" step="any" ${ro} oninput="calcItemTotal(this)"></div>` : `<input type="hidden" data-campo="precio" value="${precio}">`}
                 <div class="item-field item-total"><div class="item-field-lbl">Total</div><input type="text" data-campo="total" value="${amt}" readonly></div>
             </div>
         </div>
@@ -865,11 +901,12 @@ async function eliminarCotizacion(){
 // Overlay: abrir/cerrar sin dejar pointer-events activos
 (function(){
     const ov = document.getElementById('url-overlay');
-    ov.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);transition:opacity .25s;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none';
+    ov.style.display = 'none';
     ov.addEventListener('click', function(e){ if(e.target===this) closeUrlOverlay(); });
 })();
 function openUrlOverlay(){
     const ov = document.getElementById('url-overlay');
+    ov.style.display = 'flex';
     ov.style.opacity = '1';
     ov.style.pointerEvents = 'all';
 }
@@ -877,6 +914,7 @@ function closeUrlOverlay(){
     const ov = document.getElementById('url-overlay');
     ov.style.opacity = '0';
     ov.style.pointerEvents = 'none';
+    setTimeout(()=>{ ov.style.display = 'none'; }, 250);
 }
 </script>
 </div><!-- /app-main -->

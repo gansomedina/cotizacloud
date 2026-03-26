@@ -79,9 +79,9 @@ $hasta_ant = date('Y-m-d H:i:s', strtotime($desde) - 1);
 
 // ─── Filtro de asesor (si no admin, solo ve las suyas) ───
 $solo_mias = !Auth::es_admin() && !Auth::puede('ver_todas_ventas');
-$user_id   = Auth::id();
-$v_where   = $solo_mias ? "AND (v.usuario_id = $user_id OR v.vendedor_id = $user_id)" : '';
-$c_where   = $solo_mias ? "AND (c.usuario_id = $user_id OR c.vendedor_id = $user_id)" : '';
+$user_id   = (int)Auth::id();
+$v_where   = $solo_mias ? "AND (v.usuario_id = " . intval($user_id) . " OR v.vendedor_id = " . intval($user_id) . ")" : '';
+$c_where   = $solo_mias ? "AND (c.usuario_id = " . intval($user_id) . " OR c.vendedor_id = " . intval($user_id) . ")" : '';
 
 // ═══════════════════════════════════════════════════════
 //  BLOQUE 1: KPIs FINANCIEROS
@@ -120,9 +120,9 @@ if ((float)$kpi_ventas_ant['monto_ventas'] > 0) {
 // Cotizaciones del período
 $kpi_cots = DB::row(
     "SELECT
-        COUNT(*) AS num_cots,
-        COALESCE(SUM(total), 0) AS monto_cots,
-        SUM(estado IN ('enviada','vista','aceptada','convertida')) AS num_enviadas
+        SUM(estado NOT IN ('borrador') AND suspendida = 0) AS num_cots,
+        COALESCE(SUM(CASE WHEN estado NOT IN ('borrador') AND suspendida = 0 THEN total ELSE 0 END), 0) AS monto_cots,
+        SUM(estado IN ('enviada','vista','aceptada','convertida') AND suspendida = 0) AS num_enviadas
      FROM cotizaciones c
      WHERE c.empresa_id = ? AND c.created_at BETWEEN ? AND ? $c_where",
     [$empresa_id, $desde, $hasta]
@@ -143,6 +143,19 @@ $num_ventas_pagadas = (int)DB::val(
 );
 $num_ventas_saldo = (int)$kpi_ventas['num_ventas'] - $num_ventas_pagadas;
 
+// Ventas sin ningún pago (aceptadas/pendientes con pagado=0)
+$ventas_sin_pago = DB::query(
+    "SELECT v.id, v.numero, v.titulo, v.total, v.created_at,
+            cl.nombre AS cliente
+     FROM ventas v
+     LEFT JOIN clientes cl ON cl.id = v.cliente_id
+     WHERE v.empresa_id = ? AND v.estado IN ('pendiente','parcial')
+       AND v.pagado = 0 $v_where
+     ORDER BY v.created_at ASC
+     LIMIT 10",
+    [$empresa_id]
+);
+
 // ═══════════════════════════════════════════════════════
 //  BLOQUE 2: EMBUDO DE CONVERSIÓN
 // ═══════════════════════════════════════════════════════
@@ -150,17 +163,20 @@ $num_ventas_saldo = (int)$kpi_ventas['num_ventas'] - $num_ventas_pagadas;
 $funnel = DB::row(
     "SELECT
         COUNT(*) AS total,
-        SUM(estado NOT IN ('borrador')) AS enviadas,
-        SUM(estado IN ('vista','aceptada','rechazada','vencida','convertida')) AS vistas,
+        SUM(estado NOT IN ('borrador') AND suspendida = 0) AS enviadas,
+        SUM(estado IN ('vista','aceptada','rechazada','vencida','convertida') AND suspendida = 0) AS abiertas,
         SUM(estado IN ('aceptada','convertida')) AS cerradas,
-        SUM(estado = 'rechazada') AS rechazadas
+        SUM(estado = 'rechazada') AS rechazadas,
+        SUM(suspendida = 1) AS suspendidas
      FROM cotizaciones c
      WHERE c.empresa_id = ? AND c.created_at BETWEEN ? AND ? $c_where",
     [$empresa_id, $desde, $hasta]
 );
 
-$tasa_cierre = $funnel['total'] > 0
-    ? round(($funnel['cerradas'] / $funnel['total']) * 100, 1)
+// Tasa de cierre = cerradas / enviadas (no sobre total con borradores)
+$base_conversion = max(1, (int)$funnel['enviadas']);
+$tasa_cierre = $funnel['enviadas'] > 0
+    ? round(($funnel['cerradas'] / $funnel['enviadas']) * 100, 1)
     : 0;
 
 $ticket_prom = $kpi_ventas['num_ventas'] > 0
@@ -179,7 +195,7 @@ $tiempo_cierre = (float)(DB::val(
 // Sin abrir (enviadas pero nunca vistas)
 $sin_abrir = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones c
-     WHERE c.empresa_id=? AND estado='enviada'
+     WHERE c.empresa_id=? AND estado='enviada' AND c.suspendida = 0
        AND vista_at IS NULL AND c.created_at BETWEEN ? AND ?
        AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where",
     [$empresa_id, $desde, $hasta]
@@ -219,7 +235,7 @@ $aceptadas = DB::query(
 
 // Rechazadas recientemente (últimos 14 días)
 $rechazadas = DB::query(
-    "SELECT c.id, c.titulo, c.numero, c.rechazada_at, c.total, c.rechazada_motivo,
+    "SELECT c.id, c.titulo, c.numero, c.rechazada_at, c.total, c.motivo_rechazo,
             cl.nombre AS cliente_nombre
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
@@ -236,7 +252,7 @@ $por_vencer = DB::query(
             DATEDIFF(c.valida_hasta, CURDATE()) AS dias_restantes
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
-     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista')
+     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista') AND c.suspendida = 0
        AND c.valida_hasta IS NOT NULL
        AND c.valida_hasta BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY) $c_where
      ORDER BY c.valida_hasta ASC LIMIT 6",
@@ -250,7 +266,7 @@ $sin_abrir_list = DB::query(
             DATEDIFF(CURDATE(), DATE(c.enviada_at)) AS dias_sin_abrir
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
-     WHERE c.empresa_id=? AND c.estado='enviada'
+     WHERE c.empresa_id=? AND c.estado='enviada' AND c.suspendida = 0
        AND c.vista_at IS NULL AND c.enviada_at IS NOT NULL
        AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where
      ORDER BY c.enviada_at ASC LIMIT 6",
@@ -261,10 +277,16 @@ $sin_abrir_list = DB::query(
 //  BLOQUE 4: RADAR BUCKETS
 // ═══════════════════════════════════════════════════════
 
+// Recalcular radar si datos tienen >5 min de antigüedad
+$_radar_ult = DB::val("SELECT MAX(radar_updated_at) FROM cotizaciones WHERE empresa_id=?", [$empresa_id]);
+if (!$_radar_ult || $_radar_ult < date('Y-m-d H:i:s', time()-300)) {
+    try { Radar::recalcular_empresa($empresa_id); } catch(Throwable $e){}
+}
+
 // Cotizaciones activas con su bucket radar
 $radar_buckets_raw = DB::query(
     "SELECT c.id, c.titulo, c.numero, c.total,
-            c.radar_bucket, c.radar_score, c.visitas, c.ultima_vista_at,
+            c.radar_bucket, c.radar_score, c.radar_senales, c.visitas, c.ultima_vista_at,
             cl.nombre AS cliente_nombre,
             qs.sesiones, qs.scroll_max
      FROM cotizaciones c
@@ -276,17 +298,26 @@ $radar_buckets_raw = DB::query(
          FROM quote_sessions
          GROUP BY cotizacion_id
      ) qs ON qs.cotizacion_id = c.id
-     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista') $c_where
+     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista') AND c.suspendida = 0 $c_where
        AND c.radar_bucket IS NOT NULL
      ORDER BY c.radar_score DESC LIMIT 20",
     [$empresa_id]
 );
 
-// Agrupar por bucket
-$buckets = ['onfire' => [], 'inminente' => [], 'probable_cierre' => []];
+// Agrupar por bucket — replicar lógica del Radar (probable_cierre va a ambos)
+$buckets = ['onfire' => [], 'inminente' => [], 'probable_cierre' => [], 'validando_precio' => []];
 foreach ($radar_buckets_raw as $r) {
     $b = $r['radar_bucket'];
-    if (isset($buckets[$b])) $buckets[$b][] = $r;
+    $senales = is_string($r['radar_senales']) ? (json_decode($r['radar_senales'], true) ?? []) : [];
+    $all_b   = $senales['buckets'] ?? [];
+    $pc_src  = $senales['pc_source'] ?? null;
+
+    if ($b === 'probable_cierre' && $pc_src) {
+        $buckets['probable_cierre'][] = $r;
+        if (isset($buckets[$pc_src])) $buckets[$pc_src][] = $r;
+    } elseif (isset($buckets[$b])) {
+        $buckets[$b][] = $r;
+    }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -314,11 +345,11 @@ $recibos_hoy = DB::query(
 
 $act_cots = DB::row(
     "SELECT
-        COUNT(*) AS total,
-        COALESCE(SUM(total), 0) AS monto_total,
+        SUM(estado NOT IN ('borrador') AND suspendida = 0) AS total,
+        COALESCE(SUM(CASE WHEN estado NOT IN ('borrador') AND suspendida = 0 THEN total ELSE 0 END), 0) AS monto_total,
         SUM(estado IN ('aceptada','convertida')) AS cerradas,
         SUM(estado = 'rechazada') AS rechazadas,
-        SUM(estado IN ('enviada','vista')) AS pendientes
+        SUM(estado IN ('enviada','vista') AND suspendida = 0) AS pendientes
      FROM cotizaciones c
      WHERE c.empresa_id=? AND c.created_at BETWEEN ? AND ? $c_where",
     [$empresa_id, $desde, $hasta]
@@ -482,11 +513,11 @@ ob_start();
 .dias-red{color:var(--danger)}.dias-amb{color:#b45309}.dias-green{color:var(--g)}
 
 /* RADAR BUCKETS */
-.buckets-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.buckets-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .bucket-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
 .bucket-header{padding:12px 14px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .bucket-title{font:700 13px var(--body);display:flex;align-items:center;gap:7px}
-.b-probable .bucket-header{background:#fffbeb}.b-inminente .bucket-header{background:#fff7ed}.b-onfire .bucket-header{background:#fff1f2}
+.b-probable .bucket-header{background:#fffbeb}.b-inminente .bucket-header{background:#fff7ed}.b-onfire .bucket-header{background:#fff1f2}.b-precio .bucket-header{background:#eff6ff}
 .bucket-total{font:600 12px var(--num);color:var(--t3)}
 .bucket-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background .1s}
 .bucket-row:last-child{border-bottom:none}
@@ -538,7 +569,7 @@ ob_start();
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
   .conv-grid,.monthly-grid{grid-template-columns:1fr}
   .alert-grid{grid-template-columns:1fr}
-  .buckets-grid{grid-template-columns:1fr}
+  .buckets-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:600px){
   .kpi-grid{grid-template-columns:1fr 1fr}
@@ -554,10 +585,10 @@ ob_start();
     <div style="flex:1">
         <?php if ($trial['vencido']): ?>
             <div style="font:700 15px var(--body);color:#c53030;margin-bottom:2px">Licencia vencida</div>
-            <div style="font:400 13px var(--body);color:#991b1b;line-height:1.5">Tu licencia PRO venció el <?= date('d/m/Y', strtotime($trial['plan_vence'])) ?>. Renueva para seguir creando cotizaciones.</div>
+            <div style="font:400 13px var(--body);color:#991b1b;line-height:1.5">Tu plan <?= $trial['plan_label'] ?> venció el <?= date('d/m/Y', strtotime($trial['plan_vence'])) ?>. Renueva para seguir creando cotizaciones.</div>
         <?php else: ?>
-            <div style="font:700 15px var(--body);color:#92400e;margin-bottom:2px">Prueba gratuita agotada</div>
-            <div style="font:400 13px var(--body);color:#78350f;line-height:1.5">Has usado las <?= TRIAL_LIMIT ?> cotizaciones de prueba. Activa tu licencia PRO para continuar.</div>
+            <div style="font:700 15px var(--body);color:#92400e;margin-bottom:2px">Plan Free agotado</div>
+            <div style="font:400 13px var(--body);color:#78350f;line-height:1.5">Has usado las <?= TRIAL_LIMIT ?> cotizaciones gratuitas. Activa tu plan Pro para continuar.</div>
         <?php endif; ?>
     </div>
     <a href="/licencia" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--r-sm);font:600 13px var(--body);background:<?= $trial['vencido'] ? '#c53030' : '#92400e' ?>;color:#fff;text-decoration:none;white-space:nowrap;transition:opacity .12s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
@@ -825,6 +856,29 @@ $ts_diag  = ActividadScore::diagnostico($ts);
 
 </div>
 
+<?php if (!empty($ventas_sin_pago)): ?>
+<!-- ══ VENTAS SIN PAGOS ══ -->
+<div class="slabel"><?= ico('alert', 14, '#d97706') ?> Ventas sin pagos <span style="font:400 12px var(--body);color:var(--t3)">(<?= count($ventas_sin_pago) ?>)</span></div>
+<div class="card" style="overflow:hidden">
+  <?php foreach ($ventas_sin_pago as $vsp):
+    $dias_sin = (int)((time() - strtotime($vsp['created_at'])) / 86400);
+    $color_dias = $dias_sin > 14 ? 'var(--danger)' : ($dias_sin > 7 ? '#d97706' : 'var(--t3)');
+  ?>
+  <a href="/ventas/<?= (int)$vsp['id'] ?>" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background .12s" onmouseover="this.style.background='#fafaf8'" onmouseout="this.style.background=''">
+    <div style="flex:1;min-width:0">
+      <div style="font:600 13px var(--num);color:var(--g)"><?= e($vsp['numero']) ?></div>
+      <div style="font:400 12px var(--body);color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= e($vsp['titulo']) ?></div>
+      <div style="font:400 11px var(--body);color:var(--t3)"><?= e($vsp['cliente'] ?? '—') ?></div>
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div style="font:700 14px var(--num)"><?= fmt_dash((float)$vsp['total']) ?></div>
+      <div style="font:400 11px var(--body);color:<?= $color_dias ?>"><?= $dias_sin ?> día<?= $dias_sin!=1?'s':'' ?> sin pago</div>
+    </div>
+  </a>
+  <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <!-- ══ CONVERSIÓN ══ -->
 <div class="slabel">Métricas de conversión</div>
 <div class="conv-grid">
@@ -833,12 +887,12 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div class="conv-title">Embudo del período</div>
     <div class="conv-funnel">
       <?php
-      $total_f = max(1, (int)$funnel['total']);
+      $total_f = max(1, (int)$funnel['enviadas']);
       $rows_f  = [
-          ['Creadas',  'fb-total',    $funnel['total'],   100],
-          ['Enviadas', 'fb-enviadas', $funnel['enviadas'], round($funnel['enviadas']/$total_f*100)],
-          ['Vistas',   'fb-vistas',   $funnel['vistas'],   round($funnel['vistas']/$total_f*100)],
-          ['Cerradas', 'fb-cerradas', $funnel['cerradas'], round($funnel['cerradas']/$total_f*100)],
+          ['Enviadas',  'fb-total',    $funnel['enviadas'],  100],
+          ['Abiertas',  'fb-vistas',   $funnel['abiertas'],  round(($funnel['abiertas'] ?? 0)/$total_f*100)],
+          ['Aceptadas', 'fb-cerradas', $funnel['cerradas'],  round(($funnel['cerradas'] ?? 0)/$total_f*100)],
+          ['Rechazadas','fb-rechazadas',$funnel['rechazadas'],round(($funnel['rechazadas'] ?? 0)/$total_f*100)],
       ];
       foreach ($rows_f as [$lbl, $cls, $num, $pct]):
       ?>
@@ -1011,16 +1065,17 @@ $ts_diag  = ActividadScore::diagnostico($ts);
 
 <!-- ══ RADAR BUCKETS ══ -->
 <?php
-$hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !empty($buckets['probable_cierre']);
+$hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !empty($buckets['probable_cierre']) || !empty($buckets['validando_precio']);
 ?>
 <div class="slabel">Radar · oportunidades activas</div>
 <div class="buckets-grid">
 
   <?php
   $bucket_def = [
-      'probable_cierre' => [ico('yellow',10), 'Probable cierre',    'b-probable'],
-      'inminente'       => [ico('orange',10), 'Cierre inminente',   'b-inminente'],
-      'onfire'          => [ico('red',10),    'On Fire',             'b-onfire'],
+      'probable_cierre'  => [ico('yellow',10), 'Probable cierre',    'b-probable'],
+      'inminente'        => [ico('orange',10), 'Cierre inminente',   'b-inminente'],
+      'onfire'           => [ico('red',10),    'On Fire',             'b-onfire'],
+      'validando_precio' => [ico('blue',10),   'Validando precio',    'b-precio'],
   ];
   foreach ($bucket_def as $bkey => [$ico, $blbl, $bcls]):
       $items     = $buckets[$bkey];
@@ -1028,8 +1083,8 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
       $count_b   = count($items);
 
       // Colores de avatar según bucket
-      $av_colors = ['probable_cierre'=>'var(--g)', 'inminente'=>'#c2410c', 'onfire'=>'#991b1b'];
-      $av_bg     = $av_colors[$bkey];
+      $av_colors = ['probable_cierre'=>'var(--g)', 'inminente'=>'#c2410c', 'onfire'=>'#991b1b', 'validando_precio'=>'#2563eb'];
+      $av_bg     = $av_colors[$bkey] ?? '#6b7280';
   ?>
   <div class="bucket-card <?= $bcls ?>">
     <div class="bucket-header">
@@ -1057,7 +1112,6 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
       }
     ?>
     <a href="/cotizaciones/<?= (int)$item['id'] ?>" class="bucket-row">
-      <div class="bucket-av" style="background:<?= $av_bg ?>"><?= e($ini_b) ?></div>
       <div class="bucket-info">
         <div class="bucket-client"><?= e($item['cliente_nombre'] ?? '—') ?></div>
         <div class="bucket-proyecto"><?= e(mb_substr($item['titulo'],0,40)) ?></div>
@@ -1149,7 +1203,8 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
       <span class="monthly-row-lbl">Cerradas / convertidas</span>
       <span class="monthly-row-val">
         <?= (int)$act_cots['cerradas'] ?>
-        <?= $act_cots['total'] > 0 ? '(' . round($act_cots['cerradas']/$act_cots['total']*100, 1) . '%)' : '' ?>
+        <?php $base_act = max(1, (int)$act_cots['total']); ?>
+        <?= $act_cots['total'] > 0 ? '(' . round($act_cots['cerradas']/$base_act*100, 1) . '%)' : '' ?>
       </span>
     </div>
     <div class="monthly-row">

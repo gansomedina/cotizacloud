@@ -91,11 +91,24 @@ try {
     } else {
         $nuevo_total = round(max(0, $base), 2);
     }
-    $nuevo_saldo = round($nuevo_total - (float)$venta['pagado'], 2);
+    $nuevo_saldo = max(0, round($nuevo_total - (float)$venta['pagado'], 2));
+
+    // ── Estado automático según saldo ──
+    $nuevo_estado = null;
+    if ($nuevo_saldo <= 0 && (float)$venta['pagado'] > 0) {
+        $nuevo_estado = 'pagada';
+    } elseif ($nuevo_saldo > 0 && (float)$venta['pagado'] > 0 && $nuevo_saldo < $nuevo_total) {
+        $nuevo_estado = 'parcial';
+    }
 
     // ── Actualizar venta ──
     $update_sql = "UPDATE ventas SET total=?, saldo=?, updated_at=NOW()";
     $params = [$nuevo_total, $nuevo_saldo];
+
+    if ($nuevo_estado && $venta['estado'] !== 'cancelada') {
+        $update_sql .= ", estado=?";
+        $params[] = $nuevo_estado;
+    }
 
     if ($nuevo_cliente_id) {
         $cli = DB::row("SELECT id FROM clientes WHERE id=? AND empresa_id=?", [$nuevo_cliente_id, $empresa_id]);
@@ -157,4 +170,4 @@ if ($nuevo_cliente_id) {
 }
 
 ob_end_clean();
-json_ok(['total' => $nuevo_total, 'saldo' => $nuevo_saldo]);
+json_ok(['total' => $nuevo_total, 'saldo' => $nuevo_saldo, 'estado' => $nuevo_estado ?? $venta['estado']]);

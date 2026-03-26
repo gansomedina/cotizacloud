@@ -1,7 +1,7 @@
 <?php
 // ============================================================
 //  cotiza.cloud — modules/config/index.php
-//  GET /config[?tab=empresa|catalogo|clientes|cupones|usuarios|radar]
+//  GET /config[?tab=empresa|catalogo|clientes|cupones|usuarios|radar|costos]
 //  Solo admin puede acceder
 // ============================================================
 
@@ -9,7 +9,7 @@ defined('COTIZAAPP') or die;
 Auth::requerir_admin();
 
 $empresa_id = EMPRESA_ID;
-$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar'])
+$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing'])
     ? $_GET['tab'] : 'empresa';
 
 // Usuarios solo disponible en plan Business
@@ -18,8 +18,23 @@ if ($tab_activo === 'usuarios') {
     if (!$plan_check['es_business']) $tab_activo = 'empresa';
 }
 
+// Costos solo disponible en plan Pro o Business
+if ($tab_activo === 'costos') {
+    $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
+    if (!$plan_check['es_pagado']) $tab_activo = 'empresa';
+}
+
+// Marketing solo disponible en plan Business
+if ($tab_activo === 'marketing') {
+    $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
+    if (!$plan_check['es_business']) $tab_activo = 'empresa';
+}
+
 // ─── Cargar empresa ─────────────────────────────────────────
 $empresa = DB::row("SELECT * FROM empresas WHERE id=?", [$empresa_id]);
+
+// ─── Marketing config ──────────────────────────────────────
+$mkt = DB::row("SELECT * FROM marketing_config WHERE empresa_id=?", [$empresa_id]) ?: [];
 
 // ─── Catálogo ────────────────────────────────────────────────
 $q_cat = trim($_GET['q_cat'] ?? '');
@@ -276,11 +291,25 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   .radar-modos{grid-template-columns:1fr}
   .sh-row2{grid-template-columns:1fr}
   .tax-grid{grid-template-columns:1fr}
+  .costos-modo-grid{grid-template-columns:1fr}
 }
 @media(min-width:641px){
   .grid2 .field-row{border-right:1px solid var(--border)}
   .grid2 .field-row:nth-child(2n){border-right:none}
 }
+
+/* ── Costos modo selector ── */
+.costos-modo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.costos-modo-opt{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;padding:20px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;background:var(--bg)}
+.costos-modo-opt:hover{border-color:var(--g);background:#f7faf8}
+.costos-modo-opt.sel{border-color:var(--g);background:#eef7f2;box-shadow:0 0 0 1px var(--g)}
+.cm-icon{margin-bottom:10px;color:var(--t3)}.costos-modo-opt.sel .cm-icon{color:var(--g)}
+.cm-name{font:700 15px var(--body);color:var(--text);margin-bottom:6px}
+.cm-desc{font:400 12px var(--body);color:var(--t3);line-height:1.4}
+.cm-check{display:none;position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:var(--g);color:#fff;align-items:center;justify-content:center}
+.costos-modo-opt.sel .cm-check{display:flex}
+.cm-badge{display:inline-block;margin-top:8px;padding:2px 8px;border-radius:4px;background:#3b82f6;color:#fff;font:600 10px var(--body);letter-spacing:.04em;text-transform:uppercase}
+.costos-modo-note{font-size:12px;color:var(--t3);margin:12px 0 0;display:flex;align-items:flex-start;gap:6px;line-height:1.4}
 </style>
 
 <!-- Header con botón guardar empresa -->
@@ -300,6 +329,12 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <a class="cfg-tab <?= $tab_activo==='usuarios'  ?'on':'' ?>" href="/config?tab=usuarios">Usuarios</a>
     <?php endif; ?>
     <a class="cfg-tab <?= $tab_activo==='radar'     ?'on':'' ?>" href="/config?tab=radar">Radar</a>
+    <?php if ($plan_info['es_pagado']): ?>
+    <a class="cfg-tab <?= $tab_activo==='costos'    ?'on':'' ?>" href="/config?tab=costos">Costos</a>
+    <?php endif; ?>
+    <?php if ($plan_info['es_business']): ?>
+    <a class="cfg-tab <?= $tab_activo==='marketing' ?'on':'' ?>" href="/config?tab=marketing">Marketing</a>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -398,31 +433,52 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   </div>
 
   <!-- Notificaciones -->
+  <?php $ncfg = notif_config($empresa_id); ?>
   <div class="sec">
-    <div class="sec-lbl">Notificaciones por email</div>
+    <div class="sec-lbl">Notificaciones</div>
     <div class="card">
       <div class="field-row">
         <div class="field-lbl">Email de notificaciones</div>
-        <div class="field-sub">Recibe avisos cuando un cliente acepta o rechaza una cotización. Puede ser distinto al email principal.</div>
+        <div class="field-sub">Recibe avisos de tu negocio. Puede ser distinto al email principal.</div>
         <input class="field-box" id="e_notif_email" type="email" placeholder="alertas@tuempresa.com" style="margin-top:10px" value="<?= e($empresa['notif_email'] ?? '') ?>">
       </div>
       <div class="field-row h">
         <div>
-          <div class="field-lbl">Notificar al aceptar</div>
-          <div class="field-sub">Email al asesor + al correo de notificaciones</div>
+          <div class="field-lbl">Cotización aceptada</div>
+          <div class="field-sub">Aviso cuando un cliente acepta una cotización</div>
         </div>
         <label class="toggle">
-          <input type="checkbox" id="e_notif_acepta" <?= $empresa['notif_email_acepta']?'checked':'' ?>>
+          <input type="checkbox" id="e_notif_acepta" <?= ($ncfg['cotizacion_aceptada'] ?? true)?'checked':'' ?>>
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
       <div class="field-row h">
         <div>
-          <div class="field-lbl">Notificar al rechazar</div>
-          <div class="field-sub">Email al asesor que generó la cotización</div>
+          <div class="field-lbl">Cotización rechazada</div>
+          <div class="field-sub">Aviso cuando un cliente rechaza una cotización</div>
         </div>
         <label class="toggle">
-          <input type="checkbox" id="e_notif_rechaza" <?= $empresa['notif_email_rechaza']?'checked':'' ?>>
+          <input type="checkbox" id="e_notif_rechaza" <?= ($ncfg['cotizacion_rechazada'] ?? true)?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="field-row h">
+        <div>
+          <div class="field-lbl">Abono registrado</div>
+          <div class="field-sub">Aviso cuando se registra un pago en una venta</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_notif_abono" <?= ($ncfg['abono_registrado'] ?? true)?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="field-row h">
+        <div>
+          <div class="field-lbl">Alertas del Radar</div>
+          <div class="field-sub">Aviso cuando una cotización tiene actividad importante</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_notif_radar" <?= ($ncfg['radar_alerta'] ?? true)?'checked':'' ?>>
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
@@ -484,6 +540,16 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
         </div>
         <label class="toggle">
           <input type="checkbox" id="e_allow_precio_edit" <?= $empresa['allow_precio_edit']?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="field-row h">
+        <div>
+          <div class="field-lbl">Ocultar cantidad y precio unitario al cliente</div>
+          <div class="field-sub">En las vistas públicas (links de cotización y venta) solo se muestra descripción y total por línea</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_ocultar_cant_pu" <?= !empty($empresa['ocultar_cant_pu'])?'checked':'' ?>>
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
@@ -928,6 +994,163 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 </div><!-- /panel-radar -->
 
 
+<!-- ══ TAB: COSTOS ══════════════════════════════════════════ -->
+<?php if ($plan_info['es_pagado']):
+  $costos_modo = $empresa['costos_modo'] ?? 'venta';
+?>
+<div class="tab-panel <?= $tab_activo==='costos'?'on':'' ?>" id="panel-costos">
+  <div class="sec">
+    <div class="sec-lbl">Modo de costos</div>
+    <p style="font-size:13px;color:var(--t3);margin:0 0 16px">Elige cómo registrar los costos de tu negocio. Esto afecta el formulario de nuevo gasto y las vistas del módulo de Costos.</p>
+    <div class="card">
+      <div class="costos-modo-grid">
+
+        <!-- Opción: Por venta -->
+        <label class="costos-modo-opt <?= $costos_modo==='venta'?'sel':'' ?>" onclick="selCostosModo('venta')">
+          <input type="radio" name="costos_modo" value="venta" <?= $costos_modo==='venta'?'checked':'' ?> style="display:none">
+          <div class="cm-icon"><?= ico('file', 28) ?></div>
+          <div class="cm-name">Por venta</div>
+          <div class="cm-desc">Cada costo se asigna a una venta específica. Ideal para calcular margen y rentabilidad por proyecto.</div>
+          <div class="cm-check"><?= ico('check', 16) ?></div>
+        </label>
+
+        <!-- Opción: Por empresa -->
+        <label class="costos-modo-opt <?= $costos_modo==='empresa'?'sel':'' ?>" onclick="selCostosModo('empresa')">
+          <input type="radio" name="costos_modo" value="empresa" <?= $costos_modo==='empresa'?'checked':'' ?> style="display:none">
+          <div class="cm-icon"><?= ico('chart', 28) ?></div>
+          <div class="cm-name">Por empresa</div>
+          <div class="cm-desc">Los costos se registran como gastos generales del negocio. Ideal para ver rentabilidad global mensual.</div>
+          <div class="cm-check"><?= ico('check', 16) ?></div>
+        </label>
+
+        <?php if ($plan_info['es_business']): ?>
+        <!-- Opción: Ambos (solo Business) -->
+        <label class="costos-modo-opt <?= $costos_modo==='ambos'?'sel':'' ?>" onclick="selCostosModo('ambos')">
+          <input type="radio" name="costos_modo" value="ambos" <?= $costos_modo==='ambos'?'checked':'' ?> style="display:none">
+          <div class="cm-icon"><?= ico('shield', 28) ?></div>
+          <div class="cm-name">Ambos</div>
+          <div class="cm-desc">Costos avanzados: registra gastos por venta y gastos generales de empresa. Máximo control y visibilidad.</div>
+          <div class="cm-badge">Business</div>
+          <div class="cm-check"><?= ico('check', 16) ?></div>
+        </label>
+        <?php endif; ?>
+
+      </div>
+
+      <p class="costos-modo-note"><?= ico('alert', 14) ?> Los costos ya registrados no se eliminan al cambiar de modo. Solo afecta cómo se crean nuevos costos y qué vistas se muestran.</p>
+
+      <button class="save-btn" style="margin-top:12px" onclick="guardarCostosModo()">Guardar modo de costos</button>
+    </div>
+  </div>
+</div><!-- /panel-costos -->
+<?php endif; ?>
+
+<?php if ($plan_info['es_business']): ?>
+<!-- ══ TAB: MARKETING ══════════════════════════════════════ -->
+<div class="tab-panel <?= $tab_activo==='marketing'?'on':'' ?>" id="panel-marketing">
+  <div class="sec">
+    <div class="sec-lbl">Pixels de seguimiento</div>
+    <p style="font-size:13px;color:var(--t3);margin:0 0 16px">Activa los pixels que uses y agrega tu ID. Los scripts se inyectan automaticamente en las vistas publicas de cotizaciones y ventas.</p>
+    <div class="card">
+
+      <!-- Meta Pixel -->
+      <div class="field-row h">
+        <div style="flex:1">
+          <div class="field-lbl">Meta Pixel (Facebook / Instagram)</div>
+          <div class="field-sub">Pixel ID de 15-16 digitos. Meta Events Manager > Data Sources > Pixel</div>
+          <div id="mkt_meta_wrap" style="margin-top:8px;display:<?= empty($mkt['pixel_meta'])?'none':'block' ?>">
+            <input class="field-box" id="mkt_meta" type="text" placeholder="548297463810254" maxlength="20" value="<?= e($mkt['pixel_meta'] ?? '') ?>">
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="mkt_meta_on" <?= !empty($mkt['pixel_meta'])?'checked':'' ?> onchange="document.getElementById('mkt_meta_wrap').style.display=this.checked?'block':'none';if(!this.checked)document.getElementById('mkt_meta').value=''">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+
+      <!-- GA4 -->
+      <div class="field-row h">
+        <div style="flex:1">
+          <div class="field-lbl">Google Analytics 4</div>
+          <div class="field-sub">Measurement ID formato G-XXXXXXXXXX. GA4 Admin > Data Streams</div>
+          <div id="mkt_ga4_wrap" style="margin-top:8px;display:<?= empty($mkt['pixel_ga4'])?'none':'block' ?>">
+            <input class="field-box" id="mkt_ga4" type="text" placeholder="G-ABC1234DEF" maxlength="20" value="<?= e($mkt['pixel_ga4'] ?? '') ?>">
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="mkt_ga4_on" <?= !empty($mkt['pixel_ga4'])?'checked':'' ?> onchange="document.getElementById('mkt_ga4_wrap').style.display=this.checked?'block':'none';if(!this.checked)document.getElementById('mkt_ga4').value=''">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+
+      <!-- Google Ads -->
+      <div class="field-row h">
+        <div style="flex:1">
+          <div class="field-lbl">Google Ads — Conversion</div>
+          <div class="field-sub">Conversion ID y Label. Google Ads > Herramientas > Conversiones</div>
+          <div id="mkt_gads_wrap" style="margin-top:8px;display:<?= empty($mkt['pixel_gads_id'])?'none':'grid' ?>;grid-template-columns:1fr 1fr;gap:10px">
+            <input class="field-box" id="mkt_gads_id" type="text" placeholder="AW-12345678901" maxlength="20" value="<?= e($mkt['pixel_gads_id'] ?? '') ?>">
+            <input class="field-box" id="mkt_gads_label" type="text" placeholder="Label: AbCdEf_12345" maxlength="30" value="<?= e($mkt['pixel_gads_label'] ?? '') ?>">
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="mkt_gads_on" <?= !empty($mkt['pixel_gads_id'])?'checked':'' ?> onchange="document.getElementById('mkt_gads_wrap').style.display=this.checked?'grid':'none';if(!this.checked){document.getElementById('mkt_gads_id').value='';document.getElementById('mkt_gads_label').value=''}">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+
+      <!-- TikTok -->
+      <div class="field-row h">
+        <div style="flex:1">
+          <div class="field-lbl">TikTok Pixel</div>
+          <div class="field-sub">Pixel ID. TikTok Ads Manager > Assets > Events > Web Events</div>
+          <div id="mkt_tiktok_wrap" style="margin-top:8px;display:<?= empty($mkt['pixel_tiktok'])?'none':'block' ?>">
+            <input class="field-box" id="mkt_tiktok" type="text" placeholder="CBGD5ABC123DEF456GH" maxlength="30" value="<?= e($mkt['pixel_tiktok'] ?? '') ?>">
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="mkt_tiktok_on" <?= !empty($mkt['pixel_tiktok'])?'checked':'' ?> onchange="document.getElementById('mkt_tiktok_wrap').style.display=this.checked?'block':'none';if(!this.checked)document.getElementById('mkt_tiktok').value=''">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+
+    </div>
+    <p style="font-size:12px;color:var(--t3);margin:12px 0 0;line-height:1.5">
+      <?= ico('alert', 12) ?> La configuracion de cada pixel es responsabilidad del usuario. Para obtener tu ID consulta la documentacion oficial de cada plataforma. CotizaCloud no brinda soporte sobre la configuracion de pixels de terceros.
+    </p>
+  </div>
+
+  <div class="sec">
+    <div class="sec-lbl">Eventos que se disparan</div>
+    <div class="card" style="padding:16px">
+      <p style="font:400 13px var(--body);color:var(--t3);line-height:1.6;margin:0">
+        Los siguientes eventos se disparan automaticamente en las vistas publicas de tus cotizaciones y ventas:
+      </p>
+      <table style="width:100%;margin-top:12px;font-size:12px;border-collapse:collapse">
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px 0;font-weight:600">Cliente abre cotizacion</td>
+          <td style="padding:8px 0;color:var(--t3)">ViewContent (Meta/TikTok) · page_view (GA4)</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px 0;font-weight:600">Cliente acepta cotizacion</td>
+          <td style="padding:8px 0;color:var(--t3)">Lead (Meta) · generate_lead (GA4) · Conversion (Google Ads) · SubmitForm (TikTok)</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;font-weight:600">Cliente rechaza cotizacion</td>
+          <td style="padding:8px 0;color:var(--t3)">QuoteRejected (Meta/GA4 custom event)</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;padding-bottom:10px">
+    <button class="save-btn" onclick="guardarMarketing()">Guardar configuracion de Marketing</button>
+  </div>
+
+</div><!-- /panel-marketing -->
+<?php endif; ?>
+
+
 <!-- ══ SHEET: ARTÍCULO ══════════════════════════════════════ -->
 <div class="sh-overlay" id="ov-shArt" onclick="closeSheet('shArt')"></div>
 <div class="bottom-sheet" id="shArt">
@@ -1116,6 +1339,18 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
       <div class="sh-field">
         <div class="sh-lbl" style="margin-bottom:10px">Permisos del asesor</div>
         <div class="perm-row">
+          <div><div class="perm-lbl">Crear cotizaciones</div><div class="perm-sub">Puede crear nuevas cotizaciones</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_crear_cots" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row">
+          <div><div class="perm-lbl">Editar cotizaciones</div><div class="perm-sub">Puede editar cotizaciones existentes</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_editar_cots" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row">
+          <div><div class="perm-lbl">Ver cantidad y precio unitario</div><div class="perm-sub">Si está apagado, solo ve descripción y total</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_ver_cantidades" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row">
           <div><div class="perm-lbl">Editar precios unitarios</div><div class="perm-sub">Sujeto al permiso global de empresa</div></div>
           <label class="toggle"><input type="checkbox" id="perm_precio" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
@@ -1277,8 +1512,15 @@ async function guardarEmpresa() {
         notif_email:        document.getElementById('e_notif_email').value.trim(),
         notif_email_acepta: document.getElementById('e_notif_acepta').checked ? 1 : 0,
         notif_email_rechaza:document.getElementById('e_notif_rechaza').checked ? 1 : 0,
+        notif_config: {
+            cotizacion_aceptada:  document.getElementById('e_notif_acepta').checked,
+            cotizacion_rechazada: document.getElementById('e_notif_rechaza').checked,
+            abono_registrado:     document.getElementById('e_notif_abono').checked,
+            radar_alerta:         document.getElementById('e_notif_radar').checked,
+        },
         cot_vigencia_dias:  parseInt(document.getElementById('e_cot_vigencia_dias').value) || 30,
         allow_precio_edit:  document.getElementById('e_allow_precio_edit').checked ? 1 : 0,
+        ocultar_cant_pu:    document.getElementById('e_ocultar_cant_pu').checked ? 1 : 0,
         auto_suspender_activo: document.getElementById('e_auto_suspender_activo').checked ? 1 : 0,
         auto_suspender_dias: parseInt(document.getElementById('e_auto_suspender_dias').value) || 30,
         cot_theme:          document.getElementById('e_cot_theme').value,
@@ -1508,6 +1750,9 @@ function nuevoUsuario() {
     document.getElementById('shUsrPassNote').textContent = 'Mín. 8 caracteres';
     togglePerms('asesor');
     // Defaults permisos
+    document.getElementById('perm_crear_cots').checked      = true;
+    document.getElementById('perm_editar_cots').checked     = true;
+    document.getElementById('perm_ver_cantidades').checked  = true;
     document.getElementById('perm_precio').checked         = true;
     document.getElementById('perm_descuento').checked      = true;
     document.getElementById('perm_ver_cots').checked       = false;
@@ -1530,6 +1775,9 @@ function editarUsuario(id, data) {
     document.getElementById('shUsrPassNote').textContent = 'Deja en blanco para no cambiarla';
     document.getElementById('shUsrRol').value      = data.rol;
     document.getElementById('shUsrActivo').checked = !!parseInt(data.activo);
+    document.getElementById('perm_crear_cots').checked       = !!parseInt(data.puede_crear_cotizaciones ?? 1);
+    document.getElementById('perm_editar_cots').checked      = !!parseInt(data.puede_editar_cotizaciones ?? 1);
+    document.getElementById('perm_ver_cantidades').checked   = !!parseInt(data.puede_ver_cantidades ?? 1);
     document.getElementById('perm_precio').checked          = !!parseInt(data.puede_editar_precios);
     document.getElementById('perm_descuento').checked       = !!parseInt(data.puede_aplicar_descuentos);
     document.getElementById('perm_ver_cots').checked        = !!parseInt(data.puede_ver_todas_cots);
@@ -1559,6 +1807,9 @@ async function guardarUsuario() {
     if (id && pass && pass.length < 8) { alert('La nueva contraseña debe tener al menos 8 caracteres.'); return; }
     const payload = {
         nombre, usuario, email, rol, activo,
+        puede_crear_cotizaciones:    document.getElementById('perm_crear_cots').checked ? 1 : 0,
+        puede_editar_cotizaciones:   document.getElementById('perm_editar_cots').checked ? 1 : 0,
+        puede_ver_cantidades:        document.getElementById('perm_ver_cantidades').checked ? 1 : 0,
         puede_editar_precios:        document.getElementById('perm_precio').checked ? 1 : 0,
         puede_aplicar_descuentos:    document.getElementById('perm_descuento').checked ? 1 : 0,
         puede_ver_todas_cots:        document.getElementById('perm_ver_cots').checked ? 1 : 0,
@@ -1578,6 +1829,48 @@ async function guardarUsuario() {
         if (d.ok) { closeSheet('shUsr'); location.reload(); }
         else alert(d.error || 'Error.');
     } catch(e) { alert('Error de conexión.'); }
+}
+
+// ── Costos modo ──
+function selCostosModo(modo){
+  document.querySelectorAll('.costos-modo-opt').forEach(el => {
+    el.classList.toggle('sel', el.querySelector('input').value === modo);
+    el.querySelector('input').checked = (el.querySelector('input').value === modo);
+  });
+}
+async function guardarCostosModo(){
+  const sel = document.querySelector('input[name="costos_modo"]:checked');
+  if (!sel) return;
+  try {
+    const r = await fetch('/config/costos-modo', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({costos_modo: sel.value})
+    });
+    const d = await r.json();
+    if (d.ok) { location.reload(); }
+    else alert(d.error || 'Error al guardar.');
+  } catch(e) { alert('Error de conexión.'); }
+}
+
+// ── Marketing ──
+async function guardarMarketing(){
+  try {
+    const r = await fetch('/config/marketing', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        pixel_meta:       document.getElementById('mkt_meta')?.value.trim() || '',
+        pixel_ga4:        document.getElementById('mkt_ga4')?.value.trim() || '',
+        pixel_gads_id:    document.getElementById('mkt_gads_id')?.value.trim() || '',
+        pixel_gads_label: document.getElementById('mkt_gads_label')?.value.trim() || '',
+        pixel_tiktok:     document.getElementById('mkt_tiktok')?.value.trim() || '',
+      })
+    });
+    const d = await r.json();
+    if (d.ok) { alert('Configuracion de Marketing guardada'); }
+    else alert(d.error || 'Error al guardar.');
+  } catch(e) { alert('Error de conexión.'); }
 }
 </script>
 

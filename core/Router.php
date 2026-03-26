@@ -101,6 +101,12 @@ class Router
         self::get('/logout',   fn() => self::load('auth', 'logout'));
         self::get('/registro', fn() => self::load('auth', 'registro'));
         self::post('/registro', fn() => self::load('auth', 'registro_post'));
+        self::get('/recuperar',       fn() => self::load('auth', 'recuperar'));
+        self::post('/recuperar',      fn() => self::load('auth', 'recuperar_post'));
+        self::get('/reset-password',  fn() => self::load('auth', 'reset_password'));
+        self::post('/reset-password', fn() => self::load('auth', 'reset_password_post'));
+        self::get('/verificar-email', fn() => self::load('auth', 'verificar_email'));
+        self::post('/verificar-email',fn() => self::load('auth', 'verificar_email_post'));
 
         // Landing page pública
         self::get('/landing', fn() => Auth::logueado()
@@ -137,6 +143,7 @@ class Router
         self::post('/cotizaciones/nueva',     fn()  => self::app('cotizaciones', 'crear'));
         self::get('/cotizaciones/:id',        fn($p)=> self::app('cotizaciones', 'ver',    $p));
         self::post('/cotizaciones/:id',       fn($p)=> self::app('cotizaciones', 'guardar', $p));
+        self::post('/cotizaciones/:id/cliente',fn($p)=> self::app('cotizaciones', 'asignar_cliente', $p));
         self::post('/cotizaciones/:id/enviar',fn($p)=> self::app('cotizaciones', 'enviar',  $p));
         self::post('/cotizaciones/:id/convertir', fn($p) => self::app('cotizaciones', 'convertir', $p));
         self::post('/cotizaciones/:id/eliminar',  fn($p) => self::app('cotizaciones', 'eliminar',  $p));
@@ -210,6 +217,8 @@ class Router
         self::post('/config/usuario/:id',                 fn($p) => self::app('config', 'usuario', $p));
         self::post('/config/radar',                       fn()   => self::app('config', 'guardar_radar'));
         self::post('/config/radar/calibrar',              fn()   => self::app('config', 'calibrar_radar'));
+        self::post('/config/costos-modo',                  fn()   => self::app('config', 'guardar_costos_modo'));
+        self::post('/config/marketing',                    fn()   => self::app('config', 'guardar_marketing'));
         self::post('/config/ip-interna',                  fn()   => self::app_extra('config', 'ip_interna', [],  ['accion'=>'crear']));
         self::post('/config/ip-interna/:id/eliminar',     fn($p) => self::app_extra('config', 'ip_interna', $p, ['accion'=>'eliminar']));
     }

@@ -11,6 +11,14 @@ header('Content-Type: application/json');
 $eid    = EMPRESA_ID;
 $usr_id = isset($id) ? (int)$id : 0;
 
+// Solo Business puede crear usuarios nuevos (editar existentes sí se permite)
+if ($usr_id === 0) {
+    $plan = trial_info($eid);
+    if (!$plan['es_business']) {
+        echo json_encode(['ok'=>false,'error'=>'Crear usuarios es exclusivo del plan Business']); exit;
+    }
+}
+
 $body = json_decode(file_get_contents('php://input'), true);
 if (!$body) { echo json_encode(['ok'=>false,'error'=>'Payload inválido']); exit; }
 
@@ -30,6 +38,9 @@ if (!preg_match('/^[a-z0-9._\-]{1,60}$/', $usuario)) {
 
 // Permisos granulares (solo aplican a asesores)
 $perms = [
+    'puede_crear_cotizaciones'   => (int)($body['puede_crear_cotizaciones']   ?? 1),
+    'puede_editar_cotizaciones'  => (int)($body['puede_editar_cotizaciones']  ?? 1),
+    'puede_ver_cantidades'       => (int)($body['puede_ver_cantidades']       ?? 1),
     'puede_editar_precios'       => (int)($body['puede_editar_precios']       ?? 1),
     'puede_aplicar_descuentos'   => (int)($body['puede_aplicar_descuentos']   ?? 1),
     'puede_ver_todas_cots'       => (int)($body['puede_ver_todas_cots']       ?? 0),
@@ -65,6 +76,7 @@ if ($usr_id > 0) {
     }
 
     $set = "nombre=?, usuario=?, email=?, rol=?, activo=?,
+            puede_crear_cotizaciones=?, puede_editar_cotizaciones=?, puede_ver_cantidades=?,
             puede_editar_precios=?, puede_aplicar_descuentos=?,
             puede_ver_todas_cots=?, puede_ver_todas_ventas=?,
             puede_eliminar_items_venta=?, puede_cancelar_recibos=?,
@@ -72,6 +84,7 @@ if ($usr_id > 0) {
             puede_ver_costos=?, puede_ver_proveedores=?";
     $vals = [
         $nombre, $usuario, $email, $rol, $activo,
+        $perms['puede_crear_cotizaciones'], $perms['puede_editar_cotizaciones'], $perms['puede_ver_cantidades'],
         $perms['puede_editar_precios'], $perms['puede_aplicar_descuentos'],
         $perms['puede_ver_todas_cots'], $perms['puede_ver_todas_ventas'],
         $perms['puede_eliminar_items_venta'], $perms['puede_cancelar_recibos'],
@@ -99,16 +112,18 @@ if ($usr_id > 0) {
     $nuevo = DB::insert(
         "INSERT INTO usuarios
          (empresa_id, nombre, usuario, email, password_hash, rol, activo,
+          puede_crear_cotizaciones, puede_editar_cotizaciones, puede_ver_cantidades,
           puede_editar_precios, puede_aplicar_descuentos,
           puede_ver_todas_cots, puede_ver_todas_ventas,
           puede_eliminar_items_venta, puede_cancelar_recibos,
           puede_capturar_pagos, puede_asignar_cotizaciones,
           puede_ver_costos, puede_ver_proveedores)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [
             $eid, $nombre, $usuario, $email,
             password_hash($pass, PASSWORD_DEFAULT),
             $rol, $activo,
+            $perms['puede_crear_cotizaciones'], $perms['puede_editar_cotizaciones'], $perms['puede_ver_cantidades'],
             $perms['puede_editar_precios'], $perms['puede_aplicar_descuentos'],
             $perms['puede_ver_todas_cots'], $perms['puede_ver_todas_ventas'],
             $perms['puede_eliminar_items_venta'], $perms['puede_cancelar_recibos'],

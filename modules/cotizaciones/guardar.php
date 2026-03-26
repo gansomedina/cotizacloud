@@ -12,6 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_error('Método no permitido', 40
 
 csrf_check();
 
+if (!Auth::es_admin() && !Auth::puede('editar_cotizaciones')) {
+    json_error('Sin permiso para editar cotizaciones', 403);
+}
+
 $empresa_id = EMPRESA_ID;
 $cot_id     = (int)($id ?? 0);
 if (!$cot_id) json_error('ID inválido', 400);
@@ -133,6 +137,7 @@ $base = $subtotal;
 $cupon_monto = 0.0;
 if ($cupon_id) { $cupon_monto = $subtotal * ($cupon_pct / 100); $base -= $cupon_monto; }
 if ($desc_auto_activo) { $desc_auto_amt = $base * ($desc_auto_pct / 100); $base -= $desc_auto_amt; }
+$base = max(0, $base); // Nunca permitir total negativo
 
 $impuesto_modo = $empresa['impuesto_modo'];
 $impuesto_pct  = (float)$empresa['impuesto_pct'];

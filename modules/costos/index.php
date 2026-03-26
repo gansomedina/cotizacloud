@@ -9,10 +9,12 @@ defined('COTIZAAPP') or die;
 // Permiso de módulo
 if (!Auth::es_admin() && !Auth::puede('ver_costos')) { redirect('/dashboard'); }
 
-$empresa_id = EMPRESA_ID;
-$es_admin   = Auth::es_admin();
-$solo_mias  = !$es_admin && !Auth::puede('ver_todas_ventas');
-$uid        = Auth::id();
+$empresa_id   = EMPRESA_ID;
+$es_admin     = Auth::es_admin();
+$solo_mias    = !$es_admin && !Auth::puede('ver_todas_ventas');
+$uid          = Auth::id();
+$empresa_data = Auth::empresa();
+$costos_modo  = $empresa_data['costos_modo'] ?? 'venta';
 $v_where    = $solo_mias ? "AND (v.usuario_id = $uid OR v.vendedor_id = $uid)" : '';
 
 // ─── Período ────────────────────────────────────────────────
@@ -248,7 +250,8 @@ $permite_null = DB::val(
 
 $gastos_generales = [];
 $total_generales  = 0;
-if ($permite_null && $es_business) {
+$ver_generales    = $permite_null && in_array($costos_modo, ['empresa', 'ambos']);
+if ($ver_generales) {
     $gastos_generales = DB::query(
         "SELECT gv.*, cc.nombre AS cat_nombre, cc.color AS cat_color" .
         ($has_prov_col ?? false ? ", p.nombre AS prov_nombre" : "") .
@@ -456,10 +459,18 @@ ob_start();
 
 <!-- Toolbar: tabs + botón -->
 <div class="page-toolbar">
+  <?php
+    $ver_tab_ventas    = in_array($costos_modo, ['venta', 'ambos']);
+    $ver_tab_generales = $ver_generales;
+    // Tab por default: el primero visible
+    $tab_default = $ver_tab_ventas ? 'ventas' : 'generales';
+  ?>
   <div class="tab-bar">
-    <button class="ctab on" id="ctab-ventas"     onclick="cTab('ventas',this)">Costos por venta</button>
-    <?php if ($permite_null && $es_business): ?>
-    <button class="ctab"   id="ctab-generales"   onclick="cTab('generales',this)">Gastos generales<?php if ($total_generales > 0): ?> <span style="font:600 11px var(--num);color:var(--danger);margin-left:2px"><?= fmt_c_short($total_generales) ?></span><?php endif; ?></button>
+    <?php if ($ver_tab_ventas): ?>
+    <button class="ctab <?= $tab_default==='ventas'?'on':'' ?>" id="ctab-ventas" onclick="cTab('ventas',this)">Costos por venta</button>
+    <?php endif; ?>
+    <?php if ($ver_tab_generales): ?>
+    <button class="ctab <?= $tab_default==='generales'?'on':'' ?>" id="ctab-generales" onclick="cTab('generales',this)">Gastos generales<?php if ($total_generales > 0): ?> <span style="font:600 11px var(--num);color:var(--danger);margin-left:2px"><?= fmt_c_short($total_generales) ?></span><?php endif; ?></button>
     <?php endif; ?>
     <button class="ctab"   id="ctab-categorias"  onclick="cTab('categorias',this)">Categorías</button>
     <?php if ($es_business): ?>
@@ -467,11 +478,16 @@ ob_start();
     <button class="ctab"   id="ctab-proveedores" onclick="cTab('proveedores',this)">Proveedores<?php if (!empty($proveedores_full)): ?> <span style="font:600 11px var(--num);color:var(--t3);margin-left:2px"><?= count($proveedores_full) ?></span><?php endif; ?></button>
     <?php endif; ?>
   </div>
+  <?php if ($costos_modo === 'empresa'): ?>
+  <button class="new-btn" onclick="abrirGastoGeneral()">+ Registrar gasto</button>
+  <?php else: ?>
   <button class="new-btn" onclick="abrirCosto()">+ Registrar costo</button>
+  <?php endif; ?>
 </div>
 
+<?php if ($ver_tab_ventas): ?>
 <!-- ══ TAB: COSTOS POR VENTA ══ -->
-<div class="tab-panel on" id="ctab-panel-ventas">
+<div class="tab-panel <?= $tab_default==='ventas'?'on':'' ?>" id="ctab-panel-ventas">
 
   <!-- KPIs -->
   <div class="kpi-row">
@@ -603,16 +619,19 @@ ob_start();
   <?php endif; ?>
 
 </div><!-- /ctab-panel-ventas -->
+<?php endif; /* ver_tab_ventas */ ?>
 
-<?php if ($permite_null && $es_business): ?>
+<?php if ($ver_tab_generales): ?>
 <!-- ══ TAB: GASTOS GENERALES ══ -->
-<div class="tab-panel" id="ctab-panel-generales">
+<div class="tab-panel <?= $tab_default==='generales'?'on':'' ?>" id="ctab-panel-generales">
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
     <p style="font:400 13px var(--body);color:var(--t3);line-height:1.6">
       Gastos que no están asociados a una venta específica: renta, nómina, servicios, seguros, etc.
     </p>
+    <?php if ($costos_modo === 'ambos'): ?>
     <button class="new-btn" onclick="abrirGastoGeneral()" style="flex-shrink:0">+ Gasto general</button>
+    <?php endif; ?>
   </div>
 
   <?php if ($total_generales > 0): ?>
@@ -935,10 +954,11 @@ ob_start();
   </div>
   <div class="sh-body">
     <input type="hidden" id="shCostoId" value="">
-    <div class="sh-field">
-      <div class="sh-lbl">Venta <?= $es_business ? '(dejar vacío para gasto general)' : '<span style="color:var(--danger)">*</span>' ?></div>
+    <?php if ($costos_modo !== 'empresa'): /* Mostrar selector de venta en modo 'venta' y 'ambos' */ ?>
+    <div class="sh-field" id="shCostoVentaWrap">
+      <div class="sh-lbl">Venta <?= $costos_modo === 'ambos' ? '(dejar vacío para gasto general)' : '<span style="color:var(--danger)">*</span>' ?></div>
       <select class="sh-select" id="shCostoVenta">
-        <?php if ($es_business): ?>
+        <?php if ($costos_modo === 'ambos'): ?>
         <option value="">— Gasto general (sin venta) —</option>
         <?php else: ?>
         <option value="">Seleccionar venta…</option>
@@ -948,6 +968,9 @@ ob_start();
         <?php endforeach; ?>
       </select>
     </div>
+    <?php else: /* modo empresa: venta_id siempre vacío */ ?>
+    <input type="hidden" id="shCostoVenta" value="">
+    <?php endif; ?>
     <div class="sh-field">
       <div class="sh-lbl">Categoría <span style="color:var(--danger)">*</span></div>
       <select class="sh-select" id="shCostoCat">
@@ -1139,8 +1162,9 @@ async function guardarCosto() {
     const importe  = parseFloat(document.getElementById('shCostoImporte').value);
     const fecha    = document.getElementById('shCostoFecha').value;
     const nota     = document.getElementById('shCostoNota').value.trim();
-    const ES_BUSINESS = <?= $es_business ? 'true' : 'false' ?>;
-    if ((!ES_BUSINESS && !venta_id) || !cat_id || !concepto || !importe || importe <= 0) {
+    const COSTOS_MODO = '<?= $costos_modo ?>';
+    const venta_requerida = (COSTOS_MODO === 'venta');
+    if ((venta_requerida && !venta_id) || !cat_id || !concepto || !importe || importe <= 0) {
         alert('Completa los campos obligatorios.'); return;
     }
     const url = id ? '/costos/gasto/'+id : '/costos/gasto';

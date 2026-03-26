@@ -5,6 +5,9 @@
 // ============================================================
 
 header('Content-Type: text/html; charset=UTF-8');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 define('COTIZAAPP', true);
 
 // ─── Servir archivos estáticos de /uploads/ y /assets/ ──────
@@ -42,6 +45,18 @@ if (preg_match('#^/assets/(.+)$#', $req_uri, $m)) {
         header('Content-Type: ' . $mime);
         header('Cache-Control: public, max-age=31536000');
         readfile($real);
+        exit;
+    }
+}
+
+// ─── Service Worker (Web Push) — debe servirse desde raíz ───
+if ($req_uri === '/sw.js') {
+    $swFile = __DIR__ . '/public/sw.js';
+    if (is_file($swFile)) {
+        header('Content-Type: application/javascript');
+        header('Cache-Control: no-cache');
+        header('Service-Worker-Allowed: /');
+        readfile($swFile);
         exit;
     }
 }

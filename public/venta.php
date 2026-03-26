@@ -14,7 +14,7 @@ $venta = DB::row(
     "SELECT v.*,
             e.nombre AS emp_nombre, e.ciudad AS emp_ciudad,
             e.telefono AS emp_tel, e.email AS emp_email,
-            e.moneda, e.logo_url AS emp_logo, e.vta_terminos AS terminos,
+            e.moneda, e.logo_url AS emp_logo, e.vta_terminos AS terminos, e.ocultar_cant_pu,
             cl.nombre AS cliente_nombre, cl.telefono AS cli_tel,
 
             c.numero  AS cot_numero,
@@ -57,6 +57,8 @@ $recibos = DB::query(
      ORDER BY r.created_at ASC",
     [$venta['id']]
 );
+
+$ocultar_cp = !empty($venta['ocultar_cant_pu']);
 
 // ─── Helpers ─────────────────────────────────────────────
 function fmt_v(float $n): string {
@@ -300,6 +302,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   .fac-nota{font:400 8pt var(--body);color:#555;margin-top:4pt}
 }
 </style>
+<?= MarketingPixels::scripts_base(EMPRESA_ID) ?>
 </head>
 <body>
 
@@ -382,27 +385,32 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   <div class="slabel">Artículos</div>
   <div class="card">
     <!-- Header columnas -->
-    <div style="display:grid;grid-template-columns:1fr 60px 80px 80px;gap:6px;padding:7px 16px;border-bottom:1px solid var(--border);background:var(--bg)">
+    <?php $grid_cols = $ocultar_cp ? '1fr 80px' : '1fr 60px 80px 80px'; ?>
+    <div style="display:grid;grid-template-columns:<?= $grid_cols ?>;gap:6px;padding:7px 16px;border-bottom:1px solid var(--border);background:var(--bg)">
       <span style="font:700 10px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)">Descripción</span>
+      <?php if (!$ocultar_cp): ?>
       <span style="font:700 10px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3);text-align:center">Cant.</span>
       <span style="font:700 10px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3);text-align:right">P.Unit.</span>
+      <?php endif; ?>
       <span style="font:700 10px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3);text-align:right">Total</span>
     </div>
 
 
     <?php foreach ($lineas as $l): ?>
-    <div style="display:grid;grid-template-columns:1fr 60px 80px 80px;gap:6px;align-items:start;padding:11px 16px;border-bottom:1px solid var(--border)">
+    <div style="display:grid;grid-template-columns:<?= $grid_cols ?>;gap:6px;align-items:start;padding:11px 16px;border-bottom:1px solid var(--border)">
       <div>
         <div class="item-name"><?= e($l['titulo']) ?></div>
         <?php if ($l['sku']): ?><div class="item-sku"><?= e($l['sku']) ?></div><?php endif; ?>
         <?php if ($l['descripcion']): ?><div class="item-desc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
       </div>
+      <?php if (!$ocultar_cp): ?>
       <div style="text-align:center;font:400 14px var(--num);color:var(--t2);padding-top:2px">
         <?= rtrim(rtrim(number_format($l['cantidad'],4),'0'),'.') ?>
       </div>
       <div style="text-align:right;font:400 14px var(--num);color:var(--t2);padding-top:2px">
         <?= $l['precio_unit'] > 0 ? fmt_v($l['precio_unit']) : '—' ?>
       </div>
+      <?php endif; ?>
       <div style="text-align:right;font:600 14px var(--num);padding-top:2px">
         <?= fmt_v($l['subtotal']) ?>
       </div>
@@ -480,12 +488,12 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="abo-forma"><?= $notas_r ?: ucfirst($forma) ?></div>
         <div class="abo-btns">
           <div class="abo-folio <?= $es_cancelacion?'abo-folio-cancel':'' ?>"
-               onclick="openRec(<?= htmlspecialchars($rec_data, ENT_QUOTES) ?>)">
+               data-rec="<?= e($rec_data) ?>" onclick="openRec(JSON.parse(this.dataset.rec))">
                🧾 Ver recibo <?= e($r['numero']) ?>
           </div>
           <?php if ($rec_cancel_data): ?>
           <div class="abo-folio abo-folio-cancel" style="margin-left:6px"
-               onclick="openRec(<?= htmlspecialchars($rec_cancel_data, ENT_QUOTES) ?>)">
+               data-rec="<?= e($rec_cancel_data) ?>" onclick="openRec(JSON.parse(this.dataset.rec))">
                Cancelación →
           </div>
           <?php endif; ?>
@@ -550,7 +558,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
   <?php if (!empty($lineas)): ?>
   <table class="fac-tbl">
-    <thead><tr><th style="width:16pt">#</th><th>Descripción</th><th class="r" style="width:60pt">Cant.</th><th class="r" style="width:70pt">P. Unit.</th><th class="r" style="width:80pt">Total</th></tr></thead>
+    <thead><tr><th style="width:16pt">#</th><th>Descripción</th><?php if (!$ocultar_cp): ?><th class="r" style="width:60pt">Cant.</th><th class="r" style="width:70pt">P. Unit.</th><?php endif; ?><th class="r" style="width:80pt">Total</th></tr></thead>
     <tbody>
     <?php foreach ($lineas as $i => $l): ?>
     <tr>
@@ -560,8 +568,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <?php if ($l['sku']): ?><div class="td-sku"><?= e($l['sku']) ?></div><?php endif; ?>
         <?php if ($l['descripcion']): ?><div class="td-desc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
       </td>
+      <?php if (!$ocultar_cp): ?>
       <td class="td-qty"><?= number_format($l['cantidad'],2) ?> pz.</td>
       <td class="td-pu"><?= $l['precio_unit'] > 0 ? fmt_v($l['precio_unit']) : '—' ?></td>
+      <?php endif; ?>
       <td class="td-total"><?= $l['precio_unit'] > 0 ? fmt_v($l['subtotal']) : fmt_v(0) ?></td>
     </tr>
     <?php endforeach; ?>

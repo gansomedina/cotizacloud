@@ -26,26 +26,12 @@ if (!empty($_POST['website_url'])) {
 }
 
 // ─── Anti-spam: Rate limit (3 registros por IP por hora) ─
-$ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-$rate_dir = sys_get_temp_dir() . '/cotizacloud_rate';
-if (!is_dir($rate_dir)) @mkdir($rate_dir, 0700, true);
-$rate_file = $rate_dir . '/' . md5($ip) . '.json';
-$rate_window = 3600; // 1 hora
-$rate_max = 3;
-
-$attempts = [];
-if (file_exists($rate_file)) {
-    $attempts = json_decode(file_get_contents($rate_file), true) ?: [];
-    $attempts = array_filter($attempts, function($t) use ($rate_window) {
-        return $t > time() - $rate_window;
-    });
-}
-if (count($attempts) >= $rate_max) {
-    $_SESSION['registro_errores'] = ['general' => 'Demasiados intentos de registro. Intenta de nuevo en 1 hora.'];
+$rate = rate_check('registro', 3, 60);
+if (!$rate['ok']) {
+    $_SESSION['registro_errores'] = ['general' => $rate['error']];
     redirect('/registro');
 }
-$attempts[] = time();
-file_put_contents($rate_file, json_encode(array_values($attempts)));
+rate_hit('registro');
 
 // ─── Recoger y limpiar valores ───────────────────────────
 $nombre_empresa = trim($_POST['nombre_empresa'] ?? '');
@@ -98,63 +84,51 @@ if (!empty($errores)) {
     redirect('/registro');
 }
 
-// ─── Crear empresa y usuario admin ───────────────────────
+// ─── Auto-crear tabla si no existe ──────────────────────
 try {
-    DB::beginTransaction();
-
-    $empresa_id = DB::insert(
-        "INSERT INTO empresas
-         (slug, nombre, moneda, impuesto_modo, impuesto_pct, activa)
-         VALUES (?, ?, ?, ?, ?, 1)",
-        [$slug_raw, $nombre_empresa, $moneda, $impuesto_modo, $impuesto_pct]
-    );
-
-    foreach ([
-        ['Material extra',      '#3b82f6'],
-        ['Mano de obra',        '#10b981'],
-        ['Transporte',          '#8b5cf6'],
-        ['Instalación',         '#f59e0b'],
-        ['Garantía / servicio', '#06b6d4'],
-    ] as [$cat_nombre, $cat_color]) {
-        DB::execute(
-            "INSERT INTO categorias_costos (empresa_id, nombre, color, activa) VALUES (?, ?, ?, 1)",
-            [$empresa_id, $cat_nombre, $cat_color]
-        );
-    }
-
-    DB::insert(
-        "INSERT INTO usuarios
-         (empresa_id, nombre, email, password_hash, rol, activo)
-         VALUES (?, ?, ?, ?, 'admin', 1)",
-        [
-            $empresa_id,
-            $nombre,
-            $email,
-            password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]),
-        ]
-    );
-
-    DB::commit();
-
-} catch (Exception $e) {
-    DB::rollback();
-    if (DEBUG) throw $e;
-    $_SESSION['registro_errores'] = ['general' => 'Error al crear la cuenta. Intenta de nuevo.'];
-    $_SESSION['registro_valores'] = $valores;
-    redirect('/registro');
+    DB::execute("SELECT 1 FROM email_verificacion LIMIT 0");
+} catch (\PDOException $e) {
+    DB::execute("CREATE TABLE IF NOT EXISTS email_verificacion (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        empresa_id INT DEFAULT NULL,
+        codigo VARCHAR(10) NOT NULL,
+        intentos TINYINT NOT NULL DEFAULT 0,
+        verificado TINYINT(1) NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME NOT NULL,
+        INDEX idx_email (email),
+        INDEX idx_codigo (codigo),
+        INDEX idx_expires (expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
 
-// ─── Notificar al superadmin ─────────────────────
-try {
-    PushNotification::enviar_a_superadmin(
-        'nueva_empresa',
-        'Nueva empresa registrada',
-        "{$nombre_empresa} ({$slug_raw}) — {$nombre} <{$email}>",
-        ['url' => '/superadmin']
-    );
-} catch (Exception $e) {
-    // No bloquear el registro si falla la notificación
-}
+// ─── Generar código de verificación ─────────────────────
+$codigo = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-// ─── Redirigir al login centralizado ─────────────
-redirect('/login?nuevo=1&empresa=' . urlencode($slug_raw) . '&u=' . urlencode($email));
+// Invalidar códigos previos para este email
+DB::execute("UPDATE email_verificacion SET verificado = 1 WHERE email = ? AND verificado = 0", [$email]);
+
+DB::execute(
+    "INSERT INTO email_verificacion (email, codigo, expires_at)
+     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))",
+    [$email, $codigo]
+);
+
+// ─── Guardar datos de registro en sesión (pendiente verificación) ──
+$_SESSION['registro_pendiente'] = [
+    'nombre_empresa' => $nombre_empresa,
+    'slug'           => $slug_raw,
+    'nombre'         => $nombre,
+    'email'          => $email,
+    'password'       => $password,
+    'moneda'         => $moneda,
+    'impuesto_modo'  => $impuesto_modo,
+    'impuesto_pct'   => $impuesto_pct,
+];
+
+// ─── Enviar código por email ────────────────────────────
+Mailer::enviar_verificacion($email, $nombre, $codigo);
+
+// ─── Redirigir a verificación de email ──────────────────
+redirect('/verificar-email');

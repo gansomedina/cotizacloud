@@ -128,6 +128,11 @@ class Auth
         // Registrar actividad: login
         ActividadScore::registrar((int)$usuario['id'], (int)$usuario['empresa_id'], 'login');
 
+        // Regenerar ID de sesión para prevenir session fixation
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
+
         // Setear cookie
         setcookie(SESSION_NAME, $token, [
             'expires'  => time() + $duracion,
@@ -194,7 +199,10 @@ class Auth
                     u.puede_editar_precios, u.puede_aplicar_descuentos,
                     u.puede_ver_todas_cots, u.puede_ver_todas_ventas,
                     u.puede_eliminar_items_venta, u.puede_cancelar_recibos,
-                    u.puede_capturar_pagos,
+                    u.puede_capturar_pagos, u.puede_asignar_cotizaciones,
+                    u.puede_ver_costos, u.puede_ver_proveedores,
+                    u.puede_crear_cotizaciones, u.puede_editar_cotizaciones,
+                    u.puede_ver_cantidades,
                     u.ultimo_login, u.password_hash
              FROM user_sessions s
              JOIN usuarios u ON u.id = s.usuario_id
@@ -280,6 +288,9 @@ class Auth
             'asignar_cotizaciones',
             'ver_costos',
             'ver_proveedores',
+            'crear_cotizaciones',
+            'editar_cotizaciones',
+            'ver_cantidades',
         ];
 
         if (!in_array($permiso, $permisos_validos)) return false;
@@ -416,7 +427,7 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
                     trim($datos['nombre'] ?? $datos['usuario']),
                     trim($datos['usuario']),
                     trim($datos['email'] ?? ''),
-                    password_hash($datos['password'], PASSWORD_BCRYPT),
+                    password_hash($datos['password'], PASSWORD_BCRYPT, ['cost' => 12]),
                 ]
             );
 

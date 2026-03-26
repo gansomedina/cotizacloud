@@ -204,3 +204,123 @@ npx cap sync android
 
 ### Branch de trabajo
 - `claude/debug-connection-issues-Lc1Jr` — commits pusheados
+
+## Sesión 26 marzo 2026
+
+### Completado
+1. **Fix sobrepago en ventas** — `abono.php` ya no trunca `pagado` al total cuando hay sobrepago
+2. **Concepto en email de abono** — `Mailer::enviar_abono()` incluye concepto
+3. **Modo de costos** — Tab "Costos" en Config con 3 modos: por venta, por empresa, ambos (Business)
+4. **Reportes adaptados al modo** — Tab Costos y tab Financiero respetan `costos_modo`
+5. **Punto de equilibrio** — Reportes: gastos fijos mensuales, ventas necesarias, cobertura actual
+6. **Ranking de rentabilidad** — Reportes: top 5 más y menos rentables
+7. **Tab Proveedores en reportes** — Business: top proveedores, pagos mensuales, detalle
+8. **Web Push para navegador** — Service Worker + VAPID + RFC 8291, sin dependencias externas
+9. **Push de abonos** — Notificación push al registrar pago (web + app)
+10. **Toggles de notificaciones** — Config > Empresa: on/off por evento (acepta, rechaza, abono, radar)
+11. **Email superadmin** — Notificación por email de nuevas empresas, tickets y licencias
+12. **Asesor en ventas** — `quote_action.php` hereda `usuario_id` y `vendedor_id` de la cotización
+13. **Permisos crear/editar cotización** — Nuevos permisos granulares por usuario
+14. **Ocultar cantidad/precio unitario** — 2 niveles: empresa (slugs públicos) y usuario (editor interno)
+15. **Fix dialog "Asignar cliente"** — Ya no se abre solo al cargar la página
+16. **Ventas sin pagos** — Tarjeta en dashboard con ventas pendientes sin ningún abono
+17. **Fix eliminar cotización** — Limpia dependencias en transacción, muestra error real
+18. **Labels reportes cotizaciones** — "Sin abrir", "Suspendidas", "Abiertas" en vez de "Enviadas"/"Vistas"
+
+### Auditoría de seguridad — Corregidos
+1. **CRÍTICO**: Total se recalcula server-side al aceptar cotización (no confiar en cliente)
+2. **ALTO**: Pagos concurrentes con `FOR UPDATE` (previene corrupción de saldo)
+3. **ALTO**: Folios atómicos con `DB::siguiente_folio()` (previene duplicados)
+4. **ALTO**: Reset password solo invalida sesiones del usuario afectado
+5. **CRÍTICO**: Permisos `usuario.php` — UPDATE/INSERT incluyen las 3 columnas nuevas
+
+### Auditoría — Pendientes (medios/bajos)
+- CSRF en 17 endpoints JSON POST (especialmente config/usuario y config/empresa)
+- `SELECT *` en Auth.php hot path (cargar solo columnas necesarias)
+- `password_hash` en `Auth::usuario()` (remover del SELECT de sesión)
+- `ALTER TABLE` en `trial_info()` (mover a migración, no runtime)
+- `ENV` default cambiar de 'development' a 'production'
+- Falta HSTS y Content-Security-Policy headers
+- 16 archivos backup muertos (688 KB)
+- 6 tablas sin FOREIGN KEY constraints
+- Sesiones expiradas sin cron de limpieza
+
+### Migraciones de esta sesión
+1. `migrations/add_costos_modo.sql` — columna `costos_modo` en empresas
+2. `migrations/add_web_push.sql` — ampliar token para Web Push subscriptions
+3. `migrations/add_notif_config.sql` — columna `notif_config` JSON en empresas
+4. `migrations/add_permisos_cotizaciones.sql` — `puede_crear/editar_cotizaciones` en usuarios
+5. `migrations/add_ocultar_cantpu.sql` — `ocultar_cant_pu` en empresas, `puede_ver_cantidades` en usuarios
+
+### Config.php del servidor (manual)
+```php
+// Web Push (VAPID)
+define('VAPID_PUBLIC_KEY',  'BH3SNMbyH-Q-f1hIU2TjYc_V6vHjF7s1OPtnBxm3rX5YFPn16Qrbv9-2zg1ghp3vUgVgvHe0YKwSrt45kNdW70s');
+define('VAPID_PRIVATE_PEM', '/home/cotizacl/key/vapid_private.pem');
+define('VAPID_SUBJECT',     'mailto:noreply@cotiza.cloud');
+
+// Email superadmin
+define('SUPERADMIN_EMAIL',  'tu@email.com');
+```
+
+### Branch de trabajo
+- `claude/review-apple-store-build-xB5jg`
+
+## Dominio Propio por Empresa — Pendiente (análisis completo)
+
+### Concepto
+Permitir que una empresa use su propio dominio para los slugs públicos (cotizaciones, ventas, recibos).
+Ejemplo: `cotizaciones.muebleria.com/c/slug` en vez de `muebleria.cotiza.cloud/c/slug`
+
+### Arquitectura propuesta
+- Columna `dominio_propio VARCHAR(255) UNIQUE` en tabla `empresas`
+- En `Auth.php`: si el host NO es `*.cotiza.cloud`, buscar en `dominio_propio`
+- El resto del sistema no cambia (`EMPRESA_ID` se define igual)
+- Solo vistas públicas (`/c/`, `/v/`, `/r/`), NO login ni dashboard
+
+### Requisitos del cliente
+- Crear CNAME: `cotizaciones.sudominio.com → cotiza.cloud`
+- O A record apuntando a la IP del servidor
+
+### Reto principal: SSL
+| Opción | Complejidad | Notas |
+|--------|-------------|-------|
+| cPanel AutoSSL | Baja | Genera cert automático si el dominio apunta al servidor. Límite ~100-200 dominios |
+| Cloudflare como proxy | Baja | Cliente configura Cloudflare, maneja SSL. El más escalable |
+| Certbot manual | Media | Requiere VPS con root. `certbot -d dominio.com` por cliente |
+| Caddy server | Media | Certs automáticos. Requiere migrar de Apache |
+
+### Verificación de propiedad del dominio
+- **Fase 1**: Manual — superadmin configura después de verificar con el cliente
+- **Fase 2**: DNS TXT automático — cliente agrega registro TXT con token generado
+- **Fase 3**: HTTP verification — archivo `.well-known/verify-xxx`
+
+### Panel superadmin
+Ficha de empresa con: dominio propio, estado DNS (verificado/no apunta), estado SSL (activo/pendiente)
+
+### Plan de implementación
+| Fase | Qué incluye | Esfuerzo |
+|------|-------------|----------|
+| 1 | Solo slugs públicos + config manual superadmin | ~4 horas |
+| 2 | Verificación DNS automática + estado en panel | ~3 horas |
+| 3 | Login completo con dominio propio (opcional) | ~5 horas |
+
+### Impacto en URLs
+| Recurso | Sin dominio propio | Con dominio propio |
+|---------|-------------------|-------------------|
+| Cotización | `empresa.cotiza.cloud/c/slug` | `cots.empresa.com/c/slug` |
+| Venta | `empresa.cotiza.cloud/v/slug` | `cots.empresa.com/v/slug` |
+| Recibo | `empresa.cotiza.cloud/r/token` | `cots.empresa.com/r/token` |
+| Login/Dashboard | `empresa.cotiza.cloud/login` | NO (sigue en cotiza.cloud) |
+
+### Pricing sugerido
+- Free/Pro: subdominio `empresa.cotiza.cloud`
+- Business: dominio propio disponible
+
+### Archivos a modificar
+| Archivo | Cambio |
+|---------|--------|
+| `core/Auth.php` | Detección por `dominio_propio` si host no es `*.cotiza.cloud` |
+| `modules/superadmin/empresa.php` | Campo para configurar dominio propio |
+| BD migración | `ALTER TABLE empresas ADD COLUMN dominio_propio VARCHAR(255) UNIQUE` |
+| Emails (Mailer.php) | Usar dominio propio en links si está configurado |

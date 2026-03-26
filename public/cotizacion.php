@@ -17,7 +17,7 @@ $cot = DB::row(
             e.impuesto_modo, e.impuesto_pct, e.impuesto_nombre AS impuesto_label,
             e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado, e.cot_theme,
             e.texto_aceptar, e.texto_rechazar,
-            e.slug AS emp_slug,
+            e.slug AS emp_slug, e.ocultar_cant_pu,
             cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.email AS cli_email,
             u.nombre  AS asesor_nombre
      FROM cotizaciones c
@@ -82,8 +82,17 @@ if ($adc_exp && $adc_exp < time()) { $adc_on = false; }
 
 // ─── Calcular totales ────────────────────────────────────
 $subtotal = array_sum(array_column($lineas, 'subtotal'));
-$desc_auto_amt = $adc_on ? round($subtotal * $adc_pct / 100, 2) : 0;
-$base = $subtotal - $desc_auto_amt;
+
+// Si ya fue aceptada, usar los valores guardados al momento de la aceptación
+if ($cot['estado'] === 'aceptada' || $cot['estado'] === 'convertida') {
+    $desc_auto_amt = (float)($cot['descuento_auto_amt'] ?? 0);
+    $cupon_monto_guardado = (float)($cot['cupon_monto'] ?? 0);
+    $base = $subtotal - $desc_auto_amt - $cupon_monto_guardado;
+} else {
+    $desc_auto_amt = $adc_on ? round($subtotal * $adc_pct / 100, 2) : 0;
+    $cupon_monto_guardado = 0;
+    $base = $subtotal - $desc_auto_amt;
+}
 $impuesto_amt = 0;
 if ($cot['impuesto_modo'] === 'suma') {
     $impuesto_amt = round($base * ((float)$cot['impuesto_pct'] / 100), 2);
@@ -267,6 +276,7 @@ $themes = [
     'oscuro'  => ['g'=>'#1e293b','glt'=>'#f1f5f9','gbd'=>'#cbd5e1'],
 ];
 $th = $themes[$cot['cot_theme'] ?? 'verde'] ?? $themes['verde'];
+$ocultar_cp = !empty($cot['ocultar_cant_pu']);
 ?>
 :root{--g:<?=$th['g']?>;--glt:<?=$th['glt']?>;--gbd:<?=$th['gbd']?>;--text:#111;--t2:#444;--t3:#888;--bd:#d8d8d8;--bg:#f7f7f5;--white:#fff;--amb:#92400e;--red:#b91c1c;--r:6px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -515,6 +525,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     color:#666; text-align:center; line-height:1.6 }
 }
 </style>
+<?= MarketingPixels::scripts_base(EMPRESA_ID) ?>
 </head>
 <body>
 
@@ -644,7 +655,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <div id="itemsBlock">
   <div class="slbl">Artículos incluidos</div>
   <table class="tbl">
-    <thead><tr><th>Descripción</th><th>Cantidad</th><th class="r">Total</th></tr></thead>
+    <thead><tr><th>Descripción</th><?php if (!$ocultar_cp): ?><th>Cantidad</th><?php endif; ?><th class="r">Total</th></tr></thead>
     <tbody>
     <?php foreach ($lineas as $l): ?>
     <tr>
@@ -653,7 +664,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
         <?php if ($l['sku']): ?><div class="isku"><?= e($l['sku']) ?></div><?php endif; ?>
         <?php if ($l['descripcion']): ?><div class="idesc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
       </td>
+      <?php if (!$ocultar_cp): ?>
       <td class="tqty"><?= $l['precio_unit'] > 0 ? number_format($l['cantidad'],2).' × '.fmt_pub($l['precio_unit']) : '—' ?></td>
+      <?php endif; ?>
       <td class="tamt"><?= $l['precio_unit'] > 0 ? fmt_pub($l['subtotal']) : fmt_pub(0) ?></td>
     </tr>
     <?php endforeach; ?>
@@ -669,10 +682,14 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       <?php if ($l['descripcion']): ?><div class="im-desc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
       <?php if ($l['precio_unit'] > 0): ?>
       <div class="im-meta">
+        <?php if (!$ocultar_cp): ?>
         <div class="im-meta-left">
           <div class="im-meta-chip">Cant. <span><?= number_format($l['cantidad'],2) ?></span></div>
           <div class="im-meta-chip">P.U. <span><?= fmt_pub($l['precio_unit']) ?></span></div>
         </div>
+        <?php else: ?>
+        <div class="im-meta-left"></div>
+        <?php endif; ?>
         <div class="im-meta-total"><?= fmt_pub($l['subtotal']) ?></div>
       </div>
       <?php else: ?>
@@ -686,15 +703,22 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <div class="slbl" id="resumenlbl-screen">Resumen</div>
   <div class="tots" id="totalsScreen">
     <div class="tr"><span class="tl">Subtotal</span><span class="tv" id="tSub"><?= fmt_pub($subtotal) ?></span></div>
-    <?php if ($adc_on): ?>
+    <?php if ($desc_auto_amt > 0): ?>
     <div class="tr td" id="tAR">
-      <span class="tl" id="tAL">Descuento especial (<?= number_format($adc_pct,0) ?>%)</span>
+      <span class="tl" id="tAL">Descuento especial<?= $adc_pct > 0 ? ' (' . number_format($adc_pct,0) . '%)' : '' ?></span>
       <span class="tv" id="tAV">-<?= fmt_pub($desc_auto_amt) ?></span>
     </div>
     <?php else: ?>
     <div class="tr td" id="tAR" style="display:none"><span class="tl" id="tAL">Descuento</span><span class="tv" id="tAV">—</span></div>
     <?php endif; ?>
+    <?php if ($cupon_monto_guardado > 0): ?>
+    <div class="tr td" id="tCR">
+      <span class="tl" id="tCL">Cupón <?= e($cot['cupon_codigo'] ?? '') ?><?= ($cot['cupon_pct'] ?? 0) > 0 ? ' (' . (float)$cot['cupon_pct'] . '%)' : '' ?></span>
+      <span class="tv" id="tCV">-<?= fmt_pub($cupon_monto_guardado) ?></span>
+    </div>
+    <?php else: ?>
     <div class="tr td" id="tCR" style="display:none"><span class="tl" id="tCL">Cupón</span><span class="tv" id="tCV">—</span></div>
+    <?php endif; ?>
     <?php if ($cot['impuesto_modo'] !== 'ninguno'): ?>
     <div class="tr"><span class="tl"><?= e($cot['impuesto_label'] ?: ($cot['emp_impuesto_label'] ?? 'IVA')) ?> (<?= (float)$cot['impuesto_pct'] ?>%)</span><span class="tv"><?= fmt_pub($impuesto_amt) ?></span></div>
     <?php endif; ?>
@@ -1059,6 +1083,11 @@ async function doAcc(){
         'WhatsApp: '+(EMPRESA.tel||'')+(EMPRESA.email?' · '+EMPRESA.email:'')
     );
 
+    // Marketing pixels — evento de conversión
+    var totalFinal = total_base;
+    var MONEDA = '<?= e($cot['moneda'] ?? 'MXN') ?>';
+    <?= MarketingPixels::evento_aceptar_js(EMPRESA_ID) ?>
+
     // Recargar después de 3 segundos para mostrar estado actualizado
     if(respOk) setTimeout(() => location.reload(), 3000);
 }
@@ -1090,6 +1119,7 @@ async function doRej(){
         EMPRESA.nombre+(EMPRESA.tel?' · '+EMPRESA.tel:'')
     );
     if(window.czTrack) window.czTrack('reject_confirm');
+    <?= MarketingPixels::evento_rechazar_js(EMPRESA_ID) ?>
 }
 
 // ─── Éxito ───────────────────────────────────────────────
@@ -1389,5 +1419,6 @@ calc();
   <?php if (!empty($cot['emp_web'])): ?> · <?= e(preg_replace('#^https?://#','',$cot['emp_web'])) ?><?php endif; ?><br>
   Cotización <?= e($cot['numero']) ?> generada en cotiza.cloud
 </div>
+<?= MarketingPixels::evento_view(EMPRESA_ID, $cot['numero'], (float)$total_base, $cot['moneda'] ?? 'MXN') ?>
 </body>
 </html>

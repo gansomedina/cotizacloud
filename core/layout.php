@@ -315,9 +315,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         </div>
         <?php
         $trial_layout = trial_info(EMPRESA_ID);
-        if ($trial_layout['es_trial']): ?>
+        if ($trial_layout['es_free']): ?>
         <div style="padding:6px 12px;margin-bottom:4px;font:500 11px var(--body);color:var(--t3)">
-            Plan: <span style="color:var(--amb);font-weight:700">Prueba</span>
+            Plan: <span style="color:var(--amb);font-weight:700">Free</span>
             <span style="font:400 11px var(--num);color:var(--t3);display:block;margin-top:1px"><?= $trial_layout['usadas'] ?>/<?= TRIAL_LIMIT ?> cotizaciones</span>
         </div>
         <?php elseif ($trial_layout['es_pagado']): ?>
@@ -457,6 +457,12 @@ function toggleMoreDrawer(){
 
 <!-- Push Notifications (solo carga en app nativa Capacitor) -->
 <script src="/assets/js/push.js?v=2"></script>
+
+<!-- Web Push Notifications (solo navegador, no app nativa) -->
+<?php if (Auth::logueado()): ?>
+<script>var WEBPUSH_KEY = '<?= VAPID_PUBLIC_KEY ?>';</script>
+<script src="/assets/js/web-push.js?v=1" defer></script>
+<?php endif; ?>
 
 <script>
 // Twemoji: convierte emojis Unicode a imágenes SVG para iOS WKWebView

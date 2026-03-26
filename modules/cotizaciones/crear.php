@@ -14,14 +14,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 csrf_check();
 
+if (!Auth::es_admin() && !Auth::puede('crear_cotizaciones')) {
+    json_error('Sin permiso para crear cotizaciones', 403);
+}
+
 $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $empresa_id = EMPRESA_ID;
 
-// ─── Verificar límite trial ──────────────────────────────
+// ─── Verificar límite plan Free ──────────────────────────
 $trial = trial_info($empresa_id);
 if ($trial['agotado']) {
-    json_error('Has alcanzado el límite de ' . TRIAL_LIMIT . ' cotizaciones de prueba. Activa tu licencia para continuar.', 402);
+    json_error('Has alcanzado el límite de ' . TRIAL_LIMIT . ' cotizaciones del plan Free. Activa Pro para continuar.', 402);
 }
 
 // ─── Leer JSON ───────────────────────────────────────────
@@ -33,13 +37,12 @@ $titulo = trim($body['titulo'] ?? '');
 if (empty($titulo)) json_error('El título es requerido');
 
 $cliente_id = isset($body['cliente_id']) ? (int)$body['cliente_id'] : null;
-if ($cliente_id) {
-    $existe_cliente = DB::val(
-        "SELECT id FROM clientes WHERE id = ? AND empresa_id = ?",
-        [$cliente_id, $empresa_id]
-    );
-    if (!$existe_cliente) $cliente_id = null;
-}
+if (!$cliente_id) json_error('El cliente es requerido');
+$existe_cliente = DB::val(
+    "SELECT id FROM clientes WHERE id = ? AND empresa_id = ?",
+    [$cliente_id, $empresa_id]
+);
+if (!$existe_cliente) json_error('Cliente no válido');
 
 // Vendedor asignado (default = usuario actual)
 $vendedor_id = Auth::id();

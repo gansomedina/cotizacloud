@@ -21,17 +21,7 @@ if (!$venta_id) json_error('ID inválido', 400);
 $body = json_decode(file_get_contents('php://input'), true);
 if (!$body) json_error('Payload inválido', 400);
 
-// ─── Cargar venta ────────────────────────────────────────
-$venta = DB::row(
-    "SELECT * FROM ventas WHERE id = ? AND empresa_id = ?",
-    [$venta_id, $empresa_id]
-);
-if (!$venta) json_error('Venta no encontrada', 404);
-if (in_array($venta['estado'], ['cancelada', 'entregada'])) {
-    json_error('No se puede abonar a una venta ' . $venta['estado'], 422);
-}
-
-// ─── Validar ─────────────────────────────────────────────
+// ─── Validar input antes de tocar BD ─────────────────────
 $formas_validas = ['efectivo', 'transferencia', 'tarjeta'];
 $forma_pago = $body['forma_pago'] ?? 'efectivo';
 if (!in_array($forma_pago, $formas_validas)) json_error('Forma de pago inválida');
@@ -42,12 +32,24 @@ if ($monto <= 0) json_error('El monto debe ser mayor a 0');
 $concepto   = substr(trim($body['concepto']   ?? ''), 0, 255);
 $referencia = substr(trim($body['referencia'] ?? ''), 0, 255);
 
-// ─── Generar folio recibo ────────────────────────────────
+// ─── Transacción con lock ────────────────────────────────
 try {
     DB::beginTransaction();
 
-    $cnt_rec    = (int)DB::val("SELECT COUNT(*) FROM recibos WHERE empresa_id=?", [$empresa_id]);
-    $numero_rec = 'REC-' . date('Y') . '-' . str_pad($cnt_rec + 1, 4, '0', STR_PAD_LEFT);
+    // Cargar venta con lock para prevenir pagos concurrentes
+    $venta = DB::row(
+        "SELECT * FROM ventas WHERE id = ? AND empresa_id = ? FOR UPDATE",
+        [$venta_id, $empresa_id]
+    );
+    if (!$venta) { DB::rollback(); json_error('Venta no encontrada', 404); }
+    if (in_array($venta['estado'], ['cancelada', 'entregada'])) {
+        DB::rollback();
+        json_error('No se puede abonar a una venta ' . $venta['estado'], 422);
+    }
+
+    // Folio atómico
+    $max_rec    = (int)DB::val("SELECT COALESCE(MAX(id),0) FROM recibos WHERE empresa_id=?", [$empresa_id]);
+    $numero_rec = 'REC-' . date('Y') . '-' . str_pad($max_rec + 1, 4, '0', STR_PAD_LEFT);
     $token_rec  = generar_token(32);
 
     // Calcular nuevo pagado y saldo
@@ -59,7 +61,7 @@ try {
     if ($nuevo_saldo <= 0) {
         $nuevo_estado   = 'pagada';
         $nuevo_saldo    = 0;
-        $nuevo_pagado   = (float)$venta['total'];
+        // pagado conserva el monto real (puede ser > total si hubo sobrepago)
     } elseif ($nuevo_pagado > 0) {
         $nuevo_estado = 'parcial';
     }
@@ -102,6 +104,59 @@ VentaLog::registrar(
     '$' . number_format($monto, 2) . ' · ' . ($concepto ?: ucfirst($forma_pago)) . ($notas_rec ? ' · ' . $notas_rec : ''),
     Auth::id()
 );
+
+// ─── Notificaciones de abono ─────────────────────────────────
+$ncfg_abono = notif_config($empresa_id);
+if ($ncfg_abono['abono_registrado']) {
+
+// Push
+try {
+    $venta_num = $venta['numero'] ?? 'VTA-' . $venta_id;
+    $push_titulo = 'Abono registrado: $' . number_format($monto, 2);
+    $push_cuerpo = $venta_num . ($concepto ? ' — ' . $concepto : '');
+    PushNotification::enviar_a_empresa(
+        $empresa_id,
+        'abono_registrado',
+        $push_titulo,
+        $push_cuerpo,
+        ['venta_id' => $venta_id, 'url' => '/ventas/' . $venta_id]
+    );
+} catch (\Exception $e) {
+    if (defined('DEBUG') && DEBUG) error_log('Push abono error: ' . $e->getMessage());
+}
+
+// Email
+try {
+    $notif_email = $empresa['notif_email'] ?? '';
+    if ($notif_email) {
+        $cliente_info = DB::row(
+            "SELECT cl.nombre FROM clientes cl
+             JOIN ventas v ON v.cliente_id = cl.id
+             WHERE v.id = ? AND cl.empresa_id = ?",
+            [$venta_id, $empresa_id]
+        );
+        $moneda = $empresa['moneda'] ?? 'MXN';
+        $emp_slug = $empresa['slug'] ?? '';
+        $url_recibo = 'https://' . $emp_slug . '.' . BASE_DOMAIN . '/r/' . $token_rec;
+        Mailer::enviar_abono(
+            $notif_email,
+            $cliente_info['nombre'] ?? 'Cliente',
+            $empresa['nombre'] ?? 'CotizaCloud',
+            $numero_rec,
+            $monto,
+            $moneda,
+            $nuevo_saldo,
+            $forma_pago,
+            $url_recibo,
+            $concepto
+        );
+    }
+} catch (\Exception $e) {
+    if (defined('DEBUG') && DEBUG) error_log('Email abono error: ' . $e->getMessage());
+}
+
+} // cierre if notif abono_registrado
+
 ob_end_clean();
 json_ok([
     'recibo_id' => $recibo_id,
