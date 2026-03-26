@@ -1050,31 +1050,70 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 <div class="tab-panel <?= $tab_activo==='marketing'?'on':'' ?>" id="panel-marketing">
   <div class="sec">
     <div class="sec-lbl">Pixels de seguimiento</div>
-    <p style="font-size:13px;color:var(--t3);margin:0 0 16px">Agrega los IDs de tus pixels para medir el rendimiento de tus campanas publicitarias. Los scripts se inyectan automaticamente en las vistas publicas de cotizaciones y ventas.</p>
+    <p style="font-size:13px;color:var(--t3);margin:0 0 16px">Activa los pixels que uses y agrega tu ID. Los scripts se inyectan automaticamente en las vistas publicas de cotizaciones y ventas.</p>
     <div class="card">
-      <div class="field-row">
-        <div class="field-lbl">Meta Pixel (Facebook / Instagram)</div>
-        <div class="field-sub">Pixel ID de 15-16 digitos. Lo encuentras en Meta Events Manager > Data Sources > Pixel</div>
-        <input class="field-box" id="mkt_meta" type="text" placeholder="548297463810254" maxlength="20" value="<?= e($mkt['pixel_meta'] ?? '') ?>" style="margin-top:8px">
-      </div>
-      <div class="field-row">
-        <div class="field-lbl">Google Analytics 4</div>
-        <div class="field-sub">Measurement ID con formato G-XXXXXXXXXX. Lo encuentras en GA4 Admin > Data Streams</div>
-        <input class="field-box" id="mkt_ga4" type="text" placeholder="G-ABC1234DEF" maxlength="20" value="<?= e($mkt['pixel_ga4'] ?? '') ?>" style="margin-top:8px">
-      </div>
-      <div class="field-row">
-        <div class="field-lbl">Google Ads — Conversion</div>
-        <div class="field-sub">Conversion ID y Label. Los encuentras en Google Ads > Herramientas > Conversiones > Tu conversion > Configuracion de tag</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
-          <input class="field-box" id="mkt_gads_id" type="text" placeholder="AW-12345678901" maxlength="20" value="<?= e($mkt['pixel_gads_id'] ?? '') ?>">
-          <input class="field-box" id="mkt_gads_label" type="text" placeholder="Label: AbCdEf_12345" maxlength="30" value="<?= e($mkt['pixel_gads_label'] ?? '') ?>">
+
+      <!-- Meta Pixel -->
+      <div class="field-row h">
+        <div style="flex:1">
+          <div class="field-lbl">Meta Pixel (Facebook / Instagram)</div>
+          <div class="field-sub">Pixel ID de 15-16 digitos. Meta Events Manager > Data Sources > Pixel</div>
+          <div id="mkt_meta_wrap" style="margin-top:8px;display:<?= empty($mkt['pixel_meta'])?'none':'block' ?>">
+            <input class="field-box" id="mkt_meta" type="text" placeholder="548297463810254" maxlength="20" value="<?= e($mkt['pixel_meta'] ?? '') ?>">
+          </div>
         </div>
+        <label class="toggle">
+          <input type="checkbox" id="mkt_meta_on" <?= !empty($mkt['pixel_meta'])?'checked':'' ?> onchange="document.getElementById('mkt_meta_wrap').style.display=this.checked?'block':'none';if(!this.checked)document.getElementById('mkt_meta').value=''">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
       </div>
-      <div class="field-row">
-        <div class="field-lbl">TikTok Pixel</div>
-        <div class="field-sub">Pixel ID. Lo encuentras en TikTok Ads Manager > Assets > Events > Web Events</div>
-        <input class="field-box" id="mkt_tiktok" type="text" placeholder="CBGD5ABC123DEF456GH" maxlength="30" value="<?= e($mkt['pixel_tiktok'] ?? '') ?>" style="margin-top:8px">
+
+      <!-- GA4 -->
+      <div class="field-row h">
+        <div style="flex:1">
+          <div class="field-lbl">Google Analytics 4</div>
+          <div class="field-sub">Measurement ID formato G-XXXXXXXXXX. GA4 Admin > Data Streams</div>
+          <div id="mkt_ga4_wrap" style="margin-top:8px;display:<?= empty($mkt['pixel_ga4'])?'none':'block' ?>">
+            <input class="field-box" id="mkt_ga4" type="text" placeholder="G-ABC1234DEF" maxlength="20" value="<?= e($mkt['pixel_ga4'] ?? '') ?>">
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="mkt_ga4_on" <?= !empty($mkt['pixel_ga4'])?'checked':'' ?> onchange="document.getElementById('mkt_ga4_wrap').style.display=this.checked?'block':'none';if(!this.checked)document.getElementById('mkt_ga4').value=''">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
       </div>
+
+      <!-- Google Ads -->
+      <div class="field-row h">
+        <div style="flex:1">
+          <div class="field-lbl">Google Ads — Conversion</div>
+          <div class="field-sub">Conversion ID y Label. Google Ads > Herramientas > Conversiones</div>
+          <div id="mkt_gads_wrap" style="margin-top:8px;display:<?= empty($mkt['pixel_gads_id'])?'none':'grid' ?>;grid-template-columns:1fr 1fr;gap:10px">
+            <input class="field-box" id="mkt_gads_id" type="text" placeholder="AW-12345678901" maxlength="20" value="<?= e($mkt['pixel_gads_id'] ?? '') ?>">
+            <input class="field-box" id="mkt_gads_label" type="text" placeholder="Label: AbCdEf_12345" maxlength="30" value="<?= e($mkt['pixel_gads_label'] ?? '') ?>">
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="mkt_gads_on" <?= !empty($mkt['pixel_gads_id'])?'checked':'' ?> onchange="document.getElementById('mkt_gads_wrap').style.display=this.checked?'grid':'none';if(!this.checked){document.getElementById('mkt_gads_id').value='';document.getElementById('mkt_gads_label').value=''}">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+
+      <!-- TikTok -->
+      <div class="field-row h">
+        <div style="flex:1">
+          <div class="field-lbl">TikTok Pixel</div>
+          <div class="field-sub">Pixel ID. TikTok Ads Manager > Assets > Events > Web Events</div>
+          <div id="mkt_tiktok_wrap" style="margin-top:8px;display:<?= empty($mkt['pixel_tiktok'])?'none':'block' ?>">
+            <input class="field-box" id="mkt_tiktok" type="text" placeholder="CBGD5ABC123DEF456GH" maxlength="30" value="<?= e($mkt['pixel_tiktok'] ?? '') ?>">
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="mkt_tiktok_on" <?= !empty($mkt['pixel_tiktok'])?'checked':'' ?> onchange="document.getElementById('mkt_tiktok_wrap').style.display=this.checked?'block':'none';if(!this.checked)document.getElementById('mkt_tiktok').value=''">
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+
     </div>
   </div>
 
