@@ -1393,9 +1393,13 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <div><div class="perm-lbl">Costos</div><div class="perm-sub">Ver costos, registrar gastos, análisis</div></div>
           <label class="toggle"><input type="checkbox" id="perm_ver_costos" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
-        <div class="perm-row" style="border-bottom:none">
+        <div class="perm-row">
           <div><div class="perm-lbl">Proveedores</div><div class="perm-sub">Ver y gestionar proveedores</div></div>
           <label class="toggle"><input type="checkbox" id="perm_ver_proveedores" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row" style="border-bottom:none">
+          <div><div class="perm-lbl">Reportes</div><div class="perm-sub">Ver reportes financieros y de cotizaciones</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_ver_reportes" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
       </div>
     </div>
@@ -1768,6 +1772,7 @@ function nuevoUsuario() {
     document.getElementById('perm_asignar_cotizaciones').checked = false;
     document.getElementById('perm_ver_costos').checked = true;
     document.getElementById('perm_ver_proveedores').checked = true;
+    document.getElementById('perm_ver_reportes').checked = true;
     openSheet('shUsr');
 }
 function editarUsuario(id, data) {
@@ -1794,6 +1799,7 @@ function editarUsuario(id, data) {
     document.getElementById('perm_asignar_cotizaciones').checked = !!parseInt(data.puede_asignar_cotizaciones);
     document.getElementById('perm_ver_costos').checked = !!parseInt(data.puede_ver_costos ?? 1);
     document.getElementById('perm_ver_proveedores').checked = !!parseInt(data.puede_ver_proveedores ?? 1);
+    document.getElementById('perm_ver_reportes').checked = !!parseInt(data.puede_ver_reportes ?? 1);
     togglePerms(data.rol);
     openSheet('shUsr');
 }
@@ -1827,6 +1833,7 @@ async function guardarUsuario() {
         puede_asignar_cotizaciones:  document.getElementById('perm_asignar_cotizaciones').checked ? 1 : 0,
         puede_ver_costos:            document.getElementById('perm_ver_costos').checked ? 1 : 0,
         puede_ver_proveedores:       document.getElementById('perm_ver_proveedores').checked ? 1 : 0,
+        puede_ver_reportes:          document.getElementById('perm_ver_reportes').checked ? 1 : 0,
     };
     if (pass) payload.password = pass;
     const url = id ? '/config/usuario/' + id : '/config/usuario';

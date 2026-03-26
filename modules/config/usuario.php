@@ -52,6 +52,7 @@ $perms = [
     'puede_asignar_cotizaciones' => (int)($body['puede_asignar_cotizaciones'] ?? 0),
     'puede_ver_costos'           => (int)($body['puede_ver_costos']           ?? 1),
     'puede_ver_proveedores'      => (int)($body['puede_ver_proveedores']      ?? 1),
+    'puede_ver_reportes'         => (int)($body['puede_ver_reportes']         ?? 1),
 ];
 if ($rol === 'admin') {
     // Admin tiene todos los permisos implícitos
@@ -82,7 +83,7 @@ if ($usr_id > 0) {
             puede_ver_todas_cots=?, puede_ver_todas_ventas=?,
             puede_eliminar_items_venta=?, puede_agregar_extras=?, puede_cancelar_recibos=?,
             puede_capturar_pagos=?, puede_asignar_cotizaciones=?,
-            puede_ver_costos=?, puede_ver_proveedores=?";
+            puede_ver_costos=?, puede_ver_proveedores=?, puede_ver_reportes=?";
     $vals = [
         $nombre, $usuario, $email, $rol, $activo,
         $perms['puede_crear_cotizaciones'], $perms['puede_editar_cotizaciones'], $perms['puede_ver_cantidades'],
@@ -90,7 +91,7 @@ if ($usr_id > 0) {
         $perms['puede_ver_todas_cots'], $perms['puede_ver_todas_ventas'],
         $perms['puede_eliminar_items_venta'], $perms['puede_agregar_extras'], $perms['puede_cancelar_recibos'],
         $perms['puede_capturar_pagos'], $perms['puede_asignar_cotizaciones'],
-        $perms['puede_ver_costos'], $perms['puede_ver_proveedores'],
+        $perms['puede_ver_costos'], $perms['puede_ver_proveedores'], $perms['puede_ver_reportes'],
     ];
 
     if ($pass !== '') {
@@ -118,8 +119,8 @@ if ($usr_id > 0) {
           puede_ver_todas_cots, puede_ver_todas_ventas,
           puede_eliminar_items_venta, puede_agregar_extras, puede_cancelar_recibos,
           puede_capturar_pagos, puede_asignar_cotizaciones,
-          puede_ver_costos, puede_ver_proveedores)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          puede_ver_costos, puede_ver_proveedores, puede_ver_reportes)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [
             $eid, $nombre, $usuario, $email,
             password_hash($pass, PASSWORD_DEFAULT),
@@ -129,7 +130,7 @@ if ($usr_id > 0) {
             $perms['puede_ver_todas_cots'], $perms['puede_ver_todas_ventas'],
             $perms['puede_eliminar_items_venta'], $perms['puede_agregar_extras'], $perms['puede_cancelar_recibos'],
             $perms['puede_capturar_pagos'], $perms['puede_asignar_cotizaciones'],
-            $perms['puede_ver_costos'], $perms['puede_ver_proveedores'],
+            $perms['puede_ver_costos'], $perms['puede_ver_proveedores'], $perms['puede_ver_reportes'],
         ]
     );
     echo json_encode(['ok'=>true, 'id'=>$nuevo]);
