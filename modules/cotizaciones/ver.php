@@ -359,10 +359,10 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 
         <?php if ($es_editable): ?>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="add-item-btn" style="flex:1" onclick="catalogDialog.showModal()">
+        <button class="add-item-btn" style="flex:2" onclick="abrirCatalogo(false)">
             <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar artículo
         </button>
-        <button class="add-item-btn" style="flex:1;border-color:#d97706;color:#d97706" onclick="agregarItemExtra()">
+        <button class="add-item-btn" style="flex:1;border-color:#d97706;color:#d97706" onclick="abrirCatalogo(true)">
             <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar extra
         </button>
         </div>
@@ -450,6 +450,10 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <span class="panel-t-val">-<?= format_money($cot['descuento_auto_amt'], $empresa['moneda']) ?></span>
             </div>
             <?php endif; ?>
+            <div class="panel-t-row tot-row" style="display:none">
+                <span class="panel-t-lbl">Subtotal extras</span>
+                <span class="panel-t-val" id="total-extras">$0.00</span>
+            </div>
             <?php if ($empresa['impuesto_modo'] !== 'ninguno'): ?>
             <div class="panel-t-row">
                 <span class="panel-t-lbl"><?= e($empresa['impuesto_label'] ?? 'IVA') ?></span>
@@ -691,9 +695,10 @@ function renderCatalogList(filtro){
     el.innerHTML=lista.map(a=>`<div class="sh-item" onclick="agregarDesde(${a.id})"><div style="flex:1"><div class="sh-item-title">${esc(a.titulo)}</div>${a.sku?`<div class="sh-item-sku">${esc(a.sku)}</div>`:''}</div><div class="sh-item-price">${fmt(a.precio)}</div></div>`).join('');
 }
 function filtrarCatalogo(v){renderCatalogList(v);}
-function agregarDesde(id){const a=ARTICULOS.find(x=>x.id===id);if(!a)return;agregarItem(a.titulo,a.sku||'',a.descripcion||'',a.precio,id,true,false);closeSheet('catalogSheet','catalogOverlay');}
-function agregarItemVacio(){agregarItem('','','',0,null,true,false);closeSheet('catalogSheet','catalogOverlay');}
-function agregarItemExtra(){agregarItem('EXTRA: ','','',0,null,true,true);}
+let _agregandoExtra = false;
+function abrirCatalogo(esExtra){ _agregandoExtra = esExtra; catalogDialog.showModal(); }
+function agregarDesde(id){const a=ARTICULOS.find(x=>x.id===id);if(!a)return;const pre=_agregandoExtra?'EXTRA: ':'';agregarItem(pre+a.titulo,a.sku||'',a.descripcion||'',a.precio,id,true,_agregandoExtra);catalogDialog.close();_agregandoExtra=false;}
+function agregarItemVacio(){const pre=_agregandoExtra?'EXTRA: ':'';agregarItem(pre,'','',0,null,true,_agregandoExtra);catalogDialog.close();_agregandoExtra=false;}
 
 function renderClientList(filtro){
     const q=filtro.toLowerCase();
@@ -792,20 +797,28 @@ function updateItemPreview(input){input.closest('.item-card').querySelector('.it
 function calcItemTotal(input){const card=input.closest('.item-card');const cant=parseFloat(card.querySelector('[data-campo=cantidad]').value)||0;const precio=parseFloat(card.querySelector('[data-campo=precio]').value)||0;const t=cant*precio;card.querySelector('[data-campo=total]').value=fmt(t);card.querySelector('.item-amt-prev').textContent=fmt(t);calcularTotales();}
 
 function calcularTotales(){
-    let subtotal=0;
+    let subRegular=0, subExtras=0;
     document.querySelectorAll('#items-list .item-card').forEach(card=>{
         const cant=parseFloat(card.querySelector('[data-campo=cantidad]')?.value)||0;
         const precio=parseFloat(card.querySelector('[data-campo=precio]')?.value)||0;
-        subtotal+=cant*precio;
+        const monto=cant*precio;
+        if(parseInt(card.dataset.esExtra)||0) subExtras+=monto;
+        else subRegular+=monto;
     });
-    let base=subtotal,cuponAmt=0,descAutoAmt=0;
-    if(cuponSeleccionado){cuponAmt=subtotal*(cuponSeleccionado.pct/100);base-=cuponAmt;}
+    const subtotal=subRegular+subExtras;
+    // Descuentos/cupones solo aplican sobre artículos regulares
+    let base=subRegular,cuponAmt=0,descAutoAmt=0;
+    if(cuponSeleccionado){cuponAmt=subRegular*(cuponSeleccionado.pct/100);base-=cuponAmt;}
     if(descAutoActivo&&descAutoPct>0){descAutoAmt=base*(descAutoPct/100);base-=descAutoAmt;}
-    let impAmt=0,total=base;
+    let impAmt=0,totalBase=base;
     const modo=EMPRESA_CFG.impuesto_modo,pct=EMPRESA_CFG.impuesto_pct/100;
-    if(modo==='suma'){impAmt=base*pct;total=base+impAmt;}
+    if(modo==='suma'){impAmt=base*pct;totalBase=base+impAmt;}
     else if(modo==='incluido'){impAmt=base-(base/(1+pct));}
-    setText('total-subtotal',fmt(subtotal));
+    const total=totalBase+subExtras;
+    setText('total-subtotal',fmt(subRegular));
+    // Mostrar/ocultar extras subtotal
+    const extEl=document.getElementById('total-extras');
+    if(extEl){extEl.textContent=fmt(subExtras);extEl.closest('.tot-row').style.display=subExtras>0?'':'none';}
     setText('total-final',fmt(total));
 }
 
