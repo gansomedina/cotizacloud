@@ -715,51 +715,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
 
 <?php endif; ?>
 
-<?php if (Auth::es_superadmin() && !empty($ts)): ?>
-<!-- DEBUG SCORE (solo superadmin) -->
-<div class="card" style="margin-top:10px;padding:0;overflow:hidden">
-  <div onclick="this.nextElementSibling.classList.toggle('dbg-open');this.querySelector('.dbg-chev').classList.toggle('dbg-chev-open')" style="display:flex;align-items:center;gap:8px;padding:12px 16px;cursor:pointer;user-select:none;background:var(--bg);border-bottom:1px solid var(--border)">
-    <svg class="dbg-chev" width="12" height="12" viewBox="0 0 12 12" style="transition:transform .2s;flex-shrink:0"><path d="M4 2l4 4-4 4" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round"/></svg>
-    <span style="font:600 12px var(--body);color:var(--t3);letter-spacing:.05em;text-transform:uppercase">Debug score</span>
-  </div>
-  <div class="dbg-panel" style="display:none;padding:14px 16px;font:400 12px var(--num);color:var(--t2);line-height:1.8">
-    <style>.dbg-chev-open{transform:rotate(90deg)}.dbg-open{display:block!important}.dbg-row{display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:2px 0}.dbg-lbl{color:var(--t3)}.dbg-val{font-weight:600}.dbg-neg{color:var(--danger)}.dbg-sec{font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:10px 0 4px;padding-top:8px;border-top:1px solid var(--border)}</style>
-
-    <div class="dbg-sec" style="margin-top:0;border-top:none">Dimensiones (0-100%)</div>
-    <div class="dbg-row"><span class="dbg-lbl">Activación (20%)</span><span class="dbg-val"><?= round(($ts['s_activacion'] ?? 0) * 100, 1) ?>%</span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Seguimiento (35%)</span><span class="dbg-val"><?= round(($ts['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Conversión (45%)</span><span class="dbg-val"><?= round(($ts['s_conversion'] ?? 0) * 100, 1) ?>%</span></div>
-
-    <div class="dbg-sec">Penalizaciones</div>
-    <div class="dbg-row"><span class="dbg-lbl">Dormidas (<?= (int)($ts['cot_dormidas'] ?? 0) ?> cots)</span><span class="dbg-val dbg-neg"><?= ($ts['pen_dormidas'] ?? 0) > 0 ? '-'.round(($ts['pen_dormidas'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Seguimiento</span><span class="dbg-val dbg-neg"><?= ($ts['pen_seguimiento'] ?? 0) > 0 ? '-'.round(($ts['pen_seguimiento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Conversión</span><span class="dbg-val dbg-neg"><?= ($ts['pen_conversion'] ?? 0) > 0 ? '-'.round(($ts['pen_conversion'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Ventas sin pago >5d (<?= (int)($ts['ventas_sin_pago'] ?? 0) ?>)</span><span class="dbg-val dbg-neg"><?= ($ts['pen_sin_pago'] ?? 0) > 0 ? '-'.round(($ts['pen_sin_pago'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Total penalizaciones</span><span class="dbg-val dbg-neg"><?= ($ts['penalizaciones'] ?? 0) > 0 ? '-'.round(($ts['penalizaciones'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
-
-    <div class="dbg-sec">Datos crudos</div>
-    <div class="dbg-row"><span class="dbg-lbl">Asignadas</span><span class="dbg-val"><?= (int)($ts['cot_asignadas'] ?? 0) ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Vistas</span><span class="dbg-val"><?= (int)($ts['cot_vistas'] ?? 0) ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Cierres</span><span class="dbg-val"><?= (int)($ts['conversiones'] ?? 0) ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Cierres con radar</span><span class="dbg-val"><?= (int)($ts['cierres_bucket'] ?? 0) ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Tasa cierre</span><span class="dbg-val"><?= round(($ts['tasa_cierre'] ?? 0) * 100, 1) ?>%</span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Dormidas 7d</span><span class="dbg-val"><?= (int)($ts['cot_dormidas'] ?? 0) ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Señales ignoradas</span><span class="dbg-val"><?= (int)($ts['senales_ignoradas'] ?? 0) ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Ventas sin pago</span><span class="dbg-val"><?= (int)($ts['ventas_sin_pago'] ?? 0) ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Momentum</span><span class="dbg-val"><?= number_format($ts['momentum'] ?? 1, 2) ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Percentil equipo</span><span class="dbg-val"><?= round(($ts['percentil'] ?? 0) * 100) ?>%</span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Tasa gestión</span><span class="dbg-val"><?= round(($ts['tasa_gestion'] ?? 0) * 100, 1) ?>%</span></div>
-
-    <?php $bench = $ts['bench'] ?? []; if (!empty($bench)): ?>
-    <div class="dbg-sec">Benchmarks empresa</div>
-    <div class="dbg-row"><span class="dbg-lbl">Tasa cierre</span><span class="dbg-val"><?= round(($bench['close_rate'] ?? 0) * 100, 1) ?>%</span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Tiempo cierre (días)</span><span class="dbg-val"><?= round($bench['time_to_close'] ?? 0, 1) ?></span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Apertura</span><span class="dbg-val"><?= round(($bench['apertura'] ?? 0) * 100, 1) ?>%</span></div>
-    <div class="dbg-row"><span class="dbg-lbl">Radar semanal</span><span class="dbg-val"><?= round($bench['radar_weekly'] ?? 0, 1) ?></span></div>
-    <?php endif; ?>
-  </div>
-</div>
-<?php endif; ?>
+<style>.dbg-chev-open{transform:rotate(90deg)}.dbg-open{display:block!important}.dbg-row{display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:2px 0}.dbg-lbl{color:var(--t3)}.dbg-val{font-weight:600}.dbg-neg{color:var(--danger)}.dbg-sec{font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:10px 0 4px;padding-top:8px;border-top:1px solid var(--border)}</style>
 
 <?php if ($es_admin_dash && count($equipo_scores) > 0): ?>
   <div class="lb">
@@ -835,6 +791,27 @@ $ts_diag  = ActividadScore::diagnostico($ts);
       </div>
       <?php endif; ?>
     </div>
+    <?php if (Auth::es_superadmin()): ?>
+    <!-- Debug expandible por vendedor (solo superadmin) -->
+    <div style="border-top:1px dashed var(--border);padding:2px 14px 2px 52px">
+      <span onclick="var p=this.nextElementSibling;p.style.display=p.style.display==='none'?'block':'none'" style="font:600 10px var(--body);color:var(--t3);cursor:pointer;letter-spacing:.05em;text-transform:uppercase;opacity:.6">▶ debug</span>
+      <div style="display:none;padding:6px 0;font:400 11px var(--num);color:var(--t2);line-height:1.7">
+        <div class="dbg-row"><span class="dbg-lbl">Activación (20%)</span><span class="dbg-val"><?= round(($es['s_activacion'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Seguimiento (35%)</span><span class="dbg-val"><?= round(($es['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Conversión (45%)</span><span class="dbg-val"><?= round(($es['s_conversion'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Penalizaciones</span><span class="dbg-val dbg-neg"><?= ($es['penalizaciones'] ?? 0) > 0 ? '-'.round(($es['penalizaciones'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Bonuses</span><span class="dbg-val"><?= round(($es['bonuses'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Tasa gestión</span><span class="dbg-val"><?= round(($es['tasa_gestion'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Momentum</span><span class="dbg-val"><?= number_format($es['momentum'] ?? 1, 2) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Percentil</span><span class="dbg-val"><?= round(($es['percentil'] ?? 0) * 100) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Asig / Vistas / Cierres</span><span class="dbg-val"><?= (int)($es['cot_asignadas'] ?? 0) ?> / <?= (int)($es['cot_vistas'] ?? 0) ?> / <?= (int)($es['conversiones'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Dormidas 7d</span><span class="dbg-val"><?= (int)($es['cot_dormidas'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Señales ignoradas</span><span class="dbg-val"><?= (int)($es['senales_ignoradas'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Cierres radar / Sin dto</span><span class="dbg-val"><?= (int)($es['cierres_bucket'] ?? 0) ?> / <?= (int)($es['cierres_sin_dto'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Transiciones ↑</span><span class="dbg-val"><?= (int)($es['transiciones_up'] ?? 0) ?></span></div>
+      </div>
+    </div>
+    <?php endif; ?>
     <?php endforeach; ?>
     </div><!-- /lb-body -->
   </div>
