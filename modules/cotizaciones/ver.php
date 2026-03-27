@@ -9,6 +9,7 @@ defined('COTIZAAPP') or die;
 $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $empresa_id = EMPRESA_ID;
+$plan_cot   = trial_info($empresa_id);
 
 $cot_id = (int)($id ?? 0);
 if (!$cot_id) redirect('/cotizaciones');
@@ -362,9 +363,11 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
         <button class="add-item-btn" style="flex:2" onclick="abrirCatalogo(false)">
             <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar artículo
         </button>
+        <?php if ($plan_cot['es_business']): ?>
         <button class="add-item-btn" style="flex:1;border-color:#d97706;color:#d97706" onclick="abrirCatalogo(true)">
             <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar extra
         </button>
+        <?php endif; ?>
         </div>
         <?php endif; ?>
 

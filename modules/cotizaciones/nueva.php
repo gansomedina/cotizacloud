@@ -417,9 +417,11 @@ $page_title = 'Nueva cotización';
         <button class="add-item-btn" style="flex:2;margin-top:0" onclick="abrirCatalogo(false)">
             <span style="font-size:18px">+</span> Agregar artículo
         </button>
+        <?php if ($trial['es_business']): ?>
         <button class="add-item-btn" style="flex:1;margin-top:0;border-color:#d97706;color:#d97706" onclick="abrirCatalogo(true)">
             <span style="font-size:18px">+</span> Agregar extra
         </button>
+        <?php endif; ?>
         </div>
 
         <!-- ADJUNTOS (disponible después de guardar) -->
