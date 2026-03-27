@@ -519,13 +519,19 @@ class ActividadScore
         $factor_act_radar = 1.0 + ($cot_vistas / $cot_activas_safe) * 0.5;
         $benchmark_radar = $cot_activas_safe * $factor_conv_radar * $factor_act_radar;
 
-        $s_radar = self::sigmoid($radar_sessions, $benchmark_radar, 2.0 / max($benchmark_radar, 0.5));
+        // Ratio real/benchmark — clamped a [0, 1] para score directo
+        // 13/15 = 0.87 → 87% del score
+        // 15/15 = 1.0  → 100% (cap)
+        // 20/15 = 1.33 → 100% (superó benchmark)
+        $radar_ratio = $benchmark_radar > 0 ? min($radar_sessions / $benchmark_radar, 1.0) : 0;
+        $s_radar = $radar_ratio;
 
         $semanas = max($periodo / 7, 1);
         $consultas_por_semana = $consultas / $semanas;
         // Benchmark de consultas: al menos 1 vista por cotización activa por período
         $benchmark_consultas = max($cot_activas_safe / $semanas, 1.0);
-        $s_consultas = self::sigmoid($consultas_por_semana, $benchmark_consultas, 2.0 / max($benchmark_consultas, 0.5));
+        $consultas_ratio = $benchmark_consultas > 0 ? min($consultas_por_semana / $benchmark_consultas, 1.0) : 0;
+        $s_consultas = $consultas_ratio;
 
         // Fix 4: bonus solo por transiciones donde el vendedor REACCIONÓ
         $bonus_transiciones = min($transiciones_con_reaccion * 0.10, 0.3);
