@@ -1123,14 +1123,8 @@ class ActividadScore
             [$empresa_id, $periodo]
         ) : null;
 
-        // Para empresas con 1 solo vendedor: usar pisos estadísticos razonables
-        // en vez del promedio propio (que siempre daría sigmoid=0.50).
-        // Pisos basados en estándares de la industria de ventas consultivas:
-        //   - Radar: 3 vistas/semana mínimo (revisar al menos cada 2 días)
-        //   - Tasa cierre: 15% mínimo (1 de cada 7 cotizaciones)
-        //   - Apertura: 70% mínimo (7 de cada 10 llegan al cliente)
-        // Cuando hay 2+ vendedores, el promedio real siempre gana.
-        $piso_radar = 3.0; // vistas/semana — estándar industria
+        // Para empresas con 1 solo vendedor: pendiente análisis de mejor enfoque
+        // Por ahora usa el promedio propio o el default de 2.0
 
         // Tasa de apertura de la empresa
         $emp_asig = (int)DB::val(
@@ -1140,17 +1134,10 @@ class ActividadScore
         );
         $apertura = $emp_asig >= 5 ? $emp_vistas / $emp_asig : 0.70;
 
-        // Si hay 1 solo vendedor, usar el máximo entre su promedio y el piso estadístico
-        // Esto evita que se auto-compare (siempre 50%) y le pone un estándar real
-        $radar_bench = (float)($avg_radar ?? 0);
-        if ($radar_users <= 1) {
-            $radar_bench = max($radar_bench, $piso_radar);
-        }
-
         self::$_bench[$empresa_id] = [
             'close_rate'    => max((float)$close_rate, 0.03),
             'time_to_close' => max((float)($avg_ttc ?? 14), 3),
-            'radar_weekly'  => max($radar_bench, 0.5),
+            'radar_weekly'  => max((float)($avg_radar ?? 2.0), 0.5),
             'apertura'      => max((float)$apertura, 0.30),
         ];
         return self::$_bench[$empresa_id];
