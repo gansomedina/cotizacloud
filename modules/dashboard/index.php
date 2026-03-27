@@ -722,7 +722,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div class="lb-head" onclick="var b=document.getElementById('lb-body');b.classList.toggle('lb-collapsed');this.querySelector('.lb-chevron').classList.toggle('lb-chevron-open')" style="cursor:pointer;user-select:none">
       <div style="flex:1">
         <div class="lb-title">Ranking del equipo</div>
-        <div class="lb-sub">30 días · auto-ajustable · <?= count($equipo_scores) ?> miembros</div>
+        <div class="lb-sub">15 días · auto-ajustable · <?= count($equipo_scores) ?> miembros</div>
       </div>
       <svg class="lb-chevron lb-chevron-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       <button onclick="event.stopPropagation();document.getElementById('lb-info').classList.toggle('lb-info-open')" style="background:none;border:1px solid var(--border);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font:600 12px var(--body);flex-shrink:0;margin-left:6px" title="¿Cómo funciona?">?</button>
@@ -731,7 +731,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div id="lb-info" class="lb-info">
       <div class="lb-info-inner">
         <b>¿Qué mide este ranking?</b>
-        <p>Algoritmo APC v3.2 (Productividad Comercial) — 30 días rolling, auto-ajustable por empresa:</p>
+        <p>Algoritmo APC v4.0 (Productividad Comercial) — 15 días rolling, auto-ajustable por empresa:</p>
         <ul>
           <li><b>Activación (20%)</b> — ¿Las cotizaciones llegan al cliente? Es el mínimo esperado. Penaliza cotizaciones dormidas (enviadas sin abrir en 7, 14 y 21 días).</li>
           <li><b>Seguimiento (35%)</b> — ¿Da seguimiento activo? Mide uso del Radar, revisión de cotizaciones, velocidad de reacción cuando un cliente abre una cotización (dentro de 48h), y transiciones de bucket frío→caliente. Penaliza señales calientes ignoradas y buckets estancados.</li>
@@ -808,6 +808,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <div class="dbg-row"><span class="dbg-lbl">Dormidas 7d</span><span class="dbg-val"><?= (int)($es['cot_dormidas'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Señales ignoradas</span><span class="dbg-val"><?= (int)($es['senales_ignoradas'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Cierres radar / Sin dto</span><span class="dbg-val"><?= (int)($es['cierres_bucket'] ?? 0) ?> / <?= (int)($es['cierres_sin_dto'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Radar views / benchmark</span><span class="dbg-val"><?= (int)($es['radar_views'] ?? 0) ?> / <?= round((float)($es['radar_benchmark'] ?? 0), 1) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Transiciones ↑</span><span class="dbg-val"><?= (int)($es['transiciones_up'] ?? 0) ?></span></div>
       </div>
     </div>

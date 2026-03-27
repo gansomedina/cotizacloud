@@ -34,7 +34,7 @@
 class ActividadScore
 {
     private const EMA_ALPHA = 0.3;
-    private const PERIODO   = 30; // días rolling
+    private const PERIODO   = 15; // días rolling
 
     // ─── Pesos por bucket para cierres (invertido: frío = más mérito) ──
     private const CIERRE_MULT = [
@@ -496,13 +496,23 @@ class ActividadScore
         //  "¿Usa el radar para dar seguimiento?"
         // ═══════════════════════════════════════════════════
 
-        $semanas = max($periodo / 7, 1);
-        $radar_por_semana = $radar_sessions / $semanas;
-        $consultas_por_semana = $consultas / $semanas;
+        // Algoritmo inteligente de benchmark de Radar (auto-ajustable)
+        // benchmark = cotizaciones_activas × factor_conversion × factor_actividad
+        // - Más cotizaciones = más radar necesitas
+        // - Menos cierras = más radar necesitas (inverso)
+        // - Más clientes activos = más urgencia
+        $bench_cierre = max($bench['close_rate'], 0.01);
+        $ratio_cierre = $tasa_cierre / $bench_cierre;
+        $factor_conv_radar = max(0.3, 1.0 / (1.0 + $ratio_cierre));
+        $cot_activas_safe = max($cot_asignadas, 1);
+        $factor_act_radar = 1.0 + ($cot_vistas / $cot_activas_safe) * 0.5;
+        $benchmark_radar = $cot_activas_safe * $factor_conv_radar * $factor_act_radar;
 
-        // Fix 12: radar midpoint = promedio de la empresa
-        $s_radar = self::sigmoid($radar_por_semana, $bench['radar_weekly'], 2.0 / max($bench['radar_weekly'], 0.1));
-        $s_consultas = self::sigmoid($consultas_por_semana, $bench['radar_weekly'] * 2.5, 0.5);
+        $s_radar = self::sigmoid($radar_sessions, $benchmark_radar, 2.0 / max($benchmark_radar, 0.5));
+
+        $semanas = max($periodo / 7, 1);
+        $consultas_por_semana = $consultas / $semanas;
+        $s_consultas = self::sigmoid($consultas_por_semana, max($benchmark_radar / $semanas, 0.5) * 2.5, 0.5);
 
         // Fix 4: bonus solo por transiciones donde el vendedor REACCIONÓ
         $bonus_transiciones = min($transiciones_con_reaccion * 0.10, 0.3);
@@ -866,6 +876,8 @@ class ActividadScore
             'pen_sin_pago'      => round($pen_sin_pago ?? 0, 3),
             'ventas_sin_pago'   => $ventas_sin_pago ?? 0,
             'tasa_cierre'       => round($tasa_cierre ?? 0, 3),
+            'radar_views'       => $radar_sessions ?? 0,
+            'radar_benchmark'   => round($benchmark_radar ?? 0, 1),
             'bench'             => $bench ?? [],
         ];
     }
@@ -963,19 +975,22 @@ class ActividadScore
         // Si acciones > 0 pero cierres_bucket = 0 y score bajo, es que revisa cotizaciones
         // pero no usa radar específicamente.
         $acciones_total = (int)($s['acciones'] ?? 0);
-        $usa_radar = $cbkt > 0 || $tup > 0; // tiene cierres radar o transiciones up
+        $rv = (int)($s['radar_views'] ?? 0);
+        $rb = (float)($s['radar_benchmark'] ?? 0);
+        $usa_radar = $cbkt > 0 || $tup > 0;
         if ($seg >= 0.70) {
-            $frases[] = $usa_radar ? "da buen seguimiento con el radar" : "responde bien a los clientes, buen seguimiento";
+            $frases[] = $usa_radar ? "buen seguimiento con el radar" : "responde bien a los clientes";
         } elseif ($seg >= 0.35) {
-            if ($usa_radar) {
-                $frases[] = "seguimiento moderado, puede usar más el radar";
+            if ($rv > 0 && $rb > 0) {
+                $pct_radar = round($rv / $rb * 100);
+                $frases[] = "usa el radar al {$pct_radar}% de lo esperado ({$rv} de " . round($rb) . " vistas)";
             } elseif ($acciones_total > 0) {
-                $frases[] = "revisa cotizaciones pero no usa el radar — le serviría para priorizar";
+                $frases[] = "revisa cotizaciones pero necesita usar más el radar";
             } else {
                 $frases[] = "seguimiento moderado, puede usar más el radar";
             }
         } elseif ($seg > 0.05) {
-            $frases[] = "poco seguimiento — rara vez revisa el radar";
+            $frases[] = $rv > 0 ? "poco uso del radar — {$rv} vistas, se esperaban " . round($rb) : "rara vez revisa el radar";
         } else {
             $frases[] = "no usa el radar para dar seguimiento";
         }
