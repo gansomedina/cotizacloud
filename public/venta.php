@@ -34,19 +34,21 @@ $venta = DB::row(
 if (!$venta) { http_response_code(404); die('Venta no encontrada'); }
 
 // ─── Líneas ──────────────────────────────────────────────
-$lineas = DB::query(
+$todas_lineas_v = DB::query(
     "SELECT * FROM cotizacion_lineas WHERE cotizacion_id = (
         SELECT cotizacion_id FROM ventas WHERE id = ? LIMIT 1
      ) ORDER BY orden ASC",
     [$venta['id']]
 );
-// Fallback: líneas propias de la venta si existen
-if (empty($lineas)) {
-    $lineas = DB::query(
+if (empty($todas_lineas_v)) {
+    $todas_lineas_v = DB::query(
         "SELECT * FROM cotizacion_lineas WHERE venta_id = ? ORDER BY orden ASC",
         [$venta['id']]
     );
 }
+$lineas       = array_values(array_filter($todas_lineas_v, fn($l) => empty($l['es_extra'])));
+$lineas_extra = array_values(array_filter($todas_lineas_v, fn($l) => !empty($l['es_extra'])));
+$subtotal_extras_v = array_sum(array_column($lineas_extra, 'subtotal'));
 
 // ─── Recibos activos (abonos no cancelados) ──────────────
 $recibos = DB::query(
@@ -419,6 +421,31 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <!-- Total de artículos -->
     <div style="display:flex;justify-content:flex-end;padding:9px 16px;background:var(--bg)">
       <span style="font:700 14px var(--num)">Subtotal: <?= fmt_v(array_sum(array_column($lineas,'subtotal'))) ?></span>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <?php if (!empty($lineas_extra)): ?>
+  <!-- EXTRAS -->
+  <div class="slabel">Extras</div>
+  <div class="card">
+    <?php $grid_cols_ext = '1fr 80px'; ?>
+    <div style="display:grid;grid-template-columns:<?= $grid_cols_ext ?>;gap:6px;padding:7px 16px;border-bottom:1px solid var(--border);background:var(--bg)">
+      <span style="font:700 10px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)">Descripción</span>
+      <span style="font:700 10px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3);text-align:right">Total</span>
+    </div>
+    <?php foreach ($lineas_extra as $le): ?>
+    <div style="display:grid;grid-template-columns:<?= $grid_cols_ext ?>;gap:6px;align-items:start;padding:11px 16px;border-bottom:1px solid var(--border)">
+      <div>
+        <div class="item-name"><?= e($le['titulo']) ?></div>
+        <?php if ($le['descripcion']): ?><div class="item-desc"><?= nl2br(e($le['descripcion'])) ?></div><?php endif; ?>
+      </div>
+      <div style="text-align:right;font:600 14px var(--num);padding-top:2px"><?= fmt_v((float)$le['subtotal']) ?></div>
+    </div>
+    <?php endforeach; ?>
+    <div style="display:flex;justify-content:flex-end;padding:8px 16px;background:var(--bg)">
+      <span style="font:400 12px var(--body);color:var(--t3);margin-right:8px">Subtotal extras</span>
+      <span style="font:700 14px var(--num)"><?= fmt_v($subtotal_extras_v) ?></span>
     </div>
   </div>
   <?php endif; ?>
