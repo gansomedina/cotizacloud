@@ -1101,23 +1101,30 @@ class ActividadScore
             [$empresa_id, $periodo]
         );
 
-        // Radar semanal promedio (requiere mínimo 2 usuarios para no sesgar)
+        // Radar semanal promedio — excluir superadmin (contamina benchmarks de otras empresas)
         $weeks = max($periodo / 7, 1);
         $radar_users = (int)DB::val(
-            "SELECT COUNT(DISTINCT usuario_id) FROM actividad_log
-             WHERE empresa_id=? AND tipo='radar_view'
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            "SELECT COUNT(DISTINCT al.usuario_id) FROM actividad_log al
+             JOIN usuarios u ON u.id = al.usuario_id
+             WHERE al.empresa_id=? AND al.tipo='radar_view'
+             AND u.rol != 'superadmin'
+             AND al.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$empresa_id, $periodo]
         );
         $avg_radar = $radar_users >= 2 ? DB::val(
             "SELECT AVG(cnt) FROM (
-                SELECT COUNT(*)/{$weeks} AS cnt FROM actividad_log
-                WHERE empresa_id=? AND tipo='radar_view'
-                AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                GROUP BY usuario_id
+                SELECT COUNT(*)/{$weeks} AS cnt FROM actividad_log al
+                JOIN usuarios u ON u.id = al.usuario_id
+                WHERE al.empresa_id=? AND al.tipo='radar_view'
+                AND u.rol != 'superadmin'
+                AND al.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                GROUP BY al.usuario_id
              ) AS sub",
             [$empresa_id, $periodo]
         ) : null;
+
+        // Para empresas con 1 solo vendedor: pendiente análisis de mejor enfoque
+        // Por ahora usa el promedio propio o el default de 2.0
 
         // Tasa de apertura de la empresa
         $emp_asig = (int)DB::val(
