@@ -420,7 +420,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <?php endforeach; ?>
     <!-- Total de artículos -->
     <div style="display:flex;justify-content:flex-end;padding:9px 16px;background:var(--bg)">
-      <span style="font:700 14px var(--num)">Subtotal: <?= fmt_v(array_sum(array_column($lineas,'subtotal'))) ?></span>
+      <span style="font:700 14px var(--num)"><?= !empty($lineas_extra) ? 'Subtotal artículos' : 'Subtotal' ?>: <?= fmt_v(array_sum(array_column($lineas,'subtotal'))) ?></span>
     </div>
   </div>
   <?php endif; ?>
@@ -600,6 +600,25 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <td class="td-pu"><?= $l['precio_unit'] > 0 ? fmt_v($l['precio_unit']) : '—' ?></td>
       <?php endif; ?>
       <td class="td-total"><?= $l['precio_unit'] > 0 ? fmt_v($l['subtotal']) : fmt_v(0) ?></td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+  </table>
+  <?php endif; ?>
+
+  <?php if (!empty($lineas_extra)): ?>
+  <div style="margin-top:8pt;font:700 9pt var(--body);letter-spacing:.07em;text-transform:uppercase;padding:4pt 0;border-bottom:1pt solid #000">Extras</div>
+  <table class="fac-tbl">
+    <thead><tr><th style="width:16pt">#</th><th>Descripción</th><th class="r" style="width:80pt">Total</th></tr></thead>
+    <tbody>
+    <?php foreach ($lineas_extra as $i => $le): ?>
+    <tr>
+      <td style="color:#333"><?= $i+1 ?></td>
+      <td>
+        <div class="td-name"><?= e($le['titulo']) ?></div>
+        <?php if ($le['descripcion']): ?><div class="td-desc"><?= nl2br(e($le['descripcion'])) ?></div><?php endif; ?>
+      </td>
+      <td class="td-total"><?= fmt_v((float)$le['subtotal']) ?></td>
     </tr>
     <?php endforeach; ?>
     </tbody>
