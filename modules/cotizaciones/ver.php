@@ -128,6 +128,7 @@ $lineas_js = json_encode(array_map(fn($l) => [
     'descripcion'  => $l['descripcion'] ?? '',
     'cantidad'     => (float)$l['cantidad'],
     'precio_unit'  => (float)$l['precio_unit'],
+    'es_extra'     => (int)($l['es_extra'] ?? 0),
 ], $lineas));
 
 $empresa_js = json_encode([
@@ -357,9 +358,14 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
         <div class="items-list" id="items-list"></div>
 
         <?php if ($es_editable): ?>
-        <button class="add-item-btn" onclick="catalogDialog.showModal()">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="add-item-btn" style="flex:1" onclick="catalogDialog.showModal()">
             <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar artículo
         </button>
+        <button class="add-item-btn" style="flex:1;border-color:#d97706;color:#d97706" onclick="agregarItemExtra()">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar extra
+        </button>
+        </div>
         <?php endif; ?>
 
         <!-- ADJUNTOS -->
@@ -638,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Cargar líneas iniciales
     LINEAS_INIT.forEach(l => {
-        agregarItem(l.titulo, l.sku, l.descripcion, l.precio_unit, l.articulo_id, ES_EDITABLE);
+        agregarItem(l.titulo, l.sku, l.descripcion, l.precio_unit, l.articulo_id, ES_EDITABLE, !!l.es_extra);
     });
     renderCatalogList('');
     renderClientList('');
@@ -685,8 +691,9 @@ function renderCatalogList(filtro){
     el.innerHTML=lista.map(a=>`<div class="sh-item" onclick="agregarDesde(${a.id})"><div style="flex:1"><div class="sh-item-title">${esc(a.titulo)}</div>${a.sku?`<div class="sh-item-sku">${esc(a.sku)}</div>`:''}</div><div class="sh-item-price">${fmt(a.precio)}</div></div>`).join('');
 }
 function filtrarCatalogo(v){renderCatalogList(v);}
-function agregarDesde(id){const a=ARTICULOS.find(x=>x.id===id);if(!a)return;agregarItem(a.titulo,a.sku||'',a.descripcion||'',a.precio,id,true);closeSheet('catalogSheet','catalogOverlay');}
-function agregarItemVacio(){agregarItem('','','',0,null,true);closeSheet('catalogSheet','catalogOverlay');}
+function agregarDesde(id){const a=ARTICULOS.find(x=>x.id===id);if(!a)return;agregarItem(a.titulo,a.sku||'',a.descripcion||'',a.precio,id,true,false);closeSheet('catalogSheet','catalogOverlay');}
+function agregarItemVacio(){agregarItem('','','',0,null,true,false);closeSheet('catalogSheet','catalogOverlay');}
+function agregarItemExtra(){agregarItem('EXTRA: ','','',0,null,true,true);}
 
 function renderClientList(filtro){
     const q=filtro.toLowerCase();
@@ -722,12 +729,12 @@ function toggleCupon(el){
     calcularTotales();
 }
 
-function agregarItem(titulo, sku, desc, precio, articulo_id, editable=true){
+function agregarItem(titulo, sku, desc, precio, articulo_id, editable=true, esExtra=false){
     itemCounter++;
     const id='item-'+itemCounter;
     const amt=titulo?fmt(precio):'$0.00';
     const ro=!editable||(!PUEDE_PRECIOS&&articulo_id)?'readonly style="color:var(--t3)"':'';
-    const html=`<div class="item-card" data-articulo-id="${articulo_id||''}" id="${id}">
+    const html=`<div class="item-card" data-articulo-id="${articulo_id||''}" data-es-extra="${esExtra?1:0}" id="${id}">
         <div class="item-header">
             <div class="item-num-wrap">
                 ${editable?`<button class="item-arrow" onclick="moverItem(this,-1)"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 2L9 8H1z" fill="currentColor"/></svg></button>`:''}
@@ -808,7 +815,7 @@ async function guardarCotizacion(preview){
     if(!titulo){alert('El título es requerido');return;}
     const items=[];
     document.querySelectorAll('#items-list .item-card').forEach((card,i)=>{
-        items.push({orden:i+1,articulo_id:card.dataset.articuloId||null,titulo:card.querySelector('[data-campo=titulo]')?.value||'',sku:card.querySelector('[data-campo=sku]')?.value||'',descripcion:card.querySelector('[data-campo=descripcion]')?.value||'',cantidad:parseFloat(card.querySelector('[data-campo=cantidad]')?.value)||1,precio_unit:parseFloat(card.querySelector('[data-campo=precio]')?.value)||0});
+        items.push({orden:i+1,articulo_id:card.dataset.articuloId||null,titulo:card.querySelector('[data-campo=titulo]')?.value||'',sku:card.querySelector('[data-campo=sku]')?.value||'',descripcion:card.querySelector('[data-campo=descripcion]')?.value||'',cantidad:parseFloat(card.querySelector('[data-campo=cantidad]')?.value)||1,precio_unit:parseFloat(card.querySelector('[data-campo=precio]')?.value)||0,es_extra:parseInt(card.dataset.esExtra)||0});
     });
     const btn=document.getElementById('btn-guardar');
     if(btn){btn.disabled=true;btn.textContent='Guardando...';}
