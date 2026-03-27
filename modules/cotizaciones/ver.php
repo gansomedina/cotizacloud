@@ -437,7 +437,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 
         <div class="panel-section">
             <div class="panel-lbl">Totales</div>
-            <div class="panel-t-row"><span class="panel-t-lbl">Subtotal</span><span class="panel-t-val" id="total-subtotal"><?= format_money($cot['subtotal'], $empresa['moneda']) ?></span></div>
+            <div class="panel-t-row"><span class="panel-t-lbl" id="lbl-subtotal">Subtotal artículos</span><span class="panel-t-val" id="total-subtotal"><?= format_money($cot['subtotal'], $empresa['moneda']) ?></span></div>
             <?php if ($cot['cupon_monto'] > 0): ?>
             <div class="panel-t-row disc" id="row-cupon">
                 <span class="panel-t-lbl" id="lbl-cupon">Cupón <?= e($cot['cupon_codigo']) ?></span>
