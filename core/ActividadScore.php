@@ -324,30 +324,26 @@ class ActividadScore
             [$usuario_id, $empresa_id]
         );
 
-        // Escala gradual: ¿cuándo fue la última vez que revisó el radar?
+        // Señales ignoradas = cotizaciones calientes SIN reacción del vendedor en 48h
+        // Verifica por cada cotización, no globalmente
         $senales_ignoradas = 0;
         if ($cot_calientes > 0) {
-            $ultimo_radar = DB::val(
-                "SELECT MAX(created_at) FROM actividad_log
-                 WHERE usuario_id=? AND tipo='radar_view'",
-                [$usuario_id]
+            $cot_calientes_atendidas = (int)DB::val(
+                "SELECT COUNT(*) FROM cotizaciones c
+                 WHERE COALESCE(c.vendedor_id, c.usuario_id)=? AND c.empresa_id=?
+                 AND c.estado IN ('enviada','vista') AND c.suspendida = 0
+                 AND c.visitas >= 3
+                 AND c.ultima_vista_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                 AND EXISTS (
+                    SELECT 1 FROM actividad_log al
+                    WHERE al.usuario_id = ?
+                    AND al.tipo IN ('radar_view','quote_view')
+                    AND al.created_at BETWEEN c.ultima_vista_at AND DATE_ADD(c.ultima_vista_at, INTERVAL 48 HOUR)
+                    LIMIT 1
+                 )",
+                [$usuario_id, $empresa_id, $usuario_id]
             );
-            if (!$ultimo_radar) {
-                // Nunca ha entrado al radar → todas ignoradas
-                $senales_ignoradas = $cot_calientes;
-            } else {
-                $horas_desde_radar = (time() - strtotime($ultimo_radar)) / 3600.0;
-                // <24h = 0 ignoradas, 24-48h = 50%, 48-72h = 75%, >72h = 100%
-                if ($horas_desde_radar <= 24) {
-                    $senales_ignoradas = 0;
-                } elseif ($horas_desde_radar <= 48) {
-                    $senales_ignoradas = (int)ceil($cot_calientes * 0.50);
-                } elseif ($horas_desde_radar <= 72) {
-                    $senales_ignoradas = (int)ceil($cot_calientes * 0.75);
-                } else {
-                    $senales_ignoradas = $cot_calientes;
-                }
-            }
+            $senales_ignoradas = $cot_calientes - $cot_calientes_atendidas;
         }
 
         // Fix 11: Tasa de reacción — de cotizaciones con actividad del cliente en 7d,
@@ -1004,14 +1000,14 @@ class ActividadScore
         } elseif ($seg >= 0.35) {
             if ($rv > 0 && $rb > 0) {
                 $pct_radar = round($rv / $rb * 100);
-                $frases[] = "usa el radar al {$pct_radar}% de lo esperado ({$rv} de " . round($rb) . " vistas)";
+                $frases[] = "usa el radar al {$pct_radar}% de lo esperado";
             } elseif ($acciones_total > 0) {
                 $frases[] = "revisa cotizaciones pero necesita usar más el radar";
             } else {
                 $frases[] = "seguimiento moderado, puede usar más el radar";
             }
         } elseif ($seg > 0.05) {
-            $frases[] = $rv > 0 ? "poco uso del radar — {$rv} vistas, se esperaban " . round($rb) : "rara vez revisa el radar";
+            $frases[] = $rv > 0 ? "poco uso del radar" : "rara vez revisa el radar";
         } else {
             $frases[] = "no usa el radar para dar seguimiento";
         }
