@@ -324,3 +324,64 @@ Ficha de empresa con: dominio propio, estado DNS (verificado/no apunta), estado 
 | `modules/superadmin/empresa.php` | Campo para configurar dominio propio |
 | BD migración | `ALTER TABLE empresas ADD COLUMN dominio_propio VARCHAR(255) UNIQUE` |
 | Emails (Mailer.php) | Usar dominio propio en links si está configurado |
+
+## Sesión 27 marzo 2026
+
+### Completado
+1. **Marketing Pixels** — Tab Config > Marketing (Business): Meta, GA4, Google Ads, TikTok con toggles on/off, validación regex, templates fijos (XSS-safe), eventos en aceptar/rechazar
+2. **Privacidad actualizada** — Sección de tecnologías de seguimiento de terceros
+3. **Extras en cotizaciones y ventas** (Business) — Campo `es_extra` en `cotizacion_lineas`, sección visual separada en editor y slugs públicos, botón "Agregar extra" con mismo catálogo, subtotales separados
+4. **Eliminar extras** — Endpoint dedicado `/ventas/:id/eliminar-extra` con recálculo de totales
+5. **Venta cruzada en landing** — Feature Business en sección de precios
+6. **Fix métricas conversión** — Embudo corregido: Enviadas→Abiertas→Aceptadas→Rechazadas, tasa cierre sobre enviadas no total, excluir borradores/suspendidas de todos los conteos
+7. **Fix descuento en slug aceptada** — Usa valores guardados al aceptar, no recalcula
+8. **Fix folios** — Sincronizado contador con `siguiente_folio()`
+9. **Descuentos copiados a venta** — `descuento_auto_amt` y `cupon_monto` en INSERT
+10. **Permiso agregar_extras** — Con endpoint dedicado (no reutiliza guardar.php)
+11. **Permiso eliminar_items_venta** — UI ahora muestra botón para asesor con permiso
+12. **Permiso ver_reportes** — Nuevo permiso con cadena completa A→I + sidebar gate
+13. **Fix proveedores permiso muerto** — Check movido antes del redirect
+14. **Fix Auth.php session query** — Incluye las 6 columnas de permisos faltantes
+15. **Fix marketing panel** — Sección eventos y botón estaban fuera del tab-panel
+16. **Extras solo Business** — Botones y endpoints protegidos por plan
+17. **Eliminar cotización robusta** — Transacción, limpia dependencias, error real
+
+### Termómetro v4.0
+1. **Período 15 días** — Cambio de 30 a 15 días rolling para feedback más rápido
+2. **Benchmark de Radar inteligente** — Auto-ajustable por vendedor:
+   - `benchmark = cotizaciones_activas × factor_conversion × factor_actividad`
+   - `factor_conversion = max(0.3, 1/(1+ratio_cierre))` — menos cierras = más radar
+   - `factor_actividad = 1 + (vistas/activas) × 0.5` — más clientes activos = más urgencia
+   - No se auto-compara, no usa promedios de empresa
+3. **Superadmin excluido de benchmarks** — Actividad de superadmin no infla promedios
+4. **Suspendidas excluidas del score** — Como si no existieran para asignadas/vistas/dormidas
+5. **Penalización ventas sin pago** — Ventas con pagado=0 y >5 días: -12% por venta, cap -40%
+6. **Penalización descuentos** — Se mantiene (es mérito de la empresa, no del vendedor)
+7. **Preservar bucket al aceptar** — Radar ya no borra el bucket de cotizaciones aceptadas
+8. **Debug panel por vendedor** — Expandible en leaderboard (solo superadmin): dimensiones, penalizaciones, datos crudos, radar views/benchmark
+9. **Tips actualizados** — Diagnóstico muestra radar views vs benchmark concreto
+
+### Pendientes próxima sesión — Termómetro
+1. **Activación 59.9% con 20/20** — Parece incorrecta, investigar cómo el período de 15 días afecta
+2. **Seguimiento 23.4% con 13/15 radar** — Parece baja para 87% de cumplimiento
+3. **Vendedor nuevo (7-9 días)** — Los días sin datos en el período de 15 días penalizan injustamente. Considerar ajustar benchmark proporcionalmente a días reales del vendedor
+4. **Score 33 general** — Validar que los pesos estén correctos con período de 15 días
+5. **Señales ignoradas** — Verificar que se calculan correctamente
+6. **Playbook y tips** — Actualizar textos del leaderboard info a "15 días" y nueva metodología
+7. **1 solo vendedor** — Analizar enfoque definitivo: ¿benchmark histórico propio? ¿piso adaptable?
+8. **Desglose penalizaciones en debug** — Agregar pen_dormidas, pen_seguimiento, pen_conversion individuales a usuario_score
+
+### Migraciones de esta sesión
+1. `migrations/add_marketing_config.sql` — tabla marketing_config para pixels
+2. `migrations/add_es_extra.sql` — `es_extra` en cotizacion_lineas
+3. `migrations/add_permiso_extras.sql` — `puede_agregar_extras` en usuarios
+4. `migrations/add_permiso_reportes.sql` — `puede_ver_reportes` en usuarios
+5. `migrations/add_score_debug_cols.sql` — radar_views, radar_benchmark, tasa_cierre, ventas_sin_pago en usuario_score
+
+### Radar v5
+- Calibración de buckets: probable_cierre más selectivo (visibilidad 15s+, scroll 70%+)
+- Cierre inminente más alcanzable (FIT 5%, 36h, 1 señal)
+- Descripciones y playbooks actualizados
+
+### Branch de trabajo
+- `claude/review-apple-store-build-xB5jg`

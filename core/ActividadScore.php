@@ -116,15 +116,15 @@ class ActividadScore
         );
     }
 
-    private const GRACIA_DIAS = 7; // días mínimos antes de calcular score
+    private const GRACIA_DIAS = 15; // días mínimos = mismo que PERIODO
 
     // ─── Calcular score completo de un usuario ───────────
     public static function calcular(int $usuario_id, int $empresa_id): array
     {
         // ═══════════════════════════════════════════════════
-        //  PERÍODO DE GRACIA — 7 días
-        //  No evaluar vendedores nuevos. No hay datos suficientes
-        //  para un score justo. Mostrar "Recopilando información".
+        //  PERÍODO DE GRACIA — 15 días (= PERIODO)
+        //  No evaluar vendedores nuevos. Se necesita un período
+        //  completo de datos para un score justo.
         // ═══════════════════════════════════════════════════
         $primer_cot = DB::val(
             "SELECT MIN(created_at) FROM cotizaciones
