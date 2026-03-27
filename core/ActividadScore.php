@@ -1101,23 +1101,36 @@ class ActividadScore
             [$empresa_id, $periodo]
         );
 
-        // Radar semanal promedio (requiere mínimo 2 usuarios para no sesgar)
+        // Radar semanal promedio — excluir superadmin (contamina benchmarks de otras empresas)
         $weeks = max($periodo / 7, 1);
         $radar_users = (int)DB::val(
-            "SELECT COUNT(DISTINCT usuario_id) FROM actividad_log
-             WHERE empresa_id=? AND tipo='radar_view'
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            "SELECT COUNT(DISTINCT al.usuario_id) FROM actividad_log al
+             JOIN usuarios u ON u.id = al.usuario_id
+             WHERE al.empresa_id=? AND al.tipo='radar_view'
+             AND u.rol != 'superadmin'
+             AND al.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$empresa_id, $periodo]
         );
         $avg_radar = $radar_users >= 2 ? DB::val(
             "SELECT AVG(cnt) FROM (
-                SELECT COUNT(*)/{$weeks} AS cnt FROM actividad_log
-                WHERE empresa_id=? AND tipo='radar_view'
-                AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                GROUP BY usuario_id
+                SELECT COUNT(*)/{$weeks} AS cnt FROM actividad_log al
+                JOIN usuarios u ON u.id = al.usuario_id
+                WHERE al.empresa_id=? AND al.tipo='radar_view'
+                AND u.rol != 'superadmin'
+                AND al.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                GROUP BY al.usuario_id
              ) AS sub",
             [$empresa_id, $periodo]
         ) : null;
+
+        // Para empresas con 1 solo vendedor: usar pisos estadísticos razonables
+        // en vez del promedio propio (que siempre daría sigmoid=0.50).
+        // Pisos basados en estándares de la industria de ventas consultivas:
+        //   - Radar: 3 vistas/semana mínimo (revisar al menos cada 2 días)
+        //   - Tasa cierre: 15% mínimo (1 de cada 7 cotizaciones)
+        //   - Apertura: 70% mínimo (7 de cada 10 llegan al cliente)
+        // Cuando hay 2+ vendedores, el promedio real siempre gana.
+        $piso_radar = 3.0; // vistas/semana — estándar industria
 
         // Tasa de apertura de la empresa
         $emp_asig = (int)DB::val(
@@ -1127,10 +1140,17 @@ class ActividadScore
         );
         $apertura = $emp_asig >= 5 ? $emp_vistas / $emp_asig : 0.70;
 
+        // Si hay 1 solo vendedor, usar el máximo entre su promedio y el piso estadístico
+        // Esto evita que se auto-compare (siempre 50%) y le pone un estándar real
+        $radar_bench = (float)($avg_radar ?? 0);
+        if ($radar_users <= 1) {
+            $radar_bench = max($radar_bench, $piso_radar);
+        }
+
         self::$_bench[$empresa_id] = [
             'close_rate'    => max((float)$close_rate, 0.03),
             'time_to_close' => max((float)($avg_ttc ?? 14), 3),
-            'radar_weekly'  => max((float)($avg_radar ?? 2.0), 0.5),
+            'radar_weekly'  => max($radar_bench, 0.5),
             'apertura'      => max((float)$apertura, 0.30),
         ];
         return self::$_bench[$empresa_id];
