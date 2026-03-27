@@ -116,7 +116,7 @@ class ActividadScore
         );
     }
 
-    private const GRACIA_DIAS = 15; // días mínimos = mismo que PERIODO
+    private const GRACIA_DIAS = 7; // temporal para testing — volver a 15
 
     // ─── Calcular score completo de un usuario ───────────
     public static function calcular(int $usuario_id, int $empresa_id): array
