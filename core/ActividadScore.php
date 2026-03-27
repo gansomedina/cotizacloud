@@ -487,8 +487,15 @@ class ActividadScore
         $pen_dormidas = min($pen_dormidas, 1.0);
 
         // Fix 12: midpoint auto-ajustable al promedio de la empresa
-        $s_activacion = self::sigmoid($tasa_apertura, $bench['apertura'], 2.0 / max($bench['apertura'], 0.1)) - ($pen_dormidas * 0.4);
-        // Tope: penalizaciones de activación no pueden bajar más de 0.60
+        // Fix v4: activación >= 90% merece piso alto independiente del benchmark
+        // Un vendedor que entrega 90%+ de sus cotizaciones está haciendo bien su trabajo
+        if ($tasa_apertura >= 0.90 && $pen_dormidas == 0) {
+            // Escala: 90%=0.80, 95%=0.85, 100%=0.90
+            $s_activacion = 0.80 + ($tasa_apertura - 0.90) * 1.0;
+        } else {
+            $s_activacion = self::sigmoid($tasa_apertura, $bench['apertura'], 2.0 / max($bench['apertura'], 0.1));
+        }
+        $s_activacion = $s_activacion - ($pen_dormidas * 0.4);
         $s_activacion = max(0.0, min(1.0, $s_activacion));
 
         // Tasa de cierre (se calcula antes de seguimiento para usar en benchmark radar)
@@ -516,7 +523,9 @@ class ActividadScore
 
         $semanas = max($periodo / 7, 1);
         $consultas_por_semana = $consultas / $semanas;
-        $s_consultas = self::sigmoid($consultas_por_semana, max($benchmark_radar / $semanas, 0.5) * 2.5, 0.5);
+        // Benchmark de consultas: al menos 1 vista por cotización activa por período
+        $benchmark_consultas = max($cot_activas_safe / $semanas, 1.0);
+        $s_consultas = self::sigmoid($consultas_por_semana, $benchmark_consultas, 2.0 / max($benchmark_consultas, 0.5));
 
         // Fix 4: bonus solo por transiciones donde el vendedor REACCIONÓ
         $bonus_transiciones = min($transiciones_con_reaccion * 0.10, 0.3);
