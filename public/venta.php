@@ -607,7 +607,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   <?php endif; ?>
 
   <?php if (!empty($lineas_extra)): ?>
-  <div style="margin-top:8pt;font:700 9pt var(--body);letter-spacing:.07em;text-transform:uppercase;padding:4pt 0;border-bottom:1pt solid #000">Extras</div>
+  <div style="margin-top:14pt;padding:6pt 0;border-top:2pt solid #000;border-bottom:1pt solid #000;display:flex;align-items:center;gap:8pt">
+    <span style="font:700 10pt var(--body);letter-spacing:.1em;text-transform:uppercase">EXTRAS</span>
+    <span style="flex:1;border-bottom:1pt dashed #999"></span>
+  </div>
   <table class="fac-tbl">
     <thead><tr><th style="width:16pt">#</th><th>Descripción</th><th class="r" style="width:80pt">Total</th></tr></thead>
     <tbody>
