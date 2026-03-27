@@ -324,8 +324,9 @@ class ActividadScore
             [$usuario_id, $empresa_id]
         );
 
-        // Señales ignoradas = cotizaciones calientes SIN reacción del vendedor en 48h
-        // Verifica por cada cotización, no globalmente
+        // Señales ignoradas = cotizaciones calientes donde el vendedor NO abrió
+        // ESA cotización específica dentro de 48h después de actividad del cliente.
+        // Solo cuenta quote_view con ref_id = cotización_id (no radar_view genérico)
         $senales_ignoradas = 0;
         if ($cot_calientes > 0) {
             $cot_calientes_atendidas = (int)DB::val(
@@ -337,7 +338,8 @@ class ActividadScore
                  AND EXISTS (
                     SELECT 1 FROM actividad_log al
                     WHERE al.usuario_id = ?
-                    AND al.tipo IN ('radar_view','quote_view')
+                    AND al.tipo = 'quote_view'
+                    AND al.ref_id = c.id
                     AND al.created_at BETWEEN c.ultima_vista_at AND DATE_ADD(c.ultima_vista_at, INTERVAL 48 HOUR)
                     LIMIT 1
                  )",
