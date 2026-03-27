@@ -125,6 +125,7 @@ foreach ($items as $i => $item) {
         'cantidad'    => $cant,
         'precio_unit' => $precio,
         'subtotal'    => $sub_linea,
+        'es_extra'    => (int)($item['es_extra'] ?? 0),
     ];
 }
 
@@ -174,12 +175,13 @@ try {
     // Reemplazar líneas
     DB::execute("DELETE FROM cotizacion_lineas WHERE cotizacion_id = ?", [$cot_id]);
     foreach ($lineas as $linea) {
+        $es_extra = (int)($linea['es_extra'] ?? 0);
         DB::execute(
             "INSERT INTO cotizacion_lineas
-             (cotizacion_id, articulo_id, orden, sku, titulo, descripcion, cantidad, precio_unit, subtotal)
-             VALUES (?,?,?,?,?,?,?,?,?)",
+             (cotizacion_id, articulo_id, orden, sku, titulo, descripcion, cantidad, precio_unit, subtotal, es_extra)
+             VALUES (?,?,?,?,?,?,?,?,?,?)",
             [$cot_id, $linea['articulo_id'], $linea['orden'], $linea['sku'], $linea['titulo'],
-             $linea['descripcion'], $linea['cantidad'], $linea['precio_unit'], $linea['subtotal']]
+             $linea['descripcion'], $linea['cantidad'], $linea['precio_unit'], $linea['subtotal'], $es_extra]
         );
     }
 
