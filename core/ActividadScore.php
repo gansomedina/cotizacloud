@@ -491,6 +491,10 @@ class ActividadScore
         // Tope: penalizaciones de activación no pueden bajar más de 0.60
         $s_activacion = max(0.0, min(1.0, $s_activacion));
 
+        // Tasa de cierre (se calcula antes de seguimiento para usar en benchmark radar)
+        $cot_vistas_safe = max($cot_vistas, 1);
+        $tasa_cierre = $cierres_total / $cot_vistas_safe;
+
         // ═══════════════════════════════════════════════════
         //  DIMENSIÓN 2: SEGUIMIENTO (30%)
         //  "¿Usa el radar para dar seguimiento?"
@@ -538,9 +542,7 @@ class ActividadScore
         //  Volumen alto + cierres bajos = penalización fuerte.
         // ═══════════════════════════════════════════════════
 
-        // Tasa de cierre sobre cotizaciones vistas (justo)
-        $cot_vistas_safe = max($cot_vistas, 1);
-        $tasa_cierre = $cierres_total / $cot_vistas_safe;
+        // Tasa de cierre ya calculada arriba (antes de seguimiento)
 
         // Calidad de cierre: multiplicador promedio normalizado.
         // Sin bucket (cierre directo) = mult 1.0 → quality 0.50 base.
