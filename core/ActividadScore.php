@@ -554,19 +554,27 @@ class ActividadScore
         $pen_zona_muerta = min($zona_muerta * 0.05, 0.25);
 
         // Penalización por volumen sin resultado:
-        // Si tiene muchas cotizaciones vistas pero 0 cierres, penalizar proporcionalmente.
-        // 5+ vistas sin cierre = empieza a pesar, 10+ = penalización fuerte
-        // Fix 12: penalización relativa al benchmark de la empresa
         $pen_volumen_sin_cierre = 0.0;
-        $half_bench = $bench['close_rate'] / 2; // mitad del promedio empresa
+        $half_bench = $bench['close_rate'] / 2;
         if ($cierres_total === 0 && $cot_vistas >= 3) {
             $pen_volumen_sin_cierre = min(($cot_vistas - 2) * 0.08, 0.5);
         } elseif ($cot_vistas >= 5 && $tasa_cierre < $half_bench) {
             $pen_volumen_sin_cierre = min((1.0 - $tasa_cierre / $half_bench) * 0.3, 0.3);
         }
 
+        // Penalización por ventas sin pago inicial (>5 días sin ningún abono)
+        $ventas_sin_pago = (int)DB::val(
+            "SELECT COUNT(*) FROM ventas
+             WHERE COALESCE(vendedor_id, usuario_id) = ? AND empresa_id = ?
+             AND pagado = 0 AND estado NOT IN ('cancelada','entregada')
+             AND total > 0
+             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)",
+            [$usuario_id, $empresa_id]
+        );
+        $pen_sin_pago = min($ventas_sin_pago * 0.12, 0.40);
+
         // close rate + quality + velocidad de cierre
-        $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre, 0.65); // cap 0.65
+        $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre + $pen_sin_pago, 0.70);
         $s_conversion = (
             self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01)) * 0.40
             + $cierre_quality * 0.35
@@ -845,6 +853,14 @@ class ActividadScore
             'momentum'          => round($momentum, 2),
             'percentil'         => round($percentil, 2),
             'team_size'         => $team_size,
+            // Debug: penalties breakdown
+            'pen_dormidas'      => round($pen_dormidas ?? 0, 3),
+            'pen_seguimiento'   => round($pen_seguimiento ?? 0, 3),
+            'pen_conversion'    => round($pen_conversion ?? 0, 3),
+            'pen_sin_pago'      => round($pen_sin_pago ?? 0, 3),
+            'ventas_sin_pago'   => $ventas_sin_pago ?? 0,
+            'tasa_cierre'       => round($tasa_cierre ?? 0, 3),
+            'bench'             => $bench ?? [],
         ];
     }
 
