@@ -487,6 +487,8 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
   /* ── Ocultar header web / slbls ── */
   .slbl { display:none!important }
+  .slbl.slbl-print { display:flex!important; font:700 11pt var(--body);letter-spacing:.1em;text-transform:uppercase;margin:14pt 0 6pt;padding-top:8pt;border-top:2pt solid #000;align-items:center;gap:8pt }
+  .slbl.slbl-print::after { content:'';flex:1;height:1pt;border-bottom:1pt dashed #999 }
   .qh   { display:none!important }
 
   /* ── Tabla artículos ── */
@@ -712,7 +714,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   </div>
 
   <!-- EXTRAS — desktop -->
-  <div class="slbl" style="margin-top:20px;padding-top:10px;border-top:2px solid var(--bd)">Extras</div>
+  <div class="slbl slbl-print" style="margin-top:20px;padding-top:10px;border-top:2px solid var(--bd)">EXTRAS</div>
   <table class="tbl">
     <thead><tr><th>Descripción</th><th class="r">Total</th></tr></thead>
     <tbody>
