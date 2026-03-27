@@ -1068,6 +1068,7 @@ const CSRF_TOKEN = '<?= csrf_token() ?>';
 const ES_ADMIN   = <?= $puede_admin ? 'true' : 'false' ?>;
 const PUEDE_VER_CANT = <?= (Auth::es_admin() || Auth::puede('ver_cantidades')) ? 'true' : 'false' ?>;
 const PUEDE_EXTRAS   = <?= $puede_extras ? 'true' : 'false' ?>;
+const PUEDE_ELIM_ITEMS = <?= (Auth::es_admin() || Auth::puede('eliminar_items_venta')) ? 'true' : 'false' ?>;
 const MONEDA     = '<?= e($empresa['moneda']) ?>';
 const IMP_MODO   = '<?= e($impuesto_modo) ?>';
 const IMP_PCT    = <?= (float)$impuesto_pct ?>;
@@ -1125,8 +1126,8 @@ function renderLineas(){
   function renderItem(l, i, esExtra) {
     const acciones = esExtra
       ? (PUEDE_EXTRAS ? `<div class="item-actions"><button onclick="eliminarExtra(${l.id})" class="line-del-btn" title="Eliminar extra">✕</button></div>` : '')
-      : (ES_ADMIN ? `<div class="item-actions">
-           <button onclick="uiEditarLinea(${i})" class="line-edit-btn" title="Editar">✏️</button>
+      : ((ES_ADMIN || PUEDE_ELIM_ITEMS) ? `<div class="item-actions">
+           ${ES_ADMIN ? `<button onclick="uiEditarLinea(${i})" class="line-edit-btn" title="Editar">✏️</button>` : ''}
            <button onclick="uiEliminarLinea(${i})" class="line-del-btn" title="Eliminar">🗑</button>
          </div>` : '');
     const sku  = l.sku  ? `<div class="item-sku">${escHtml(l.sku)}</div>` : '';

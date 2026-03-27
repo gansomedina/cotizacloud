@@ -712,7 +712,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   </div>
 
   <!-- EXTRAS — desktop -->
-  <div class="slbl">Extras</div>
+  <div class="slbl" style="margin-top:20px;padding-top:10px;border-top:2px solid var(--bd)">Extras</div>
   <table class="tbl">
     <thead><tr><th>Descripción</th><th class="r">Total</th></tr></thead>
     <tbody>
