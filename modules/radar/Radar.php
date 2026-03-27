@@ -1131,6 +1131,10 @@ class Radar
         $cot = DB::row("SELECT estado, suspendida, radar_bucket, radar_score, vendedor_id, titulo, numero FROM cotizaciones WHERE id=? AND empresa_id=?", [$cotizacion_id, $empresa_id]);
         if (!$cot || !in_array($cot['estado'], ['enviada','vista','aceptada']) || !empty($cot['suspendida'])) return;
 
+        // Si está aceptada, preservar el bucket que tenía — no recalcular
+        // El bucket se usa para contar "cierres asistidos por radar" en el termómetro
+        if ($cot['estado'] === 'aceptada') return;
+
         $old_bucket = $cot['radar_bucket'];
         $old_rscore = $cot['radar_score'];
         $r = self::score($cotizacion_id, $empresa_id);
