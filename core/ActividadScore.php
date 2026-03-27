@@ -207,34 +207,40 @@ class ActividadScore
 
         // Cuenta TODAS las cotizaciones que salieron del borrador, incluyendo
         // canceladas/rechazadas — para que borrar/cancelar no mejore el score
+        // Suspendidas no cuentan para el score (como si no existieran)
+        $no_susp = "AND suspendida = 0";
+
         $cot_asignadas = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw AND total > 0
-             AND (estado != 'borrador' OR visitas > 0) $no_import
+             AND (estado != 'borrador' OR visitas > 0) $no_susp $no_import
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $cot_vistas = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw AND total > 0 $no_import
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw AND total > 0 $no_susp $no_import
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND (estado IN ('vista','aceptada','convertida','aceptada_cliente') OR visitas > 0)",
             [$usuario_id, $empresa_id, $periodo]
         );
+        // Dormidas: solo las NO suspendidas. Si se suspendió antes de 14d/21d,
+        // ya no escala la penalización. El penalty de 7d se limpia solo al salir
+        // de la ventana de 30 días.
         $dormidas_7d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado='enviada' AND visitas=0
              AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $dormidas_14d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado='enviada' AND visitas=0
              AND created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $dormidas_21d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado='enviada' AND visitas=0
              AND created_at < DATE_SUB(NOW(), INTERVAL 21 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
