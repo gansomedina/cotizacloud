@@ -811,7 +811,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Termometro de productividad</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Ranking y diagnostico por vendedor</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Archivos adjuntos en cotizaciones</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Venta cruzada</strong> — Sugiere extras en cotizaciones</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Venta cruzada en cotizaciones</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Costos avanzados por categoria</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Modulo de proveedores</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes avanzados de equipo</div>
