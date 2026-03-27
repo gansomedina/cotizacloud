@@ -268,25 +268,25 @@ class ActividadScore
             [$usuario_id, $empresa_id, $periodo]
         );
         $carga_activa = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
              AND estado IN ('borrador','enviada','vista')",
             [$usuario_id, $empresa_id]
         );
         $buckets_estancados = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
              AND radar_bucket IS NOT NULL AND radar_bucket != 'no_abierta'
              AND estado IN ('enviada','vista')
              AND radar_updated_at < DATE_SUB(NOW(), INTERVAL 14 DAY)",
             [$usuario_id, $empresa_id]
         );
         $vencidas_sin_accion = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
              AND valida_hasta IS NOT NULL AND valida_hasta < CURDATE()
              AND estado IN ('enviada','vista') AND accion_at IS NULL",
             [$usuario_id, $empresa_id]
         );
         $zona_muerta = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
              AND estado IN ('enviada','vista')
              AND COALESCE(radar_updated_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 21 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
@@ -318,7 +318,7 @@ class ActividadScore
         $cot_calientes = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND estado IN ('enviada','vista')
+             AND estado IN ('enviada','vista') AND suspendida = 0
              AND visitas >= 3
              AND ultima_vista_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)",
             [$usuario_id, $empresa_id]
@@ -356,7 +356,7 @@ class ActividadScore
             "SELECT COUNT(*) FROM cotizaciones
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
              AND ultima_vista_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-             AND estado IN ('enviada','vista') AND total > 0",
+             AND estado IN ('enviada','vista') AND suspendida = 0 AND total > 0",
             [$usuario_id, $empresa_id]
         );
 
@@ -367,7 +367,7 @@ class ActividadScore
                 "SELECT COUNT(*) FROM cotizaciones c
                  WHERE COALESCE(c.vendedor_id, c.usuario_id)=? AND c.empresa_id=?
                  AND c.ultima_vista_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                 AND c.estado IN ('enviada','vista') AND c.total > 0
+                 AND c.estado IN ('enviada','vista') AND c.suspendida = 0 AND c.total > 0
                  AND EXISTS (
                     SELECT 1 FROM actividad_log al
                     WHERE al.usuario_id = ?
