@@ -1097,15 +1097,17 @@ class ActividadScore
     {
         if (isset(self::$_bench[$empresa_id])) return self::$_bench[$empresa_id];
 
-        // Tasa de cierre de la empresa (vistas → cierres)
+        // Tasa de cierre de la empresa (vistas → cierres) — excluir suspendidas y borradores
         $emp_vistas = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0
+             AND suspendida = 0 AND estado != 'borrador'
              AND (visitas > 0 OR estado IN ('aceptada','convertida','aceptada_cliente'))
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$empresa_id, $periodo]
         );
         $emp_cierres = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0
+             AND suspendida = 0
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$empresa_id, $periodo]
@@ -1147,13 +1149,14 @@ class ActividadScore
         // Para empresas con 1 solo vendedor: pendiente análisis de mejor enfoque
         // Por ahora usa el promedio propio o el default de 2.0
 
-        // Tasa de apertura de la empresa
+        // Tasa de apertura de la empresa — excluir suspendidas y borradores
         $emp_asig = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0
+             AND suspendida = 0 AND estado != 'borrador'
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$empresa_id, $periodo]
         );
-        $apertura = $emp_asig >= 5 ? $emp_vistas / $emp_asig : 0.70;
+        $apertura = $emp_asig >= 5 ? $emp_vistas / max($emp_asig, 1) : 0.70;
 
         self::$_bench[$empresa_id] = [
             'close_rate'    => max((float)$close_rate, 0.03),
