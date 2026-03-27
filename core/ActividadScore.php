@@ -1013,6 +1013,14 @@ class ActividadScore
             }
         }
 
+        // Ventas sin pago inicial
+        $vsp = (int)($s['ventas_sin_pago'] ?? 0);
+        if ($vsp > 0) {
+            $frases[] = $vsp === 1
+                ? "1 venta sin cobrar en más de 5 días"
+                : "$vsp ventas sin cobrar en más de 5 días — afecta puntaje";
+        }
+
         // ── MOMENTUM ──
         if ($mom >= 1.20) {
             $frases[] = "tendencia en mejora";
