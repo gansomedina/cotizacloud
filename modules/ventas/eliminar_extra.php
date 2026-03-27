@@ -1,8 +1,8 @@
 <?php
 // ============================================================
-//  CotizaApp — modules/ventas/agregar_extra.php
-//  POST /ventas/:id/agregar-extra
-//  Solo agrega UN artículo extra — no modifica ni elimina nada
+//  CotizaApp — modules/ventas/eliminar_extra.php
+//  POST /ventas/:id/eliminar-extra
+//  Solo elimina líneas con es_extra=1
 // ============================================================
 defined('COTIZAAPP') or die;
 ob_start();
@@ -10,7 +10,7 @@ header('Content-Type: application/json; charset=utf-8');
 csrf_check();
 
 if (!Auth::es_admin() && !Auth::puede('agregar_extras')) {
-    json_error('Sin permiso para agregar extras', 403);
+    json_error('Sin permiso', 403);
 }
 
 $empresa_id = EMPRESA_ID;
@@ -18,13 +18,8 @@ $venta_id   = (int)($id ?? 0);
 if (!$venta_id) json_error('ID inválido', 400);
 
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
-
-$titulo = substr(trim($body['titulo'] ?? ''), 0, 255);
-$desc   = substr(trim($body['descripcion'] ?? ''), 0, 1000);
-$total  = round(max(0, (float)($body['total'] ?? 0)), 2);
-
-if (!$titulo) json_error('El nombre es requerido');
-if ($total <= 0) json_error('El total debe ser mayor a 0');
+$linea_id = (int)($body['linea_id'] ?? 0);
+if (!$linea_id) json_error('ID de línea inválido', 400);
 
 // Cargar venta
 $venta = DB::row("SELECT * FROM ventas WHERE id=? AND empresa_id=?", [$venta_id, $empresa_id]);
@@ -32,25 +27,22 @@ if (!$venta) json_error('Venta no encontrada', 404);
 if ($venta['estado'] === 'cancelada') json_error('Venta cancelada', 422);
 
 $cot_id = (int)$venta['cotizacion_id'];
-if (!$cot_id) json_error('Esta venta no tiene cotización asociada');
+if (!$cot_id) json_error('Sin cotización asociada');
+
+// Verificar que la línea es un extra y pertenece a esta cotización
+$linea = DB::row(
+    "SELECT id, titulo, subtotal, es_extra FROM cotizacion_lineas WHERE id=? AND cotizacion_id=?",
+    [$linea_id, $cot_id]
+);
+if (!$linea) json_error('Línea no encontrada', 404);
+if (!(int)$linea['es_extra']) json_error('Solo se pueden eliminar extras', 422);
 
 DB::beginTransaction();
 try {
-    // Obtener siguiente orden
-    $max_orden = (int)DB::val(
-        "SELECT COALESCE(MAX(orden), 0) FROM cotizacion_lineas WHERE cotizacion_id=?",
-        [$cot_id]
-    );
+    // Eliminar la línea
+    DB::execute("DELETE FROM cotizacion_lineas WHERE id=?", [$linea_id]);
 
-    // Insertar la línea extra (cantidad=1, precio=total, es_extra=1)
-    DB::execute(
-        "INSERT INTO cotizacion_lineas
-         (cotizacion_id, orden, titulo, descripcion, cantidad, precio_unit, subtotal, es_extra)
-         VALUES (?,?,?,?,1,?,?,1)",
-        [$cot_id, $max_orden + 1, $titulo, $desc, $total, $total]
-    );
-
-    // Recalcular subtotal de la cotización
+    // Recalcular subtotal
     $nuevo_subtotal = (float)DB::val(
         "SELECT COALESCE(SUM(subtotal), 0) FROM cotizacion_lineas WHERE cotizacion_id=?",
         [$cot_id]
@@ -63,7 +55,6 @@ try {
     $imp_pct       = (float)($cot['impuesto_pct'] ?? 0);
     $imp_modo      = $cot['impuesto_modo'] ?? 'ninguno';
 
-    // Recalcular total
     $base = $nuevo_subtotal - $cupon_amt - $desc_auto_amt;
     if ($imp_modo === 'suma') {
         $nuevo_total = round($base * (1 + $imp_pct / 100), 2);
@@ -91,12 +82,11 @@ try {
 } catch (\Exception $e) {
     DB::rollback();
     ob_end_clean();
-    json_error('Error al agregar extra: ' . $e->getMessage(), 500);
+    json_error('Error: ' . $e->getMessage(), 500);
 }
 
-// Log
-VentaLog::registrar($venta_id, $empresa_id, 'item_agregado',
-    $titulo . ' · $' . number_format($total, 2), Auth::id());
+VentaLog::registrar($venta_id, $empresa_id, 'item_eliminado',
+    'Extra eliminado: ' . $linea['titulo'] . ' · $' . number_format((float)$linea['subtotal'], 2), Auth::id());
 
 ob_end_clean();
 json_ok(['total' => $nuevo_total, 'saldo' => $nuevo_saldo, 'estado' => $nuevo_estado]);
