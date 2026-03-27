@@ -705,6 +705,12 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   </div>
 
   <?php if (!empty($lineas_extra)): ?>
+  <!-- Subtotal artículos (solo si hay extras) -->
+  <div style="display:flex;justify-content:flex-end;padding:8px 16px;background:var(--bg);border:1px solid var(--bd);border-top:none;border-radius:0 0 var(--r) var(--r);margin-bottom:16px">
+    <span style="font:400 12px var(--body);color:var(--t3);margin-right:8px">Subtotal artículos</span>
+    <span style="font:600 14px var(--num)"><?= fmt_pub($subtotal) ?></span>
+  </div>
+
   <!-- EXTRAS — desktop -->
   <div class="slbl">Extras</div>
   <table class="tbl">
@@ -741,7 +747,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <!-- TOTALES -->
   <div class="slbl" id="resumenlbl-screen">Resumen</div>
   <div class="tots" id="totalsScreen">
-    <div class="tr"><span class="tl">Subtotal</span><span class="tv" id="tSub"><?= fmt_pub($subtotal) ?></span></div>
+    <div class="tr"><span class="tl"><?= $subtotal_extras > 0 ? 'Subtotal artículos' : 'Subtotal' ?></span><span class="tv" id="tSub"><?= fmt_pub($subtotal) ?></span></div>
     <?php if ($desc_auto_amt > 0): ?>
     <div class="tr td" id="tAR">
       <span class="tl" id="tAL">Descuento especial<?= $adc_pct > 0 ? ' (' . number_format($adc_pct,0) . '%)' : '' ?></span>

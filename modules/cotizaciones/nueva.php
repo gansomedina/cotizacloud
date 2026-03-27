@@ -413,9 +413,14 @@ $page_title = 'Nueva cotización';
         <div class="slabel">Artículos</div>
         <div class="items-list" id="items-list"></div>
 
-        <button class="add-item-btn" onclick="openSheet('catalogSheet','catalogOverlay')">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button class="add-item-btn" style="flex:2;margin-top:0" onclick="abrirCatalogo(false)">
             <span style="font-size:18px">+</span> Agregar artículo
         </button>
+        <button class="add-item-btn" style="flex:1;margin-top:0;border-color:#d97706;color:#d97706" onclick="abrirCatalogo(true)">
+            <span style="font-size:18px">+</span> Agregar extra
+        </button>
+        </div>
 
         <!-- ADJUNTOS (disponible después de guardar) -->
         <div class="slabel">Archivos adjuntos</div>
@@ -788,16 +793,23 @@ function renderCatalogList(filtro) {
 
 function filtrarCatalogo(val) { renderCatalogList(val); }
 
+let _agregandoExtra = false;
+function abrirCatalogo(esExtra){ _agregandoExtra = esExtra; openSheet('catalogSheet','catalogOverlay'); }
+
 function agregarDesde(id) {
     const a = ARTICULOS.find(x => x.id === id);
     if (!a) return;
-    agregarItem(a.titulo, a.sku || '', a.descripcion || '', a.precio, id);
+    const pre = _agregandoExtra ? 'EXTRA: ' : '';
+    agregarItem(pre + a.titulo, a.sku || '', a.descripcion || '', a.precio, id, _agregandoExtra);
     closeSheet('catalogSheet', 'catalogOverlay');
+    _agregandoExtra = false;
 }
 
 function agregarItemVacio() {
-    agregarItem('', '', '', 0, null);
+    const pre = _agregandoExtra ? 'EXTRA: ' : '';
+    agregarItem(pre, '', '', 0, null, _agregandoExtra);
     closeSheet('catalogSheet', 'catalogOverlay');
+    _agregandoExtra = false;
     setTimeout(() => {
         const items = document.querySelectorAll('#items-list .item-card');
         const last  = items[items.length - 1];
@@ -808,12 +820,12 @@ function agregarItemVacio() {
 // ─── Items ──────────────────────────────────────────────
 let itemCounter = 0;
 
-function agregarItem(titulo, sku, desc, precio, articulo_id) {
+function agregarItem(titulo, sku, desc, precio, articulo_id, esExtra=false) {
     itemCounter++;
     const id  = 'item-' + itemCounter;
     const amt = titulo ? fmt(precio) : '$0.00';
     const html = `
-    <div class="item-card" data-articulo-id="${articulo_id || ''}" id="${id}">
+    <div class="item-card" data-articulo-id="${articulo_id || ''}" data-es-extra="${esExtra?1:0}" id="${id}">
         <div class="item-header">
             <div class="item-num-wrap">
                 <button class="item-arrow" onclick="moverItem(this,-1)" title="Subir">▲</button>
@@ -1111,6 +1123,7 @@ function recolectarItems() {
             descripcion:  card.querySelector('[data-campo=descripcion]')?.value  || '',
             cantidad:     parseFloat(card.querySelector('[data-campo=cantidad]')?.value) || 1,
             precio_unit:  parseFloat(card.querySelector('[data-campo=precio]')?.value)  || 0,
+            es_extra:     parseInt(card.dataset.esExtra) || 0,
         });
     });
     return items;
