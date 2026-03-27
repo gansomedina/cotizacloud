@@ -810,11 +810,12 @@ class ActividadScore
              (usuario_id, empresa_id, score, nivel, dias_activos, acciones, conversiones,
               carga_activa, cot_asignadas, cot_vistas, cot_dormidas,
               cierres_bucket, cierres_sin_dto, transiciones_up, senales_ignoradas,
+              radar_views, radar_benchmark, tasa_cierre, ventas_sin_pago,
               s_activacion, s_seguimiento, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
               momentum, percentil)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -823,6 +824,8 @@ class ActividadScore
               cot_dormidas=VALUES(cot_dormidas),
               cierres_bucket=VALUES(cierres_bucket), cierres_sin_dto=VALUES(cierres_sin_dto),
               transiciones_up=VALUES(transiciones_up), senales_ignoradas=VALUES(senales_ignoradas),
+              radar_views=VALUES(radar_views), radar_benchmark=VALUES(radar_benchmark),
+              tasa_cierre=VALUES(tasa_cierre), ventas_sin_pago=VALUES(ventas_sin_pago),
               s_activacion=VALUES(s_activacion), s_seguimiento=VALUES(s_seguimiento),
               s_conversion=VALUES(s_conversion),
               penalizaciones=VALUES(penalizaciones), bonuses=VALUES(bonuses),
@@ -837,6 +840,7 @@ class ActividadScore
                 $dias_activos, $consultas + $radar_sessions, $cierres_total,
                 $carga_activa, $cot_asignadas, $cot_vistas, $dormidas_7d,
                 $cierres_bucket, $cierres_sin_dto, $transiciones_up, $senales_ignoradas,
+                $radar_sessions, round($benchmark_radar, 1), round($tasa_cierre, 3), $ventas_sin_pago,
                 round($s_activacion, 3), round($s_seguimiento, 3), round($s_conversion, 3),
                 round($total_pen, 3), round($total_bonus, 3),
                 round($proporcional, 3),
