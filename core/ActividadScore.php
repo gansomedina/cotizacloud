@@ -679,7 +679,7 @@ class ActividadScore
         // pen_sin_pago ya calculada en Engagement (eng_pen_sin_pago)
 
         // close rate + quality + velocidad de cierre
-        $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre + $pen_sin_pago, 0.70);
+        $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre, 0.70);
         $s_conversion = (
             self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01)) * 0.40
             + $cierre_quality * 0.35
@@ -945,7 +945,7 @@ class ActividadScore
             'pen_dormidas'      => round($pen_dormidas ?? 0, 3),
             'pen_seguimiento'   => round($pen_seguimiento ?? 0, 3),
             'pen_conversion'    => round($pen_conversion ?? 0, 3),
-            'pen_sin_pago'      => round($pen_sin_pago ?? 0, 3),
+            'pen_sin_pago'      => round($eng_pen_sin_pago ?? 0, 3),
             'ventas_sin_pago'   => $ventas_sin_pago ?? 0,
             'tasa_cierre'       => round($tasa_cierre ?? 0, 3),
             'radar_views'       => $radar_sessions ?? 0,
