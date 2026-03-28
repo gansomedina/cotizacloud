@@ -550,10 +550,11 @@ class ActividadScore
         );
         $eng_pen_descuento = ($ventas_con_descuento / $ventas_totales_safe) * $close_rate_safe;
 
-        // pen_enfriamiento: transiciones down / total transiciones
+        // pen_enfriamiento: transiciones down / total × close_rate (suave)
+        // Enfriamiento natural no es culpa directa del vendedor
         $trans_total = $transiciones_up + $transiciones_down;
         $eng_pen_enfriamiento = $trans_total > 0
-            ? $transiciones_down / $trans_total
+            ? ($transiciones_down / $trans_total) * $close_rate_safe
             : 0.0;
 
         $s_engagement = 1.0 - $eng_pen_sin_pago - $eng_pen_descuento - $eng_pen_enfriamiento;
