@@ -550,53 +550,77 @@ class ActividadScore
         $s_engagement = max(0.0, min(1.0, $s_engagement));
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 3: SEGUIMIENTO (30%)
-        //  "¿Usa el radar para dar seguimiento?"
+        //  DIMENSIÓN 3: SEGUIMIENTO (30%) — v5
+        //  "¿Actúas sobre las señales del Radar?"
+        //  Basado en feedback: tasa_completado × calidad
         // ═══════════════════════════════════════════════════
 
-        // Algoritmo inteligente de benchmark de Radar (auto-ajustable)
-        // benchmark = cotizaciones_activas × factor_conversion × factor_actividad
-        // - Más cotizaciones = más radar necesitas
-        // - Menos cierras = más radar necesitas (inverso)
-        // - Más clientes activos = más urgencia
-        $bench_cierre = max($bench['close_rate'], 0.01);
-        $ratio_cierre = $tasa_cierre / $bench_cierre;
-        $factor_conv_radar = max(0.3, 1.0 / (1.0 + $ratio_cierre));
-        $cot_activas_safe = max($cot_asignadas, 1);
-        $factor_act_radar = 1.0 + ($cot_vistas / $cot_activas_safe) * 0.5;
-        $benchmark_radar = $cot_activas_safe * $factor_conv_radar * $factor_act_radar;
+        // Cotizaciones en buckets calientes del vendedor
+        $hot_buckets_sql = "('probable_cierre','onfire','inminente','validando_precio','prediccion_alta')";
+        $cots_calientes = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
+             AND radar_bucket IN $hot_buckets_sql
+             AND estado IN ('enviada','vista')",
+            [$usuario_id, $empresa_id]
+        );
 
-        // Ratio real/benchmark — clamped a [0, 1] para score directo
-        // 13/15 = 0.87 → 87% del score
-        // 15/15 = 1.0  → 100% (cap)
-        // 20/15 = 1.33 → 100% (superó benchmark)
-        $radar_ratio = $benchmark_radar > 0 ? min($radar_sessions / $benchmark_radar, 1.0) : 0;
-        $s_radar = $radar_ratio;
+        // Feedback dado por el vendedor en esas cotizaciones
+        $fb_data = DB::query(
+            "SELECT rf.cotizacion_id, rf.tipo, c.estado,
+                    c.ultima_vista_at, rf.created_at AS fb_at
+             FROM radar_feedback rf
+             JOIN cotizaciones c ON c.id = rf.cotizacion_id
+             WHERE rf.usuario_id=? AND rf.empresa_id=?
+             AND c.radar_bucket IN $hot_buckets_sql",
+            [$usuario_id, $empresa_id]
+        );
 
-        $semanas = max($periodo / 7, 1);
-        $consultas_por_semana = $consultas / $semanas;
-        // Benchmark de consultas: al menos 1 vista por cotización activa por período
-        $benchmark_consultas = max($cot_activas_safe / $semanas, 1.0);
-        $consultas_ratio = $benchmark_consultas > 0 ? min($consultas_por_semana / $benchmark_consultas, 1.0) : 0;
-        $s_consultas = $consultas_ratio;
+        $fb_total = count($fb_data);
+        $aciertos = 0.0;
+        $fallos = 0.0;
+        $inv_cr = 1.0 / $close_rate_safe; // 1/close_rate para escalar
 
-        // Fix 4: bonus solo por transiciones donde el vendedor REACCIONÓ
-        $bonus_transiciones = min($transiciones_con_reaccion * 0.10, 0.3);
+        foreach ($fb_data as $fb) {
+            $es_aceptada = in_array($fb['estado'], ['aceptada', 'convertida', 'aceptada_cliente']);
+            $cliente_regreso = false;
+            if ($fb['ultima_vista_at'] && $fb['fb_at']) {
+                $dias_desde_fb = (time() - strtotime($fb['fb_at'])) / 86400;
+                $cliente_regreso = strtotime($fb['ultima_vista_at']) > strtotime($fb['fb_at'])
+                                   && $dias_desde_fb <= 5;
+            }
 
-        // Penalización por buckets estancados
+            if ($fb['tipo'] === 'con_interes') {
+                if ($es_aceptada) {
+                    $aciertos += $inv_cr; // con_interes + contrata = máximo acierto
+                } elseif ($cliente_regreso) {
+                    $aciertos += 1.0;     // con_interes + regresa = buen seguimiento
+                } else {
+                    $fallos += 1.0;       // con_interes + no regresa = fallo leve
+                }
+            } else { // sin_interes
+                if ($es_aceptada) {
+                    $fallos += $inv_cr;   // sin_interes + acepta = fallo grave
+                } else {
+                    $aciertos += 1.0;     // sin_interes + no regresa = acierto
+                }
+            }
+        }
+
+        // Tasa de completado: feedback dado / cotizaciones calientes
+        $tasa_completado = $cots_calientes > 0 ? min($fb_total / $cots_calientes, 1.0) : 0.50;
+
+        // Calidad del feedback
+        $calidad_fb = ($aciertos + $fallos) > 0 ? $aciertos / ($aciertos + $fallos) : 0.50;
+
+        // Penalización por buckets estancados (se mantiene de v4)
         $pen_buckets = min($buckets_estancados * 0.06, 0.3);
 
-        // Penalización por señales calientes ignoradas
-        $pen_senales = min($senales_ignoradas * 0.10, 0.4);
-
-        // Penalización por transiciones caliente→frío
-        $pen_trans_down = min($transiciones_down * 0.05, 0.2);
-
-        // tasa_reaccion entra con 35% del peso de seguimiento
-        $pen_seguimiento = min($pen_buckets + $pen_senales + $pen_trans_down, 0.60); // cap 0.60
-        $s_seguimiento = ($s_radar * 0.30 + $s_consultas * 0.15 + $tasa_reaccion * 0.35 + $bonus_transiciones * 0.20)
-                         - $pen_seguimiento;
+        // Seguimiento = completado × calidad - estancados
+        $s_seguimiento = ($tasa_completado * $calidad_fb) - $pen_buckets;
         $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
+
+        // Guardar para debug
+        $benchmark_radar = $cots_calientes; // para compatibilidad con debug display
 
         // ═══════════════════════════════════════════════════
         //  DIMENSIÓN 3: CONVERSIÓN (45%)
@@ -901,8 +925,8 @@ class ActividadScore
                 $usuario_id, $empresa_id, $score, $nivel,
                 $dias_activos, $consultas + $radar_sessions, $cierres_total,
                 $carga_activa, $cot_asignadas, $cot_vistas, $dormidas_7d,
-                $cierres_bucket, $cierres_sin_dto, $transiciones_up, $senales_ignoradas,
-                $radar_sessions, round($benchmark_radar, 1), round($tasa_cierre, 3), $ventas_sin_pago,
+                $cierres_bucket, $cierres_sin_dto, $transiciones_up, $transiciones_down,
+                $fb_total, round($cots_calientes, 1), round($tasa_cierre, 3), $ventas_sin_pago,
                 round($s_activacion, 3), round($s_seguimiento, 3), round($s_conversion, 3),
                 round($total_pen, 3), round($total_bonus, 3),
                 round($proporcional, 3),
@@ -929,7 +953,11 @@ class ActividadScore
             'cierres_bucket'    => $cierres_bucket,
             'cierres_sin_dto'   => $cierres_sin_dto,
             'transiciones_up'   => $transiciones_up,
-            'senales_ignoradas' => $senales_ignoradas,
+            'transiciones_down' => $transiciones_down,
+            'senales_ignoradas' => $transiciones_down, // reutilizado para debug display
+            'cots_calientes'    => $cots_calientes,
+            'fb_total'          => $fb_total,
+            'fb_calidad'        => round($calidad_fb, 3),
             's_activacion'      => round($s_activacion, 3),
             's_engagement'      => round($s_engagement, 3),
             'eng_pen_sin_pago'  => round($eng_pen_sin_pago, 3),
@@ -1054,25 +1082,24 @@ class ActividadScore
         // Distinguir: ¿tiene acciones (quote_view+radar) pero 0 cierres desde radar?
         // Si acciones > 0 pero cierres_bucket = 0 y score bajo, es que revisa cotizaciones
         // pero no usa radar específicamente.
-        $acciones_total = (int)($s['acciones'] ?? 0);
-        $rv = (int)($s['radar_views'] ?? 0);
-        $rb = (float)($s['radar_benchmark'] ?? 0);
-        $usa_radar = $cbkt > 0 || $tup > 0;
+        // ── SEGUIMIENTO (feedback) ──
+        $fb_calientes = (int)($s['radar_benchmark'] ?? 0); // calientes totales
+        $fb_dados = (int)($s['radar_views'] ?? 0);         // feedbacks dados
         if ($seg >= 0.70) {
-            $frases[] = $usa_radar ? "buen seguimiento con el radar" : "responde bien a los clientes";
+            $frases[] = "buen seguimiento — responde a las señales del radar";
         } elseif ($seg >= 0.35) {
-            if ($rv > 0 && $rb > 0) {
-                $pct_radar = round($rv / $rb * 100);
-                $frases[] = "usa el radar al {$pct_radar}% de lo esperado";
-            } elseif ($acciones_total > 0) {
-                $frases[] = "revisa cotizaciones pero necesita usar más el radar";
+            if ($fb_calientes > 0 && $fb_dados > 0) {
+                $pct_fb = round($fb_dados / $fb_calientes * 100);
+                $frases[] = "seguimiento al {$pct_fb}% — dar feedback a más señales calientes";
             } else {
-                $frases[] = "seguimiento moderado, puede usar más el radar";
+                $frases[] = "seguimiento moderado — revisar señales calientes del radar";
             }
         } elseif ($seg > 0.05) {
-            $frases[] = $rv > 0 ? "poco uso del radar" : "rara vez revisa el radar";
+            $frases[] = $fb_calientes > 0
+                ? "poco seguimiento — {$fb_calientes} señales calientes sin atender"
+                : "poco seguimiento";
         } else {
-            $frases[] = "no usa el radar para dar seguimiento";
+            $frases[] = "no da seguimiento a las señales del radar";
         }
 
         // ── CONVERSIÓN ──
