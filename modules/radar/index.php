@@ -76,7 +76,8 @@ $raw = DB::query(
                      c.created_at) AS ultima_vista_at,
             c.created_at,
             cl.nombre AS cnombre, cl.telefono AS ctel,
-            u.nombre  AS asesor
+            u.nombre  AS asesor,
+            COALESCE(c.vendedor_id, c.usuario_id) AS vendedor_id
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id=c.cliente_id
      LEFT JOIN usuarios  u  ON u.id=COALESCE(c.vendedor_id, c.usuario_id)
@@ -85,6 +86,17 @@ $raw = DB::query(
      LIMIT 500",
     [$empresa_id]
 );
+
+// Cargar feedbacks del usuario actual
+$feedback_map = [];
+$fb_rows = DB::query(
+    "SELECT cotizacion_id, tipo FROM radar_feedback WHERE usuario_id=? AND empresa_id=?",
+    [Auth::id(), $empresa_id]
+);
+foreach ($fb_rows as $fb) $feedback_map[(int)$fb['cotizacion_id']] = $fb['tipo'];
+
+// Buckets que muestran botones de feedback
+$HOT_BUCKETS = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta'];
 
 // Helpers
 function rhace(int $ts): string {
@@ -315,7 +327,20 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $last_fmt = date('m-d H:i',$r['last_ts'])." <span class='ago'>(".rhace($r['last_ts']).")</span>";
         if ($gap && isset($r['gap_days'])) $last_fmt .= " <b style='color:#6a1b9a'>gap ".(int)$r['gap_days']."d</b>";
         echo "<td class='col-vista'>$last_fmt</td>";
-        echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a></td>";
+        echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a>";
+        // Botones de feedback (solo vendedor asignado + buckets calientes)
+        $r_bucket = $r['bucket'] ?? '';
+        $r_vendedor = (int)($r['vendedor_id'] ?? 0);
+        $r_fb = $feedback_map[(int)$r['id']] ?? null;
+        if (in_array($r_bucket, $HOT_BUCKETS) && ($r_vendedor === Auth::id() || Auth::es_admin())) {
+            $cls_ci = $r_fb === 'con_interes' ? 'fb-active fb-pos' : '';
+            $cls_si = $r_fb === 'sin_interes' ? 'fb-active fb-neg' : '';
+            echo "<div class='fb-btns'>";
+            echo "<button class='fb-btn fb-ci {$cls_ci}' onclick=\"radarFb({$r['id']},'con_interes',this)\" title='Con interés'>👍</button>";
+            echo "<button class='fb-btn fb-si {$cls_si}' onclick=\"radarFb({$r['id']},'sin_interes',this)\" title='Sin interés'>👎</button>";
+            echo "</div>";
+        }
+        echo "</td>";
         echo "</tr>";
         // Debug row: show all scoring internals
         if ($debug_mode) {
@@ -579,6 +604,13 @@ ob_start();
   .rbk-hd{gap:6px}
   .rtit{max-width:160px}
 }
+/* Feedback buttons */
+.fb-btns{display:flex;gap:3px;margin-top:4px}
+.fb-btn{width:26px;height:26px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;opacity:.5;transition:all .15s}
+.fb-btn:hover{opacity:1;transform:scale(1.1)}
+.fb-active{opacity:1;border-width:2px}
+.fb-pos{border-color:#16a34a;background:#f0fdf4}
+.fb-neg{border-color:#dc2626;background:#fef2f2}
 </style>
 
 <!-- Cabecera -->
@@ -941,6 +973,28 @@ render_bkt('🟡 Activos 48h (todos los activos)',
 
 <script>
 const CSRF_R='<?= csrf_token() ?>';
+
+// Feedback del Radar
+async function radarFb(cotId, tipo, btn) {
+    try {
+        const r = await fetch('/api/radar-feedback', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF_R},
+            body: JSON.stringify({cotizacion_id: cotId, tipo: tipo})
+        });
+        const d = await r.json();
+        if (d.ok) {
+            // Actualizar UI
+            const wrap = btn.parentElement;
+            wrap.querySelectorAll('.fb-btn').forEach(b => {
+                b.classList.remove('fb-active','fb-pos','fb-neg');
+            });
+            btn.classList.add('fb-active');
+            btn.classList.add(tipo === 'con_interes' ? 'fb-pos' : 'fb-neg');
+        }
+    } catch(e) {}
+}
+
 function rTab(id,btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));
