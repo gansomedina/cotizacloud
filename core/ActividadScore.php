@@ -1068,8 +1068,10 @@ class ActividadScore
         // Si acciones > 0 pero cierres_bucket = 0 y score bajo, es que revisa cotizaciones
         // pero no usa radar específicamente.
         // ── SEGUIMIENTO (feedback) ──
-        $fb_calientes = (int)($s['radar_benchmark'] ?? 0); // calientes totales
-        $fb_dados = (int)($s['radar_views'] ?? 0);         // feedbacks dados
+        $fb_calientes = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
+        $fb_dados = (int)($s['fb_total'] ?? $s['radar_views'] ?? 0);
+        // Sanitize: fb_dados no puede ser mayor que fb_calientes
+        if ($fb_calientes > 0 && $fb_dados > $fb_calientes) $fb_dados = $fb_calientes;
         if ($seg >= 0.70) {
             $frases[] = "buen seguimiento — responde a las señales del radar";
         } elseif ($seg >= 0.35) {
