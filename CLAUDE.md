@@ -385,3 +385,76 @@ Ficha de empresa con: dominio propio, estado DNS (verificado/no apunta), estado 
 
 ### Branch de trabajo
 - `claude/review-apple-store-build-xB5jg`
+
+## Termómetro v5 — Pendiente (diseño completo)
+
+### Rediseño: 4 dimensiones con feedback del Radar
+
+#### Los 4 factores
+| # | Dimensión | Peso | Qué mide |
+|---|---|---|---|
+| 1 | **Activación** | 10% | ¿Las cotizaciones llegan al cliente? |
+| 2 | **Engagement** | 25% | ¿Interactúas con las señales calientes del Radar? |
+| 3 | **Seguimiento** | 25% | ¿Usas el Radar regularmente? |
+| 4 | **Conversión** | 40% | ¿Cierras ventas? |
+
+#### Sistema de feedback en el Radar
+Dos botones por cotización caliente (solo vendedor asignado):
+- **"Con interés"** — contactó y hay oportunidad real
+- **"Sin interés"** — contactó y no hay oportunidad
+
+Botones cambiables. Solo en buckets calientes (probable_cierre, onfire, inminente, validando_precio, prediccion_alta).
+
+#### Tabla de resultados
+| Feedback | Resultado posterior | Score |
+|---|---|---|
+| Con interés + cliente regresa | Buen seguimiento | +Bonus |
+| Con interés + cliente acepta | Cerró la venta | ++Bonus |
+| Con interés + cliente NO regresa | Seguimiento inefectivo | -Penalización leve |
+| Sin interés + cliente nunca regresa | Evaluación correcta | **+Bonus (premio por usar Radar)** |
+| Sin interés + cliente acepta | Perdió venta real | -Penalización fuerte |
+| Sin interés + cliente regresa sin aceptar | Juicio parcialmente incorrecto | -Penalización leve |
+| **Sin feedback** | **Ignoró señal caliente** | **-Penalización fuerte** |
+
+#### Principios del cálculo — AUTO-AJUSTABLE
+- **NO valores fijos** para bonus/penalizaciones
+- Pesos proporcionales a la **tasa de aceptación de la empresa**
+- Empresa con alta tasa de cierre → penalizaciones más suaves
+- Empresa con baja tasa de cierre → cada oportunidad caliente pesa más
+- Bonus/pen basados en ratios del vendedor vs benchmark empresa
+
+#### BD
+```sql
+CREATE TABLE radar_feedback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cotizacion_id INT UNSIGNED NOT NULL,
+    usuario_id INT UNSIGNED NOT NULL,
+    empresa_id INT UNSIGNED NOT NULL,
+    tipo ENUM('con_interes','sin_interes') NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_cot_user (cotizacion_id, usuario_id),
+    KEY idx_empresa (empresa_id),
+    FOREIGN KEY (cotizacion_id) REFERENCES cotizaciones(id) ON DELETE CASCADE
+);
+```
+
+#### Seguimiento simplificado
+```
+s_seguimiento = s_radar - pen_buckets
+s_radar = min(radar_views / benchmark_inteligente, 1.0)
+```
+Sin tasa_reaccion, sin bonus_transiciones, sin señales_ignoradas — todo reemplazado por Engagement.
+
+#### Qué se elimina
+- `tasa_reaccion` → Engagement
+- `señales_ignoradas` actual → "sin feedback"
+- `transiciones_con_reaccion` → no medible confiablemente
+- `bonus_transiciones` → se simplifica
+
+#### Qué se mantiene
+- Benchmark radar inteligente (por vendedor, auto-ajustable)
+- Superadmin excluido de benchmarks
+- Suspendidas excluidas de conteos
+- Activación piso 80-90% para apertura >= 90%
+- Período 15 días rolling
