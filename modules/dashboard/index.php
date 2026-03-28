@@ -731,15 +731,16 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div id="lb-info" class="lb-info">
       <div class="lb-info-inner">
         <b>¿Qué mide este ranking?</b>
-        <p>Algoritmo APC v4.0 (Productividad Comercial) — 15 días rolling, auto-ajustable por empresa:</p>
+        <p>Algoritmo APC v5.0 — 15 días rolling, 100% auto-ajustable, cero valores fijos:</p>
         <ul>
-          <li><b>Activación (20%)</b> — ¿Las cotizaciones llegan al cliente? Es el mínimo esperado. Penaliza cotizaciones dormidas (enviadas sin abrir en 7, 14 y 21 días).</li>
-          <li><b>Seguimiento (35%)</b> — ¿Da seguimiento activo? Mide uso del Radar, revisión de cotizaciones, velocidad de reacción cuando un cliente abre una cotización (dentro de 48h), y transiciones de bucket frío→caliente. Penaliza señales calientes ignoradas y buckets estancados.</li>
-          <li><b>Conversión (45%)</b> — ¿Cierra ventas? Lo que más pesa. Mide tasa de cierre, calidad (cierres desde buckets fríos valen más), velocidad de cierre vs promedio de la empresa, y consistencia semanal. Descuentos reducen puntaje. Penaliza cotizar mucho sin cerrar.</li>
+          <li><b>Activación (10%)</b> — ¿Las cotizaciones llegan al cliente? Penaliza no abiertas en 5+ días y dormidas. Sin piso fijo.</li>
+          <li><b>Engagement (20%)</b> — Penalizaciones post-envío: ventas sin cobrar, ventas con descuento (mérito empresa), pipeline enfriándose.</li>
+          <li><b>Seguimiento (30%)</b> — ¿Das feedback a las señales calientes del Radar? Mide "Con interés" / "Sin interés" y valida si el resultado coincide.</li>
+          <li><b>Conversión (40%)</b> — ¿Cierras ventas? Tasa de cierre, calidad, velocidad, consistencia.</li>
         </ul>
-        <p><b>Auto-ajuste:</b> Los benchmarks se calculan de los datos reales de tu empresa (no son valores fijos). Si un vendedor cierra excepcionalmente bien, el seguimiento pesa menos — los resultados hablan solos.</p>
-        <p><b>Score final:</b> Combina el puntaje proporcional (50%) + tendencia vs historial propio (25%) + posición en el equipo (25%). Flechas: ↑ mejorando, → estable, ↓ decayendo.</p>
-        <p><b>Niveles:</b> Top (86-100) · Activo (61-85) · Regular (31-60) · Bajo (0-30) · Nuevo (primeros 7 días, recopilando datos).</p>
+        <p><b>Auto-ajuste:</b> Todas las penalizaciones usan la tasa de cierre de la empresa como escala. Cero valores fijos.</p>
+        <p><b>Score final:</b> Proporcional (50%) + tendencia (25%) + posición equipo (25%). Flechas: ↑ mejorando, → estable, ↓ decayendo.</p>
+        <p><b>Niveles:</b> Top (86-100) · Activo (61-85) · Regular (31-60) · Bajo (0-30) · Nuevo (primeros 15 días).</p>
         <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Índice algorítmico basado en datos de uso de la plataforma. Referencia de productividad comercial, no evaluación personal.</p>
       </div>
     </div>
@@ -796,9 +797,13 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div style="border-top:1px dashed var(--border);padding:2px 14px 2px 52px">
       <span onclick="var p=this.nextElementSibling;p.style.display=p.style.display==='none'?'block':'none'" style="font:600 10px var(--body);color:var(--t3);cursor:pointer;letter-spacing:.05em;text-transform:uppercase;opacity:.6">▶ debug</span>
       <div style="display:none;padding:6px 0;font:400 11px var(--num);color:var(--t2);line-height:1.7">
-        <div class="dbg-row"><span class="dbg-lbl">Activación (20%)</span><span class="dbg-val"><?= round(($es['s_activacion'] ?? 0) * 100, 1) ?>%</span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Seguimiento (35%)</span><span class="dbg-val"><?= round(($es['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Conversión (45%)</span><span class="dbg-val"><?= round(($es['s_conversion'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Activación (10%)</span><span class="dbg-val"><?= round(($es['s_activacion'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Engagement (20%)</span><span class="dbg-val"><?= round(($es['s_engagement'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  pen sin pago</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_sin_pago'] ?? 0) > 0 ? '-'.round(($es['eng_pen_sin_pago'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  pen descuento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_descuento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_descuento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  pen enfriamiento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_enfriamiento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_enfriamiento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Seguimiento (30%)</span><span class="dbg-val"><?= round(($es['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Conversión (40%)</span><span class="dbg-val"><?= round(($es['s_conversion'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Penalizaciones</span><span class="dbg-val dbg-neg"><?= ($es['penalizaciones'] ?? 0) > 0 ? '-'.round(($es['penalizaciones'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Bonuses</span><span class="dbg-val"><?= round(($es['bonuses'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Tasa gestión</span><span class="dbg-val"><?= round(($es['tasa_gestion'] ?? 0) * 100, 1) ?>%</span></div>
@@ -806,10 +811,11 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <div class="dbg-row"><span class="dbg-lbl">Percentil</span><span class="dbg-val"><?= round(($es['percentil'] ?? 0) * 100) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Asig / Vistas / Cierres</span><span class="dbg-val"><?= (int)($es['cot_asignadas'] ?? 0) ?> / <?= (int)($es['cot_vistas'] ?? 0) ?> / <?= (int)($es['conversiones'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Dormidas 7d</span><span class="dbg-val"><?= (int)($es['cot_dormidas'] ?? 0) ?></span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Señales ignoradas</span><span class="dbg-val"><?= (int)($es['senales_ignoradas'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">No abiertas 5d</span><span class="dbg-val dbg-neg"><?= (int)($es['no_abiertas_5d'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Pen no abiertas</span><span class="dbg-val dbg-neg"><?= ($es['pen_no_abiertas'] ?? 0) > 0 ? '-'.round(($es['pen_no_abiertas'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Cierres radar / Sin dto</span><span class="dbg-val"><?= (int)($es['cierres_bucket'] ?? 0) ?> / <?= (int)($es['cierres_sin_dto'] ?? 0) ?></span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Radar views / benchmark</span><span class="dbg-val"><?= (int)($es['radar_views'] ?? 0) ?> / <?= round((float)($es['radar_benchmark'] ?? 0), 1) ?></span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Transiciones ↑</span><span class="dbg-val"><?= (int)($es['transiciones_up'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Calientes / con feedback</span><span class="dbg-val"><?= (int)($es['radar_benchmark'] ?? 0) ?> / <?= (int)($es['radar_views'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Transiciones ↑ / ↓</span><span class="dbg-val"><?= (int)($es['transiciones_up'] ?? 0) ?> / <?= (int)($es['senales_ignoradas'] ?? 0) ?></span></div>
       </div>
     </div>
     <?php endif; ?>
