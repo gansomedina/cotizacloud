@@ -498,12 +498,59 @@ class ActividadScore
         $s_activacion = $tasa_apertura - $pen_no_abiertas - ($pen_dormidas * 0.4);
         $s_activacion = max(0.0, min(1.0, $s_activacion));
 
-        // Tasa de cierre (se calcula antes de seguimiento para usar en benchmark radar)
+        // Tasa de cierre (se calcula antes de engagement/seguimiento)
         $cot_vistas_safe = max($cot_vistas, 1);
         $tasa_cierre = $cierres_total / $cot_vistas_safe;
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 2: SEGUIMIENTO (30%)
+        //  DIMENSIÓN 2: ENGAGEMENT (20%) — v5
+        //  Capa de penalizaciones post-envío
+        //  Arranca en 1.0, se restan penalizaciones
+        // ═══════════════════════════════════════════════════
+
+        // Ventas totales del vendedor en el período (no canceladas)
+        $ventas_totales = (int)DB::val(
+            "SELECT COUNT(*) FROM ventas
+             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
+             AND estado != 'cancelada'
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $ventas_totales_safe = max($ventas_totales, 1);
+
+        // pen_sin_pago: ventas con pagado=0 después de 5 días
+        // Fórmula: (sin_pago/totales) × (1/close_rate) — fuerte
+        $eng_pen_sin_pago = 0.0;
+        if ($ventas_sin_pago > 0) {
+            $eng_pen_sin_pago = min(
+                ($ventas_sin_pago / $ventas_totales_safe) * (1.0 / $close_rate_safe),
+                1.0
+            );
+        }
+
+        // pen_descuento: ventas con descuento — mérito de empresa, no vendedor
+        // Fórmula: (con_descuento/totales) × close_rate — suave
+        $ventas_con_descuento = (int)DB::val(
+            "SELECT COUNT(*) FROM ventas
+             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
+             AND estado != 'cancelada'
+             AND (descuento_auto_amt > 0 OR cupon_monto > 0)
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $eng_pen_descuento = ($ventas_con_descuento / $ventas_totales_safe) * $close_rate_safe;
+
+        // pen_enfriamiento: transiciones down / total transiciones
+        $trans_total = $transiciones_up + $transiciones_down;
+        $eng_pen_enfriamiento = $trans_total > 0
+            ? $transiciones_down / $trans_total
+            : 0.0;
+
+        $s_engagement = 1.0 - $eng_pen_sin_pago - $eng_pen_descuento - $eng_pen_enfriamiento;
+        $s_engagement = max(0.0, min(1.0, $s_engagement));
+
+        // ═══════════════════════════════════════════════════
+        //  DIMENSIÓN 3: SEGUIMIENTO (30%)
         //  "¿Usa el radar para dar seguimiento?"
         // ═══════════════════════════════════════════════════
 
@@ -884,6 +931,11 @@ class ActividadScore
             'transiciones_up'   => $transiciones_up,
             'senales_ignoradas' => $senales_ignoradas,
             's_activacion'      => round($s_activacion, 3),
+            's_engagement'      => round($s_engagement, 3),
+            'eng_pen_sin_pago'  => round($eng_pen_sin_pago, 3),
+            'eng_pen_descuento' => round($eng_pen_descuento, 3),
+            'eng_pen_enfriamiento' => round($eng_pen_enfriamiento, 3),
+            'ventas_con_descuento' => $ventas_con_descuento,
             's_seguimiento'     => round($s_seguimiento, 3),
             's_conversion'      => round($s_conversion, 3),
             'penalizaciones'    => round($total_pen, 3),
@@ -1062,12 +1114,23 @@ class ActividadScore
             }
         }
 
-        // Ventas sin pago inicial
+        // ── ENGAGEMENT ──
         $vsp = (int)($s['ventas_sin_pago'] ?? 0);
         if ($vsp > 0) {
             $frases[] = $vsp === 1
-                ? "1 venta sin cobrar en más de 5 días"
-                : "$vsp ventas sin cobrar en más de 5 días — afecta puntaje";
+                ? "1 venta sin cobrar en más de 5 días — afecta engagement"
+                : "$vsp ventas sin cobrar en más de 5 días — afecta engagement";
+        }
+        $vcd = (int)($s['ventas_con_descuento'] ?? 0);
+        if ($vcd > 0 && $cierres > 0) {
+            $pct_vcd = round($vcd / $cierres * 100);
+            if ($pct_vcd >= 50) {
+                $frases[] = "$pct_vcd% de ventas con descuento — mérito de empresa no del vendedor";
+            }
+        }
+        $pen_enf = (float)($s['eng_pen_enfriamiento'] ?? 0);
+        if ($pen_enf > 0.3) {
+            $frases[] = "pipeline enfriándose — más cotizaciones bajan de bucket que suben";
         }
 
         // ── MOMENTUM ──
