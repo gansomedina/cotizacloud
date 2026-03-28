@@ -632,14 +632,16 @@ class ActividadScore
         // Tasa de completado: feedback dado / cotizaciones calientes
         $tasa_completado = $cots_calientes > 0 ? min($fb_total / $cots_calientes, 1.0) : 0.50;
 
-        // Calidad del feedback
+        // Calidad del feedback (solo evaluable después de 5 días)
         $calidad_fb = ($aciertos + $fallos) > 0 ? $aciertos / ($aciertos + $fallos) : 0.50;
 
         // Penalización por buckets estancados (se mantiene de v4)
         $pen_buckets = min($buckets_estancados * 0.06, 0.3);
 
-        // Seguimiento = completado × calidad - estancados
-        $s_seguimiento = ($tasa_completado * $calidad_fb) - $pen_buckets;
+        // Seguimiento = tarea (40%) + examen (60%) - estancados
+        // Tarea: dar feedback (esfuerzo)
+        // Examen: calidad del feedback (resultado)
+        $s_seguimiento = ($tasa_completado * 0.40) + ($calidad_fb * 0.60) - $pen_buckets;
         $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
 
         // Guardar para debug
@@ -879,11 +881,12 @@ class ActividadScore
               carga_activa, cot_asignadas, cot_vistas, cot_dormidas,
               cierres_bucket, cierres_sin_dto, transiciones_up, senales_ignoradas,
               radar_views, radar_benchmark, tasa_cierre, ventas_sin_pago,
-              s_activacion, s_engagement, s_seguimiento, s_conversion, penalizaciones, bonuses,
+              s_activacion, s_engagement, eng_pen_sin_pago, eng_pen_descuento, eng_pen_enfriamiento,
+              s_seguimiento, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
               momentum, percentil)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -894,7 +897,9 @@ class ActividadScore
               transiciones_up=VALUES(transiciones_up), senales_ignoradas=VALUES(senales_ignoradas),
               radar_views=VALUES(radar_views), radar_benchmark=VALUES(radar_benchmark),
               tasa_cierre=VALUES(tasa_cierre), ventas_sin_pago=VALUES(ventas_sin_pago),
-              s_activacion=VALUES(s_activacion), s_engagement=VALUES(s_engagement), s_seguimiento=VALUES(s_seguimiento),
+              s_activacion=VALUES(s_activacion), s_engagement=VALUES(s_engagement),
+              eng_pen_sin_pago=VALUES(eng_pen_sin_pago), eng_pen_descuento=VALUES(eng_pen_descuento), eng_pen_enfriamiento=VALUES(eng_pen_enfriamiento),
+              s_seguimiento=VALUES(s_seguimiento),
               s_conversion=VALUES(s_conversion),
               penalizaciones=VALUES(penalizaciones), bonuses=VALUES(bonuses),
               tasa_gestion=VALUES(tasa_gestion),
@@ -909,7 +914,9 @@ class ActividadScore
                 $carga_activa, $cot_asignadas, $cot_vistas, $dormidas_7d,
                 $cierres_bucket, $cierres_sin_dto, $transiciones_up, $transiciones_down,
                 $fb_total, round($cots_calientes, 1), round($tasa_cierre, 3), $ventas_sin_pago,
-                round($s_activacion, 3), round($s_engagement, 3), round($s_seguimiento, 3), round($s_conversion, 3),
+                round($s_activacion, 3), round($s_engagement, 3),
+                round($eng_pen_sin_pago, 3), round($eng_pen_descuento, 3), round($eng_pen_enfriamiento, 3),
+                round($s_seguimiento, 3), round($s_conversion, 3),
                 round($total_pen, 3), round($total_bonus, 3),
                 round($proporcional, 3),
                 // Fix P16: ema_gestion = EMA del proporcional, ema_presencia = EMA de activación
@@ -1293,7 +1300,9 @@ class ActividadScore
                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                      ON DUPLICATE KEY UPDATE
                       score=VALUES(score), nivel=VALUES(nivel),
-                      s_activacion=VALUES(s_activacion), s_engagement=VALUES(s_engagement), s_seguimiento=VALUES(s_seguimiento),
+                      s_activacion=VALUES(s_activacion), s_engagement=VALUES(s_engagement),
+              eng_pen_sin_pago=VALUES(eng_pen_sin_pago), eng_pen_descuento=VALUES(eng_pen_descuento), eng_pen_enfriamiento=VALUES(eng_pen_enfriamiento),
+              s_seguimiento=VALUES(s_seguimiento),
                       s_conversion=VALUES(s_conversion),
                       cot_asignadas=VALUES(cot_asignadas), cot_vistas=VALUES(cot_vistas),
                       cot_dormidas=VALUES(cot_dormidas), conversiones=VALUES(conversiones),
