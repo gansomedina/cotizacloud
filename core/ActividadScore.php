@@ -453,9 +453,8 @@ class ActividadScore
         foreach ($cierres_con_bucket as $cc) {
             $bucket = $cc['radar_bucket'];
             $mult_bucket = self::CIERRE_MULT[$bucket] ?? 1.0;
-            $tiene_dto = ((float)$cc['cupon_pct'] > 0 || (float)$cc['dto_auto_pct'] > 0);
-            $mult_dto = $tiene_dto ? self::DESCUENTO_FACTOR : 1.0;
-            $puntos_cierre += $base_cierre * $mult_bucket * $mult_dto;
+            // v5: descuento ya se penaliza en Engagement, no duplicar aquí
+            $puntos_cierre += $base_cierre * $mult_bucket;
         }
 
         // ═══════════════════════════════════════════════════
@@ -664,8 +663,8 @@ class ActividadScore
         foreach ($cierres_con_bucket as $cc) {
             if ($cc['radar_bucket'] !== null) {
                 $cierres_con_radar++;
-                $puntos_con_radar += $base_cierre * (self::CIERRE_MULT[$cc['radar_bucket']] ?? 1.0)
-                    * (((float)$cc['cupon_pct'] > 0 || (float)$cc['dto_auto_pct'] > 0) ? self::DESCUENTO_FACTOR : 1.0);
+                // v5: descuento penalizado en Engagement, no aquí
+                $puntos_con_radar += $base_cierre * (self::CIERRE_MULT[$cc['radar_bucket']] ?? 1.0);
             }
         }
         if ($cierres_con_radar > 0) {
@@ -1070,23 +1069,25 @@ class ActividadScore
             $frases[] = "La mayoría de sus cotizaciones no llegan al cliente";
         }
 
-        // ── SEGUIMIENTO ──
-        // Distinguir: ¿tiene acciones (quote_view+radar) pero 0 cierres desde radar?
-        // Si acciones > 0 pero cierres_bucket = 0 y score bajo, es que revisa cotizaciones
-        // pero no usa radar específicamente.
-        // ── SEGUIMIENTO (feedback) ──
+        // ── SEGUIMIENTO (feedback v5) ──
         $fb_calientes = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
         $fb_dados = (int)($s['fb_total'] ?? $s['radar_views'] ?? 0);
-        // Sanitize: fb_dados no puede ser mayor que fb_calientes
         if ($fb_calientes > 0 && $fb_dados > $fb_calientes) $fb_dados = $fb_calientes;
+        $fb_calidad = (float)($s['fb_calidad'] ?? 0.50);
         if ($seg >= 0.70) {
-            $frases[] = "buen seguimiento — responde a las señales del radar";
+            if ($fb_calidad >= 0.70) {
+                $frases[] = "excelente seguimiento — feedback acertado en las señales del radar";
+            } else {
+                $frases[] = "buen seguimiento — responde a las señales del radar";
+            }
         } elseif ($seg >= 0.35) {
             if ($fb_calientes > 0 && $fb_dados > 0 && $fb_dados < $fb_calientes) {
                 $sin_fb = $fb_calientes - $fb_dados;
                 $frases[] = "da seguimiento pero falta feedback en $sin_fb señal" . ($sin_fb > 1 ? 'es' : '') . " caliente" . ($sin_fb > 1 ? 's' : '');
             } elseif ($fb_calientes > 0 && $fb_dados >= $fb_calientes) {
-                $frases[] = "dio feedback a todas las señales calientes — pendiente evaluación";
+                $frases[] = $fb_calidad > 0.50
+                    ? "dio feedback a todas las señales — resultados en evaluación"
+                    : "dio feedback a todas las señales — pendiente evaluación de resultados";
             } else {
                 $frases[] = "seguimiento moderado — revisar señales calientes del radar";
             }
