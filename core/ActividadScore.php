@@ -1075,9 +1075,11 @@ class ActividadScore
         if ($seg >= 0.70) {
             $frases[] = "buen seguimiento — responde a las señales del radar";
         } elseif ($seg >= 0.35) {
-            if ($fb_calientes > 0 && $fb_dados > 0) {
-                $pct_fb = round($fb_dados / $fb_calientes * 100);
-                $frases[] = "seguimiento al {$pct_fb}% — dar feedback a más señales calientes";
+            if ($fb_calientes > 0 && $fb_dados > 0 && $fb_dados < $fb_calientes) {
+                $sin_fb = $fb_calientes - $fb_dados;
+                $frases[] = "da seguimiento pero falta feedback en $sin_fb señal" . ($sin_fb > 1 ? 'es' : '') . " caliente" . ($sin_fb > 1 ? 's' : '');
+            } elseif ($fb_calientes > 0 && $fb_dados >= $fb_calientes) {
+                $frases[] = "dio feedback a todas las señales calientes — pendiente evaluación";
             } else {
                 $frases[] = "seguimiento moderado — revisar señales calientes del radar";
             }
