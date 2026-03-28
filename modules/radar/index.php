@@ -675,6 +675,10 @@ ob_start();
     <a href="<?= rurlq(['debug'=>$debug_mode?'0':'1']) ?>" class="rdr-bt <?= $debug_mode?'active':'' ?>">Debug</a>
     <?php endif; ?>
   </form>
+  <span style="font:400 11px var(--body);color:var(--t3);margin-left:auto;display:flex;align-items:center;gap:8px">
+    <span>👍 Con interés</span>
+    <span>👎 Sin interés</span>
+  </span>
 </div>
 
 <!-- ===== TAB: ALTA PRIORIDAD ===== -->
