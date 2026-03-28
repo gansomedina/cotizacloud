@@ -866,11 +866,11 @@ class ActividadScore
               carga_activa, cot_asignadas, cot_vistas, cot_dormidas,
               cierres_bucket, cierres_sin_dto, transiciones_up, senales_ignoradas,
               radar_views, radar_benchmark, tasa_cierre, ventas_sin_pago,
-              s_activacion, s_seguimiento, s_conversion, penalizaciones, bonuses,
+              s_activacion, s_engagement, s_seguimiento, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
               momentum, percentil)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -881,7 +881,7 @@ class ActividadScore
               transiciones_up=VALUES(transiciones_up), senales_ignoradas=VALUES(senales_ignoradas),
               radar_views=VALUES(radar_views), radar_benchmark=VALUES(radar_benchmark),
               tasa_cierre=VALUES(tasa_cierre), ventas_sin_pago=VALUES(ventas_sin_pago),
-              s_activacion=VALUES(s_activacion), s_seguimiento=VALUES(s_seguimiento),
+              s_activacion=VALUES(s_activacion), s_engagement=VALUES(s_engagement), s_seguimiento=VALUES(s_seguimiento),
               s_conversion=VALUES(s_conversion),
               penalizaciones=VALUES(penalizaciones), bonuses=VALUES(bonuses),
               tasa_gestion=VALUES(tasa_gestion),
@@ -896,7 +896,7 @@ class ActividadScore
                 $carga_activa, $cot_asignadas, $cot_vistas, $dormidas_7d,
                 $cierres_bucket, $cierres_sin_dto, $transiciones_up, $transiciones_down,
                 $fb_total, round($cots_calientes, 1), round($tasa_cierre, 3), $ventas_sin_pago,
-                round($s_activacion, 3), round($s_seguimiento, 3), round($s_conversion, 3),
+                round($s_activacion, 3), round($s_engagement, 3), round($s_seguimiento, 3), round($s_conversion, 3),
                 round($total_pen, 3), round($total_bonus, 3),
                 round($proporcional, 3),
                 // Fix P16: ema_gestion = EMA del proporcional, ema_presencia = EMA de activación
@@ -1273,7 +1273,7 @@ class ActividadScore
                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                      ON DUPLICATE KEY UPDATE
                       score=VALUES(score), nivel=VALUES(nivel),
-                      s_activacion=VALUES(s_activacion), s_seguimiento=VALUES(s_seguimiento),
+                      s_activacion=VALUES(s_activacion), s_engagement=VALUES(s_engagement), s_seguimiento=VALUES(s_seguimiento),
                       s_conversion=VALUES(s_conversion),
                       cot_asignadas=VALUES(cot_asignadas), cot_vistas=VALUES(cot_vistas),
                       cot_dormidas=VALUES(cot_dormidas), conversiones=VALUES(conversiones),
