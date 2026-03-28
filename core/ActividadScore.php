@@ -575,14 +575,18 @@ class ActividadScore
             [$usuario_id, $empresa_id]
         );
 
-        // Feedback dado por el vendedor en esas cotizaciones
+        // Feedback dado por el vendedor — solo cuenta si:
+        // 1. La cotización sigue activa (enviada/vista), o
+        // 2. El feedback se dio ANTES de que se aceptara
         $fb_data = DB::query(
             "SELECT rf.cotizacion_id, rf.tipo, c.estado,
-                    c.ultima_vista_at, rf.created_at AS fb_at
+                    c.ultima_vista_at, rf.created_at AS fb_at, c.aceptada_at
              FROM radar_feedback rf
              JOIN cotizaciones c ON c.id = rf.cotizacion_id
              WHERE rf.usuario_id=? AND rf.empresa_id=?
-             AND c.radar_bucket IN $hot_buckets_sql",
+             AND c.radar_bucket IN $hot_buckets_sql
+             AND (c.estado IN ('enviada','vista')
+                  OR (c.aceptada_at IS NOT NULL AND rf.created_at < c.aceptada_at))",
             [$usuario_id, $empresa_id]
         );
 
