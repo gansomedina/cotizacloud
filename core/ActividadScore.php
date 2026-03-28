@@ -975,7 +975,7 @@ class ActividadScore
                 $usuario_id, $empresa_id, $score, $nivel,
                 $dias_activos, $consultas + $radar_sessions, $cierres_total,
                 $carga_activa, $cot_asignadas, $cot_vistas, $dormidas_7d,
-                $cierres_bucket, $cierres_sin_dto, $transiciones_up, $transiciones_down,
+                $cierres_bucket, $cierres_sin_dto, $health_up, $health_down,
                 $fb_total, round($cots_calientes, 1), round($tasa_cierre, 3), $ventas_sin_pago,
                 round($s_activacion, 3), round($s_engagement, 3),
                 round($eng_pen_sin_pago, 3), round($eng_pen_descuento, 3), round($eng_pen_enfriamiento, 3),
