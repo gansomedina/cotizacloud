@@ -597,11 +597,18 @@ class ActividadScore
 
         foreach ($fb_data as $fb) {
             $es_aceptada = in_array($fb['estado'], ['aceptada', 'convertida', 'aceptada_cliente']);
+            $dias_desde_fb = $fb['fb_at'] ? (time() - strtotime($fb['fb_at'])) / 86400 : 0;
             $cliente_regreso = false;
             if ($fb['ultima_vista_at'] && $fb['fb_at']) {
-                $dias_desde_fb = (time() - strtotime($fb['fb_at'])) / 86400;
-                $cliente_regreso = strtotime($fb['ultima_vista_at']) > strtotime($fb['fb_at'])
-                                   && $dias_desde_fb <= 5;
+                $cliente_regreso = strtotime($fb['ultima_vista_at']) > strtotime($fb['fb_at']);
+            }
+
+            // Si pasaron menos de 5 días, no evaluar calidad aún (neutro)
+            $evaluable = ($dias_desde_fb >= 5) || $es_aceptada || $cliente_regreso;
+
+            if (!$evaluable) {
+                // Feedback reciente sin resultado aún — no cuenta ni como acierto ni fallo
+                continue;
             }
 
             if ($fb['tipo'] === 'con_interes') {
@@ -610,14 +617,15 @@ class ActividadScore
                 } elseif ($cliente_regreso) {
                     $aciertos += 1.0;     // con_interes + regresa = buen seguimiento
                 } else {
-                    $fallos += 1.0;       // con_interes + no regresa = fallo leve
+                    $fallos += 1.0;       // con_interes + no regresa (5d+) = fallo
                 }
             } else { // sin_interes
                 if ($es_aceptada) {
                     $fallos += $inv_cr;   // sin_interes + acepta = fallo grave
-                } else {
-                    $aciertos += 1.0;     // sin_interes + no regresa = acierto
+                } elseif ($dias_desde_fb >= 5 && !$cliente_regreso) {
+                    $aciertos += 1.0;     // sin_interes + 5d sin regresar = acierto
                 }
+                // sin_interes + <5 días = no evaluable (ya filtrado arriba)
             }
         }
 
@@ -1019,7 +1027,10 @@ class ActividadScore
         $vist = (int)($s['cot_vistas'] ?? 0);
         $cierres = (int)($s['conversiones'] ?? 0);
         $dorm = (int)($s['cot_dormidas'] ?? 0);
-        $ign  = (int)($s['senales_ignoradas'] ?? 0);
+        // v5: calientes sin feedback. Datos vienen como cots_calientes/fb_total (return) o radar_benchmark/radar_views (BD)
+        $calientes_diag = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
+        $fb_diag = (int)($s['fb_total'] ?? $s['radar_views'] ?? 0);
+        $ign = max(0, $calientes_diag - $fb_diag);
         $cbkt = (int)($s['cierres_bucket'] ?? 0);
         $sdto = (int)($s['cierres_sin_dto'] ?? 0);
         $tup  = (int)($s['transiciones_up'] ?? 0);
@@ -1101,8 +1112,8 @@ class ActividadScore
         }
         if ($ign > 0) {
             $frases[] = $ign === 1
-                ? "1 cliente activo sin atender — señal caliente ignorada"
-                : "clientes activos sin atender — $ign señales calientes ignoradas";
+                ? "1 señal caliente sin feedback — dar seguimiento desde el radar"
+                : "$ign señales calientes sin feedback — dar seguimiento desde el radar";
         }
         // Fix P3: Mencionar descuentos si cierra mayormente con descuento
         if ($cierres > 0 && $sdto < $cierres) {
