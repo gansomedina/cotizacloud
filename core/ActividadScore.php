@@ -459,16 +459,28 @@ class ActividadScore
         }
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 1: ACTIVACIÓN (20%)
-        //  "¿Las cotizaciones asignadas llegan al cliente?"
-        //  Esto es el MÍNIMO esperado — no un logro.
-        //  Techo bajo: sigmoid satura rápido.
+        //  DIMENSIÓN 1: ACTIVACIÓN (10%) — v5
+        //  "¿Envías y llegan?"
+        //  Ratio directo + penalización fuerte por no abiertas
         // ═══════════════════════════════════════════════════
 
         $asignadas_validas = max($cot_asignadas, 1);
         $tasa_apertura = $cot_vistas / $asignadas_validas;
 
-        // Penalización escalonada por dormidas
+        // No abiertas en 5+ días (excluir suspendidas, ya filtrado por $no_susp)
+        $no_abiertas_5d = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
+             AND estado='enviada' AND visitas=0
+             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+
+        // Penalización por no abiertas: usa 1/close_rate (fuerte, auto-ajustable)
+        $close_rate_safe = max($bench['close_rate'], 0.01);
+        $pen_no_abiertas = min(($no_abiertas_5d / $asignadas_validas) * (1.0 / $close_rate_safe), 1.0);
+
+        // Penalización escalonada por dormidas (7d, 14d, 21d)
         $pen_dormidas = 0.0;
         $dormidas_solo_7  = $dormidas_7d - $dormidas_14d;
         $dormidas_solo_14 = $dormidas_14d - $dormidas_21d;
@@ -482,16 +494,8 @@ class ActividadScore
         }
         $pen_dormidas = min($pen_dormidas, 1.0);
 
-        // Fix 12: midpoint auto-ajustable al promedio de la empresa
-        // Fix v4: activación >= 90% merece piso alto independiente del benchmark
-        // Un vendedor que entrega 90%+ de sus cotizaciones está haciendo bien su trabajo
-        if ($tasa_apertura >= 0.90 && $pen_dormidas == 0) {
-            // Escala: 90%=0.80, 95%=0.85, 100%=0.90
-            $s_activacion = 0.80 + ($tasa_apertura - 0.90) * 1.0;
-        } else {
-            $s_activacion = self::sigmoid($tasa_apertura, $bench['apertura'], 2.0 / max($bench['apertura'], 0.1));
-        }
-        $s_activacion = $s_activacion - ($pen_dormidas * 0.4);
+        // v5: ratio directo, sin sigmoid, sin piso fijo
+        $s_activacion = $tasa_apertura - $pen_no_abiertas - ($pen_dormidas * 0.4);
         $s_activacion = max(0.0, min(1.0, $s_activacion));
 
         // Tasa de cierre (se calcula antes de seguimiento para usar en benchmark radar)
@@ -873,6 +877,8 @@ class ActividadScore
             'cot_asignadas'     => $cot_asignadas,
             'cot_vistas'        => $cot_vistas,
             'cot_dormidas'      => $dormidas_7d,
+            'no_abiertas_5d'    => $no_abiertas_5d,
+            'pen_no_abiertas'   => round($pen_no_abiertas, 3),
             'cierres_bucket'    => $cierres_bucket,
             'cierres_sin_dto'   => $cierres_sin_dto,
             'transiciones_up'   => $transiciones_up,
@@ -976,7 +982,12 @@ class ActividadScore
 
         // ── ACTIVACIÓN ──
         $tasa_ap = $asig > 0 ? $vist / $asig : 0;
-        if ($tasa_ap >= 0.90) {
+        $nab = (int)($s['no_abiertas_5d'] ?? 0);
+        if ($nab > 0) {
+            $frases[] = $nab === 1
+                ? "1 cotización sin abrir en más de 5 días — dar seguimiento urgente"
+                : "$nab cotizaciones sin abrir en más de 5 días — revisar seguimiento";
+        } elseif ($tasa_ap >= 0.90) {
             $frases[] = "Casi todo lo que envía llega al cliente";
         } elseif ($tasa_ap >= 0.60) {
             $sin_abrir = $asig - $vist;

@@ -806,6 +806,8 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <div class="dbg-row"><span class="dbg-lbl">Percentil</span><span class="dbg-val"><?= round(($es['percentil'] ?? 0) * 100) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Asig / Vistas / Cierres</span><span class="dbg-val"><?= (int)($es['cot_asignadas'] ?? 0) ?> / <?= (int)($es['cot_vistas'] ?? 0) ?> / <?= (int)($es['conversiones'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Dormidas 7d</span><span class="dbg-val"><?= (int)($es['cot_dormidas'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">No abiertas 5d</span><span class="dbg-val dbg-neg"><?= (int)($es['no_abiertas_5d'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Pen no abiertas</span><span class="dbg-val dbg-neg"><?= ($es['pen_no_abiertas'] ?? 0) > 0 ? '-'.round(($es['pen_no_abiertas'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Señales ignoradas</span><span class="dbg-val"><?= (int)($es['senales_ignoradas'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Cierres radar / Sin dto</span><span class="dbg-val"><?= (int)($es['cierres_bucket'] ?? 0) ?> / <?= (int)($es['cierres_sin_dto'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Radar views / benchmark</span><span class="dbg-val"><?= (int)($es['radar_views'] ?? 0) ?> / <?= round((float)($es['radar_benchmark'] ?? 0), 1) ?></span></div>
