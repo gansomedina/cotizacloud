@@ -731,15 +731,16 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div id="lb-info" class="lb-info">
       <div class="lb-info-inner">
         <b>¿Qué mide este ranking?</b>
-        <p>Algoritmo APC v4.0 (Productividad Comercial) — 15 días rolling, auto-ajustable por empresa:</p>
+        <p>Algoritmo APC v5.0 — 15 días rolling, 100% auto-ajustable, cero valores fijos:</p>
         <ul>
-          <li><b>Activación (20%)</b> — ¿Las cotizaciones llegan al cliente? Es el mínimo esperado. Penaliza cotizaciones dormidas (enviadas sin abrir en 7, 14 y 21 días).</li>
-          <li><b>Seguimiento (35%)</b> — ¿Da seguimiento activo? Mide uso del Radar, revisión de cotizaciones, velocidad de reacción cuando un cliente abre una cotización (dentro de 48h), y transiciones de bucket frío→caliente. Penaliza señales calientes ignoradas y buckets estancados.</li>
-          <li><b>Conversión (45%)</b> — ¿Cierra ventas? Lo que más pesa. Mide tasa de cierre, calidad (cierres desde buckets fríos valen más), velocidad de cierre vs promedio de la empresa, y consistencia semanal. Descuentos reducen puntaje. Penaliza cotizar mucho sin cerrar.</li>
+          <li><b>Activación (10%)</b> — ¿Las cotizaciones llegan al cliente? Penaliza no abiertas en 5+ días y dormidas. Sin piso fijo.</li>
+          <li><b>Engagement (20%)</b> — Penalizaciones post-envío: ventas sin cobrar, ventas con descuento (mérito empresa), pipeline enfriándose.</li>
+          <li><b>Seguimiento (30%)</b> — ¿Das feedback a las señales calientes del Radar? Mide "Con interés" / "Sin interés" y valida si el resultado coincide.</li>
+          <li><b>Conversión (40%)</b> — ¿Cierras ventas? Tasa de cierre, calidad, velocidad, consistencia.</li>
         </ul>
-        <p><b>Auto-ajuste:</b> Los benchmarks se calculan de los datos reales de tu empresa (no son valores fijos). Si un vendedor cierra excepcionalmente bien, el seguimiento pesa menos — los resultados hablan solos.</p>
-        <p><b>Score final:</b> Combina el puntaje proporcional (50%) + tendencia vs historial propio (25%) + posición en el equipo (25%). Flechas: ↑ mejorando, → estable, ↓ decayendo.</p>
-        <p><b>Niveles:</b> Top (86-100) · Activo (61-85) · Regular (31-60) · Bajo (0-30) · Nuevo (primeros 7 días, recopilando datos).</p>
+        <p><b>Auto-ajuste:</b> Todas las penalizaciones usan la tasa de cierre de la empresa como escala. Cero valores fijos.</p>
+        <p><b>Score final:</b> Proporcional (50%) + tendencia (25%) + posición equipo (25%). Flechas: ↑ mejorando, → estable, ↓ decayendo.</p>
+        <p><b>Niveles:</b> Top (86-100) · Activo (61-85) · Regular (31-60) · Bajo (0-30) · Nuevo (primeros 15 días).</p>
         <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Índice algorítmico basado en datos de uso de la plataforma. Referencia de productividad comercial, no evaluación personal.</p>
       </div>
     </div>

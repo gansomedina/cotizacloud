@@ -713,49 +713,17 @@ class ActividadScore
         }
 
         // ═══════════════════════════════════════════════════
-        //  SCORE PROPORCIONAL — PESOS DINÁMICOS
-        //
-        //  Distinguir dos casos:
-        //  a) Sistema nuevo: actividad_log no tiene datos de NADIE
-        //     en la empresa → no es culpa del vendedor → neutro
-        //  b) El vendedor no usa el radar: hay logins registrados
-        //     (el sistema ya registra) pero 0 radar_view → negativo
+        //  SCORE PROPORCIONAL — v5
+        //  Pesos: Activación 10%, Engagement 20%, Seguimiento 30%, Conversión 40%
         // ═══════════════════════════════════════════════════
 
-        // ¿El sistema ya estaba registrando? Checar si ALGUIEN en la empresa tiene logs
-        $empresa_tiene_logs = (int)DB::val(
-            "SELECT COUNT(*) FROM actividad_log
-             WHERE empresa_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             LIMIT 1",
-            [$empresa_id, $periodo]
-        );
-
-        if ($empresa_tiene_logs === 0) {
-            // Sistema nuevo — nadie tiene logs → Seguimiento es neutro, no medible
-            // Redistribuir peso: 20% Activación + 80% Conversión
-            $w_act  = 0.20;
-            $w_seg  = 0.00;
-            $w_conv = 0.80;
-        } else {
-            // El sistema YA registra. Pesos base.
-            $w_act  = 0.20;
-            $w_seg  = 0.35;
-            $w_conv = 0.45;
-
-            // Pesos adaptativos: si el vendedor cierra excepcionalmente bien
-            // (>2x benchmark empresa), los resultados hablan por sí solos.
-            // Seguimiento pierde peso proporcional a qué tanto supera el benchmark.
-            // Ejemplo: tasa_cierre = 1.0 (100%), bench = 0.15 → ratio 6.67
-            //   reducción = min((6.67 - 2) * 0.05, 0.20) = 0.20 → seg baja a 0.15
-            if ($bench['close_rate'] > 0 && $tasa_cierre > $bench['close_rate'] * 2) {
-                $ratio_sobre_bench = $tasa_cierre / $bench['close_rate'];
-                $reduccion_seg = min(($ratio_sobre_bench - 2) * 0.05, 0.20);
-                $w_seg  -= $reduccion_seg;
-                $w_conv += $reduccion_seg;
-            }
-        }
+        $w_act  = 0.10;
+        $w_eng  = 0.20;
+        $w_seg  = 0.30;
+        $w_conv = 0.40;
 
         $proporcional = $s_activacion * $w_act
+                      + $s_engagement * $w_eng
                       + $s_seguimiento * $w_seg
                       + $s_conversion * $w_conv;
 
