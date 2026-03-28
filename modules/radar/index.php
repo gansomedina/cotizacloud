@@ -95,6 +95,7 @@ $fb_rows = DB::query(
 );
 foreach ($fb_rows as $fb) $feedback_map[(int)$fb['cotizacion_id']] = $fb['tipo'];
 $GLOBALS['feedback_map'] = $feedback_map;
+$GLOBALS['fb_shown'] = []; // track qué cotizaciones ya mostraron botones
 
 // Helpers
 function rhace(int $ts): string {
@@ -315,12 +316,15 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $hot_bkts_fb = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta'];
         $show_fb_td = in_array($r_bucket_fb, $hot_bkts_fb) && ($r_vendedor_fb === Auth::id() || Auth::es_admin());
         $fb_html = '';
-        if ($show_fb_td) {
+        $cot_id_fb = (int)$r['id'];
+        $already_shown = isset($GLOBALS['fb_shown'][$cot_id_fb]);
+        if ($show_fb_td && !$already_shown) {
+            $GLOBALS['fb_shown'][$cot_id_fb] = true;
             $cls_ci = $r_fb_val === 'con_interes' ? 'fb-active fb-pos' : '';
             $cls_si = $r_fb_val === 'sin_interes' ? 'fb-active fb-neg' : '';
             $fb_html = "<div class='fb-btns' style='flex-shrink:0'>"
-                . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$r['id']},'con_interes',this)\" title='Con interés'>👍</button>"
-                . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$r['id']},'sin_interes',this)\" title='Sin interés'>👎</button>"
+                . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'con_interes',this)\" title='Con interés'>👍</button>"
+                . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_interes',this)\" title='Sin interés'>👎</button>"
                 . "</div>";
         }
         echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
