@@ -728,18 +728,82 @@ class ActividadScore
         }
 
         // ═══════════════════════════════════════════════════
-        //  SCORE PROPORCIONAL — v5
-        //  Pesos: Activación 10%, Engagement 20%, Seguimiento 30%, Conversión 40%
+        //  DIMENSIÓN 5: RADAR HEALTH (15%) — v5
+        //  "¿Tu pipeline está mejorando o empeorando?"
+        //  Balance transiciones up vs down / cotizaciones activas
         // ═══════════════════════════════════════════════════
 
-        $w_act  = 0.10;
-        $w_eng  = 0.20;
-        $w_seg  = 0.30;
-        $w_conv = 0.40;
+        // Transiciones excluyendo aceptadas (no es negativo que una aceptada pierda bucket)
+        $health_up = (int)DB::val(
+            "SELECT COUNT(*) FROM bucket_transitions bt
+             JOIN cotizaciones c ON c.id = bt.cotizacion_id
+             WHERE bt.vendedor_id=? AND bt.empresa_id=?
+             AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND c.estado NOT IN ('aceptada','convertida','aceptada_cliente')
+             AND c.suspendida = 0
+             AND bt.bucket_nuevo IS NOT NULL AND bt.bucket_anterior IS NOT NULL",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $health_down = (int)DB::val(
+            "SELECT COUNT(*) FROM bucket_transitions bt
+             JOIN cotizaciones c ON c.id = bt.cotizacion_id
+             WHERE bt.vendedor_id=? AND bt.empresa_id=?
+             AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND c.estado NOT IN ('aceptada','convertida','aceptada_cliente')
+             AND c.suspendida = 0
+             AND (bt.bucket_nuevo IS NULL OR bt.bucket_anterior IS NOT NULL)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+
+        // Recalcular up/down con BUCKET_TEMP para diferenciar frío→caliente vs caliente→frío
+        $health_up = 0;
+        $health_down = 0;
+        $health_trans = DB::query(
+            "SELECT bt.bucket_anterior, bt.bucket_nuevo
+             FROM bucket_transitions bt
+             JOIN cotizaciones c ON c.id = bt.cotizacion_id
+             WHERE bt.vendedor_id=? AND bt.empresa_id=?
+             AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND c.estado NOT IN ('aceptada','convertida','aceptada_cliente')
+             AND c.suspendida = 0",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $temp_order = ['frio' => 0, 'tibio' => 1, 'caliente' => 2];
+        foreach ($health_trans as $ht) {
+            $temp_ant = self::BUCKET_TEMP[$ht['bucket_anterior']] ?? null;
+            $temp_new = self::BUCKET_TEMP[$ht['bucket_nuevo']] ?? null;
+            if ($temp_ant === null && $temp_new !== null) {
+                $health_up++; // entró a un bucket (NULL → algo)
+            } elseif ($temp_ant !== null && $temp_new === null) {
+                $health_down++; // perdió bucket (algo → NULL)
+            } elseif ($temp_ant !== null && $temp_new !== null) {
+                if (($temp_order[$temp_new] ?? 0) > ($temp_order[$temp_ant] ?? 0)) {
+                    $health_up++;
+                } elseif (($temp_order[$temp_new] ?? 0) < ($temp_order[$temp_ant] ?? 0)) {
+                    $health_down++;
+                }
+            }
+        }
+
+        $health_net = $health_up - $health_down;
+        $cot_activas_health = max($cot_asignadas, 1);
+        $s_radar_health = max(0.0, min(1.0, 0.5 + ($health_net / $cot_activas_health)));
+
+        // ═══════════════════════════════════════════════════
+        //  SCORE PROPORCIONAL — v5
+        //  Pesos: Act 8%, Eng 17%, Seg 25%, Health 15%, Conv 35%
+        // ═══════════════════════════════════════════════════
+
+        $w_act  = 0.08;
+        $w_eng  = 0.17;
+        $w_seg  = 0.25;
+        $w_hlt  = 0.15;
+        $w_conv = 0.35;
 
         $proporcional = $s_activacion * $w_act
                       + $s_engagement * $w_eng
                       + $s_seguimiento * $w_seg
+                      + $s_radar_health * $w_hlt
                       + $s_conversion * $w_conv;
 
         // Fix P15: Cap global — las penalizaciones acumuladas no deben dejar
@@ -953,6 +1017,9 @@ class ActividadScore
             'eng_pen_enfriamiento' => round($eng_pen_enfriamiento, 3),
             'ventas_con_descuento' => $ventas_con_descuento,
             's_seguimiento'     => round($s_seguimiento, 3),
+            's_radar_health'    => round($s_radar_health, 3),
+            'health_up'         => $health_up,
+            'health_down'       => $health_down,
             's_conversion'      => round($s_conversion, 3),
             'penalizaciones'    => round($total_pen, 3),
             'bonuses'           => round($total_bonus, 3),
@@ -1152,9 +1219,16 @@ class ActividadScore
                 $frases[] = "$pct_vcd% de ventas con descuento — mérito de empresa no del vendedor";
             }
         }
-        $pen_enf = (float)($s['eng_pen_enfriamiento'] ?? 0);
-        if ($pen_enf > 0.3) {
-            $frases[] = "pipeline enfriándose — más cotizaciones bajan de bucket que suben";
+        // ── RADAR HEALTH (pipeline) ──
+        $h_up = (int)($s['health_up'] ?? 0);
+        $h_down = (int)($s['health_down'] ?? 0);
+        $s_health = (float)($s['s_radar_health'] ?? 0.5);
+        if ($s_health >= 0.70) {
+            $frases[] = "pipeline en crecimiento — {$h_up} cotizaciones subieron de bucket";
+        } elseif ($s_health >= 0.40) {
+            $frases[] = "pipeline estable — {$h_up} subieron, {$h_down} bajaron";
+        } elseif ($h_down > 0) {
+            $frases[] = "pipeline enfriándose — {$h_down} cotizaciones bajaron de bucket vs {$h_up} que subieron";
         }
 
         // ── MOMENTUM ──

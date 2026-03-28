@@ -506,9 +506,53 @@ CREATE TABLE radar_feedback (
 - Debug panel por vendedor (solo superadmin)
 
 ### Implementación por etapas
-1. Migración radar_feedback + UI botones en Radar
-2. Activación con nueva pen_no_abiertas
-3. Engagement (pen_sin_pago, pen_descuento, pen_enfriamiento)
-4. Seguimiento (tasa_completado × calidad)
-5. Pesos 10/20/30/40 + ajustes Conversión
-6. Testing con datos reales
+1. ✅ Migración radar_feedback + UI botones en Radar
+2. ✅ Activación con nueva pen_no_abiertas
+3. ✅ Engagement (pen_sin_pago, pen_descuento, pen_enfriamiento)
+4. ✅ Seguimiento (tasa_completado × calidad con tarea/examen 40/60)
+5. ✅ Pesos 10/20/30/40 + ajustes Conversión + quitar descuento duplicado
+6. 🔄 Testing con datos reales
+
+### Pendiente: 5ta dimensión — Radar Health (salud del pipeline)
+
+#### Concepto
+Medir la salud del pipeline del vendedor basado en los movimientos de buckets del Radar. Es la radiografía del producto que vendemos.
+
+#### Datos disponibles (bucket_transitions)
+- Cotizaciones que suben de bucket (frío → caliente) = pipeline mejorando
+- Cotizaciones que bajan (caliente → frío/NULL) = pipeline enfriándose
+- Cotizaciones que entran a buckets por primera vez
+- Cotizaciones que pierden bucket (→ NULL)
+- Velocidad de transiciones (cuántas por día/semana)
+
+#### Lo que mediría
+- % de cotizaciones activas en buckets calientes vs total
+- Balance transiciones up vs down (neto positivo = sano)
+- Cotizaciones que perdieron bucket completamente (→ NULL)
+- Tendencia: ¿mejora o empeora en el período?
+
+#### Pesos propuestos (redistribuir)
+```
+Activación:    8%  (era 10%)
+Engagement:   17%  (era 20%)
+Seguimiento:  25%  (era 30%)
+Radar Health: 15%  (NUEVO)
+Conversión:   35%  (era 40%)
+               ───
+              100%
+```
+
+#### Principios
+- Auto-ajustable: basado en ratios propios del vendedor
+- Sin valores fijos
+- Usa close_rate como escala donde aplique
+- No duplicar con pen_enfriamiento de Engagement (mover a Radar Health)
+
+#### Preguntas por resolver
+1. ¿El vendedor es responsable de que sus cotizaciones se enfríen? (parcialmente)
+2. ¿Las transiciones a NULL cuentan como enfriamiento o como "salida natural"?
+3. ¿Cómo manejar cotizaciones aceptadas que pierden bucket? (no es negativo)
+4. ¿El volumen de transiciones importa o solo el balance?
+
+#### Migraciones necesarias
+- Ninguna — bucket_transitions ya tiene toda la data
