@@ -665,6 +665,7 @@ $ts_mom_c = $ts_mom >= 1.05 ? '#16a34a' : ($ts_mom <= 0.95 ? '#dc2626' : '#6b728
 
 // Dimensiones para barras
 $ts_act = min(100, round((float)($ts['s_activacion'] ?? 0) * 100));
+$ts_eng = min(100, round((float)($ts['s_engagement'] ?? 0) * 100));
 $ts_seg = min(100, round((float)($ts['s_seguimiento'] ?? 0) * 100));
 $ts_con = min(100, round((float)($ts['s_conversion'] ?? 0) * 100));
 
@@ -699,6 +700,10 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <div style="flex:1">
           <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts_act ?>%;background:<?= $ts_act >= 60 ? '#16a34a' : ($ts_act >= 30 ? '#d97706' : '#dc2626') ?>"></div></div>
           <div class="thermo-bar-lbl">Activación</div>
+        </div>
+        <div style="flex:1">
+          <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts_eng ?>%;background:<?= $ts_eng >= 60 ? '#16a34a' : ($ts_eng >= 30 ? '#d97706' : '#dc2626') ?>"></div></div>
+          <div class="thermo-bar-lbl">Engagement</div>
         </div>
         <div style="flex:1">
           <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts_seg ?>%;background:<?= $ts_seg >= 60 ? '#16a34a' : ($ts_seg >= 30 ? '#d97706' : '#dc2626') ?>"></div></div>

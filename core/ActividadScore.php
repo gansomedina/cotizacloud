@@ -502,6 +502,16 @@ class ActividadScore
         $cot_vistas_safe = max($cot_vistas, 1);
         $tasa_cierre = $cierres_total / $cot_vistas_safe;
 
+        // Ventas sin pago inicial (>5 días) — se usa en Engagement
+        $ventas_sin_pago = (int)DB::val(
+            "SELECT COUNT(*) FROM ventas
+             WHERE COALESCE(vendedor_id, usuario_id) = ? AND empresa_id = ?
+             AND pagado = 0 AND estado NOT IN ('cancelada','entregada')
+             AND total > 0
+             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)",
+            [$usuario_id, $empresa_id]
+        );
+
         // ═══════════════════════════════════════════════════
         //  DIMENSIÓN 2: ENGAGEMENT (20%) — v5
         //  Capa de penalizaciones post-envío
@@ -666,16 +676,7 @@ class ActividadScore
             $pen_volumen_sin_cierre = min((1.0 - $tasa_cierre / $half_bench) * 0.3, 0.3);
         }
 
-        // Penalización por ventas sin pago inicial (>5 días sin ningún abono)
-        $ventas_sin_pago = (int)DB::val(
-            "SELECT COUNT(*) FROM ventas
-             WHERE COALESCE(vendedor_id, usuario_id) = ? AND empresa_id = ?
-             AND pagado = 0 AND estado NOT IN ('cancelada','entregada')
-             AND total > 0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)",
-            [$usuario_id, $empresa_id]
-        );
-        $pen_sin_pago = min($ventas_sin_pago * 0.12, 0.40);
+        // pen_sin_pago ya calculada en Engagement (eng_pen_sin_pago)
 
         // close rate + quality + velocidad de cierre
         $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre + $pen_sin_pago, 0.70);
@@ -852,8 +853,8 @@ class ActividadScore
         else $nivel = 'bajo';
 
         // Total penalizaciones y bonuses (para display)
-        $total_pen = min($pen_dormidas, 0.60) + $pen_seguimiento + $pen_conversion;
-        $total_bonus = $bonus_transiciones + ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0);
+        $total_pen = $pen_no_abiertas + ($pen_dormidas * 0.4) + $eng_pen_sin_pago + $eng_pen_descuento + $eng_pen_enfriamiento + $pen_conversion;
+        $total_bonus = ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0);
 
         // ═══════════════════════════════════════════════════
         //  GUARDAR
