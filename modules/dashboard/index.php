@@ -676,7 +676,9 @@ $ts_dorm = (int)($ts['cot_dormidas'] ?? 0);
 $ts_cierres = (int)($ts['conversiones'] ?? 0);
 $ts_cbuck = (int)($ts['cierres_bucket'] ?? 0);
 $ts_sdto  = (int)($ts['cierres_sin_dto'] ?? 0);
-$ts_ign   = (int)($ts['senales_ignoradas'] ?? 0);
+$ts_cal   = (int)($ts['cots_calientes'] ?? $ts['radar_benchmark'] ?? 0);
+$ts_fb    = (int)($ts['fb_total'] ?? $ts['radar_views'] ?? 0);
+$ts_ign   = max(0, $ts_cal - $ts_fb); // calientes sin feedback
 $ts_tup   = (int)($ts['transiciones_up'] ?? 0);
 $ts_pen   = (float)($ts['penalizaciones'] ?? 0);
 $ts_diag  = ActividadScore::diagnostico($ts);
@@ -694,7 +696,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div class="thermo-info">
       <div class="thermo-nivel" style="color:<?= $ts_color ?>"><?= $ts_label ?> <span style="color:<?= $ts_mom_c ?>;font-size:14px"><?= $ts_arrow ?></span></div>
       <div class="thermo-detail">
-        <b><?= $ts_vist ?></b>/<?= $ts_asig ?> abiertas · <b><?= $ts_cierres ?></b> cierres<?php if($ts_cbuck): ?> (<b><?= $ts_cbuck ?></b> desde radar)<?php endif; ?><?php if($ts_dorm): ?> · <span style="color:var(--danger)"><?= $ts_dorm ?> dormidas</span><?php endif; ?><?php if($ts_ign): ?> · <span style="color:var(--danger)"><?= $ts_ign ?> ignoradas</span><?php endif; ?>
+        <b><?= $ts_vist ?></b>/<?= $ts_asig ?> abiertas · <b><?= $ts_cierres ?></b> cierres<?php if($ts_cbuck): ?> (<b><?= $ts_cbuck ?></b> desde radar)<?php endif; ?><?php if($ts_dorm): ?> · <span style="color:var(--danger)"><?= $ts_dorm ?> dormidas</span><?php endif; ?><?php if($ts_ign): ?> · <span style="color:var(--danger)"><?= $ts_ign ?> sin feedback</span><?php endif; ?>
       </div>
       <div class="thermo-bars">
         <div style="flex:1">
