@@ -318,14 +318,12 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         if ($show_fb_td) {
             $cls_ci = $r_fb_val === 'con_interes' ? 'fb-active fb-pos' : '';
             $cls_si = $r_fb_val === 'sin_interes' ? 'fb-active fb-neg' : '';
-            $lbl_ci = $r_fb_val === 'con_interes' ? 'Con interés' : '';
-            $lbl_si = $r_fb_val === 'sin_interes' ? 'Sin interés' : '';
-            $fb_html = "<div class='fb-btns'>"
-                . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$r['id']},'con_interes',this)\" title='Con interés'>👍{$lbl_ci}</button>"
-                . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$r['id']},'sin_interes',this)\" title='Sin interés'>👎{$lbl_si}</button>"
+            $fb_html = "<div class='fb-btns' style='flex-shrink:0'>"
+                . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$r['id']},'con_interes',this)\" title='Con interés'>👍</button>"
+                . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$r['id']},'sin_interes',this)\" title='Sin interés'>👎</button>"
                 . "</div>";
         }
-        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit'>{$r_title_show}</div>{$r_decay_ico}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a>{$fb_html}</td>";
+        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
         if ($motivo) {
             $reason_key = $r['reason'] ?? '';
             $reason_meta = $BM[$reason_key] ?? null;
@@ -607,9 +605,9 @@ ob_start();
   .rtit{max-width:160px}
 }
 /* Feedback buttons */
-.fb-btns{display:flex;gap:4px;margin-top:4px}
-.fb-btn{padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font:400 11px var(--body);display:flex;align-items:center;gap:3px;opacity:.6;transition:all .15s;color:var(--t3)}
-.fb-btn:hover{opacity:1;border-color:#94a3b8}
+.fb-btns{display:flex;gap:3px}
+.fb-btn{width:24px;height:24px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:.5;transition:all .15s}
+.fb-btn:hover{opacity:1;transform:scale(1.1)}
 .fb-active{opacity:1;border-width:2px;font-weight:600}
 .fb-pos{border-color:#16a34a;background:#f0fdf4;color:#16a34a}
 .fb-neg{border-color:#dc2626;background:#fef2f2;color:#dc2626}
