@@ -123,6 +123,7 @@ class Router
         // ── Push notifications API ───────────────────────────
         self::post('/api/push/register',   fn() => self::load_api('push_register'));
         self::post('/api/push/unregister', fn() => self::load_api('push_unregister'));
+        self::post('/api/radar-feedback',  fn() => self::load_api('radar_feedback'));
 
         // ── Páginas legales (público) ───────────────────────
         self::get('/privacidad', fn() => self::load_public('privacidad'));
