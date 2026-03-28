@@ -211,6 +211,7 @@ foreach ($raw as $c) {
         'senales'     => $senales,
         'last_ts'     => $last_ts,
         'visitas'     => (int)($c['visitas'] ?? 0),
+        'vendedor_id' => (int)($c['vendedor_id'] ?? 0),
     ];
 
     $rows_all[] = $row;
