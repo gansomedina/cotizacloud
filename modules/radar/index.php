@@ -94,9 +94,7 @@ $fb_rows = DB::query(
     [Auth::id(), $empresa_id]
 );
 foreach ($fb_rows as $fb) $feedback_map[(int)$fb['cotizacion_id']] = $fb['tipo'];
-
-// Buckets que muestran botones de feedback
-$HOT_BUCKETS = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta'];
+$GLOBALS['feedback_map'] = $feedback_map;
 
 // Helpers
 function rhace(int $ts): string {
@@ -310,7 +308,22 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $r_decay_ico = $r_momentum === 'cooling' ? '<span class="momentum-down" title="Sin actividad reciente — perdiendo momentum">↓</span>' : '';
         $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo']);
         $cot_url = '/cotizaciones/'.(int)$r['id'];
-        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit'>{$r_title_show}</div>{$r_decay_ico}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
+        // Botones de feedback al lado del título
+        $r_bucket_fb = $r['bucket'] ?? '';
+        $r_vendedor_fb = (int)($r['vendedor_id'] ?? 0);
+        $r_fb_val = ($GLOBALS['feedback_map'] ?? [])[(int)$r['id']] ?? null;
+        $hot_bkts_fb = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta'];
+        $show_fb_td = in_array($r_bucket_fb, $hot_bkts_fb) && ($r_vendedor_fb === Auth::id() || Auth::es_admin());
+        $fb_html = '';
+        if ($show_fb_td) {
+            $cls_ci = $r_fb_val === 'con_interes' ? 'fb-active fb-pos' : '';
+            $cls_si = $r_fb_val === 'sin_interes' ? 'fb-active fb-neg' : '';
+            $fb_html = "<div class='fb-btns' style='display:inline-flex;margin-left:6px'>"
+                . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$r['id']},'con_interes',this)\" title='Con interés'>👍</button>"
+                . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$r['id']},'sin_interes',this)\" title='Sin interés'>👎</button>"
+                . "</div>";
+        }
+        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
         if ($motivo) {
             $reason_key = $r['reason'] ?? '';
             $reason_meta = $BM[$reason_key] ?? null;
@@ -327,20 +340,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $last_fmt = date('m-d H:i',$r['last_ts'])." <span class='ago'>(".rhace($r['last_ts']).")</span>";
         if ($gap && isset($r['gap_days'])) $last_fmt .= " <b style='color:#6a1b9a'>gap ".(int)$r['gap_days']."d</b>";
         echo "<td class='col-vista'>$last_fmt</td>";
-        echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a>";
-        // Botones de feedback (solo vendedor asignado + buckets calientes)
-        $r_bucket = $r['bucket'] ?? '';
-        $r_vendedor = (int)($r['vendedor_id'] ?? 0);
-        $r_fb = $feedback_map[(int)$r['id']] ?? null;
-        if (in_array($r_bucket, $HOT_BUCKETS) && ($r_vendedor === Auth::id() || Auth::es_admin())) {
-            $cls_ci = $r_fb === 'con_interes' ? 'fb-active fb-pos' : '';
-            $cls_si = $r_fb === 'sin_interes' ? 'fb-active fb-neg' : '';
-            echo "<div class='fb-btns'>";
-            echo "<button class='fb-btn fb-ci {$cls_ci}' onclick=\"radarFb({$r['id']},'con_interes',this)\" title='Con interés'>👍</button>";
-            echo "<button class='fb-btn fb-si {$cls_si}' onclick=\"radarFb({$r['id']},'sin_interes',this)\" title='Sin interés'>👎</button>";
-            echo "</div>";
-        }
-        echo "</td>";
+        echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a></td>";
         echo "</tr>";
         // Debug row: show all scoring internals
         if ($debug_mode) {
