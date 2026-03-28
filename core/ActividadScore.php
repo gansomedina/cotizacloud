@@ -632,14 +632,16 @@ class ActividadScore
         // Tasa de completado: feedback dado / cotizaciones calientes
         $tasa_completado = $cots_calientes > 0 ? min($fb_total / $cots_calientes, 1.0) : 0.50;
 
-        // Calidad del feedback
+        // Calidad del feedback (solo evaluable después de 5 días)
         $calidad_fb = ($aciertos + $fallos) > 0 ? $aciertos / ($aciertos + $fallos) : 0.50;
 
         // Penalización por buckets estancados (se mantiene de v4)
         $pen_buckets = min($buckets_estancados * 0.06, 0.3);
 
-        // Seguimiento = completado × calidad - estancados
-        $s_seguimiento = ($tasa_completado * $calidad_fb) - $pen_buckets;
+        // Seguimiento = tarea (40%) + examen (60%) - estancados
+        // Tarea: dar feedback (esfuerzo)
+        // Examen: calidad del feedback (resultado)
+        $s_seguimiento = ($tasa_completado * 0.40) + ($calidad_fb * 0.60) - $pen_buckets;
         $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
 
         // Guardar para debug
