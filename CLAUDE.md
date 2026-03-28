@@ -386,44 +386,90 @@ Ficha de empresa con: dominio propio, estado DNS (verificado/no apunta), estado 
 ### Branch de trabajo
 - `claude/review-apple-store-build-xB5jg`
 
-## Termómetro v5 — Pendiente (diseño completo)
+## Termómetro v5 — Diseño final
 
-### Rediseño: 4 dimensiones con feedback del Radar
-
-#### Los 4 factores
+### Los 4 factores
 | # | Dimensión | Peso | Qué mide |
 |---|---|---|---|
-| 1 | **Activación** | 10% | ¿Las cotizaciones llegan al cliente? |
-| 2 | **Engagement** | 25% | ¿Interactúas con las señales calientes del Radar? |
-| 3 | **Seguimiento** | 25% | ¿Usas el Radar regularmente? |
+| 1 | **Activación** | 10% | ¿Envías y llegan? |
+| 2 | **Engagement** | 20% | Penalizaciones post-envío |
+| 3 | **Seguimiento** | 30% | Feedback del Radar (parte medular) |
 | 4 | **Conversión** | 40% | ¿Cierras ventas? |
 
-#### Sistema de feedback en el Radar
-Dos botones por cotización caliente (solo vendedor asignado):
-- **"Con interés"** — contactó y hay oportunidad real
-- **"Sin interés"** — contactó y no hay oportunidad
+### Principio: TODO auto-ajustable, CERO valores fijos
+- Todas las penalizaciones usan `close_rate` como factor de escala
+- `1/close_rate` amplifica cuando cierres son raros
+- `close_rate` atenúa cuando cierres son comunes
+- Variables usadas: %conversión, #cotizaciones, #ventas, tasa apertura
 
-Botones cambiables. Solo en buckets calientes (probable_cierre, onfire, inminente, validando_precio, prediccion_alta).
+### 1. ACTIVACIÓN (10%)
+```
+s_activacion = tasa_apertura - pen_no_abiertas - pen_dormidas
 
-#### Tabla de resultados
-| Feedback | Resultado posterior | Score |
-|---|---|---|
-| Con interés + cliente regresa | Buen seguimiento | +Bonus |
-| Con interés + cliente acepta | Cerró la venta | ++Bonus |
-| Con interés + cliente NO regresa | Seguimiento inefectivo | -Penalización leve |
-| Sin interés + cliente nunca regresa | Evaluación correcta | **+Bonus (premio por usar Radar)** |
-| Sin interés + cliente acepta | Perdió venta real | -Penalización fuerte |
-| Sin interés + cliente regresa sin aceptar | Juicio parcialmente incorrecto | -Penalización leve |
-| **Sin feedback** | **Ignoró señal caliente** | **-Penalización fuerte** |
+tasa_apertura = cot_vistas / cot_asignadas
+pen_no_abiertas = min((no_abiertas / cot_asignadas) × (1 / close_rate), 1.0)
+pen_dormidas = escalonada (7d, 14d, 21d) ya implementada
+```
+- Sin piso fijo — ratio directo
+- pen_no_abiertas usa `1/close_rate` (pega fuerte)
+- Excluir suspendidas y borradores
 
-#### Principios del cálculo — AUTO-AJUSTABLE
-- **NO valores fijos** para bonus/penalizaciones
-- Pesos proporcionales a la **tasa de aceptación de la empresa**
-- Empresa con alta tasa de cierre → penalizaciones más suaves
-- Empresa con baja tasa de cierre → cada oportunidad caliente pesa más
-- Bonus/pen basados en ratios del vendedor vs benchmark empresa
+### 2. ENGAGEMENT (20%)
+Capa de penalizaciones — asumimos que el asesor hizo bien su trabajo inicial.
+```
+s_engagement = 1.0 - pen_sin_pago - pen_descuento - pen_enfriamiento
 
-#### BD
+pen_sin_pago = min((ventas_sin_pago / ventas_totales) × (1 / close_rate), 1.0)
+pen_descuento = (ventas_con_descuento / ventas_totales) × close_rate
+pen_enfriamiento = transiciones_down / max(transiciones_up + transiciones_down, 1)
+```
+- pen_sin_pago: ventas con pagado=0 — usa `1/close_rate` (fuerte)
+- pen_descuento: ventas con descuento — usa `close_rate` (suave, mérito de empresa)
+- pen_enfriamiento: cotizaciones que bajaron de bucket
+
+### 3. SEGUIMIENTO (30%)
+Basado en feedback del Radar. Dos componentes multiplicativos:
+```
+s_seguimiento = tasa_completado × calidad
+
+tasa_completado = cots_con_feedback / cots_calientes
+  (sin calientes → 0.50 neutro)
+
+calidad = aciertos / max(aciertos + fallos, 1)
+  aciertos = con_interes_contrata × (1/close_rate)
+           + con_interes_regresa × 1
+           + sin_interes_correcto × 1
+  fallos   = con_interes_no_regresa × 1
+           + sin_interes_acepta × (1/close_rate)
+```
+
+Resultados y pesos:
+| Feedback | Resultado | Tipo | Factor |
+|---|---|---|---|
+| Con interés + contrata | Cerró la venta | Acierto | × `1/close_rate` |
+| Con interés + regresa 5d | Buen seguimiento | Acierto | × 1 |
+| Sin interés + no regresa | Evaluación correcta | Acierto | × 1 |
+| Con interés + NO regresa | Seguimiento inefectivo | Fallo | × 1 |
+| Sin interés + acepta | Perdió venta real | Fallo | × `1/close_rate` |
+| Sin feedback | Ignoró señal | Ya en tasa_completado | — |
+
+### 4. CONVERSIÓN (40%)
+Se mantiene como v4 con ajustes:
+```
+s_conversion = sigmoid(tasa_cierre, bench_empresa) × 0.40
+             + cierre_quality × 0.35
+             + ttc_score × 0.25
+             - pen_vencidas - pen_zona_muerta - pen_volumen
+```
+
+### Sistema de feedback en el Radar
+- Dos botones: **"Con interés"** / **"Sin interés"**
+- Solo en cotizaciones en buckets calientes
+- Solo para el vendedor asignado
+- Botones cambiables (puede corregir)
+- Validación posterior: ¿el cliente regresó en 5 días? ¿Aceptó?
+
+### BD
 ```sql
 CREATE TABLE radar_feedback (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -439,22 +485,30 @@ CREATE TABLE radar_feedback (
 );
 ```
 
-#### Seguimiento simplificado
-```
-s_seguimiento = s_radar - pen_buckets
-s_radar = min(radar_views / benchmark_inteligente, 1.0)
-```
-Sin tasa_reaccion, sin bonus_transiciones, sin señales_ignoradas — todo reemplazado por Engagement.
+### Qué se ELIMINA del v4
+- `tasa_reaccion` → reemplazada por feedback
+- `señales_ignoradas` → reemplazada por "sin feedback"
+- `transiciones_con_reaccion` → no medible
+- `bonus_transiciones` → eliminado
+- `pen_trans_down` → movido a pen_enfriamiento en Engagement
+- `s_consultas` → eliminado (redundante)
+- Piso fijo de activación → eliminado
+- `DESCUENTO_FACTOR = 0.6` → reemplazado por pen_descuento auto-ajustable
 
-#### Qué se elimina
-- `tasa_reaccion` → Engagement
-- `señales_ignoradas` actual → "sin feedback"
-- `transiciones_con_reaccion` → no medible confiablemente
-- `bonus_transiciones` → se simplifica
-
-#### Qué se mantiene
-- Benchmark radar inteligente (por vendedor, auto-ajustable)
+### Qué se MANTIENE
 - Superadmin excluido de benchmarks
-- Suspendidas excluidas de conteos
-- Activación piso 80-90% para apertura >= 90%
+- Suspendidas excluidas de todos los conteos
 - Período 15 días rolling
+- Gracia 15 días para vendedores nuevos
+- pen_dormidas escalonada (7d, 14d, 21d)
+- Calidad de cierre por bucket (frío=2x, caliente=0.8x)
+- Velocidad de cierre vs benchmark empresa
+- Debug panel por vendedor (solo superadmin)
+
+### Implementación por etapas
+1. Migración radar_feedback + UI botones en Radar
+2. Activación con nueva pen_no_abiertas
+3. Engagement (pen_sin_pago, pen_descuento, pen_enfriamiento)
+4. Seguimiento (tasa_completado × calidad)
+5. Pesos 10/20/30/40 + ajustes Conversión
+6. Testing con datos reales
