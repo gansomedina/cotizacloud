@@ -13,7 +13,8 @@ if (!$slug) { http_response_code(404); die('No encontrado'); }
 $cot = DB::row(
     "SELECT c.*, e.nombre AS emp_nombre, e.ciudad AS emp_ciudad,
             e.telefono AS emp_tel, e.email AS emp_email,
-            e.website AS emp_web, e.moneda, e.logo_url AS emp_logo,
+            e.website AS emp_web, e.direccion AS emp_direccion, e.rfc AS emp_rfc,
+            e.moneda, e.logo_url AS emp_logo,
             e.impuesto_modo, e.impuesto_pct, e.impuesto_nombre AS impuesto_label,
             e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado, e.cot_theme,
             e.texto_aceptar, e.texto_rechazar,
@@ -285,9 +286,11 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
 .hdr{background:var(--white);border-bottom:2px solid var(--text);text-align:center;padding:28px 20px 0}
 .hdr-inner{max-width:960px;margin:0 auto}
-.hdr-logo{width:72px;height:72px;border-radius:16px;background:var(--g);color:#fff;font:700 24px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px}
-.hdr-co{font:800 20px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em}
-.hdr-tag{font-size:13px;color:var(--t3);margin-top:3px;margin-bottom:12px}
+.hdr-logo{width:96px;height:96px;border-radius:18px;background:var(--g);color:#fff;font:700 30px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px}
+.hdr-co{font:800 22px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em}
+.hdr-tag{font-size:13px;color:var(--t3);margin-top:3px}
+.hdr-details{font-size:12.5px;color:var(--t3);margin-top:2px;line-height:1.5}
+.hdr-rfc{font:500 11px 'DM Sans',sans-serif;color:var(--t3);letter-spacing:.04em;margin-top:4px;margin-bottom:10px}
 .vbadge{display:none} /* oculto al cliente */
 .print-fac,.print-info{display:none} /* solo para impresión — se activan en @media print */
 .vdot{width:6px;height:6px;border-radius:50%;animation:blink 2s infinite}
@@ -305,11 +308,17 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
 
 .qh{background:var(--white);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
-.qh-b{padding:18px 20px}
-.qh-n{font-size:12px;color:var(--t3);letter-spacing:.04em;margin-bottom:7px}
-.qh-t{font:800 22px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.025em;line-height:1.2;margin-bottom:5px}
-.qh-c{font-size:15px;color:var(--t2);margin-bottom:13px}
-.qh-m{display:flex;flex-wrap:wrap;gap:6px}
+.qh-top{padding:20px 22px 16px;border-bottom:1px solid var(--bd)}
+.qh-title{font:800 24px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.025em;line-height:1.2;margin-bottom:4px}
+.qh-client{font-size:15px;color:var(--t2)}
+.qh-client span{color:var(--t3);font-size:13px}
+.qh-pills{padding:14px 22px;display:flex;flex-wrap:wrap;gap:8px}
+.pill{display:flex;flex-direction:column;padding:10px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:12px;min-width:110px}
+.pill-label{font-size:10.5px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.pill-value{font:600 14px 'DM Sans',sans-serif;color:var(--text)}
+.pill-accent{background:var(--g);border-color:var(--g)}
+.pill-accent .pill-label{color:rgba(255,255,255,.7)}
+.pill-accent .pill-value{color:#fff;font-size:16px;font-weight:700}
 .chip{padding:4px 12px;background:var(--bg);border:1px solid var(--bd);border-radius:99px;font-size:13px;color:var(--t2)}
 .chip-danger{background:#fff5f5;border-color:#fca5a5;color:#c53030}
 .chip-warn{background:#fffbeb;border-color:#fcd34d;color:#92400e}
@@ -538,14 +547,16 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <div class="hdr-logo"><?= e($ini_emp) ?></div>
     <?php endif; ?>
     <div class="hdr-co"><?= e($cot['emp_nombre']) ?></div>
-    <?php if ($cot['emp_ciudad']): ?>
-    <div class="hdr-tag"><?= e($cot['emp_ciudad']) ?></div>
+    <?php if (!empty($cot['emp_direccion']) || !empty($cot['emp_ciudad'])): ?>
+    <div class="hdr-tag"><?= e(implode(', ', array_filter([$cot['emp_direccion'] ?? '', $cot['emp_ciudad'] ?? '']))) ?></div>
     <?php endif; ?>
-    <!-- status badge oculto al cliente — solo para print/CSS interno -->
+    <?php if (!empty($cot['emp_rfc'])): ?>
+    <div class="hdr-rfc">RFC: <?= e($cot['emp_rfc']) ?></div>
+    <?php endif; ?>
     <div class="hdr-cnt">
         <?php if ($cot['emp_tel']): ?><a href="tel:<?= e($cot['emp_tel']) ?>"><?= e($cot['emp_tel']) ?></a><?php endif; ?>
         <?php if ($cot['emp_email']): ?><a href="mailto:<?= e($cot['emp_email']) ?>"><?= e($cot['emp_email']) ?></a><?php endif; ?>
-
+        <?php if (!empty($cot['emp_web'])): ?><a href="<?= e($cot['emp_web']) ?>" target="_blank"><?= e(preg_replace('#^https?://#','',$cot['emp_web'])) ?></a><?php endif; ?>
     </div>
     <div class="tabs">
         <button class="tab on" onclick="go('d',this)">Cotización</button>
@@ -607,31 +618,42 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <?php endif; ?>
 </div>
 
-  <!-- BLOQUE COTIZACIÓN — visible en pantalla (no duplica el header de empresa) -->
+  <!-- BLOQUE COTIZACIÓN — visible en pantalla -->
   <div class="qh">
-    <div class="qh-b">
-      <div class="qh-n"><?= e($cot['numero']) ?></div>
-      <div class="qh-t"><?= e($cot['titulo']) ?></div>
+    <div class="qh-top">
+      <div class="qh-title"><?= e($cot['titulo']) ?></div>
       <?php if ($cot['cliente_nombre']): ?>
-      <div class="qh-c"><?= e($cot['cliente_nombre']) ?><?php if ($cot['cli_tel']): ?> · <?= e($cot['cli_tel']) ?><?php endif ?></div>
+      <div class="qh-client"><?= e($cot['cliente_nombre']) ?><?php if ($cot['cli_tel']): ?> <span>· <?= e($cot['cli_tel']) ?></span><?php endif ?></div>
       <?php endif ?>
-      <div class="qh-m">
-        <span class="chip"><?= date('d M Y', strtotime($cot['created_at'])) ?></span>
-        <?php if ($cot['valida_hasta']): ?>
-        <?php
-          $vts = strtotime($cot['valida_hasta']);
-          $vd  = ($vts - strtotime('today')) / 86400;
-          $vtxt = date('d M Y', $vts);
-          $vchip = $vd < 0 ? 'chip chip-danger' : ($vd <= 3 ? 'chip chip-warn' : 'chip');
-        ?>
-        <span class="<?= $vchip ?>"><?= $vd < 0 ? 'Venció ' : 'Vence ' ?><?= $vtxt ?></span>
-        <?php endif ?>
-        <?php if ($cot['emp_ciudad']): ?>
-        <span class="chip"><?= e($cot['emp_ciudad']) ?></span>
-        <?php endif ?>
-        <?php if ($cot['asesor_nombre']): ?>
-        <span class="chip">Asesor: <?= e($cot['asesor_nombre']) ?></span>
-        <?php endif ?>
+    </div>
+    <div class="qh-pills">
+      <div class="pill">
+        <div class="pill-label">Cotización</div>
+        <div class="pill-value"><?= e($cot['numero']) ?></div>
+      </div>
+      <div class="pill">
+        <div class="pill-label">Elaboración</div>
+        <div class="pill-value"><?= date('d/m/Y', strtotime($cot['created_at'])) ?></div>
+      </div>
+      <?php if ($cot['valida_hasta']): ?>
+      <?php
+        $vts = strtotime($cot['valida_hasta']);
+        $vd  = ($vts - strtotime('today')) / 86400;
+      ?>
+      <div class="pill" <?php if ($vd < 0): ?>style="background:#fff5f5;border-color:#fca5a5"<?php elseif ($vd <= 3): ?>style="background:#fffbeb;border-color:#fcd34d"<?php endif; ?>>
+        <div class="pill-label"><?= $vd < 0 ? 'Venció' : 'Vencimiento' ?></div>
+        <div class="pill-value" <?php if ($vd < 0): ?>style="color:#c53030"<?php elseif ($vd <= 3): ?>style="color:#92400e"<?php endif; ?>><?= date('d/m/Y', $vts) ?></div>
+      </div>
+      <?php endif; ?>
+      <?php if ($cot['asesor_nombre']): ?>
+      <div class="pill">
+        <div class="pill-label">Asesor</div>
+        <div class="pill-value"><?= e($cot['asesor_nombre']) ?></div>
+      </div>
+      <?php endif; ?>
+      <div class="pill pill-accent">
+        <div class="pill-label">Total</div>
+        <div class="pill-value"><?= fmt_pub((float)$cot['total']) ?></div>
       </div>
     </div>
   </div>
