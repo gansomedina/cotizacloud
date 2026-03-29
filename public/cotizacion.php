@@ -754,7 +754,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <div class="adc">
       <div class="adc-t">
         <div>
-          <div class="adc-ey">Aprovecha esta oportunidad</div>
+          <div class="adc-ey">Aprovecha esta oportunidad por tiempo LIMITADO!</div>
           <div class="adc-prices">
             <div class="adc-or" id="adcOr"><?= fmt_pub($subtotal) ?></div>
             <div class="adc-nw" id="adcNw"><?= fmt_pub($total_base) ?></div>
