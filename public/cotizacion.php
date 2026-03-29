@@ -276,7 +276,7 @@ $themes = [
     'verde'   => ['g'=>'#1a6b3c','glt'=>'#edf7f2','gbd'=>'#b6ddc7'],
     'azul'    => ['g'=>'#1d4ed8','glt'=>'#eff6ff','gbd'=>'#bfdbfe'],
     'rojo'    => ['g'=>'#b91c1c','glt'=>'#fef2f2','gbd'=>'#fecaca'],
-    'naranja' => ['g'=>'#d97706','glt'=>'#fffbeb','gbd'=>'#fde68a'],
+    'naranja' => ['g'=>'#e8a317','glt'=>'#fffdf5','gbd'=>'#fde68a'],
     'dorado'  => ['g'=>'#92400e','glt'=>'#fffbeb','gbd'=>'#fde68a'],
     'morado'  => ['g'=>'#6d28d9','glt'=>'#f5f3ff','gbd'=>'#c4b5fd'],
     'oscuro'  => ['g'=>'#1e293b','glt'=>'#f1f5f9','gbd'=>'#cbd5e1'],
@@ -289,9 +289,9 @@ $ocultar_cp = !empty($cot['ocultar_cant_pu']);
 html{font-size:17px;-webkit-text-size-adjust:100%}
 body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
-.hdr{background:var(--white);border-bottom:2px solid var(--text);text-align:center;padding:28px 20px 0}
+.hdr{background:var(--white);border-bottom:2px solid var(--text);text-align:center;padding:18px 20px 0}
 .hdr-inner{max-width:960px;margin:0 auto}
-.hdr-logo{width:120px;height:120px;border-radius:20px;background:var(--g);color:#fff;font:700 36px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px}
+.hdr-logo{width:160px;height:70px;background:var(--g);color:#fff;font:700 28px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px}
 .hdr-co{font:800 22px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em}
 .hdr-tag{font-size:13px;color:var(--t3);margin-top:3px}
 .hdr-details{font-size:12.5px;color:var(--t3);margin-top:2px;line-height:1.5}
@@ -546,7 +546,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 <div class="hdr">
   <div class="hdr-inner">
     <?php if (!empty($cot['emp_logo'])): ?>
-    <div class="hdr-logo" style="background:none"><img src="<?= e($cot['emp_logo']) ?>" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
+    <div class="hdr-logo" style="background:none;width:auto;height:auto;max-width:200px;max-height:80px"><img src="<?= e($cot['emp_logo']) ?>" alt="Logo" style="max-width:200px;max-height:80px;object-fit:contain"></div>
     <?php else: ?>
     <div class="hdr-logo"><?= e($ini_emp) ?></div>
     <?php endif; ?>
