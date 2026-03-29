@@ -760,12 +760,6 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     $rank = 0;
     foreach ($equipo_scores as $es):
       $rank++;
-      // Para el usuario actual, inyectar datos del cálculo en vivo (no están en BD)
-      if ((int)($es['usuario_id'] ?? 0) === Auth::id() && isset($ts)) {
-          foreach (['bench_ventas','ventas_totales','w_proporcional','w_momentum','w_percentil'] as $_k) {
-              if (isset($ts[$_k])) $es[$_k] = $ts[$_k];
-          }
-      }
       $es_score = (int)$es['score'];
       $es_color = match($es['nivel']) {
           'top' => '#2563eb', 'activo' => '#16a34a', 'regular' => '#d97706', 'nuevo' => '#6b7280', default => '#dc2626'
@@ -820,8 +814,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <div class="dbg-row"><span class="dbg-lbl">  pen sin pago</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_sin_pago'] ?? 0) > 0 ? '-'.round(($es['eng_pen_sin_pago'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen descuento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_descuento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_descuento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen enfriamiento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_enfriamiento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_enfriamiento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
-        <?php $bv = $es['bench_ventas'] ?? null; $vt = $es['ventas_totales'] ?? null; $epbb = $es['eng_pen_bajo_benchmark'] ?? 0; ?>
-        <div class="dbg-row"><span class="dbg-lbl">  pen bajo benchmark</span><span class="dbg-val dbg-neg"><?= $epbb > 0 ? '-'.round($epbb * 100, 1).'%'.($bv !== null ? " ($vt vs ".round($bv).")" : '') : '—' ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  pen bajo benchmark</span><span class="dbg-val dbg-neg"><?php $epbb = $es['eng_pen_bajo_benchmark'] ?? 0; if ($epbb > 0) { echo '-'.round($epbb * 100, 1).'% ('.($es['ventas_periodo'] ?? '?').' vs '.($es['bench_ventas'] ?? '?').')'; } else echo '—'; ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Seguimiento (25%)</span><span class="dbg-val"><?= round(($es['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Radar Health (15%)</span><span class="dbg-val"><?= round(($es['s_radar_health'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pipeline ↑ / ↓</span><span class="dbg-val"><?= (int)($es['health_up'] ?? $es['transiciones_up'] ?? 0) ?> / <?= (int)($es['health_down'] ?? $es['senales_ignoradas'] ?? 0) ?></span></div>
