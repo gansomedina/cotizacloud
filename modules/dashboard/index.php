@@ -742,17 +742,17 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div id="lb-info" class="lb-info">
       <div class="lb-info-inner">
         <b>¿Qué mide este ranking?</b>
-        <p>Algoritmo APC v5.0 — 15 días rolling, 100% auto-ajustable, cero valores fijos:</p>
+        <p>Algoritmo APC v5.1 — 15 días rolling, 100% auto-ajustable:</p>
         <ul>
-          <li><b>Activación (8%)</b> — ¿Envías y llegan? Penaliza no abiertas en 5+ días y dormidas.</li>
-          <li><b>Engagement (17%)</b> — Penalizaciones post-envío: ventas sin cobrar, descuentos, enfriamiento.</li>
-          <li><b>Seguimiento (25%)</b> — ¿Das feedback a las señales calientes? "Con interés" / "Sin interés" con evaluación de resultado.</li>
-          <li><b>Radar Health (15%)</b> — ¿Tu pipeline mejora o empeora? Balance de transiciones up vs down proporcionalmente a tu volumen.</li>
-          <li><b>Conversión (35%)</b> — ¿Cierras ventas? Tasa de cierre, calidad, velocidad.</li>
+          <li><b>Activación (8%)</b> — ¿Las cotizaciones llegan al cliente? Penaliza no abiertas (×1/tasa cierre) y dormidas (escalado por tiempo promedio de cierre de la empresa).</li>
+          <li><b>Engagement (17%)</b> — Capa de penalizaciones: ventas sin cobrar (×1/tasa cierre, fuerte), descuentos y enfriamiento del pipeline (×tasa cierre, suave), ventas por debajo del promedio de la empresa.</li>
+          <li><b>Seguimiento (25%)</b> — ¿Das feedback a las señales calientes del Radar? Se evalúa el esfuerzo (dar feedback) y el resultado (¿acertaste?). Con más feedbacks, la calidad pesa más que el esfuerzo.</li>
+          <li><b>Radar Health (15%)</b> — ¿Tu pipeline mejora o empeora? Cuenta transiciones de temperatura de tus cotizaciones: frío→caliente suma, caliente→frío resta.</li>
+          <li><b>Conversión (35%)</b> — ¿Cierras ventas? Tasa de cierre vs empresa, calidad (cerrar ventas difíciles vale más), velocidad vs promedio, consistencia semanal.</li>
         </ul>
-        <p><b>Auto-ajuste:</b> Todas las penalizaciones usan la tasa de cierre de la empresa como escala. Cero valores fijos.</p>
-        <p><b>Score final:</b> Proporcional (50%) + tendencia (25%) + posición equipo (25%). Flechas: ↑ mejorando, → estable, ↓ decayendo.</p>
-        <p><b>Niveles:</b> Top (86-100) · Activo (61-85) · Regular (31-60) · Bajo (0-30) · Nuevo (primeros 15 días).</p>
+        <p><b>Auto-ajuste:</b> Todas las penalizaciones escalan con la tasa de cierre de la empresa. Sin valores fijos — cada empresa tiene su propia escala.</p>
+        <p><b>Score final:</b> Los pesos del score se ajustan automáticamente: con pocos vendedores domina el proporcional. Con equipo grande, el percentil gana peso. La tendencia (momentum) escala con la tasa de cierre. Flechas: ↑ mejorando, → estable, ↓ decayendo.</p>
+        <p><b>Niveles:</b> Top (86-100) · Activo (61-85) · Regular (31-60) · Bajo (0-30) · Nuevo (primeros días).</p>
         <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Índice algorítmico basado en datos de uso de la plataforma. Referencia de productividad comercial, no evaluación personal.</p>
       </div>
     </div>
