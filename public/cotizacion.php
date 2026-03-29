@@ -760,7 +760,6 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
             <div class="adc-nw" id="adcNw"><?= fmt_pub($total_base) ?></div>
           </div>
         </div>
-        <div class="adc-pc" id="adcPc">-<?= number_format($adc_pct,0) ?>%</div>
       </div>
       <div class="adc-f">
         <span class="adc-el">Expira en</span>
