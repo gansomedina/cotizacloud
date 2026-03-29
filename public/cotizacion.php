@@ -650,7 +650,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       $encabezado = str_replace(
           ['{{cliente}}', '{{empresa}}', '{{asesor}}'],
           [e($cot['cliente_nombre'] ?? ''), e($cot['emp_nombre']), e($cot['asesor_nombre'] ?? '')],
-          e($encabezado_raw)
+          e_html($encabezado_raw)
       );
   ?>
   <div style="margin:24px 0 8px;padding:20px 24px;background:var(--white);border:1px solid var(--bd);border-radius:var(--r);font:400 15px/1.7 'Plus Jakarta Sans',sans-serif;color:var(--text)">
@@ -887,9 +887,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
         $linea = trim($linea);
         if (!$linea) continue;
         if (str_starts_with($linea, '##')) {
-            echo '<div class="term"><div class="terml">' . e(ltrim($linea,'# ')) . '</div></div>';
+            echo '<div class="term"><div class="terml">' . e_html(ltrim($linea,'# ')) . '</div></div>';
         } else {
-            echo '<div class="term"><div class="termv">' . nl2br(e($linea)) . '</div></div>';
+            echo '<div class="term"><div class="termv">' . nl2br(e_html($linea)) . '</div></div>';
         }
     endforeach;
     ?>
@@ -921,7 +921,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <div class="fname2"><?= e($cot['emp_nombre']) ?></div>
     <?php if ($cot['emp_ciudad']): ?><div class="fsub"><?= e($cot['emp_ciudad']) ?></div><?php endif; ?>
     <?php if (!empty($cot['cot_footer'])): ?>
-    <div class="fdisc"><?= nl2br(e($cot['cot_footer'])) ?></div>
+    <div class="fdisc"><?= nl2br(e_html($cot['cot_footer'])) ?></div>
     <?php else: ?>
     <div class="fdisc">Cotización generada en cotiza.cloud</div>
     <?php endif; ?>
@@ -1461,7 +1461,7 @@ calc();
 <!-- PRINT: Pie de página -->
 <div class="print-footer" style="display:none">
   <?php if (!empty($cot['cot_footer'])): ?>
-  <div style="margin-bottom:5pt"><?= nl2br(e($cot['cot_footer'])) ?></div>
+  <div style="margin-bottom:5pt"><?= nl2br(e_html($cot['cot_footer'])) ?></div>
   <?php endif; ?>
   <?= e($cot['emp_nombre']) ?>
   <?php if (!empty($cot['emp_tel'])): ?> · <?= e($cot['emp_tel']) ?><?php endif; ?>
