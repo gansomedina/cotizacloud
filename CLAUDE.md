@@ -556,3 +556,76 @@ Conversión:   35%  (era 40%)
 
 #### Migraciones necesarias
 - Ninguna — bucket_transitions ya tiene toda la data
+
+## Sesión 29 marzo 2026
+
+### Termómetro v5.1 — Completado
+1. **s_radar_health persistido** — nueva columna en usuario_score
+2. **Score final auto-ajustable** — pesos proporcional/momentum/percentil sin valores fijos
+   - `w_percentil = (n-2)/(n+18)` solo con 3+ vendedores
+   - `w_momentum = (1-w_percentil) × close_rate`
+   - `w_proporcional = 1 - w_percentil - w_momentum`
+3. **pen_dormidas escalado con TTC** — pesos 7/TTC, 14/TTC, 21/TTC (no fijos 6/10/15)
+4. **pen_dormidas × (1-tasa_apertura)** — auto-ajustable, no ×0.4 fijo
+5. **pen_buckets ratio puro** — estancados/asignadas (no 0.06 fijo)
+6. **pen_vencidas/zona sqrt(1/CR)** — moderado, no magic numbers
+7. **Conversión sub-pesos sqrt** — close_rate/quality/speed/volumen auto-ponderados
+8. **Tendencia de volumen (vol_trend)** — ventas actuales vs benchmark período anterior como 4to componente de Conversión
+9. **pen_bajo_benchmark** — penalización en Engagement si vendes menos que el promedio empresa del período anterior
+10. **Consistencia limitada por sqrt(close_rate)** — max reducción 31% con CR=0.10
+11. **Piso auto-ajustable** — `close_rate × 0.5` (no 0.05 fijo)
+12. **Bonus auto-ajustable** — `cierre_quality × close_rate` (no ×0.2 fijo)
+13. **Código muerto eliminado** — ~80 líneas: tasa_reaccion, senales_ignoradas, DESCUENTO_FACTOR, transiciones duplicadas
+14. **Transiciones consolidadas** — 1 query para Engagement + Radar Health (antes 2)
+15. **Tips actualizados** — 5 dimensiones, menciona feedback, pipeline, cobro, volumen
+16. **Panel admin (?) actualizado** — v5.1 con fórmulas en lenguaje humano
+17. **Debug panel completo** — bench_ventas y ventas_periodo persistidos en BD
+
+### Migraciones de esta sesión
+1. `migrations/add_s_radar_health.sql` — columna s_radar_health en usuario_score
+2. `migrations/add_eng_pen_bajo_benchmark.sql` — columna eng_pen_bajo_benchmark
+3. `migrations/add_bench_ventas.sql` — columnas ventas_periodo y bench_ventas
+
+### Score de Israel con v5.1
+- Activación 100% (21/21 abiertas)
+- Engagement 83.8% (pen_descuento 4.8%, pen_enfriamiento 5.7%, pen_bajo_benchmark 5.7% — 2 ventas vs 5 benchmark)
+- Seguimiento 50% (1 de 2 feedbacks)
+- Radar Health 42% (2 up, 3 down)
+- Conversión 46.4% (2 cierres de 21, vol_trend 0.40)
+- **Score final: 59 Regular** (a 2 de Activo)
+
+### Auditoría de Seguridad Completa — Pendiente próxima sesión
+
+#### CRÍTICOS (Acción inmediata)
+1. **Datos sensibles en repo** — dumps SQL (1.8 MB), CSVs con PII, vapid_private.pem, respaldoconfig.php
+2. **Credenciales hardcodeadas** — DB_PASS='Jalfonso234', APP_SECRET='cambiar-en-produccion-32chars' en config.php:20,23
+3. **quote_action.php sin autenticación** — cualquiera puede aceptar/rechazar cotización sin CSRF ni verificación de destinatario
+4. **Escalación de roles** — admin puede crear otros admins sin restricción de superadmin (`modules/config/usuario.php:28`)
+5. **CSRF faltante** — `modules/config/guardar_empresa.php` POST sin csrf_check()
+
+#### ALTOS
+6. **IDOR en slugs públicos** — cotización/venta/recibo accesibles con slug + empresa_id secuencial
+7. **agregar_extra/eliminar_extra sin ownership check** — usuario puede modificar ventas de otros
+8. **extract() en Router.php:235** — inyección de variables desde URL params
+9. **Open redirect post-login** — session redirect sin validar URL interna (`login_post.php:72`)
+10. **Race condition plan Free** — check de 25 cotizaciones fuera de transacción (`crear.php:26`)
+11. **Permisos sin validar contra plan** — admin Free puede otorgar permisos Business (`usuario.php:40-56`)
+12. **unsafe unserialize()** — `import_lineas.php:44`, `cleanup_bot_views.php:90`
+13. **.gitignore incompleto** — falta *.sql, *.csv, *.pem, *_backup*
+
+#### MEDIOS
+14. **Sin security headers** — falta HSTS, X-Frame-Options, CSP en .htaccess
+15. **Password mínimo 6 chars** — estándar es 12+ (`registro_post.php:74`)
+16. **Timezone injection DB.php:37** — date('P') interpolado en SQL sin parametrizar
+17. **MarketingPixels.php JS injection** — htmlspecialchars para contexto JS (necesita json_encode)
+18. **Sin rate limiting en abonos** — endpoint de pagos sin límite
+19. **Floating-point en cálculos financieros** — acumulación de redondeo en descuentos/impuestos
+20. **Cookie SameSite=Lax** — debería ser Strict (`Auth.php:26`)
+
+#### Plan de acción
+- **Hoy (30 min)**: .gitignore + eliminar archivos sensibles + csrf en guardar_empresa
+- **Esta semana (2-3h)**: auth en quote_action, ownership en extras, validar redirect, reemplazar extract()
+- **2 semanas**: security headers, password 12+, rotar credenciales, eliminar legacy scripts
+
+### Branch de trabajo
+- `claude/review-apple-store-build-xB5jg`
