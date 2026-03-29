@@ -1113,10 +1113,10 @@ class ActividadScore
         }
 
         // ── CONVERSIÓN ──
+        $vt_diag = (int)($s['ventas_periodo'] ?? $s['ventas_totales'] ?? 0);
+        $bv_diag = (float)($s['bench_ventas'] ?? 0);
         if ($cierres === 0 && $vist >= 3) {
-            $frases[] = $vist === 1
-                ? "cotiza pero no cierra — 1 abierta sin resultado"
-                : "cotiza pero no cierra — $vist abiertas sin resultado";
+            $frases[] = "cotiza pero no cierra — $vist abiertas sin resultado";
         } elseif ($cierres === 0) {
             $frases[] = "aún sin cierres en el período";
         } elseif ($conv >= 0.70) {
@@ -1127,6 +1127,13 @@ class ActividadScore
             $frases[] = "$cierres cierres, ritmo aceptable";
         } else {
             $frases[] = "cierra poco para el volumen que maneja";
+        }
+        // Tendencia de volumen
+        if ($bv_diag > 0 && $vt_diag < $bv_diag) {
+            $bv_int = (int)round($bv_diag);
+            $frases[] = "$vt_diag ventas vs $bv_int del período anterior — volumen a la baja";
+        } elseif ($bv_diag > 0 && $vt_diag >= $bv_diag * 1.2) {
+            $frases[] = "volumen de ventas en crecimiento vs período anterior";
         }
 
         // ── SEÑALES ESPECÍFICAS ──
