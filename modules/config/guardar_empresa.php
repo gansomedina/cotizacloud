@@ -11,6 +11,18 @@ $eid  = EMPRESA_ID;
 $body = json_decode(file_get_contents('php://input'), true);
 if (!$body) { echo json_encode(['ok'=>false,'error'=>'Payload inválido']); exit; }
 
+// Guardar solo defaults de descuento automático
+if (!empty($body['_solo_desc_defaults'])) {
+    $pct  = max(0, min(100, (float)($body['descuento_auto_pct_default'] ?? 0)));
+    $dias = max(1, min(30, (int)($body['descuento_auto_dias_default'] ?? 3)));
+    DB::execute(
+        "UPDATE empresas SET descuento_auto_pct_default=?, descuento_auto_dias_default=? WHERE id=?",
+        [$pct, $dias, $eid]
+    );
+    echo json_encode(['ok' => true]);
+    exit;
+}
+
 $nombre  = mb_substr(trim($body['nombre'] ?? ''), 0, 120);
 if ($nombre === '') { echo json_encode(['ok'=>false,'error'=>'El nombre es obligatorio']); exit; }
 
