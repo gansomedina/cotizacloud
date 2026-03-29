@@ -86,13 +86,15 @@ try {
 
     // ═══ COTIZACIONES ═══
     $token = fn() => bin2hex(random_bytes(16));
+    $imp_modo = 'suma';
+    $imp_pct  = 16.00;
 
     // COT-001: Enviada (María — diseño de marca)
     $s1 = 3500 + 1200; $i1 = round($s1 * 0.16, 2); $t1 = $s1 + $i1;
     $c1 = DB::insert(
-        "INSERT INTO cotizaciones (empresa_id, usuario_id, cliente_id, numero, slug, titulo, subtotal, impuesto, total, estado, created_at)
-         VALUES (?, ?, ?, 'COT-2026-0001', ?, 'Diseño de Marca Completo', ?, ?, ?, 'enviada', DATE_SUB(NOW(), INTERVAL 3 DAY))",
-        [$empresa_id, $user_id, $cli_ids[0], 'diseno-marca-completo', $s1, $i1, $t1]
+        "INSERT INTO cotizaciones (empresa_id, usuario_id, cliente_id, numero, slug, titulo, subtotal, impuesto_modo, impuesto_pct, impuesto_amt, total, estado, created_at)
+         VALUES (?, ?, ?, 'COT-2026-0001', ?, 'Diseño de Marca Completo', ?, ?, ?, ?, ?, 'enviada', DATE_SUB(NOW(), INTERVAL 3 DAY))",
+        [$empresa_id, $user_id, $cli_ids[0], 'diseno-marca-completo', $s1, $imp_modo, $imp_pct, $i1, $t1]
     );
     DB::execute("INSERT INTO cotizacion_lineas (cotizacion_id, articulo_id, orden, titulo, cantidad, precio_unit, subtotal) VALUES (?,?,1,?,1,3500,3500), (?,?,2,?,1,1200,1200)",
         [$c1, $art_ids[0], 'Diseño de logotipo', $c1, $art_ids[1], 'Tarjetas de presentación']);
@@ -100,9 +102,9 @@ try {
     // COT-002: Vista (Carlos — página web)
     $s2 = 15000; $i2 = round($s2 * 0.16, 2); $t2 = $s2 + $i2;
     $c2 = DB::insert(
-        "INSERT INTO cotizaciones (empresa_id, usuario_id, cliente_id, numero, slug, titulo, subtotal, impuesto, total, estado, visitas, created_at, ultima_vista_at)
-         VALUES (?, ?, ?, 'COT-2026-0002', ?, 'Página Web Corporativa', ?, ?, ?, 'vista', 3, DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY))",
-        [$empresa_id, $user_id, $cli_ids[1], 'pagina-web-corporativa', $s2, $i2, $t2]
+        "INSERT INTO cotizaciones (empresa_id, usuario_id, cliente_id, numero, slug, titulo, subtotal, impuesto_modo, impuesto_pct, impuesto_amt, total, estado, visitas, created_at, ultima_vista_at)
+         VALUES (?, ?, ?, 'COT-2026-0002', ?, 'Página Web Corporativa', ?, ?, ?, ?, ?, 'vista', 3, DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY))",
+        [$empresa_id, $user_id, $cli_ids[1], 'pagina-web-corporativa', $s2, $imp_modo, $imp_pct, $i2, $t2]
     );
     DB::execute("INSERT INTO cotizacion_lineas (cotizacion_id, articulo_id, orden, titulo, cantidad, precio_unit, subtotal) VALUES (?,?,1,?,1,15000,15000)",
         [$c2, $art_ids[2], 'Página web básica (5 páginas)']);
@@ -110,9 +112,9 @@ try {
     // COT-003: Aceptada → Venta parcial (Ana — tienda + mantenimiento)
     $s3 = 28000 + 2500; $i3 = round($s3 * 0.16, 2); $t3 = $s3 + $i3;
     $c3 = DB::insert(
-        "INSERT INTO cotizaciones (empresa_id, usuario_id, cliente_id, numero, slug, titulo, subtotal, impuesto, total, estado, visitas, accion_at, created_at, ultima_vista_at)
-         VALUES (?, ?, ?, 'COT-2026-0003', ?, 'Tienda en Línea + Mantenimiento', ?, ?, ?, 'aceptada', 5, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY))",
-        [$empresa_id, $user_id, $cli_ids[2], 'tienda-linea-mantenimiento', $s3, $i3, $t3]
+        "INSERT INTO cotizaciones (empresa_id, usuario_id, cliente_id, numero, slug, titulo, subtotal, impuesto_modo, impuesto_pct, impuesto_amt, total, estado, visitas, accion_at, created_at, ultima_vista_at)
+         VALUES (?, ?, ?, 'COT-2026-0003', ?, 'Tienda en Línea + Mantenimiento', ?, ?, ?, ?, ?, 'aceptada', 5, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY))",
+        [$empresa_id, $user_id, $cli_ids[2], 'tienda-linea-mantenimiento', $s3, $imp_modo, $imp_pct, $i3, $t3]
     );
     DB::execute("INSERT INTO cotizacion_lineas (cotizacion_id, articulo_id, orden, titulo, cantidad, precio_unit, subtotal) VALUES (?,?,1,?,1,28000,28000), (?,?,2,?,1,2500,2500)",
         [$c3, $art_ids[3], 'Tienda en línea', $c3, $art_ids[4], 'Mantenimiento web mensual']);
@@ -134,9 +136,9 @@ try {
     // COT-004: Aceptada → Venta pagada (Roberto — campaña redes)
     $s4 = 5000; $i4 = round($s4 * 0.16, 2); $t4 = $s4 + $i4;
     $c4 = DB::insert(
-        "INSERT INTO cotizaciones (empresa_id, usuario_id, cliente_id, numero, slug, titulo, subtotal, impuesto, total, estado, visitas, accion_at, created_at, ultima_vista_at)
-         VALUES (?, ?, ?, 'COT-2026-0004', ?, 'Campaña Redes Sociales Marzo', ?, ?, ?, 'aceptada', 2, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY))",
-        [$empresa_id, $user_id, $cli_ids[3], 'campana-redes-marzo', $s4, $i4, $t4]
+        "INSERT INTO cotizaciones (empresa_id, usuario_id, cliente_id, numero, slug, titulo, subtotal, impuesto_modo, impuesto_pct, impuesto_amt, total, estado, visitas, accion_at, created_at, ultima_vista_at)
+         VALUES (?, ?, ?, 'COT-2026-0004', ?, 'Campaña Redes Sociales Marzo', ?, ?, ?, ?, ?, 'aceptada', 2, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY))",
+        [$empresa_id, $user_id, $cli_ids[3], 'campana-redes-marzo', $s4, $imp_modo, $imp_pct, $i4, $t4]
     );
     DB::execute("INSERT INTO cotizacion_lineas (cotizacion_id, articulo_id, orden, titulo, cantidad, precio_unit, subtotal) VALUES (?,?,1,?,1,5000,5000)",
         [$c4, $art_ids[5], 'Campaña redes sociales (mensual)']);
@@ -156,9 +158,9 @@ try {
     // COT-005: Enviada reciente (Laura — video + fotos)
     $s5 = 8000 + 4500; $i5 = round($s5 * 0.16, 2); $t5 = $s5 + $i5;
     $c5 = DB::insert(
-        "INSERT INTO cotizaciones (empresa_id, usuario_id, cliente_id, numero, slug, titulo, subtotal, impuesto, total, estado, created_at)
-         VALUES (?, ?, ?, 'COT-2026-0005', ?, 'Video Promocional + Fotos', ?, ?, ?, 'enviada', DATE_SUB(NOW(), INTERVAL 1 DAY))",
-        [$empresa_id, $user_id, $cli_ids[4], 'video-promocional-fotos', $s5, $i5, $t5]
+        "INSERT INTO cotizaciones (empresa_id, usuario_id, cliente_id, numero, slug, titulo, subtotal, impuesto_modo, impuesto_pct, impuesto_amt, total, estado, created_at)
+         VALUES (?, ?, ?, 'COT-2026-0005', ?, 'Video Promocional + Fotos', ?, ?, ?, ?, ?, 'enviada', DATE_SUB(NOW(), INTERVAL 1 DAY))",
+        [$empresa_id, $user_id, $cli_ids[4], 'video-promocional-fotos', $s5, $imp_modo, $imp_pct, $i5, $t5]
     );
     DB::execute("INSERT INTO cotizacion_lineas (cotizacion_id, articulo_id, orden, titulo, cantidad, precio_unit, subtotal) VALUES (?,?,1,?,1,8000,8000), (?,?,2,?,1,4500,4500)",
         [$c5, $art_ids[7], 'Video promocional (30 seg)', $c5, $art_ids[6], 'Sesión fotográfica de productos']);
