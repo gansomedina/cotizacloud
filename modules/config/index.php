@@ -1469,7 +1469,7 @@ async function subirLogo(input) {
     if (file.size > 2 * 1024 * 1024) { alert('El archivo no debe superar 2 MB.'); return; }
     const fd = new FormData(); fd.append('logo', file);
     try {
-        const r = await fetch('/config/logo', { method: 'POST', body: fd });
+        const r = await fetch('/config/logo', { method: 'POST', headers: { 'X-CSRF-Token': CSRF_TOKEN }, body: fd });
         const d = await r.json();
         if (d.ok) {
             const prev = document.getElementById('logoPreview');
@@ -1491,7 +1491,7 @@ async function subirLogo(input) {
 async function quitarLogo() {
     if (!confirm('¿Quitar el logo?')) return;
     try {
-        const r = await fetch('/config/logo/quitar', { method: 'POST' });
+        const r = await fetch('/config/logo/quitar', { method: 'POST', headers: { 'X-CSRF-Token': CSRF_TOKEN } });
         const d = await r.json();
         if (d.ok) { document.getElementById('logoPreview').innerHTML = '🏠'; flashOk('Logo eliminado'); }
         else alert(d.error || 'Error.');
@@ -1589,7 +1589,7 @@ async function recalibrarFit() {
     const btn = document.getElementById('btnRecalibrar');
     btn.disabled = true; btn.textContent = 'Calibrando…';
     try {
-        const r = await fetch('/config/radar/calibrar', { method: 'POST' });
+        const r = await fetch('/config/radar/calibrar', { method: 'POST', headers: { 'X-CSRF-Token': CSRF_TOKEN } });
         const d = await r.json();
         if (d.ok) { flashOk('Calibración completada'); setTimeout(()=>location.reload(), 800); }
         else { alert(d.error || 'Error al calibrar.'); btn.disabled=false; btn.textContent='Recalibrar ahora'; }
@@ -1642,7 +1642,7 @@ async function guardarArticulo() {
 async function eliminarArticulo(id, btn) {
     if (!confirm('¿Eliminar este artículo del catálogo?')) return;
     try {
-        const r = await fetch('/config/articulo/' + id + '/eliminar', { method:'POST' });
+        const r = await fetch('/config/articulo/' + id + '/eliminar', { method:'POST', headers:{'X-CSRF-Token':CSRF_TOKEN} });
         const d = await r.json();
         if (d.ok) btn.closest('tr')?.remove();
         else alert(d.error || 'Error.');
@@ -1734,7 +1734,7 @@ async function guardarCupon() {
 async function eliminarCupon(id, btn) {
     if (!confirm('¿Eliminar este cupón?')) return;
     try {
-        const r = await fetch('/config/cupon/' + id + '/eliminar', { method:'POST' });
+        const r = await fetch('/config/cupon/' + id + '/eliminar', { method:'POST', headers:{'X-CSRF-Token':CSRF_TOKEN} });
         const d = await r.json();
         if (d.ok) btn.closest('tr')?.remove();
         else alert(d.error || 'Error.');

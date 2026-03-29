@@ -316,6 +316,7 @@ ob_start();
 
 
 <script>
+const CSRF_TOKEN = '<?= csrf_token() ?>';
 function openSheet(data) {
     document.getElementById('prov-id').value        = data?.id        ?? '';
     document.getElementById('prov-nombre').value    = data?.nombre    ?? '';
@@ -354,7 +355,7 @@ async function guardarProv() {
         const url = id ? '/proveedores/' + id : '/proveedores';
         const r = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
             body: JSON.stringify({ nombre, contacto, telefono, email, direccion, nota })
         });
         const d = await r.json();
