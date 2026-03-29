@@ -1136,7 +1136,7 @@ class ActividadScore
             $con_dto = $cierres - $sdto;
             $pct_dto = round($con_dto / $cierres * 100);
             if ($pct_dto >= 70) {
-                $frases[] = "$pct_dto% de cierres con descuento — afecta puntaje de conversión";
+                $frases[] = "$pct_dto% de cierres con descuento — afecta engagement";
             } elseif ($pct_dto >= 40) {
                 $frases[] = "$con_dto de $cierres cierres con descuento";
             }
@@ -1192,19 +1192,27 @@ class ActividadScore
         // Construir frase final — capitalizar primera letra
         $txt = implode('. ', array_map(fn($f) => ucfirst($f), $frases)) . '.';
 
-        // Recomendación final según el punto más débil
-        $dims = ['act' => $act, 'seg' => $seg, 'conv' => $conv];
+        // Recomendación final según la dimensión más débil (5 dimensiones v5.1)
+        $eng  = (float)($s['s_engagement'] ?? 1);
+        $hlt  = (float)($s['s_radar_health'] ?? 0.5);
+        $dims = ['act' => $act, 'eng' => $eng, 'seg' => $seg, 'hlt' => $hlt, 'conv' => $conv];
         $peor = array_keys($dims, min($dims))[0];
         $reco = match($peor) {
             'act'  => $asig - $vist <= 2
                 ? ''
-                : ' Tip: confirmar WhatsApp/email del cliente, reenviar por otro canal o llamar para verificar recepción.',
-            'seg'  => $seg < 0.10
-                ? ' Tip: el Radar detecta clientes interesados en tiempo real — revisarlo frecuentemente marca la diferencia.'
-                : ' Tip: revisar el Radar con frecuencia para no perder oportunidades calientes.',
+                : ' Tip: confirmar por WhatsApp que el cliente recibió la cotización, o reenviar por otro canal.',
+            'eng'  => $vsp > 0
+                ? ' Tip: dar seguimiento al cobro de ventas pendientes — afecta directamente el score.'
+                : ' Tip: cerrar ventas a precio completo mejora el engagement.',
+            'seg'  => $ign > 0
+                ? " Tip: abrir el Radar y marcar \"Con interés\" o \"Sin interés\" en las $ign señales pendientes."
+                : ' Tip: revisar el Radar y dar feedback a las cotizaciones calientes.',
+            'hlt'  => $h_down > $h_up
+                ? ' Tip: dar seguimiento a cotizaciones que se están enfriando para reactivar el pipeline.'
+                : ' Tip: mantener el pipeline activo enviando nuevas cotizaciones.',
             'conv' => $cierres === 0
                 ? ' Tip: dar seguimiento personalizado a las cotizaciones más vistas.'
-                : ' Tip: enfocarse en cotizaciones con alta actividad del cliente.',
+                : ' Tip: enfocarse en cerrar las cotizaciones con mayor actividad del cliente.',
         };
 
         return $txt . $reco;
