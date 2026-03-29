@@ -286,7 +286,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
 .hdr{background:var(--white);border-bottom:2px solid var(--text);text-align:center;padding:28px 20px 0}
 .hdr-inner{max-width:960px;margin:0 auto}
-.hdr-logo{width:96px;height:96px;border-radius:18px;background:var(--g);color:#fff;font:700 30px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px}
+.hdr-logo{width:120px;height:120px;border-radius:20px;background:var(--g);color:#fff;font:700 36px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px}
 .hdr-co{font:800 22px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em}
 .hdr-tag{font-size:13px;color:var(--t3);margin-top:3px}
 .hdr-details{font-size:12.5px;color:var(--t3);margin-top:2px;line-height:1.5}
@@ -312,13 +312,10 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 .qh-title{font:800 24px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.025em;line-height:1.2;margin-bottom:4px}
 .qh-client{font-size:15px;color:var(--t2)}
 .qh-client span{color:var(--t3);font-size:13px}
-.qh-pills{padding:14px 22px;display:flex;flex-wrap:wrap;gap:8px}
-.pill{display:flex;flex-direction:column;padding:10px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:12px;min-width:110px}
+.qh-pills{padding:14px 22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.pill{display:flex;flex-direction:column;padding:10px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:12px}
 .pill-label{font-size:10.5px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
 .pill-value{font:600 14px 'DM Sans',sans-serif;color:var(--text)}
-.pill-accent{background:var(--g);border-color:var(--g)}
-.pill-accent .pill-label{color:rgba(255,255,255,.7)}
-.pill-accent .pill-value{color:#fff;font-size:16px;font-weight:700}
 .chip{padding:4px 12px;background:var(--bg);border:1px solid var(--bd);border-radius:99px;font-size:13px;color:var(--t2)}
 .chip-danger{background:#fff5f5;border-color:#fca5a5;color:#c53030}
 .chip-warn{background:#fffbeb;border-color:#fcd34d;color:#92400e}
@@ -651,7 +648,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
         <div class="pill-value"><?= e($cot['asesor_nombre']) ?></div>
       </div>
       <?php endif; ?>
-      <div class="pill pill-accent">
+      <div class="pill">
         <div class="pill-label">Total</div>
         <div class="pill-value"><?= fmt_pub((float)$cot['total']) ?></div>
       </div>
