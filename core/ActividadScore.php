@@ -772,11 +772,9 @@ class ActividadScore
         foreach ($health_trans as $ht) {
             $temp_ant = self::BUCKET_TEMP[$ht['bucket_anterior']] ?? null;
             $temp_new = self::BUCKET_TEMP[$ht['bucket_nuevo']] ?? null;
-            if ($temp_ant === null && $temp_new !== null) {
-                $health_up++; // entró a un bucket (NULL → algo)
-            } elseif ($temp_ant !== null && $temp_new === null) {
-                $health_down++; // perdió bucket (algo → NULL)
-            } elseif ($temp_ant !== null && $temp_new !== null) {
+            // Solo contar cambios de temperatura real (ambos deben existir)
+            // NULL→bucket y bucket→NULL son entradas/salidas naturales, no mérito del vendedor
+            if ($temp_ant !== null && $temp_new !== null) {
                 if (($temp_order[$temp_new] ?? 0) > ($temp_order[$temp_ant] ?? 0)) {
                     $health_up++;
                 } elseif (($temp_order[$temp_new] ?? 0) < ($temp_order[$temp_ant] ?? 0)) {
