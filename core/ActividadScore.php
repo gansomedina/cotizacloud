@@ -949,6 +949,8 @@ class ActividadScore
             'eng_pen_descuento' => round($eng_pen_descuento, 3),
             'eng_pen_enfriamiento' => round($eng_pen_enfriamiento, 3),
             'eng_pen_bajo_benchmark' => round($eng_pen_bajo_benchmark, 3),
+            'bench_ventas'          => round($bench_ventas, 1),
+            'ventas_totales'        => $ventas_totales,
             'ventas_con_descuento' => $ventas_con_descuento,
             's_seguimiento'     => round($s_seguimiento, 3),
             's_radar_health'    => round($s_radar_health, 3),
