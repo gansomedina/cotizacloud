@@ -680,7 +680,6 @@ $ts_sdto  = (int)($ts['cierres_sin_dto'] ?? 0);
 $ts_cal   = (int)($ts['cots_calientes'] ?? $ts['radar_benchmark'] ?? 0);
 $ts_fb    = (int)($ts['fb_total'] ?? $ts['radar_views'] ?? 0);
 $ts_ign   = max(0, $ts_cal - $ts_fb); // calientes sin feedback
-$ts_tup   = (int)($ts['transiciones_up'] ?? 0);
 $ts_pen   = (float)($ts['penalizaciones'] ?? 0);
 $ts_diag  = ActividadScore::diagnostico($ts);
 ?>
@@ -817,7 +816,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <div class="dbg-row"><span class="dbg-lbl">  pen enfriamiento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_enfriamiento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_enfriamiento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Seguimiento (25%)</span><span class="dbg-val"><?= round(($es['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Radar Health (15%)</span><span class="dbg-val"><?= round(($es['s_radar_health'] ?? 0) * 100, 1) ?>%</span></div>
-        <div class="dbg-row"><span class="dbg-lbl">  pipeline ↑ / ↓</span><span class="dbg-val"><?= (int)($es['health_up'] ?? 0) ?> / <?= (int)($es['health_down'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  pipeline ↑ / ↓</span><span class="dbg-val"><?= (int)($es['health_up'] ?? $es['transiciones_up'] ?? 0) ?> / <?= (int)($es['health_down'] ?? $es['senales_ignoradas'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Conversión (35%)</span><span class="dbg-val"><?= round(($es['s_conversion'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Penalizaciones</span><span class="dbg-val dbg-neg"><?= ($es['penalizaciones'] ?? 0) > 0 ? '-'.round(($es['penalizaciones'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Bonuses</span><span class="dbg-val"><?= round(($es['bonuses'] ?? 0) * 100, 1) ?>%</span></div>
@@ -830,7 +829,6 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <div class="dbg-row"><span class="dbg-lbl">Pen no abiertas</span><span class="dbg-val dbg-neg"><?= ($es['pen_no_abiertas'] ?? 0) > 0 ? '-'.round(($es['pen_no_abiertas'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Cierres radar / Sin dto</span><span class="dbg-val"><?= (int)($es['cierres_bucket'] ?? 0) ?> / <?= (int)($es['cierres_sin_dto'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Calientes / con feedback</span><span class="dbg-val"><?= (int)($es['radar_benchmark'] ?? 0) ?> / <?= (int)($es['radar_views'] ?? 0) ?></span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Transiciones ↑ / ↓</span><span class="dbg-val"><?= (int)($es['transiciones_up'] ?? 0) ?> / <?= (int)($es['senales_ignoradas'] ?? 0) ?></span></div>
       </div>
     </div>
     <?php endif; ?>

@@ -943,11 +943,11 @@ class ActividadScore
               cierres_bucket, cierres_sin_dto, transiciones_up, senales_ignoradas,
               radar_views, radar_benchmark, tasa_cierre, ventas_sin_pago,
               s_activacion, s_engagement, eng_pen_sin_pago, eng_pen_descuento, eng_pen_enfriamiento,
-              s_seguimiento, s_conversion, penalizaciones, bonuses,
+              s_seguimiento, s_radar_health, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
               momentum, percentil)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -961,6 +961,7 @@ class ActividadScore
               s_activacion=VALUES(s_activacion), s_engagement=VALUES(s_engagement),
               eng_pen_sin_pago=VALUES(eng_pen_sin_pago), eng_pen_descuento=VALUES(eng_pen_descuento), eng_pen_enfriamiento=VALUES(eng_pen_enfriamiento),
               s_seguimiento=VALUES(s_seguimiento),
+              s_radar_health=VALUES(s_radar_health),
               s_conversion=VALUES(s_conversion),
               penalizaciones=VALUES(penalizaciones), bonuses=VALUES(bonuses),
               tasa_gestion=VALUES(tasa_gestion),
@@ -977,7 +978,7 @@ class ActividadScore
                 $fb_total, round($cots_calientes, 1), round($tasa_cierre, 3), $ventas_sin_pago,
                 round($s_activacion, 3), round($s_engagement, 3),
                 round($eng_pen_sin_pago, 3), round($eng_pen_descuento, 3), round($eng_pen_enfriamiento, 3),
-                round($s_seguimiento, 3), round($s_conversion, 3),
+                round($s_seguimiento, 3), round($s_radar_health, 3), round($s_conversion, 3),
                 round($total_pen, 3), round($total_bonus, 3),
                 round($proporcional, 3),
                 // Fix P16: ema_gestion = EMA del proporcional, ema_presencia = EMA de activación
