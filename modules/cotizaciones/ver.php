@@ -429,6 +429,32 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
         </div>
         <?php endif; ?>
 
+        <?php if ($puede_descuentos && $es_editable): ?>
+        <div class="panel-section">
+            <div class="panel-lbl-row" style="display:flex;align-items:center;justify-content:space-between">
+                <span class="panel-lbl" style="margin:0">Descuento automático</span>
+                <label class="toggle-sm">
+                    <input type="checkbox" id="desc-auto-toggle" <?= $cot['descuento_auto_activo'] ? 'checked' : '' ?> onchange="toggleDescAuto()">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+            </div>
+            <div id="desc-auto-fields" style="display:<?= $cot['descuento_auto_activo'] ? 'block' : 'none' ?>;margin-top:8px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                    <span style="font-size:12px;color:var(--t3);min-width:70px">Porcentaje</span>
+                    <input type="number" id="desc-pct" value="<?= (float)$cot['descuento_auto_pct'] ?>" min="0" max="100" style="width:60px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font:500 13px var(--num)">
+                    <span style="font-size:12px;color:var(--t3)">%</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:12px;color:var(--t3);min-width:70px">Expira en</span>
+                    <input type="number" id="desc-dias" value="<?= (int)($empresa['descuento_auto_dias'] ?? 3) ?>" min="1" style="width:60px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font:500 13px var(--num)">
+                    <span style="font-size:12px;color:var(--t3)">días</span>
+                </div>
+                <div style="font-size:11px;color:var(--t3);margin-top:6px">El cliente ve el descuento con cronómetro.</div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="panel-section">
             <div class="panel-lbl">Totales</div>
             <div class="panel-t-row"><span class="panel-t-lbl">Subtotal</span><span class="panel-t-val" id="total-subtotal"><?= format_money($cot['subtotal'], $empresa['moneda']) ?></span></div>
@@ -629,7 +655,13 @@ let cuponSeleccionado = COT.cupon_id
 
 let descAutoActivo = COT.descuento_auto_activo === 1;
 let descAutoPct    = COT.descuento_auto_pct;
-let descAutoDias   = 3;
+let descAutoDias   = COT.descuento_auto_dias || 3;
+
+function toggleDescAuto() {
+    const on = document.getElementById('desc-auto-toggle').checked;
+    document.getElementById('desc-auto-fields').style.display = on ? 'block' : 'none';
+    descAutoActivo = on;
+}
 let itemCounter    = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -814,7 +846,7 @@ async function guardarCotizacion(preview){
     if(btn){btn.disabled=true;btn.textContent='Guardando...';}
     try{
         const vendedorSel=document.getElementById('cot-vendedor');
-        const r=await fetch('/cotizaciones/'+COT_ID,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:JSON.stringify({titulo,cliente_id:clienteSeleccionado?.id||null,vendedor_id:vendedorSel?parseInt(vendedorSel.value):null,valida_hasta:document.getElementById('cot-vence').value,cupon_id:cuponSeleccionado?.id||null,descuento_auto_activo:descAutoActivo?1:0,descuento_auto_pct:descAutoPct,notas_cliente:document.getElementById('notas-cliente-desk')?.value||'',notas_internas:document.getElementById('notas-internas-desk')?.value||'',items,preview})});
+        const r=await fetch('/cotizaciones/'+COT_ID,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:JSON.stringify({titulo,cliente_id:clienteSeleccionado?.id||null,vendedor_id:vendedorSel?parseInt(vendedorSel.value):null,valida_hasta:document.getElementById('cot-vence').value,cupon_id:cuponSeleccionado?.id||null,descuento_auto_activo:document.getElementById('desc-auto-toggle')?.checked?1:0,descuento_auto_pct:parseFloat(document.getElementById('desc-pct')?.value)||0,descuento_auto_dias:parseInt(document.getElementById('desc-dias')?.value)||3,notas_cliente:document.getElementById('notas-cliente-desk')?.value||'',notas_internas:document.getElementById('notas-internas-desk')?.value||'',items,preview})});
         const data=await r.json();
         if(!data.ok){alert(data.error||'Error al guardar');if(btn){btn.disabled=false;btn.textContent='Guardar cambios';}return;}
         if(btn){btn.textContent='¡Guardado!';setTimeout(()=>{btn.disabled=false;btn.textContent='Guardar cambios';},1800);}
