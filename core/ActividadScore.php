@@ -642,19 +642,26 @@ class ActividadScore
 
         $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre, 1.0);
 
+        // Tendencia de volumen: ¿vendes más o menos que antes?
+        // 1.0 = igual o mejor, 0.0 = cero ventas con benchmark alto
+        $vol_trend = $bench_ventas > 0
+            ? min($ventas_totales / $bench_ventas, 1.0)
+            : 0.50; // sin historial → neutro
+
         // Sub-pesos auto-ajustables con sqrt para comprimir rango:
-        // 21 vistas/2 cierres → 57/21/21. 100 vistas/20 cierres → 52/24/24
-        // Sin cierres → 100% close_rate (único dato confiable)
-        $w_cr_conv   = sqrt(max($cot_vistas, 1));      // 21→4.6, 100→10
-        $w_qual_conv = sqrt(max($cierres_total, 0) + 1) - 1; // 0→0, 2→0.73, 10→2.3
-        $w_ttc_conv  = sqrt(max($cierres_total, 0) + 1) - 1;
-        $w_conv_total = max($w_cr_conv + $w_qual_conv + $w_ttc_conv, 1);
+        // Peso de cada componente crece con la confiabilidad de sus datos
+        $w_cr_conv   = sqrt(max($cot_vistas, 1));            // close_rate: más vistas → más confiable
+        $w_qual_conv = sqrt(max($cierres_total, 0) + 1) - 1; // quality: necesita cierres
+        $w_ttc_conv  = sqrt(max($cierres_total, 0) + 1) - 1; // velocidad: necesita cierres
+        $w_vol_conv  = sqrt(max($bench_ventas, 0));           // tendencia: más historial → más peso
+        $w_conv_total = max($w_cr_conv + $w_qual_conv + $w_ttc_conv + $w_vol_conv, 1);
 
         $s_conversion = (
             self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01))
                 * ($w_cr_conv / $w_conv_total)
             + $cierre_quality * ($w_qual_conv / $w_conv_total)
             + $ttc_score * ($w_ttc_conv / $w_conv_total)
+            + $vol_trend * ($w_vol_conv / $w_conv_total)
         )
                         - $pen_conversion;
         $s_conversion = max(0.0, min(1.0, $s_conversion));
