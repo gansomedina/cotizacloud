@@ -113,8 +113,8 @@ $empresa_js = json_encode([
     'impuesto_modo' => $empresa['impuesto_modo'],
     'impuesto_pct'  => (float)$empresa['impuesto_pct'],
     'impuesto_label'=> $empresa['impuesto_label'] ?? 'IVA',
-    'descuento_auto_pct'  => (float)($empresa['descuento_auto_pct'] ?? 0),
-    'descuento_auto_dias' => (int)($empresa['descuento_auto_dias'] ?? 3),
+    'descuento_auto_pct'  => (float)($empresa['descuento_auto_pct_default'] ?? 0),
+    'descuento_auto_dias' => (int)($empresa['descuento_auto_dias_default'] ?? 3),
 ], JSON_HEX_TAG);
 
 $page_title = 'Nueva cotización';

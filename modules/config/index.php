@@ -782,6 +782,31 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   </div>
   <button class="add-row-btn" onclick="nuevoCupon()">+ Nuevo cupón</button>
 
+  <!-- Descuento automático defaults -->
+  <div class="sec" style="margin-top:24px">
+    <div class="sec-title">Descuento automático (cronómetro)</div>
+    <div class="card" style="padding:16px 20px">
+      <div style="font-size:13px;color:var(--t3);margin-bottom:12px">Valores por defecto al activar el descuento con cronómetro en una cotización.</div>
+      <div class="field-row h">
+        <div class="field-group" style="flex:1">
+          <label class="field-lbl">Porcentaje</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input class="num-in" id="e_desc_auto_pct" type="number" min="0" max="100" step="0.5" value="<?= (float)($empresa['descuento_auto_pct_default'] ?? 0) ?>" style="width:80px">
+            <span style="font-size:13px;color:var(--t3)">%</span>
+          </div>
+        </div>
+        <div class="field-group" style="flex:1">
+          <label class="field-lbl">Días de vigencia</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input class="num-in" id="e_desc_auto_dias" type="number" min="1" max="30" value="<?= (int)($empresa['descuento_auto_dias_default'] ?? 3) ?>" style="width:80px">
+            <span style="font-size:13px;color:var(--t3)">días</span>
+          </div>
+        </div>
+      </div>
+      <button class="save-btn" style="margin-top:12px" onclick="guardarDescDefaults()">Guardar defaults</button>
+    </div>
+  </div>
+
 </div><!-- /panel-cupones -->
 
 
@@ -1503,6 +1528,24 @@ async function quitarLogo() {
         const d = await r.json();
         if (d.ok) { document.getElementById('logoPreview').innerHTML = '🏠'; flashOk('Logo eliminado'); }
         else alert(d.error || 'Error.');
+    } catch(e) { alert('Error de conexión.'); }
+}
+
+// ── Guardar defaults descuento automático ────────────────────
+async function guardarDescDefaults() {
+    const payload = {
+        descuento_auto_pct_default: parseFloat(document.getElementById('e_desc_auto_pct').value) || 0,
+        descuento_auto_dias_default: parseInt(document.getElementById('e_desc_auto_dias').value) || 3,
+    };
+    try {
+        const r = await fetch('/config/empresa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+            body: JSON.stringify({ ...payload, _solo_desc_defaults: true })
+        });
+        const d = await r.json();
+        if (d.ok) flashOk('Defaults guardados');
+        else alert(d.error || 'Error al guardar.');
     } catch(e) { alert('Error de conexión.'); }
 }
 

@@ -137,8 +137,8 @@ $empresa_js = json_encode([
     'impuesto_modo'  => $empresa['impuesto_modo'],
     'impuesto_pct'   => (float)$empresa['impuesto_pct'],
     'impuesto_label' => $empresa['impuesto_label'] ?? 'IVA',
-    'descuento_auto_pct'  => (float)($empresa['descuento_auto_pct'] ?? 0),
-    'descuento_auto_dias' => (int)($empresa['descuento_auto_dias'] ?? 3),
+    'descuento_auto_pct'  => (float)($empresa['descuento_auto_pct_default'] ?? 0),
+    'descuento_auto_dias' => (int)($empresa['descuento_auto_dias_default'] ?? 3),
 ]);
 
 $cot_js = json_encode([
@@ -451,12 +451,12 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             <div id="desc-auto-fields" style="display:<?= $cot['descuento_auto_activo'] ? 'block' : 'none' ?>;margin-top:8px">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                     <span style="font-size:12px;color:var(--t3);min-width:70px">Porcentaje</span>
-                    <input type="number" id="desc-pct" value="<?= (float)$cot['descuento_auto_pct'] ?>" min="0" max="100" style="width:60px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font:500 13px var(--num)">
+                    <input type="number" id="desc-pct" value="<?= (float)$cot['descuento_auto_pct'] ?: (float)($empresa['descuento_auto_pct_default'] ?? 0) ?>" min="0" max="100" style="width:60px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font:500 13px var(--num)">
                     <span style="font-size:12px;color:var(--t3)">%</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                     <span style="font-size:12px;color:var(--t3);min-width:70px">Expira en</span>
-                    <input type="number" id="desc-dias" value="<?= (int)($empresa['descuento_auto_dias'] ?? 3) ?>" min="1" style="width:60px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font:500 13px var(--num)">
+                    <input type="number" id="desc-dias" value="<?= (int)($empresa['descuento_auto_dias_default'] ?? 3) ?>" min="1" style="width:60px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font:500 13px var(--num)">
                     <span style="font-size:12px;color:var(--t3)">días</span>
                 </div>
                 <div style="font-size:11px;color:var(--t3);margin-top:6px">El cliente ve el descuento con cronómetro.</div>
