@@ -366,12 +366,11 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
 /* Cronómetro */
 .adc{background:var(--glt);border:1px solid var(--gbd);border-radius:var(--r);overflow:hidden}
-.adc-t{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.adc-ey{font:700 10px 'Plus Jakarta Sans',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--g);margin-bottom:4px}
-.adc-prices{display:flex;align-items:baseline;gap:10px}
-.adc-or{font-size:15px;color:var(--t3);text-decoration:line-through}
-.adc-nw{font:800 24px 'Plus Jakarta Sans',sans-serif;color:var(--text);letter-spacing:-.03em}
-.adc-pc{background:var(--g);color:#fff;font:700 13px 'Plus Jakarta Sans',sans-serif;padding:6px 12px;border-radius:99px;flex-shrink:0}
+.adc-t{padding:14px 20px;text-align:center}
+.adc-ey{font:700 10px 'Plus Jakarta Sans',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--g);margin-bottom:6px}
+.adc-prices{display:flex;align-items:baseline;justify-content:center;gap:10px}
+.adc-or{font-size:14px;color:var(--t3);text-decoration:line-through}
+.adc-nw{font:700 18px 'Plus Jakarta Sans',sans-serif;color:var(--text)}
 .adc-f{padding:10px 20px;border-top:1px solid var(--gbd);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .adc-el{font-size:13px;color:var(--t2)}
 .tmr{display:flex;align-items:flex-start;gap:3px}
