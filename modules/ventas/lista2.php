@@ -305,6 +305,7 @@ foreach ($elabels as $k => $lbl):
 </div>
 
 <script>
+const CSRF_TOKEN = '<?= csrf_token() ?>';
 async function cancelarVenta(id){
   const motivo = prompt('Motivo de cancelación:');
   if (!motivo) return;
