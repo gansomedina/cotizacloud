@@ -489,6 +489,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   .slbl { display:none!important }
   .qh   { display:none!important }
 
+  /* ── Encabezado/saludo compacto en print ── */
+  .encabezado-saludo { font-size:8.5pt!important; line-height:1.4!important; padding:6pt 8pt!important; margin:4pt 0 6pt!important; border:.4pt solid #ddd!important; border-radius:0!important }
+
   /* ── Tabla artículos ── */
   .tbl { display:table!important; width:100%; border-collapse:collapse; margin-bottom:0; border:none!important; border-radius:0!important }
   .tbl thead th { font:700 7pt 'Plus Jakarta Sans',sans-serif; letter-spacing:.07em;
@@ -664,7 +667,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
           e_html($encabezado_raw)
       );
   ?>
-  <div style="margin:24px 0 8px;padding:20px 24px;background:var(--white);border:1px solid var(--bd);border-radius:var(--r);font:400 15px/1.7 'Plus Jakarta Sans',sans-serif;color:var(--text)">
+  <div class="encabezado-saludo" style="margin:24px 0 8px;padding:20px 24px;background:var(--white);border:1px solid var(--bd);border-radius:var(--r);font:400 15px/1.7 'Plus Jakarta Sans',sans-serif;color:var(--text)">
     <?= nl2br($encabezado) ?>
   </div>
   <?php endif; ?>
