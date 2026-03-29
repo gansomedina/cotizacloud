@@ -1030,7 +1030,7 @@ async function crearClienteNuevo() {
         const data = await r.json();
         if (!data.ok) { alert(data.error || 'Error al crear cliente'); return; }
 
-        const c = { id: data.id, nombre, telefono, direccion };
+        const c = { id: data.data.id, nombre, telefono, direccion };
         CLIENTES.unshift(c);
         seleccionarCliente(c.id);
         document.getElementById('nc-nombre').value    = '';
