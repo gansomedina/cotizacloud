@@ -114,7 +114,7 @@ foreach ($mas_rutas as $r) {
 body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;font-size:14px;line-height:1.5}
 
         /* ── SIDEBAR ── */
-        #sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:200}
+        #sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:200;padding-top:env(safe-area-inset-top,0px)}
         .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
         .sidebar-logo img{height:32px;object-fit:contain}
         .sidebar-logo-text{font-size:18px;font-weight:700;color:var(--g);letter-spacing:-.3px}
