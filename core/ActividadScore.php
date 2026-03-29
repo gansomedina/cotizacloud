@@ -760,13 +760,16 @@ class ActividadScore
         // Ratio: 4/4 semanas con cierre = 1.0, 1/4 = 0.25
         $consistencia = $cierres_total > 0 ? $semanas_con_cierre / $total_semanas : 0;
 
-        // Ajustar conversión por consistencia — impacto escala con volumen esperado
-        // Vendedor que debería cerrar 2+/semana y es irregular: impacto alto
-        // Vendedor que cierra 1 cada 2 semanas: consistencia no es medible
+        // Ajustar conversión por consistencia
+        // Impacto limitado por sqrt(close_rate): CR bajo → poca reducción max
+        // CR=0.10 → max reducción 31%, CR=0.50 → max 71%
+        // También necesita suficientes cierres para ser medible
         if ($cierres_total >= 2) {
             $expected_per_week = $cot_asignadas * $close_rate_safe / max($total_semanas, 1);
             $consistency_impact = min($expected_per_week, 1.0);
-            $s_conversion = $s_conversion * (1.0 - $consistency_impact * (1.0 - $consistencia));
+            $max_reduction = sqrt($close_rate_safe);
+            $reduction = min((1.0 - $consistencia) * $consistency_impact, 1.0) * $max_reduction;
+            $s_conversion = $s_conversion * (1.0 - $reduction);
             $s_conversion = max(0.0, min(1.0, $s_conversion));
         }
 
