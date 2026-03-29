@@ -234,6 +234,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             body{height:100%;overflow:hidden;font-size:15px}
             #sidebar{transform:translateX(-100%);width:80vw;max-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.13);transition:transform .22s cubic-bezier(.4,0,.2,1)}
             #sidebar.open{transform:translateX(0)}
+            .sidebar-logo img,.sidebar-logo svg,.sidebar-logo-text{display:none}
             #main{margin-left:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
             #topbar{display:flex}
             /* padding-bottom = altura nav + safe area + margen */
