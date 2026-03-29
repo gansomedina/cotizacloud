@@ -72,6 +72,11 @@ if ($visitor_id_post !== '' && $emp_slug_check !== '_system') {
 $redirect_to = $_SESSION['redirect_after_login'] ?? '/dashboard';
 unset($_SESSION['redirect_after_login']);
 
+// Validar que el redirect sea interno (prevenir open redirect / phishing)
+if (!empty($redirect_to) && (str_contains($redirect_to, '://') || str_starts_with($redirect_to, '//'))) {
+    $redirect_to = '/dashboard';
+}
+
 if ($resultado['usuario']['rol'] === 'superadmin' && $empresa_slug === '_admin') {
     $redirect_to = '/superadmin';
 }

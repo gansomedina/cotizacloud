@@ -25,6 +25,7 @@ if (!$body) { echo json_encode(['ok'=>false,'error'=>'Payload inválido']); exit
 $nombre  = mb_substr(trim($body['nombre']  ?? ''), 0, 120);
 $usuario = mb_substr(strtolower(trim($body['usuario'] ?? '')), 0, 60);
 $email   = mb_substr(trim($body['email']   ?? ''), 0, 120) ?: null;
+if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) { json_error('Email inválido'); }
 $rol     = in_array($body['rol']??'', ['admin','asesor']) ? $body['rol'] : 'asesor';
 $activo  = (int)($body['activo'] ?? 1);
 $pass    = $body['password'] ?? '';
