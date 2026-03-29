@@ -134,7 +134,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         #main{margin-left:var(--sidebar-w);min-height:100dvh;display:flex;flex-direction:column}
 
         /* ── TOPBAR (mobile only) ── */
-        #topbar{display:none;background:var(--white);border-bottom:1px solid var(--border);padding:0 14px;height:52px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+        #topbar{display:none;background:var(--white);border-bottom:1px solid var(--border);padding:env(safe-area-inset-top,0px) 14px 0;height:calc(52px + env(safe-area-inset-top,0px));align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
         .topbar-title{font-size:16px;font-weight:700;color:var(--text)}
         .topbar-right{display:flex;align-items:center;gap:12px}
         #topbar-hamburger{display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;padding:8px;border-radius:var(--r-sm);color:var(--t2);-webkit-tap-highlight-color:transparent}
