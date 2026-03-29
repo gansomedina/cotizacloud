@@ -412,7 +412,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 /* Footer */
 .footer{background:var(--white);border-top:2px solid var(--text);padding:20px 20px 40px;text-align:center}
 .footer-inner{max-width:960px;margin:0 auto}
-.flogo{width:44px;height:44px;border-radius:10px;background:var(--g);color:#fff;font:700 15px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px}
+.flogo{width:80px;height:80px;border-radius:14px;background:var(--g);color:#fff;font:700 22px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px}
 .fname2{font:700 15px 'Plus Jakarta Sans',sans-serif;margin-bottom:2px}
 .fsub{font-size:13px;color:var(--t3);margin-bottom:14px}
 .fdisc{font-size:12px;color:var(--t3);line-height:1.65;max-width:480px;margin:0 auto}
@@ -884,7 +884,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 <div class="footer">
   <div class="footer-inner">
     <?php if (!empty($cot['emp_logo'])): ?>
-    <div class="flogo" style="background:none"><img src="<?= e($cot['emp_logo']) ?>" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:inherit"></div>
+    <div class="flogo" style="background:none;width:auto;height:auto;max-width:140px;max-height:60px"><img src="<?= e($cot['emp_logo']) ?>" alt="Logo" style="max-width:140px;max-height:60px;object-fit:contain"></div>
     <?php else: ?>
     <div class="flogo"><?= e($ini_emp) ?></div>
     <?php endif; ?>
