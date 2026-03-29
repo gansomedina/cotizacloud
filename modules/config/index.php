@@ -1403,6 +1403,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 </div>
 
 <script>
+const CSRF_TOKEN = '<?= csrf_token() ?>';
 // ── Sheets ──────────────────────────────────────────────────
 function openSheet(id) {
     const ov = document.getElementById('ov-' + id);
@@ -1536,7 +1537,7 @@ async function guardarEmpresa() {
     try {
         const r = await fetch('/config/empresa', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
             body: JSON.stringify(payload)
         });
         const d = await r.json();
@@ -1574,7 +1575,7 @@ async function guardarRadar() {
     try {
         const r = await fetch('/config/radar', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
             body: JSON.stringify(payload)
         });
         const d = await r.json();
@@ -1632,7 +1633,7 @@ async function guardarArticulo() {
     if (!titulo) { alert('El nombre es obligatorio.'); return; }
     const url = id ? '/config/articulo/' + id : '/config/articulo';
     try {
-        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({titulo,sku,descripcion:desc,precio}) });
+        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN}, body:JSON.stringify({titulo,sku,descripcion:desc,precio}) });
         const d = await r.json();
         if (d.ok) { closeSheet('shArt'); location.reload(); }
         else alert(d.error || 'Error.');
@@ -1673,7 +1674,7 @@ async function guardarCliente() {
     if (!nombre || !tel) { alert('Nombre y teléfono son obligatorios.'); return; }
     const url = id ? '/clientes/' + id + '/guardar' : '/clientes/crear';
     try {
-        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({nombre,telefono:tel,email,notas}) });
+        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN}, body:JSON.stringify({nombre,telefono:tel,email,notas}) });
         const d = await r.json();
         if (d.ok) { closeSheet('shCli'); location.reload(); }
         else alert(d.error || 'Error.');
@@ -1722,7 +1723,7 @@ async function guardarCupon() {
     if (vencimiento_tipo === 'fecha_fija' && !vencimiento_fecha) { alert('Indica la fecha de vencimiento.'); return; }
     const url = id ? '/config/cupon/' + id : '/config/cupon';
     try {
-        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'},
+        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
             body:JSON.stringify({codigo, porcentaje:pct, descripcion:desc, activo,
                 vencimiento_tipo, vencimiento_dias, vencimiento_fecha}) });
         const d = await r.json();
@@ -1824,7 +1825,7 @@ async function guardarUsuario() {
     if (pass) payload.password = pass;
     const url = id ? '/config/usuario/' + id : '/config/usuario';
     try {
-        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN}, body:JSON.stringify(payload) });
         const d = await r.json();
         if (d.ok) { closeSheet('shUsr'); location.reload(); }
         else alert(d.error || 'Error.');
@@ -1844,7 +1845,7 @@ async function guardarCostosModo(){
   try {
     const r = await fetch('/config/costos-modo', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
       body: JSON.stringify({costos_modo: sel.value})
     });
     const d = await r.json();
@@ -1858,7 +1859,7 @@ async function guardarMarketing(){
   try {
     const r = await fetch('/config/marketing', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
       body: JSON.stringify({
         pixel_meta:       document.getElementById('mkt_meta')?.value.trim() || '',
         pixel_ga4:        document.getElementById('mkt_ga4')?.value.trim() || '',
