@@ -307,14 +307,18 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
 
 .qh{background:var(--white);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
-.qh-top{padding:20px 22px 16px;border-bottom:1px solid var(--bd)}
-.qh-title{font:800 24px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.025em;line-height:1.2;margin-bottom:4px}
-.qh-client{font-size:15px;color:var(--t2)}
-.qh-client span{color:var(--t3);font-size:13px}
-.qh-pills{padding:14px 22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
-.pill{display:flex;flex-direction:column;padding:10px 16px;background:var(--bg);border:1px solid var(--bd);border-radius:12px}
-.pill-label{font-size:10.5px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
-.pill-value{font:600 14px 'DM Sans',sans-serif;color:var(--text)}
+.qh-top{padding:18px 22px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid var(--bd)}
+.qh-left{flex:1;min-width:0}
+.qh-title{font:800 22px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.025em;line-height:1.2;margin-bottom:4px}
+.qh-client{font-size:14px;color:var(--t2)}
+.qh-client span{color:var(--t3);font-size:12px}
+.qh-total{text-align:right;flex-shrink:0}
+.qh-total-lbl{font:600 10px 'Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:2px}
+.qh-total-val{font:800 22px 'DM Sans',sans-serif;color:var(--text)}
+.qh-meta{padding:12px 22px;display:flex;flex-wrap:wrap;gap:16px}
+.qh-meta-item{display:flex;flex-direction:column}
+.qh-meta-lbl{font:600 9.5px 'Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:1px}
+.qh-meta-val{font:600 13px 'DM Sans',sans-serif;color:var(--text)}
 .chip{padding:4px 12px;background:var(--bg);border:1px solid var(--bd);border-radius:99px;font-size:13px;color:var(--t2)}
 .chip-danger{background:#fff5f5;border-color:#fca5a5;color:#c53030}
 .chip-warn{background:#fffbeb;border-color:#fcd34d;color:#92400e}
@@ -620,40 +624,42 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <!-- BLOQUE COTIZACIÓN — visible en pantalla -->
   <div class="qh">
     <div class="qh-top">
-      <div class="qh-title"><?= e($cot['titulo']) ?></div>
-      <?php if ($cot['cliente_nombre']): ?>
-      <div class="qh-client"><?= e($cot['cliente_nombre']) ?><?php if ($cot['cli_tel']): ?> <span>· <?= e($cot['cli_tel']) ?></span><?php endif ?></div>
-      <?php endif ?>
-    </div>
-    <div class="qh-pills">
-      <div class="pill">
-        <div class="pill-label">Cotización</div>
-        <div class="pill-value"><?= e($cot['numero']) ?></div>
+      <div class="qh-left">
+        <div class="qh-title"><?= e($cot['titulo']) ?></div>
+        <?php if ($cot['cliente_nombre']): ?>
+        <div class="qh-client"><?= e($cot['cliente_nombre']) ?><?php if ($cot['cli_tel']): ?> <span>· <?= e($cot['cli_tel']) ?></span><?php endif ?></div>
+        <?php endif ?>
       </div>
-      <div class="pill">
-        <div class="pill-label">Elaboración</div>
-        <div class="pill-value"><?= date('d/m/Y', strtotime($cot['created_at'])) ?></div>
+      <div class="qh-total">
+        <div class="qh-total-lbl">Total</div>
+        <div class="qh-total-val"><?= fmt_pub((float)$cot['total']) ?></div>
+      </div>
+    </div>
+    <div class="qh-meta">
+      <div class="qh-meta-item">
+        <div class="qh-meta-lbl">Cotización</div>
+        <div class="qh-meta-val"><?= e($cot['numero']) ?></div>
+      </div>
+      <div class="qh-meta-item">
+        <div class="qh-meta-lbl">Elaboración</div>
+        <div class="qh-meta-val"><?= date('d/m/Y', strtotime($cot['created_at'])) ?></div>
       </div>
       <?php if ($cot['valida_hasta']): ?>
       <?php
         $vts = strtotime($cot['valida_hasta']);
         $vd  = ($vts - strtotime('today')) / 86400;
       ?>
-      <div class="pill" <?php if ($vd < 0): ?>style="background:#fff5f5;border-color:#fca5a5"<?php elseif ($vd <= 3): ?>style="background:#fffbeb;border-color:#fcd34d"<?php endif; ?>>
-        <div class="pill-label"><?= $vd < 0 ? 'Venció' : 'Vencimiento' ?></div>
-        <div class="pill-value" <?php if ($vd < 0): ?>style="color:#c53030"<?php elseif ($vd <= 3): ?>style="color:#92400e"<?php endif; ?>><?= date('d/m/Y', $vts) ?></div>
+      <div class="qh-meta-item">
+        <div class="qh-meta-lbl"><?= $vd < 0 ? 'Venció' : 'Vencimiento' ?></div>
+        <div class="qh-meta-val" <?php if ($vd < 0): ?>style="color:#c53030"<?php elseif ($vd <= 3): ?>style="color:#92400e"<?php endif; ?>><?= date('d/m/Y', $vts) ?></div>
       </div>
       <?php endif; ?>
       <?php if ($cot['asesor_nombre']): ?>
-      <div class="pill">
-        <div class="pill-label">Asesor</div>
-        <div class="pill-value"><?= e($cot['asesor_nombre']) ?></div>
+      <div class="qh-meta-item">
+        <div class="qh-meta-lbl">Asesor</div>
+        <div class="qh-meta-val"><?= e($cot['asesor_nombre']) ?></div>
       </div>
       <?php endif; ?>
-      <div class="pill">
-        <div class="pill-label">Total</div>
-        <div class="pill-value"><?= fmt_pub((float)$cot['total']) ?></div>
-      </div>
     </div>
   </div>
 
