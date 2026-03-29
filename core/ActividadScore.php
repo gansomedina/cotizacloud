@@ -710,10 +710,11 @@ class ActividadScore
             $cierre_quality = 0.50;
         }
 
-        // Penalizaciones ratio-based — escaladas con 1/close_rate
-        // Cada oportunidad perdida pesa más cuando cierras poco
-        $pen_vencidas = ($vencidas_sin_accion / $asignadas_validas) * (1.0 / $close_rate_safe);
-        $pen_zona_muerta = ($zona_muerta / $asignadas_validas) * (1.0 / $close_rate_safe);
+        // Penalizaciones ratio-based — escaladas con sqrt(1/close_rate)
+        // sqrt modera: CR=0.10 → ×3.2 (no ×10), CR=0.50 → ×1.4, CR=0.02 → ×7.1
+        $sqrt_inv_cr = sqrt(1.0 / $close_rate_safe);
+        $pen_vencidas = ($vencidas_sin_accion / $asignadas_validas) * $sqrt_inv_cr;
+        $pen_zona_muerta = ($zona_muerta / $asignadas_validas) * $sqrt_inv_cr;
 
         // Volumen sin resultado: déficit vs benchmark de la empresa
         $pen_volumen_sin_cierre = 0.0;
@@ -724,11 +725,12 @@ class ActividadScore
 
         $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre, 1.0);
 
-        // Sub-pesos auto-ajustables: con pocos cierres solo importa close_rate,
-        // con muchos cierres calidad y velocidad ganan peso (más data = más confiables)
-        $w_cr_conv   = max($cot_vistas, 1);   // close_rate: confiable con más vistas
-        $w_qual_conv = max($cierres_total, 0); // quality: necesita cierres para medir
-        $w_ttc_conv  = max($cierres_total, 0); // velocidad: necesita cierres para medir
+        // Sub-pesos auto-ajustables con sqrt para comprimir rango:
+        // 21 vistas/2 cierres → 57/21/21. 100 vistas/20 cierres → 52/24/24
+        // Sin cierres → 100% close_rate (único dato confiable)
+        $w_cr_conv   = sqrt(max($cot_vistas, 1));      // 21→4.6, 100→10
+        $w_qual_conv = sqrt(max($cierres_total, 0) + 1) - 1; // 0→0, 2→0.73, 10→2.3
+        $w_ttc_conv  = sqrt(max($cierres_total, 0) + 1) - 1;
         $w_conv_total = max($w_cr_conv + $w_qual_conv + $w_ttc_conv, 1);
 
         $s_conversion = (
@@ -800,18 +802,17 @@ class ActividadScore
             }
         }
 
-        // Denominador: cotizaciones con bucket activo (no el total de asignadas)
-        // 21 asignadas pero solo 8 tienen bucket → net de ±1 sobre 8, no sobre 21
+        // Denominador: promedio entre cots con bucket y asignadas totales
+        // Puro bucket (4) amplifica demasiado, puro asignadas (21) diluye demasiado
         $cots_con_bucket = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND radar_bucket IS NOT NULL
              AND estado IN ('enviada','vista')",
             [$usuario_id, $empresa_id]
         );
-        $cot_activas_health = max($cots_con_bucket, 1);
+        $cot_activas_health = max(($cots_con_bucket + $cot_asignadas) / 2, 1);
 
         // Centro 0.6: pipeline estable = bueno (no mediocre)
-        // Net positivo → sube de 0.6, net negativo → baja de 0.6
         $health_net = $health_up - $health_down;
         $s_radar_health = max(0.0, min(1.0, 0.6 + ($health_net / $cot_activas_health)));
 
