@@ -127,6 +127,15 @@ function e(mixed $val): string
     return htmlspecialchars((string)($val ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+// HTML seguro — permite solo tags de formato básico, strip todo lo demás
+function e_html(mixed $val): string
+{
+    return strip_tags(
+        (string)($val ?? ''),
+        '<strong><b><em><i><u><br><p><div><span><ul><ol><li><h3><h4><h5><h6><hr><a><sub><sup><small>'
+    );
+}
+
 function ej(mixed $val): string
 {
     return json_encode($val, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
