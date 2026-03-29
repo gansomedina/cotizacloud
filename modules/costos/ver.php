@@ -409,6 +409,7 @@ ob_start();
 </div>
 
 <script>
+const CSRF_TOKEN = '<?= csrf_token() ?>';
 const VENTA_ID = <?= $venta_id ?>;
 
 const HAS_PROV = !!document.getElementById('shCostoProv');
@@ -461,7 +462,7 @@ async function guardarCosto() {
     try {
         const r = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
             body: JSON.stringify({ venta_id: VENTA_ID, categoria_id: parseInt(cat_id), proveedor_id: prov_id, concepto, importe, fecha, nota })
         });
         const d = await r.json();
@@ -473,7 +474,7 @@ async function guardarCosto() {
 async function eliminarCosto(id, btn) {
     if (!confirm('¿Eliminar este costo?')) return;
     try {
-        const r = await fetch('/costos/gasto/' + id + '/eliminar', { method: 'POST' });
+        const r = await fetch('/costos/gasto/' + id + '/eliminar', { method: 'POST', headers: { 'X-CSRF-Token': CSRF_TOKEN } });
         const d = await r.json();
         if (d.ok) {
             btn.closest('.cost-row')?.remove();

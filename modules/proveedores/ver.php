@@ -306,6 +306,7 @@ ob_start();
 
 
 <script>
+const CSRF_TOKEN = '<?= csrf_token() ?>';
 const PROV_ID = <?= $proveedor_id ?>;
 
 function openEditSheet() {
@@ -335,7 +336,7 @@ async function guardarEdit() {
     try {
         const r = await fetch('/proveedores/' + PROV_ID, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
             body: JSON.stringify({ nombre, contacto, telefono, email, direccion, nota })
         });
         const d = await r.json();
@@ -352,7 +353,7 @@ async function toggleActivo(activo) {
     if (!confirm(msg)) return;
 
     try {
-        const r = await fetch('/proveedores/' + PROV_ID + '/toggle', { method: 'POST' });
+        const r = await fetch('/proveedores/' + PROV_ID + '/toggle', { method: 'POST', headers: { 'X-CSRF-Token': CSRF_TOKEN } });
         const d = await r.json();
         if (d.ok) location.reload();
         else alert(d.error || 'Error');
