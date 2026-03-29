@@ -34,7 +34,7 @@ class DB
             // Sincronizar timezone de MySQL con la de PHP para que NOW()
             // y strtotime() operen en la misma zona horaria.
             $tz = date('P'); // e.g. "-07:00"
-            self::$pdo->exec("SET time_zone = '{$tz}'");
+            self::$pdo->prepare("SET time_zone = ?")->execute([$tz]);
         } catch (PDOException $e) {
             if (DEBUG) {
                 throw $e;

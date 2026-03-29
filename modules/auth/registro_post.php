@@ -71,8 +71,8 @@ if (empty($email))
 elseif (!filter_var($email, FILTER_VALIDATE_EMAIL))
     $errores['email'] = 'Email inválido';
 
-if (strlen($password) < 6)
-    $errores['password'] = 'La contraseña debe tener al menos 6 caracteres';
+if (strlen($password) < 12)
+    $errores['password'] = 'La contraseña debe tener al menos 12 caracteres';
 
 if (!in_array($moneda, ['MXN','USD','EUR']))                 $moneda = 'MXN';
 if (!in_array($impuesto_modo, ['ninguno','suma','incluido'])) $impuesto_modo = 'ninguno';
