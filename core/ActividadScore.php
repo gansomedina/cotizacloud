@@ -480,16 +480,21 @@ class ActividadScore
         $pen_no_abiertas = min(($no_abiertas_5d / $asignadas_validas) * (1.0 / $close_rate_safe), 1.0);
 
         // Penalización escalonada por dormidas (7d, 14d, 21d)
+        // Pesos relativos a TTC: dormida 7d con TTC=5d es grave, con TTC=30d es normal
         $pen_dormidas = 0.0;
         $dormidas_solo_7  = $dormidas_7d - $dormidas_14d;
         $dormidas_solo_14 = $dormidas_14d - $dormidas_21d;
         $dormidas_solo_21 = $dormidas_21d;
         if ($asignadas_validas > 0) {
+            $ttc = $bench['time_to_close'];
+            $w_d7  = 7.0  / $ttc;  // TTC=7: 1.0, TTC=14: 0.5, TTC=30: 0.23
+            $w_d14 = 14.0 / $ttc;  // TTC=7: 2.0, TTC=14: 1.0, TTC=30: 0.47
+            $w_d21 = 21.0 / $ttc;  // TTC=7: 3.0, TTC=14: 1.5, TTC=30: 0.70
             $pen_dormidas = (
-                ($dormidas_solo_7  * 6) +
-                ($dormidas_solo_14 * 10) +
-                ($dormidas_solo_21 * 15)
-            ) / ($asignadas_validas * 15);
+                $dormidas_solo_7  * $w_d7 +
+                $dormidas_solo_14 * $w_d14 +
+                $dormidas_solo_21 * $w_d21
+            ) / $asignadas_validas;
         }
         $pen_dormidas = min($pen_dormidas, 1.0);
 
@@ -512,9 +517,10 @@ class ActividadScore
         );
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 2: ENGAGEMENT (20%) — v5
-        //  Capa de penalizaciones post-envío
-        //  Arranca en 1.0, se restan penalizaciones
+        //  DIMENSIÓN 2: ENGAGEMENT (17%) — v5.1
+        //  Señales positivas + penalizaciones, auto-ajustable
+        //  Positivo: tasa cobro + re-engagement del cliente
+        //  Negativo: descuentos + enfriamiento
         // ═══════════════════════════════════════════════════
 
         // Ventas totales del vendedor en el período (no canceladas)
@@ -527,18 +533,36 @@ class ActividadScore
         );
         $ventas_totales_safe = max($ventas_totales, 1);
 
-        // pen_sin_pago: ventas con pagado=0 después de 5 días
-        // Fórmula: (sin_pago/totales) × (1/close_rate) — fuerte
-        $eng_pen_sin_pago = 0.0;
-        if ($ventas_sin_pago > 0) {
-            $eng_pen_sin_pago = min(
-                ($ventas_sin_pago / $ventas_totales_safe) * (1.0 / $close_rate_safe),
-                1.0
-            );
-        }
+        // SEÑAL POSITIVA 1: Tasa de cobro — ventas con algún pago / ventas totales
+        // Reemplaza pen_sin_pago: cobro_rate=1 → perfecto, cobro_rate=0 → sin cobros
+        $ventas_con_pago = (int)DB::val(
+            "SELECT COUNT(*) FROM ventas
+             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
+             AND estado != 'cancelada' AND pagado > 0
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $cobro_rate = $ventas_totales > 0 ? $ventas_con_pago / $ventas_totales : 0.5;
 
+        // SEÑAL POSITIVA 2: Re-engagement del cliente — cots con múltiples vistas
+        // Si el cliente regresa, el vendedor hizo algo bien (cotización atractiva, seguimiento)
+        $cots_multi_vista = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
+             AND visitas > 1
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $re_engagement = $cot_vistas > 0 ? $cots_multi_vista / $cot_vistas : 0.5;
+
+        // Pesos auto-ajustables: cobro pesa más cuando close_rate es bajo (cada venta cuenta más)
+        $inv_cr_eng = 1.0 / $close_rate_safe;
+        $w_cobro_eng = $inv_cr_eng;      // CR=0.10 → 10, CR=0.50 → 2
+        $w_reeng     = max($cot_vistas, 1);  // más vistas → re_engagement más confiable
+        $w_eng_total = $w_cobro_eng + $w_reeng;
+        $eng_base = ($cobro_rate * $w_cobro_eng + $re_engagement * $w_reeng) / $w_eng_total;
+
+        // PENALIZACIONES (se mantienen, auto-ajustables)
         // pen_descuento: ventas con descuento — mérito de empresa, no vendedor
-        // Fórmula: (con_descuento/totales) × close_rate — suave
         $ventas_con_descuento = (int)DB::val(
             "SELECT COUNT(*) FROM ventas
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
@@ -550,13 +574,18 @@ class ActividadScore
         $eng_pen_descuento = ($ventas_con_descuento / $ventas_totales_safe) * $close_rate_safe;
 
         // pen_enfriamiento: transiciones down / total × close_rate (suave)
-        // Enfriamiento natural no es culpa directa del vendedor
         $trans_total = $transiciones_up + $transiciones_down;
         $eng_pen_enfriamiento = $trans_total > 0
             ? ($transiciones_down / $trans_total) * $close_rate_safe
             : 0.0;
 
-        $s_engagement = 1.0 - $eng_pen_sin_pago - $eng_pen_descuento - $eng_pen_enfriamiento;
+        // eng_pen_sin_pago se mantiene para debug/BD pero ya no afecta el score
+        // (capturado por cobro_rate como señal positiva inversa)
+        $eng_pen_sin_pago = $ventas_totales > 0
+            ? min(($ventas_sin_pago / $ventas_totales_safe) * $inv_cr_eng, 1.0)
+            : 0.0;
+
+        $s_engagement = $eng_base - $eng_pen_descuento - $eng_pen_enfriamiento;
         $s_engagement = max(0.0, min(1.0, $s_engagement));
 
         // ═══════════════════════════════════════════════════
@@ -634,13 +663,19 @@ class ActividadScore
         // Calidad del feedback (solo evaluable después de 5 días)
         $calidad_fb = ($aciertos + $fallos) > 0 ? $aciertos / ($aciertos + $fallos) : 0.50;
 
-        // Penalización por buckets estancados (se mantiene de v4)
-        $pen_buckets = min($buckets_estancados * 0.06, 0.3);
+        // Penalización por buckets estancados — ratio puro, sin valor fijo
+        // Cada estancado importa más cuando tienes pocas asignadas
+        $pen_buckets = $buckets_estancados / $asignadas_validas;
 
-        // Seguimiento = tarea (40%) + examen (60%) - estancados
-        // Tarea: dar feedback (esfuerzo)
-        // Examen: calidad del feedback (resultado)
-        $s_seguimiento = ($tasa_completado * 0.40) + ($calidad_fb * 0.60) - $pen_buckets;
+        // Seguimiento: tarea/examen con pesos auto-ajustables
+        // Poca data → tarea (dar feedback) importa más (esfuerzo)
+        // Mucha data → examen (calidad) importa más (resultado medible)
+        $w_tarea  = 1.0;
+        $w_examen = max($fb_total, 1);  // 1fb→50/50, 5fb→17/83, 10fb→9/91
+        $w_seg_total = $w_tarea + $w_examen;
+
+        $s_seguimiento = ($tasa_completado * $w_tarea + $calidad_fb * $w_examen) / $w_seg_total
+                       - $pen_buckets;
         $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
 
         // Guardar para debug
@@ -675,29 +710,32 @@ class ActividadScore
             $cierre_quality = 0.50;
         }
 
-        // Penalización por vencidas sin acción
-        $pen_vencidas = min($vencidas_sin_accion * 0.08, 0.3);
+        // Penalizaciones ratio-based — escaladas con 1/close_rate
+        // Cada oportunidad perdida pesa más cuando cierras poco
+        $pen_vencidas = ($vencidas_sin_accion / $asignadas_validas) * (1.0 / $close_rate_safe);
+        $pen_zona_muerta = ($zona_muerta / $asignadas_validas) * (1.0 / $close_rate_safe);
 
-        // Penalización por zona muerta
-        $pen_zona_muerta = min($zona_muerta * 0.05, 0.25);
-
-        // Penalización por volumen sin resultado:
+        // Volumen sin resultado: déficit vs benchmark de la empresa
         $pen_volumen_sin_cierre = 0.0;
-        $half_bench = $bench['close_rate'] / 2;
-        if ($cierres_total === 0 && $cot_vistas >= 3) {
-            $pen_volumen_sin_cierre = min(($cot_vistas - 2) * 0.08, 0.5);
-        } elseif ($cot_vistas >= 5 && $tasa_cierre < $half_bench) {
-            $pen_volumen_sin_cierre = min((1.0 - $tasa_cierre / $half_bench) * 0.3, 0.3);
+        if ($tasa_cierre < $bench['close_rate'] && $cot_vistas >= 3) {
+            $deficit = 1.0 - ($tasa_cierre / max($bench['close_rate'], 0.01));
+            $pen_volumen_sin_cierre = $deficit * ($cot_vistas / $asignadas_validas);
         }
 
-        // pen_sin_pago ya calculada en Engagement (eng_pen_sin_pago)
+        $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre, 1.0);
 
-        // close rate + quality + velocidad de cierre
-        $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre, 0.70);
+        // Sub-pesos auto-ajustables: con pocos cierres solo importa close_rate,
+        // con muchos cierres calidad y velocidad ganan peso (más data = más confiables)
+        $w_cr_conv   = max($cot_vistas, 1);   // close_rate: confiable con más vistas
+        $w_qual_conv = max($cierres_total, 0); // quality: necesita cierres para medir
+        $w_ttc_conv  = max($cierres_total, 0); // velocidad: necesita cierres para medir
+        $w_conv_total = max($w_cr_conv + $w_qual_conv + $w_ttc_conv, 1);
+
         $s_conversion = (
-            self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01)) * 0.40
-            + $cierre_quality * 0.35
-            + $ttc_score * 0.25
+            self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01))
+                * ($w_cr_conv / $w_conv_total)
+            + $cierre_quality * ($w_qual_conv / $w_conv_total)
+            + $ttc_score * ($w_ttc_conv / $w_conv_total)
         )
                         - $pen_conversion;
         $s_conversion = max(0.0, min(1.0, $s_conversion));
@@ -720,10 +758,13 @@ class ActividadScore
         // Ratio: 4/4 semanas con cierre = 1.0, 1/4 = 0.25
         $consistencia = $cierres_total > 0 ? $semanas_con_cierre / $total_semanas : 0;
 
-        // Ajustar conversión: bonus si es consistente, penalización si es irregular
-        // Solo aplica si tiene al menos 2 cierres (con 1 no hay variación que medir)
+        // Ajustar conversión por consistencia — impacto escala con volumen esperado
+        // Vendedor que debería cerrar 2+/semana y es irregular: impacto alto
+        // Vendedor que cierra 1 cada 2 semanas: consistencia no es medible
         if ($cierres_total >= 2) {
-            $s_conversion = $s_conversion * (0.80 + 0.20 * $consistencia);
+            $expected_per_week = $cot_asignadas * $close_rate_safe / max($total_semanas, 1);
+            $consistency_impact = min($expected_per_week, 1.0);
+            $s_conversion = $s_conversion * (1.0 - $consistency_impact * (1.0 - $consistencia));
             $s_conversion = max(0.0, min(1.0, $s_conversion));
         }
 
@@ -733,29 +774,7 @@ class ActividadScore
         //  Balance transiciones up vs down / cotizaciones activas
         // ═══════════════════════════════════════════════════
 
-        // Transiciones excluyendo aceptadas (no es negativo que una aceptada pierda bucket)
-        $health_up = (int)DB::val(
-            "SELECT COUNT(*) FROM bucket_transitions bt
-             JOIN cotizaciones c ON c.id = bt.cotizacion_id
-             WHERE bt.vendedor_id=? AND bt.empresa_id=?
-             AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND c.estado NOT IN ('aceptada','convertida','aceptada_cliente')
-             AND c.suspendida = 0
-             AND bt.bucket_nuevo IS NOT NULL AND bt.bucket_anterior IS NOT NULL",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-        $health_down = (int)DB::val(
-            "SELECT COUNT(*) FROM bucket_transitions bt
-             JOIN cotizaciones c ON c.id = bt.cotizacion_id
-             WHERE bt.vendedor_id=? AND bt.empresa_id=?
-             AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND c.estado NOT IN ('aceptada','convertida','aceptada_cliente')
-             AND c.suspendida = 0
-             AND (bt.bucket_nuevo IS NULL OR bt.bucket_anterior IS NOT NULL)",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-
-        // Recalcular up/down con BUCKET_TEMP para diferenciar frío→caliente vs caliente→frío
+        // Transiciones de temperatura real (single query)
         $health_up = 0;
         $health_down = 0;
         $health_trans = DB::query(
@@ -772,8 +791,6 @@ class ActividadScore
         foreach ($health_trans as $ht) {
             $temp_ant = self::BUCKET_TEMP[$ht['bucket_anterior']] ?? null;
             $temp_new = self::BUCKET_TEMP[$ht['bucket_nuevo']] ?? null;
-            // Solo contar cambios de temperatura real (ambos deben existir)
-            // NULL→bucket y bucket→NULL son entradas/salidas naturales, no mérito del vendedor
             if ($temp_ant !== null && $temp_new !== null) {
                 if (($temp_order[$temp_new] ?? 0) > ($temp_order[$temp_ant] ?? 0)) {
                     $health_up++;
@@ -783,9 +800,20 @@ class ActividadScore
             }
         }
 
+        // Denominador: cotizaciones con bucket activo (no el total de asignadas)
+        // 21 asignadas pero solo 8 tienen bucket → net de ±1 sobre 8, no sobre 21
+        $cots_con_bucket = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
+             AND radar_bucket IS NOT NULL
+             AND estado IN ('enviada','vista')",
+            [$usuario_id, $empresa_id]
+        );
+        $cot_activas_health = max($cots_con_bucket, 1);
+
+        // Centro 0.6: pipeline estable = bueno (no mediocre)
+        // Net positivo → sube de 0.6, net negativo → baja de 0.6
         $health_net = $health_up - $health_down;
-        $cot_activas_health = max($cot_asignadas, 1);
-        $s_radar_health = max(0.0, min(1.0, 0.5 + ($health_net / $cot_activas_health)));
+        $s_radar_health = max(0.0, min(1.0, 0.6 + ($health_net / $cot_activas_health)));
 
         // ═══════════════════════════════════════════════════
         //  SCORE PROPORCIONAL — v5
@@ -938,7 +966,7 @@ class ActividadScore
         else $nivel = 'bajo';
 
         // Total penalizaciones y bonuses (para display)
-        $total_pen = $pen_no_abiertas + ($pen_dormidas * 0.4) + $eng_pen_sin_pago + $eng_pen_descuento + $eng_pen_enfriamiento + $pen_conversion;
+        $total_pen = $pen_no_abiertas + ($pen_dormidas * 0.4) + $eng_pen_descuento + $eng_pen_enfriamiento + $pen_conversion;
         $total_bonus = ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0);
 
         // ═══════════════════════════════════════════════════
@@ -1020,6 +1048,8 @@ class ActividadScore
             'fb_calidad'        => round($calidad_fb, 3),
             's_activacion'      => round($s_activacion, 3),
             's_engagement'      => round($s_engagement, 3),
+            'cobro_rate'        => round($cobro_rate, 3),
+            're_engagement'     => round($re_engagement, 3),
             'eng_pen_sin_pago'  => round($eng_pen_sin_pago, 3),
             'eng_pen_descuento' => round($eng_pen_descuento, 3),
             'eng_pen_enfriamiento' => round($eng_pen_enfriamiento, 3),
@@ -1233,13 +1263,13 @@ class ActividadScore
         // ── RADAR HEALTH (pipeline) ──
         $h_up = (int)($s['health_up'] ?? 0);
         $h_down = (int)($s['health_down'] ?? 0);
-        $s_health = (float)($s['s_radar_health'] ?? 0.5);
-        if ($s_health >= 0.70) {
-            $frases[] = "pipeline en crecimiento — {$h_up} cotizaciones subieron de bucket";
-        } elseif ($s_health >= 0.40) {
+        $s_health = (float)($s['s_radar_health'] ?? 0.6);
+        if ($s_health >= 0.75) {
+            $frases[] = "pipeline en crecimiento — {$h_up} cotizaciones subieron de temperatura";
+        } elseif ($s_health >= 0.50) {
             $frases[] = "pipeline estable — {$h_up} subieron, {$h_down} bajaron";
         } elseif ($h_down > 0) {
-            $frases[] = "pipeline enfriándose — {$h_down} cotizaciones bajaron de bucket vs {$h_up} que subieron";
+            $frases[] = "pipeline enfriándose — {$h_down} cotizaciones bajaron vs {$h_up} que subieron";
         }
 
         // ── MOMENTUM ──
