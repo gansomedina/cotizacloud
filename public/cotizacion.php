@@ -654,7 +654,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       );
   ?>
   <div style="margin:24px 0 8px;padding:20px 24px;background:var(--white);border:1px solid var(--bd);border-radius:var(--r);font:400 15px/1.7 'Plus Jakarta Sans',sans-serif;color:var(--text)">
-    <?= nl2br($encabezado) ?>
+    <?= str_contains($encabezado_raw, '<') ? $encabezado : nl2br($encabezado) ?>
   </div>
   <?php endif; ?>
 
@@ -881,18 +881,20 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <?php if ($cot['terminos']): ?>
   <div class="slbl">Términos y condiciones</div>
   <div class="terms">
-    <?php
+    <?php if (str_contains($cot['terminos'], '<')): ?>
+      <?= e_html($cot['terminos']) ?>
+    <?php else:
     $terminos_lines = array_filter(explode("\n", trim($cot['terminos'])));
     foreach ($terminos_lines as $linea):
         $linea = trim($linea);
         if (!$linea) continue;
         if (str_starts_with($linea, '##')) {
-            echo '<div class="term"><div class="terml">' . e_html(ltrim($linea,'# ')) . '</div></div>';
+            echo '<div class="term"><div class="terml">' . e(ltrim($linea,'# ')) . '</div></div>';
         } else {
-            echo '<div class="term"><div class="termv">' . nl2br(e_html($linea)) . '</div></div>';
+            echo '<div class="term"><div class="termv">' . nl2br(e($linea)) . '</div></div>';
         }
     endforeach;
-    ?>
+    endif; ?>
   </div>
   <?php endif; ?>
 
@@ -921,7 +923,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <div class="fname2"><?= e($cot['emp_nombre']) ?></div>
     <?php if ($cot['emp_ciudad']): ?><div class="fsub"><?= e($cot['emp_ciudad']) ?></div><?php endif; ?>
     <?php if (!empty($cot['cot_footer'])): ?>
-    <div class="fdisc"><?= nl2br(e_html($cot['cot_footer'])) ?></div>
+    <div class="fdisc"><?= str_contains($cot['cot_footer'], '<') ? e_html($cot['cot_footer']) : nl2br(e($cot['cot_footer'])) ?></div>
     <?php else: ?>
     <div class="fdisc">Cotización generada en cotiza.cloud</div>
     <?php endif; ?>
@@ -1461,7 +1463,7 @@ calc();
 <!-- PRINT: Pie de página -->
 <div class="print-footer" style="display:none">
   <?php if (!empty($cot['cot_footer'])): ?>
-  <div style="margin-bottom:5pt"><?= nl2br(e_html($cot['cot_footer'])) ?></div>
+  <div style="margin-bottom:5pt"><?= str_contains($cot['cot_footer'], '<') ? e_html($cot['cot_footer']) : nl2br(e($cot['cot_footer'])) ?></div>
   <?php endif; ?>
   <?= e($cot['emp_nombre']) ?>
   <?php if (!empty($cot['emp_tel'])): ?> · <?= e($cot['emp_tel']) ?><?php endif; ?>

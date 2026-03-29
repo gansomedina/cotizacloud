@@ -543,7 +543,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   <?php if ($venta['terminos']): ?>
   <div class="slabel" style="margin-top:20px">Términos</div>
   <div class="card">
-    <div class="terminos-card"><?= nl2br(e_html($venta['terminos'])) ?></div>
+    <div class="terminos-card"><?= str_contains($venta['terminos'], '<') ? e_html($venta['terminos']) : nl2br(e($venta['terminos'])) ?></div>
   </div>
   <?php endif; ?>
 
@@ -669,7 +669,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   <?php if ($venta['terminos']): ?>
   <hr class="fac-divider">
   <div class="fac-terminos-lbl">Términos y condiciones</div>
-  <div class="fac-terminos"><?= e_html(mb_substr($venta['terminos'],0,400)) ?></div>
+  <div class="fac-terminos"><?= str_contains($venta['terminos'], '<') ? e_html(mb_substr($venta['terminos'],0,600)) : e(mb_substr($venta['terminos'],0,400)) ?></div>
   <?php endif; ?>
 
   <div class="fac-footer">
