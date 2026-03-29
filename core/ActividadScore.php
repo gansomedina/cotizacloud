@@ -909,12 +909,17 @@ class ActividadScore
         // ═══════════════════════════════════════════════════
         //  SCORE FINAL — pesos auto-ajustables
         // ═══════════════════════════════════════════════════
-        // w_percentil: crece con team_size (0 con 1 vendedor, ~0.25 con 4, tope ~0.30)
-        // w_momentum:  escala con close_rate (más cierres → momentum más relevante)
-        // w_proporcional: el resto — siempre la base dominante
+        // Proporcional = siempre la base dominante
+        // Percentil = solo útil con equipos grandes, escala con log(team_size)
+        //   Con 2 personas el percentil es binario (0/100), no aporta — peso ~7%
+        //   Con 5 personas ya diferencia — peso ~16%
+        //   Con 10+ — peso ~23%
+        // Momentum = complemento basado en close_rate (más cierres → más relevante)
 
-        $w_percentil = $team_size > 1
-            ? min(($team_size - 1) / $team_size, 0.30)
+        // Percentil solo con 3+ vendedores (con 2 es binario, no aporta)
+        // (n-2)/(n+18): 3→0.05, 5→0.13, 10→0.29→cap 0.25, 20→0.47→cap 0.25
+        $w_percentil = $team_size >= 3
+            ? min(($team_size - 2) / ($team_size + 18), 0.25)
             : 0.0;
         $w_momentum  = (1.0 - $w_percentil) * $close_rate_safe;
         $w_proporcional = 1.0 - $w_percentil - $w_momentum;
