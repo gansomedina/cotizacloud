@@ -517,10 +517,10 @@ class ActividadScore
         );
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 2: ENGAGEMENT (17%) — v5.1
-        //  Señales positivas + penalizaciones, auto-ajustable
-        //  Positivo: tasa cobro + re-engagement del cliente
-        //  Negativo: descuentos + enfriamiento
+        //  DIMENSIÓN 2: ENGAGEMENT (17%) — v5
+        //  Capa de penalizaciones post-venta
+        //  Arranca en 1.0, se restan penalizaciones
+        //  Mide lo que NO es mérito del vendedor (descuentos, cobros, enfriamiento)
         // ═══════════════════════════════════════════════════
 
         // Ventas totales del vendedor en el período (no canceladas)
@@ -533,36 +533,18 @@ class ActividadScore
         );
         $ventas_totales_safe = max($ventas_totales, 1);
 
-        // SEÑAL POSITIVA 1: Tasa de cobro — ventas con algún pago / ventas totales
-        // Reemplaza pen_sin_pago: cobro_rate=1 → perfecto, cobro_rate=0 → sin cobros
-        $ventas_con_pago = (int)DB::val(
-            "SELECT COUNT(*) FROM ventas
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND estado != 'cancelada' AND pagado > 0
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-        $cobro_rate = $ventas_totales > 0 ? $ventas_con_pago / $ventas_totales : 0.5;
+        // pen_sin_pago: ventas con pagado=0 después de 5 días
+        // Fórmula: (sin_pago/totales) × (1/close_rate) — fuerte
+        $eng_pen_sin_pago = 0.0;
+        if ($ventas_sin_pago > 0) {
+            $eng_pen_sin_pago = min(
+                ($ventas_sin_pago / $ventas_totales_safe) * (1.0 / $close_rate_safe),
+                1.0
+            );
+        }
 
-        // SEÑAL POSITIVA 2: Re-engagement del cliente — cots con múltiples vistas
-        // Si el cliente regresa, el vendedor hizo algo bien (cotización atractiva, seguimiento)
-        $cots_multi_vista = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
-             AND visitas > 1
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $empresa_id, $periodo]
-        );
-        $re_engagement = $cot_vistas > 0 ? $cots_multi_vista / $cot_vistas : 0.5;
-
-        // Pesos auto-ajustables: cobro pesa más cuando close_rate es bajo (cada venta cuenta más)
-        $inv_cr_eng = 1.0 / $close_rate_safe;
-        $w_cobro_eng = $inv_cr_eng;      // CR=0.10 → 10, CR=0.50 → 2
-        $w_reeng     = max($cot_vistas, 1);  // más vistas → re_engagement más confiable
-        $w_eng_total = $w_cobro_eng + $w_reeng;
-        $eng_base = ($cobro_rate * $w_cobro_eng + $re_engagement * $w_reeng) / $w_eng_total;
-
-        // PENALIZACIONES (se mantienen, auto-ajustables)
         // pen_descuento: ventas con descuento — mérito de empresa, no vendedor
+        // Fórmula: (con_descuento/totales) × close_rate — suave
         $ventas_con_descuento = (int)DB::val(
             "SELECT COUNT(*) FROM ventas
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
@@ -574,18 +556,13 @@ class ActividadScore
         $eng_pen_descuento = ($ventas_con_descuento / $ventas_totales_safe) * $close_rate_safe;
 
         // pen_enfriamiento: transiciones down / total × close_rate (suave)
+        // Enfriamiento natural no es culpa directa del vendedor
         $trans_total = $transiciones_up + $transiciones_down;
         $eng_pen_enfriamiento = $trans_total > 0
             ? ($transiciones_down / $trans_total) * $close_rate_safe
             : 0.0;
 
-        // eng_pen_sin_pago se mantiene para debug/BD pero ya no afecta el score
-        // (capturado por cobro_rate como señal positiva inversa)
-        $eng_pen_sin_pago = $ventas_totales > 0
-            ? min(($ventas_sin_pago / $ventas_totales_safe) * $inv_cr_eng, 1.0)
-            : 0.0;
-
-        $s_engagement = $eng_base - $eng_pen_descuento - $eng_pen_enfriamiento;
+        $s_engagement = 1.0 - $eng_pen_sin_pago - $eng_pen_descuento - $eng_pen_enfriamiento;
         $s_engagement = max(0.0, min(1.0, $s_engagement));
 
         // ═══════════════════════════════════════════════════
@@ -815,9 +792,9 @@ class ActividadScore
         );
         $cot_activas_health = max(($cots_con_bucket + $cot_asignadas) / 2, 1);
 
-        // Centro 0.6: pipeline estable = bueno (no mediocre)
+        // Centro 0.5: neutro. Net positivo → sube, net negativo → baja
         $health_net = $health_up - $health_down;
-        $s_radar_health = max(0.0, min(1.0, 0.6 + ($health_net / $cot_activas_health)));
+        $s_radar_health = max(0.0, min(1.0, 0.5 + ($health_net / $cot_activas_health)));
 
         // ═══════════════════════════════════════════════════
         //  SCORE PROPORCIONAL — v5
@@ -970,7 +947,7 @@ class ActividadScore
         else $nivel = 'bajo';
 
         // Total penalizaciones y bonuses (para display)
-        $total_pen = $pen_no_abiertas + ($pen_dormidas * 0.4) + $eng_pen_descuento + $eng_pen_enfriamiento + $pen_conversion;
+        $total_pen = $pen_no_abiertas + ($pen_dormidas * 0.4) + $eng_pen_sin_pago + $eng_pen_descuento + $eng_pen_enfriamiento + $pen_conversion;
         $total_bonus = ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0);
 
         // ═══════════════════════════════════════════════════
@@ -1052,8 +1029,6 @@ class ActividadScore
             'fb_calidad'        => round($calidad_fb, 3),
             's_activacion'      => round($s_activacion, 3),
             's_engagement'      => round($s_engagement, 3),
-            'cobro_rate'        => round($cobro_rate, 3),
-            're_engagement'     => round($re_engagement, 3),
             'eng_pen_sin_pago'  => round($eng_pen_sin_pago, 3),
             'eng_pen_descuento' => round($eng_pen_descuento, 3),
             'eng_pen_enfriamiento' => round($eng_pen_enfriamiento, 3),
@@ -1267,10 +1242,10 @@ class ActividadScore
         // ── RADAR HEALTH (pipeline) ──
         $h_up = (int)($s['health_up'] ?? 0);
         $h_down = (int)($s['health_down'] ?? 0);
-        $s_health = (float)($s['s_radar_health'] ?? 0.6);
-        if ($s_health >= 0.75) {
+        $s_health = (float)($s['s_radar_health'] ?? 0.5);
+        if ($s_health >= 0.70) {
             $frases[] = "pipeline en crecimiento — {$h_up} cotizaciones subieron de temperatura";
-        } elseif ($s_health >= 0.50) {
+        } elseif ($s_health >= 0.40) {
             $frases[] = "pipeline estable — {$h_up} subieron, {$h_down} bajaron";
         } elseif ($h_down > 0) {
             $frases[] = "pipeline enfriándose — {$h_down} cotizaciones bajaron vs {$h_up} que subieron";
