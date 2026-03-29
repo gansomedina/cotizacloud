@@ -374,9 +374,8 @@ class ActividadScore
         }
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 1: ACTIVACIÓN (10%) — v5
+        //  DIMENSIÓN 1: ACTIVACIÓN (8%)
         //  "¿Envías y llegan?"
-        //  Ratio directo + penalización fuerte por no abiertas
         // ═══════════════════════════════════════════════════
 
         $asignadas_validas = max($cot_asignadas, 1);
@@ -435,10 +434,8 @@ class ActividadScore
         );
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 2: ENGAGEMENT (17%) — v5
-        //  Capa de penalizaciones post-venta
-        //  Arranca en 1.0, se restan penalizaciones
-        //  Mide lo que NO es mérito del vendedor (descuentos, cobros, enfriamiento)
+        //  DIMENSIÓN 2: ENGAGEMENT (17%)
+        //  Penalizaciones: sin pago, descuentos, enfriamiento, bajo benchmark
         // ═══════════════════════════════════════════════════
 
         // Ventas totales del vendedor en el período (no canceladas)
@@ -506,9 +503,8 @@ class ActividadScore
         $s_engagement = max(0.0, min(1.0, $s_engagement));
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 3: SEGUIMIENTO (30%) — v5
-        //  "¿Actúas sobre las señales del Radar?"
-        //  Basado en feedback: tasa_completado × calidad
+        //  DIMENSIÓN 3: SEGUIMIENTO (25%)
+        //  Feedback del Radar: tarea (dar) + examen (calidad)
         // ═══════════════════════════════════════════════════
 
         // Cotizaciones en buckets calientes del vendedor
@@ -599,9 +595,8 @@ class ActividadScore
         $benchmark_radar = $cots_calientes; // para compatibilidad con debug display
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 3: CONVERSIÓN (45%)
-        //  "¿Cierra ventas? Esto es lo que importa."
-        //  Volumen alto + cierres bajos = penalización fuerte.
+        //  DIMENSIÓN 4: CONVERSIÓN (35%)
+        //  Close rate + calidad + velocidad + tendencia volumen
         // ═══════════════════════════════════════════════════
 
         // Tasa de cierre ya calculada arriba (antes de seguimiento)
@@ -698,9 +693,8 @@ class ActividadScore
         }
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 5: RADAR HEALTH (15%) — v5
-        //  "¿Tu pipeline está mejorando o empeorando?"
-        //  Balance transiciones up vs down / cotizaciones activas
+        //  DIMENSIÓN 5: RADAR HEALTH (15%)
+        //  Balance de temperatura del pipeline (up vs down)
         // ═══════════════════════════════════════════════════
 
         // health_up y health_down ya calculados en el bloque de transiciones consolidado
@@ -736,10 +730,9 @@ class ActividadScore
                       + $s_radar_health * $w_hlt
                       + $s_conversion * $w_conv;
 
-        // Fix P15: Cap global — las penalizaciones acumuladas no deben dejar
-        // el proporcional por debajo de 0.05, para que vendedores malos en
-        // distintas dimensiones aún se diferencien entre sí.
-        $proporcional = max(0.05, $proporcional);
+        // Piso auto-ajustable: vendedores malos se diferencian entre sí
+        // Empresas con alto CR tienen piso más alto (promedio más alto)
+        $proporcional = max($close_rate_safe * 0.5, $proporcional);
 
         // ═══════════════════════════════════════════════════
         //  ÁNGULO 1: MOMENTUM (vs su propio histórico)
@@ -871,7 +864,7 @@ class ActividadScore
 
         // Total penalizaciones y bonuses (para display)
         $total_pen = $pen_no_abiertas + $pen_dormidas * (1.0 - $tasa_apertura) + $eng_pen_sin_pago + $eng_pen_descuento + $eng_pen_enfriamiento + $eng_pen_bajo_benchmark + $pen_conversion;
-        $total_bonus = ($cierre_quality > 0 ? $cierre_quality * 0.2 : 0);
+        $total_bonus = ($cierre_quality > 0 ? $cierre_quality * $close_rate_safe : 0);
 
         // ═══════════════════════════════════════════════════
         //  GUARDAR
