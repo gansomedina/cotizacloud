@@ -289,18 +289,17 @@ $ocultar_cp = !empty($cot['ocultar_cant_pu']);
 html{font-size:17px;-webkit-text-size-adjust:100%}
 body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
-.hdr{background:var(--white);border-bottom:2px solid var(--text);text-align:center;padding:18px 20px 0}
+.hdr{background:var(--white);border-bottom:2px solid var(--text);text-align:center;padding:12px 20px 0}
 .hdr-inner{max-width:960px;margin:0 auto}
-.hdr-logo{width:160px;height:70px;background:var(--g);color:#fff;font:700 28px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px}
-.hdr-co{font:800 22px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em}
-.hdr-tag{font-size:13px;color:var(--t3);margin-top:3px}
-.hdr-details{font-size:12.5px;color:var(--t3);margin-top:2px;line-height:1.5}
-.hdr-rfc{font:500 11px 'DM Sans',sans-serif;color:var(--t3);letter-spacing:.04em;margin-top:4px;margin-bottom:10px}
+.hdr-logo{width:160px;height:70px;background:var(--g);color:#fff;font:700 28px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px}
+.hdr-co{font:800 22px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em;margin-bottom:2px}
+.hdr-tag{font-size:13px;color:var(--t3);line-height:1.3}
+.hdr-rfc{font:500 11px 'DM Sans',sans-serif;color:var(--t3);letter-spacing:.04em;margin-top:1px;margin-bottom:4px}
 .vbadge{display:none} /* oculto al cliente */
 .print-fac,.print-info{display:none} /* solo para impresión — se activan en @media print */
 .vdot{width:6px;height:6px;border-radius:50%;animation:blink 2s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.hdr-cnt{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 18px;font-size:14px;color:var(--t2);padding-bottom:16px}
+.hdr-cnt{display:flex;flex-wrap:wrap;justify-content:center;gap:3px 16px;font-size:13px;color:var(--t2);padding-bottom:10px}
 .hdr-cnt a{color:var(--t2);text-decoration:none}
 .tabs{display:flex;justify-content:center;border-top:1px solid var(--bd)}
 .tab{padding:12px 28px;font:600 11px 'Plus Jakarta Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);background:none;border:none;border-bottom:2.5px solid transparent;cursor:pointer;transition:all .15s}
