@@ -907,17 +907,21 @@ class ActividadScore
         }
 
         // ═══════════════════════════════════════════════════
-        //  SCORE FINAL
+        //  SCORE FINAL — pesos auto-ajustables
         // ═══════════════════════════════════════════════════
+        // w_percentil: crece con team_size (0 con 1 vendedor, ~0.25 con 4, tope ~0.30)
+        // w_momentum:  escala con close_rate (más cierres → momentum más relevante)
+        // w_proporcional: el resto — siempre la base dominante
 
-        if ($team_size >= 2) {
-            $final = $proporcional * 0.50 + $momentum_score * 0.25 + $percentil * 0.25;
-        } else {
-            // Vendedor solo: proporcional domina (80%). Momentum complementa (20%).
-            // Permite llegar a Top (90+) con rendimiento consistente.
-            // Antes era 65/35 → máximo 82 con momentum estable.
-            $final = $proporcional * 0.80 + $momentum_score * 0.20;
-        }
+        $w_percentil = $team_size > 1
+            ? min(($team_size - 1) / $team_size, 0.30)
+            : 0.0;
+        $w_momentum  = (1.0 - $w_percentil) * $close_rate_safe;
+        $w_proporcional = 1.0 - $w_percentil - $w_momentum;
+
+        $final = $proporcional * $w_proporcional
+               + $momentum_score * $w_momentum
+               + $percentil * $w_percentil;
 
         $score = (int)round($final * 100);
         $score = max(0, min(100, $score));
@@ -1026,6 +1030,9 @@ class ActividadScore
             'momentum'          => round($momentum, 2),
             'percentil'         => round($percentil, 2),
             'team_size'         => $team_size,
+            'w_proporcional'    => round($w_proporcional, 3),
+            'w_momentum'        => round($w_momentum, 3),
+            'w_percentil'       => round($w_percentil, 3),
             // Debug: penalties breakdown
             'pen_dormidas'      => round($pen_dormidas ?? 0, 3),
             'pen_seguimiento'   => round($pen_seguimiento ?? 0, 3),

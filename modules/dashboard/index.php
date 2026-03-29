@@ -820,9 +820,9 @@ $ts_diag  = ActividadScore::diagnostico($ts);
         <div class="dbg-row"><span class="dbg-lbl">Conversión (35%)</span><span class="dbg-val"><?= round(($es['s_conversion'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Penalizaciones</span><span class="dbg-val dbg-neg"><?= ($es['penalizaciones'] ?? 0) > 0 ? '-'.round(($es['penalizaciones'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Bonuses</span><span class="dbg-val"><?= round(($es['bonuses'] ?? 0) * 100, 1) ?>%</span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Tasa gestión</span><span class="dbg-val"><?= round(($es['tasa_gestion'] ?? 0) * 100, 1) ?>%</span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Momentum</span><span class="dbg-val"><?= number_format($es['momentum'] ?? 1, 2) ?></span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Percentil</span><span class="dbg-val"><?= round(($es['percentil'] ?? 0) * 100) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Proporcional (×<?= round(($es['w_proporcional'] ?? 0.9) * 100) ?>%)</span><span class="dbg-val"><?= round(($es['tasa_gestion'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Momentum (×<?= round(($es['w_momentum'] ?? 0.1) * 100) ?>%)</span><span class="dbg-val"><?= number_format($es['momentum'] ?? 1, 2) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Percentil (×<?= round(($es['w_percentil'] ?? 0) * 100) ?>%)</span><span class="dbg-val"><?= round(($es['percentil'] ?? 0) * 100) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Asig / Vistas / Cierres</span><span class="dbg-val"><?= (int)($es['cot_asignadas'] ?? 0) ?> / <?= (int)($es['cot_vistas'] ?? 0) ?> / <?= (int)($es['conversiones'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Dormidas 7d</span><span class="dbg-val"><?= (int)($es['cot_dormidas'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">No abiertas 5d</span><span class="dbg-val dbg-neg"><?= (int)($es['no_abiertas_5d'] ?? 0) ?></span></div>
