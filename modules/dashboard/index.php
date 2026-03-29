@@ -748,7 +748,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
           <li><b>Engagement (17%)</b> — Capa de penalizaciones: ventas sin cobrar (×1/tasa cierre, fuerte), descuentos y enfriamiento del pipeline (×tasa cierre, suave), ventas por debajo del promedio de la empresa.</li>
           <li><b>Seguimiento (25%)</b> — ¿Das feedback a las señales calientes del Radar? Se evalúa el esfuerzo (dar feedback) y el resultado (¿acertaste?). Con más feedbacks, la calidad pesa más que el esfuerzo.</li>
           <li><b>Radar Health (15%)</b> — ¿Tu pipeline mejora o empeora? Cuenta transiciones de temperatura de tus cotizaciones: frío→caliente suma, caliente→frío resta.</li>
-          <li><b>Conversión (35%)</b> — ¿Cierras ventas? Tasa de cierre vs empresa, calidad (cerrar ventas difíciles vale más), velocidad vs promedio, consistencia semanal.</li>
+          <li><b>Conversión (35%)</b> — ¿Cierras ventas? Tasa de cierre vs empresa, calidad (cerrar ventas difíciles vale más), velocidad vs promedio, tendencia de volumen (ventas actuales vs período anterior), consistencia semanal.</li>
         </ul>
         <p><b>Auto-ajuste:</b> Todas las penalizaciones escalan con la tasa de cierre de la empresa. Sin valores fijos — cada empresa tiene su propia escala.</p>
         <p><b>Score final:</b> Los pesos del score se ajustan automáticamente: con pocos vendedores domina el proporcional. Con equipo grande, el percentil gana peso. La tendencia (momentum) escala con la tasa de cierre. Flechas: ↑ mejorando, → estable, ↓ decayendo.</p>
