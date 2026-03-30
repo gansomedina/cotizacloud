@@ -31,14 +31,16 @@ if (!$emp) { die("Error: empresa {$empresa_id} no encontrada\n"); }
 
 echo "Importando historial para: {$emp['nombre']} (ID: {$empresa_id})\n\n";
 
-// Mapa de meses en español
+// Mapa de meses en español e inglés
 $meses_es = [
     'enero'=>1,'febrero'=>2,'marzo'=>3,'abril'=>4,'mayo'=>5,'junio'=>6,
-    'julio'=>7,'agosto'=>8,'septiembre'=>9,'octubre'=>10,'noviembre'=>11,'diciembre'=>12
+    'julio'=>7,'agosto'=>8,'septiembre'=>9,'octubre'=>10,'noviembre'=>11,'diciembre'=>12,
+    'january'=>1,'february'=>2,'march'=>3,'april'=>4,'may'=>5,'june'=>6,
+    'july'=>7,'august'=>8,'september'=>9,'october'=>10,'november'=>11,'december'=>12
 ];
 
 /**
- * Parsear fecha del CSV: "marzo 26, 2026" → [2026, 3]
+ * Parsear fecha del CSV: "marzo 26, 2026" o "March 25, 2026" → [2026, 3]
  */
 function parsearFechaMes(string $fecha, array $meses): ?array
 {
