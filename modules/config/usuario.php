@@ -23,19 +23,18 @@ $body = json_decode(file_get_contents('php://input'), true);
 if (!$body) { echo json_encode(['ok'=>false,'error'=>'Payload inválido']); exit; }
 
 $nombre  = mb_substr(trim($body['nombre']  ?? ''), 0, 120);
-$usuario = mb_substr(strtolower(trim($body['usuario'] ?? '')), 0, 60);
-$email   = mb_substr(trim($body['email']   ?? ''), 0, 120) ?: null;
-if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) { json_error('Email inválido'); }
+$email   = mb_substr(strtolower(trim($body['email'] ?? '')), 0, 120);
+if ($email === '') { echo json_encode(['ok'=>false,'error'=>'El email es obligatorio']); exit; }
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { echo json_encode(['ok'=>false,'error'=>'Email inválido']); exit; }
+// Autogenerar usuario del email (parte antes del @)
+$usuario = mb_substr(preg_replace('/[^a-z0-9._-]/', '', strtolower(explode('@', $email)[0])), 0, 60);
+if ($usuario === '') $usuario = mb_substr(str_replace(['@','.'], '_', $email), 0, 60);
 $rol     = in_array($body['rol']??'', ['admin','asesor']) ? $body['rol'] : 'asesor';
 $activo  = (int)($body['activo'] ?? 1);
 $pass    = $body['password'] ?? '';
 
 // Validaciones
 if ($nombre === '')  { echo json_encode(['ok'=>false,'error'=>'El nombre es obligatorio']); exit; }
-if ($usuario === '') { echo json_encode(['ok'=>false,'error'=>'El usuario es obligatorio']); exit; }
-if (!preg_match('/^[a-z0-9._\-]{1,60}$/', $usuario)) {
-    echo json_encode(['ok'=>false,'error'=>'Usuario inválido — solo minúsculas, números y . _ -']); exit;
-}
 
 // Permisos granulares (solo aplican a asesores)
 $perms = [
@@ -65,9 +64,9 @@ if ($usr_id > 0) {
     $u = DB::row("SELECT id, usuario FROM usuarios WHERE id=? AND empresa_id=?", [$usr_id, $eid]);
     if (!$u) { echo json_encode(['ok'=>false,'error'=>'Usuario no encontrado']); exit; }
 
-    // Verificar nombre de usuario único (excepto el mismo)
-    $dup = DB::val("SELECT id FROM usuarios WHERE empresa_id=? AND usuario=? AND id!=?", [$eid, $usuario, $usr_id]);
-    if ($dup) { echo json_encode(['ok'=>false,'error'=>'Ese nombre de usuario ya está en uso']); exit; }
+    // Verificar email único (excepto el mismo)
+    $dup = DB::val("SELECT id FROM usuarios WHERE empresa_id=? AND email=? AND id!=?", [$eid, $email, $usr_id]);
+    if ($dup) { echo json_encode(['ok'=>false,'error'=>'Ese email ya está en uso']); exit; }
 
     // No permitir desactivar al único admin
     if ($activo === 0) {
@@ -109,8 +108,8 @@ if ($usr_id > 0) {
     // ── CREAR ────────────────────────────────────────────────
     if (strlen($pass) < 8) { echo json_encode(['ok'=>false,'error'=>'La contraseña debe tener al menos 8 caracteres']); exit; }
 
-    $dup = DB::val("SELECT id FROM usuarios WHERE empresa_id=? AND usuario=?", [$eid, $usuario]);
-    if ($dup) { echo json_encode(['ok'=>false,'error'=>'Ese nombre de usuario ya está en uso']); exit; }
+    $dup = DB::val("SELECT id FROM usuarios WHERE empresa_id=? AND email=?", [$eid, $email]);
+    if ($dup) { echo json_encode(['ok'=>false,'error'=>'Ese email ya está en uso']); exit; }
 
     $nuevo = DB::insert(
         "INSERT INTO usuarios

@@ -1455,15 +1455,10 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
         <input class="sh-input" type="text" id="shUsrNombre" placeholder="Nombre completo">
       </div>
       <div>
-        <div class="sh-lbl">Usuario <span style="color:var(--danger)">*</span></div>
-        <input class="sh-input mono" type="text" id="shUsrUsuario" placeholder="usuario" maxlength="60"
-               oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')">
-        <div class="sh-note">Solo letras, números y . _ -</div>
+        <div class="sh-lbl">Email <span style="color:var(--danger)">*</span></div>
+        <input class="sh-input" type="email" id="shUsrEmail" placeholder="correo@ejemplo.com">
+        <div class="sh-note">Se usa para iniciar sesión</div>
       </div>
-    </div>
-    <div class="sh-field">
-      <div class="sh-lbl">Email (opcional)</div>
-      <input class="sh-input" type="email" id="shUsrEmail" placeholder="correo@ejemplo.com">
     </div>
     <div class="sh-field">
       <div class="sh-lbl">Contraseña</div>
@@ -1925,7 +1920,7 @@ async function eliminarCupon(id, btn) {
 function nuevoUsuario() {
     document.getElementById('shUsrId').value    = '';
     document.getElementById('shUsrTit').textContent = 'Nuevo usuario';
-    ['shUsrNombre','shUsrUsuario','shUsrEmail','shUsrPass'].forEach(i => document.getElementById(i).value = '');
+    ['shUsrNombre','shUsrEmail','shUsrPass'].forEach(i => document.getElementById(i).value = '');
     document.getElementById('shUsrRol').value   = 'asesor';
     document.getElementById('shUsrActivo').checked = true;
     document.getElementById('shUsrPassNote').textContent = 'Mín. 8 caracteres';
@@ -1952,7 +1947,7 @@ function editarUsuario(id, data) {
     document.getElementById('shUsrId').value       = id;
     document.getElementById('shUsrTit').textContent = 'Editar usuario';
     document.getElementById('shUsrNombre').value   = data.nombre;
-    document.getElementById('shUsrUsuario').value  = data.usuario;
+
     document.getElementById('shUsrEmail').value    = data.email;
     document.getElementById('shUsrPass').value     = '';
     document.getElementById('shUsrPassNote').textContent = 'Deja en blanco para no cambiarla';
@@ -1982,16 +1977,15 @@ function togglePerms(rol) {
 async function guardarUsuario() {
     const id      = document.getElementById('shUsrId').value;
     const nombre  = document.getElementById('shUsrNombre').value.trim();
-    const usuario = document.getElementById('shUsrUsuario').value.trim();
     const email   = document.getElementById('shUsrEmail').value.trim();
     const pass    = document.getElementById('shUsrPass').value;
     const rol     = document.getElementById('shUsrRol').value;
     const activo  = document.getElementById('shUsrActivo').checked ? 1 : 0;
-    if (!nombre || !usuario) { alert('Nombre y usuario son obligatorios.'); return; }
+    if (!nombre || !email) { alert('Nombre y email son obligatorios.'); return; }
     if (!id && pass.length < 8) { alert('La contraseña debe tener al menos 8 caracteres.'); return; }
     if (id && pass && pass.length < 8) { alert('La nueva contraseña debe tener al menos 8 caracteres.'); return; }
     const payload = {
-        nombre, usuario, email, rol, activo,
+        nombre, email, rol, activo,
         puede_crear_cotizaciones:    document.getElementById('perm_crear_cots').checked ? 1 : 0,
         puede_editar_cotizaciones:   document.getElementById('perm_editar_cots').checked ? 1 : 0,
         puede_ver_cantidades:        document.getElementById('perm_ver_cantidades').checked ? 1 : 0,
