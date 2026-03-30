@@ -316,7 +316,10 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 .qh-title{font:800 22px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.025em;line-height:1.2;margin-bottom:4px}
 .qh-client{font-size:14px;color:var(--t2)}
 .qh-client span{color:var(--t3);font-size:12px}
-.qh-pills{padding:12px 22px;display:flex;flex-wrap:wrap;gap:8px}
+.qh-pills{padding:12px 22px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.pill-c3{grid-column:span 3}
+.pill-c2{grid-column:span 2}
+@media(max-width:600px){.qh-pills{grid-template-columns:repeat(6,1fr)}}
 .pill{display:flex;flex-direction:column;padding:8px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;white-space:nowrap}
 .pill-label{font-size:9.5px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
 .pill-value{font:600 13px 'DM Sans',sans-serif;color:var(--text)}
@@ -633,31 +636,27 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       <?php endif ?>
     </div>
     <div class="qh-pills">
-      <div class="pill">
+      <div class="pill pill-c3">
         <div class="pill-label">Cotización</div>
         <div class="pill-value"><?= e($cot['numero']) ?></div>
       </div>
-      <div class="pill">
+      <div class="pill pill-c3">
+        <div class="pill-label">Asesor</div>
+        <div class="pill-value"><?= e($cot['asesor_nombre'] ?? '—') ?></div>
+      </div>
+      <div class="pill pill-c2">
         <div class="pill-label">Elaboración</div>
         <div class="pill-value"><?= date('d/m/Y', strtotime($cot['created_at'])) ?></div>
       </div>
-      <?php if ($cot['valida_hasta']): ?>
       <?php
-        $vts = strtotime($cot['valida_hasta']);
-        $vd  = ($vts - strtotime('today')) / 86400;
+        $vts = $cot['valida_hasta'] ? strtotime($cot['valida_hasta']) : 0;
+        $vd  = $vts ? ($vts - strtotime('today')) / 86400 : 999;
       ?>
-      <div class="pill" <?php if ($vd < 0): ?>style="background:#fff5f5;border-color:#fca5a5"<?php elseif ($vd <= 3): ?>style="background:#fffbeb;border-color:#fcd34d"<?php endif; ?>>
-        <div class="pill-label"><?= $vd < 0 ? 'Venció' : 'Vencimiento' ?></div>
-        <div class="pill-value" <?php if ($vd < 0): ?>style="color:#c53030"<?php elseif ($vd <= 3): ?>style="color:#92400e"<?php endif; ?>><?= date('d/m/Y', $vts) ?></div>
+      <div class="pill pill-c2" <?php if ($vts && $vd < 0): ?>style="background:#fff5f5;border-color:#fca5a5"<?php elseif ($vts && $vd <= 3): ?>style="background:#fffbeb;border-color:#fcd34d"<?php endif; ?>>
+        <div class="pill-label"><?= ($vts && $vd < 0) ? 'Venció' : 'Vencimiento' ?></div>
+        <div class="pill-value" <?php if ($vts && $vd < 0): ?>style="color:#c53030"<?php elseif ($vts && $vd <= 3): ?>style="color:#92400e"<?php endif; ?>><?= $vts ? date('d/m/Y', $vts) : '—' ?></div>
       </div>
-      <?php endif; ?>
-      <?php if ($cot['asesor_nombre']): ?>
-      <div class="pill">
-        <div class="pill-label">Asesor</div>
-        <div class="pill-value"><?= e($cot['asesor_nombre']) ?></div>
-      </div>
-      <?php endif; ?>
-      <div class="pill">
+      <div class="pill pill-c2">
         <div class="pill-label">Total</div>
         <div class="pill-value"><?= fmt_pub((float)$cot['total']) ?></div>
       </div>
