@@ -133,16 +133,26 @@ $tasa_conv = ($kfc['total'] ?? 0) > 0
     ? round($kfc['aceptadas'] / $kfc['total'] * 100, 1) : 0;
 
 // Serie mensual (últimos 12 meses) para gráfica de barras
+// Combina ventas reales + historial importado
 $serie_meses = DB::query(
-    "SELECT DATE_FORMAT(v.created_at, '%Y-%m') AS mes,
-            COALESCE(SUM(v.total), 0)          AS monto,
-            COUNT(*)                           AS num
-     FROM ventas v
-     WHERE v.empresa_id=? AND v.estado != 'cancelada'
-       AND v.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-       $usr_filter
-     GROUP BY mes ORDER BY mes ASC",
-    [$empresa_id]
+    "SELECT mes, SUM(monto) AS monto, SUM(num) AS num FROM (
+        SELECT DATE_FORMAT(v.created_at, '%Y-%m') AS mes,
+               COALESCE(SUM(v.total), 0) AS monto,
+               COUNT(*) AS num
+        FROM ventas v
+        WHERE v.empresa_id=? AND v.estado != 'cancelada'
+          AND v.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+          $usr_filter
+        GROUP BY mes
+        UNION ALL
+        SELECT CONCAT(h.anio, '-', LPAD(h.mes, 2, '0')) AS mes,
+               h.ventas_monto AS monto,
+               h.ventas_cantidad AS num
+        FROM historial_mensual h
+        WHERE h.empresa_id=?
+          AND STR_TO_DATE(CONCAT(h.anio, '-', LPAD(h.mes, 2, '0'), '-01'), '%Y-%m-%d') >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+    ) combined GROUP BY mes ORDER BY mes ASC",
+    [$empresa_id, $empresa_id]
 );
 
 // Serie costos mensual — filtrar según modo
@@ -710,6 +720,61 @@ ob_start();
       </div>
     </div>
   </div>
+
+  <?php
+  // Historial importado
+  $hist_rep = DB::query(
+      "SELECT * FROM historial_mensual WHERE empresa_id = ? ORDER BY anio DESC, mes DESC LIMIT 24",
+      [$empresa_id]
+  );
+  if ($hist_rep):
+    $mn = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    $hist_total_ventas_monto = array_sum(array_column($hist_rep, 'ventas_monto'));
+    $hist_total_ventas_cant  = array_sum(array_column($hist_rep, 'ventas_cantidad'));
+    $hist_total_cots_cant    = array_sum(array_column($hist_rep, 'cotizaciones_cantidad'));
+    $hist_tasa = $hist_total_cots_cant > 0 ? round($hist_total_ventas_cant / $hist_total_cots_cant * 100, 1) : 0;
+  ?>
+  <div class="sec-lbl" style="margin:28px 0 12px">Historial importado</div>
+  <div class="kpi-grid" style="margin-bottom:16px">
+    <div class="kpi-card">
+      <div class="kpi-label">Ventas históricas</div>
+      <div class="kpi-val green"><?= rp($hist_total_ventas_monto) ?></div>
+      <div class="kpi-sub"><?= number_format($hist_total_ventas_cant) ?> ventas</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Cotizaciones históricas</div>
+      <div class="kpi-val"><?= number_format($hist_total_cots_cant) ?></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Tasa cierre histórica</div>
+      <div class="kpi-val <?= $hist_tasa>=15?'green':($hist_tasa>=8?'amber':'danger') ?>"><?= rpp($hist_tasa) ?></div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <table class="tbl" style="font-size:12px">
+      <thead>
+        <tr>
+          <th>Periodo</th>
+          <th style="text-align:right">Cotizaciones</th>
+          <th style="text-align:right">Ventas</th>
+          <th style="text-align:right">Monto Ventas</th>
+          <th style="text-align:right">Tasa</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($hist_rep as $hr): ?>
+        <tr>
+          <td style="font:600 12px var(--body)"><?= $mn[(int)$hr['mes']] ?> <?= $hr['anio'] ?></td>
+          <td style="text-align:right;font:500 12px var(--num)"><?= number_format($hr['cotizaciones_cantidad']) ?></td>
+          <td style="text-align:right;font:600 12px var(--num)"><?= number_format($hr['ventas_cantidad']) ?></td>
+          <td style="text-align:right;font:600 12px var(--num);color:var(--g)"><?= rp((float)$hr['ventas_monto']) ?></td>
+          <td style="text-align:right;font:700 12px var(--num);color:<?= $hr['tasa_cierre']>=15?'var(--g)':($hr['tasa_cierre']>=8?'#b45309':'var(--danger)') ?>"><?= number_format($hr['tasa_cierre'],1) ?>%</td>
+        </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+  <?php endif; ?>
 
 </div><!-- /panel-financiero -->
 
