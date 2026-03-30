@@ -770,7 +770,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
             <td><span class="tbl-price">-<?= (float)$cup['porcentaje'] ?>%</span></td>
             <td class="hide-mob" style="font:500 13px var(--num);color:var(--t3)"><?= (int)$cup['usos'] ?></td>
             <td class="hide-mob"><span class="tbl-badge <?= $cup['activo']?'badge-on':'badge-off' ?>"><?= $cup['activo']?'Activo':'Inactivo' ?></span></td>
-            <td>
+            <td style="text-align:right">
               <div class="tbl-actions">
                 <button class="tbl-btn"
                         onclick='editarCupon(<?= (int)$cup["id"] ?>, <?= htmlspecialchars(json_encode(["codigo"=>$cup["codigo"],"descripcion"=>$cup["descripcion"],"porcentaje"=>$cup["porcentaje"],"activo"=>$cup["activo"],"vencimiento_tipo"=>$cup["vencimiento_tipo"]??'nunca',"vencimiento_dias"=>$cup["vencimiento_dias"]??null,"vencimiento_fecha"=>$cup["vencimiento_fecha"]??null]), ENT_QUOTES) ?>)'
