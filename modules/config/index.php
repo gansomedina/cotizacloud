@@ -9,7 +9,7 @@ defined('COTIZAAPP') or die;
 Auth::requerir_admin();
 
 $empresa_id = EMPRESA_ID;
-$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing'])
+$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing','historial'])
     ? $_GET['tab'] : 'empresa';
 
 // Usuarios solo disponible en plan Business
@@ -85,6 +85,12 @@ $fit = DB::row(
     [$empresa_id]
 );
 $fit_bandas = $fit ? json_decode($fit['bandas_json'] ?? '[]', true) : [];
+
+// ─── Historial mensual ──────────────────────────────────────
+$historial = DB::query(
+    "SELECT * FROM historial_mensual WHERE empresa_id = ? ORDER BY anio DESC, mes DESC",
+    [$empresa_id]
+) ?: [];
 
 // ─── Helpers ─────────────────────────────────────────────────
 function ini_cfg(string $n): string {
@@ -334,6 +340,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <?php endif; ?>
     <?php if ($plan_info['es_business']): ?>
     <a class="cfg-tab <?= $tab_activo==='marketing' ?'on':'' ?>" href="/config?tab=marketing">Marketing</a>
+    <a class="cfg-tab <?= $tab_activo==='historial' ?'on':'' ?>" href="/config?tab=historial">Historial</a>
     <?php endif; ?>
   </div>
 </div>
@@ -1183,6 +1190,118 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   </div>
 
 </div><!-- /panel-marketing -->
+
+<!-- ══ TAB: HISTORIAL ═══════════════════════════════════════ -->
+<div class="tab-panel <?= $tab_activo==='historial'?'on':'' ?>" id="panel-historial">
+
+  <div style="margin-bottom:16px;font-size:13px;color:var(--t3)">
+    Datos históricos importados. Se usan como base para reportes y tasa de cierre del Radar.
+  </div>
+
+  <!-- Formulario agregar mes -->
+  <div class="card" style="padding:16px 20px;margin-bottom:16px">
+    <div style="font:700 13px var(--body);margin-bottom:10px">Agregar mes</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+      <div>
+        <label class="field-lbl">Año</label>
+        <input class="num-in" id="h_anio" type="number" min="2018" max="2030" value="<?= date('Y') ?>" style="width:80px">
+      </div>
+      <div>
+        <label class="field-lbl">Mes</label>
+        <select id="h_mes" class="num-in" style="width:110px;padding:6px 8px">
+          <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+          <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+          <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+          <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-lbl">Cotizaciones</label>
+        <input class="num-in" id="h_cots" type="number" min="0" value="0" style="width:80px">
+      </div>
+      <div>
+        <label class="field-lbl">Monto cots</label>
+        <input class="num-in" id="h_cots_monto" type="number" min="0" step="0.01" value="0" style="width:110px">
+      </div>
+      <div>
+        <label class="field-lbl">Ventas</label>
+        <input class="num-in" id="h_ventas" type="number" min="0" value="0" style="width:80px">
+      </div>
+      <div>
+        <label class="field-lbl">Monto ventas</label>
+        <input class="num-in" id="h_ventas_monto" type="number" min="0" step="0.01" value="0" style="width:110px">
+      </div>
+      <button class="save-btn" onclick="guardarHistorial()">Agregar</button>
+    </div>
+  </div>
+
+  <!-- Tabla historial -->
+  <div class="card">
+    <div class="tbl-wrap">
+      <table class="tbl" id="tbl-historial">
+        <thead>
+          <tr>
+            <th>Periodo</th>
+            <th class="r">Cotizaciones</th>
+            <th class="r">Monto Cots</th>
+            <th class="r">Ventas</th>
+            <th class="r">Monto Ventas</th>
+            <th class="r">Tasa Cierre</th>
+            <th style="text-align:right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php
+          $meses_nombre = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+          foreach ($historial as $h):
+          ?>
+          <tr data-hist-id="<?= (int)$h['id'] ?>">
+            <td style="font:600 13px var(--body)"><?= $meses_nombre[(int)$h['mes']] ?> <?= $h['anio'] ?></td>
+            <td class="r" style="font:500 13px var(--num)"><?= number_format($h['cotizaciones_cantidad']) ?></td>
+            <td class="r" style="font:500 13px var(--num)">$<?= number_format($h['cotizaciones_monto'], 0) ?></td>
+            <td class="r" style="font:600 13px var(--num)"><?= number_format($h['ventas_cantidad']) ?></td>
+            <td class="r" style="font:600 13px var(--num);color:var(--g)">$<?= number_format($h['ventas_monto'], 0) ?></td>
+            <td class="r" style="font:700 13px var(--num);color:<?= $h['tasa_cierre'] >= 15 ? 'var(--g)' : ($h['tasa_cierre'] >= 8 ? 'var(--amb)' : '#c53030') ?>"><?= number_format($h['tasa_cierre'], 1) ?>%</td>
+            <td style="text-align:right">
+              <button class="tbl-btn del" onclick="eliminarHistorial(<?= (int)$h['id'] ?>, this)" title="Eliminar">✕</button>
+            </td>
+          </tr>
+          <?php endforeach; ?>
+          <?php if (empty($historial)): ?>
+          <tr><td colspan="7" style="text-align:center;padding:28px;color:var(--t3);font-size:13px">Sin datos históricos</td></tr>
+          <?php endif; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <?php if (!empty($historial)):
+    $total_cots = array_sum(array_column($historial, 'cotizaciones_cantidad'));
+    $total_ventas = array_sum(array_column($historial, 'ventas_cantidad'));
+    $total_ventas_monto = array_sum(array_column($historial, 'ventas_monto'));
+    $tasa_global = $total_cots > 0 ? round($total_ventas / $total_cots * 100, 1) : 0;
+  ?>
+  <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap">
+    <div class="card" style="padding:12px 16px;flex:1;min-width:120px">
+      <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em">Total cotizaciones</div>
+      <div style="font:800 18px var(--num)"><?= number_format($total_cots) ?></div>
+    </div>
+    <div class="card" style="padding:12px 16px;flex:1;min-width:120px">
+      <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em">Total ventas</div>
+      <div style="font:800 18px var(--num)"><?= number_format($total_ventas) ?></div>
+    </div>
+    <div class="card" style="padding:12px 16px;flex:1;min-width:120px">
+      <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em">Monto vendido</div>
+      <div style="font:800 18px var(--num);color:var(--g)">$<?= number_format($total_ventas_monto, 0) ?></div>
+    </div>
+    <div class="card" style="padding:12px 16px;flex:1;min-width:120px">
+      <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em">Tasa cierre promedio</div>
+      <div style="font:800 18px var(--num)"><?= $tasa_global ?>%</div>
+    </div>
+  </div>
+  <?php endif; ?>
+
+</div><!-- /panel-historial -->
 <?php endif; ?>
 
 
@@ -1926,6 +2045,43 @@ async function guardarMarketing(){
     if (d.ok) { alert('Configuracion de Marketing guardada'); }
     else alert(d.error || 'Error al guardar.');
   } catch(e) { alert('Error de conexión.'); }
+}
+
+// ── Historial mensual ───────────────────────────────────────
+async function guardarHistorial() {
+    const anio = parseInt(document.getElementById('h_anio').value) || 0;
+    const mes  = parseInt(document.getElementById('h_mes').value) || 0;
+    const cotizaciones_cantidad = parseInt(document.getElementById('h_cots').value) || 0;
+    const cotizaciones_monto    = parseFloat(document.getElementById('h_cots_monto').value) || 0;
+    const ventas_cantidad       = parseInt(document.getElementById('h_ventas').value) || 0;
+    const ventas_monto          = parseFloat(document.getElementById('h_ventas_monto').value) || 0;
+
+    if (!anio || !mes) { alert('Año y mes son requeridos'); return; }
+    if (cotizaciones_cantidad === 0 && ventas_cantidad === 0) { alert('Ingresa al menos cotizaciones o ventas'); return; }
+
+    try {
+        const r = await fetch('/config/historial', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+            body: JSON.stringify({ anio, mes, cotizaciones_cantidad, cotizaciones_monto, ventas_cantidad, ventas_monto })
+        });
+        const d = await r.json();
+        if (d.ok) { location.reload(); }
+        else alert(d.error || 'Error al guardar.');
+    } catch(e) { alert('Error de conexión.'); }
+}
+
+async function eliminarHistorial(id, btn) {
+    if (!confirm('¿Eliminar este registro del historial?')) return;
+    try {
+        const r = await fetch('/config/historial/' + id + '/eliminar', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': CSRF_TOKEN }
+        });
+        const d = await r.json();
+        if (d.ok) { btn.closest('tr').remove(); }
+        else alert(d.error || 'Error al eliminar.');
+    } catch(e) { alert('Error de conexión.'); }
 }
 </script>
 
