@@ -150,6 +150,53 @@ $pagos_hoy = DB::query(
      LIMIT 30"
 );
 
+// ─── VENTAS SIN PAGOS ───────────────────────────────────────
+$sin_pagos = DB::query(
+    "SELECT v.empresa_id, v.titulo, v.numero, v.total, v.created_at,
+            c.nombre AS cliente_nombre,
+            DATEDIFF(NOW(), v.created_at) AS dias
+     FROM ventas v
+     LEFT JOIN clientes c ON c.id = v.cliente_id
+     WHERE v.empresa_id IN ({$emp_ids})
+       AND v.estado IN ('pendiente')
+       AND v.pagado = 0 AND v.total > 0
+     ORDER BY v.created_at ASC LIMIT 30"
+);
+
+// ─── PERFORMANCE ASESORES ───────────────────────────────────
+$asesores = DB::query(
+    "SELECT u.id, u.nombre, u.empresa_id,
+            us.score, us.nivel, us.s_activacion, us.s_seguimiento, us.s_conversion
+     FROM usuarios u
+     LEFT JOIN usuario_score us ON us.usuario_id = u.id AND us.empresa_id = u.empresa_id
+     WHERE u.empresa_id IN ({$emp_ids}) AND u.activo = 1 AND u.rol != 'superadmin'
+     ORDER BY us.score DESC"
+);
+
+// Ventas por asesor este mes
+$va_asesor = [];
+$rows = DB::query(
+    "SELECT COALESCE(v.vendedor_id, v.usuario_id) AS uid,
+            COUNT(*) AS num, COALESCE(SUM(v.total),0) AS monto
+     FROM ventas v
+     WHERE v.empresa_id IN ({$emp_ids}) AND v.estado != 'cancelada'
+       AND v.created_at BETWEEN ? AND ?
+     GROUP BY uid",
+    [$mes_ini . ' 00:00:00', $mes_fin . ' 23:59:59']
+);
+foreach ($rows as $r) $va_asesor[(int)$r['uid']] = $r;
+
+// ─── DISTRIBUCIÓN INGRESOS (para donut) ─────────────────────
+$donut_data = [];
+$donut_labels = [];
+$donut_colors = [];
+foreach ($empresas_cfg as $eid => $ec) {
+    $monto = (float)($ve_act[$eid]['monto'] ?? 0);
+    $donut_data[] = $monto;
+    $donut_labels[] = $ec['short'];
+    $donut_colors[] = $ec['color'];
+}
+
 // ─── Helpers ────────────────────────────────────────────────
 function xm(float $n): string {
     if (abs($n) >= 1000000) return '$' . number_format($n/1000000, 1) . 'M';
@@ -233,6 +280,28 @@ tbody tr:hover td{background:var(--card-hover)}
 
 /* Responsive */
 @media(max-width:1100px){.grid-2{grid-template-columns:1fr}}
+/* Score */
+.score-wrap{display:flex;align-items:center;gap:8px}
+.score-bar{width:50px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.score-fill{height:100%;border-radius:3px}
+.score-num{font:800 14px 'Inter',sans-serif;min-width:24px}
+.score-badge{font:700 9px 'Inter',sans-serif;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.03em}
+
+/* Alert dot */
+.alert-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+
+/* Donut container */
+.donut-wrap{display:flex;align-items:center;justify-content:center;gap:24px}
+.donut-canvas{width:200px;height:200px}
+.donut-legend{display:flex;flex-direction:column;gap:8px}
+.donut-item{display:flex;align-items:center;gap:8px;font-size:13px}
+.donut-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.donut-val{font:700 13px 'Inter',sans-serif;margin-left:auto;font-variant-numeric:tabular-nums}
+
+/* Grid 3 */
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:1100px){.grid-3{grid-template-columns:1fr}}
+
 @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:500px){.kpi-grid{grid-template-columns:1fr}}
 </style>
@@ -318,7 +387,12 @@ tbody tr:hover td{background:var(--card-hover)}
     <tbody>
     <?php
     $total_act = 0; $total_ant_sum = 0;
-    foreach ($empresas_cfg as $eid => $ec):
+    // Ordenar empresas por monto desc en la tabla
+    $emp_tabla = [];
+    foreach ($empresas_cfg as $eid => $ec) $emp_tabla[] = ['eid'=>$eid,'ec'=>$ec,'monto'=>(float)($ve_act[$eid]['monto']??0)];
+    usort($emp_tabla, fn($a,$b) => $b['monto'] <=> $a['monto']);
+    foreach ($emp_tabla as $et):
+        $eid = $et['eid']; $ec = $et['ec'];
         $act = (float)($ve_act[$eid]['monto'] ?? 0);
         $num = (int)($ve_act[$eid]['num'] ?? 0);
         $ant = (float)($ve_ant[$eid]['monto'] ?? 0);
@@ -383,17 +457,132 @@ tbody tr:hover td{background:var(--card-hover)}
 
 </div><!-- /grid-2 -->
 
+<!-- DISTRIBUCIÓN + VENTAS SIN PAGOS + ASESORES -->
+<div class="grid-3">
+
+<!-- Donut distribución -->
+<div class="sec">
+    <div class="sec-hdr"><div class="sec-title">Distribución</div></div>
+    <div class="tbl-card" style="padding:24px">
+        <div class="donut-wrap">
+            <div class="donut-canvas"><canvas id="donutChart"></canvas></div>
+        </div>
+        <div class="donut-legend" style="margin-top:16px">
+        <?php
+        // Ordenar por monto desc
+        $sorted = [];
+        foreach ($empresas_cfg as $eid => $ec) $sorted[] = ['eid'=>$eid,'nombre'=>$ec['nombre'],'short'=>$ec['short'],'color'=>$ec['color'],'monto'=>(float)($ve_act[$eid]['monto']??0)];
+        usort($sorted, fn($a,$b) => $b['monto'] <=> $a['monto']);
+        foreach ($sorted as $s):
+        ?>
+        <div class="donut-item">
+            <span class="donut-dot" style="background:<?= $s['color'] ?>"></span>
+            <span><?= $s['nombre'] ?></span>
+            <span class="donut-val" style="color:var(--g)"><?= xm($s['monto']) ?></span>
+        </div>
+        <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+
+<!-- Ventas sin pagos -->
+<div class="sec">
+    <div class="sec-hdr">
+        <div class="sec-title">Sin cobrar</div>
+        <div class="sec-count"><?= count($sin_pagos) ?> ventas</div>
+    </div>
+    <div class="tbl-card" style="max-height:420px;overflow-y:auto">
+    <table>
+    <thead><tr><th></th><th>Venta</th><th class="r">Total</th><th class="r">Días</th></tr></thead>
+    <tbody>
+    <?php if ($sin_pagos): foreach ($sin_pagos as $sp):
+        $ec = $empresas_cfg[(int)$sp['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+        $dias = (int)$sp['dias'];
+        $dias_color = $dias > 7 ? 'var(--r)' : ($dias > 3 ? 'var(--a)' : 'var(--t2)');
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sp['titulo'],0,35)) ?></div>
+            <div style="font-size:11px;color:var(--t3)"><?= e($sp['cliente_nombre'] ?? '—') ?></div>
+        </td>
+        <td class="r mono" style="font-weight:600"><?= xf((float)$sp['total']) ?></td>
+        <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
+            <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
+        </td>
+    </tr>
+    <?php endforeach; else: ?>
+    <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--t3)">Todo cobrado</td></tr>
+    <?php endif; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Performance asesores -->
+<div class="sec">
+    <div class="sec-hdr">
+        <div class="sec-title">Asesores</div>
+        <div class="sec-count"><?= count($asesores) ?> activos</div>
+    </div>
+    <div class="tbl-card" style="max-height:420px;overflow-y:auto">
+    <table>
+    <thead><tr><th>Asesor</th><th class="r">Ventas</th><th class="r">Score</th></tr></thead>
+    <tbody>
+    <?php foreach ($asesores as $a):
+        $ec = $empresas_cfg[(int)$a['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+        $vad = $va_asesor[(int)$a['id']] ?? ['num'=>0,'monto'=>0];
+        $score = (int)($a['score'] ?? 0);
+        $nivel = $a['nivel'] ?? 'nuevo';
+        $nc = match($nivel) { 'top'=>'var(--g)', 'activo'=>'var(--b)', 'regular'=>'var(--a)', 'bajo'=>'var(--r)', default=>'var(--t3)' };
+    ?>
+    <tr>
+        <td>
+            <div style="display:flex;align-items:center;gap:8px">
+                <span class="tag" style="background:<?= $ec['color'] ?>;font-size:8px;min-width:28px;padding:3px 6px"><?= $ec['short'] ?></span>
+                <div>
+                    <div style="font-weight:600;font-size:13px"><?= e($a['nombre']) ?></div>
+                    <div style="font-size:11px;color:var(--t3)"><?= xf((float)$vad['monto']) ?></div>
+                </div>
+            </div>
+        </td>
+        <td class="r mono" style="font-weight:700"><?= (int)$vad['num'] ?></td>
+        <td class="r">
+            <div class="score-wrap" style="justify-content:flex-end">
+                <div class="score-bar"><div class="score-fill" style="width:<?= $score ?>%;background:<?= $nc ?>"></div></div>
+                <span class="score-num" style="color:<?= $nc ?>"><?= $score ?></span>
+            </div>
+        </td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+
+</div><!-- /grid-3 -->
+
 </div><!-- /wrap -->
 
 <script>
+<?php
+// Ordenar empresas por monto desc para leyenda de gráfica
+$emp_sorted = [];
+foreach ($empresas_cfg as $eid => $ec) {
+    $total_12 = 0;
+    foreach ($meses_12 as $m) $total_12 += $trend[$eid][$m] ?? 0;
+    $emp_sorted[] = ['eid'=>$eid, 'ec'=>$ec, 'total'=>$total_12];
+}
+usort($emp_sorted, fn($a,$b) => $b['total'] <=> $a['total']);
+?>
 // ─── Trend Chart ────────────────────────────────────────────
-const ctx = document.getElementById('trendChart').getContext('2d');
-new Chart(ctx, {
+new Chart(document.getElementById('trendChart').getContext('2d'), {
     type: 'line',
     data: {
         labels: <?= json_encode($chart_labels) ?>,
         datasets: [
-            <?php foreach ($empresas_cfg as $eid => $ec):
+            <?php foreach ($emp_sorted as $es):
+                $eid = $es['eid']; $ec = $es['ec'];
                 $data = [];
                 foreach ($meses_12 as $m) $data[] = $trend[$eid][$m] ?? 0;
             ?>
@@ -436,8 +625,8 @@ new Chart(ctx, {
                 padding: 12,
                 cornerRadius: 8,
                 callbacks: {
-                    label: function(ctx) {
-                        return ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString('en-US', {maximumFractionDigits:0});
+                    label: function(c) {
+                        return c.dataset.label + ': $' + c.parsed.y.toLocaleString('en-US', {maximumFractionDigits:0});
                     }
                 }
             }
@@ -456,6 +645,43 @@ new Chart(ctx, {
                         if (v >= 1000000) return '$' + (v/1000000).toFixed(1) + 'M';
                         if (v >= 1000) return '$' + (v/1000).toFixed(0) + 'K';
                         return '$' + v;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// ─── Donut Chart ────────────────────────────────────────────
+new Chart(document.getElementById('donutChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+        labels: <?= json_encode(array_column($sorted, 'short')) ?>,
+        datasets: [{
+            data: <?= json_encode(array_column($sorted, 'monto')) ?>,
+            backgroundColor: <?= json_encode(array_column($sorted, 'color')) ?>,
+            borderColor: '#18181b',
+            borderWidth: 3,
+            hoverBorderColor: '#3f3f46'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '65%',
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#18181b',
+                borderColor: '#3f3f46',
+                borderWidth: 1,
+                titleFont: { family: 'Inter', size: 12, weight: '700' },
+                bodyFont: { family: 'Inter', size: 12 },
+                padding: 10,
+                cornerRadius: 8,
+                callbacks: {
+                    label: function(c) {
+                        return c.label + ': $' + c.parsed.toLocaleString('en-US', {maximumFractionDigits:0});
                     }
                 }
             }
