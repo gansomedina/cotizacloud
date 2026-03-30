@@ -19,7 +19,7 @@ $costos_modo  = $empresa_data['costos_modo'] ?? 'venta';
 
 // ── Período ──────────────────────────────────────────────────
 $periodo_val  = $_GET['periodo'] ?? 'mes_actual';
-$periodos_ok  = ['mes_actual','mes_ant','30_dias','90_dias','anio','anio_ant','rango'];
+$periodos_ok  = ['mes_actual','mes_ant','30_dias','90_dias','anio','anio_ant','todo','rango'];
 if (!in_array($periodo_val, $periodos_ok)) $periodo_val = 'mes_actual';
 
 $now = new DateTimeImmutable('now', new DateTimeZone('America/Hermosillo'));
@@ -44,6 +44,10 @@ switch ($periodo_val) {
         $y     = (int)$now->format('Y') - 1;
         $f_ini = "$y-01-01";
         $f_fin = "$y-12-31";
+        break;
+    case 'todo':
+        $f_ini = '2020-01-01';
+        $f_fin = $now->format('Y-m-d');
         break;
     case 'rango':
         $f_ini = $_GET['f_ini'] ?? $now->format('Y-m') . '-01';
@@ -569,6 +573,7 @@ ob_start();
       <option value="90_dias"    <?= $periodo_val==='90_dias'   ?'selected':'' ?>>Últimos 90 días</option>
       <option value="anio"       <?= $periodo_val==='anio'      ?'selected':'' ?>>Este año</option>
       <option value="anio_ant"   <?= $periodo_val==='anio_ant'  ?'selected':'' ?>>Año anterior</option>
+      <option value="todo"       <?= $periodo_val==='todo'      ?'selected':'' ?>>Todo el historial</option>
       <option value="rango"      <?= $periodo_val==='rango'     ?'selected':'' ?>>Rango de fechas</option>
     </select>
     <span id="rangoFechas" style="display:<?= $periodo_val==='rango' ? 'flex' : 'none' ?>;align-items:center;gap:6px">
