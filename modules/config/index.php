@@ -1242,11 +1242,11 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
         <thead>
           <tr>
             <th>Periodo</th>
-            <th class="r">Cotizaciones</th>
-            <th class="r">Monto Cots</th>
-            <th class="r">Ventas</th>
-            <th class="r">Monto Ventas</th>
-            <th class="r">Tasa Cierre</th>
+            <th style="text-align:right">Cotizaciones</th>
+            <th style="text-align:right">Monto Cots</th>
+            <th style="text-align:right">Ventas</th>
+            <th style="text-align:right">Monto Ventas</th>
+            <th style="text-align:right">Tasa Cierre</th>
             <th style="text-align:right">Acciones</th>
           </tr>
         </thead>
@@ -1257,11 +1257,11 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           ?>
           <tr data-hist-id="<?= (int)$h['id'] ?>">
             <td style="font:600 13px var(--body)"><?= $meses_nombre[(int)$h['mes']] ?> <?= $h['anio'] ?></td>
-            <td class="r" style="font:500 13px var(--num)"><?= number_format($h['cotizaciones_cantidad']) ?></td>
-            <td class="r" style="font:500 13px var(--num)">$<?= number_format($h['cotizaciones_monto'], 0) ?></td>
-            <td class="r" style="font:600 13px var(--num)"><?= number_format($h['ventas_cantidad']) ?></td>
-            <td class="r" style="font:600 13px var(--num);color:var(--g)">$<?= number_format($h['ventas_monto'], 0) ?></td>
-            <td class="r" style="font:700 13px var(--num);color:<?= $h['tasa_cierre'] >= 15 ? 'var(--g)' : ($h['tasa_cierre'] >= 8 ? 'var(--amb)' : '#c53030') ?>"><?= number_format($h['tasa_cierre'], 1) ?>%</td>
+            <td style="text-align:right;font:500 13px var(--num)"><?= number_format($h['cotizaciones_cantidad']) ?></td>
+            <td style="text-align:right;font:500 13px var(--num)">$<?= number_format($h['cotizaciones_monto'], 0) ?></td>
+            <td style="text-align:right;font:600 13px var(--num)"><?= number_format($h['ventas_cantidad']) ?></td>
+            <td style="text-align:right;font:600 13px var(--num);color:var(--g)">$<?= number_format($h['ventas_monto'], 0) ?></td>
+            <td style="text-align:right;font:700 13px var(--num);color:<?= $h['tasa_cierre'] >= 15 ? 'var(--g)' : ($h['tasa_cierre'] >= 8 ? 'var(--amb)' : '#c53030') ?>"><?= number_format($h['tasa_cierre'], 1) ?>%</td>
             <td style="text-align:right">
               <button class="tbl-btn del" onclick="eliminarHistorial(<?= (int)$h['id'] ?>, this)" title="Eliminar">✕</button>
             </td>
