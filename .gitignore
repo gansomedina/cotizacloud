@@ -19,3 +19,5 @@ node_modules/
 .DS_Store
 Thumbs.db
 ontimeco_wp676.sql
+migrations/hmo-invoice-export.csv
+migrations/hmo-quote-export.csv
