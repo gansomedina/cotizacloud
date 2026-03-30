@@ -1085,10 +1085,20 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <div class="field-sub">Pixel ID de 15-16 digitos. Meta Events Manager > Data Sources > Pixel</div>
           <div id="mkt_meta_wrap" style="margin-top:8px;display:<?= empty($mkt['pixel_meta'])?'none':'block' ?>">
             <input class="field-box" id="mkt_meta" type="text" placeholder="548297463810254" maxlength="20" value="<?= e($mkt['pixel_meta'] ?? '') ?>">
+            <div style="margin-top:8px">
+              <div class="field-lbl">Conversions API Token <span style="font-weight:400;color:var(--t3)">(opcional)</span></div>
+              <div class="field-sub">Mejora la precisión de eventos. Meta Events Manager > Settings > Conversions API > Generate Access Token</div>
+              <input class="field-box" id="mkt_capi_token" type="password" placeholder="EAAxxxxxxx..." maxlength="255" value="<?= e($mkt['capi_token'] ?? '') ?>" style="margin-top:4px;font-family:var(--num)">
+              <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                <label style="font-size:11px;color:var(--t3);cursor:pointer;user-select:none">
+                  <input type="checkbox" onchange="document.getElementById('mkt_capi_token').type=this.checked?'text':'password'" style="vertical-align:middle"> Mostrar token
+                </label>
+              </div>
+            </div>
           </div>
         </div>
         <label class="toggle">
-          <input type="checkbox" id="mkt_meta_on" <?= !empty($mkt['pixel_meta'])?'checked':'' ?> onchange="document.getElementById('mkt_meta_wrap').style.display=this.checked?'block':'none';if(!this.checked)document.getElementById('mkt_meta').value=''">
+          <input type="checkbox" id="mkt_meta_on" <?= !empty($mkt['pixel_meta'])?'checked':'' ?> onchange="document.getElementById('mkt_meta_wrap').style.display=this.checked?'block':'none';if(!this.checked){document.getElementById('mkt_meta').value='';document.getElementById('mkt_capi_token').value=''}">
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
@@ -1905,6 +1915,7 @@ async function guardarMarketing(){
       headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
       body: JSON.stringify({
         pixel_meta:       document.getElementById('mkt_meta')?.value.trim() || '',
+        capi_token:       document.getElementById('mkt_capi_token')?.value.trim() || '',
         pixel_ga4:        document.getElementById('mkt_ga4')?.value.trim() || '',
         pixel_gads_id:    document.getElementById('mkt_gads_id')?.value.trim() || '',
         pixel_gads_label: document.getElementById('mkt_gads_label')?.value.trim() || '',
