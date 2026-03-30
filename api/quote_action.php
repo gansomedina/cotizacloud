@@ -225,6 +225,9 @@ if ($accion === 'aceptar') {
         http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Error al procesar']); exit;
     }
 
+    // CAPI: enviar Lead server-side
+    try { MarketingPixels::capi_lead($empresa_id, (float)$cot['total'], $empresa['moneda'] ?? 'MXN'); } catch (\Throwable $e) {}
+
     echo json_encode(['ok'=>true, 'estado'=>'aceptada']); exit;
 }
 
@@ -300,6 +303,9 @@ if ($accion === 'rechazar') {
         if (DEBUG) throw $e;
         http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Error al procesar']); exit;
     }
+
+    // CAPI: enviar QuoteRejected server-side
+    try { MarketingPixels::capi_rechazar($empresa_id); } catch (\Throwable $e) {}
 
     echo json_encode(['ok'=>true,'estado'=>'rechazada']); exit;
 }

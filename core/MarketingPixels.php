@@ -19,7 +19,7 @@ class MarketingPixels
         if (self::$config !== null) return self::$config;
 
         self::$config = DB::row(
-            "SELECT pixel_meta, pixel_ga4, pixel_gads_id, pixel_gads_label, pixel_tiktok
+            "SELECT pixel_meta, capi_token, pixel_ga4, pixel_gads_id, pixel_gads_label, pixel_tiktok
              FROM marketing_config WHERE empresa_id = ?",
             [$empresa_id]
         ) ?: [];
@@ -143,5 +143,106 @@ class MarketingPixels
         }
 
         return $js;
+    }
+
+    // ─── Conversions API (Server-Side) ──────────────────────
+
+    /**
+     * Enviar evento server-side a Meta Conversions API
+     * Se ejecuta en background (no bloquea el response)
+     */
+    public static function capi_enviar(int $empresa_id, string $event_name, array $event_data = []): void
+    {
+        $cfg = self::cargar($empresa_id);
+        $pixel = $cfg['pixel_meta'] ?? '';
+        $token = $cfg['capi_token'] ?? '';
+
+        if (!$pixel || !$token) return;
+
+        // Validar pixel y token antes de usarlos
+        if (!preg_match('/^\d{15,16}$/', $pixel)) return;
+        if (!preg_match('/^[A-Za-z0-9_-]{50,300}$/', $token)) return;
+
+        $ip   = $_SERVER['REMOTE_ADDR'] ?? '';
+        $ua   = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $url  = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? '') . ($_SERVER['REQUEST_URI'] ?? '');
+        $fbp  = $_COOKIE['_fbp'] ?? null;
+        $fbc  = $_COOKIE['_fbc'] ?? null;
+
+        $user_data = [
+            'client_ip_address'  => $ip,
+            'client_user_agent'  => $ua,
+        ];
+        if ($fbp) $user_data['fbp'] = $fbp;
+        if ($fbc) $user_data['fbc'] = $fbc;
+
+        $event = [
+            'event_name'  => $event_name,
+            'event_time'  => time(),
+            'event_source_url' => $url,
+            'action_source'    => 'website',
+            'user_data'        => $user_data,
+        ];
+
+        if (!empty($event_data)) {
+            $event['custom_data'] = $event_data;
+        }
+
+        $payload = json_encode(['data' => [$event]]);
+
+        $api_url = "https://graph.facebook.com/v21.0/{$pixel}/events?access_token=" . urlencode($token);
+
+        // Enviar con cURL async (timeout corto para no bloquear)
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $api_url,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 5,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_SSL_VERIFYPEER => true,
+        ]);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        // Log de errores (solo en debug)
+        if ($http_code !== 200 && defined('DEBUG') && DEBUG) {
+            error_log("CAPI Error [{$http_code}] empresa={$empresa_id} event={$event_name}: {$response}");
+        }
+    }
+
+    /**
+     * Enviar evento ViewContent via CAPI
+     */
+    public static function capi_view(int $empresa_id, string $numero, float $total, string $moneda = 'MXN'): void
+    {
+        self::capi_enviar($empresa_id, 'ViewContent', [
+            'content_name' => "Cotización {$numero}",
+            'value'        => $total,
+            'currency'     => $moneda,
+        ]);
+    }
+
+    /**
+     * Enviar evento Lead (aceptación) via CAPI
+     */
+    public static function capi_lead(int $empresa_id, float $total, string $moneda = 'MXN'): void
+    {
+        self::capi_enviar($empresa_id, 'Lead', [
+            'value'    => $total,
+            'currency' => $moneda,
+        ]);
+    }
+
+    /**
+     * Enviar evento custom QuoteRejected via CAPI
+     */
+    public static function capi_rechazar(int $empresa_id): void
+    {
+        self::capi_enviar($empresa_id, 'QuoteRejected');
     }
 }

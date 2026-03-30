@@ -223,6 +223,9 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
                 try { Radar::recalcular((int)$cot['id'], (int)$cot['empresa_id']); } catch (\Throwable $re) {}
             }
 
+            // CAPI: enviar ViewContent server-side (solo visitas nuevas, no recargas)
+            try { MarketingPixels::capi_view(EMPRESA_ID, $cot['numero'], (float)($cot['total'] ?? 0), $cot['moneda'] ?? 'MXN'); } catch (\Throwable $e) {}
+
         } else {
             // Sesión ya existe — solo actualizar timestamp (heartbeat)
             // NO incrementar visitas — evita el bug de vistas que suben al recargar
