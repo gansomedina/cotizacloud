@@ -9,6 +9,7 @@ defined('COTIZAAPP') or die;
 $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $empresa_id = EMPRESA_ID;
+$plan_cot   = trial_info($empresa_id);
 
 $cot_id = (int)($id ?? 0);
 if (!$cot_id) redirect('/cotizaciones');
@@ -128,6 +129,7 @@ $lineas_js = json_encode(array_map(fn($l) => [
     'descripcion'  => $l['descripcion'] ?? '',
     'cantidad'     => (float)$l['cantidad'],
     'precio_unit'  => (float)$l['precio_unit'],
+    'es_extra'     => (int)($l['es_extra'] ?? 0),
 ], $lineas));
 
 $empresa_js = json_encode([
@@ -357,9 +359,16 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
         <div class="items-list" id="items-list"></div>
 
         <?php if ($es_editable): ?>
-        <button class="add-item-btn" onclick="catalogDialog.showModal()">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="add-item-btn" style="flex:2" onclick="abrirCatalogo(false)">
             <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar artículo
         </button>
+        <?php if ($plan_cot['es_business']): ?>
+        <button class="add-item-btn" style="flex:1;border-color:#d97706;color:#d97706" onclick="abrirCatalogo(true)">
+            <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar extra
+        </button>
+        <?php endif; ?>
+        </div>
         <?php endif; ?>
 
         <!-- ADJUNTOS -->
@@ -457,7 +466,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 
         <div class="panel-section">
             <div class="panel-lbl">Totales</div>
-            <div class="panel-t-row"><span class="panel-t-lbl">Subtotal</span><span class="panel-t-val" id="total-subtotal"><?= format_money($cot['subtotal'], $empresa['moneda']) ?></span></div>
+            <div class="panel-t-row"><span class="panel-t-lbl" id="lbl-subtotal">Subtotal artículos</span><span class="panel-t-val" id="total-subtotal"><?= format_money($cot['subtotal'], $empresa['moneda']) ?></span></div>
             <?php if ($cot['cupon_monto'] > 0): ?>
             <div class="panel-t-row disc" id="row-cupon">
                 <span class="panel-t-lbl" id="lbl-cupon">Cupón <?= e($cot['cupon_codigo']) ?></span>
@@ -470,6 +479,10 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <span class="panel-t-val">-<?= format_money($cot['descuento_auto_amt'], $empresa['moneda']) ?></span>
             </div>
             <?php endif; ?>
+            <div class="panel-t-row tot-row" style="display:none">
+                <span class="panel-t-lbl">Subtotal extras</span>
+                <span class="panel-t-val" id="total-extras">$0.00</span>
+            </div>
             <?php if ($empresa['impuesto_modo'] !== 'ninguno'): ?>
             <div class="panel-t-row">
                 <span class="panel-t-lbl"><?= e($empresa['impuesto_label'] ?? 'IVA') ?></span>
@@ -670,7 +683,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Cargar líneas iniciales
     LINEAS_INIT.forEach(l => {
-        agregarItem(l.titulo, l.sku, l.descripcion, l.precio_unit, l.articulo_id, ES_EDITABLE);
+        agregarItem(l.titulo, l.sku, l.descripcion, l.precio_unit, l.articulo_id, ES_EDITABLE, !!l.es_extra);
     });
     renderCatalogList('');
     renderClientList('');
@@ -717,8 +730,10 @@ function renderCatalogList(filtro){
     el.innerHTML=lista.map(a=>`<div class="sh-item" onclick="agregarDesde(${a.id})"><div style="flex:1"><div class="sh-item-title">${esc(a.titulo)}</div>${a.sku?`<div class="sh-item-sku">${esc(a.sku)}</div>`:''}</div><div class="sh-item-price">${fmt(a.precio)}</div></div>`).join('');
 }
 function filtrarCatalogo(v){renderCatalogList(v);}
-function agregarDesde(id){const a=ARTICULOS.find(x=>x.id===id);if(!a)return;agregarItem(a.titulo,a.sku||'',a.descripcion||'',a.precio,id,true);closeSheet('catalogSheet','catalogOverlay');}
-function agregarItemVacio(){agregarItem('','','',0,null,true);closeSheet('catalogSheet','catalogOverlay');}
+let _agregandoExtra = false;
+function abrirCatalogo(esExtra){ _agregandoExtra = esExtra; catalogDialog.showModal(); }
+function agregarDesde(id){const a=ARTICULOS.find(x=>x.id===id);if(!a)return;const pre=_agregandoExtra?'EXTRA: ':'';agregarItem(pre+a.titulo,a.sku||'',a.descripcion||'',a.precio,id,true,_agregandoExtra);catalogDialog.close();_agregandoExtra=false;}
+function agregarItemVacio(){const pre=_agregandoExtra?'EXTRA: ':'';agregarItem(pre,'','',0,null,true,_agregandoExtra);catalogDialog.close();_agregandoExtra=false;}
 
 function renderClientList(filtro){
     const q=filtro.toLowerCase();
@@ -754,12 +769,12 @@ function toggleCupon(el){
     calcularTotales();
 }
 
-function agregarItem(titulo, sku, desc, precio, articulo_id, editable=true){
+function agregarItem(titulo, sku, desc, precio, articulo_id, editable=true, esExtra=false){
     itemCounter++;
     const id='item-'+itemCounter;
     const amt=titulo?fmt(precio):'$0.00';
     const ro=!editable||(!PUEDE_PRECIOS&&articulo_id)?'readonly style="color:var(--t3)"':'';
-    const html=`<div class="item-card" data-articulo-id="${articulo_id||''}" id="${id}">
+    const html=`<div class="item-card" data-articulo-id="${articulo_id||''}" data-es-extra="${esExtra?1:0}" id="${id}">
         <div class="item-header">
             <div class="item-num-wrap">
                 ${editable?`<button class="item-arrow" onclick="moverItem(this,-1)"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 2L9 8H1z" fill="currentColor"/></svg></button>`:''}
@@ -817,20 +832,28 @@ function updateItemPreview(input){input.closest('.item-card').querySelector('.it
 function calcItemTotal(input){const card=input.closest('.item-card');const cant=parseFloat(card.querySelector('[data-campo=cantidad]').value)||0;const precio=parseFloat(card.querySelector('[data-campo=precio]').value)||0;const t=cant*precio;card.querySelector('[data-campo=total]').value=fmt(t);card.querySelector('.item-amt-prev').textContent=fmt(t);calcularTotales();}
 
 function calcularTotales(){
-    let subtotal=0;
+    let subRegular=0, subExtras=0;
     document.querySelectorAll('#items-list .item-card').forEach(card=>{
         const cant=parseFloat(card.querySelector('[data-campo=cantidad]')?.value)||0;
         const precio=parseFloat(card.querySelector('[data-campo=precio]')?.value)||0;
-        subtotal+=cant*precio;
+        const monto=cant*precio;
+        if(parseInt(card.dataset.esExtra)||0) subExtras+=monto;
+        else subRegular+=monto;
     });
-    let base=subtotal,cuponAmt=0,descAutoAmt=0;
-    if(cuponSeleccionado){cuponAmt=subtotal*(cuponSeleccionado.pct/100);base-=cuponAmt;}
+    const subtotal=subRegular+subExtras;
+    // Descuentos/cupones solo aplican sobre artículos regulares
+    let base=subRegular,cuponAmt=0,descAutoAmt=0;
+    if(cuponSeleccionado){cuponAmt=subRegular*(cuponSeleccionado.pct/100);base-=cuponAmt;}
     if(descAutoActivo&&descAutoPct>0){descAutoAmt=base*(descAutoPct/100);base-=descAutoAmt;}
-    let impAmt=0,total=base;
+    let impAmt=0,totalBase=base;
     const modo=EMPRESA_CFG.impuesto_modo,pct=EMPRESA_CFG.impuesto_pct/100;
-    if(modo==='suma'){impAmt=base*pct;total=base+impAmt;}
+    if(modo==='suma'){impAmt=base*pct;totalBase=base+impAmt;}
     else if(modo==='incluido'){impAmt=base-(base/(1+pct));}
-    setText('total-subtotal',fmt(subtotal));
+    const total=totalBase+subExtras;
+    setText('total-subtotal',fmt(subRegular));
+    // Mostrar/ocultar extras subtotal
+    const extEl=document.getElementById('total-extras');
+    if(extEl){extEl.textContent=fmt(subExtras);extEl.closest('.tot-row').style.display=subExtras>0?'':'none';}
     setText('total-final',fmt(total));
 }
 
@@ -840,7 +863,7 @@ async function guardarCotizacion(preview){
     if(!titulo){alert('El título es requerido');return;}
     const items=[];
     document.querySelectorAll('#items-list .item-card').forEach((card,i)=>{
-        items.push({orden:i+1,articulo_id:card.dataset.articuloId||null,titulo:card.querySelector('[data-campo=titulo]')?.value||'',sku:card.querySelector('[data-campo=sku]')?.value||'',descripcion:card.querySelector('[data-campo=descripcion]')?.value||'',cantidad:parseFloat(card.querySelector('[data-campo=cantidad]')?.value)||1,precio_unit:parseFloat(card.querySelector('[data-campo=precio]')?.value)||0});
+        items.push({orden:i+1,articulo_id:card.dataset.articuloId||null,titulo:card.querySelector('[data-campo=titulo]')?.value||'',sku:card.querySelector('[data-campo=sku]')?.value||'',descripcion:card.querySelector('[data-campo=descripcion]')?.value||'',cantidad:parseFloat(card.querySelector('[data-campo=cantidad]')?.value)||1,precio_unit:parseFloat(card.querySelector('[data-campo=precio]')?.value)||0,es_extra:parseInt(card.dataset.esExtra)||0});
     });
     const btn=document.getElementById('btn-guardar');
     if(btn){btn.disabled=true;btn.textContent='Guardando...';}

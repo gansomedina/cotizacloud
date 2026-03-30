@@ -8,6 +8,9 @@
 defined('COTIZAAPP') or die;
 Auth::requerir_login();
 
+// Permiso de módulo
+if (!Auth::es_admin() && !Auth::puede('ver_reportes')) { redirect('/dashboard'); }
+
 $empresa_id   = EMPRESA_ID;
 $usuario      = Auth::usuario();
 $es_admin     = Auth::es_admin();

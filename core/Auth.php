@@ -202,7 +202,8 @@ class Auth
                     u.puede_capturar_pagos, u.puede_asignar_cotizaciones,
                     u.puede_ver_costos, u.puede_ver_proveedores,
                     u.puede_crear_cotizaciones, u.puede_editar_cotizaciones,
-                    u.puede_ver_cantidades,
+                    u.puede_ver_cantidades, u.puede_agregar_extras,
+                    u.puede_ver_reportes,
                     u.ultimo_login, u.password_hash
              FROM user_sessions s
              JOIN usuarios u ON u.id = s.usuario_id
@@ -291,6 +292,8 @@ class Auth
             'crear_cotizaciones',
             'editar_cotizaciones',
             'ver_cantidades',
+            'agregar_extras',
+            'ver_reportes',
         ];
 
         if (!in_array($permiso, $permisos_validos)) return false;

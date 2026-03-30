@@ -63,10 +63,14 @@ if (!empty($cot['suspendida'])) {
 }
 
 // ─── Líneas ──────────────────────────────────────────────
-$lineas = DB::query(
+$todas_lineas = DB::query(
     "SELECT * FROM cotizacion_lineas WHERE cotizacion_id = ? ORDER BY orden ASC",
     [$cot['id']]
 );
+$lineas       = array_filter($todas_lineas, fn($l) => empty($l['es_extra']));
+$lineas       = array_values($lineas);
+$lineas_extra = array_filter($todas_lineas, fn($l) => !empty($l['es_extra']));
+$lineas_extra = array_values($lineas_extra);
 
 // ─── Archivos adjuntos ─────────────────────────────────────
 $adjuntos = DB::query(
@@ -100,7 +104,8 @@ if ($cot['impuesto_modo'] === 'suma') {
 } elseif ($cot['impuesto_modo'] === 'incluido') {
     $impuesto_amt = round($base - $base / (1 + (float)$cot['impuesto_pct'] / 100), 2);
 }
-$total_base = $base + ($cot['impuesto_modo'] === 'suma' ? $impuesto_amt : 0);
+$subtotal_extras = array_sum(array_column($lineas_extra, 'subtotal'));
+$total_base = $base + ($cot['impuesto_modo'] === 'suma' ? $impuesto_amt : 0) + $subtotal_extras;
 
 // ─── Cupones disponibles (para JS) ───────────────────────
 $cupones = DB::query(
@@ -495,6 +500,8 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
   /* ── Ocultar header web / slbls ── */
   .slbl { display:none!important }
+  .slbl.slbl-print { display:flex!important; font:700 11pt var(--body);letter-spacing:.1em;text-transform:uppercase;margin:14pt 0 6pt;padding-top:8pt;border-top:2pt solid #000;align-items:center;gap:8pt }
+  .slbl.slbl-print::after { content:'';flex:1;height:1pt;border-bottom:1pt dashed #999 }
   .qh   { display:none!important }
 
   /* ── Encabezado/saludo compacto en print ── */
@@ -724,10 +731,50 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <?php endforeach; ?>
   </div>
 
+  <?php if (!empty($lineas_extra)): ?>
+  <!-- Subtotal artículos (solo si hay extras) -->
+  <div style="display:flex;justify-content:flex-end;padding:8px 16px;background:var(--bg);border:1px solid var(--bd);border-top:none;border-radius:0 0 var(--r) var(--r);margin-bottom:16px">
+    <span style="font:400 12px var(--body);color:var(--t3);margin-right:8px">Subtotal artículos</span>
+    <span style="font:600 14px var(--num)"><?= fmt_pub($subtotal) ?></span>
+  </div>
+
+  <!-- EXTRAS — desktop -->
+  <div class="slbl slbl-print" style="margin-top:20px;padding-top:10px;border-top:2px solid var(--bd)">EXTRAS</div>
+  <table class="tbl">
+    <thead><tr><th>Descripción</th><th class="r">Total</th></tr></thead>
+    <tbody>
+    <?php foreach ($lineas_extra as $le): ?>
+    <tr>
+      <td>
+        <div class="iname"><?= e($le['titulo']) ?></div>
+        <?php if ($le['descripcion']): ?><div class="idesc"><?= nl2br(e($le['descripcion'])) ?></div><?php endif; ?>
+      </td>
+      <td class="tamt"><?= fmt_pub((float)$le['subtotal']) ?></td>
+    </tr>
+    <?php endforeach; ?>
+    <tr style="background:var(--bg)">
+      <td style="text-align:right;font:400 12px var(--body);color:var(--t3)">Subtotal extras</td>
+      <td class="tamt" style="font:600 13px var(--num)"><?= fmt_pub($subtotal_extras) ?></td>
+    </tr>
+    </tbody>
+  </table>
+
+  <!-- EXTRAS — mobile -->
+  <div class="items-mob">
+    <?php foreach ($lineas_extra as $le): ?>
+    <div class="im">
+      <div class="im-name"><?= e($le['titulo']) ?></div>
+      <?php if ($le['descripcion']): ?><div class="im-desc"><?= nl2br(e($le['descripcion'])) ?></div><?php endif; ?>
+      <div class="im-meta"><div class="im-meta-left"></div><div class="im-meta-total"><?= fmt_pub((float)$le['subtotal']) ?></div></div>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
+
   <!-- TOTALES -->
   <div class="slbl" id="resumenlbl-screen">Resumen</div>
   <div class="tots" id="totalsScreen">
-    <div class="tr"><span class="tl">Subtotal</span><span class="tv" id="tSub"><?= fmt_pub($subtotal) ?></span></div>
+    <div class="tr"><span class="tl"><?= $subtotal_extras > 0 ? 'Subtotal artículos' : 'Subtotal' ?></span><span class="tv" id="tSub"><?= fmt_pub($subtotal) ?></span></div>
     <?php if ($desc_auto_amt > 0): ?>
     <div class="tr td" id="tAR">
       <span class="tl" id="tAL">Descuento especial<?= $adc_pct > 0 ? ' (' . number_format($adc_pct,0) . '%)' : '' ?></span>
@@ -743,6 +790,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     </div>
     <?php else: ?>
     <div class="tr td" id="tCR" style="display:none"><span class="tl" id="tCL">Cupón</span><span class="tv" id="tCV">—</span></div>
+    <?php endif; ?>
+    <?php if ($subtotal_extras > 0): ?>
+    <div class="tr"><span class="tl">Subtotal extras</span><span class="tv"><?= fmt_pub($subtotal_extras) ?></span></div>
     <?php endif; ?>
     <?php if ($cot['impuesto_modo'] !== 'ninguno'): ?>
     <div class="tr"><span class="tl"><?= e($cot['impuesto_label'] ?: ($cot['emp_impuesto_label'] ?? 'IVA')) ?> (<?= (float)$cot['impuesto_pct'] ?>%)</span><span class="tv"><?= fmt_pub($impuesto_amt) ?></span></div>

@@ -19,7 +19,7 @@ $menu = [
     ['href' => '/ventas',       'icon' => 'shopping-bag',  'label' => 'Ventas'],
     ['href' => '/costos',       'icon' => 'trending-down', 'label' => 'Costos',       'perm' => 'ver_costos'],
     ['href' => '/radar',        'icon' => 'activity',      'label' => 'Radar'],
-    ['href' => '/reportes',     'icon' => 'bar-chart-2',   'label' => 'Reportes'],
+    ['href' => '/reportes',     'icon' => 'bar-chart-2',   'label' => 'Reportes', 'perm' => 'ver_reportes'],
     ['href' => '/config',       'icon' => 'settings',      'label' => 'Configuración'],
     ['href' => '/ayuda',        'icon' => 'help-circle',   'label' => 'Ayuda'],
 ];
@@ -114,7 +114,7 @@ foreach ($mas_rutas as $r) {
 body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;font-size:14px;line-height:1.5}
 
         /* ── SIDEBAR ── */
-        #sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:200}
+        #sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:200;padding-top:env(safe-area-inset-top,0px)}
         .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
         .sidebar-logo img{height:32px;object-fit:contain}
         .sidebar-logo-text{font-size:18px;font-weight:700;color:var(--g);letter-spacing:-.3px}
@@ -134,7 +134,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         #main{margin-left:var(--sidebar-w);min-height:100dvh;display:flex;flex-direction:column}
 
         /* ── TOPBAR (mobile only) ── */
-        #topbar{display:none;background:var(--white);border-bottom:1px solid var(--border);padding:0 14px;height:52px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+        #topbar{display:none;background:var(--white);border-bottom:1px solid var(--border);padding:env(safe-area-inset-top,0px) 14px 0;height:calc(52px + env(safe-area-inset-top,0px));align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
         .topbar-title{font-size:16px;font-weight:700;color:var(--text)}
         .topbar-right{display:flex;align-items:center;gap:12px}
         #topbar-hamburger{display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;padding:8px;border-radius:var(--r-sm);color:var(--t2);-webkit-tap-highlight-color:transparent}
@@ -234,6 +234,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             body{height:100%;overflow:hidden;font-size:15px}
             #sidebar{transform:translateX(-100%);width:80vw;max-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.13);transition:transform .22s cubic-bezier(.4,0,.2,1)}
             #sidebar.open{transform:translateX(0)}
+            .sidebar-logo img,.sidebar-logo svg,.sidebar-logo-text{display:none}
+            .sidebar-logo{padding:8px 20px 10px}
             #main{margin-left:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
             #topbar{display:flex}
             /* padding-bottom = altura nav + safe area + margen */

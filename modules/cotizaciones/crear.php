@@ -124,6 +124,7 @@ foreach ($items as $i => $item) {
         'cantidad'    => $cant,
         'precio_unit' => $precio,
         'subtotal'    => $sub_linea,
+        'es_extra'    => (int)($item['es_extra'] ?? 0),
     ];
 }
 
@@ -191,12 +192,13 @@ try {
     foreach ($lineas as $linea) {
         DB::execute(
             "INSERT INTO cotizacion_lineas
-             (cotizacion_id, articulo_id, orden, sku, titulo, descripcion, cantidad, precio_unit, subtotal)
-             VALUES (?,?,?,?,?,?,?,?,?)",
+             (cotizacion_id, articulo_id, orden, sku, titulo, descripcion, cantidad, precio_unit, subtotal, es_extra)
+             VALUES (?,?,?,?,?,?,?,?,?,?)",
             [
                 $cot_id, $linea['articulo_id'], $linea['orden'],
                 $linea['sku'], $linea['titulo'], $linea['descripcion'],
                 $linea['cantidad'], $linea['precio_unit'], $linea['subtotal'],
+                $linea['es_extra'],
             ]
         );
     }

@@ -1,8 +1,10 @@
 # Archivo de configuración con credenciales (CRÍTICO)
 config.php
+respaldoconfig.php
 
 # Logs de errores (según tu línea 53)
 /logs/error.log
+error_log
 
 # Subidas de archivos (según tu línea 42)
 /public/assets/uploads/*
@@ -18,6 +20,16 @@ node_modules/
 # Archivos del sistema
 .DS_Store
 Thumbs.db
+
+# Datos sensibles — no commitear
+*.pem
+*.p8
+*.zip
 ontimeco_wp676.sql
-migrations/hmo-invoice-export.csv
-migrations/hmo-quote-export.csv
+migrations/*.csv
+
+# Backups y archivos legacy
+*_backup.*
+*_backup_*
+*_estable.*
+respaldo*

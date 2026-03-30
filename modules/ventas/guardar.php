@@ -57,11 +57,12 @@ try {
         $subtotal = round($cantidad * $precio, 2);
         $subtotal_lineas += $subtotal;
 
+        $es_extra = (int)($l['es_extra'] ?? 0);
         DB::execute(
             "INSERT INTO cotizacion_lineas
-             (cotizacion_id, orden, sku, titulo, descripcion, cantidad, precio_unit, subtotal)
-             VALUES (?,?,?,?,?,?,?,?)",
-            [$cot_id, $orden + 1, $sku, $titulo, $desc, $cantidad, $precio, $subtotal]
+             (cotizacion_id, orden, sku, titulo, descripcion, cantidad, precio_unit, subtotal, es_extra)
+             VALUES (?,?,?,?,?,?,?,?,?)",
+            [$cot_id, $orden + 1, $sku, $titulo, $desc, $cantidad, $precio, $subtotal, $es_extra]
         );
     }
 

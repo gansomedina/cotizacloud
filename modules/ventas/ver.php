@@ -63,6 +63,8 @@ $puede_admin  = Auth::es_admin();
 $puede_pagos  = Auth::es_admin() || Auth::puede('capturar_pagos');
 $puede_cancel_rec = Auth::es_admin() || Auth::puede('cancelar_recibos');
 $puede_descuento  = Auth::es_admin() || Auth::puede('aplicar_descuentos');
+$plan_vta         = trial_info(EMPRESA_ID);
+$puede_extras     = $plan_vta['es_business'] && (Auth::es_admin() || Auth::puede('agregar_extras'));
 $folio        = $venta['numero'] ?? 'VTA-' . $venta_id;
 $pct          = $venta['total'] > 0 ? min(100, round($venta['pagado'] / $venta['total'] * 100)) : 0;
 
@@ -673,6 +675,9 @@ function closeRec(){
   <?php if ($puede_descuento && $venta['estado'] !== 'cancelada'): ?>
   <button class="action-btn" onclick="openSheet('shDescuento')"><?= ico('tag',14) ?> Agregar descuento</button>
   <?php endif ?>
+  <?php if ($puede_extras && $venta['estado'] !== 'cancelada'): ?>
+  <button class="action-btn" onclick="openSheet('shExtra')"><?= ico('edit',14) ?> Agregar extra</button>
+  <?php endif ?>
 
   <button class="action-btn" id="btn-guardar"
     onclick="guardarCambios()"
@@ -1005,6 +1010,22 @@ function closeRec(){
 </div>
 
 
+<!-- ══ SHEET: AGREGAR EXTRA ══ -->
+<div class="sh-overlay" id="ov-shExtra" onclick="closeSheet('shExtra')"></div>
+<div class="bottom-sheet" id="shExtra">
+  <div class="sh-handle"></div>
+  <div class="sh-header"><div class="sh-title">Agregar extra</div><button class="sh-close" onclick="closeSheet('shExtra')">✕</button></div>
+  <div class="sh-body">
+    <div class="sh-field"><div class="sh-lbl">Nombre del extra *</div><input class="sh-input" type="text" id="extra-titulo" placeholder="Ej: Instalación, Flete, Accesorio..."></div>
+    <div class="sh-field"><div class="sh-lbl">Descripción (opcional)</div><textarea class="sh-input" id="extra-desc" style="min-height:50px;resize:none" placeholder="Detalle del extra..."></textarea></div>
+    <div class="sh-field"><div class="sh-lbl">Total *</div><input class="sh-input" type="number" id="extra-total" placeholder="0.00" step="0.01" min="0"></div>
+  </div>
+  <div class="sh-footer">
+    <button class="sh-btn-cancel" onclick="closeSheet('shExtra')">Cancelar</button>
+    <button class="sh-btn-save" onclick="doAgregarExtra()">Agregar</button>
+  </div>
+</div>
+
 <!-- ══ SHEET: CANCELAR RECIBO ══ -->
 <div class="sh-overlay" id="ov-shCancelRec" onclick="closeSheet('shCancelRec')"></div>
 <div class="bottom-sheet" id="shCancelRec">
@@ -1047,6 +1068,8 @@ const URL_VTA    = '<?= e($url_vta) ?>';
 const CSRF_TOKEN = '<?= csrf_token() ?>';
 const ES_ADMIN   = <?= $puede_admin ? 'true' : 'false' ?>;
 const PUEDE_VER_CANT = <?= (Auth::es_admin() || Auth::puede('ver_cantidades')) ? 'true' : 'false' ?>;
+const PUEDE_EXTRAS   = <?= $puede_extras ? 'true' : 'false' ?>;
+const PUEDE_ELIM_ITEMS = <?= (Auth::es_admin() || Auth::puede('eliminar_items_venta')) ? 'true' : 'false' ?>;
 const MONEDA     = '<?= e($empresa['moneda']) ?>';
 const IMP_MODO   = '<?= e($impuesto_modo) ?>';
 const IMP_PCT    = <?= (float)$impuesto_pct ?>;
@@ -1060,6 +1083,7 @@ const LINEAS_INIT = <?= json_encode(array_map(fn($l) => [
     'cantidad'    => (float)$l['cantidad'],
     'precio_unit' => (float)$l['precio_unit'],
     'subtotal'    => (float)$l['subtotal'],
+    'es_extra'    => (int)($l['es_extra'] ?? 0),
 ], $lineas)) ?>;
 const CUPON_AMT   = <?= $cupon_amt ?>;
 const CUPON_PCT   = <?= $cupon_pct ?>;
@@ -1096,13 +1120,17 @@ function renderLineas(){
   const el = document.getElementById('lineas-list');
   if(!el) return;
   if(!lineas.length){ el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--t3);font-size:13px">Sin artículos</div>'; return; }
-  el.innerHTML = lineas.map((l,i) => {
-    const acciones = ES_ADMIN
-      ? `<div class="item-actions">
-           <button onclick="uiEditarLinea(${i})" class="line-edit-btn" title="Editar">✏️</button>
+
+  const regulares = lineas.filter(l => !l.es_extra);
+  const extras    = lineas.filter(l => l.es_extra);
+
+  function renderItem(l, i, esExtra) {
+    const acciones = esExtra
+      ? (PUEDE_EXTRAS ? `<div class="item-actions"><button onclick="eliminarExtra(${l.id})" class="line-del-btn" title="Eliminar extra">✕</button></div>` : '')
+      : ((ES_ADMIN || PUEDE_ELIM_ITEMS) ? `<div class="item-actions">
+           ${ES_ADMIN ? `<button onclick="uiEditarLinea(${i})" class="line-edit-btn" title="Editar">✏️</button>` : ''}
            <button onclick="uiEliminarLinea(${i})" class="line-del-btn" title="Eliminar">🗑</button>
-         </div>`
-      : '';
+         </div>` : '');
     const sku  = l.sku  ? `<div class="item-sku">${escHtml(l.sku)}</div>` : '';
     const desc = l.descripcion ? `<div class="item-desc">${escHtml(l.descripcion).replace(/\n/g,'<br>')}</div>` : '';
     const cant = fmtCant(l.cantidad);
@@ -1110,36 +1138,50 @@ function renderLineas(){
     const tot  = fmtMoney(l.subtotal);
     return `
     <div class="item-row">
-      <!-- DESKTOP: nombre en celda 1 -->
       <div>
         <div class="item-name">
           <span class="item-name-text">${escHtml(l.titulo)}</span>
           ${acciones}
         </div>
-        ${sku}
-        ${desc}
-        <!-- MOBILE: fila de métricas debajo de descripción -->
+        ${sku}${desc}
         <div class="item-nums-row">
-          ${PUEDE_VER_CANT ? `<div class="item-num-cell">
-            <span class="item-num-lbl">Cant.</span>
-            <span class="item-num-val">${cant}</span>
-          </div>
-          <div class="item-num-cell">
-            <span class="item-num-lbl">P. Unit.</span>
-            <span class="item-num-val">${pu}</span>
+          ${PUEDE_VER_CANT && !esExtra ? `<div class="item-num-cell">
+            <span class="item-num-lbl">Cant.</span><span class="item-num-val">${cant}</span>
+          </div><div class="item-num-cell">
+            <span class="item-num-lbl">P. Unit.</span><span class="item-num-val">${pu}</span>
           </div>` : ''}
           <div class="item-num-cell">
-            <span class="item-num-lbl">Total</span>
-            <span class="item-num-val total">${tot}</span>
+            <span class="item-num-lbl">Total</span><span class="item-num-val total">${tot}</span>
           </div>
         </div>
       </div>
-      <!-- DESKTOP: celdas 2-4 -->
-      ${PUEDE_VER_CANT ? `<div class="item-cell">${cant}</div>
-      <div class="item-cell">${pu}</div>` : ''}
+      ${PUEDE_VER_CANT && !esExtra ? `<div class="item-cell">${cant}</div><div class="item-cell">${pu}</div>` : ''}
       <div class="item-total">${tot}</div>
     </div>`;
-  }).join('');
+  }
+
+  let html = regulares.map((l,i) => renderItem(l, i, false)).join('');
+
+  // Subtotal artículos (si hay extras)
+  if (extras.length > 0) {
+    const subReg = regulares.reduce((s,l) => s + l.subtotal, 0);
+    html += `<div style="display:flex;justify-content:flex-end;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--bg)">
+      <span style="font:400 12px var(--body);color:var(--t3);margin-right:8px">Subtotal artículos</span>
+      <span style="font:600 13px var(--num)">${fmtMoney(subReg)}</span>
+    </div>`;
+
+    // Separador extras
+    html += `<div style="padding:10px 14px 6px;font:700 11px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3);background:var(--bg);border-bottom:1px solid var(--border)">Extras</div>`;
+    html += extras.map((l,i) => renderItem(l, lineas.indexOf(l), true)).join('');
+
+    const subExt = extras.reduce((s,l) => s + l.subtotal, 0);
+    html += `<div style="display:flex;justify-content:flex-end;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--bg)">
+      <span style="font:400 12px var(--body);color:var(--t3);margin-right:8px">Subtotal extras</span>
+      <span style="font:600 13px var(--num)">${fmtMoney(subExt)}</span>
+    </div>`;
+  }
+
+  el.innerHTML = html;
 }
 
 function fmtCant(n){ const s=parseFloat(n||0).toFixed(4); return s.replace(/\.?0+$/,''); }
@@ -1327,6 +1369,40 @@ function doAgregarItem(){
   document.getElementById('item-qty').value='1';
   document.getElementById('item-precio').value='';
   document.querySelectorAll('.art-item').forEach(a=>a.classList.remove('art-sel'));
+}
+
+// ── Agregar extra (simplificado: nombre + total) ──
+async function doAgregarExtra(){
+  const titulo = document.getElementById('extra-titulo').value.trim();
+  if(!titulo){alert('El nombre es requerido');return;}
+  const desc = document.getElementById('extra-desc').value.trim();
+  const total = parseFloat(document.getElementById('extra-total').value)||0;
+  if(total <= 0){alert('El total debe ser mayor a 0');return;}
+  try {
+    const r = await fetch('/ventas/'+VENTA_ID+'/agregar-extra', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+      body:JSON.stringify({titulo:'EXTRA: '+titulo, descripcion:desc, total:total})
+    });
+    const d = await r.json();
+    if(d.ok){ closeSheet('shExtra'); location.reload(); }
+    else alert(d.error||'Error al agregar extra');
+  } catch(e){ alert('Error de conexión'); }
+}
+
+// ── Eliminar extra ──
+async function eliminarExtra(lineaId){
+  if(!confirm('¿Eliminar este extra?')) return;
+  try {
+    const r = await fetch('/ventas/'+VENTA_ID+'/eliminar-extra', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+      body:JSON.stringify({linea_id: lineaId})
+    });
+    const d = await r.json();
+    if(d.ok) location.reload();
+    else alert(d.error||'Error al eliminar');
+  } catch(e){ alert('Error de conexión'); }
 }
 
 // ── Descuento ──

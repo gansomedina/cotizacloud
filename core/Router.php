@@ -123,6 +123,7 @@ class Router
         // ── Push notifications API ───────────────────────────
         self::post('/api/push/register',   fn() => self::load_api('push_register'));
         self::post('/api/push/unregister', fn() => self::load_api('push_unregister'));
+        self::post('/api/radar-feedback',  fn() => self::load_api('radar_feedback'));
 
         // ── Páginas legales (público) ───────────────────────
         self::get('/privacidad', fn() => self::load_public('privacidad'));
@@ -169,6 +170,8 @@ class Router
         self::post('/ventas/:id/descuento',           fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'descuento']));
         self::post('/ventas/:id/agregar-item',        fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'agregar-item']));
         self::post('/ventas/:id/editar-linea',        fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'editar-linea']));
+        self::post('/ventas/:id/agregar-extra',       fn($p) => self::app('ventas', 'agregar_extra', $p));
+        self::post('/ventas/:id/eliminar-extra',      fn($p) => self::app('ventas', 'eliminar_extra', $p));
         self::post('/ventas/:id/cliente',             fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'cliente']));
         self::post('/ventas/:id/guardar',             fn($p) => self::app_extra('ventas', 'guardar', $p));
 

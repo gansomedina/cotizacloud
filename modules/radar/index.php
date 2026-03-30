@@ -76,7 +76,8 @@ $raw = DB::query(
                      c.created_at) AS ultima_vista_at,
             c.created_at,
             cl.nombre AS cnombre, cl.telefono AS ctel,
-            u.nombre  AS asesor
+            u.nombre  AS asesor,
+            COALESCE(c.vendedor_id, c.usuario_id) AS vendedor_id
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id=c.cliente_id
      LEFT JOIN usuarios  u  ON u.id=COALESCE(c.vendedor_id, c.usuario_id)
@@ -85,6 +86,16 @@ $raw = DB::query(
      LIMIT 500",
     [$empresa_id]
 );
+
+// Cargar feedbacks del usuario actual
+$feedback_map = [];
+$fb_rows = DB::query(
+    "SELECT cotizacion_id, tipo FROM radar_feedback WHERE usuario_id=? AND empresa_id=?",
+    [Auth::id(), $empresa_id]
+);
+foreach ($fb_rows as $fb) $feedback_map[(int)$fb['cotizacion_id']] = $fb['tipo'];
+$GLOBALS['feedback_map'] = $feedback_map;
+$GLOBALS['fb_shown'] = []; // track qué cotizaciones ya mostraron botones
 
 // Helpers
 function rhace(int $ts): string {
@@ -200,6 +211,7 @@ foreach ($raw as $c) {
         'senales'     => $senales,
         'last_ts'     => $last_ts,
         'visitas'     => (int)($c['visitas'] ?? 0),
+        'vendedor_id' => (int)($c['vendedor_id'] ?? 0),
     ];
 
     $rows_all[] = $row;
@@ -298,7 +310,25 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $r_decay_ico = $r_momentum === 'cooling' ? '<span class="momentum-down" title="Sin actividad reciente — perdiendo momentum">↓</span>' : '';
         $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo']);
         $cot_url = '/cotizaciones/'.(int)$r['id'];
-        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit'>{$r_title_show}</div>{$r_decay_ico}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
+        // Botones de feedback al lado del título
+        $r_bucket_fb = $r['bucket'] ?? '';
+        $r_vendedor_fb = (int)($r['vendedor_id'] ?? 0);
+        $r_fb_val = ($GLOBALS['feedback_map'] ?? [])[(int)$r['id']] ?? null;
+        $hot_bkts_fb = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta'];
+        $show_fb_td = in_array($r_bucket_fb, $hot_bkts_fb) && ($r_vendedor_fb === Auth::id() || Auth::es_admin());
+        $fb_html = '';
+        $cot_id_fb = (int)$r['id'];
+        $already_shown = isset($GLOBALS['fb_shown'][$cot_id_fb]);
+        if ($show_fb_td && !$already_shown) {
+            $GLOBALS['fb_shown'][$cot_id_fb] = true;
+            $cls_ci = $r_fb_val === 'con_interes' ? 'fb-active fb-pos' : '';
+            $cls_si = $r_fb_val === 'sin_interes' ? 'fb-active fb-neg' : '';
+            $fb_html = "<div class='fb-btns' style='flex-shrink:0'>"
+                . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'con_interes',this)\" title='Con interés'>👍</button>"
+                . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_interes',this)\" title='Sin interés'>👎</button>"
+                . "</div>";
+        }
+        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
         if ($motivo) {
             $reason_key = $r['reason'] ?? '';
             $reason_meta = $BM[$reason_key] ?? null;
@@ -579,6 +609,13 @@ ob_start();
   .rbk-hd{gap:6px}
   .rtit{max-width:160px}
 }
+/* Feedback buttons */
+.fb-btns{display:flex;gap:3px}
+.fb-btn{width:24px;height:24px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:.5;transition:all .15s}
+.fb-btn:hover{opacity:1;transform:scale(1.1)}
+.fb-active{opacity:1;border-width:2px;font-weight:600}
+.fb-pos{border-color:#16a34a;background:#f0fdf4;color:#16a34a}
+.fb-neg{border-color:#dc2626;background:#fef2f2;color:#dc2626}
 </style>
 
 <!-- Cabecera -->
@@ -643,6 +680,10 @@ ob_start();
     <a href="<?= rurlq(['debug'=>$debug_mode?'0':'1']) ?>" class="rdr-bt <?= $debug_mode?'active':'' ?>">Debug</a>
     <?php endif; ?>
   </form>
+  <span style="font:400 11px var(--body);color:var(--t3);margin-left:auto;display:flex;align-items:center;gap:8px">
+    <span>👍 Con interés</span>
+    <span>👎 Sin interés</span>
+  </span>
 </div>
 
 <!-- ===== TAB: ALTA PRIORIDAD ===== -->
@@ -941,6 +982,28 @@ render_bkt('🟡 Activos 48h (todos los activos)',
 
 <script>
 const CSRF_R='<?= csrf_token() ?>';
+
+// Feedback del Radar
+async function radarFb(cotId, tipo, btn) {
+    try {
+        const r = await fetch('/api/radar-feedback', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF_R},
+            body: JSON.stringify({cotizacion_id: cotId, tipo: tipo})
+        });
+        const d = await r.json();
+        if (d.ok) {
+            // Actualizar UI
+            const wrap = btn.parentElement;
+            wrap.querySelectorAll('.fb-btn').forEach(b => {
+                b.classList.remove('fb-active','fb-pos','fb-neg');
+            });
+            btn.classList.add('fb-active');
+            btn.classList.add(tipo === 'con_interes' ? 'fb-pos' : 'fb-neg');
+        }
+    } catch(e) {}
+}
+
 function rTab(id,btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('on'));

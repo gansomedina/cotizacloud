@@ -1525,6 +1525,10 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <label class="toggle"><input type="checkbox" id="perm_eliminar_items"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
         <div class="perm-row">
+          <div><div class="perm-lbl">Agregar extras en ventas</div><div class="perm-sub">Agregar artículos extra a una venta</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_agregar_extras"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row">
           <div><div class="perm-lbl">Cancelar recibos</div></div>
           <label class="toggle"><input type="checkbox" id="perm_cancelar_recibos"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
@@ -1543,9 +1547,13 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <div><div class="perm-lbl">Costos</div><div class="perm-sub">Ver costos, registrar gastos, análisis</div></div>
           <label class="toggle"><input type="checkbox" id="perm_ver_costos" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
-        <div class="perm-row" style="border-bottom:none">
+        <div class="perm-row">
           <div><div class="perm-lbl">Proveedores</div><div class="perm-sub">Ver y gestionar proveedores</div></div>
           <label class="toggle"><input type="checkbox" id="perm_ver_proveedores" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row" style="border-bottom:none">
+          <div><div class="perm-lbl">Reportes</div><div class="perm-sub">Ver reportes financieros y de cotizaciones</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_ver_reportes" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
       </div>
     </div>
@@ -1931,11 +1939,13 @@ function nuevoUsuario() {
     document.getElementById('perm_ver_cots').checked       = false;
     document.getElementById('perm_ver_ventas').checked     = false;
     document.getElementById('perm_eliminar_items').checked = false;
+    document.getElementById('perm_agregar_extras').checked = false;
     document.getElementById('perm_cancelar_recibos').checked= false;
     document.getElementById('perm_capturar_pagos').checked = false;
     document.getElementById('perm_asignar_cotizaciones').checked = false;
     document.getElementById('perm_ver_costos').checked = true;
     document.getElementById('perm_ver_proveedores').checked = true;
+    document.getElementById('perm_ver_reportes').checked = true;
     openSheet('shUsr');
 }
 function editarUsuario(id, data) {
@@ -1956,11 +1966,13 @@ function editarUsuario(id, data) {
     document.getElementById('perm_ver_cots').checked        = !!parseInt(data.puede_ver_todas_cots);
     document.getElementById('perm_ver_ventas').checked      = !!parseInt(data.puede_ver_todas_ventas);
     document.getElementById('perm_eliminar_items').checked  = !!parseInt(data.puede_eliminar_items_venta);
+    document.getElementById('perm_agregar_extras').checked  = !!parseInt(data.puede_agregar_extras ?? 0);
     document.getElementById('perm_cancelar_recibos').checked= !!parseInt(data.puede_cancelar_recibos);
     document.getElementById('perm_capturar_pagos').checked = !!parseInt(data.puede_capturar_pagos);
     document.getElementById('perm_asignar_cotizaciones').checked = !!parseInt(data.puede_asignar_cotizaciones);
     document.getElementById('perm_ver_costos').checked = !!parseInt(data.puede_ver_costos ?? 1);
     document.getElementById('perm_ver_proveedores').checked = !!parseInt(data.puede_ver_proveedores ?? 1);
+    document.getElementById('perm_ver_reportes').checked = !!parseInt(data.puede_ver_reportes ?? 1);
     togglePerms(data.rol);
     openSheet('shUsr');
 }
@@ -1988,11 +2000,13 @@ async function guardarUsuario() {
         puede_ver_todas_cots:        document.getElementById('perm_ver_cots').checked ? 1 : 0,
         puede_ver_todas_ventas:      document.getElementById('perm_ver_ventas').checked ? 1 : 0,
         puede_eliminar_items_venta:  document.getElementById('perm_eliminar_items').checked ? 1 : 0,
+        puede_agregar_extras:        document.getElementById('perm_agregar_extras').checked ? 1 : 0,
         puede_cancelar_recibos:      document.getElementById('perm_cancelar_recibos').checked ? 1 : 0,
         puede_capturar_pagos:        document.getElementById('perm_capturar_pagos').checked ? 1 : 0,
         puede_asignar_cotizaciones:  document.getElementById('perm_asignar_cotizaciones').checked ? 1 : 0,
         puede_ver_costos:            document.getElementById('perm_ver_costos').checked ? 1 : 0,
         puede_ver_proveedores:       document.getElementById('perm_ver_proveedores').checked ? 1 : 0,
+        puede_ver_reportes:          document.getElementById('perm_ver_reportes').checked ? 1 : 0,
     };
     if (pass) payload.password = pass;
     const url = id ? '/config/usuario/' + id : '/config/usuario';
