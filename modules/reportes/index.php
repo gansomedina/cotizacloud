@@ -18,9 +18,9 @@ $empresa_data = Auth::empresa();
 $costos_modo  = $empresa_data['costos_modo'] ?? 'venta';
 
 // ── Período ──────────────────────────────────────────────────
-$periodo_val  = $_GET['periodo'] ?? 'mes_actual';
-$periodos_ok  = ['mes_actual','mes_ant','30_dias','90_dias','anio','anio_ant','todo','rango'];
-if (!in_array($periodo_val, $periodos_ok)) $periodo_val = 'mes_actual';
+$periodo_val  = $_GET['periodo'] ?? '12_meses';
+$periodos_ok  = ['mes_actual','mes_ant','30_dias','90_dias','12_meses','anio','anio_ant','todo','rango'];
+if (!in_array($periodo_val, $periodos_ok)) $periodo_val = '12_meses';
 
 $now = new DateTimeImmutable('now', new DateTimeZone('America/Hermosillo'));
 switch ($periodo_val) {
@@ -34,6 +34,10 @@ switch ($periodo_val) {
         break;
     case '90_dias':
         $f_ini = $now->modify('-89 days')->format('Y-m-d');
+        $f_fin = $now->format('Y-m-d');
+        break;
+    case '12_meses':
+        $f_ini = $now->modify('-11 months')->modify('first day of this month')->format('Y-m-d');
         $f_fin = $now->format('Y-m-d');
         break;
     case 'anio':
@@ -571,6 +575,7 @@ ob_start();
       <option value="mes_ant"    <?= $periodo_val==='mes_ant'   ?'selected':'' ?>>Mes anterior</option>
       <option value="30_dias"    <?= $periodo_val==='30_dias'   ?'selected':'' ?>>Últimos 30 días</option>
       <option value="90_dias"    <?= $periodo_val==='90_dias'   ?'selected':'' ?>>Últimos 90 días</option>
+      <option value="12_meses"  <?= $periodo_val==='12_meses'  ?'selected':'' ?>>Últimos 12 meses</option>
       <option value="anio"       <?= $periodo_val==='anio'      ?'selected':'' ?>>Este año</option>
       <option value="anio_ant"   <?= $periodo_val==='anio_ant'  ?'selected':'' ?>>Año anterior</option>
       <option value="todo"       <?= $periodo_val==='todo'      ?'selected':'' ?>>Todo el historial</option>
