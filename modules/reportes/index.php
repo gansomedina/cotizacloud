@@ -136,7 +136,7 @@ $kfc = DB::row(
 $tasa_conv = ($kfc['total'] ?? 0) > 0
     ? round($kfc['aceptadas'] / $kfc['total'] * 100, 1) : 0;
 
-// Serie mensual (últimos 12 meses) para gráfica de barras
+// Serie mensual para gráfica de barras — se adapta al periodo seleccionado
 // Combina ventas reales + historial importado
 $serie_meses = DB::query(
     "SELECT mes, SUM(monto) AS monto, SUM(num) AS num FROM (
@@ -145,7 +145,7 @@ $serie_meses = DB::query(
                COUNT(*) AS num
         FROM ventas v
         WHERE v.empresa_id=? AND v.estado != 'cancelada'
-          AND v.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+          AND v.created_at BETWEEN ? AND ?
           $usr_filter
         GROUP BY mes
         UNION ALL
@@ -154,12 +154,12 @@ $serie_meses = DB::query(
                h.ventas_cantidad AS num
         FROM historial_mensual h
         WHERE h.empresa_id=?
-          AND STR_TO_DATE(CONCAT(h.anio, '-', LPAD(h.mes, 2, '0'), '-01'), '%Y-%m-%d') >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+          AND STR_TO_DATE(CONCAT(h.anio, '-', LPAD(h.mes, 2, '0'), '-01'), '%Y-%m-%d') BETWEEN ? AND ?
     ) combined GROUP BY mes ORDER BY mes ASC",
-    [$empresa_id, $empresa_id]
+    [$empresa_id, $f_ini_dt, $f_fin_dt, $empresa_id, $f_ini, $f_fin]
 );
 
-// Serie costos mensual — filtrar según modo
+// Serie costos mensual — filtrar según modo y periodo
 $serie_costos_filter = '';
 if ($costos_modo === 'venta')   $serie_costos_filter = 'AND venta_id IS NOT NULL';
 if ($costos_modo === 'empresa') $serie_costos_filter = 'AND venta_id IS NULL';
@@ -167,9 +167,9 @@ $serie_costos = DB::query(
     "SELECT DATE_FORMAT(fecha, '%Y-%m') AS mes,
             COALESCE(SUM(importe), 0)   AS monto
      FROM gastos_venta
-     WHERE empresa_id=? AND fecha >= DATE_SUB(NOW(), INTERVAL 12 MONTH) $serie_costos_filter
+     WHERE empresa_id=? AND fecha BETWEEN ? AND ? $serie_costos_filter
      GROUP BY mes ORDER BY mes ASC",
-    [$empresa_id]
+    [$empresa_id, $f_ini, $f_fin]
 );
 // Indexar costos por mes
 $costos_por_mes = [];
@@ -623,24 +623,35 @@ ob_start();
     </div>
   </div>
 
-  <!-- Gráfica ingresos vs costos últimos 12 meses -->
+  <!-- Gráfica ingresos vs costos del periodo -->
   <div class="chart-card">
     <div class="chart-title">
-      <span>Ingresos y costos — últimos 12 meses</span>
+      <span>Ingresos y costos del período</span>
       <div class="chart-legend">
         <span><i style="background:var(--g)"></i>Ingresos</span>
         <span><i style="background:#f59e0b"></i>Costos</span>
       </div>
     </div>
     <?php
-    // Construir serie completa de 12 meses
+    // Construir serie de meses del periodo seleccionado
     $meses_labels = [];
     $meses_ing    = [];
     $meses_cos    = [];
     $max_val = 1;
-    for ($i = 11; $i >= 0; $i--) {
-        $m = date('Y-m', strtotime("-$i months"));
-        $meses_labels[] = date('M', strtotime($m . '-01'));
+
+    $dt_ini = new DateTime($f_ini);
+    $dt_fin = new DateTime($f_fin);
+    $dt_ini->modify('first day of this month');
+    $dt_fin->modify('first day of this month');
+
+    $dt = clone $dt_ini;
+    while ($dt <= $dt_fin) {
+        $m = $dt->format('Y-m');
+        // Mostrar año si el rango cruza años o es > 12 meses
+        $diff_meses = $dt_ini->diff($dt_fin)->y * 12 + $dt_ini->diff($dt_fin)->m;
+        $meses_labels[] = $diff_meses > 11
+            ? $dt->format('M y')
+            : $dt->format('M');
         $ing = 0;
         foreach ($serie_meses as $sm) { if ($sm['mes'] === $m) { $ing = (float)$sm['monto']; break; } }
         $cos = $costos_por_mes[$m] ?? 0;
@@ -648,21 +659,26 @@ ob_start();
         $meses_cos[] = $cos;
         if ($ing > $max_val) $max_val = $ing;
         if ($cos > $max_val) $max_val = $cos;
+        $dt->modify('+1 month');
     }
+    $total_bars = count($meses_labels);
+    // Si hay muchos meses, reducir el ancho de las barras
+    $bar_min_w = $total_bars > 24 ? '8px' : ($total_bars > 12 ? '12px' : '');
+    $bar_font  = $total_bars > 24 ? '7px' : ($total_bars > 12 ? '8px' : '');
     ?>
-    <div class="bar-chart">
-      <?php for ($i = 0; $i < 12; $i++):
+    <div class="bar-chart" <?php if ($bar_min_w): ?>style="gap:2px"<?php endif; ?>>
+      <?php for ($i = 0; $i < $total_bars; $i++):
         $h_ing = round($meses_ing[$i] / $max_val * 96);
         $h_cos = round($meses_cos[$i] / $max_val * 96);
         $tip_i = rp($meses_ing[$i]);
         $tip_c = rp($meses_cos[$i]);
       ?>
-      <div class="bar-col">
+      <div class="bar-col" <?php if ($bar_min_w): ?>style="min-width:<?= $bar_min_w ?>"<?php endif; ?>>
         <div class="bar-wrap">
           <div class="bar" style="height:<?= max(2,$h_ing) ?>px;background:var(--g)" title="Ingresos: <?= $tip_i ?>"></div>
           <div class="bar" style="height:<?= max(2,$h_cos) ?>px;background:#f59e0b" title="Costos: <?= $tip_c ?>"></div>
         </div>
-        <div class="bar-lbl"><?= $meses_labels[$i] ?></div>
+        <div class="bar-lbl" <?php if ($bar_font): ?>style="font-size:<?= $bar_font ?>"<?php endif; ?>><?= $meses_labels[$i] ?></div>
       </div>
       <?php endfor; ?>
     </div>
