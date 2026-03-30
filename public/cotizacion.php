@@ -311,11 +311,10 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 .qh-title{font:800 22px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.025em;line-height:1.2;margin-bottom:4px}
 .qh-client{font-size:14px;color:var(--t2)}
 .qh-client span{color:var(--t3);font-size:12px}
-.qh-pills{padding:12px 22px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.pill{display:flex;flex-direction:column;padding:8px 12px;background:var(--bg);border:1px solid var(--bd);border-radius:10px}
+.qh-pills{padding:12px 22px;display:flex;flex-wrap:wrap;gap:8px}
+.pill{display:flex;flex-direction:column;padding:8px 14px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;white-space:nowrap}
 .pill-label{font-size:9.5px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
 .pill-value{font:600 13px 'DM Sans',sans-serif;color:var(--text)}
-@media(max-width:600px){.qh-pills{grid-template-columns:repeat(3,1fr)}}
 .chip{padding:4px 12px;background:var(--bg);border:1px solid var(--bd);border-radius:99px;font-size:13px;color:var(--t2)}
 .chip-danger{background:#fff5f5;border-color:#fca5a5;color:#c53030}
 .chip-warn{background:#fffbeb;border-color:#fcd34d;color:#92400e}
