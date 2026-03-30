@@ -20,7 +20,7 @@ $menu = [
     ['href' => '/costos',       'icon' => 'trending-down', 'label' => 'Costos',       'perm' => 'ver_costos'],
     ['href' => '/radar',        'icon' => 'activity',      'label' => 'Radar'],
     ['href' => '/reportes',     'icon' => 'bar-chart-2',   'label' => 'Reportes', 'perm' => 'ver_reportes'],
-    ['href' => '/config',       'icon' => 'settings',      'label' => 'Configuración'],
+    ['href' => '/config',       'icon' => 'settings',      'label' => 'Configuración', 'admin' => true],
     ['href' => '/ayuda',        'icon' => 'help-circle',   'label' => 'Ayuda'],
 ];
 
@@ -297,6 +297,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         $plan_sidebar = trial_info(EMPRESA_ID);
         foreach ($menu as $item):
             if (!empty($item['business']) && !$plan_sidebar['es_business']) continue;
+            if (!empty($item['admin']) && !Auth::es_admin()) continue;
             if (!empty($item['perm']) && !Auth::es_admin() && !Auth::puede($item['perm'])) continue;
         ?>
             <a href="<?= e($item['href']) ?>"
@@ -416,7 +417,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         <a href="/clientes" class="more-item <?= menu_activo('/clientes', $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['cli'] ?>Clientes</a>
         <a href="/costos"   class="more-item <?= menu_activo('/costos',   $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['cos'] ?>Costos</a>
         <a href="/reportes" class="more-item <?= menu_activo('/reportes', $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['rep'] ?>Reportes</a>
-        <a href="/config"   class="more-item <?= menu_activo('/config',   $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['cfg'] ?>Configuración</a>
+        <?php if (Auth::es_admin()): ?><a href="/config"   class="more-item <?= menu_activo('/config',   $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['cfg'] ?>Configuración</a><?php endif; ?>
         <a href="/ayuda"    class="more-item <?= menu_activo('/ayuda',    $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['ayu'] ?>Ayuda</a>
         <a href="/logout"   class="more-item more-item-logout"><?= $S['sal'] ?>Salir</a>
     </div>
