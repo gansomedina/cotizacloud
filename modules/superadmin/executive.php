@@ -17,12 +17,52 @@ $empresas_cfg = [
 ];
 $emp_ids = implode(',', array_keys($empresas_cfg));
 
-// ─── Periodo ────────────────────────────────────────────────
+// ─── Periodo seleccionable ──────────────────────────────────
 $now = new DateTimeImmutable('now', new DateTimeZone('America/Hermosillo'));
-$mes_ini = $now->format('Y-m') . '-01';
-$mes_fin = $now->format('Y-m-d');
-$mes_ant_ini = $now->modify('first day of last month')->format('Y-m-d');
-$mes_ant_fin = $now->modify('last day of last month')->format('Y-m-d');
+$periodo = $_GET['periodo'] ?? 'mes_actual';
+$periodos_ok = ['mes_actual','mes_ant','3_meses','6_meses','anio','todo'];
+if (!in_array($periodo, $periodos_ok)) $periodo = 'mes_actual';
+
+switch ($periodo) {
+    case 'mes_ant':
+        $p_ini = $now->modify('first day of last month')->format('Y-m-d');
+        $p_fin = $now->modify('last day of last month')->format('Y-m-d');
+        $p_label = $now->modify('first day of last month')->format('F Y');
+        break;
+    case '3_meses':
+        $p_ini = $now->modify('-2 months')->modify('first day of this month')->format('Y-m-d');
+        $p_fin = $now->format('Y-m-d');
+        $p_label = 'Últimos 3 meses';
+        break;
+    case '6_meses':
+        $p_ini = $now->modify('-5 months')->modify('first day of this month')->format('Y-m-d');
+        $p_fin = $now->format('Y-m-d');
+        $p_label = 'Últimos 6 meses';
+        break;
+    case 'anio':
+        $p_ini = $now->format('Y') . '-01-01';
+        $p_fin = $now->format('Y-m-d');
+        $p_label = 'Año ' . $now->format('Y');
+        break;
+    case 'todo':
+        $p_ini = '2021-01-01';
+        $p_fin = $now->format('Y-m-d');
+        $p_label = 'Todo el historial';
+        break;
+    default:
+        $p_ini = $now->format('Y-m') . '-01';
+        $p_fin = $now->format('Y-m-d');
+        $p_label = $now->format('F Y');
+}
+$p_ini_dt = $p_ini . ' 00:00:00';
+$p_fin_dt = $p_fin . ' 23:59:59';
+
+// Periodo anterior (para comparación)
+$diff_days = (new DateTime($p_ini))->diff(new DateTime($p_fin))->days + 1;
+$ant_fin = (new DateTime($p_ini))->modify('-1 day')->format('Y-m-d');
+$ant_ini = (new DateTime($ant_fin))->modify("-{$diff_days} days")->format('Y-m-d');
+$ant_ini_dt = $ant_ini . ' 00:00:00';
+$ant_fin_dt = $ant_fin . ' 23:59:59';
 
 // ─── KPIs GLOBALES ──────────────────────────────────────────
 $kpi_mes = DB::row(
@@ -31,7 +71,7 @@ $kpi_mes = DB::row(
      FROM ventas
      WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
        AND created_at BETWEEN ? AND ?",
-    [$mes_ini . ' 00:00:00', $mes_fin . ' 23:59:59']
+    [$p_ini_dt, $p_fin_dt]
 );
 
 $kpi_ant = DB::row(
@@ -39,7 +79,7 @@ $kpi_ant = DB::row(
      FROM ventas
      WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
        AND created_at BETWEEN ? AND ?",
-    [$mes_ant_ini . ' 00:00:00', $mes_ant_fin . ' 23:59:59']
+    [$ant_ini_dt, $ant_fin_dt]
 );
 
 $cobrado_hoy = (float)DB::val(
@@ -70,11 +110,12 @@ $var_ventas = (float)$kpi_ant['ventas'] > 0
 // ─── VENTAS POR EMPRESA ─────────────────────────────────────
 $ve_act = [];
 $rows = DB::query(
-    "SELECT empresa_id, COALESCE(SUM(total),0) AS monto, COUNT(*) AS num
+    "SELECT empresa_id, COALESCE(SUM(total),0) AS monto, COUNT(*) AS num,
+            COALESCE(SUM(pagado),0) AS cobrado, COALESCE(SUM(saldo),0) AS por_cobrar
      FROM ventas WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
        AND created_at BETWEEN ? AND ?
      GROUP BY empresa_id",
-    [$mes_ini . ' 00:00:00', $mes_fin . ' 23:59:59']
+    [$p_ini_dt, $p_fin_dt]
 );
 foreach ($rows as $r) $ve_act[(int)$r['empresa_id']] = $r;
 
@@ -84,7 +125,7 @@ $rows = DB::query(
      FROM ventas WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
        AND created_at BETWEEN ? AND ?
      GROUP BY empresa_id",
-    [$mes_ant_ini . ' 00:00:00', $mes_ant_fin . ' 23:59:59']
+    [$ant_ini_dt, $ant_fin_dt]
 );
 foreach ($rows as $r) $ve_ant[(int)$r['empresa_id']] = $r;
 
@@ -97,7 +138,35 @@ $rows = DB::query(
        AND estado != 'borrador'
        AND created_at BETWEEN ? AND ?
      GROUP BY empresa_id",
-    [$mes_ini . ' 00:00:00', $mes_fin . ' 23:59:59']
+    [$p_ini_dt, $p_fin_dt]
+);
+
+// Ticket promedio por empresa
+$ticket_global = (float)$kpi_mes['num'] > 0 ? (float)$kpi_mes['ventas'] / (float)$kpi_mes['num'] : 0;
+
+// Funnel global
+$funnel = DB::row(
+    "SELECT COUNT(*) AS total,
+            SUM(CASE WHEN estado != 'borrador' THEN 1 ELSE 0 END) AS enviadas,
+            SUM(CASE WHEN estado IN ('vista','aceptada','convertida','rechazada') THEN 1 ELSE 0 END) AS vistas,
+            SUM(CASE WHEN estado IN ('aceptada','convertida') THEN 1 ELSE 0 END) AS aceptadas,
+            SUM(CASE WHEN estado = 'rechazada' THEN 1 ELSE 0 END) AS rechazadas
+     FROM cotizaciones WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
+       AND created_at BETWEEN ? AND ?",
+    [$p_ini_dt, $p_fin_dt]
+);
+
+// Top clientes del periodo
+$top_clientes = DB::query(
+    "SELECT c.nombre, v.empresa_id, COUNT(*) AS num_ventas, COALESCE(SUM(v.total),0) AS monto
+     FROM ventas v
+     LEFT JOIN clientes c ON c.id = v.cliente_id
+     WHERE v.empresa_id IN ({$emp_ids}) AND v.estado != 'cancelada'
+       AND v.created_at BETWEEN ? AND ?
+       AND c.nombre IS NOT NULL
+     GROUP BY c.id, c.nombre, v.empresa_id
+     ORDER BY monto DESC LIMIT 10",
+    [$p_ini_dt, $p_fin_dt]
 );
 foreach ($rows as $r) $ce[(int)$r['empresa_id']] = $r;
 
@@ -169,7 +238,7 @@ $asesores = DB::query(
             us.score, us.nivel, us.s_activacion, us.s_seguimiento, us.s_conversion
      FROM usuarios u
      LEFT JOIN usuario_score us ON us.usuario_id = u.id AND us.empresa_id = u.empresa_id
-     WHERE u.empresa_id IN ({$emp_ids}) AND u.activo = 1 AND u.rol != 'superadmin'
+     WHERE u.empresa_id IN ({$emp_ids}) AND u.activo = 1 AND u.rol = 'asesor'
      ORDER BY us.score DESC"
 );
 
@@ -182,7 +251,7 @@ $rows = DB::query(
      WHERE v.empresa_id IN ({$emp_ids}) AND v.estado != 'cancelada'
        AND v.created_at BETWEEN ? AND ?
      GROUP BY uid",
-    [$mes_ini . ' 00:00:00', $mes_fin . ' 23:59:59']
+    [$p_ini_dt, $p_fin_dt]
 );
 foreach ($rows as $r) $va_asesor[(int)$r['uid']] = $r;
 
@@ -233,7 +302,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* KPI Cards */
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:28px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;transition:border-color .15s}
 .kpi:hover{border-color:var(--border2)}
 .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -280,6 +349,19 @@ tbody tr:hover td{background:var(--card-hover)}
 
 /* Responsive */
 @media(max-width:1100px){.grid-2{grid-template-columns:1fr}}
+/* Periodo selector */
+.periodo-sel{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font:600 13px 'Inter',sans-serif;cursor:pointer;outline:none}
+.periodo-sel:focus{border-color:var(--g)}
+.periodo-sel option{background:var(--card);color:var(--text)}
+
+/* Funnel */
+.funnel{display:flex;flex-direction:column;gap:6px}
+.funnel-row{display:flex;align-items:center;gap:12px}
+.funnel-label{font:600 12px 'Inter',sans-serif;min-width:90px;color:var(--t2)}
+.funnel-bar{flex:1;height:28px;background:var(--border);border-radius:6px;overflow:hidden;position:relative}
+.funnel-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:10px;font:700 11px 'Inter',sans-serif;color:#fff;min-width:30px;transition:width .5s}
+.funnel-num{min-width:50px;text-align:right;font:700 14px 'Inter',sans-serif}
+
 /* Score */
 .score-wrap{display:flex;align-items:center;gap:8px}
 .score-bar{width:50px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
@@ -302,7 +384,8 @@ tbody tr:hover td{background:var(--card-hover)}
 .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 @media(max-width:1100px){.grid-3{grid-template-columns:1fr}}
 
-@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:500px){.kpi-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -316,6 +399,14 @@ tbody tr:hover td{background:var(--card-hover)}
         <div class="hdr-sub"><?= $now->format('l, d F Y · H:i') ?> · Hermosillo, Son.</div>
     </div>
     <div class="hdr-right">
+        <select class="periodo-sel" onchange="location.href='/superadmin/executive?periodo='+this.value">
+            <option value="mes_actual" <?= $periodo==='mes_actual'?'selected':'' ?>>Este mes</option>
+            <option value="mes_ant" <?= $periodo==='mes_ant'?'selected':'' ?>>Mes anterior</option>
+            <option value="3_meses" <?= $periodo==='3_meses'?'selected':'' ?>>3 meses</option>
+            <option value="6_meses" <?= $periodo==='6_meses'?'selected':'' ?>>6 meses</option>
+            <option value="anio" <?= $periodo==='anio'?'selected':'' ?>>Este año</option>
+            <option value="todo" <?= $periodo==='todo'?'selected':'' ?>>Todo</option>
+        </select>
         <div class="hdr-live"><span class="hdr-dot"></span>LIVE</div>
         <a href="/superadmin" class="hdr-back">← SuperAdmin</a>
     </div>
@@ -325,7 +416,7 @@ tbody tr:hover td{background:var(--card-hover)}
 <div class="kpi-grid">
     <div class="kpi">
         <div class="kpi-top">
-            <div class="kpi-lbl">Ventas del mes</div>
+            <div class="kpi-lbl">Ventas — <?= $p_label ?></div>
             <span class="kpi-badge <?= $var_ventas > 0 ? 'up' : ($var_ventas < 0 ? 'dn' : 'eq') ?>"><?= $var_ventas > 0 ? '+' : '' ?><?= $var_ventas ?>%</span>
         </div>
         <div class="kpi-val" style="color:var(--g)"><?= xm((float)$kpi_mes['ventas']) ?></div>
@@ -352,6 +443,20 @@ tbody tr:hover td{background:var(--card-hover)}
         <div class="kpi-val" style="color:var(--b)"><?= xm((float)$pipeline['monto']) ?></div>
         <div class="kpi-sub"><b><?= $pipeline['num'] ?></b> cotizaciones vivas</div>
     </div>
+    <div class="kpi">
+        <div class="kpi-top"><div class="kpi-lbl">Ticket promedio</div></div>
+        <div class="kpi-val"><?= xf($ticket_global) ?></div>
+        <div class="kpi-sub">Por venta</div>
+    </div>
+    <div class="kpi">
+        <?php
+        $tasa_global = (int)($funnel['enviadas'] ?? 0) > 0
+            ? round((int)$funnel['aceptadas'] / (int)$funnel['enviadas'] * 100, 1) : 0;
+        ?>
+        <div class="kpi-top"><div class="kpi-lbl">Tasa de cierre</div></div>
+        <div class="kpi-val" style="color:<?= $tasa_global >= 15 ? 'var(--g)' : ($tasa_global >= 8 ? 'var(--a)' : 'var(--r)') ?>"><?= $tasa_global ?>%</div>
+        <div class="kpi-sub"><b><?= $funnel['aceptadas'] ?></b> de <b><?= $funnel['enviadas'] ?></b> cotizaciones</div>
+    </div>
 </div>
 
 <!-- TENDENCIAS -->
@@ -370,7 +475,7 @@ tbody tr:hover td{background:var(--card-hover)}
 <div class="sec">
     <div class="sec-hdr">
         <div class="sec-title">Ventas por empresa</div>
-        <div class="sec-count"><?= $now->format('F Y') ?></div>
+        <div class="sec-count"><?= $p_label ?></div>
     </div>
     <div class="tbl-card">
     <table>
@@ -561,6 +666,89 @@ tbody tr:hover td{background:var(--card-hover)}
 </div>
 
 </div><!-- /grid-3 -->
+
+<!-- FUNNEL + TOP CLIENTES -->
+<div class="grid-2">
+
+<!-- Funnel de conversión -->
+<div class="sec">
+    <div class="sec-hdr"><div class="sec-title">Embudo de conversión</div></div>
+    <div class="tbl-card" style="padding:24px">
+    <?php
+    $f_env = (int)($funnel['enviadas'] ?? 0);
+    $f_vis = (int)($funnel['vistas'] ?? 0);
+    $f_ace = (int)($funnel['aceptadas'] ?? 0);
+    $f_rec = (int)($funnel['rechazadas'] ?? 0);
+    $f_max = max($f_env, 1);
+    ?>
+    <div class="funnel">
+        <div class="funnel-row">
+            <div class="funnel-label">Enviadas</div>
+            <div class="funnel-bar"><div class="funnel-fill" style="width:100%;background:var(--b)"><?= $f_env ?></div></div>
+            <div class="funnel-num" style="color:var(--b)"><?= $f_env ?></div>
+        </div>
+        <div class="funnel-row">
+            <div class="funnel-label">Abiertas</div>
+            <div class="funnel-bar"><div class="funnel-fill" style="width:<?= $f_env > 0 ? round($f_vis/$f_max*100) : 0 ?>%;background:var(--a)"><?= $f_vis ?></div></div>
+            <div class="funnel-num" style="color:var(--a)"><?= $f_vis ?></div>
+        </div>
+        <div class="funnel-row">
+            <div class="funnel-label">Aceptadas</div>
+            <div class="funnel-bar"><div class="funnel-fill" style="width:<?= $f_env > 0 ? round($f_ace/$f_max*100) : 0 ?>%;background:var(--g)"><?= $f_ace ?></div></div>
+            <div class="funnel-num" style="color:var(--g)"><?= $f_ace ?></div>
+        </div>
+        <div class="funnel-row">
+            <div class="funnel-label">Rechazadas</div>
+            <div class="funnel-bar"><div class="funnel-fill" style="width:<?= $f_env > 0 ? round($f_rec/$f_max*100) : 0 ?>%;background:var(--r)"><?= $f_rec ?></div></div>
+            <div class="funnel-num" style="color:var(--r)"><?= $f_rec ?></div>
+        </div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:16px;justify-content:center">
+        <div style="text-align:center">
+            <div style="font:800 20px 'Inter',sans-serif;color:var(--g)"><?= $f_env > 0 ? round($f_vis/$f_env*100) : 0 ?>%</div>
+            <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">Apertura</div>
+        </div>
+        <div style="text-align:center">
+            <div style="font:800 20px 'Inter',sans-serif;color:var(--b)"><?= $f_env > 0 ? round($f_ace/$f_env*100) : 0 ?>%</div>
+            <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">Cierre</div>
+        </div>
+        <div style="text-align:center">
+            <div style="font:800 20px 'Inter',sans-serif;color:var(--r)"><?= $f_env > 0 ? round($f_rec/$f_env*100) : 0 ?>%</div>
+            <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">Rechazo</div>
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- Top clientes -->
+<div class="sec">
+    <div class="sec-hdr">
+        <div class="sec-title">Top clientes</div>
+        <div class="sec-count"><?= $p_label ?></div>
+    </div>
+    <div class="tbl-card" style="max-height:420px;overflow-y:auto">
+    <table>
+    <thead><tr><th>#</th><th></th><th>Cliente</th><th class="r">Ventas</th><th class="r">Monto</th></tr></thead>
+    <tbody>
+    <?php if ($top_clientes): $pos = 1; foreach ($top_clientes as $tc):
+        $ec = $empresas_cfg[(int)$tc['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+    ?>
+    <tr>
+        <td style="font:800 14px 'Inter',sans-serif;color:<?= $pos <= 3 ? 'var(--a)' : 'var(--t3)' ?>"><?= $pos ?></td>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>;font-size:8px;padding:3px 6px"><?= $ec['short'] ?></span></td>
+        <td style="font-weight:600"><?= e($tc['nombre']) ?></td>
+        <td class="r mono"><?= (int)$tc['num_ventas'] ?></td>
+        <td class="r mono" style="font-weight:700;color:var(--g)"><?= xf((float)$tc['monto']) ?></td>
+    </tr>
+    <?php $pos++; endforeach; else: ?>
+    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3)">Sin datos</td></tr>
+    <?php endif; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+
+</div><!-- /grid-2 funnel+clientes -->
 
 </div><!-- /wrap -->
 
