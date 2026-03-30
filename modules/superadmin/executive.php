@@ -88,12 +88,13 @@ $rows = DB::query(
 );
 foreach ($rows as $r) $ve_ant[(int)$r['empresa_id']] = $r;
 
-// Tasa cierre por empresa
+// Tasa cierre por empresa (excluir borradores, contar aceptadas+convertidas)
 $ce = [];
 $rows = DB::query(
     "SELECT empresa_id, COUNT(*) AS total,
-            SUM(CASE WHEN estado='aceptada' THEN 1 ELSE 0 END) AS aceptadas
+            SUM(CASE WHEN estado IN ('aceptada','convertida') THEN 1 ELSE 0 END) AS aceptadas
      FROM cotizaciones WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
+       AND estado != 'borrador'
        AND created_at BETWEEN ? AND ?
      GROUP BY empresa_id",
     [$mes_ini . ' 00:00:00', $mes_fin . ' 23:59:59']
