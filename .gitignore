@@ -22,11 +22,11 @@ node_modules/
 Thumbs.db
 
 # Datos sensibles — no commitear
-*.sql
-*.csv
 *.pem
 *.p8
 *.zip
+ontimeco_wp676.sql
+migrations/*.csv
 
 # Backups y archivos legacy
 *_backup.*
