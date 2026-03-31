@@ -156,18 +156,70 @@ $funnel = DB::row(
     [$p_ini_dt, $p_fin_dt]
 );
 
-// Top clientes del periodo
-$top_clientes = DB::query(
-    "SELECT c.nombre, v.empresa_id, COUNT(*) AS num_ventas, COALESCE(SUM(v.total),0) AS monto
+// Pagos del periodo (completos)
+$pagos_periodo = DB::query(
+    "SELECT r.empresa_id, r.monto, r.forma_pago, r.fecha, r.created_at,
+            v.titulo AS venta_titulo, v.numero AS venta_numero,
+            c.nombre AS cliente_nombre
+     FROM recibos r
+     JOIN ventas v ON v.id = r.venta_id
+     LEFT JOIN clientes c ON c.id = v.cliente_id
+     WHERE r.empresa_id IN ({$emp_ids}) AND r.tipo='abono' AND r.cancelado=0
+       AND r.fecha BETWEEN ? AND ?
+     ORDER BY r.fecha DESC, r.created_at DESC
+     LIMIT 200",
+    [$p_ini, $p_fin]
+);
+$total_pagos_periodo = 0;
+foreach ($pagos_periodo as $pp) $total_pagos_periodo += (float)$pp['monto'];
+
+// Ventas por cobrar (no 100% pagadas)
+$ventas_por_cobrar = DB::query(
+    "SELECT v.empresa_id, v.titulo, v.numero, v.total, v.pagado, v.saldo, v.created_at,
+            c.nombre AS cliente_nombre
      FROM ventas v
      LEFT JOIN clientes c ON c.id = v.cliente_id
-     WHERE v.empresa_id IN ({$emp_ids}) AND v.estado != 'cancelada'
+     WHERE v.empresa_id IN ({$emp_ids}) AND v.estado IN ('pendiente','parcial')
+       AND v.saldo > 0
+     ORDER BY v.saldo DESC LIMIT 100"
+);
+$total_por_cobrar_lista = 0;
+foreach ($ventas_por_cobrar as $vpc) $total_por_cobrar_lista += (float)$vpc['saldo'];
+
+// Ventas 100% cobradas del periodo
+$ventas_cobradas = DB::query(
+    "SELECT v.empresa_id, v.titulo, v.numero, v.total, v.created_at,
+            c.nombre AS cliente_nombre
+     FROM ventas v
+     LEFT JOIN clientes c ON c.id = v.cliente_id
+     WHERE v.empresa_id IN ({$emp_ids}) AND v.estado IN ('pagada','entregada')
        AND v.created_at BETWEEN ? AND ?
-       AND c.nombre IS NOT NULL
-     GROUP BY c.id, c.nombre, v.empresa_id
-     ORDER BY monto DESC LIMIT 10",
+     ORDER BY v.created_at DESC LIMIT 100",
     [$p_ini_dt, $p_fin_dt]
 );
+$total_cobradas = 0;
+foreach ($ventas_cobradas as $vc) $total_cobradas += (float)$vc['total'];
+
+// Tasa cierre mensual por empresa (para gráfica)
+$tasa_mensual = DB::query(
+    "SELECT DATE_FORMAT(created_at,'%Y-%m') AS mes, empresa_id,
+            COUNT(*) AS total,
+            SUM(CASE WHEN estado IN ('aceptada','convertida') THEN 1 ELSE 0 END) AS aceptadas
+     FROM cotizaciones
+     WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0 AND estado != 'borrador'
+       AND created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+     GROUP BY mes, empresa_id ORDER BY mes ASC"
+);
+$tasa_trend = [];
+foreach ($empresas_cfg as $eid => $ec) {
+    $tasa_trend[$eid] = [];
+    foreach ($meses_12 as $m) $tasa_trend[$eid][$m] = 0;
+}
+foreach ($tasa_mensual as $tm) {
+    $eid = (int)$tm['empresa_id'];
+    $t = (int)$tm['total'] > 0 ? round((int)$tm['aceptadas'] / (int)$tm['total'] * 100, 1) : 0;
+    if (isset($tasa_trend[$eid][$tm['mes']])) $tasa_trend[$eid][$tm['mes']] = $t;
+}
 foreach ($rows as $r) $ce[(int)$r['empresa_id']] = $r;
 
 // ─── TENDENCIAS 12 MESES ────────────────────────────────────
@@ -266,6 +318,38 @@ foreach ($empresas_cfg as $eid => $ec) {
     $donut_colors[] = $ec['color'];
 }
 
+// ─── Empresas ordenadas por monto (para gráficas y leyendas) ──
+$emp_sorted = [];
+foreach ($empresas_cfg as $eid => $ec) {
+    $total_12 = 0;
+    foreach ($meses_12 as $m) $total_12 += $trend[$eid][$m] ?? 0;
+    $emp_sorted[] = ['eid'=>$eid, 'ec'=>$ec, 'total'=>$total_12];
+}
+usort($emp_sorted, fn($a,$b) => $b['total'] <=> $a['total']);
+
+// Datos para gráfica por empresa (JSON para JS)
+$emp_chart_data = [];
+foreach ($empresas_cfg as $eid => $ec) {
+    $ventas_arr = [];
+    $tasa_arr = [];
+    $sum = 0;
+    foreach ($meses_12 as $m) {
+        $v = $trend[$eid][$m] ?? 0;
+        $ventas_arr[] = $v;
+        $sum += $v;
+        $tasa_arr[] = $tasa_trend[$eid][$m] ?? 0;
+    }
+    $media = count($meses_12) > 0 ? round($sum / count($meses_12), 2) : 0;
+    $emp_chart_data[$eid] = [
+        'nombre' => $ec['nombre'],
+        'short'  => $ec['short'],
+        'color'  => $ec['color'],
+        'ventas' => $ventas_arr,
+        'tasa'   => $tasa_arr,
+        'media'  => $media,
+    ];
+}
+
 // ─── Helpers ────────────────────────────────────────────────
 function xm(float $n): string {
     if (abs($n) >= 1000000) return '$' . number_format($n/1000000, 1) . 'M';
@@ -349,6 +433,13 @@ tbody tr:hover td{background:var(--card-hover)}
 
 /* Responsive */
 @media(max-width:1100px){.grid-2{grid-template-columns:1fr}}
+/* Operation tabs */
+.op-tab{padding:8px 16px;border:none;background:transparent;color:var(--t2);font:600 12px 'Inter',sans-serif;border-radius:7px;cursor:pointer;transition:all .15s}
+.op-tab.on{background:var(--g);color:#fff}
+.op-tab:hover:not(.on){background:var(--card-hover)}
+.op-panel{display:none}
+.op-panel.on{display:block}
+
 /* Periodo selector */
 .periodo-sel{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font:600 13px 'Inter',sans-serif;cursor:pointer;outline:none}
 .periodo-sel:focus{border-color:var(--g)}
@@ -459,12 +550,28 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
-<!-- TENDENCIAS -->
+<!-- GRÁFICA GLOBAL -->
 <div class="chart-card">
     <div class="chart-title">Tendencia de ingresos</div>
-    <div class="chart-sub">Últimos 12 meses — por empresa</div>
+    <div class="chart-sub">Últimos 12 meses — todas las empresas</div>
     <div class="chart-canvas">
         <canvas id="trendChart"></canvas>
+    </div>
+</div>
+
+<!-- GRÁFICA POR EMPRESA (tabs) -->
+<div class="chart-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+        <div class="chart-title" style="margin:0">Detalle por empresa</div>
+        <div style="display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px">
+            <?php foreach ($emp_sorted as $i => $es): ?>
+            <button class="op-tab <?= $i===0?'on':'' ?>" onclick="empChartTab(<?= $es['eid'] ?>,this)" style="<?= $i===0?'':'font-size:11px' ?>"><?= $es['ec']['short'] ?></button>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <div class="chart-sub">Ingresos mensuales + media (línea roja) · Tasa de cierre (línea punteada)</div>
+    <div class="chart-canvas" style="height:300px">
+        <canvas id="empChart"></canvas>
     </div>
 </div>
 
@@ -720,49 +827,124 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
-<!-- Top clientes -->
+<!-- Operaciones detalladas -->
+<div class="sec" style="grid-column:1/-1">
+    <div class="sec-hdr"><div class="sec-title">Operaciones</div></div>
+</div>
+
+</div><!-- /grid-2 funnel -->
+
+<!-- ══ TABS OPERACIONES ══════════════════════════════════════ -->
 <div class="sec">
-    <div class="sec-hdr">
-        <div class="sec-title">Top clientes</div>
-        <div class="sec-count"><?= $p_label ?></div>
+    <div style="display:flex;gap:4px;margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px;width:fit-content">
+        <button class="op-tab on" onclick="opTab('pagos',this)">Pagos (<?= count($pagos_periodo) ?>)</button>
+        <button class="op-tab" onclick="opTab('porcobrar',this)">Por cobrar (<?= count($ventas_por_cobrar) ?>)</button>
+        <button class="op-tab" onclick="opTab('cobradas',this)">Cobradas (<?= count($ventas_cobradas) ?>)</button>
     </div>
-    <div class="tbl-card" style="max-height:420px;overflow-y:auto">
-    <table>
-    <thead><tr><th>#</th><th></th><th>Cliente</th><th class="r">Ventas</th><th class="r">Monto</th></tr></thead>
+
+    <!-- Tab: Pagos -->
+    <div class="op-panel on" id="op-pagos">
+    <div class="sec-hdr" style="margin-bottom:8px">
+        <div style="font-size:13px;color:var(--t2)">Total: <b style="color:var(--g)"><?= xf($total_pagos_periodo) ?></b> — <?= $p_label ?></div>
+        <div style="display:flex;gap:6px;align-items:center">
+            <select class="periodo-sel" id="filterPagos" onchange="filterTable('pagos',this.value)" style="font-size:11px;padding:5px 10px">
+                <option value="">Todas</option>
+                <?php foreach ($empresas_cfg as $eid => $ec): ?>
+                <option value="<?= $eid ?>"><?= $ec['short'] ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+    <div class="tbl-card" style="max-height:500px;overflow-y:auto">
+    <table id="tbl-pagos">
+    <thead><tr><th></th><th>Cliente</th><th>Detalle</th><th>Forma</th><th class="r">Monto</th><th class="r">Fecha</th></tr></thead>
     <tbody>
-    <?php if ($top_clientes): $pos = 1; foreach ($top_clientes as $tc):
-        $ec = $empresas_cfg[(int)$tc['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+    <?php foreach ($pagos_periodo as $pp):
+        $ec = $empresas_cfg[(int)$pp['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
     ?>
-    <tr>
-        <td style="font:800 14px 'Inter',sans-serif;color:<?= $pos <= 3 ? 'var(--a)' : 'var(--t3)' ?>"><?= $pos ?></td>
-        <td><span class="tag" style="background:<?= $ec['color'] ?>;font-size:8px;padding:3px 6px"><?= $ec['short'] ?></span></td>
-        <td style="font-weight:600"><?= e($tc['nombre']) ?></td>
-        <td class="r mono"><?= (int)$tc['num_ventas'] ?></td>
-        <td class="r mono" style="font-weight:700;color:var(--g)"><?= xf((float)$tc['monto']) ?></td>
+    <tr data-emp="<?= $pp['empresa_id'] ?>">
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td style="font-weight:600;font-size:12px"><?= e($pp['cliente_nombre'] ?? '—') ?></td>
+        <td style="font-size:11px;color:var(--t2)"><?= e(mb_substr($pp['venta_titulo'] ?? $pp['venta_numero'],0,40)) ?></td>
+        <td style="font-size:11px;color:var(--t3)"><?= e($pp['forma_pago'] ?? 'efectivo') ?></td>
+        <td class="r mono" style="font-weight:700;color:var(--g)"><?= xf((float)$pp['monto']) ?></td>
+        <td class="r mono" style="font-size:12px;color:var(--t2)"><?= date('d/m', strtotime($pp['fecha'])) ?></td>
     </tr>
-    <?php $pos++; endforeach; else: ?>
-    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3)">Sin datos</td></tr>
-    <?php endif; ?>
+    <?php endforeach; ?>
     </tbody>
     </table>
     </div>
-</div>
+    </div>
 
-</div><!-- /grid-2 funnel+clientes -->
+    <!-- Tab: Por cobrar -->
+    <div class="op-panel" id="op-porcobrar">
+    <div class="sec-hdr" style="margin-bottom:8px">
+        <div style="font-size:13px;color:var(--t2)">Saldo pendiente: <b style="color:var(--a)"><?= xf($total_por_cobrar_lista) ?></b></div>
+        <select class="periodo-sel" id="filterPorcobrar" onchange="filterTable('porcobrar',this.value)" style="font-size:11px;padding:5px 10px">
+            <option value="">Todas</option>
+            <?php foreach ($empresas_cfg as $eid => $ec): ?>
+            <option value="<?= $eid ?>"><?= $ec['short'] ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <div class="tbl-card" style="max-height:500px;overflow-y:auto">
+    <table id="tbl-porcobrar">
+    <thead><tr><th></th><th>Venta</th><th>Cliente</th><th class="r">Total</th><th class="r">Pagado</th><th class="r">Saldo</th></tr></thead>
+    <tbody>
+    <?php foreach ($ventas_por_cobrar as $vpc):
+        $ec = $empresas_cfg[(int)$vpc['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+        $pct_pagado = (float)$vpc['total'] > 0 ? round((float)$vpc['pagado'] / (float)$vpc['total'] * 100) : 0;
+    ?>
+    <tr data-emp="<?= $vpc['empresa_id'] ?>">
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td style="font-size:12px;font-weight:600"><?= e(mb_substr($vpc['titulo'],0,35)) ?><br><span style="color:var(--t3);font-size:10px"><?= e($vpc['numero']) ?></span></td>
+        <td style="font-size:12px"><?= e($vpc['cliente_nombre'] ?? '—') ?></td>
+        <td class="r mono" style="font-size:12px"><?= xf((float)$vpc['total']) ?></td>
+        <td class="r mono" style="font-size:12px;color:var(--g)"><?= xf((float)$vpc['pagado']) ?> <span style="color:var(--t3);font-size:10px"><?= $pct_pagado ?>%</span></td>
+        <td class="r mono" style="font-weight:700;color:var(--a)"><?= xf((float)$vpc['saldo']) ?></td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    </div>
+
+    <!-- Tab: Cobradas -->
+    <div class="op-panel" id="op-cobradas">
+    <div class="sec-hdr" style="margin-bottom:8px">
+        <div style="font-size:13px;color:var(--t2)">Total cobrado: <b style="color:var(--g)"><?= xf($total_cobradas) ?></b> — <?= $p_label ?></div>
+        <select class="periodo-sel" id="filterCobradas" onchange="filterTable('cobradas',this.value)" style="font-size:11px;padding:5px 10px">
+            <option value="">Todas</option>
+            <?php foreach ($empresas_cfg as $eid => $ec): ?>
+            <option value="<?= $eid ?>"><?= $ec['short'] ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <div class="tbl-card" style="max-height:500px;overflow-y:auto">
+    <table id="tbl-cobradas">
+    <thead><tr><th></th><th>Venta</th><th>Cliente</th><th class="r">Total</th><th class="r">Fecha</th></tr></thead>
+    <tbody>
+    <?php foreach ($ventas_cobradas as $vc):
+        $ec = $empresas_cfg[(int)$vc['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+    ?>
+    <tr data-emp="<?= $vc['empresa_id'] ?>">
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td style="font-size:12px;font-weight:600"><?= e(mb_substr($vc['titulo'],0,35)) ?></td>
+        <td style="font-size:12px"><?= e($vc['cliente_nombre'] ?? '—') ?></td>
+        <td class="r mono" style="font-weight:700;color:var(--g)"><?= xf((float)$vc['total']) ?></td>
+        <td class="r mono" style="font-size:12px;color:var(--t2)"><?= date('d/m/Y', strtotime($vc['created_at'])) ?></td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    </div>
+</div>
 
 </div><!-- /wrap -->
 
 <script>
-<?php
-// Ordenar empresas por monto desc para leyenda de gráfica
-$emp_sorted = [];
-foreach ($empresas_cfg as $eid => $ec) {
-    $total_12 = 0;
-    foreach ($meses_12 as $m) $total_12 += $trend[$eid][$m] ?? 0;
-    $emp_sorted[] = ['eid'=>$eid, 'ec'=>$ec, 'total'=>$total_12];
-}
-usort($emp_sorted, fn($a,$b) => $b['total'] <=> $a['total']);
-?>
+<?php // $emp_sorted ya definido arriba ?>
 // ─── Trend Chart ────────────────────────────────────────────
 new Chart(document.getElementById('trendChart').getContext('2d'), {
     type: 'line',
@@ -876,6 +1058,131 @@ new Chart(document.getElementById('donutChart').getContext('2d'), {
         }
     }
 });
+// ─── Gráfica por empresa ────────────────────────────────────
+const empData = <?= json_encode($emp_chart_data) ?>;
+const chartLabels = <?= json_encode($chart_labels) ?>;
+let empChartInstance = null;
+
+function empChartTab(eid, btn) {
+    document.querySelectorAll('.op-tab').forEach(t => {
+        if (t.closest('.chart-card')) t.classList.remove('on');
+    });
+    btn.classList.add('on');
+    renderEmpChart(eid);
+}
+
+function renderEmpChart(eid) {
+    const d = empData[eid];
+    if (!d) return;
+
+    if (empChartInstance) empChartInstance.destroy();
+
+    const mediaLine = Array(12).fill(d.media);
+
+    empChartInstance = new Chart(document.getElementById('empChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [
+                {
+                    label: d.nombre + ' — Ingresos',
+                    data: d.ventas,
+                    borderColor: d.color,
+                    backgroundColor: d.color + '20',
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: d.color,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Media (' + '$' + Math.round(d.media).toLocaleString() + ')',
+                    data: mediaLine,
+                    borderColor: '#ef4444',
+                    borderWidth: 2,
+                    borderDash: [8, 4],
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    fill: false
+                },
+                {
+                    label: 'Tasa cierre %',
+                    data: d.tasa,
+                    borderColor: '#f59e0b',
+                    backgroundColor: '#f59e0b20',
+                    borderWidth: 2,
+                    borderDash: [4, 3],
+                    pointRadius: 3,
+                    pointBackgroundColor: '#f59e0b',
+                    tension: 0.3,
+                    fill: false,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { color: '#a1a1aa', font: { family: 'Inter', size: 11, weight: '600' }, usePointStyle: true, pointStyle: 'circle', padding: 16 }
+                },
+                tooltip: {
+                    backgroundColor: '#18181b', borderColor: '#3f3f46', borderWidth: 1,
+                    titleFont: { family: 'Inter', size: 12, weight: '700' },
+                    bodyFont: { family: 'Inter', size: 12 }, padding: 12, cornerRadius: 8,
+                    callbacks: {
+                        label: function(c) {
+                            if (c.dataset.yAxisID === 'y1') return c.dataset.label + ': ' + c.parsed.y.toFixed(1) + '%';
+                            return c.dataset.label + ': $' + c.parsed.y.toLocaleString('en-US', {maximumFractionDigits:0});
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: '#27272a' }, ticks: { color: '#52525b', font: { family: 'Inter', size: 10 } } },
+                y: {
+                    position: 'left',
+                    grid: { color: '#27272a' },
+                    ticks: {
+                        color: '#52525b', font: { family: 'Inter', size: 10 },
+                        callback: function(v) { return v >= 1000000 ? '$'+(v/1000000).toFixed(1)+'M' : v >= 1000 ? '$'+(v/1000).toFixed(0)+'K' : '$'+v; }
+                    }
+                },
+                y1: {
+                    position: 'right',
+                    grid: { display: false },
+                    ticks: { color: '#f59e0b', font: { family: 'Inter', size: 10 }, callback: function(v) { return v + '%'; } },
+                    min: 0,
+                    max: 100
+                }
+            }
+        }
+    });
+}
+
+// Renderizar primera empresa al cargar
+<?php if ($emp_sorted): ?>
+renderEmpChart(<?= $emp_sorted[0]['eid'] ?>);
+<?php endif; ?>
+
+// ─── Operation tabs ─────────────────────────────────────────
+function opTab(id, btn) {
+    document.querySelectorAll('.op-tab').forEach(t => t.classList.remove('on'));
+    document.querySelectorAll('.op-panel').forEach(p => p.classList.remove('on'));
+    btn.classList.add('on');
+    document.getElementById('op-' + id).classList.add('on');
+}
+
+function filterTable(tab, empId) {
+    const rows = document.querySelectorAll('#tbl-' + tab + ' tbody tr');
+    rows.forEach(r => {
+        r.style.display = (!empId || r.dataset.emp === empId) ? '' : 'none';
+    });
+}
 </script>
 </body>
 </html>
