@@ -103,29 +103,72 @@ $pipeline = DB::row(
        AND COALESCE(suspendida,0) = 0"
 );
 
+// Acumulado del mes (ventas reales + historial)
+$mes_actual = $now->format('Y-m');
+$acum_mes_real = (float)DB::val(
+    "SELECT COALESCE(SUM(total),0) FROM ventas
+     WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
+       AND created_at BETWEEN ? AND ?",
+    [$now->format('Y-m') . '-01 00:00:00', $now->format('Y-m-d') . ' 23:59:59']
+);
+$acum_mes_hist = (float)DB::val(
+    "SELECT COALESCE(SUM(ventas_monto),0) FROM historial_mensual
+     WHERE empresa_id IN ({$emp_ids}) AND anio = ? AND mes = ?",
+    [(int)$now->format('Y'), (int)$now->format('n')]
+);
+$acum_mes = $acum_mes_real + $acum_mes_hist;
+
+// Acumulado del año (ventas reales + historial)
+$anio_actual = (int)$now->format('Y');
+$acum_anio_real = (float)DB::val(
+    "SELECT COALESCE(SUM(total),0) FROM ventas
+     WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
+       AND created_at BETWEEN ? AND ?",
+    [$anio_actual . '-01-01 00:00:00', $now->format('Y-m-d') . ' 23:59:59']
+);
+$acum_anio_hist = (float)DB::val(
+    "SELECT COALESCE(SUM(ventas_monto),0) FROM historial_mensual
+     WHERE empresa_id IN ({$emp_ids}) AND anio = ?",
+    [$anio_actual]
+);
+$acum_anio = $acum_anio_real + $acum_anio_hist;
+
 $var_ventas = (float)$kpi_ant['ventas'] > 0
     ? round(((float)$kpi_mes['ventas'] - (float)$kpi_ant['ventas']) / (float)$kpi_ant['ventas'] * 100, 1)
     : ((float)$kpi_mes['ventas'] > 0 ? 100 : 0);
 
-// ─── VENTAS POR EMPRESA ─────────────────────────────────────
+// ─── VENTAS POR EMPRESA (reales + historial) ───────────────
 $ve_act = [];
 $rows = DB::query(
-    "SELECT empresa_id, COALESCE(SUM(total),0) AS monto, COUNT(*) AS num,
-            COALESCE(SUM(pagado),0) AS cobrado, COALESCE(SUM(saldo),0) AS por_cobrar
-     FROM ventas WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
-       AND created_at BETWEEN ? AND ?
-     GROUP BY empresa_id",
-    [$p_ini_dt, $p_fin_dt]
+    "SELECT empresa_id, SUM(monto) AS monto, SUM(num) AS num FROM (
+        SELECT empresa_id, COALESCE(SUM(total),0) AS monto, COUNT(*) AS num
+        FROM ventas WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
+          AND created_at BETWEEN ? AND ?
+        GROUP BY empresa_id
+        UNION ALL
+        SELECT empresa_id, ventas_monto AS monto, ventas_cantidad AS num
+        FROM historial_mensual
+        WHERE empresa_id IN ({$emp_ids})
+          AND STR_TO_DATE(CONCAT(anio,'-',LPAD(mes,2,'0'),'-01'),'%Y-%m-%d') BETWEEN ? AND ?
+    ) combined GROUP BY empresa_id",
+    [$p_ini_dt, $p_fin_dt, $p_ini, $p_fin]
 );
 foreach ($rows as $r) $ve_act[(int)$r['empresa_id']] = $r;
 
 $ve_ant = [];
 $rows = DB::query(
-    "SELECT empresa_id, COALESCE(SUM(total),0) AS monto, COUNT(*) AS num
-     FROM ventas WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
-       AND created_at BETWEEN ? AND ?
-     GROUP BY empresa_id",
-    [$ant_ini_dt, $ant_fin_dt]
+    "SELECT empresa_id, SUM(monto) AS monto, SUM(num) AS num FROM (
+        SELECT empresa_id, COALESCE(SUM(total),0) AS monto, COUNT(*) AS num
+        FROM ventas WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
+          AND created_at BETWEEN ? AND ?
+        GROUP BY empresa_id
+        UNION ALL
+        SELECT empresa_id, ventas_monto AS monto, ventas_cantidad AS num
+        FROM historial_mensual
+        WHERE empresa_id IN ({$emp_ids})
+          AND STR_TO_DATE(CONCAT(anio,'-',LPAD(mes,2,'0'),'-01'),'%Y-%m-%d') BETWEEN ? AND ?
+    ) combined GROUP BY empresa_id",
+    [$ant_ini_dt, $ant_fin_dt, $ant_ini, $ant_fin]
 );
 foreach ($rows as $r) $ve_ant[(int)$r['empresa_id']] = $r;
 
@@ -397,7 +440,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* KPI Cards */
-.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:28px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;transition:border-color .15s}
 .kpi:hover{border-color:var(--border2)}
 .kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -563,6 +606,16 @@ tbody tr:hover td{background:var(--card-hover)}
         <div class="kpi-top"><div class="kpi-lbl">Tasa de cierre</div></div>
         <div class="kpi-val" style="color:<?= $tasa_global >= 15 ? 'var(--g)' : ($tasa_global >= 8 ? 'var(--a)' : 'var(--r)') ?>"><?= $tasa_global ?>%</div>
         <div class="kpi-sub"><b><?= $funnel['aceptadas'] ?></b> de <b><?= $funnel['enviadas'] ?></b> cotizaciones</div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-top"><div class="kpi-lbl">Acumulado mes</div></div>
+        <div class="kpi-val" style="color:var(--g)"><?= xm($acum_mes) ?></div>
+        <div class="kpi-sub"><?= $now->format('F Y') ?></div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-top"><div class="kpi-lbl">Acumulado año</div></div>
+        <div class="kpi-val" style="color:var(--g)"><?= xm($acum_anio) ?></div>
+        <div class="kpi-sub"><?= $anio_actual ?></div>
     </div>
 </div>
 
