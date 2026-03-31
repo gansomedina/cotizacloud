@@ -318,6 +318,38 @@ foreach ($empresas_cfg as $eid => $ec) {
     $donut_colors[] = $ec['color'];
 }
 
+// ─── Empresas ordenadas por monto (para gráficas y leyendas) ──
+$emp_sorted = [];
+foreach ($empresas_cfg as $eid => $ec) {
+    $total_12 = 0;
+    foreach ($meses_12 as $m) $total_12 += $trend[$eid][$m] ?? 0;
+    $emp_sorted[] = ['eid'=>$eid, 'ec'=>$ec, 'total'=>$total_12];
+}
+usort($emp_sorted, fn($a,$b) => $b['total'] <=> $a['total']);
+
+// Datos para gráfica por empresa (JSON para JS)
+$emp_chart_data = [];
+foreach ($empresas_cfg as $eid => $ec) {
+    $ventas_arr = [];
+    $tasa_arr = [];
+    $sum = 0;
+    foreach ($meses_12 as $m) {
+        $v = $trend[$eid][$m] ?? 0;
+        $ventas_arr[] = $v;
+        $sum += $v;
+        $tasa_arr[] = $tasa_trend[$eid][$m] ?? 0;
+    }
+    $media = count($meses_12) > 0 ? round($sum / count($meses_12), 2) : 0;
+    $emp_chart_data[$eid] = [
+        'nombre' => $ec['nombre'],
+        'short'  => $ec['short'],
+        'color'  => $ec['color'],
+        'ventas' => $ventas_arr,
+        'tasa'   => $tasa_arr,
+        'media'  => $media,
+    ];
+}
+
 // ─── Helpers ────────────────────────────────────────────────
 function xm(float $n): string {
     if (abs($n) >= 1000000) return '$' . number_format($n/1000000, 1) . 'M';
@@ -518,12 +550,28 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
-<!-- TENDENCIAS -->
+<!-- GRÁFICA GLOBAL -->
 <div class="chart-card">
     <div class="chart-title">Tendencia de ingresos</div>
-    <div class="chart-sub">Últimos 12 meses — por empresa</div>
+    <div class="chart-sub">Últimos 12 meses — todas las empresas</div>
     <div class="chart-canvas">
         <canvas id="trendChart"></canvas>
+    </div>
+</div>
+
+<!-- GRÁFICA POR EMPRESA (tabs) -->
+<div class="chart-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+        <div class="chart-title" style="margin:0">Detalle por empresa</div>
+        <div style="display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px">
+            <?php foreach ($emp_sorted as $i => $es): ?>
+            <button class="op-tab <?= $i===0?'on':'' ?>" onclick="empChartTab(<?= $es['eid'] ?>,this)" style="<?= $i===0?'':'font-size:11px' ?>"><?= $es['ec']['short'] ?></button>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <div class="chart-sub">Ingresos mensuales + media (línea roja) · Tasa de cierre (línea punteada)</div>
+    <div class="chart-canvas" style="height:300px">
+        <canvas id="empChart"></canvas>
     </div>
 </div>
 
@@ -896,16 +944,7 @@ tbody tr:hover td{background:var(--card-hover)}
 </div><!-- /wrap -->
 
 <script>
-<?php
-// Ordenar empresas por monto desc para leyenda de gráfica
-$emp_sorted = [];
-foreach ($empresas_cfg as $eid => $ec) {
-    $total_12 = 0;
-    foreach ($meses_12 as $m) $total_12 += $trend[$eid][$m] ?? 0;
-    $emp_sorted[] = ['eid'=>$eid, 'ec'=>$ec, 'total'=>$total_12];
-}
-usort($emp_sorted, fn($a,$b) => $b['total'] <=> $a['total']);
-?>
+<?php // $emp_sorted ya definido arriba ?>
 // ─── Trend Chart ────────────────────────────────────────────
 new Chart(document.getElementById('trendChart').getContext('2d'), {
     type: 'line',
@@ -1019,6 +1058,117 @@ new Chart(document.getElementById('donutChart').getContext('2d'), {
         }
     }
 });
+// ─── Gráfica por empresa ────────────────────────────────────
+const empData = <?= json_encode($emp_chart_data) ?>;
+const chartLabels = <?= json_encode($chart_labels) ?>;
+let empChartInstance = null;
+
+function empChartTab(eid, btn) {
+    document.querySelectorAll('.op-tab').forEach(t => {
+        if (t.closest('.chart-card')) t.classList.remove('on');
+    });
+    btn.classList.add('on');
+    renderEmpChart(eid);
+}
+
+function renderEmpChart(eid) {
+    const d = empData[eid];
+    if (!d) return;
+
+    if (empChartInstance) empChartInstance.destroy();
+
+    const mediaLine = Array(12).fill(d.media);
+
+    empChartInstance = new Chart(document.getElementById('empChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [
+                {
+                    label: d.nombre + ' — Ingresos',
+                    data: d.ventas,
+                    borderColor: d.color,
+                    backgroundColor: d.color + '20',
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: d.color,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Media (' + '$' + Math.round(d.media).toLocaleString() + ')',
+                    data: mediaLine,
+                    borderColor: '#ef4444',
+                    borderWidth: 2,
+                    borderDash: [8, 4],
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    fill: false
+                },
+                {
+                    label: 'Tasa cierre %',
+                    data: d.tasa,
+                    borderColor: '#f59e0b',
+                    backgroundColor: '#f59e0b20',
+                    borderWidth: 2,
+                    borderDash: [4, 3],
+                    pointRadius: 3,
+                    pointBackgroundColor: '#f59e0b',
+                    tension: 0.3,
+                    fill: false,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { color: '#a1a1aa', font: { family: 'Inter', size: 11, weight: '600' }, usePointStyle: true, pointStyle: 'circle', padding: 16 }
+                },
+                tooltip: {
+                    backgroundColor: '#18181b', borderColor: '#3f3f46', borderWidth: 1,
+                    titleFont: { family: 'Inter', size: 12, weight: '700' },
+                    bodyFont: { family: 'Inter', size: 12 }, padding: 12, cornerRadius: 8,
+                    callbacks: {
+                        label: function(c) {
+                            if (c.dataset.yAxisID === 'y1') return c.dataset.label + ': ' + c.parsed.y.toFixed(1) + '%';
+                            return c.dataset.label + ': $' + c.parsed.y.toLocaleString('en-US', {maximumFractionDigits:0});
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: '#27272a' }, ticks: { color: '#52525b', font: { family: 'Inter', size: 10 } } },
+                y: {
+                    position: 'left',
+                    grid: { color: '#27272a' },
+                    ticks: {
+                        color: '#52525b', font: { family: 'Inter', size: 10 },
+                        callback: function(v) { return v >= 1000000 ? '$'+(v/1000000).toFixed(1)+'M' : v >= 1000 ? '$'+(v/1000).toFixed(0)+'K' : '$'+v; }
+                    }
+                },
+                y1: {
+                    position: 'right',
+                    grid: { display: false },
+                    ticks: { color: '#f59e0b', font: { family: 'Inter', size: 10 }, callback: function(v) { return v + '%'; } },
+                    min: 0,
+                    max: 100
+                }
+            }
+        }
+    });
+}
+
+// Renderizar primera empresa al cargar
+<?php if ($emp_sorted): ?>
+renderEmpChart(<?= $emp_sorted[0]['eid'] ?>);
+<?php endif; ?>
+
 // ─── Operation tabs ─────────────────────────────────────────
 function opTab(id, btn) {
     document.querySelectorAll('.op-tab').forEach(t => t.classList.remove('on'));
