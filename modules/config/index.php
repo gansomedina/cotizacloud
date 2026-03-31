@@ -857,6 +857,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <?php if (!empty($usr['puede_asignar_cotizaciones'])): ?><span class="ubadge ubadge-perm">Asigna cots</span><?php endif; ?>
           <?php if (empty($usr['puede_ver_costos'] ?? 1)): ?><span class="ubadge ubadge-off">Sin costos</span><?php endif; ?>
           <?php if (empty($usr['puede_ver_proveedores'] ?? 1)): ?><span class="ubadge ubadge-off">Sin proveedores</span><?php endif; ?>
+          <?php if (empty($usr['puede_ver_reportes'] ?? 1)): ?><span class="ubadge ubadge-off">Sin reportes</span><?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
