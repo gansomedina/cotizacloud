@@ -853,10 +853,18 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <?php if ($usr['puede_editar_precios']): ?><span class="ubadge ubadge-perm">Edita precios</span><?php endif; ?>
           <?php if ($usr['puede_aplicar_descuentos']): ?><span class="ubadge ubadge-perm">Aplica descuentos</span><?php endif; ?>
           <?php if ($usr['puede_ver_todas_cots']): ?><span class="ubadge ubadge-perm">Ve todas las cots</span><?php endif; ?>
+          <?php if (!empty($usr['puede_ver_todas_ventas'])): ?><span class="ubadge ubadge-perm">Ve todas las ventas</span><?php endif; ?>
           <?php if (!empty($usr['puede_capturar_pagos'])): ?><span class="ubadge ubadge-perm">Captura pagos</span><?php endif; ?>
           <?php if (!empty($usr['puede_asignar_cotizaciones'])): ?><span class="ubadge ubadge-perm">Asigna cots</span><?php endif; ?>
+          <?php if (!empty($usr['puede_cancelar_recibos'])): ?><span class="ubadge ubadge-perm">Cancela recibos</span><?php endif; ?>
+          <?php if (!empty($usr['puede_eliminar_items_venta'])): ?><span class="ubadge ubadge-perm">Elimina items</span><?php endif; ?>
+          <?php if (!empty($usr['puede_agregar_extras'])): ?><span class="ubadge ubadge-perm">Agrega extras</span><?php endif; ?>
+          <?php if (empty($usr['puede_crear_cotizaciones'] ?? 1)): ?><span class="ubadge ubadge-off">Sin crear cots</span><?php endif; ?>
+          <?php if (empty($usr['puede_editar_cotizaciones'] ?? 1)): ?><span class="ubadge ubadge-off">Sin editar cots</span><?php endif; ?>
+          <?php if (empty($usr['puede_ver_cantidades'] ?? 1)): ?><span class="ubadge ubadge-off">Sin cantidades</span><?php endif; ?>
           <?php if (empty($usr['puede_ver_costos'] ?? 1)): ?><span class="ubadge ubadge-off">Sin costos</span><?php endif; ?>
           <?php if (empty($usr['puede_ver_proveedores'] ?? 1)): ?><span class="ubadge ubadge-off">Sin proveedores</span><?php endif; ?>
+          <?php if (empty($usr['puede_ver_reportes'] ?? 1)): ?><span class="ubadge ubadge-off">Sin reportes</span><?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
