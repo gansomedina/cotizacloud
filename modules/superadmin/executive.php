@@ -334,12 +334,20 @@ $emp_chart_data = [];
 foreach ($empresas_cfg as $eid => $ec) {
     $ventas_arr = [];
     $tasa_arr = [];
+    $var_arr = [];
     $sum = 0;
+    $prev = null;
     foreach ($meses_12 as $m) {
         $v = $trend[$eid][$m] ?? 0;
         $ventas_arr[] = $v;
         $sum += $v;
         $tasa_arr[] = $tasa_trend[$eid][$m] ?? 0;
+        if ($prev !== null && $prev > 0) {
+            $var_arr[] = round(($v - $prev) / $prev * 100, 1);
+        } else {
+            $var_arr[] = 0;
+        }
+        $prev = $v;
     }
     $media = count($meses_12) > 0 ? round($sum / count($meses_12), 2) : 0;
     $emp_chart_data[$eid] = [
@@ -348,6 +356,7 @@ foreach ($empresas_cfg as $eid => $ec) {
         'color'  => $ec['color'],
         'ventas' => $ventas_arr,
         'tasa'   => $tasa_arr,
+        'variacion' => $var_arr,
         'media'  => $media,
     ];
 }
@@ -567,11 +576,11 @@ tbody tr:hover td{background:var(--card-hover)}
         <div class="chart-title" style="margin:0">Detalle por empresa</div>
         <div style="display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px">
             <?php foreach ($emp_sorted as $i => $es): ?>
-            <button class="op-tab <?= $i===0?'on':'' ?>" onclick="empChartTab(<?= $es['eid'] ?>,this)" style="<?= $i===0?'':'font-size:11px' ?>"><?= $es['ec']['short'] ?></button>
+            <button class="op-tab emp-chart-btn <?= $i===0?'on':'' ?>" data-eid="<?= $es['eid'] ?>" onclick="toggleEmpChart(this)"><?= $es['ec']['short'] ?></button>
             <?php endforeach; ?>
         </div>
     </div>
-    <div class="chart-sub">Ingresos mensuales + media (línea roja) · Tasa de cierre (línea punteada)</div>
+    <div class="chart-sub">Ingresos + media roja · Tasa cierre amarilla · Variación % verde punteada</div>
     <div class="chart-canvas" style="height:300px">
         <canvas id="empChart"></canvas>
     </div>
@@ -1065,64 +1074,87 @@ const empData = <?= json_encode($emp_chart_data) ?>;
 const chartLabels = <?= json_encode($chart_labels) ?>;
 let empChartInstance = null;
 
-function empChartTab(eid, btn) {
-    document.querySelectorAll('.op-tab').forEach(t => {
-        if (t.closest('.chart-card')) t.classList.remove('on');
-    });
-    btn.classList.add('on');
-    renderEmpChart(eid);
+function toggleEmpChart(btn) {
+    btn.classList.toggle('on');
+    renderEmpChartMulti();
 }
 
-function renderEmpChart(eid) {
-    const d = empData[eid];
-    if (!d) return;
-
+function renderEmpChartMulti() {
+    const active = [];
+    document.querySelectorAll('.emp-chart-btn.on').forEach(b => active.push(parseInt(b.dataset.eid)));
     if (empChartInstance) empChartInstance.destroy();
+    if (active.length === 0) { empChartInstance = null; return; }
 
-    const mediaLine = Array(12).fill(d.media);
+    const datasets = [];
+    const single = active.length === 1;
+
+    active.forEach(eid => {
+        const d = empData[eid];
+        if (!d) return;
+
+        // Línea de ingresos
+        datasets.push({
+            label: d.short + ' Ingresos',
+            data: d.ventas,
+            borderColor: d.color,
+            backgroundColor: single ? d.color + '15' : 'transparent',
+            borderWidth: single ? 3 : 2.5,
+            pointRadius: single ? 4 : 3,
+            pointHoverRadius: 6,
+            pointBackgroundColor: d.color,
+            tension: 0.3,
+            fill: single
+        });
+
+        // Media roja (solo si 1 empresa)
+        if (single) {
+            datasets.push({
+                label: 'Media $' + Math.round(d.media).toLocaleString(),
+                data: Array(12).fill(d.media),
+                borderColor: '#ef4444',
+                borderWidth: 2,
+                borderDash: [8, 4],
+                pointRadius: 0,
+                fill: false
+            });
+        }
+
+        // Variación % (solo si 1 empresa)
+        if (single) {
+            datasets.push({
+                label: d.short + ' Variación %',
+                data: d.variacion,
+                borderColor: '#22c55e',
+                borderWidth: 1.5,
+                borderDash: [4, 3],
+                pointRadius: 2,
+                pointBackgroundColor: '#22c55e',
+                tension: 0.3,
+                fill: false,
+                yAxisID: 'y1'
+            });
+
+            // Tasa cierre
+            datasets.push({
+                label: d.short + ' Tasa cierre %',
+                data: d.tasa,
+                borderColor: '#f59e0b',
+                borderWidth: 1.5,
+                borderDash: [4, 3],
+                pointRadius: 2,
+                pointBackgroundColor: '#f59e0b',
+                tension: 0.3,
+                fill: false,
+                yAxisID: 'y1'
+            });
+        }
+    });
+
+    const showY1 = single;
 
     empChartInstance = new Chart(document.getElementById('empChart').getContext('2d'), {
         type: 'line',
-        data: {
-            labels: chartLabels,
-            datasets: [
-                {
-                    label: d.nombre + ' — Ingresos',
-                    data: d.ventas,
-                    borderColor: d.color,
-                    backgroundColor: d.color + '20',
-                    borderWidth: 3,
-                    pointRadius: 4,
-                    pointHoverRadius: 7,
-                    pointBackgroundColor: d.color,
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: 'Media (' + '$' + Math.round(d.media).toLocaleString() + ')',
-                    data: mediaLine,
-                    borderColor: '#ef4444',
-                    borderWidth: 2,
-                    borderDash: [8, 4],
-                    pointRadius: 0,
-                    pointHoverRadius: 0,
-                    fill: false
-                },
-                {
-                    label: 'Tasa cierre %',
-                    data: d.tasa,
-                    borderColor: '#f59e0b',
-                    backgroundColor: '#f59e0b20',
-                    borderWidth: 2,
-                    borderDash: [4, 3],
-                    pointRadius: 3,
-                    pointBackgroundColor: '#f59e0b',
-                    tension: 0.3,
-                    fill: false,
-                    yAxisID: 'y1'
-                }
-            ]
-        },
+        data: { labels: chartLabels, datasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -1130,7 +1162,7 @@ function renderEmpChart(eid) {
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: { color: '#a1a1aa', font: { family: 'Inter', size: 11, weight: '600' }, usePointStyle: true, pointStyle: 'circle', padding: 16 }
+                    labels: { color: '#a1a1aa', font: { family: 'Inter', size: 11, weight: '600' }, usePointStyle: true, pointStyle: 'circle', padding: 14 }
                 },
                 tooltip: {
                     backgroundColor: '#18181b', borderColor: '#3f3f46', borderWidth: 1,
@@ -1139,6 +1171,7 @@ function renderEmpChart(eid) {
                     callbacks: {
                         label: function(c) {
                             if (c.dataset.yAxisID === 'y1') return c.dataset.label + ': ' + c.parsed.y.toFixed(1) + '%';
+                            if (c.dataset.label.includes('Media')) return c.dataset.label;
                             return c.dataset.label + ': $' + c.parsed.y.toLocaleString('en-US', {maximumFractionDigits:0});
                         }
                     }
@@ -1147,19 +1180,16 @@ function renderEmpChart(eid) {
             scales: {
                 x: { grid: { color: '#27272a' }, ticks: { color: '#52525b', font: { family: 'Inter', size: 10 } } },
                 y: {
-                    position: 'left',
-                    grid: { color: '#27272a' },
-                    ticks: {
-                        color: '#52525b', font: { family: 'Inter', size: 10 },
+                    position: 'left', grid: { color: '#27272a' },
+                    ticks: { color: '#52525b', font: { family: 'Inter', size: 10 },
                         callback: function(v) { return v >= 1000000 ? '$'+(v/1000000).toFixed(1)+'M' : v >= 1000 ? '$'+(v/1000).toFixed(0)+'K' : '$'+v; }
                     }
                 },
                 y1: {
-                    position: 'right',
-                    grid: { display: false },
-                    ticks: { color: '#f59e0b', font: { family: 'Inter', size: 10 }, callback: function(v) { return v + '%'; } },
-                    min: 0,
-                    max: 100
+                    display: showY1,
+                    position: 'right', grid: { display: false },
+                    ticks: { color: '#a1a1aa', font: { family: 'Inter', size: 10 }, callback: function(v) { return v + '%'; } },
+                    min: -100, max: 100
                 }
             }
         }
@@ -1167,9 +1197,7 @@ function renderEmpChart(eid) {
 }
 
 // Renderizar primera empresa al cargar
-<?php if ($emp_sorted): ?>
-renderEmpChart(<?= $emp_sorted[0]['eid'] ?>);
-<?php endif; ?>
+renderEmpChartMulti();
 
 // ─── Operation tabs ─────────────────────────────────────────
 function opTab(id, btn) {
