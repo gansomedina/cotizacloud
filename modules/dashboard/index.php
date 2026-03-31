@@ -906,7 +906,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
 <div class="slabel"><?= ico('alert', 14, '#d97706') ?> Ventas sin pagos <span style="font:400 12px var(--body);color:var(--t3)">(<?= count($ventas_sin_pago) ?>)</span></div>
 <div class="card" style="overflow:hidden">
   <?php foreach ($ventas_sin_pago as $vsp):
-    $dias_sin = (int)((time() - strtotime($vsp['created_at'])) / 86400);
+    $dias_sin = max(0, (int)(new DateTime('now', new DateTimeZone('America/Hermosillo')))->diff(new DateTime($vsp['created_at'], new DateTimeZone('America/Hermosillo')))->days);
     $color_dias = $dias_sin > 14 ? 'var(--danger)' : ($dias_sin > 7 ? '#d97706' : 'var(--t3)');
   ?>
   <a href="/ventas/<?= (int)$vsp['id'] ?>" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background .12s" onmouseover="this.style.background='#fafaf8'" onmouseout="this.style.background=''">
@@ -1006,7 +1006,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <?php else: ?>
     <?php foreach ($aceptadas as $a):
       $ini = iniciales_d($a['cliente_nombre'] ?? '?');
-      $dias = max(0, (int)floor((time() - strtotime($a['aceptada_at'])) / 86400));
+      $dias = max(0, (int)(new DateTime('now', new DateTimeZone('America/Hermosillo')))->diff(new DateTime($a['aceptada_at'], new DateTimeZone('America/Hermosillo')))->days);
       [$dlbl, $dcls] = dias_lbl($dias, true);
       $href = $a['venta_id'] ? '/ventas/'.$a['venta_id'] : '/cotizaciones/'.$a['id'];
     ?>
@@ -1034,7 +1034,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <?php else: ?>
     <?php foreach ($rechazadas as $r):
       $ini = iniciales_d($r['cliente_nombre'] ?? '?');
-      $dias = max(0, (int)floor((time() - strtotime($r['rechazada_at'])) / 86400));
+      $dias = max(0, (int)(new DateTime('now', new DateTimeZone('America/Hermosillo')))->diff(new DateTime($r['rechazada_at'], new DateTimeZone('America/Hermosillo')))->days);
       [$dlbl, $dcls] = dias_lbl($dias, true);
       $dcls = $dias <= 2 ? 'dias-red' : 'dias-amb';
     ?>

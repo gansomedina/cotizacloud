@@ -963,7 +963,7 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
     <div class="tbl-card" style="max-height:500px;overflow-y:auto">
     <table id="tbl-porcobrar">
-    <thead><tr><th></th><th>Venta</th><th>Cliente</th><th class="r">Total</th><th class="r">Pagado</th><th class="r">Saldo</th></tr></thead>
+    <thead><tr><th></th><th>Venta</th><th>Cliente</th><th class="r">Total</th><th class="r">Pagado</th><th class="r">Saldo</th><th class="r">Fecha</th></tr></thead>
     <tbody>
     <?php foreach ($ventas_por_cobrar as $vpc):
         $ec = $empresas_cfg[(int)$vpc['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
@@ -976,6 +976,7 @@ tbody tr:hover td{background:var(--card-hover)}
         <td class="r mono" style="font-size:12px"><?= xf((float)$vpc['total']) ?></td>
         <td class="r mono" style="font-size:12px;color:var(--g)"><?= xf((float)$vpc['pagado']) ?> <span style="color:var(--t3);font-size:10px"><?= $pct_pagado ?>%</span></td>
         <td class="r mono" style="font-weight:700;color:var(--a)"><?= xf((float)$vpc['saldo']) ?></td>
+        <td class="r mono" style="font-size:11px;color:var(--t2)"><?= date('d/m/Y', strtotime($vpc['created_at'])) ?></td>
     </tr>
     <?php endforeach; ?>
     </tbody>

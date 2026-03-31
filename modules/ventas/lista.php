@@ -137,7 +137,7 @@ ob_start();
 @media(min-width:761px){
   .vtbl-header{
     display:grid;
-    grid-template-columns:minmax(0,2fr) 140px minmax(90px,1fr) 100px minmax(110px,1fr) 100px;
+    grid-template-columns:minmax(0,2fr) 130px minmax(80px,0.8fr) 76px 90px minmax(100px,1fr) 90px;
     align-items:center;padding:9px 20px;
     border-bottom:2px solid var(--border);background:var(--bg)
   }
@@ -145,7 +145,7 @@ ob_start();
 
   .venta-row{
     display:grid;
-    grid-template-columns:minmax(0,2fr) 140px minmax(90px,1fr) 100px minmax(110px,1fr) 100px;
+    grid-template-columns:minmax(0,2fr) 130px minmax(80px,0.8fr) 76px 90px minmax(100px,1fr) 90px;
     align-items:center;gap:0;padding:14px 20px
   }
 
@@ -180,11 +180,11 @@ ob_start();
   .venta-r{display:none!important}
 
   /* Cols desktop: mostrar */
-  .venta-col-cliente,.venta-col-asesor,.venta-col-status,.venta-col-monto{display:block}
+  .venta-col-cliente,.venta-col-asesor,.venta-col-fecha,.venta-col-status,.venta-col-monto{display:block}
 }
 
 @media(max-width:760px){
-  .venta-col-cliente,.venta-col-asesor,.venta-col-status,
+  .venta-col-cliente,.venta-col-asesor,.venta-col-fecha,.venta-col-status,
   .venta-col-monto,.venta-col-accion{display:none}
   .venta-title{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 }
@@ -232,6 +232,7 @@ foreach ($elabels as $k => $lbl):
   <span>Proyecto / Folio</span>
   <span>Cliente</span>
   <span>Asesor</span>
+  <span>Fecha</span>
   <span>Estatus</span>
   <span>Total / Saldo</span>
   <span style="text-align:right">Acciones</span>
@@ -269,6 +270,11 @@ foreach ($elabels as $k => $lbl):
   <!-- Col 3: asesor (desktop) -->
   <div class="venta-col-asesor">
     <div class="vc-nombre"><?= e($v['vendedor'] ?? '—') ?></div>
+  </div>
+
+  <!-- Col 3b: fecha (desktop) -->
+  <div class="venta-col-fecha">
+    <div style="font:400 12px var(--num);color:var(--t3)"><?= date('d/m/Y', strtotime($v['created_at'])) ?></div>
   </div>
 
   <!-- Col 4: estatus (desktop) -->
