@@ -200,6 +200,10 @@ $ventas_cobradas = DB::query(
 $total_cobradas = 0;
 foreach ($ventas_cobradas as $vc) $total_cobradas += (float)$vc['total'];
 
+// Serie de 12 meses (necesario para tasa_trend y tendencias)
+$meses_12 = [];
+for ($i = 11; $i >= 0; $i--) $meses_12[] = date('Y-m', strtotime("-$i months"));
+
 // Tasa cierre mensual por empresa (para gráfica)
 $tasa_mensual = DB::query(
     "SELECT DATE_FORMAT(created_at,'%Y-%m') AS mes, empresa_id,
@@ -237,9 +241,7 @@ $tendencias = DB::query(
     ) t GROUP BY mes, empresa_id ORDER BY mes ASC"
 );
 
-// Construir serie de 12 meses
-$meses_12 = [];
-for ($i = 11; $i >= 0; $i--) $meses_12[] = date('Y-m', strtotime("-$i months"));
+// $meses_12 ya definido arriba
 
 $trend = [];
 foreach ($empresas_cfg as $eid => $ec) {
