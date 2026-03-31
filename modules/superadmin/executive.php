@@ -444,6 +444,11 @@ tbody tr:hover td{background:var(--card-hover)}
 
 /* Responsive */
 @media(max-width:1100px){.grid-2{grid-template-columns:1fr}}
+/* Metric toggle buttons */
+.metric-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--t3);font:600 11px 'Inter',sans-serif;cursor:pointer;transition:all .15s}
+.metric-btn.on{background:var(--card-hover);color:var(--text);border-color:var(--border2)}
+.metric-btn:hover:not(.on){background:var(--card-hover)}
+
 /* Operation tabs */
 .op-tab{padding:8px 16px;border:none;background:transparent;color:var(--t2);font:600 12px 'Inter',sans-serif;border-radius:7px;cursor:pointer;transition:all .15s}
 .op-tab.on{background:var(--g);color:#fff}
@@ -572,7 +577,7 @@ tbody tr:hover td{background:var(--card-hover)}
 
 <!-- GRÁFICA POR EMPRESA (tabs) -->
 <div class="chart-card">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
         <div class="chart-title" style="margin:0">Detalle por empresa</div>
         <div style="display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px">
             <?php foreach ($emp_sorted as $i => $es): ?>
@@ -580,8 +585,13 @@ tbody tr:hover td{background:var(--card-hover)}
             <?php endforeach; ?>
         </div>
     </div>
-    <div class="chart-sub">Ingresos + media roja · Tasa cierre amarilla · Variación % verde punteada</div>
-    <div class="chart-canvas" style="height:300px">
+    <div style="display:flex;gap:4px;margin-bottom:14px">
+        <button class="metric-btn on" data-metric="ingresos" onclick="toggleMetric(this)" style="border-left:3px solid var(--b)">Ingresos</button>
+        <button class="metric-btn" data-metric="media" onclick="toggleMetric(this)" style="border-left:3px solid #ef4444">Media</button>
+        <button class="metric-btn" data-metric="variacion" onclick="toggleMetric(this)" style="border-left:3px solid #22c55e">Variación %</button>
+        <button class="metric-btn" data-metric="tasa" onclick="toggleMetric(this)" style="border-left:3px solid #f59e0b">Tasa cierre</button>
+    </div>
+    <div class="chart-canvas" style="height:320px">
         <canvas id="empChart"></canvas>
     </div>
 </div>
@@ -1076,73 +1086,87 @@ let empChartInstance = null;
 
 function toggleEmpChart(btn) {
     btn.classList.toggle('on');
-    renderEmpChartMulti();
+    rebuildEmpChart();
+}
+function toggleMetric(btn) {
+    btn.classList.toggle('on');
+    rebuildEmpChart();
 }
 
-function renderEmpChartMulti() {
-    const active = [];
-    document.querySelectorAll('.emp-chart-btn.on').forEach(b => active.push(parseInt(b.dataset.eid)));
+function rebuildEmpChart() {
+    const activeEmps = [];
+    document.querySelectorAll('.emp-chart-btn.on').forEach(b => activeEmps.push(parseInt(b.dataset.eid)));
+
+    const metrics = {};
+    document.querySelectorAll('.metric-btn.on').forEach(b => metrics[b.dataset.metric] = true);
+
     if (empChartInstance) empChartInstance.destroy();
-    if (active.length === 0) { empChartInstance = null; return; }
+    if (activeEmps.length === 0) { empChartInstance = null; return; }
 
     const datasets = [];
-    const single = active.length === 1;
+    let needY1 = false;
 
-    active.forEach(eid => {
+    activeEmps.forEach(eid => {
         const d = empData[eid];
         if (!d) return;
 
-        // Línea de ingresos
-        datasets.push({
-            label: d.short + ' Ingresos',
-            data: d.ventas,
-            borderColor: d.color,
-            backgroundColor: single ? d.color + '15' : 'transparent',
-            borderWidth: single ? 3 : 2.5,
-            pointRadius: single ? 4 : 3,
-            pointHoverRadius: 6,
-            pointBackgroundColor: d.color,
-            tension: 0.3,
-            fill: single
-        });
-
-        // Media roja (solo si 1 empresa)
-        if (single) {
+        if (metrics.ingresos) {
             datasets.push({
-                label: 'Media $' + Math.round(d.media).toLocaleString(),
+                label: d.short + ' Ingresos',
+                data: d.ventas,
+                borderColor: d.color,
+                backgroundColor: activeEmps.length === 1 ? d.color + '12' : 'transparent',
+                borderWidth: 2.5,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                pointBackgroundColor: d.color,
+                tension: 0.3,
+                fill: activeEmps.length === 1
+            });
+        }
+
+        if (metrics.media) {
+            datasets.push({
+                label: d.short + ' Media $' + Math.round(d.media).toLocaleString(),
                 data: Array(12).fill(d.media),
-                borderColor: '#ef4444',
-                borderWidth: 2,
+                borderColor: d.color,
+                borderWidth: 1.5,
                 borderDash: [8, 4],
                 pointRadius: 0,
                 fill: false
             });
         }
 
-        // Variación % (solo si 1 empresa)
-        if (single) {
+        if (metrics.variacion) {
+            needY1 = true;
             datasets.push({
-                label: d.short + ' Variación %',
+                label: d.short + ' Var %',
                 data: d.variacion,
-                borderColor: '#22c55e',
-                borderWidth: 1.5,
-                borderDash: [4, 3],
-                pointRadius: 2,
-                pointBackgroundColor: '#22c55e',
+                borderColor: d.color,
+                borderWidth: 2,
+                borderDash: [3, 3],
+                pointRadius: 3,
+                pointBackgroundColor: d.color,
+                pointBorderColor: '#22c55e',
+                pointBorderWidth: 2,
                 tension: 0.3,
                 fill: false,
                 yAxisID: 'y1'
             });
+        }
 
-            // Tasa cierre
+        if (metrics.tasa) {
+            needY1 = true;
             datasets.push({
-                label: d.short + ' Tasa cierre %',
+                label: d.short + ' Tasa %',
                 data: d.tasa,
-                borderColor: '#f59e0b',
-                borderWidth: 1.5,
-                borderDash: [4, 3],
-                pointRadius: 2,
-                pointBackgroundColor: '#f59e0b',
+                borderColor: d.color,
+                borderWidth: 2,
+                borderDash: [6, 3],
+                pointRadius: 3,
+                pointBackgroundColor: d.color,
+                pointBorderColor: '#f59e0b',
+                pointBorderWidth: 2,
                 tension: 0.3,
                 fill: false,
                 yAxisID: 'y1'
@@ -1150,7 +1174,8 @@ function renderEmpChartMulti() {
         }
     });
 
-    const showY1 = single;
+    // Si solo hay métricas de % sin ingresos, ocultar eje Y izquierdo
+    const showY = metrics.ingresos || metrics.media;
 
     empChartInstance = new Chart(document.getElementById('empChart').getContext('2d'), {
         type: 'line',
@@ -1162,7 +1187,7 @@ function renderEmpChartMulti() {
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: { color: '#a1a1aa', font: { family: 'Inter', size: 11, weight: '600' }, usePointStyle: true, pointStyle: 'circle', padding: 14 }
+                    labels: { color: '#a1a1aa', font: { family: 'Inter', size: 11, weight: '600' }, usePointStyle: true, pointStyle: 'circle', padding: 12 }
                 },
                 tooltip: {
                     backgroundColor: '#18181b', borderColor: '#3f3f46', borderWidth: 1,
@@ -1180,24 +1205,24 @@ function renderEmpChartMulti() {
             scales: {
                 x: { grid: { color: '#27272a' }, ticks: { color: '#52525b', font: { family: 'Inter', size: 10 } } },
                 y: {
+                    display: showY,
                     position: 'left', grid: { color: '#27272a' },
                     ticks: { color: '#52525b', font: { family: 'Inter', size: 10 },
                         callback: function(v) { return v >= 1000000 ? '$'+(v/1000000).toFixed(1)+'M' : v >= 1000 ? '$'+(v/1000).toFixed(0)+'K' : '$'+v; }
                     }
                 },
                 y1: {
-                    display: showY1,
+                    display: needY1,
                     position: 'right', grid: { display: false },
-                    ticks: { color: '#a1a1aa', font: { family: 'Inter', size: 10 }, callback: function(v) { return v + '%'; } },
-                    min: -100, max: 100
+                    ticks: { color: '#a1a1aa', font: { family: 'Inter', size: 10 }, callback: function(v) { return v + '%'; } }
                 }
             }
         }
     });
 }
 
-// Renderizar primera empresa al cargar
-renderEmpChartMulti();
+// Renderizar al cargar
+rebuildEmpChart();
 
 // ─── Operation tabs ─────────────────────────────────────────
 function opTab(id, btn) {
