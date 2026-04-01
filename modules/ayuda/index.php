@@ -208,9 +208,11 @@ ob_start();
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!--  SOLICITAR LICENCIA                                     -->
+<!--  SOLICITAR LICENCIA (oculto en app nativa — Apple 3.1.1) -->
 <!-- ═══════════════════════════════════════════════════════ -->
-<?php $trial = trial_info(EMPRESA_ID); ?>
+<?php $trial = trial_info(EMPRESA_ID);
+$is_native_app_ayuda = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+if (!$is_native_app_ayuda): ?>
 <div class="ay-section" id="sec-licencia">
   <h2 class="ay-h2">Activar licencia</h2>
   <?php if ($trial['es_free']): ?>
@@ -263,6 +265,7 @@ ob_start();
     </form>
   </div>
 </div>
+<?php endif; // !$is_native_app_ayuda ?>
 
 <!-- ═══════════════════════════════════════════════════════ -->
 <!--  ENVIAR TICKET DE SOPORTE                              -->

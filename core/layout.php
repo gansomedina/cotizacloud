@@ -6,6 +6,9 @@
 
 defined('COTIZAAPP') or die;
 
+// Detectar app nativa iOS/Android (Capacitor)
+$is_native_app = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+
 $usuario = Auth::usuario();
 $empresa = Auth::empresa();
 $flash   = flash_get();
@@ -366,8 +369,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         </div>
         <?php endif; ?>
         <?php
-        // Trial banner
-        if (EMPRESA_ID > 0 && !Auth::es_superadmin()) {
+        // Trial banner — NO mostrar en app nativa (Apple Guideline 3.1.1)
+        if (EMPRESA_ID > 0 && !Auth::es_superadmin() && !$is_native_app) {
             $trial = trial_info(EMPRESA_ID);
             if ($trial['agotado']): ?>
             <div class="flash flash-error" style="margin-bottom:16px">

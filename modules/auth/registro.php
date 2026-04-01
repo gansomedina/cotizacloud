@@ -6,6 +6,11 @@
 
 defined('COTIZAAPP') or die;
 
+// Bloquear registro en app nativa (Apple Guideline 3.1.1)
+if (str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud')) {
+    redirect('/login');
+}
+
 if (EMPRESA_ID > 0) {
     redirect('/');
 }
@@ -208,6 +213,12 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
     </div>
 
 </div>
+<script>
+// Bloquear registro en app iOS (Apple Guideline 3.1.1)
+if (window.Capacitor || navigator.userAgent.includes('CotizaCloud')) {
+    window.location.href = '/login';
+}
+</script>
 <script>
 function autoSlug(val) {
     const input = document.getElementById('slug_input');

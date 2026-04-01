@@ -262,9 +262,16 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
         </form>
     </div>
 
-    <div class="auth-link">
+    <div class="auth-link" id="registro-link">
         ¿Tu empresa no tiene cuenta? <a href="/registro">Crear cuenta nueva</a>
     </div>
+    <script>
+    // Ocultar registro en app iOS (Apple Guideline 3.1.1)
+    if (window.Capacitor || navigator.userAgent.includes('CotizaCloud')) {
+        var el = document.getElementById('registro-link');
+        if (el) el.style.display = 'none';
+    }
+    </script>
 
 </div>
 
