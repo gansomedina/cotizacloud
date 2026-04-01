@@ -131,6 +131,19 @@ $por_cobrar_global = (float)DB::val(
      WHERE empresa_id = ? AND estado IN ('pendiente','parcial') AND saldo > 0",
     [$empresa_id]
 );
+$num_ventas_con_saldo = (int)DB::val(
+    "SELECT COUNT(*) FROM ventas
+     WHERE empresa_id = ? AND estado IN ('pendiente','parcial') AND saldo > 0",
+    [$empresa_id]
+);
+
+// Número de recibos del periodo
+$num_recibos_periodo = (int)DB::val(
+    "SELECT COUNT(*) FROM recibos
+     WHERE empresa_id = ? AND tipo = 'abono' AND cancelado = 0
+       AND fecha BETWEEN ? AND ?",
+    [$empresa_id, substr($desde, 0, 10), substr($hasta, 0, 10)]
+);
 
 // Cotizaciones del período
 $kpi_cots = DB::row(
@@ -878,12 +891,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div class="kpi-label">Cobrado</div>
     <div class="kpi-val green"><?= fmt_dash($cobrado_periodo) ?></div>
     <div class="kpi-sub">
-      <?php
-      $pct_cob = $kpi_ventas['monto_ventas'] > 0
-          ? round(($cobrado_periodo / $kpi_ventas['monto_ventas']) * 100, 1) : 0;
-      ?>
-      <?= $pct_cob ?>% del total ·
-      <span><?= $num_ventas_pagadas ?> venta<?= $num_ventas_pagadas!=1?'s':'' ?> completa<?= $num_ventas_pagadas!=1?'s':'' ?></span>
+      <?= $num_recibos_periodo ?> pago<?= $num_recibos_periodo!=1?'s':'' ?> en el periodo
     </div>
   </div>
 
@@ -892,9 +900,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     <div class="kpi-label">Por cobrar</div>
     <div class="kpi-val amber"><?= fmt_dash($por_cobrar_global) ?></div>
     <div class="kpi-sub">
-      <?= $num_ventas_saldo ?> venta<?= $num_ventas_saldo!=1?'s':'' ?> con saldo ·
-      <?php $pct_pend = 100 - $pct_cob; ?>
-      <span class="<?= $pct_pend > 50 ? 'neg' : '' ?>"><?= $pct_pend ?>% pendiente</span>
+      <?= $num_ventas_con_saldo ?> venta<?= $num_ventas_con_saldo!=1?'s':'' ?> con saldo
     </div>
   </div>
 
