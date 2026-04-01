@@ -137,6 +137,19 @@ $num_ventas_con_saldo = (int)DB::val(
     [$empresa_id]
 );
 
+// Ticket promedio del año (cotizaciones y ventas)
+$anio_actual = $ahora->format('Y');
+$ticket_anio_cots = DB::row(
+    "SELECT COUNT(*) AS total, COALESCE(SUM(total),0) AS monto
+     FROM cotizaciones WHERE empresa_id = ? AND YEAR(created_at) = ? AND estado != 'borrador' AND COALESCE(suspendida,0) = 0",
+    [$empresa_id, $anio_actual]
+);
+$ticket_anio_ventas = DB::row(
+    "SELECT COUNT(*) AS total, COALESCE(SUM(total),0) AS monto
+     FROM ventas WHERE empresa_id = ? AND YEAR(created_at) = ? AND estado != 'cancelada'",
+    [$empresa_id, $anio_actual]
+);
+
 // Número de recibos del periodo
 $num_recibos_periodo = (int)DB::val(
     "SELECT COUNT(*) FROM recibos
@@ -1266,6 +1279,12 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
       </span>
     </div>
     <div class="monthly-row">
+      <span class="monthly-row-lbl" style="color:var(--t3)">Ticket promedio <?= $anio_actual ?></span>
+      <span class="monthly-row-val" style="color:var(--t3)">
+        <?= (int)$ticket_anio_cots['total'] > 0 ? fmt_full((float)$ticket_anio_cots['monto'] / (int)$ticket_anio_cots['total']) : '—' ?>
+      </span>
+    </div>
+    <div class="monthly-row">
       <span class="monthly-row-lbl">Cerradas / convertidas</span>
       <span class="monthly-row-val">
         <?= (int)$act_cots['cerradas'] ?>
@@ -1298,6 +1317,12 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
       <span class="monthly-row-lbl">Ticket promedio</span>
       <span class="monthly-row-val">
         <?= $act_ventas['total'] > 0 ? fmt_full($act_ventas['monto_total'] / $act_ventas['total']) : '—' ?>
+      </span>
+    </div>
+    <div class="monthly-row">
+      <span class="monthly-row-lbl" style="color:var(--t3)">Ticket promedio <?= $anio_actual ?></span>
+      <span class="monthly-row-val" style="color:var(--t3)">
+        <?= (int)$ticket_anio_ventas['total'] > 0 ? fmt_full((float)$ticket_anio_ventas['monto'] / (int)$ticket_anio_ventas['total']) : '—' ?>
       </span>
     </div>
     <div class="monthly-row">
