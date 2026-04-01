@@ -403,7 +403,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div>
         <div class="item-name"><?= e($l['titulo']) ?></div>
         <?php if ($l['sku']): ?><div class="item-sku"><?= e($l['sku']) ?></div><?php endif; ?>
-        <?php if ($l['descripcion']): ?><div class="item-desc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
+        <?php if ($l['descripcion']): ?><div class="item-desc"><?= nl2br(e_links($l['descripcion'])) ?></div><?php endif; ?>
       </div>
       <?php if (!$ocultar_cp): ?>
       <div style="text-align:center;font:400 14px var(--num);color:var(--t2);padding-top:2px">
@@ -438,7 +438,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <div style="display:grid;grid-template-columns:<?= $grid_cols_ext ?>;gap:6px;align-items:start;padding:11px 16px;border-bottom:1px solid var(--border)">
       <div>
         <div class="item-name"><?= e($le['titulo']) ?></div>
-        <?php if ($le['descripcion']): ?><div class="item-desc"><?= nl2br(e($le['descripcion'])) ?></div><?php endif; ?>
+        <?php if ($le['descripcion']): ?><div class="item-desc"><?= nl2br(e_links($le['descripcion'])) ?></div><?php endif; ?>
       </div>
       <div style="text-align:right;font:600 14px var(--num);padding-top:2px"><?= fmt_v((float)$le['subtotal']) ?></div>
     </div>
@@ -593,7 +593,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <td>
         <div class="td-name"><?= e($l['titulo']) ?></div>
         <?php if ($l['sku']): ?><div class="td-sku"><?= e($l['sku']) ?></div><?php endif; ?>
-        <?php if ($l['descripcion']): ?><div class="td-desc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
+        <?php if ($l['descripcion']): ?><div class="td-desc"><?= nl2br(e_links($l['descripcion'])) ?></div><?php endif; ?>
       </td>
       <?php if (!$ocultar_cp): ?>
       <td class="td-qty"><?= number_format($l['cantidad'],2) ?> pz.</td>
@@ -619,7 +619,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <td style="color:#333"><?= $i+1 ?></td>
       <td>
         <div class="td-name"><?= e($le['titulo']) ?></div>
-        <?php if ($le['descripcion']): ?><div class="td-desc"><?= nl2br(e($le['descripcion'])) ?></div><?php endif; ?>
+        <?php if ($le['descripcion']): ?><div class="td-desc"><?= nl2br(e_links($le['descripcion'])) ?></div><?php endif; ?>
       </td>
       <td class="td-total"><?= fmt_v((float)$le['subtotal']) ?></td>
     </tr>
