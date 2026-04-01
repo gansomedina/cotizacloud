@@ -7,6 +7,11 @@
 
 defined('COTIZAAPP') or die;
 
+// Bloquear en app nativa (Apple Guideline 3.1.1 — no mostrar precios)
+if (str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud')) {
+    redirect('/dashboard');
+}
+
 $empresa = Auth::empresa();
 $trial = trial_info(EMPRESA_ID);
 
