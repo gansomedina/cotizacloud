@@ -209,6 +209,12 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
 
 </div>
 <script>
+// Bloquear registro en app iOS (Apple Guideline 3.1.1)
+if (window.Capacitor || navigator.userAgent.includes('CotizaCloud')) {
+    window.location.href = '/login';
+}
+</script>
+<script>
 function autoSlug(val) {
     const input = document.getElementById('slug_input');
     if (input._manual) return;
