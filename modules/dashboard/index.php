@@ -137,17 +137,27 @@ $num_ventas_con_saldo = (int)DB::val(
     [$empresa_id]
 );
 
-// Ticket promedio del año (cotizaciones y ventas)
-$anio_actual = $ahora->format('Y');
+// Ticket promedio del año (cotizaciones y ventas + historial importado)
+$anio_actual = (int)$ahora->format('Y');
 $ticket_anio_cots = DB::row(
-    "SELECT COUNT(*) AS total, COALESCE(SUM(total),0) AS monto
-     FROM cotizaciones WHERE empresa_id = ? AND YEAR(created_at) = ? AND estado != 'borrador' AND COALESCE(suspendida,0) = 0",
-    [$empresa_id, $anio_actual]
+    "SELECT SUM(total) AS total, SUM(monto) AS monto FROM (
+        SELECT COUNT(*) AS total, COALESCE(SUM(total),0) AS monto
+        FROM cotizaciones WHERE empresa_id = ? AND YEAR(created_at) = ? AND estado != 'borrador' AND COALESCE(suspendida,0) = 0
+        UNION ALL
+        SELECT SUM(cotizaciones_cantidad) AS total, SUM(cotizaciones_monto) AS monto
+        FROM historial_mensual WHERE empresa_id = ? AND anio = ?
+    ) combined",
+    [$empresa_id, $anio_actual, $empresa_id, $anio_actual]
 );
 $ticket_anio_ventas = DB::row(
-    "SELECT COUNT(*) AS total, COALESCE(SUM(total),0) AS monto
-     FROM ventas WHERE empresa_id = ? AND YEAR(created_at) = ? AND estado != 'cancelada'",
-    [$empresa_id, $anio_actual]
+    "SELECT SUM(total) AS total, SUM(monto) AS monto FROM (
+        SELECT COUNT(*) AS total, COALESCE(SUM(total),0) AS monto
+        FROM ventas WHERE empresa_id = ? AND YEAR(created_at) = ? AND estado != 'cancelada'
+        UNION ALL
+        SELECT SUM(ventas_cantidad) AS total, SUM(ventas_monto) AS monto
+        FROM historial_mensual WHERE empresa_id = ? AND anio = ?
+    ) combined",
+    [$empresa_id, $anio_actual, $empresa_id, $anio_actual]
 );
 
 // Número de recibos del periodo
