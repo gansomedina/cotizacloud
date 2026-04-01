@@ -694,7 +694,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       <td>
         <div class="iname"><?= e($l['titulo']) ?></div>
         <?php if ($l['sku']): ?><div class="isku"><?= e($l['sku']) ?></div><?php endif; ?>
-        <?php if ($l['descripcion']): ?><div class="idesc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
+        <?php if ($l['descripcion']): ?><div class="idesc"><?= nl2br(e_links($l['descripcion'])) ?></div><?php endif; ?>
       </td>
       <?php if (!$ocultar_cp): ?>
       <td class="tqty"><?= $l['precio_unit'] > 0 ? number_format($l['cantidad'],2).' × '.fmt_pub($l['precio_unit']) : '—' ?></td>
@@ -711,7 +711,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <div class="im">
       <div class="im-name"><?= e($l['titulo']) ?></div>
       <?php if ($l['sku']): ?><div class="im-sku"><?= e($l['sku']) ?></div><?php endif; ?>
-      <?php if ($l['descripcion']): ?><div class="im-desc"><?= nl2br(e($l['descripcion'])) ?></div><?php endif; ?>
+      <?php if ($l['descripcion']): ?><div class="im-desc"><?= nl2br(e_links($l['descripcion'])) ?></div><?php endif; ?>
       <?php if ($l['precio_unit'] > 0): ?>
       <div class="im-meta">
         <?php if (!$ocultar_cp): ?>
@@ -747,7 +747,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <tr>
       <td>
         <div class="iname"><?= e($le['titulo']) ?></div>
-        <?php if ($le['descripcion']): ?><div class="idesc"><?= nl2br(e($le['descripcion'])) ?></div><?php endif; ?>
+        <?php if ($le['descripcion']): ?><div class="idesc"><?= nl2br(e_links($le['descripcion'])) ?></div><?php endif; ?>
       </td>
       <td class="tamt"><?= fmt_pub((float)$le['subtotal']) ?></td>
     </tr>
@@ -764,7 +764,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <?php foreach ($lineas_extra as $le): ?>
     <div class="im">
       <div class="im-name"><?= e($le['titulo']) ?></div>
-      <?php if ($le['descripcion']): ?><div class="im-desc"><?= nl2br(e($le['descripcion'])) ?></div><?php endif; ?>
+      <?php if ($le['descripcion']): ?><div class="im-desc"><?= nl2br(e_links($le['descripcion'])) ?></div><?php endif; ?>
       <div class="im-meta"><div class="im-meta-left"></div><div class="im-meta-total"><?= fmt_pub((float)$le['subtotal']) ?></div></div>
     </div>
     <?php endforeach; ?>

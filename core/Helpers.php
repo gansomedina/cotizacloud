@@ -136,6 +136,17 @@ function e_html(mixed $val): string
     );
 }
 
+// Escapar texto y convertir URLs en links clickeables
+function e_links(mixed $val): string
+{
+    $text = e((string)($val ?? ''));
+    return preg_replace(
+        '#(https?://[^\s<>&]+)#i',
+        '<a href="$1" target="_blank" rel="noopener">$1</a>',
+        $text
+    );
+}
+
 function ej(mixed $val): string
 {
     return json_encode($val, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
