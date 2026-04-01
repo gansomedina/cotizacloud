@@ -117,6 +117,21 @@ if ((float)$kpi_ventas_ant['monto_ventas'] > 0) {
     );
 }
 
+// Cobrado real del período (desde recibos, no desde ventas.pagado)
+$cobrado_periodo = (float)DB::val(
+    "SELECT COALESCE(SUM(monto), 0) FROM recibos
+     WHERE empresa_id = ? AND tipo = 'abono' AND cancelado = 0
+       AND fecha BETWEEN ? AND ?",
+    [$empresa_id, substr($desde, 0, 10), substr($hasta, 0, 10)]
+);
+
+// Por cobrar global (todas las ventas con saldo pendiente, sin filtro de fecha)
+$por_cobrar_global = (float)DB::val(
+    "SELECT COALESCE(SUM(saldo), 0) FROM ventas
+     WHERE empresa_id = ? AND estado IN ('pendiente','parcial') AND saldo > 0",
+    [$empresa_id]
+);
+
 // Cotizaciones del período
 $kpi_cots = DB::row(
     "SELECT
@@ -861,11 +876,11 @@ $ts_diag  = ActividadScore::diagnostico($ts);
   <div class="kpi-card kpi-cobrado">
     <div class="kpi-ico"><?= ico('check', 22, '#16a34a') ?></div>
     <div class="kpi-label">Cobrado</div>
-    <div class="kpi-val green"><?= fmt_dash((float)$kpi_ventas['monto_cobrado']) ?></div>
+    <div class="kpi-val green"><?= fmt_dash($cobrado_periodo) ?></div>
     <div class="kpi-sub">
       <?php
       $pct_cob = $kpi_ventas['monto_ventas'] > 0
-          ? round(($kpi_ventas['monto_cobrado'] / $kpi_ventas['monto_ventas']) * 100, 1) : 0;
+          ? round(($cobrado_periodo / $kpi_ventas['monto_ventas']) * 100, 1) : 0;
       ?>
       <?= $pct_cob ?>% del total ·
       <span><?= $num_ventas_pagadas ?> venta<?= $num_ventas_pagadas!=1?'s':'' ?> completa<?= $num_ventas_pagadas!=1?'s':'' ?></span>
@@ -875,7 +890,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
   <div class="kpi-card kpi-pendiente">
     <div class="kpi-ico"><?= ico('clock', 22, '#d97706') ?></div>
     <div class="kpi-label">Por cobrar</div>
-    <div class="kpi-val amber"><?= fmt_dash((float)$kpi_ventas['monto_saldo']) ?></div>
+    <div class="kpi-val amber"><?= fmt_dash($por_cobrar_global) ?></div>
     <div class="kpi-sub">
       <?= $num_ventas_saldo ?> venta<?= $num_ventas_saldo!=1?'s':'' ?> con saldo ·
       <?php $pct_pend = 100 - $pct_cob; ?>
@@ -1289,7 +1304,7 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
     </div>
     <div class="monthly-row">
       <span class="monthly-row-lbl">Total cobrado</span>
-      <span class="monthly-row-val"><?= fmt_full((float)$act_ventas['cobrado']) ?></span>
+      <span class="monthly-row-val"><?= fmt_full($cobrado_periodo) ?></span>
     </div>
   </div>
 
