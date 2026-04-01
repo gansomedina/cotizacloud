@@ -955,7 +955,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
       <?php
       $total_f = max(1, (int)$funnel['enviadas']);
       $rows_f  = [
-          ['Enviadas',  'fb-total',    $funnel['enviadas'],  100],
+          ['Enviadas',  'fb-total',    $funnel['enviadas'],  (int)$funnel['enviadas'] > 0 ? 100 : 0],
           ['Abiertas',  'fb-vistas',   $funnel['abiertas'],  round(($funnel['abiertas'] ?? 0)/$total_f*100)],
           ['Aceptadas', 'fb-cerradas', $funnel['cerradas'],  round(($funnel['cerradas'] ?? 0)/$total_f*100)],
           ['Rechazadas','fb-rechazadas',$funnel['rechazadas'],round(($funnel['rechazadas'] ?? 0)/$total_f*100)],
