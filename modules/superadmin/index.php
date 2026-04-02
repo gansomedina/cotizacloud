@@ -186,7 +186,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         </div>
     </div>
     <div class="sa-actions">
-        <a href="/dashboard" class="sa-btn sa-btn-ghost"><i data-feather="bar-chart-2" style="width:14px;height:14px"></i> Dashboard</a>
+        <a href="/superadmin/executive" class="sa-btn sa-btn-ghost"><i data-feather="bar-chart-2" style="width:14px;height:14px"></i> Ejecutivo</a>
         <a href="/logout" class="sa-btn sa-btn-ghost" style="color:var(--danger);border-color:#fca5a5"><i data-feather="log-out" style="width:14px;height:14px"></i> Salir</a>
     </div>
 </div>
@@ -226,67 +226,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
 <!-- Search -->
 <div class="search-bar">
     <input type="text" id="search" placeholder="Buscar empresa por nombre o slug..." oninput="filtrar(this.value)">
-</div>
-
-<!-- Tickets de soporte -->
-<div class="sa-section">
-    <h2>
-        <i data-feather="message-circle" style="width:16px;height:16px"></i> Tickets de soporte
-        <?php if ($tickets_abiertos > 0): ?><span class="count"><?= $tickets_abiertos ?></span><?php endif; ?>
-    </h2>
-    <?php if ($tickets): ?>
-    <div class="sa-table-wrap">
-    <table class="sa-table" style="min-width:700px">
-    <thead>
-    <tr><th>Ticket</th><th>Empresa</th><th>Usuario / Email</th><th>Estado</th><th>Fecha</th><th></th></tr>
-    </thead>
-    <tbody>
-    <?php foreach ($tickets as $tk): ?>
-    <tr>
-        <td>
-            <div style="font-weight:600;font-size:13px"><?= e($tk['titulo']) ?></div>
-            <div class="ticket-desc"><?= e(mb_substr($tk['descripcion'], 0, 80)) ?><?= mb_strlen($tk['descripcion']) > 80 ? '...' : '' ?></div>
-        </td>
-        <td>
-            <div class="emp-name" style="font-size:12.5px"><?= e($tk['empresa_nombre']) ?></div>
-            <div class="emp-slug"><?= e($tk['empresa_slug']) ?></div>
-        </td>
-        <td>
-            <div style="font-size:12.5px;font-weight:500"><?= e($tk['usuario_nombre']) ?></div>
-            <div style="font-size:12px;color:var(--blue)"><a href="mailto:<?= e($tk['usuario_email']) ?>" style="color:var(--blue);text-decoration:none"><?= e($tk['usuario_email']) ?></a></div>
-        </td>
-        <td><span class="ticket-estado ticket-<?= e($tk['estado']) ?>"><?= e(str_replace('_', ' ', ucfirst($tk['estado']))) ?></span></td>
-        <td><span class="ago"><?= $tk['created_at'] ? date('d/m/Y H:i', strtotime($tk['created_at'])) : '—' ?></span></td>
-        <td>
-            <?php if ($tk['estado'] !== 'cerrado'): ?>
-            <form method="post" action="/superadmin/ticket/<?= $tk['id'] ?>/estado" style="margin:0;display:flex;gap:4px">
-                <?= csrf_field() ?>
-                <?php if ($tk['estado'] === 'abierto'): ?>
-                    <input type="hidden" name="estado" value="en_proceso">
-                    <button type="submit" class="btn-detail" style="font-size:11px;padding:4px 8px">En proceso</button>
-                <?php endif; ?>
-                <?php if ($tk['estado'] === 'abierto'): ?>
-                    <input type="hidden" name="estado" value="cerrado">
-                <?php endif; ?>
-                <button type="submit" class="btn-suspend" style="font-size:11px;padding:4px 8px" onclick="this.form.querySelector('[name=estado]').value='cerrado'">Cerrar</button>
-            </form>
-            <?php else: ?>
-                <span class="ago">Cerrado</span>
-            <?php endif; ?>
-            <?php if ($tk['imagen_url']): ?>
-                <a href="<?= e($tk['imagen_url']) ?>" target="_blank" style="font-size:11px;color:var(--blue);margin-left:4px">Ver imagen</a>
-            <?php endif; ?>
-        </td>
-    </tr>
-    <?php endforeach; ?>
-    </tbody>
-    </table>
-    </div>
-    <?php else: ?>
-    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:24px;text-align:center;color:var(--t3);font-size:13px">
-        Sin tickets de soporte pendientes.
-    </div>
-    <?php endif; ?>
 </div>
 
 <!-- Table -->
@@ -418,6 +357,67 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
     </div>
 </div>
 <?php endif; ?>
+
+<!-- Tickets de soporte -->
+<div class="sa-section" style="margin-top:28px">
+    <h2>
+        <i data-feather="message-circle" style="width:16px;height:16px"></i> Tickets de soporte
+        <?php if ($tickets_abiertos > 0): ?><span class="count"><?= $tickets_abiertos ?></span><?php endif; ?>
+    </h2>
+    <?php if ($tickets): ?>
+    <div class="sa-table-wrap">
+    <table class="sa-table" style="min-width:700px">
+    <thead>
+    <tr><th>Ticket</th><th>Empresa</th><th>Usuario / Email</th><th>Estado</th><th>Fecha</th><th></th></tr>
+    </thead>
+    <tbody>
+    <?php foreach ($tickets as $tk): ?>
+    <tr>
+        <td>
+            <div style="font-weight:600;font-size:13px"><?= e($tk['titulo']) ?></div>
+            <div class="ticket-desc"><?= e(mb_substr($tk['descripcion'], 0, 80)) ?><?= mb_strlen($tk['descripcion']) > 80 ? '...' : '' ?></div>
+        </td>
+        <td>
+            <div class="emp-name" style="font-size:12.5px"><?= e($tk['empresa_nombre']) ?></div>
+            <div class="emp-slug"><?= e($tk['empresa_slug']) ?></div>
+        </td>
+        <td>
+            <div style="font-size:12.5px;font-weight:500"><?= e($tk['usuario_nombre']) ?></div>
+            <div style="font-size:12px;color:var(--blue)"><a href="mailto:<?= e($tk['usuario_email']) ?>" style="color:var(--blue);text-decoration:none"><?= e($tk['usuario_email']) ?></a></div>
+        </td>
+        <td><span class="ticket-estado ticket-<?= e($tk['estado']) ?>"><?= e(str_replace('_', ' ', ucfirst($tk['estado']))) ?></span></td>
+        <td><span class="ago"><?= $tk['created_at'] ? date('d/m/Y H:i', strtotime($tk['created_at'])) : '—' ?></span></td>
+        <td>
+            <?php if ($tk['estado'] !== 'cerrado'): ?>
+            <form method="post" action="/superadmin/ticket/<?= $tk['id'] ?>/estado" style="margin:0;display:flex;gap:4px">
+                <?= csrf_field() ?>
+                <?php if ($tk['estado'] === 'abierto'): ?>
+                    <input type="hidden" name="estado" value="en_proceso">
+                    <button type="submit" class="btn-detail" style="font-size:11px;padding:4px 8px">En proceso</button>
+                <?php endif; ?>
+                <?php if ($tk['estado'] === 'abierto'): ?>
+                    <input type="hidden" name="estado" value="cerrado">
+                <?php endif; ?>
+                <button type="submit" class="btn-suspend" style="font-size:11px;padding:4px 8px" onclick="this.form.querySelector('[name=estado]').value='cerrado'">Cerrar</button>
+            </form>
+            <?php else: ?>
+                <span class="ago">Cerrado</span>
+            <?php endif; ?>
+            <?php if ($tk['imagen_url']): ?>
+                <a href="<?= e($tk['imagen_url']) ?>" target="_blank" style="font-size:11px;color:var(--blue);margin-left:4px">Ver imagen</a>
+            <?php endif; ?>
+        </td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    <?php else: ?>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:24px;text-align:center;color:var(--t3);font-size:13px">
+        Sin tickets de soporte pendientes.
+    </div>
+    <?php endif; ?>
+</div>
 
 </div>
 
