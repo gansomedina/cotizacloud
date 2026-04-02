@@ -1191,6 +1191,8 @@ async function guardarCotizacion() {
         document.getElementById('popup-ver-url').target  = '_blank';
         document.getElementById('popup-link-url').value  = urlPublica;
         document.getElementById('popup-overlay').style.display = 'flex';
+        document.getElementById('popup-editar-url').href = '/cotizaciones/' + cotId;
+        document.getElementById('popup-editar-btn').href = '/cotizaciones/' + cotId;
     } catch (e) {
         alert('Error de conexión: ' + e.message);
         if (btn) { btn.disabled = false; btn.textContent = 'Generar cotización'; }
@@ -1218,7 +1220,8 @@ function toggleMob(hdr)   { hdr.closest('.mob-section').classList.toggle('open')
 
 <!-- ══ POPUP: COTIZACIÓN GENERADA ══ -->
 <div id="popup-overlay" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);align-items:flex-end;justify-content:center;">
-    <div style="background:var(--white);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:560px;">
+    <div style="background:var(--white);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:560px;position:relative">
+        <a id="popup-editar-url" href="#" style="position:absolute;top:16px;right:16px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--border);color:var(--t3);text-decoration:none;font-size:16px" title="Editar cotización">✕</a>
         <div style="width:34px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px"></div>
         <div style="font-size:28px;text-align:center;margin-bottom:8px">🎉</div>
         <div style="font:800 19px var(--body);text-align:center;margin-bottom:4px">¡Cotización generada!</div>
@@ -1235,6 +1238,10 @@ function toggleMob(hdr)   { hdr.closest('.mob-section').classList.toggle('open')
             <a id="popup-ver-url" href="#"
                style="display:block;padding:14px;border-radius:var(--r-sm);border:none;background:var(--g);font:700 14px var(--body);color:#fff;cursor:pointer;text-align:center;text-decoration:none;">
                 Ver cotización
+            </a>
+            <a id="popup-editar-btn" href="#"
+               style="display:block;padding:14px;border-radius:var(--r-sm);border:1px solid var(--g);background:transparent;font:600 14px var(--body);color:var(--g);cursor:pointer;text-align:center;text-decoration:none;">
+                Editar cotización
             </a>
             <a href="/cotizaciones"
                style="display:block;padding:14px;border-radius:var(--r-sm);border:1px solid var(--border);background:transparent;font:600 14px var(--body);color:var(--t2);cursor:pointer;text-align:center;text-decoration:none;">
