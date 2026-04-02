@@ -114,10 +114,11 @@ class Router
             : self::load('auth', 'landing')
         );
 
-        // Raíz: dashboard si logueado, login si no
+        // Raíz: dashboard si logueado, landing si web, login si app nativa
+        $is_native = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
         self::get('/', fn() => Auth::logueado()
             ? redirect('/dashboard')
-            : redirect('/login')
+            : ($is_native ? redirect('/login') : self::load('auth', 'landing'))
         );
 
         // ── Push notifications API ───────────────────────────
