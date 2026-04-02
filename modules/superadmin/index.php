@@ -186,6 +186,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         </div>
     </div>
     <div class="sa-actions">
+        <a href="/dashboard" class="sa-btn sa-btn-ghost"><i data-feather="bar-chart-2" style="width:14px;height:14px"></i> Dashboard</a>
         <a href="/logout" class="sa-btn sa-btn-ghost" style="color:var(--danger);border-color:#fca5a5"><i data-feather="log-out" style="width:14px;height:14px"></i> Salir</a>
     </div>
 </div>
@@ -222,34 +223,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
     </div>
 </div>
 
-<!-- Empresas nuevas (últimos 30 días) -->
-<?php if ($empresas_nuevas): ?>
-<div class="sa-section">
-    <h2><i data-feather="star" style="width:16px;height:16px;color:var(--g)"></i> Empresas nuevas (30d)</h2>
-    <div class="sa-table-wrap">
-    <table class="sa-table" style="min-width:500px">
-    <thead>
-    <tr><th>Empresa</th><th>Estado</th><th>Usuarios</th><th>Cots</th><th>Registrada</th><th></th></tr>
-    </thead>
-    <tbody>
-    <?php foreach ($empresas_nuevas as $en): ?>
-    <tr>
-        <td>
-            <div class="emp-name"><?= e($en['nombre']) ?></div>
-            <div class="emp-slug"><?= !empty($en['dominio_custom']) ? e($en['dominio_custom']) : e($en['slug']) . '.cotiza.cloud' ?></div>
-        </td>
-        <td><span class="badge <?= $en['activa'] ? 'badge-green' : 'badge-red' ?>"><?= $en['activa'] ? 'Activa' : 'Suspendida' ?></span></td>
-        <td class="num"><?= $en['num_usuarios'] ?></td>
-        <td class="num"><?= $en['num_cots'] ?></td>
-        <td><span class="ago"><?= $en['created_at'] ? date('d/m/Y', strtotime($en['created_at'])) : '—' ?></span></td>
-        <td><a href="/superadmin/empresa/<?= $en['id'] ?>" class="btn-detail"><i data-feather="eye" style="width:12px;height:12px"></i> Ver</a></td>
-    </tr>
-    <?php endforeach; ?>
-    </tbody>
-    </table>
-    </div>
+<!-- Search -->
+<div class="search-bar">
+    <input type="text" id="search" placeholder="Buscar empresa por nombre o slug..." oninput="filtrar(this.value)">
 </div>
-<?php endif; ?>
 
 <!-- Tickets de soporte -->
 <div class="sa-section">
@@ -312,11 +289,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
     <?php endif; ?>
 </div>
 
-<!-- Search -->
-<div class="search-bar">
-    <input type="text" id="search" placeholder="Buscar empresa por nombre o slug..." oninput="filtrar(this.value)">
-</div>
-
 <!-- Table -->
 <div class="sa-table-wrap">
 <table class="sa-table" id="empresas-table">
@@ -343,8 +315,17 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
 ?>
 <tr class="<?= $is_today ? 'new-today' : '' ?>" data-search="<?= e(strtolower($e['nombre'] . ' ' . $e['slug'])) ?>">
     <td>
-        <div class="emp-name"><?= e($e['nombre']) ?></div>
-        <div class="emp-slug"><?= !empty($e['dominio_custom']) ? e($e['dominio_custom']) : e($e['slug']) . '.cotiza.cloud' ?></div>
+        <div style="display:flex;align-items:center;gap:8px">
+            <div>
+                <div class="emp-name"><?= e($e['nombre']) ?></div>
+                <div class="emp-slug"><?= !empty($e['dominio_custom']) ? e($e['dominio_custom']) : e($e['slug']) . '.cotiza.cloud' ?></div>
+            </div>
+            <form method="post" action="/superadmin/impersonar" style="margin:0;flex-shrink:0">
+                <input type="hidden" name="empresa_id" value="<?= $e['id'] ?>">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn-enter" style="padding:4px 8px;font-size:11px"><i data-feather="log-in" style="width:11px;height:11px"></i> Entrar</button>
+            </form>
+        </div>
     </td>
     <td>
         <?php $plan = $e['plan'] ?? 'free'; if ($plan === 'trial') $plan = 'free'; ?>
@@ -393,11 +374,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
     <td>
         <div class="actions-cell">
             <a href="/superadmin/empresa/<?= $e['id'] ?>" class="btn-detail"><i data-feather="eye" style="width:12px;height:12px"></i> Ver</a>
-            <form method="post" action="/superadmin/impersonar" style="margin:0">
-                <input type="hidden" name="empresa_id" value="<?= $e['id'] ?>">
-                <?= csrf_field() ?>
-                <button type="submit" class="btn-enter"><i data-feather="log-in" style="width:12px;height:12px"></i> Entrar</button>
-            </form>
             <form method="post" action="/superadmin/empresa/<?= $e['id'] ?>/toggle" style="margin:0" onsubmit="return confirm('<?= $e['activa'] ? '¿Suspender esta empresa? Los usuarios no podrán acceder.' : '¿Reactivar esta empresa?' ?>')">
                 <?= csrf_field() ?>
                 <?php if ($e['activa']): ?>
@@ -413,6 +389,35 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
 </tbody>
 </table>
 </div>
+
+<!-- Empresas nuevas (últimos 30 días) -->
+<?php if ($empresas_nuevas): ?>
+<div class="sa-section" style="margin-top:28px">
+    <h2><i data-feather="star" style="width:16px;height:16px;color:var(--g)"></i> Empresas nuevas (30d)</h2>
+    <div class="sa-table-wrap">
+    <table class="sa-table" style="min-width:500px">
+    <thead>
+    <tr><th>Empresa</th><th>Estado</th><th>Usuarios</th><th>Cots</th><th>Registrada</th><th></th></tr>
+    </thead>
+    <tbody>
+    <?php foreach ($empresas_nuevas as $en): ?>
+    <tr>
+        <td>
+            <div class="emp-name"><?= e($en['nombre']) ?></div>
+            <div class="emp-slug"><?= !empty($en['dominio_custom']) ? e($en['dominio_custom']) : e($en['slug']) . '.cotiza.cloud' ?></div>
+        </td>
+        <td><span class="badge <?= $en['activa'] ? 'badge-green' : 'badge-red' ?>"><?= $en['activa'] ? 'Activa' : 'Suspendida' ?></span></td>
+        <td class="num"><?= $en['num_usuarios'] ?></td>
+        <td class="num"><?= $en['num_cots'] ?></td>
+        <td><span class="ago"><?= $en['created_at'] ? date('d/m/Y', strtotime($en['created_at'])) : '—' ?></span></td>
+        <td><a href="/superadmin/empresa/<?= $en['id'] ?>" class="btn-detail"><i data-feather="eye" style="width:12px;height:12px"></i> Ver</a></td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+<?php endif; ?>
 
 </div>
 
