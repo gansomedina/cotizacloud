@@ -39,7 +39,7 @@ $mkt = DB::row("SELECT * FROM marketing_config WHERE empresa_id=?", [$empresa_id
 // ─── Catálogo ────────────────────────────────────────────────
 $q_cat = trim($_GET['q_cat'] ?? '');
 $articulos = DB::query(
-    "SELECT * FROM articulos WHERE empresa_id=?
+    "SELECT * FROM articulos WHERE empresa_id=? AND activo = 1
      " . ($q_cat ? "AND (titulo LIKE ? OR sku LIKE ?)" : "") . "
      ORDER BY orden ASC, titulo ASC",
     $q_cat ? [$empresa_id, "%$q_cat%", "%$q_cat%"] : [$empresa_id]
