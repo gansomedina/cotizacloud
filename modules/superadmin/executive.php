@@ -324,9 +324,22 @@ $sin_pagos = DB::query(
      FROM ventas v
      LEFT JOIN clientes c ON c.id = v.cliente_id
      WHERE v.empresa_id IN ({$emp_ids})
-       AND v.estado IN ('pendiente')
-       AND v.pagado = 0 AND v.total > 0
+       AND v.estado IN ('pendiente','parcial')
+       AND v.saldo > 0 AND v.total > 0
      ORDER BY v.created_at ASC LIMIT 30"
+);
+
+// ─── COTIZACIONES SIN ABRIR ────────────────────────────────
+$sin_abrir = DB::query(
+    "SELECT c.empresa_id, c.titulo, c.numero, c.total, c.created_at,
+            cl.nombre AS cliente_nombre,
+            DATEDIFF(NOW(), c.created_at) AS dias
+     FROM cotizaciones c
+     LEFT JOIN clientes cl ON cl.id = c.cliente_id
+     WHERE c.empresa_id IN ({$emp_ids})
+       AND c.estado = 'enviada'
+       AND COALESCE(c.suspendida, 0) = 0
+     ORDER BY c.created_at ASC LIMIT 30"
 );
 
 // ─── PERFORMANCE ASESORES ───────────────────────────────────
@@ -531,8 +544,8 @@ tbody tr:hover td{background:var(--card-hover)}
 .donut-val{font:700 13px 'Inter',sans-serif;margin-left:auto;font-variant-numeric:tabular-nums}
 
 /* Grid 3 */
-.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
-@media(max-width:1100px){.grid-3{grid-template-columns:1fr}}
+.grid-3{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.grid-3{grid-template-columns:1fr}}
 
 @media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
@@ -841,6 +854,41 @@ tbody tr:hover td{background:var(--card-hover)}
         </td>
     </tr>
     <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Cotizaciones sin abrir -->
+<div class="sec">
+    <div class="sec-hdr">
+        <div class="sec-title">Sin abrir</div>
+        <div class="sec-count"><?= count($sin_abrir) ?> cotizaciones</div>
+    </div>
+    <div class="tbl-card" style="max-height:420px;overflow-y:auto">
+    <table>
+    <thead><tr><th></th><th>Cotización</th><th>Cliente</th><th class="r">Total</th><th class="r">Días</th></tr></thead>
+    <tbody>
+    <?php if ($sin_abrir): foreach ($sin_abrir as $sa):
+        $ec = $empresas_cfg[(int)$sa['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+        $dias = (int)$sa['dias'];
+        $dias_color = $dias > 7 ? 'var(--r)' : ($dias > 3 ? 'var(--a)' : 'var(--t2)');
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sa['titulo'],0,35)) ?></div>
+            <div style="font-size:11px;color:var(--t3)"><?= e($sa['numero']) ?></div>
+        </td>
+        <td style="font-size:12px"><?= e($sa['cliente_nombre'] ?? '—') ?></td>
+        <td class="r mono" style="font-weight:600"><?= xf((float)$sa['total']) ?></td>
+        <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
+            <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
+        </td>
+    </tr>
+    <?php endforeach; else: ?>
+    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3)">Todas abiertas</td></tr>
+    <?php endif; ?>
     </tbody>
     </table>
     </div>
