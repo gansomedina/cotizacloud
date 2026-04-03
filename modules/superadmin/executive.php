@@ -773,35 +773,31 @@ tbody tr:hover td{background:var(--card-hover)}
 
 </div><!-- /grid-2 -->
 
-<!-- DISTRIBUCIÓN + VENTAS SIN PAGOS + ASESORES -->
-<div class="grid-3">
-
-<!-- Donut distribución -->
+<!-- Donut distribución (ancho completo) -->
 <div class="sec">
     <div class="sec-hdr"><div class="sec-title">Distribución</div></div>
     <div class="tbl-card" style="padding:24px">
         <div class="donut-wrap">
             <div class="donut-canvas"><canvas id="donutChart"></canvas></div>
-        </div>
-        <div class="donut-legend" style="margin-top:16px">
-        <?php
-        // Ordenar por monto desc
-        $sorted = [];
-        foreach ($empresas_cfg as $eid => $ec) $sorted[] = ['eid'=>$eid,'nombre'=>$ec['nombre'],'short'=>$ec['short'],'color'=>$ec['color'],'monto'=>(float)($ve_act[$eid]['monto']??0)];
-        usort($sorted, fn($a,$b) => $b['monto'] <=> $a['monto']);
-        foreach ($sorted as $s):
-        ?>
-        <div class="donut-item">
-            <span class="donut-dot" style="background:<?= $s['color'] ?>"></span>
-            <span><?= $s['nombre'] ?></span>
-            <span class="donut-val" style="color:var(--g)"><?= xm($s['monto']) ?></span>
-        </div>
-        <?php endforeach; ?>
+            <div class="donut-legend">
+            <?php
+            $sorted = [];
+            foreach ($empresas_cfg as $eid => $ec) $sorted[] = ['eid'=>$eid,'nombre'=>$ec['nombre'],'short'=>$ec['short'],'color'=>$ec['color'],'monto'=>(float)($ve_act[$eid]['monto']??0)];
+            usort($sorted, fn($a,$b) => $b['monto'] <=> $a['monto']);
+            foreach ($sorted as $s):
+            ?>
+            <div class="donut-item">
+                <span class="donut-dot" style="background:<?= $s['color'] ?>"></span>
+                <span><?= $s['nombre'] ?></span>
+                <span class="donut-val" style="color:var(--g)"><?= xm($s['monto']) ?></span>
+            </div>
+            <?php endforeach; ?>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Ventas con saldo pendiente -->
+<!-- Ventas con saldo pendiente (ancho completo) -->
 <div class="sec">
     <div class="sec-hdr">
         <div class="sec-title">Ventas con saldo · <span style="color:var(--a)"><?= xf($total_sin_cobrar) ?></span></div>
@@ -836,8 +832,14 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
+<!-- LAYOUT: Izquierda (Sin cobrar + Sin abrir + Embudo) | Derecha (Asesores) -->
+<div class="grid-3">
+
+<!-- COLUMNA IZQUIERDA -->
+<div style="display:flex;flex-direction:column;gap:14px">
+
 <!-- Ventas sin ningún pago -->
-<div class="sec">
+<div class="sec" style="margin-bottom:0">
     <div class="sec-hdr">
         <div class="sec-title">Sin cobrar · <span style="color:var(--r)"><?= xf($total_sin_cobrar_cero) ?></span></div>
         <div class="sec-count"><?= count($sin_cobrar) ?> ventas</div>
@@ -868,8 +870,48 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
+<!-- Cotizaciones sin abrir -->
+<div class="sec" style="margin-bottom:0">
+    <div class="sec-hdr">
+        <div class="sec-title">Sin abrir</div>
+        <div class="sec-count"><?= count($sin_abrir) ?> cotizaciones</div>
+    </div>
+    <div class="tbl-card" style="max-height:350px;overflow-y:auto">
+    <table>
+    <thead><tr><th></th><th>Cotización</th><th>Cliente</th><th class="r">Total</th><th class="r">Días</th></tr></thead>
+    <tbody>
+    <?php if ($sin_abrir): foreach ($sin_abrir as $sa):
+        $ec = $empresas_cfg[(int)$sa['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+        $dias = (int)$sa['dias'];
+        $dias_color = $dias > 7 ? 'var(--r)' : ($dias > 3 ? 'var(--a)' : 'var(--t2)');
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sa['titulo'],0,35)) ?></div>
+            <div style="font-size:11px;color:var(--t3)"><?= e($sa['numero']) ?></div>
+        </td>
+        <td style="font-size:12px"><?= e($sa['cliente_nombre'] ?? '—') ?></td>
+        <td class="r mono" style="font-weight:600"><?= xf((float)$sa['total']) ?></td>
+        <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
+            <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
+        </td>
+    </tr>
+    <?php endforeach; else: ?>
+    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3)">Todas abiertas</td></tr>
+    <?php endif; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+
+</div><!-- /col izquierda -->
+
+<!-- COLUMNA DERECHA -->
+<div style="display:flex;flex-direction:column;gap:14px">
+
 <!-- Performance asesores -->
-<div class="sec">
+<div class="sec" style="margin-bottom:0">
     <div class="sec-hdr">
         <div class="sec-title">Asesores</div>
         <div class="sec-count"><?= count($asesores) ?> activos</div>
@@ -908,49 +950,12 @@ tbody tr:hover td{background:var(--card-hover)}
     </table>
     </div>
 </div>
-
-<!-- Cotizaciones sin abrir -->
-<div class="sec">
-    <div class="sec-hdr">
-        <div class="sec-title">Sin abrir</div>
-        <div class="sec-count"><?= count($sin_abrir) ?> cotizaciones</div>
-    </div>
-    <div class="tbl-card" style="max-height:420px;overflow-y:auto">
-    <table>
-    <thead><tr><th></th><th>Cotización</th><th>Cliente</th><th class="r">Total</th><th class="r">Días</th></tr></thead>
-    <tbody>
-    <?php if ($sin_abrir): foreach ($sin_abrir as $sa):
-        $ec = $empresas_cfg[(int)$sa['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
-        $dias = (int)$sa['dias'];
-        $dias_color = $dias > 7 ? 'var(--r)' : ($dias > 3 ? 'var(--a)' : 'var(--t2)');
-    ?>
-    <tr>
-        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
-        <td>
-            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sa['titulo'],0,35)) ?></div>
-            <div style="font-size:11px;color:var(--t3)"><?= e($sa['numero']) ?></div>
-        </td>
-        <td style="font-size:12px"><?= e($sa['cliente_nombre'] ?? '—') ?></td>
-        <td class="r mono" style="font-weight:600"><?= xf((float)$sa['total']) ?></td>
-        <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
-            <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
-        </td>
-    </tr>
-    <?php endforeach; else: ?>
-    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3)">Todas abiertas</td></tr>
-    <?php endif; ?>
-    </tbody>
-    </table>
-    </div>
-</div>
+</div><!-- /col derecha asesores -->
 
 </div><!-- /grid-3 -->
 
-<!-- FUNNEL + TOP CLIENTES -->
-<div class="grid-2">
-
 <!-- Funnel de conversión -->
-<div class="sec">
+<div class="sec" style="margin-bottom:0">
     <div class="sec-hdr"><div class="sec-title">Embudo de conversión</div></div>
     <div class="tbl-card" style="padding:24px">
     <?php
@@ -998,13 +1003,6 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
     </div>
 </div>
-
-<!-- Operaciones detalladas -->
-<div class="sec" style="grid-column:1/-1">
-    <div class="sec-hdr"><div class="sec-title">Operaciones</div></div>
-</div>
-
-</div><!-- /grid-2 funnel -->
 
 <!-- ══ TABS OPERACIONES ══════════════════════════════════════ -->
 <div class="sec">
