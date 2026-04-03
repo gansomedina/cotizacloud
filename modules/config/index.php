@@ -773,7 +773,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
             <td style="text-align:right">
               <div class="tbl-actions">
                 <button class="tbl-btn"
-                        onclick='editarCupon(<?= (int)$cup["id"] ?>, <?= htmlspecialchars(json_encode(["codigo"=>$cup["codigo"],"descripcion"=>$cup["descripcion"],"porcentaje"=>$cup["porcentaje"],"activo"=>$cup["activo"],"vencimiento_tipo"=>$cup["vencimiento_tipo"]??'nunca',"vencimiento_dias"=>$cup["vencimiento_dias"]??null,"vencimiento_fecha"=>$cup["vencimiento_fecha"]??null]), ENT_QUOTES) ?>)'
+                        onclick='editarCupon(<?= (int)$cup["id"] ?>, <?= htmlspecialchars(json_encode(["codigo"=>$cup["codigo"],"descripcion"=>$cup["descripcion"],"porcentaje"=>$cup["porcentaje"],"monto_fijo"=>$cup["monto_fijo"]??null,"activo"=>$cup["activo"],"vencimiento_tipo"=>$cup["vencimiento_tipo"]??'nunca',"vencimiento_dias"=>$cup["vencimiento_dias"]??null,"vencimiento_fecha"=>$cup["vencimiento_fecha"]??null]), ENT_QUOTES) ?>)'
                         title="Editar">✎</button>
                 <button class="tbl-btn del" onclick="eliminarCupon(<?= (int)$cup['id'] ?>, this)" title="Eliminar">✕</button>
               </div>
@@ -1401,10 +1401,18 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
         <div class="sh-note">El cliente lo ingresa en la cotización</div>
       </div>
       <div>
-        <div class="sh-lbl">Descuento <span style="color:var(--danger)">*</span></div>
-        <div style="display:flex;align-items:center;gap:6px">
+        <div class="sh-lbl">Tipo de descuento</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button type="button" class="op-tab on" id="cupTipoPct" onclick="cupTipo('pct')" style="font-size:12px;padding:5px 12px">Porcentaje</button>
+          <button type="button" class="op-tab" id="cupTipoFijo" onclick="cupTipo('fijo')" style="font-size:12px;padding:5px 12px">Monto fijo</button>
+        </div>
+        <div id="cupPctWrap" style="display:flex;align-items:center;gap:6px">
           <input class="sh-input" type="number" id="shCupPct" placeholder="0" min="0.01" max="99" step="0.01" style="text-align:right">
           <span style="font:500 15px var(--body);color:var(--t2);flex-shrink:0">%</span>
+        </div>
+        <div id="cupFijoWrap" style="display:none;display:flex;align-items:center;gap:6px;display:none">
+          <span style="font:500 15px var(--body);color:var(--t2);flex-shrink:0">$</span>
+          <input class="sh-input" type="number" id="shCupMontoFijo" placeholder="0" min="1" step="1" style="text-align:right">
         </div>
       </div>
     </div>
@@ -1865,6 +1873,14 @@ async function guardarCliente() {
 }
 
 // ── Cupón ────────────────────────────────────────────────────
+function cupTipo(t) {
+    document.getElementById('cupTipoPct').classList.toggle('on', t === 'pct');
+    document.getElementById('cupTipoFijo').classList.toggle('on', t === 'fijo');
+    document.getElementById('cupPctWrap').style.display = t === 'pct' ? 'flex' : 'none';
+    document.getElementById('cupFijoWrap').style.display = t === 'fijo' ? 'flex' : 'none';
+    if (t === 'pct') document.getElementById('shCupMontoFijo').value = '';
+    if (t === 'fijo') document.getElementById('shCupPct').value = '';
+}
 function toggleVencCupon(tipo) {
     document.getElementById('shCupVencDiasWrap').style.display   = tipo === 'dias_cotizacion' ? '' : 'none';
     document.getElementById('shCupVencFechaWrap').style.display  = tipo === 'fecha_fija'      ? '' : 'none';
@@ -1872,10 +1888,11 @@ function toggleVencCupon(tipo) {
 function nuevoCupon() {
     document.getElementById('shCupId').value    = '';
     document.getElementById('shCupTit').textContent = 'Nuevo cupón';
-    ['shCupCodigo','shCupPct','shCupDesc','shCupVencDias','shCupVencFecha'].forEach(i => document.getElementById(i).value = '');
+    ['shCupCodigo','shCupPct','shCupMontoFijo','shCupDesc','shCupVencDias','shCupVencFecha'].forEach(i => document.getElementById(i).value = '');
     document.getElementById('shCupActivo').checked = true;
     document.getElementById('shCupVencTipo').value = 'nunca';
     toggleVencCupon('nunca');
+    cupTipo('pct');
     openSheet('shCup');
 }
 function editarCupon(id, data) {
@@ -1883,6 +1900,7 @@ function editarCupon(id, data) {
     document.getElementById('shCupTit').textContent = 'Editar cupón';
     document.getElementById('shCupCodigo').value   = data.codigo;
     document.getElementById('shCupPct').value      = data.porcentaje;
+    document.getElementById('shCupMontoFijo').value = data.monto_fijo || '';
     document.getElementById('shCupDesc').value     = data.descripcion || '';
     document.getElementById('shCupActivo').checked = !!parseInt(data.activo);
     const tipo = data.vencimiento_tipo || 'nunca';
@@ -1890,24 +1908,26 @@ function editarCupon(id, data) {
     document.getElementById('shCupVencDias').value  = data.vencimiento_dias || '';
     document.getElementById('shCupVencFecha').value = data.vencimiento_fecha || '';
     toggleVencCupon(tipo);
+    cupTipo(data.monto_fijo ? 'fijo' : 'pct');
     openSheet('shCup');
 }
 async function guardarCupon() {
     const id     = document.getElementById('shCupId').value;
     const codigo = document.getElementById('shCupCodigo').value.trim().toUpperCase();
     const pct    = parseFloat(document.getElementById('shCupPct').value) || 0;
+    const monto_fijo = parseFloat(document.getElementById('shCupMontoFijo').value) || 0;
     const desc   = document.getElementById('shCupDesc').value.trim();
     const activo = document.getElementById('shCupActivo').checked ? 1 : 0;
     const vencimiento_tipo  = document.getElementById('shCupVencTipo').value;
     const vencimiento_dias  = parseInt(document.getElementById('shCupVencDias').value) || null;
     const vencimiento_fecha = document.getElementById('shCupVencFecha').value || null;
-    if (!codigo || pct <= 0) { alert('Código y descuento son obligatorios.'); return; }
+    if (!codigo || (pct <= 0 && monto_fijo <= 0)) { alert('Código y descuento son obligatorios.'); return; }
     if (vencimiento_tipo === 'dias_cotizacion' && !vencimiento_dias) { alert('Indica los días de vigencia.'); return; }
     if (vencimiento_tipo === 'fecha_fija' && !vencimiento_fecha) { alert('Indica la fecha de vencimiento.'); return; }
     const url = id ? '/config/cupon/' + id : '/config/cupon';
     try {
         const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
-            body:JSON.stringify({codigo, porcentaje:pct, descripcion:desc, activo,
+            body:JSON.stringify({codigo, porcentaje:pct, monto_fijo: monto_fijo || null, descripcion:desc, activo,
                 vencimiento_tipo, vencimiento_dias, vencimiento_fecha}) });
         const d = await r.json();
         if (d.ok) { closeSheet('shCup'); location.reload(); }
