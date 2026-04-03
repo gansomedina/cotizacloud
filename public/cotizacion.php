@@ -109,7 +109,7 @@ $total_base = $base + ($cot['impuesto_modo'] === 'suma' ? $impuesto_amt : 0) + $
 
 // ─── Cupones disponibles (para JS) ───────────────────────
 $cupones = DB::query(
-    "SELECT codigo, porcentaje AS pct_descuento, descripcion, vencimiento_fecha AS fecha_vencimiento
+    "SELECT codigo, porcentaje AS pct_descuento, monto_fijo, descripcion, vencimiento_fecha AS fecha_vencimiento
      FROM cupones WHERE empresa_id = ? AND activo = 1",
     [EMPRESA_ID]
 );
@@ -992,10 +992,11 @@ const SUB   = <?= (float)$subtotal ?>;
 const TAX   = {modo:'<?= $cot['impuesto_modo'] ?>',pct:<?= (float)$cot['impuesto_pct'] ?>};
 const AUTO  = {on:<?= $adc_on?'true':'false' ?>,pct:<?= (float)$adc_pct ?>,exp:new Date(<?= $adc_exp ? ($adc_exp * 1000) : 0 ?>)};
 const COUPONS = <?= json_encode(array_map(fn($c) => [
-    'code' => $c['codigo'],
-    'pct'  => (float)$c['pct_descuento'],
-    'desc' => $c['descripcion'] ?? '',
-    'exp'  => $c['fecha_vencimiento'] ?? null,
+    'code'       => $c['codigo'],
+    'pct'        => (float)$c['pct_descuento'],
+    'monto_fijo' => $c['monto_fijo'] ? (float)$c['monto_fijo'] : null,
+    'desc'       => $c['descripcion'] ?? '',
+    'exp'        => $c['fecha_vencimiento'] ?? null,
 ], $cupones)) ?>;
 const COT_ID  = <?= (int)$cot['id'] ?>;
 const EMPRESA = <?= json_encode([
@@ -1061,7 +1062,7 @@ function applyC(){
     document.getElementById('coupFld').style.display = 'none';
     document.getElementById('cCode').textContent = c.code;
     document.getElementById('cDesc').textContent = c.desc;
-    document.getElementById('cPct').textContent  = '-' + c.pct + '%';
+    document.getElementById('cPct').textContent  = c.monto_fijo ? '-' + fmt(c.monto_fijo) : '-' + c.pct + '%';
     calc();
 }
 function rmC(){
@@ -1087,9 +1088,9 @@ function calc(){
 
     const cr = document.getElementById('tCR');
     if (applied) {
-        ca = tot * applied.pct / 100; tot -= ca;
+        ca = applied.monto_fijo ? Math.min(applied.monto_fijo, tot) : tot * applied.pct / 100; tot -= ca;
         cr.style.display = '';
-        document.getElementById('tCL').textContent = 'Cupón '+applied.code+' ('+applied.pct+'%)';
+        document.getElementById('tCL').textContent = 'Cupón '+applied.code+(applied.monto_fijo ? '' : ' ('+applied.pct+'%)');
         document.getElementById('tCV').textContent = '-'+fmt(ca);
     } else cr.style.display = 'none';
 

@@ -26,10 +26,11 @@ if ($accion === 'eliminar') {
 // ── CREAR / EDITAR ────────────────────────────────────────────
 $body = json_decode(file_get_contents('php://input'), true);
 
-$codigo  = mb_substr(strtoupper(trim($body['codigo'] ?? '')), 0, 60);
-$pct     = (float)($body['porcentaje'] ?? 0);
-$desc    = mb_substr(trim($body['descripcion'] ?? ''), 0, 200);
-$activo  = (int)($body['activo'] ?? 1);
+$codigo     = mb_substr(strtoupper(trim($body['codigo'] ?? '')), 0, 60);
+$pct        = (float)($body['porcentaje'] ?? 0);
+$monto_fijo = !empty($body['monto_fijo']) ? (float)$body['monto_fijo'] : null;
+$desc       = mb_substr(trim($body['descripcion'] ?? ''), 0, 200);
+$activo     = (int)($body['activo'] ?? 1);
 
 // Vencimiento
 $venc_tipo  = $body['vencimiento_tipo'] ?? 'nunca';
@@ -43,7 +44,11 @@ if ($venc_tipo === 'fecha_fija') {
 }
 
 if ($codigo === '') { echo json_encode(['ok'=>false,'error'=>'El código es obligatorio']); exit; }
-if ($pct <= 0 || $pct > 99) { echo json_encode(['ok'=>false,'error'=>'El descuento debe ser entre 0.01 y 99%']); exit; }
+if ($pct <= 0 && !$monto_fijo) { echo json_encode(['ok'=>false,'error'=>'Indica un porcentaje o monto fijo']); exit; }
+if ($pct > 99) { echo json_encode(['ok'=>false,'error'=>'El porcentaje debe ser máximo 99%']); exit; }
+if ($monto_fijo !== null && $monto_fijo <= 0) { echo json_encode(['ok'=>false,'error'=>'El monto fijo debe ser mayor a 0']); exit; }
+// Si hay monto fijo, porcentaje en 0
+if ($monto_fijo) $pct = 0;
 if (!preg_match('/^[A-Z0-9_\-]{1,60}$/', $codigo)) {
     echo json_encode(['ok'=>false,'error'=>'Código inválido — solo letras, números, guión y guión bajo']); exit;
 }
@@ -54,19 +59,19 @@ if ($cup_id > 0) {
     $dup = DB::val("SELECT id FROM cupones WHERE empresa_id=? AND codigo=? AND id!=?", [$eid, $codigo, $cup_id]);
     if ($dup) { echo json_encode(['ok'=>false,'error'=>'Ese código ya está en uso']); exit; }
     DB::execute(
-        "UPDATE cupones SET codigo=?, porcentaje=?, descripcion=?, activo=?,
+        "UPDATE cupones SET codigo=?, porcentaje=?, monto_fijo=?, descripcion=?, activo=?,
          vencimiento_tipo=?, vencimiento_dias=?, vencimiento_fecha=? WHERE id=?",
-        [$codigo, $pct, $desc ?: null, $activo, $venc_tipo, $venc_dias, $venc_fecha, $cup_id]
+        [$codigo, $pct, $monto_fijo, $desc ?: null, $activo, $venc_tipo, $venc_dias, $venc_fecha, $cup_id]
     );
     echo json_encode(['ok'=>true, 'id'=>$cup_id]);
 } else {
     $dup = DB::val("SELECT id FROM cupones WHERE empresa_id=? AND codigo=?", [$eid, $codigo]);
     if ($dup) { echo json_encode(['ok'=>false,'error'=>'Ese código ya existe']); exit; }
     $nuevo = DB::insert(
-        "INSERT INTO cupones (empresa_id, codigo, porcentaje, descripcion, activo,
+        "INSERT INTO cupones (empresa_id, codigo, porcentaje, monto_fijo, descripcion, activo,
          vencimiento_tipo, vencimiento_dias, vencimiento_fecha)
-         VALUES (?,?,?,?,?,?,?,?)",
-        [$eid, $codigo, $pct, $desc ?: null, $activo, $venc_tipo, $venc_dias, $venc_fecha]
+         VALUES (?,?,?,?,?,?,?,?,?)",
+        [$eid, $codigo, $pct, $monto_fijo, $desc ?: null, $activo, $venc_tipo, $venc_dias, $venc_fecha]
     );
     echo json_encode(['ok'=>true, 'id'=>$nuevo]);
 }

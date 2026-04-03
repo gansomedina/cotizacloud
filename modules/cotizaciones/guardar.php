@@ -74,16 +74,17 @@ if ($valida_hasta && preg_match('/^\d{4}-\d{2}-\d{2}$/', $valida_hasta) && $vali
 }
 
 // Cupón
-$cupon_id = null; $cupon_codigo = null; $cupon_pct = 0;
+$cupon_id = null; $cupon_codigo = null; $cupon_pct = 0; $cupon_monto_fijo = null;
 if (!empty($body['cupon_id']) && Auth::puede('aplicar_descuentos')) {
     $cupon = DB::row(
-        "SELECT id, codigo, porcentaje FROM cupones WHERE id = ? AND empresa_id = ? AND activo = 1",
+        "SELECT id, codigo, porcentaje, monto_fijo FROM cupones WHERE id = ? AND empresa_id = ? AND activo = 1",
         [(int)$body['cupon_id'], $empresa_id]
     );
     if ($cupon) {
         $cupon_id     = (int)$cupon['id'];
         $cupon_codigo = $cupon['codigo'];
         $cupon_pct    = (float)$cupon['porcentaje'];
+        $cupon_monto_fijo = !empty($cupon['monto_fijo']) ? (float)$cupon['monto_fijo'] : null;
     }
 }
 
@@ -136,7 +137,7 @@ if (!$tiene_precio) json_error('Al menos un artículo debe tener precio');
 
 $base = $subtotal;
 $cupon_monto = 0.0;
-if ($cupon_id) { $cupon_monto = $subtotal * ($cupon_pct / 100); $base -= $cupon_monto; }
+if ($cupon_id) { $cupon_monto = $cupon_monto_fijo !== null ? min($cupon_monto_fijo, $subtotal) : $subtotal * ($cupon_pct / 100); $base -= $cupon_monto; }
 if ($desc_auto_activo) { $desc_auto_amt = $base * ($desc_auto_pct / 100); $base -= $desc_auto_amt; }
 $base = max(0, $base); // Nunca permitir total negativo
 
