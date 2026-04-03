@@ -773,37 +773,50 @@ tbody tr:hover td{background:var(--card-hover)}
 
 </div><!-- /grid-2 -->
 
-<!-- Donut distribución (ancho completo) -->
-<div class="sec">
-    <div class="sec-hdr"><div class="sec-title">Distribución</div></div>
-    <div class="tbl-card" style="padding:24px">
-        <div class="donut-wrap">
-            <div class="donut-canvas"><canvas id="donutChart"></canvas></div>
-            <div class="donut-legend">
-            <?php
-            $sorted = [];
-            foreach ($empresas_cfg as $eid => $ec) $sorted[] = ['eid'=>$eid,'nombre'=>$ec['nombre'],'short'=>$ec['short'],'color'=>$ec['color'],'monto'=>(float)($ve_act[$eid]['monto']??0)];
-            usort($sorted, fn($a,$b) => $b['monto'] <=> $a['monto']);
-            foreach ($sorted as $s):
-            ?>
-            <div class="donut-item">
-                <span class="donut-dot" style="background:<?= $s['color'] ?>"></span>
-                <span><?= $s['nombre'] ?></span>
-                <span class="donut-val" style="color:var(--g)"><?= xm($s['monto']) ?></span>
-            </div>
-            <?php endforeach; ?>
-            </div>
-        </div>
+<!-- GRID 2 COLUMNAS -->
+<div class="grid-3">
+
+<!-- IZQ: Sin cobrar -->
+<div class="sec" style="margin:0">
+    <div class="sec-hdr">
+        <div class="sec-title">Sin cobrar · <span style="color:var(--r)"><?= xf($total_sin_cobrar_cero) ?></span></div>
+        <div class="sec-count"><?= count($sin_cobrar) ?> ventas</div>
+    </div>
+    <div class="tbl-card" style="max-height:350px;overflow-y:auto">
+    <table>
+    <thead><tr><th></th><th>Venta</th><th class="r">Total</th><th class="r">Días</th></tr></thead>
+    <tbody>
+    <?php if ($sin_cobrar): foreach ($sin_cobrar as $sc):
+        $ec = $empresas_cfg[(int)$sc['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+        $dias = (int)$sc['dias'];
+        $dias_color = $dias > 7 ? 'var(--r)' : ($dias > 3 ? 'var(--a)' : 'var(--t2)');
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sc['titulo'],0,35)) ?></div>
+            <div style="font-size:11px;color:var(--t3)"><?= e($sc['cliente_nombre'] ?? '—') ?></div>
+        </td>
+        <td class="r mono" style="font-weight:700;color:var(--r)"><?= xf((float)$sc['total']) ?></td>
+        <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
+            <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
+        </td>
+    </tr>
+    <?php endforeach; else: ?>
+    <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--t3)">Todo cobrado</td></tr>
+    <?php endif; ?>
+    </tbody>
+    </table>
     </div>
 </div>
 
-<!-- Ventas con saldo pendiente (ancho completo) -->
-<div class="sec">
+<!-- DER: Ventas con saldo -->
+<div class="sec" style="margin:0">
     <div class="sec-hdr">
         <div class="sec-title">Ventas con saldo · <span style="color:var(--a)"><?= xf($total_sin_cobrar) ?></span></div>
         <div class="sec-count"><?= count($sin_pagos) ?> ventas</div>
     </div>
-    <div class="tbl-card" style="max-height:420px;overflow-y:auto">
+    <div class="tbl-card" style="max-height:350px;overflow-y:auto">
     <table>
     <thead><tr><th></th><th>Venta</th><th class="r">Total</th><th class="r">Pendiente</th><th class="r">Días</th></tr></thead>
     <tbody>
@@ -832,46 +845,8 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
-<!-- LAYOUT: Izquierda (Sin cobrar + Sin abrir + Embudo) | Derecha (Asesores) -->
-<div class="grid-3">
-
-<!-- COLUMNA IZQUIERDA -->
-<div style="display:flex;flex-direction:column;gap:14px">
-
-<!-- Ventas sin ningún pago -->
-<div class="sec" style="margin-bottom:0">
-    <div class="sec-hdr">
-        <div class="sec-title">Sin cobrar · <span style="color:var(--r)"><?= xf($total_sin_cobrar_cero) ?></span></div>
-        <div class="sec-count"><?= count($sin_cobrar) ?> ventas</div>
-    </div>
-    <div class="tbl-card" style="max-height:420px;overflow-y:auto">
-    <table>
-    <thead><tr><th></th><th>Venta</th><th>Cliente</th><th class="r">Total</th><th class="r">Días</th></tr></thead>
-    <tbody>
-    <?php if ($sin_cobrar): foreach ($sin_cobrar as $sc):
-        $ec = $empresas_cfg[(int)$sc['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
-        $dias = (int)$sc['dias'];
-        $dias_color = $dias > 7 ? 'var(--r)' : ($dias > 3 ? 'var(--a)' : 'var(--t2)');
-    ?>
-    <tr>
-        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
-        <td style="font-size:12px;font-weight:600"><?= e(mb_substr($sc['titulo'],0,35)) ?></td>
-        <td style="font-size:12px"><?= e($sc['cliente_nombre'] ?? '—') ?></td>
-        <td class="r mono" style="font-weight:700;color:var(--r)"><?= xf((float)$sc['total']) ?></td>
-        <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
-            <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
-        </td>
-    </tr>
-    <?php endforeach; else: ?>
-    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3)">Todo cobrado</td></tr>
-    <?php endif; ?>
-    </tbody>
-    </table>
-    </div>
-</div>
-
-<!-- Cotizaciones sin abrir -->
-<div class="sec" style="margin-bottom:0">
+<!-- IZQ: Sin abrir -->
+<div class="sec" style="margin:0">
     <div class="sec-hdr">
         <div class="sec-title">Sin abrir</div>
         <div class="sec-count"><?= count($sin_abrir) ?> cotizaciones</div>
@@ -905,18 +880,13 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
-</div><!-- /col izquierda -->
-
-<!-- COLUMNA DERECHA -->
-<div style="display:flex;flex-direction:column;gap:14px">
-
-<!-- Performance asesores -->
-<div class="sec" style="margin-bottom:0">
+<!-- DER: Asesores -->
+<div class="sec" style="margin:0">
     <div class="sec-hdr">
         <div class="sec-title">Asesores</div>
         <div class="sec-count"><?= count($asesores) ?> activos</div>
     </div>
-    <div class="tbl-card" style="max-height:420px;overflow-y:auto">
+    <div class="tbl-card" style="max-height:350px;overflow-y:auto">
     <table>
     <thead><tr><th>Asesor</th><th class="r">Ventas</th><th class="r">Score</th></tr></thead>
     <tbody>
@@ -950,12 +920,15 @@ tbody tr:hover td{background:var(--card-hover)}
     </table>
     </div>
 </div>
-</div><!-- /col derecha asesores -->
 
-</div><!-- /grid-3 -->
+<!-- IZQ: Embudo -->
+<?php
+$sorted = [];
+foreach ($empresas_cfg as $eid => $ec) $sorted[] = ['eid'=>$eid,'nombre'=>$ec['nombre'],'short'=>$ec['short'],'color'=>$ec['color'],'monto'=>(float)($ve_act[$eid]['monto']??0)];
+usort($sorted, fn($a,$b) => $b['monto'] <=> $a['monto']);
+?>
 
-<!-- Funnel de conversión -->
-<div class="sec" style="margin-bottom:0">
+<div class="sec" style="margin:0">
     <div class="sec-hdr"><div class="sec-title">Embudo de conversión</div></div>
     <div class="tbl-card" style="padding:24px">
     <?php
@@ -1003,6 +976,27 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
     </div>
 </div>
+
+<!-- DER: Distribución -->
+<div class="sec" style="margin:0">
+    <div class="sec-hdr"><div class="sec-title">Distribución</div></div>
+    <div class="tbl-card" style="padding:24px">
+        <div class="donut-wrap">
+            <div class="donut-canvas"><canvas id="donutChart"></canvas></div>
+            <div class="donut-legend">
+            <?php foreach ($sorted as $s): ?>
+            <div class="donut-item">
+                <span class="donut-dot" style="background:<?= $s['color'] ?>"></span>
+                <span><?= $s['nombre'] ?></span>
+                <span class="donut-val" style="color:var(--g)"><?= xm($s['monto']) ?></span>
+            </div>
+            <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div><!-- /grid-3 -->
 
 <!-- ══ TABS OPERACIONES ══════════════════════════════════════ -->
 <div class="sec">
