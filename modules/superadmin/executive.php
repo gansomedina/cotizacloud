@@ -331,6 +331,21 @@ $sin_pagos = DB::query(
 $total_sin_cobrar = 0;
 foreach ($sin_pagos as $sp) $total_sin_cobrar += (float)$sp['saldo'];
 
+// ─── VENTAS SIN NINGÚN PAGO (pagado=0) ─────────────────────
+$sin_cobrar = DB::query(
+    "SELECT v.empresa_id, v.titulo, v.numero, v.total, v.created_at,
+            c.nombre AS cliente_nombre,
+            DATEDIFF(NOW(), v.created_at) AS dias
+     FROM ventas v
+     LEFT JOIN clientes c ON c.id = v.cliente_id
+     WHERE v.empresa_id IN ({$emp_ids})
+       AND v.estado IN ('pendiente','parcial')
+       AND v.pagado = 0 AND v.total > 0
+     ORDER BY v.created_at ASC LIMIT 30"
+);
+$total_sin_cobrar_cero = 0;
+foreach ($sin_cobrar as $sc) $total_sin_cobrar_cero += (float)$sc['total'];
+
 // ─── COTIZACIONES SIN ABRIR ────────────────────────────────
 $sin_abrir = DB::query(
     "SELECT c.empresa_id, c.titulo, c.numero, c.total, c.created_at,
@@ -786,10 +801,10 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
-<!-- Ventas sin pagos -->
+<!-- Ventas con saldo pendiente -->
 <div class="sec">
     <div class="sec-hdr">
-        <div class="sec-title">Sin cobrar · <span style="color:var(--a)"><?= xf($total_sin_cobrar) ?></span></div>
+        <div class="sec-title">Ventas con saldo · <span style="color:var(--a)"><?= xf($total_sin_cobrar) ?></span></div>
         <div class="sec-count"><?= count($sin_pagos) ?> ventas</div>
     </div>
     <div class="tbl-card" style="max-height:420px;overflow-y:auto">
@@ -809,6 +824,38 @@ tbody tr:hover td{background:var(--card-hover)}
         </td>
         <td class="r mono" style="font-size:12px;color:var(--t2)"><?= xf((float)$sp['total']) ?></td>
         <td class="r mono" style="font-weight:700;color:var(--a)"><?= xf((float)$sp['saldo']) ?></td>
+        <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
+            <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
+        </td>
+    </tr>
+    <?php endforeach; else: ?>
+    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3)">Todo cobrado</td></tr>
+    <?php endif; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Ventas sin ningún pago -->
+<div class="sec">
+    <div class="sec-hdr">
+        <div class="sec-title">Sin cobrar · <span style="color:var(--r)"><?= xf($total_sin_cobrar_cero) ?></span></div>
+        <div class="sec-count"><?= count($sin_cobrar) ?> ventas</div>
+    </div>
+    <div class="tbl-card" style="max-height:420px;overflow-y:auto">
+    <table>
+    <thead><tr><th></th><th>Venta</th><th>Cliente</th><th class="r">Total</th><th class="r">Días</th></tr></thead>
+    <tbody>
+    <?php if ($sin_cobrar): foreach ($sin_cobrar as $sc):
+        $ec = $empresas_cfg[(int)$sc['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+        $dias = (int)$sc['dias'];
+        $dias_color = $dias > 7 ? 'var(--r)' : ($dias > 3 ? 'var(--a)' : 'var(--t2)');
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td style="font-size:12px;font-weight:600"><?= e(mb_substr($sc['titulo'],0,35)) ?></td>
+        <td style="font-size:12px"><?= e($sc['cliente_nombre'] ?? '—') ?></td>
+        <td class="r mono" style="font-weight:700;color:var(--r)"><?= xf((float)$sc['total']) ?></td>
         <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
             <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
         </td>
