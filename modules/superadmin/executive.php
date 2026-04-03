@@ -318,7 +318,7 @@ $pagos_hoy = DB::query(
 
 // ─── VENTAS SIN PAGOS ───────────────────────────────────────
 $sin_pagos = DB::query(
-    "SELECT v.empresa_id, v.titulo, v.numero, v.total, v.created_at,
+    "SELECT v.empresa_id, v.titulo, v.numero, v.total, v.saldo, v.created_at,
             c.nombre AS cliente_nombre,
             DATEDIFF(NOW(), v.created_at) AS dias
      FROM ventas v
@@ -328,6 +328,8 @@ $sin_pagos = DB::query(
        AND v.saldo > 0 AND v.total > 0
      ORDER BY v.created_at ASC LIMIT 30"
 );
+$total_sin_cobrar = 0;
+foreach ($sin_pagos as $sp) $total_sin_cobrar += (float)$sp['saldo'];
 
 // ─── COTIZACIONES SIN ABRIR ────────────────────────────────
 $sin_abrir = DB::query(
@@ -787,12 +789,12 @@ tbody tr:hover td{background:var(--card-hover)}
 <!-- Ventas sin pagos -->
 <div class="sec">
     <div class="sec-hdr">
-        <div class="sec-title">Sin cobrar</div>
+        <div class="sec-title">Sin cobrar · <span style="color:var(--a)"><?= xf($total_sin_cobrar) ?></span></div>
         <div class="sec-count"><?= count($sin_pagos) ?> ventas</div>
     </div>
     <div class="tbl-card" style="max-height:420px;overflow-y:auto">
     <table>
-    <thead><tr><th></th><th>Venta</th><th class="r">Total</th><th class="r">Días</th></tr></thead>
+    <thead><tr><th></th><th>Venta</th><th class="r">Total</th><th class="r">Pendiente</th><th class="r">Días</th></tr></thead>
     <tbody>
     <?php if ($sin_pagos): foreach ($sin_pagos as $sp):
         $ec = $empresas_cfg[(int)$sp['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
@@ -805,13 +807,14 @@ tbody tr:hover td{background:var(--card-hover)}
             <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sp['titulo'],0,35)) ?></div>
             <div style="font-size:11px;color:var(--t3)"><?= e($sp['cliente_nombre'] ?? '—') ?></div>
         </td>
-        <td class="r mono" style="font-weight:600"><?= xf((float)$sp['total']) ?></td>
+        <td class="r mono" style="font-size:12px;color:var(--t2)"><?= xf((float)$sp['total']) ?></td>
+        <td class="r mono" style="font-weight:700;color:var(--a)"><?= xf((float)$sp['saldo']) ?></td>
         <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
             <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
         </td>
     </tr>
     <?php endforeach; else: ?>
-    <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--t3)">Todo cobrado</td></tr>
+    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3)">Todo cobrado</td></tr>
     <?php endif; ?>
     </tbody>
     </table>
