@@ -561,7 +561,7 @@ tbody tr:hover td{background:var(--card-hover)}
 .donut-val{font:700 13px 'Inter',sans-serif;margin-left:auto;font-variant-numeric:tabular-nums}
 
 /* Grid 3 */
-.grid-3{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
 @media(max-width:900px){.grid-3{grid-template-columns:1fr}}
 
 @media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
@@ -776,7 +776,10 @@ tbody tr:hover td{background:var(--card-hover)}
 <!-- GRID 2 COLUMNAS -->
 <div class="grid-3">
 
-<!-- IZQ: Sin cobrar -->
+<!-- COLUMNA IZQUIERDA -->
+<div style="display:flex;flex-direction:column;gap:14px">
+
+<!-- Sin cobrar -->
 <div class="sec" style="margin:0">
     <div class="sec-hdr">
         <div class="sec-title">Sin cobrar · <span style="color:var(--r)"><?= xf($total_sin_cobrar_cero) ?></span></div>
@@ -810,50 +813,15 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
-<!-- DER: Ventas con saldo -->
-<div class="sec" style="margin:0">
-    <div class="sec-hdr">
-        <div class="sec-title">Ventas con saldo · <span style="color:var(--a)"><?= xf($total_sin_cobrar) ?></span></div>
-        <div class="sec-count"><?= count($sin_pagos) ?> ventas</div>
-    </div>
-    <div class="tbl-card" style="max-height:350px;overflow-y:auto">
-    <table>
-    <thead><tr><th></th><th>Venta</th><th class="r">Total</th><th class="r">Pendiente</th><th class="r">Días</th></tr></thead>
-    <tbody>
-    <?php if ($sin_pagos): foreach ($sin_pagos as $sp):
-        $ec = $empresas_cfg[(int)$sp['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
-        $dias = (int)$sp['dias'];
-        $dias_color = $dias > 7 ? 'var(--r)' : ($dias > 3 ? 'var(--a)' : 'var(--t2)');
-    ?>
-    <tr>
-        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
-        <td>
-            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sp['titulo'],0,35)) ?></div>
-            <div style="font-size:11px;color:var(--t3)"><?= e($sp['cliente_nombre'] ?? '—') ?></div>
-        </td>
-        <td class="r mono" style="font-size:12px;color:var(--t2)"><?= xf((float)$sp['total']) ?></td>
-        <td class="r mono" style="font-weight:700;color:var(--a)"><?= xf((float)$sp['saldo']) ?></td>
-        <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
-            <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
-        </td>
-    </tr>
-    <?php endforeach; else: ?>
-    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3)">Todo cobrado</td></tr>
-    <?php endif; ?>
-    </tbody>
-    </table>
-    </div>
-</div>
-
-<!-- IZQ: Sin abrir -->
+<!-- Sin abrir -->
 <div class="sec" style="margin:0">
     <div class="sec-hdr">
         <div class="sec-title">Sin abrir</div>
         <div class="sec-count"><?= count($sin_abrir) ?> cotizaciones</div>
     </div>
-    <div class="tbl-card" style="max-height:350px;overflow-y:auto">
+    <div class="tbl-card" style="max-height:300px;overflow-y:auto">
     <table>
-    <thead><tr><th></th><th>Cotización</th><th>Cliente</th><th class="r">Total</th><th class="r">Días</th></tr></thead>
+    <thead><tr><th></th><th>Cotización</th><th class="r">Total</th><th class="r">Días</th></tr></thead>
     <tbody>
     <?php if ($sin_abrir): foreach ($sin_abrir as $sa):
         $ec = $empresas_cfg[(int)$sa['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
@@ -863,24 +831,59 @@ tbody tr:hover td{background:var(--card-hover)}
     <tr>
         <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
         <td>
-            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sa['titulo'],0,35)) ?></div>
-            <div style="font-size:11px;color:var(--t3)"><?= e($sa['numero']) ?></div>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sa['titulo'],0,30)) ?></div>
+            <div style="font-size:10px;color:var(--t3)"><?= e($sa['numero']) ?></div>
         </td>
-        <td style="font-size:12px"><?= e($sa['cliente_nombre'] ?? '—') ?></td>
         <td class="r mono" style="font-weight:600"><?= xf((float)$sa['total']) ?></td>
         <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
             <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
         </td>
     </tr>
     <?php endforeach; else: ?>
-    <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--t3)">Todas abiertas</td></tr>
+    <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--t3)">Todas abiertas</td></tr>
     <?php endif; ?>
     </tbody>
     </table>
     </div>
 </div>
 
-<!-- DER: Asesores -->
+<!-- Ventas con saldo -->
+<div class="sec" style="margin:0">
+    <div class="sec-hdr">
+        <div class="sec-title">Ventas con saldo · <span style="color:var(--a)"><?= xf($total_sin_cobrar) ?></span></div>
+        <div class="sec-count"><?= count($sin_pagos) ?> ventas</div>
+    </div>
+    <div class="tbl-card" style="max-height:300px;overflow-y:auto">
+    <table>
+    <thead><tr><th></th><th>Venta</th><th class="r">Pendiente</th><th class="r">Días</th></tr></thead>
+    <tbody>
+    <?php if ($sin_pagos): foreach ($sin_pagos as $sp):
+        $ec = $empresas_cfg[(int)$sp['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+        $dias = (int)$sp['dias'];
+        $dias_color = $dias > 7 ? 'var(--r)' : ($dias > 3 ? 'var(--a)' : 'var(--t2)');
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sp['titulo'],0,30)) ?></div>
+            <div style="font-size:10px;color:var(--t3)"><?= e($sp['cliente_nombre'] ?? '—') ?></div>
+        </td>
+        <td class="r mono" style="font-weight:700;color:var(--a)"><?= xf((float)$sp['saldo']) ?></td>
+        <td class="r mono" style="font-weight:700;color:<?= $dias_color ?>">
+            <span class="alert-dot" style="background:<?= $dias_color ?>"></span><?= $dias ?>d
+        </td>
+    </tr>
+    <?php endforeach; else: ?>
+    <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--t3)">Todo cobrado</td></tr>
+    <?php endif; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+
+</div><!-- /col izquierda -->
+
+<!-- COLUMNA DERECHA: Asesores -->
 <div class="sec" style="margin:0">
     <div class="sec-hdr">
         <div class="sec-title">Asesores</div>
@@ -921,12 +924,16 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
-<!-- IZQ: Embudo -->
+</div><!-- /grid-3 -->
+
 <?php
 $sorted = [];
 foreach ($empresas_cfg as $eid => $ec) $sorted[] = ['eid'=>$eid,'nombre'=>$ec['nombre'],'short'=>$ec['short'],'color'=>$ec['color'],'monto'=>(float)($ve_act[$eid]['monto']??0)];
 usort($sorted, fn($a,$b) => $b['monto'] <=> $a['monto']);
 ?>
+
+<!-- Embudo + Distribución -->
+<div class="grid-3">
 
 <div class="sec" style="margin:0">
     <div class="sec-hdr"><div class="sec-title">Embudo de conversión</div></div>
