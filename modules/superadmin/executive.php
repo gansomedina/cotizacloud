@@ -376,7 +376,7 @@ $compensaciones = DB::query(
      FROM cupones c
      JOIN empresas e ON e.id = c.empresa_id
      WHERE c.empresa_id IN ({$emp_ids})
-       AND c.codigo REGEXP '^[A-Z]{3}[0-9]{3}$'
+       AND c.descripcion LIKE 'Compensación:%'
      ORDER BY c.created_at DESC LIMIT 30"
 );
 $comp_activas = 0; $comp_usadas = 0;
