@@ -12,6 +12,12 @@
     console.log('[Push] Plugin PushNotifications:', !!PushNotifications);
     if (!PushNotifications) return;
 
+    // Limpiar badge al abrir la app
+    try { PushNotifications.removeAllDeliveredNotifications(); } catch(e) {}
+    if (window.Capacitor.Plugins.Badge) {
+        try { window.Capacitor.Plugins.Badge.clear(); } catch(e) {}
+    }
+
     // Pedir permisos y registrar
     function initPush() {
         console.log('[Push] initPush called');
