@@ -139,7 +139,6 @@ class PushNotification
                     'body'  => $cuerpo,
                 ],
                 'sound' => 'default',
-                'badge' => 1,
             ],
         ];
 
