@@ -9,7 +9,6 @@ defined('COTIZAAPP') or die;
 $codigo = $codigo ?? '';
 if (!$codigo) { http_response_code(404); die('No encontrado'); }
 
-// Buscar cupón de compensación
 $cupon = DB::row(
     "SELECT c.*, e.nombre AS emp_nombre, e.logo_url AS emp_logo,
             e.telefono AS emp_tel, e.email AS emp_email, e.slug AS emp_slug
@@ -38,39 +37,52 @@ $ini     = strtoupper(substr($empresa, 0, 2));
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Plus Jakarta Sans',sans-serif;background:#f8f8f6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(160deg,#f0fdf4 0%,#f8f8f6 40%,#fefce8 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
 
-.card{max-width:480px;width:100%;background:#fff;border-radius:24px;box-shadow:0 8px 40px rgba(0,0,0,.08);overflow:hidden;text-align:center}
+.card{max-width:460px;width:100%;background:#fff;border-radius:28px;box-shadow:0 4px 60px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);overflow:hidden;text-align:center}
 
-.card-header{background:linear-gradient(135deg,#1a5c38 0%,#16a34a 100%);padding:40px 30px 50px;position:relative}
-.card-header::after{content:'';position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);width:60px;height:60px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center}
+/* Header suave */
+.card-header{padding:36px 30px 24px;background:#fff;border-bottom:1px solid #f0f0ec}
+.logo{margin:0 auto 12px}
+.logo img{max-width:180px;max-height:80px;object-fit:contain}
+.logo-text{width:56px;height:56px;border-radius:14px;background:#1a5c38;color:#fff;font:700 18px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center}
+.emp-name{color:#4a4a46;font:600 14px 'Plus Jakarta Sans',sans-serif;letter-spacing:.02em}
 
-.logo{width:160px;height:100px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center}
-.logo img{max-width:160px;max-height:80px;object-fit:contain}
-.logo-text{width:60px;height:60px;border-radius:14px;background:rgba(255,255,255,.2);color:#fff;font:700 20px 'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;justify-content:center}
-.emp-name{color:#fff;font:700 18px 'Plus Jakarta Sans',sans-serif;opacity:.9}
+/* Regalo */
+.gift-area{padding:32px 30px 24px;background:linear-gradient(180deg,#fafaf8 0%,#fff 100%)}
+.gift-icon{font-size:64px;margin-bottom:16px;display:block;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 
-.gift{width:70px;height:70px;background:#fff;border-radius:50%;box-shadow:0 4px 20px rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;margin:-35px auto 0;position:relative;z-index:2;font-size:36px}
+.title{font:800 24px/1.2 'Plus Jakarta Sans',sans-serif;color:#1a1a18;letter-spacing:-.02em}
+.title span{color:#16a34a}
+.subtitle{font:400 14px/1.7 'Plus Jakarta Sans',sans-serif;color:#6a6a64;margin-top:10px;max-width:340px;margin-left:auto;margin-right:auto}
 
-.card-body{padding:30px 30px 36px}
+/* Monto */
+.amount{margin:28px 30px 0;padding:28px 24px;background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 50%,#d1fae5 100%);border-radius:20px;position:relative;overflow:hidden}
+.amount::before{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:rgba(22,163,74,.08);border-radius:50%}
+.amount::after{content:'';position:absolute;bottom:-20px;left:-20px;width:70px;height:70px;background:rgba(22,163,74,.05);border-radius:50%}
+.amount-label{font:600 11px 'Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.12em;color:#16a34a;margin-bottom:8px;position:relative;z-index:1}
+.amount-value{font:900 48px 'Plus Jakarta Sans',sans-serif;color:#1a5c38;letter-spacing:-.03em;position:relative;z-index:1}
+.amount-sub{font:400 13px 'Plus Jakarta Sans',sans-serif;color:#4a4a46;margin-top:6px;position:relative;z-index:1}
 
-.title{font:800 22px 'Plus Jakarta Sans',sans-serif;color:#1a1a18;margin:20px 0 8px;line-height:1.3}
-.subtitle{font-size:15px;color:#6a6a64;line-height:1.6;margin-bottom:28px}
+/* Código */
+.code{margin:20px 30px 0;padding:18px 20px;background:#fafaf8;border:2px dashed #d4d4cd;border-radius:14px}
+.code-label{font:500 10px 'Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:6px}
+.code-value{font:800 28px 'Plus Jakarta Sans',sans-serif;color:#1a5c38;letter-spacing:.12em}
 
-.amount-card{background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:2px solid #bbf7d0;border-radius:16px;padding:24px;margin-bottom:24px}
-.amount-label{font:600 11px 'Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.1em;color:#16a34a;margin-bottom:8px}
-.amount-value{font:900 42px 'Plus Jakarta Sans',sans-serif;color:#1a5c38;letter-spacing:-.03em}
-.amount-sub{font-size:13px;color:#4a4a46;margin-top:8px}
+/* Instrucciones */
+.instructions{margin:24px 30px 0;text-align:left}
+.inst-title{font:700 13px 'Plus Jakarta Sans',sans-serif;color:#1a1a18;margin-bottom:10px}
+.inst-step{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.inst-num{width:24px;height:24px;border-radius:50%;background:#f0fdf4;color:#16a34a;font:700 12px 'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.inst-text{font:400 13px/1.5 'Plus Jakarta Sans',sans-serif;color:#6a6a64}
 
-.code-box{background:#f4f4f0;border:2px dashed #c8c8c0;border-radius:12px;padding:16px;margin-bottom:24px}
-.code-label{font:600 11px 'Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.1em;color:#6a6a64;margin-bottom:6px}
-.code-value{font:800 24px 'Plus Jakarta Sans',sans-serif;color:#1a5c38;letter-spacing:.08em}
+/* Vigencia */
+.validity{margin:20px 30px 0;padding:10px 16px;background:#fffbeb;border-radius:10px;font:500 12px 'Plus Jakarta Sans',sans-serif;color:#92400e}
 
-.note{font-size:12px;color:#94a3b8;line-height:1.5}
-.note strong{color:#6a6a64}
-
-.footer{padding:16px 30px;border-top:1px solid #e2e2dc;font-size:12px;color:#94a3b8}
-.footer a{color:#1a5c38;text-decoration:none}
+/* Footer */
+.card-footer{padding:20px 30px;margin-top:24px;border-top:1px solid #f0f0ec;font:400 12px 'Plus Jakarta Sans',sans-serif;color:#94a3b8}
+.card-footer a{color:#1a5c38;text-decoration:none}
 </style>
 </head>
 <body>
@@ -87,37 +99,46 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f8f8f6;min-height:10
         <div class="emp-name"><?= e($empresa) ?></div>
     </div>
 
-    <div class="gift">🎁</div>
+    <div class="gift-area">
+        <span class="gift-icon">🎁</span>
+        <div class="title">La calidad es <span>nuestra prioridad</span></div>
+        <div class="subtitle">Lamentamos cualquier inconveniente. Como muestra de nuestro compromiso, le ofrecemos un descuento especial.</div>
+    </div>
 
-    <div class="card-body">
-        <div class="title">La calidad es nuestra prioridad</div>
-        <div class="subtitle">
-            Lamentamos el inconveniente. Como muestra de nuestro compromiso con usted,
-            le ofrecemos un descuento directo en su próxima cotización.
+    <div class="amount">
+        <div class="amount-label">Descuento exclusivo para usted</div>
+        <div class="amount-value"><?= $descuento_txt ?></div>
+        <div class="amount-sub">de descuento directo en su próxima cotización</div>
+    </div>
+
+    <div class="code">
+        <div class="code-label">Su código personal</div>
+        <div class="code-value"><?= e($cupon['codigo']) ?></div>
+    </div>
+
+    <div class="instructions">
+        <div class="inst-title">¿Cómo utilizarlo?</div>
+        <div class="inst-step">
+            <div class="inst-num">1</div>
+            <div class="inst-text">Solicite su próxima cotización con su asesor</div>
         </div>
-
-        <div class="amount-card">
-            <div class="amount-label">Descuento especial para usted</div>
-            <div class="amount-value"><?= $descuento_txt ?></div>
-            <div class="amount-sub">de descuento en su próxima cotización</div>
+        <div class="inst-step">
+            <div class="inst-num">2</div>
+            <div class="inst-text">Comparta este código y el descuento se aplicará automáticamente</div>
         </div>
-
-        <div class="code-box">
-            <div class="code-label">Su código de descuento</div>
-            <div class="code-value"><?= e($cupon['codigo']) ?></div>
-        </div>
-
-        <div class="note">
-            <strong>¿Cómo usarlo?</strong> Comparta este código con su asesor al solicitar
-            su próxima cotización. El descuento se aplicará automáticamente.<br><br>
-            Este cupón es válido por un solo uso.
-            <?php if ($cupon['vencimiento_fecha']): ?>
-            Válido hasta el <?= date('d/m/Y', strtotime($cupon['vencimiento_fecha'])) ?>.
-            <?php endif; ?>
+        <div class="inst-step">
+            <div class="inst-num">3</div>
+            <div class="inst-text">Disfrute de su proyecto con el mejor servicio</div>
         </div>
     </div>
 
-    <div class="footer">
+    <?php if ($cupon['vencimiento_fecha']): ?>
+    <div class="validity">
+        Válido hasta el <?= date('d/m/Y', strtotime($cupon['vencimiento_fecha'])) ?> · Un solo uso
+    </div>
+    <?php endif; ?>
+
+    <div class="card-footer">
         <?= e($empresa) ?>
         <?php if ($cupon['emp_tel']): ?> · <a href="tel:<?= e($cupon['emp_tel']) ?>"><?= e($cupon['emp_tel']) ?></a><?php endif; ?>
         <?php if ($cupon['emp_email']): ?> · <a href="mailto:<?= e($cupon['emp_email']) ?>"><?= e($cupon['emp_email']) ?></a><?php endif; ?>
