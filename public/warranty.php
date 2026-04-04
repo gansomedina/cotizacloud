@@ -99,8 +99,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(160de
         <div class="emp-name"><?= e($empresa) ?></div>
     </div>
 
+    <?php $cliente_nombre = str_replace('Compensación: ', '', $cupon['descripcion'] ?? ''); ?>
     <div class="gift-area">
         <span class="gift-icon">🎁</span>
+        <?php if ($cliente_nombre): ?>
+        <div style="font:600 14px 'Plus Jakarta Sans',sans-serif;color:#16a34a;margin-bottom:8px"><?= e($cliente_nombre) ?></div>
+        <?php endif; ?>
         <div class="title">La calidad es <span>nuestra prioridad</span></div>
         <div class="subtitle">Lamentamos cualquier inconveniente. Como muestra de nuestro compromiso, le ofrecemos un descuento especial.</div>
     </div>
