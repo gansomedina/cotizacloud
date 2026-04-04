@@ -21,47 +21,47 @@ defined('COTIZAAPP') or die;
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#fafaf8;--white:#fff;--border:#e8e8e2;--border2:#d4d4cd;
-  --text:#111110;--t2:#3a3a38;--t3:#7a7a74;
-  --g:#1a5c38;--g2:#145030;--g-bg:#eef7f2;--g-border:#b8ddc8;
+  --bg:#f4f4f0;--white:#fff;--border:#e2e2dc;--border2:#c8c8c0;
+  --text:#1a1a18;--t2:#4a4a46;--t3:#6a6a64;
+  --g:#1a5c38;--g2:#164f30;--g-bg:#eef7f2;--g-border:#b8ddc8;
   --accent:#7c3aed;--accent-bg:#ede9fe;
   --warm:#dc2626;--warm-bg:#fef2f2;
   --r:14px;--r-sm:10px;
-  --sh:0 1px 3px rgba(0,0,0,.04);--sh-md:0 4px 24px rgba(0,0,0,.06);--sh-lg:0 12px 48px rgba(0,0,0,.08);
+  --sh:0 1px 3px rgba(0,0,0,.06);--sh-md:0 4px 20px rgba(0,0,0,.08);--sh-lg:0 8px 40px rgba(0,0,0,.10);
   --body:'Plus Jakarta Sans',sans-serif;--num:'DM Sans',sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
 /* NAV */
-.nav{background:rgba(250,250,248,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-.nav-inner{max-width:1140px;margin:0 auto;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.nav{background:rgba(255,255,255,.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.nav-inner{max-width:1100px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
 .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
 .logo-mark{width:40px;height:40px;border-radius:11px;background:var(--g);display:flex;align-items:center;justify-content:center}
 .logo-mark svg{width:32px;height:26px}
-.logo-name{font:800 20px var(--body);letter-spacing:-.03em;color:var(--text)}
+.logo-name{font:800 19px var(--body);letter-spacing:-.02em;color:var(--text)}
 .logo-name span{color:var(--g)}
-.nav-links{display:flex;align-items:center;gap:6px}
-.nav-link{padding:9px 18px;border-radius:8px;font:600 14px var(--body);text-decoration:none;transition:all .15s}
-.nav-link-ghost{color:var(--t3)}
-.nav-link-ghost:hover{color:var(--text);background:rgba(0,0,0,.04)}
-.nav-link-primary{background:var(--g);color:#fff;border-radius:8px}
-.nav-link-primary:hover{background:var(--g2)}
+.nav-links{display:flex;align-items:center;gap:8px}
+.nav-link{padding:8px 16px;border-radius:var(--r-sm);font:600 14px var(--body);text-decoration:none;transition:all .12s}
+.nav-link-ghost{color:var(--t2);background:transparent}
+.nav-link-ghost:hover{background:var(--bg)}
+.nav-link-primary{background:var(--g);color:#fff}
+.nav-link-primary:hover{opacity:.88}
 
 /* HERO */
-.hero{max-width:860px;margin:0 auto;padding:100px 32px 0;text-align:center}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:99px;background:var(--white);border:1px solid var(--border);font:600 12px var(--body);color:var(--g);margin-bottom:32px;letter-spacing:.04em;box-shadow:var(--sh)}
+.hero{max-width:900px;margin:0 auto;padding:72px 24px 0;text-align:center}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 18px;border-radius:20px;background:var(--g-bg);border:1px solid var(--g-border);font:700 11px var(--body);color:var(--g);margin-bottom:28px;letter-spacing:.08em;text-transform:uppercase}
 .hero-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--g);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.hero h1{font:800 clamp(40px,6.5vw,68px)/1.02 var(--body);letter-spacing:-.045em;margin-bottom:28px;color:var(--text)}
+.hero h1{font:800 clamp(36px,6vw,60px)/1.05 var(--body);letter-spacing:-.04em;margin-bottom:24px}
 .hero h1 em{font-style:normal;color:var(--g)}
-.hero-sub{font:400 clamp(17px,2.2vw,20px)/1.65 var(--body);color:var(--t3);max-width:580px;margin:0 auto 44px}
+.hero-sub{font:500 clamp(17px,2.2vw,21px)/1.55 var(--body);color:var(--t2);max-width:620px;margin:0 auto 40px}
 .hero-sub strong{color:var(--text);font-weight:700}
-.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
-.btn-hero{padding:17px 40px;border-radius:10px;font:700 15px var(--body);text-decoration:none;transition:all .2s;border:none;cursor:pointer;letter-spacing:-.01em}
-.btn-hero-primary{background:var(--g);color:#fff;box-shadow:0 2px 12px rgba(26,92,56,.2)}
-.btn-hero-primary:hover{background:var(--g2);box-shadow:0 4px 20px rgba(26,92,56,.3);transform:translateY(-1px)}
-.btn-hero-secondary{background:var(--white);color:var(--t2);border:1.5px solid var(--border2);box-shadow:var(--sh)}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.btn-hero{padding:16px 36px;border-radius:var(--r-sm);font:700 15px var(--body);text-decoration:none;transition:all .18s;border:none;cursor:pointer}
+.btn-hero-primary{background:var(--g);color:#fff;box-shadow:0 4px 16px rgba(26,92,56,.3)}
+.btn-hero-primary:hover{background:var(--g2);box-shadow:0 6px 24px rgba(26,92,56,.4);transform:translateY(-1px)}
+.btn-hero-secondary{background:var(--white);color:var(--t2);border:1.5px solid var(--border2)}
 .btn-hero-secondary:hover{border-color:var(--g);color:var(--g)}
 .hero-note{font:400 14px var(--body);color:var(--t3)}
 
@@ -359,13 +359,13 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <!-- HERO -->
 <section class="hero">
   <div class="hero-badge"><div class="hero-badge-dot"></div>Radar de inteligencia de ventas</div>
-  <h1>Tus clientes ya estan <em>revisando tu cotizacion</em></h1>
-  <p class="hero-sub">Deja de adivinar. El Radar analiza en tiempo real quien abrio tu cotizacion, cuanto tiempo le dedico y cuando esta listo para cerrar. <strong>Tu solo llamas en el momento exacto.</strong></p>
+  <h1>¿Sabes quien va a comprar<br><em>antes de que te llame?</em></h1>
+  <p class="hero-sub">¿Mandas cotizaciones y esperas? Nosotros te decimos <strong>cuales se van a cerrar</strong>. El radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando esta listo.</p>
   <div class="hero-btns">
-    <a href="/registro" class="btn-hero btn-hero-primary">Empezar gratis</a>
-    <a href="#como-funciona" class="btn-hero btn-hero-secondary">Como funciona</a>
+    <a href="/registro" class="btn-hero btn-hero-primary">Probar el Radar gratis</a>
+    <a href="#como-funciona" class="btn-hero btn-hero-secondary">Ver como funciona</a>
   </div>
-  <p class="hero-note">Sin tarjeta. Sin contratos. Resultados desde el dia 1.</p>
+  <p class="hero-note">Sin tarjeta. Sin contratos. Radar completo desde el dia 1.</p>
 </section>
 
 <!-- PROOF -->
