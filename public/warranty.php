@@ -46,7 +46,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(160de
 .logo{margin:0 auto 12px}
 .logo img{max-width:180px;max-height:80px;object-fit:contain}
 .logo-text{width:56px;height:56px;border-radius:14px;background:#1a5c38;color:#fff;font:700 18px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center}
-.emp-name{color:#4a4a46;font:600 14px 'Plus Jakarta Sans',sans-serif;letter-spacing:.02em}
+.emp-name{color:#4a4a46;font:600 16px 'Plus Jakarta Sans',sans-serif;letter-spacing:.02em}
 
 /* Regalo */
 .gift-area{padding:32px 30px 24px;background:linear-gradient(180deg,#fafaf8 0%,#fff 100%)}
@@ -55,33 +55,33 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(160de
 
 .title{font:800 24px/1.2 'Plus Jakarta Sans',sans-serif;color:#1a1a18;letter-spacing:-.02em}
 .title span{color:#16a34a}
-.subtitle{font:400 14px/1.7 'Plus Jakarta Sans',sans-serif;color:#6a6a64;margin-top:10px;max-width:340px;margin-left:auto;margin-right:auto}
+.subtitle{font:400 17px/1.7 'Plus Jakarta Sans',sans-serif;color:#6a6a64;margin-top:10px;max-width:380px;margin-left:auto;margin-right:auto}
 
 /* Monto */
 .amount{margin:28px 30px 0;padding:28px 24px;background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 50%,#d1fae5 100%);border-radius:20px;position:relative;overflow:hidden}
 .amount::before{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:rgba(22,163,74,.08);border-radius:50%}
 .amount::after{content:'';position:absolute;bottom:-20px;left:-20px;width:70px;height:70px;background:rgba(22,163,74,.05);border-radius:50%}
-.amount-label{font:600 11px 'Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.12em;color:#16a34a;margin-bottom:8px;position:relative;z-index:1}
-.amount-value{font:900 48px 'Plus Jakarta Sans',sans-serif;color:#1a5c38;letter-spacing:-.03em;position:relative;z-index:1}
-.amount-sub{font:400 13px 'Plus Jakarta Sans',sans-serif;color:#4a4a46;margin-top:6px;position:relative;z-index:1}
+.amount-label{font:600 13px 'Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.1em;color:#16a34a;margin-bottom:8px;position:relative;z-index:1}
+.amount-value{font:900 54px 'Plus Jakarta Sans',sans-serif;color:#1a5c38;letter-spacing:-.03em;position:relative;z-index:1}
+.amount-sub{font:400 15px 'Plus Jakarta Sans',sans-serif;color:#4a4a46;margin-top:6px;position:relative;z-index:1}
 
 /* Código */
-.code{margin:20px 30px 0;padding:18px 20px;background:#fafaf8;border:2px dashed #d4d4cd;border-radius:14px}
-.code-label{font:500 10px 'Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:6px}
-.code-value{font:800 28px 'Plus Jakarta Sans',sans-serif;color:#1a5c38;letter-spacing:.12em}
+.code{margin:20px 30px 0;padding:20px 22px;background:#fafaf8;border:2px dashed #d4d4cd;border-radius:14px}
+.code-label{font:500 12px 'Plus Jakarta Sans',sans-serif;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:6px}
+.code-value{font:800 32px 'Plus Jakarta Sans',sans-serif;color:#1a5c38;letter-spacing:.12em}
 
 /* Instrucciones */
 .instructions{margin:24px 30px 0;text-align:left}
-.inst-title{font:700 13px 'Plus Jakarta Sans',sans-serif;color:#1a1a18;margin-bottom:10px}
-.inst-step{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
-.inst-num{width:24px;height:24px;border-radius:50%;background:#f0fdf4;color:#16a34a;font:700 12px 'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.inst-text{font:400 13px/1.5 'Plus Jakarta Sans',sans-serif;color:#6a6a64}
+.inst-title{font:700 15px 'Plus Jakarta Sans',sans-serif;color:#1a1a18;margin-bottom:12px}
+.inst-step{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+.inst-num{width:28px;height:28px;border-radius:50%;background:#f0fdf4;color:#16a34a;font:700 13px 'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.inst-text{font:400 15px/1.5 'Plus Jakarta Sans',sans-serif;color:#6a6a64}
 
 /* Vigencia */
-.validity{margin:20px 30px 0;padding:10px 16px;background:#fffbeb;border-radius:10px;font:500 12px 'Plus Jakarta Sans',sans-serif;color:#92400e}
+.validity{margin:20px 30px 0;padding:12px 18px;background:#fffbeb;border-radius:10px;font:500 14px 'Plus Jakarta Sans',sans-serif;color:#92400e}
 
 /* Footer */
-.card-footer{padding:20px 30px;margin-top:24px;border-top:1px solid #f0f0ec;font:400 12px 'Plus Jakarta Sans',sans-serif;color:#94a3b8}
+.card-footer{padding:20px 30px;margin-top:24px;border-top:1px solid #f0f0ec;font:400 14px 'Plus Jakarta Sans',sans-serif;color:#94a3b8}
 .card-footer a{color:#1a5c38;text-decoration:none}
 </style>
 </head>
@@ -103,7 +103,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(160de
     <div class="gift-area">
         <span class="gift-icon">🎁</span>
         <?php if ($cliente_nombre): ?>
-        <div style="font:600 14px 'Plus Jakarta Sans',sans-serif;color:#16a34a;margin-bottom:8px"><?= e($cliente_nombre) ?></div>
+        <div style="font:600 17px 'Plus Jakarta Sans',sans-serif;color:#16a34a;margin-bottom:8px"><?= e($cliente_nombre) ?></div>
         <?php endif; ?>
         <div class="title">La calidad es <span>nuestra prioridad</span></div>
         <div class="subtitle">Lamentamos cualquier inconveniente. Como muestra de nuestro compromiso, le ofrecemos un descuento especial.</div>
@@ -139,8 +139,8 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(160de
             <div class="inst-text">Puede usarlo usted o regalárselo a alguien especial</div>
         </div>
         <div style="margin-top:18px;padding:14px 18px;background:linear-gradient(135deg,#fefce8,#fef9c3);border-radius:12px;text-align:center">
-            <div style="font:800 15px 'Plus Jakarta Sans',sans-serif;color:#92400e">¡Aproveche esta oportunidad!</div>
-            <div style="font:400 12px 'Plus Jakarta Sans',sans-serif;color:#a16207;margin-top:4px">Es un placer atenderle</div>
+            <div style="font:800 17px 'Plus Jakarta Sans',sans-serif;color:#92400e">¡Aproveche esta oportunidad!</div>
+            <div style="font:400 14px 'Plus Jakarta Sans',sans-serif;color:#a16207;margin-top:4px">Es un placer atenderle</div>
         </div>
     </div>
 
