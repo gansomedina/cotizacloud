@@ -24,17 +24,21 @@ $emp = DB::row("SELECT id, slug, dominio_custom FROM empresas WHERE id = ? AND a
 if (!$emp) { echo json_encode(['ok'=>false,'error'=>'Empresa no encontrada']); exit; }
 
 // Generar código único
-$codigo = 'COMP-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
+// Generar código simple: 3 letras + 3 números (ej: OTK482)
+$letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+$codigo = $letras[random_int(0,23)] . $letras[random_int(0,23)] . $letras[random_int(0,23)]
+        . random_int(1,9) . random_int(0,9) . random_int(0,9);
 
 // Verificar que no exista
 while (DB::val("SELECT id FROM cupones WHERE empresa_id = ? AND codigo = ?", [$empresa_id, $codigo])) {
-    $codigo = 'COMP-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
+    $codigo = $letras[random_int(0,23)] . $letras[random_int(0,23)] . $letras[random_int(0,23)]
+            . random_int(1,9) . random_int(0,9) . random_int(0,9);
 }
 
 // Insertar cupón
 $cupon_id = DB::insert(
     "INSERT INTO cupones (empresa_id, codigo, porcentaje, monto_fijo, descripcion, activo, usos_max, vencimiento_tipo, vencimiento_fecha)
-     VALUES (?, ?, 0, ?, ?, 1, 1, 'fecha_fija', DATE_ADD(CURDATE(), INTERVAL 90 DAY))",
+     VALUES (?, ?, 0, ?, ?, 1, 1, 'fecha_fija', DATE_ADD(CURDATE(), INTERVAL 180 DAY))",
     [$empresa_id, $codigo, $monto, 'Compensación: ' . $cliente]
 );
 

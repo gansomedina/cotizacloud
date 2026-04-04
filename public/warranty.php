@@ -45,8 +45,8 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#f8f8f6;min-height:10
 .card-header{background:linear-gradient(135deg,#1a5c38 0%,#16a34a 100%);padding:40px 30px 50px;position:relative}
 .card-header::after{content:'';position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);width:60px;height:60px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center}
 
-.logo{width:80px;height:80px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center}
-.logo img{max-width:80px;max-height:60px;object-fit:contain}
+.logo{width:160px;height:100px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center}
+.logo img{max-width:160px;max-height:80px;object-fit:contain}
 .logo-text{width:60px;height:60px;border-radius:14px;background:rgba(255,255,255,.2);color:#fff;font:700 20px 'Plus Jakarta Sans',sans-serif;display:flex;align-items:center;justify-content:center}
 .emp-name{color:#fff;font:700 18px 'Plus Jakarta Sans',sans-serif;opacity:.9}
 
