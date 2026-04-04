@@ -368,6 +368,23 @@ $asesores = DB::query(
      ORDER BY us.score DESC"
 );
 
+// ─── COMPENSACIONES ─────────────────────────────────────────
+$compensaciones = DB::query(
+    "SELECT c.id, c.empresa_id, c.codigo, c.monto_fijo, c.descripcion, c.usos, c.activo,
+            c.created_at, c.vencimiento_fecha,
+            e.nombre AS emp_nombre
+     FROM cupones c
+     JOIN empresas e ON e.id = c.empresa_id
+     WHERE c.empresa_id IN ({$emp_ids})
+       AND c.codigo REGEXP '^[A-Z]{3}[0-9]{3}$'
+     ORDER BY c.created_at DESC LIMIT 30"
+);
+$comp_activas = 0; $comp_usadas = 0;
+foreach ($compensaciones as $cc) {
+    if ($cc['usos'] > 0) $comp_usadas++;
+    elseif ($cc['activo']) $comp_activas++;
+}
+
 // Ventas por asesor este mes
 $va_asesor = [];
 $rows = DB::query(
@@ -603,7 +620,50 @@ tbody tr:hover td{background:var(--card-hover)}
     <button class="comp-btn" onclick="openComp(12,'OnTime Hermosillo','hermosillo')" style="border-left:3px solid #22c55e">Compensación HMO</button>
     <button class="comp-btn" onclick="openComp(13,'OnTime Obregón','obregon')" style="border-left:3px solid #3b82f6">Compensación CEN</button>
     <button class="comp-btn" onclick="openComp(14,'OnTime Nogales','nogales')" style="border-left:3px solid #a855f7">Compensación NOG</button>
+    <div style="margin-left:auto;display:flex;gap:12px;align-items:center">
+        <span style="font:600 12px 'Inter',sans-serif;color:var(--g)">● <?= $comp_activas ?> activa<?= $comp_activas!=1?'s':'' ?></span>
+        <span style="font:600 12px 'Inter',sans-serif;color:var(--t3)">✓ <?= $comp_usadas ?> usada<?= $comp_usadas!=1?'s':'' ?></span>
+        <?php if ($compensaciones): ?>
+        <button class="comp-btn" onclick="document.getElementById('compReport').style.display=document.getElementById('compReport').style.display==='none'?'block':'none'" style="font-size:11px;padding:6px 12px">Ver historial</button>
+        <?php endif; ?>
+    </div>
 </div>
+
+<?php if ($compensaciones): ?>
+<div id="compReport" style="display:none;margin-bottom:24px">
+<div class="tbl-card">
+<table>
+<thead><tr><th></th><th>Cliente</th><th>Código</th><th class="r">Monto</th><th>Estado</th><th>Creada</th><th>Vence</th></tr></thead>
+<tbody>
+<?php foreach ($compensaciones as $cc):
+    $ec = $empresas_cfg[(int)$cc['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+    $usado = (int)$cc['usos'] > 0;
+    $vencido = $cc['vencimiento_fecha'] && strtotime($cc['vencimiento_fecha']) < time();
+    $dias_rest = $cc['vencimiento_fecha'] ? max(0, (int)((strtotime($cc['vencimiento_fecha']) - time()) / 86400)) : null;
+?>
+<tr>
+    <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+    <td style="font-size:12px"><?= e(str_replace('Compensación: ', '', $cc['descripcion'] ?? '—')) ?></td>
+    <td style="font:700 13px 'Inter',sans-serif;letter-spacing:.06em;color:<?= $usado ? 'var(--t3)' : 'var(--g)' ?>"><?= e($cc['codigo']) ?></td>
+    <td class="r mono" style="font-weight:700"><?= $cc['monto_fijo'] ? xf((float)$cc['monto_fijo']) : (float)$cc['porcentaje'].'%' ?></td>
+    <td>
+        <?php if ($usado): ?>
+            <span style="font:700 11px 'Inter',sans-serif;color:var(--b);background:var(--b);background:rgba(59,130,246,.15);padding:3px 8px;border-radius:6px">USADO</span>
+        <?php elseif ($vencido): ?>
+            <span style="font:700 11px 'Inter',sans-serif;color:var(--r);background:rgba(239,68,68,.15);padding:3px 8px;border-radius:6px">VENCIDO</span>
+        <?php else: ?>
+            <span style="font:700 11px 'Inter',sans-serif;color:var(--g);background:rgba(34,197,94,.15);padding:3px 8px;border-radius:6px">ACTIVO · <?= $dias_rest ?>d</span>
+        <?php endif; ?>
+    </td>
+    <td class="mono" style="font-size:11px;color:var(--t2)"><?= date('d/m/Y', strtotime($cc['created_at'])) ?></td>
+    <td class="mono" style="font-size:11px;color:var(--t3)"><?= $cc['vencimiento_fecha'] ? date('d/m/Y', strtotime($cc['vencimiento_fecha'])) : '—' ?></td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+</div>
+</div>
+<?php endif; ?>
 
 <!-- Modal compensación -->
 <div id="compOverlay" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center" onclick="if(event.target===this)closeComp()">
