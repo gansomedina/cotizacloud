@@ -57,10 +57,9 @@ switch ($periodo) {
 $p_ini_dt = $p_ini . ' 00:00:00';
 $p_fin_dt = $p_fin . ' 23:59:59';
 
-// Periodo anterior (para comparación)
-$diff_days = (new DateTime($p_ini))->diff(new DateTime($p_fin))->days + 1;
-$ant_fin = (new DateTime($p_ini))->modify('-1 day')->format('Y-m-d');
-$ant_ini = (new DateTime($ant_fin))->modify("-{$diff_days} days")->format('Y-m-d');
+// Periodo anterior (mes anterior completo para comparación)
+$ant_ini = $now->modify('first day of last month')->format('Y-m-d');
+$ant_fin = $now->modify('last day of last month')->format('Y-m-d');
 $ant_ini_dt = $ant_ini . ' 00:00:00';
 $ant_fin_dt = $ant_fin . ' 23:59:59';
 
@@ -522,6 +521,13 @@ tbody tr:hover td{background:var(--card-hover)}
 .metric-btn.on{background:var(--card-hover);color:var(--text);border-color:var(--border2)}
 .metric-btn:hover:not(.on){background:var(--card-hover)}
 
+/* Compensation buttons */
+.comp-btn{padding:10px 18px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font:600 13px 'Inter',sans-serif;cursor:pointer;transition:all .15s}
+.comp-btn:hover{border-color:var(--g);color:var(--g)}
+.comp-monto{flex:1;padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:10px;color:var(--text);font:700 16px 'Inter',sans-serif;cursor:pointer;transition:all .15s}
+.comp-monto:hover{border-color:var(--g)}
+.comp-monto.sel{border-color:var(--g);background:var(--g);color:#fff}
+
 /* Operation tabs */
 .op-tab{padding:8px 16px;border:none;background:transparent;color:var(--t2);font:600 12px 'Inter',sans-serif;border-radius:7px;cursor:pointer;transition:all .15s}
 .op-tab.on{background:var(--g);color:#fff}
@@ -589,6 +595,46 @@ tbody tr:hover td{background:var(--card-hover)}
         </select>
         <div class="hdr-live"><span class="hdr-dot"></span>LIVE</div>
         <a href="/superadmin" class="hdr-back">← SuperAdmin</a>
+    </div>
+</div>
+
+<!-- Botones de compensación -->
+<div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">
+    <button class="comp-btn" onclick="openComp(12,'OnTime Hermosillo','hermosillo')" style="border-left:3px solid #22c55e">Compensación HMO</button>
+    <button class="comp-btn" onclick="openComp(13,'OnTime Obregón','obregon')" style="border-left:3px solid #3b82f6">Compensación CEN</button>
+    <button class="comp-btn" onclick="openComp(14,'OnTime Nogales','nogales')" style="border-left:3px solid #a855f7">Compensación NOG</button>
+</div>
+
+<!-- Modal compensación -->
+<div id="compOverlay" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center" onclick="if(event.target===this)closeComp()">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:420px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <div style="font:700 18px 'Inter',sans-serif" id="compTitle">Compensación</div>
+            <button onclick="closeComp()" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer">✕</button>
+        </div>
+        <input type="hidden" id="compEmpId">
+        <input type="hidden" id="compSlug">
+        <div style="margin-bottom:16px">
+            <div style="font:600 12px 'Inter',sans-serif;color:var(--t2);margin-bottom:4px">Nombre del cliente</div>
+            <input type="text" id="compCliente" placeholder="Nombre del cliente" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font:500 14px 'Inter',sans-serif;outline:none">
+        </div>
+        <div style="margin-bottom:20px">
+            <div style="font:600 12px 'Inter',sans-serif;color:var(--t2);margin-bottom:8px">Monto de compensación</div>
+            <div style="display:flex;gap:8px">
+                <button class="comp-monto" onclick="selMonto(this,1000)" data-monto="1000">$1,000</button>
+                <button class="comp-monto" onclick="selMonto(this,2000)" data-monto="2000">$2,000</button>
+                <button class="comp-monto" onclick="selMonto(this,4000)" data-monto="4000">$4,000</button>
+            </div>
+        </div>
+        <button id="compGenerar" onclick="generarComp()" style="width:100%;padding:12px;border:none;border-radius:10px;background:var(--g);color:#fff;font:700 14px 'Inter',sans-serif;cursor:pointer">Generar compensación</button>
+        <div id="compResult" style="display:none;margin-top:16px">
+            <div style="font:600 12px 'Inter',sans-serif;color:var(--t2);margin-bottom:6px">URL de compensación</div>
+            <div style="display:flex;gap:6px">
+                <input type="text" id="compURL" readonly style="flex:1;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--g);font:500 12px 'Inter',sans-serif;outline:none">
+                <button onclick="navigator.clipboard.writeText(document.getElementById('compURL').value);this.textContent='✓';setTimeout(()=>this.textContent='Copiar',1500)" style="padding:8px 14px;border:none;border-radius:8px;background:var(--g);color:#fff;font:700 12px 'Inter',sans-serif;cursor:pointer">Copiar</button>
+            </div>
+            <div style="font-size:11px;color:var(--t3);margin-top:8px">Código: <span id="compCodigo" style="font-weight:700;color:var(--text)"></span></div>
+        </div>
     </div>
 </div>
 
@@ -1374,6 +1420,59 @@ function rebuildEmpChart() {
 
 // Renderizar al cargar
 rebuildEmpChart();
+
+// ─── Operation tabs ─────────────────────────────────────────
+// ─── Compensaciones ─────────────────────────────────────────
+let compMonto = 0;
+function openComp(empId, nombre, slug) {
+    document.getElementById('compTitle').textContent = 'Compensación ' + nombre;
+    document.getElementById('compEmpId').value = empId;
+    document.getElementById('compSlug').value = slug;
+    document.getElementById('compCliente').value = '';
+    document.getElementById('compResult').style.display = 'none';
+    document.getElementById('compGenerar').style.display = 'block';
+    document.querySelectorAll('.comp-monto').forEach(b => b.classList.remove('sel'));
+    compMonto = 0;
+    document.getElementById('compOverlay').style.display = 'flex';
+}
+function closeComp() { document.getElementById('compOverlay').style.display = 'none'; }
+function selMonto(btn, m) {
+    document.querySelectorAll('.comp-monto').forEach(b => b.classList.remove('sel'));
+    btn.classList.add('sel');
+    compMonto = m;
+}
+async function generarComp() {
+    const cliente = document.getElementById('compCliente').value.trim();
+    if (!cliente) { alert('Ingresa el nombre del cliente'); return; }
+    if (!compMonto) { alert('Selecciona un monto'); return; }
+    const btn = document.getElementById('compGenerar');
+    btn.disabled = true; btn.textContent = 'Generando...';
+    try {
+        const r = await fetch('/superadmin/compensacion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                empresa_id: parseInt(document.getElementById('compEmpId').value),
+                slug: document.getElementById('compSlug').value,
+                monto: compMonto,
+                cliente
+            })
+        });
+        const d = await r.json();
+        if (d.ok) {
+            document.getElementById('compURL').value = d.url;
+            document.getElementById('compCodigo').textContent = d.codigo;
+            document.getElementById('compResult').style.display = 'block';
+            btn.style.display = 'none';
+        } else {
+            alert(d.error || 'Error al generar');
+            btn.disabled = false; btn.textContent = 'Generar compensación';
+        }
+    } catch(e) {
+        alert('Error de conexión');
+        btn.disabled = false; btn.textContent = 'Generar compensación';
+    }
+}
 
 // ─── Operation tabs ─────────────────────────────────────────
 function opTab(id, btn) {

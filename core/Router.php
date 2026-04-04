@@ -79,6 +79,7 @@ class Router
             self::get('/c/:slug',  fn($p) => self::load_public('cotizacion', $p));
             self::get('/v/:slug',  fn($p) => self::load_public('venta',      $p));
             self::get('/r/:token', fn($p) => self::load_public('recibo',     $p));
+            self::get('/w/:codigo',fn($p) => self::load_public('warranty',   $p));
 
             self::post('/api/track',        fn() => self::load_api('track'));
             self::post('/api/quote-action', fn() => self::load_api('quote_action'));
@@ -186,6 +187,7 @@ class Router
         self::post('/superadmin/empresa/:id/plan',    fn($p) => self::superadmin('toggle_plan', $p));
         self::post('/superadmin/empresa/:id/dominio', fn($p) => self::superadmin('dominio_custom', $p));
         self::post('/superadmin/ticket/:id/estado',   fn($p) => self::superadmin('ticket_estado', $p));
+        self::post('/superadmin/compensacion',          fn()   => self::superadmin('compensacion'));
 
         self::get('/proveedores',                          fn()   => self::app('proveedores', 'lista'));
         self::post('/proveedores',                         fn()   => self::app('proveedores', 'crear'));
