@@ -130,6 +130,14 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(160de
             <div class="inst-num">3</div>
             <div class="inst-text">Disfrute de su proyecto con el mejor servicio</div>
         </div>
+        <div class="inst-step">
+            <div class="inst-num">4</div>
+            <div class="inst-text">Puede usarlo usted o regalárselo a alguien especial</div>
+        </div>
+        <div style="margin-top:18px;padding:14px 18px;background:linear-gradient(135deg,#fefce8,#fef9c3);border-radius:12px;text-align:center">
+            <div style="font:800 15px 'Plus Jakarta Sans',sans-serif;color:#92400e">¡Aproveche esta oportunidad!</div>
+            <div style="font:400 12px 'Plus Jakarta Sans',sans-serif;color:#a16207;margin-top:4px">Descuento exclusivo por tiempo limitado</div>
+        </div>
     </div>
 
     <?php if ($cupon['vencimiento_fecha']): ?>
