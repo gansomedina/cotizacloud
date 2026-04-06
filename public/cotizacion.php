@@ -891,16 +891,25 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <button class="bprt" onclick="window.print()">Imprimir / Guardar PDF</button>
   </div>
   <?php elseif ($estado === 'aceptada'): ?>
-  <div style="margin-top:20px;padding:16px 20px;background:var(--glt);border:1px solid var(--gbd);border-radius:var(--r);text-align:center;">
-    <div style="font:700 16px 'Plus Jakarta Sans',sans-serif;color:var(--g);">✓ Cotización aceptada</div>
-    <div style="font-size:14px;color:var(--g);opacity:.8;margin-top:4px;">Gracias por tu confirmación.</div>
+  <div style="margin-top:20px;padding:20px 24px;background:var(--glt);border:1px solid var(--gbd);border-radius:var(--r);text-align:center;">
+    <div style="font:700 18px 'Plus Jakarta Sans',sans-serif;color:var(--g);margin-bottom:8px">✓ Cotización aceptada</div>
+    <?php if (!empty($cot['texto_aceptar'])): ?>
+    <div style="font-size:15px;color:var(--t2);line-height:1.6"><?= nl2br(e_html($cot['texto_aceptar'])) ?></div>
+    <?php else: ?>
+    <div style="font-size:14px;color:var(--g);opacity:.8">Gracias por su confirmación. Nos pondremos en contacto.</div>
+    <?php endif; ?>
   </div>
   <div style="margin-top:12px">
     <button class="bprt" onclick="window.print()">Imprimir / Guardar PDF</button>
   </div>
   <?php elseif ($estado === 'rechazada'): ?>
-  <div style="margin-top:20px;padding:16px 20px;background:#fff5f5;border:1px solid #fca5a5;border-radius:var(--r);text-align:center;font-size:14px;color:#c53030;">
-    Esta cotización fue rechazada.
+  <div style="margin-top:20px;padding:20px 24px;background:#fff5f5;border:1px solid #fca5a5;border-radius:var(--r);text-align:center;">
+    <div style="font:700 16px 'Plus Jakarta Sans',sans-serif;color:#c53030;margin-bottom:6px">Cotización rechazada</div>
+    <?php if (!empty($cot['texto_rechazar'])): ?>
+    <div style="font-size:14px;color:var(--t2);line-height:1.6"><?= nl2br(e_html($cot['texto_rechazar'])) ?></div>
+    <?php else: ?>
+    <div style="font-size:14px;color:#c53030;opacity:.8">Gracias por su tiempo.</div>
+    <?php endif; ?>
   </div>
   <?php endif; ?>
 
