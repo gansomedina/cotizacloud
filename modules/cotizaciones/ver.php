@@ -397,7 +397,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             </div>
             <?php endforeach ?>
           </div>
-          <?php if ($es_editable && (Auth::es_admin() || Auth::puede('adjuntar'))): ?>
+          <?php if (Auth::es_admin() || Auth::puede('adjuntar')): ?>
           <div style="margin-top:<?= count($adjuntos) ? '10px' : '0' ?>">
             <input type="file" id="adj-input" style="display:none"
                    accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx"
