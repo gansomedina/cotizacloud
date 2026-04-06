@@ -669,7 +669,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   <?php if ($venta['terminos']): ?>
   <hr class="fac-divider">
   <div class="fac-terminos-lbl">Términos y condiciones</div>
-  <div class="fac-terminos"><?= nl2br(str_contains($venta['terminos'], '<') ? e_html(mb_substr($venta['terminos'],0,600)) : e(mb_substr($venta['terminos'],0,400))) ?></div>
+  <div class="fac-terminos"><?= nl2br(str_contains($venta['terminos'], '<') ? e_html($venta['terminos']) : e($venta['terminos'])) ?></div>
   <?php endif; ?>
 
   <div class="fac-footer">
