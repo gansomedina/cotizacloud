@@ -866,7 +866,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
         $ico = $is_img ? '🖼' : '📎';
         $size_kb = round($adj['tamano_bytes'] / 1024);
         $size_txt = $size_kb >= 1024 ? number_format($size_kb/1024, 1).' MB' : $size_kb.' KB';
-        $file_url = 'https://' . ($_SERVER['HTTP_HOST'] ?? BASE_DOMAIN) . UPLOADS_URL . '/' . $adj['nombre_archivo'];
+        $file_url = BASE_URL . UPLOADS_URL . '/' . $adj['nombre_archivo'];
         $label = $is_img ? 'Ver Imagen Adjunta ' . $adj_num : 'Ver Documento Adjunto ' . $adj_num;
     ?>
     <a href="<?= e($file_url) ?>" target="_blank" rel="noopener"
