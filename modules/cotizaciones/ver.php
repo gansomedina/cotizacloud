@@ -391,7 +391,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <div class="adj-name"><?= e($adj['nombre_original']) ?></div>
                 <div class="adj-size"><?= $size_txt ?></div>
               </div>
-              <?php if ($es_editable): ?>
+              <?php if (Auth::es_admin() || Auth::puede('adjuntar')): ?>
               <button class="adj-del" onclick="eliminarAdj(<?= (int)$adj['id'] ?>,this)" title="Eliminar">✕</button>
               <?php endif ?>
             </div>
