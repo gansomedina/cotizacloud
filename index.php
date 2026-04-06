@@ -33,19 +33,27 @@ if (preg_match('#^/uploads/(.+)$#', $req_uri, $m)) {
     }
 }
 
-// ─── Servir archivos estáticos de /assets/ (JS, CSS, etc.) ──
+// ─── Servir archivos estáticos de /assets/ (JS, CSS, uploads, etc.) ──
 if (preg_match('#^/assets/(.+)$#', $req_uri, $m)) {
-    $file = __DIR__ . '/assets/' . $m[1];
-    $real = realpath($file);
-    $base = realpath(__DIR__ . '/assets');
-    if ($real && is_file($real) && $base && str_starts_with($real, $base)) {
-        $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
-        $mimes = ['js' => 'application/javascript', 'css' => 'text/css', 'svg' => 'image/svg+xml'];
-        $mime = $mimes[$ext] ?? mime_content_type($real);
-        header('Content-Type: ' . $mime);
-        header('Cache-Control: public, max-age=31536000');
-        readfile($real);
-        exit;
+    $candidates = [
+        __DIR__ . '/assets/' . $m[1],
+        __DIR__ . '/public/assets/' . $m[1],
+    ];
+    foreach ($candidates as $file) {
+        $real = realpath($file);
+        if ($real && is_file($real) && (
+            str_starts_with($real, realpath(__DIR__ . '/assets') ?: '') ||
+            str_starts_with($real, realpath(__DIR__ . '/public/assets') ?: '')
+        )) {
+            $ext = strtolower(pathinfo($real, PATHINFO_EXTENSION));
+            $mimes = ['js' => 'application/javascript', 'css' => 'text/css', 'svg' => 'image/svg+xml',
+                       'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp', 'pdf' => 'application/pdf'];
+            $mime = $mimes[$ext] ?? mime_content_type($real);
+            header('Content-Type: ' . $mime);
+            header('Cache-Control: public, max-age=31536000');
+            readfile($real);
+            exit;
+        }
     }
 }
 
