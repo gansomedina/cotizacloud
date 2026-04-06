@@ -68,8 +68,9 @@ $clientes = DB::query(
 
 // Cargar cupones activos
 $cupones = DB::query(
-    "SELECT id, codigo, descripcion, porcentaje
+    "SELECT id, codigo, descripcion, porcentaje, monto_fijo
      FROM cupones WHERE empresa_id = ? AND activo = 1
+       AND (descripcion IS NULL OR descripcion NOT LIKE 'Compensación:%')
      ORDER BY codigo ASC",
     [$empresa_id]
 );
