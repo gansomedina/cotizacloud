@@ -294,6 +294,7 @@ class Auth
             'ver_cantidades',
             'agregar_extras',
             'ver_reportes',
+            'adjuntar',
         ];
 
         if (!in_array($permiso, $permisos_validos)) return false;

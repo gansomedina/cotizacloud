@@ -838,7 +838,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
       $es_admin = $usr['rol'] === 'admin';
       $usr_score = $scores_equipo[(int)$usr['id']] ?? null;
     ?>
-    <div class="usr-row" onclick='editarUsuario(<?= (int)$usr["id"] ?>, <?= htmlspecialchars(json_encode(["nombre"=>$usr["nombre"],"usuario"=>$usr["usuario"],"email"=>$usr["email"]??'',"rol"=>$usr["rol"],"activo"=>$usr["activo"],"puede_crear_cotizaciones"=>$usr["puede_crear_cotizaciones"]??1,"puede_editar_cotizaciones"=>$usr["puede_editar_cotizaciones"]??1,"puede_ver_cantidades"=>$usr["puede_ver_cantidades"]??1,"puede_editar_precios"=>$usr["puede_editar_precios"],"puede_aplicar_descuentos"=>$usr["puede_aplicar_descuentos"],"puede_ver_todas_cots"=>$usr["puede_ver_todas_cots"],"puede_ver_todas_ventas"=>$usr["puede_ver_todas_ventas"],"puede_eliminar_items_venta"=>$usr["puede_eliminar_items_venta"],"puede_agregar_extras"=>$usr["puede_agregar_extras"]??0,"puede_cancelar_recibos"=>$usr["puede_cancelar_recibos"],"puede_capturar_pagos"=>$usr["puede_capturar_pagos"]??0,"puede_asignar_cotizaciones"=>$usr["puede_asignar_cotizaciones"]??0,"puede_ver_costos"=>$usr["puede_ver_costos"]??1,"puede_ver_proveedores"=>$usr["puede_ver_proveedores"]??1,"puede_ver_reportes"=>$usr["puede_ver_reportes"]??1]), ENT_QUOTES) ?>)'>
+    <div class="usr-row" onclick='editarUsuario(<?= (int)$usr["id"] ?>, <?= htmlspecialchars(json_encode(["nombre"=>$usr["nombre"],"usuario"=>$usr["usuario"],"email"=>$usr["email"]??'',"rol"=>$usr["rol"],"activo"=>$usr["activo"],"puede_crear_cotizaciones"=>$usr["puede_crear_cotizaciones"]??1,"puede_editar_cotizaciones"=>$usr["puede_editar_cotizaciones"]??1,"puede_ver_cantidades"=>$usr["puede_ver_cantidades"]??1,"puede_editar_precios"=>$usr["puede_editar_precios"],"puede_aplicar_descuentos"=>$usr["puede_aplicar_descuentos"],"puede_ver_todas_cots"=>$usr["puede_ver_todas_cots"],"puede_ver_todas_ventas"=>$usr["puede_ver_todas_ventas"],"puede_eliminar_items_venta"=>$usr["puede_eliminar_items_venta"],"puede_agregar_extras"=>$usr["puede_agregar_extras"]??0,"puede_cancelar_recibos"=>$usr["puede_cancelar_recibos"],"puede_capturar_pagos"=>$usr["puede_capturar_pagos"]??0,"puede_asignar_cotizaciones"=>$usr["puede_asignar_cotizaciones"]??0,"puede_ver_costos"=>$usr["puede_ver_costos"]??1,"puede_ver_proveedores"=>$usr["puede_ver_proveedores"]??1,"puede_ver_reportes"=>$usr["puede_ver_reportes"]??1,"puede_adjuntar"=>$usr["puede_adjuntar"]??1]), ENT_QUOTES) ?>)'>
       <div class="usr-av <?= $es_admin?'':'asesor' ?> <?= !$usr['activo']?'inactivo':'' ?>">
         <?= e($ini) ?>
       </div>
@@ -865,6 +865,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <?php if (empty($usr['puede_ver_costos'] ?? 1)): ?><span class="ubadge ubadge-off">Sin costos</span><?php endif; ?>
           <?php if (empty($usr['puede_ver_proveedores'] ?? 1)): ?><span class="ubadge ubadge-off">Sin proveedores</span><?php endif; ?>
           <?php if (empty($usr['puede_ver_reportes'] ?? 1)): ?><span class="ubadge ubadge-off">Sin reportes</span><?php endif; ?>
+          <?php if (empty($usr['puede_adjuntar'] ?? 1)): ?><span class="ubadge ubadge-off">Sin adjuntar</span><?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
@@ -1562,9 +1563,13 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <div><div class="perm-lbl">Proveedores</div><div class="perm-sub">Ver y gestionar proveedores</div></div>
           <label class="toggle"><input type="checkbox" id="perm_ver_proveedores" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
-        <div class="perm-row" style="border-bottom:none">
+        <div class="perm-row">
           <div><div class="perm-lbl">Reportes</div><div class="perm-sub">Ver reportes financieros y de cotizaciones</div></div>
           <label class="toggle"><input type="checkbox" id="perm_ver_reportes" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row" style="border-bottom:none">
+          <div><div class="perm-lbl">Adjuntar archivos</div><div class="perm-sub">Subir imágenes y documentos a cotizaciones</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_adjuntar" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
       </div>
     </div>
@@ -1969,6 +1974,7 @@ function nuevoUsuario() {
     document.getElementById('perm_ver_costos').checked = true;
     document.getElementById('perm_ver_proveedores').checked = true;
     document.getElementById('perm_ver_reportes').checked = true;
+    document.getElementById('perm_adjuntar').checked = true;
     openSheet('shUsr');
 }
 function editarUsuario(id, data) {
@@ -1996,6 +2002,7 @@ function editarUsuario(id, data) {
     document.getElementById('perm_ver_costos').checked = !!parseInt(data.puede_ver_costos ?? 1);
     document.getElementById('perm_ver_proveedores').checked = !!parseInt(data.puede_ver_proveedores ?? 1);
     document.getElementById('perm_ver_reportes').checked = !!parseInt(data.puede_ver_reportes ?? 1);
+    document.getElementById('perm_adjuntar').checked = !!parseInt(data.puede_adjuntar ?? 1);
     togglePerms(data.rol);
     openSheet('shUsr');
 }
@@ -2029,6 +2036,7 @@ async function guardarUsuario() {
         puede_ver_costos:            document.getElementById('perm_ver_costos').checked ? 1 : 0,
         puede_ver_proveedores:       document.getElementById('perm_ver_proveedores').checked ? 1 : 0,
         puede_ver_reportes:          document.getElementById('perm_ver_reportes').checked ? 1 : 0,
+        puede_adjuntar:              document.getElementById('perm_adjuntar').checked ? 1 : 0,
     };
     if (pass) payload.password = pass;
     const url = id ? '/config/usuario/' + id : '/config/usuario';

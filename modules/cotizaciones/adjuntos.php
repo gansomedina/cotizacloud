@@ -10,6 +10,10 @@ defined('COTIZAAPP') or die;
 header('Content-Type: application/json; charset=utf-8');
 csrf_check();
 
+if (!Auth::es_admin() && !Auth::puede('adjuntar')) {
+    json_error('Sin permiso para adjuntar archivos', 403);
+}
+
 $empresa_id = EMPRESA_ID;
 $cot_id     = (int)($id ?? 0);
 if (!$cot_id) json_error('ID inválido', 400);
