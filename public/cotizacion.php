@@ -859,24 +859,25 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <?php if (!empty($adjuntos)): ?>
   <div class="slbl">Archivos adjuntos</div>
   <div style="display:flex;flex-direction:column;gap:8px">
-    <?php foreach ($adjuntos as $adj):
+    <?php $adj_num = 0; foreach ($adjuntos as $adj):
+        $adj_num++;
         $ext = strtolower(pathinfo($adj['nombre_original'], PATHINFO_EXTENSION));
-        $is_img = in_array($ext, ['jpg','jpeg','png','gif']);
-        $ico_map = ['pdf'=>'📄','doc'=>'📝','docx'=>'📝','xls'=>'📊','xlsx'=>'📊'];
-        $ico = $is_img ? '🖼' : ($ico_map[$ext] ?? '📎');
+        $is_img = in_array($ext, ['jpg','jpeg','png','gif','webp']);
+        $ico = $is_img ? '🖼' : '📎';
         $size_kb = round($adj['tamano_bytes'] / 1024);
         $size_txt = $size_kb >= 1024 ? number_format($size_kb/1024, 1).' MB' : $size_kb.' KB';
-        $file_url = UPLOADS_URL . '/' . $adj['nombre_archivo'];
+        $file_url = 'https://' . ($_SERVER['HTTP_HOST'] ?? BASE_DOMAIN) . UPLOADS_URL . '/' . $adj['nombre_archivo'];
+        $label = $is_img ? 'Ver Imagen Adjunta ' . $adj_num : 'Ver Documento Adjunto ' . $adj_num;
     ?>
     <a href="<?= e($file_url) ?>" target="_blank" rel="noopener"
        style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--white);border:1.5px solid var(--bd);border-radius:var(--r);text-decoration:none;transition:border-color .15s"
        onmouseover="this.style.borderColor='var(--g)'" onmouseout="this.style.borderColor='var(--bd)'">
       <span style="font-size:24px;flex-shrink:0"><?= $ico ?></span>
       <div style="flex:1;min-width:0">
-        <div style="font:600 14px 'Plus Jakarta Sans',sans-serif;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><?= e($adj['nombre_original']) ?></div>
+        <div style="font:600 14px 'Plus Jakarta Sans',sans-serif;color:var(--text)"><?= $label ?></div>
         <div style="font:400 12px 'Plus Jakarta Sans',sans-serif;color:var(--t3);margin-top:2px"><?= $size_txt ?> · <?= strtoupper($ext) ?></div>
       </div>
-      <span style="font:600 12px 'Plus Jakarta Sans',sans-serif;color:var(--g);white-space:nowrap;padding:6px 12px;background:var(--glt);border-radius:var(--r)">Ver archivo</span>
+      <span style="font:600 12px 'Plus Jakarta Sans',sans-serif;color:var(--g);white-space:nowrap;padding:6px 12px;background:var(--glt);border-radius:var(--r)">Abrir</span>
     </a>
     <?php endforeach ?>
   </div>
