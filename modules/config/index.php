@@ -693,7 +693,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
             <td>
               <div class="tbl-actions">
                 <button class="tbl-btn"
-                        onclick='editarArticulo(<?= (int)$art["id"] ?>, <?= htmlspecialchars(json_encode(["titulo"=>$art["titulo"],"sku"=>$art["sku"],"descripcion"=>strip_tags($art["descripcion"]??''),"precio"=>$art["precio"]]), ENT_QUOTES) ?>)'
+                        onclick='editarArticulo(<?= (int)$art["id"] ?>, <?= htmlspecialchars(json_encode(["titulo"=>$art["titulo"],"sku"=>$art["sku"],"descripcion"=>$art["descripcion"]??'',"precio"=>$art["precio"]]), ENT_QUOTES) ?>)'
                         title="Editar">✎</button>
                 <button class="tbl-btn del" onclick="eliminarArticulo(<?= (int)$art['id'] ?>, this)" title="Eliminar">✕</button>
               </div>
