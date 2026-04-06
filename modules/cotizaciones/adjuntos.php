@@ -58,13 +58,11 @@ if ($_FILES['archivo']['size'] > 1 * 1024 * 1024) {
 $res = upload_archivo($_FILES['archivo'], $empresa_id, 'adjuntos');
 if (!$res['ok']) json_error($res['error'], 422);
 
-DB::insert(
+$new_id = DB::insert(
     "INSERT INTO cotizacion_archivos (cotizacion_id, nombre_original, nombre_archivo, mime_type, tamano_bytes)
      VALUES (?, ?, ?, ?, ?)",
     [$cot_id, $res['nombre_original'], $res['nombre_archivo'], $res['mime_type'], $res['tamano_bytes']]
 );
-
-$new_id = DB::lastId();
 
 json_ok([
     'id'              => $new_id,
