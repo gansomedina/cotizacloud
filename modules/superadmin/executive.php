@@ -1219,6 +1219,60 @@ usort($sorted, fn($a,$b) => $b['monto'] <=> $a['monto']);
     </div>
 </div>
 
+<!-- ÚLTIMO LOGIN POR ASESOR -->
+<?php
+$logins_asesores = DB::query(
+    "SELECT u.id, u.nombre, u.email, u.empresa_id, u.activo,
+            (SELECT MAX(us2.created_at) FROM user_sessions us2 WHERE us2.usuario_id = u.id) AS ultimo_login
+     FROM usuarios u
+     WHERE u.empresa_id IN ({$emp_ids}) AND u.rol = 'asesor'
+     ORDER BY ultimo_login DESC"
+);
+?>
+<div class="sec" style="margin-top:28px">
+    <div class="sec-hdr">
+        <div class="sec-title">Último login por asesor</div>
+        <div class="sec-count"><?= count($logins_asesores) ?> asesores</div>
+    </div>
+    <div class="tbl-card">
+    <table>
+    <thead><tr><th></th><th>Asesor</th><th>Email</th><th>Estado</th><th class="r">Último login</th><th class="r">Hace</th></tr></thead>
+    <tbody>
+    <?php foreach ($logins_asesores as $la):
+        $ec = $empresas_cfg[(int)$la['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+        $ultimo = $la['ultimo_login'];
+        if ($ultimo) {
+            $diff = (int)((time() - strtotime($ultimo)) / 3600);
+            if ($diff < 1) $hace = 'ahora';
+            elseif ($diff < 24) $hace = $diff . 'h';
+            elseif ($diff < 720) $hace = (int)($diff/24) . 'd';
+            else $hace = (int)($diff/720) . 'mes';
+            $hace_color = $diff < 24 ? 'var(--g)' : ($diff < 168 ? 'var(--a)' : 'var(--r)');
+        } else {
+            $hace = 'nunca';
+            $hace_color = 'var(--r)';
+        }
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td style="font-weight:600"><?= e($la['nombre']) ?></td>
+        <td style="font-size:12px;color:var(--t2)"><?= e($la['email'] ?? '—') ?></td>
+        <td>
+            <?php if ($la['activo']): ?>
+            <span style="font:700 10px 'Inter',sans-serif;color:var(--g);background:rgba(34,197,94,.15);padding:3px 8px;border-radius:6px">ACTIVO</span>
+            <?php else: ?>
+            <span style="font:700 10px 'Inter',sans-serif;color:var(--r);background:rgba(239,68,68,.15);padding:3px 8px;border-radius:6px">INACTIVO</span>
+            <?php endif; ?>
+        </td>
+        <td class="r mono" style="font-size:12px;color:var(--t2)"><?= $ultimo ? date('d/m/Y H:i', strtotime($ultimo)) : '—' ?></td>
+        <td class="r" style="font:700 13px 'Inter',sans-serif;color:<?= $hace_color ?>"><?= $hace ?></td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+
 </div><!-- /wrap -->
 
 <script>
