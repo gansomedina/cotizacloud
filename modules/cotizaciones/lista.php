@@ -80,6 +80,9 @@ $rows = DB::query(
             c.estado AS estado_real,
             c.total, c.created_at, c.valida_hasta, c.visitas,
             c.radar_bucket, c.radar_score, c.suspendida,
+            c.cupon_codigo, c.cupon_monto,
+            c.descuento_auto_activo, c.descuento_auto_amt,
+            (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_validate_click') AS cupon_intentos,
             cl.nombre AS cnombre, cl.telefono AS ctel,
             u.nombre AS asesor, c.vendedor_id,
             COALESCE(uv.nombre, u.nombre) AS vendedor
@@ -374,6 +377,17 @@ foreach ($chips as $k => $lbl):
     $puedeS = in_array($c['estado_real'] ?? $c['estado'], ['enviada','vista','rechazada','borrador','vencida']) || $esSusp;
     $vistas = (int)($c['visitas'] ?? 0);
     $vis_txt = $vistas > 0 ? ico('eye',12,'#6a6a64').' '.$vistas : '—';
+    $cupon_intentos = (int)($c['cupon_intentos'] ?? 0);
+    $tiene_cupon = !empty($c['cupon_codigo']);
+    $tiene_desc = (float)($c['descuento_auto_amt'] ?? 0) > 0;
+    $cupon_html = '';
+    if ($cupon_intentos > 0 || $tiene_cupon || $tiene_desc) {
+        $parts = [];
+        if ($tiene_cupon) $parts[] = '🏷 ' . e($c['cupon_codigo']);
+        if ($tiene_desc) $parts[] = '⏱ -' . format_money((float)$c['descuento_auto_amt'], $empresa['moneda']);
+        if ($cupon_intentos > 0) $parts[] = '🔑×' . $cupon_intentos;
+        $cupon_html = '<span style="font:500 11px var(--num);color:#7c3aed;background:#ede9fe;padding:2px 7px;border-radius:5px">' . implode(' ', $parts) . '</span>';
+    }
     $radar  = radar_badge($c['radar_bucket'], (int)($c['radar_score'] ?? 0), $vistas);
     $ed_url = '/cotizaciones/'.(int)$c['id'];
   ?>
@@ -401,6 +415,7 @@ foreach ($chips as $k => $lbl):
           <?php elseif ($vistas > 0): ?>
             <span class="cot-vistas"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
           <?php endif ?>
+          <?= $cupon_html ?>
         </div>
       </div>
       <!-- MOBILE: panel expandido (oculto por defecto) -->
@@ -461,6 +476,7 @@ foreach ($chips as $k => $lbl):
         <?php elseif ($vistas > 0): ?>
           <span class="cot-vistas-badge"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
         <?php endif ?>
+        <?= $cupon_html ?>
       </div>
     </div>
 
