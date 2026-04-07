@@ -945,7 +945,7 @@ $ts_diag  = ActividadScore::diagnostico($ts);
 
 </div>
 
-<?php if (!empty($ventas_sin_pago)): ?>
+<?php // ventas sin pago siempre visible ?>
 <!-- ══ VENTAS SIN PAGOS ══ -->
 <div class="slabel"><?= ico('alert', 14, '#d97706') ?> Ventas sin pagos <span style="font:400 12px var(--body);color:var(--t3)">(<?= count($ventas_sin_pago) ?>)</span></div>
 <div class="card" style="overflow:hidden">
@@ -965,8 +965,10 @@ $ts_diag  = ActividadScore::diagnostico($ts);
     </div>
   </a>
   <?php endforeach; ?>
+  <?php if (empty($ventas_sin_pago)): ?>
+  <div style="padding:20px 16px;text-align:center;font:400 13px var(--body);color:var(--t3)">Sin ventas pendientes de pago</div>
+  <?php endif; ?>
 </div>
-<?php endif; ?>
 
 <!-- ══ CONVERSIÓN ══ -->
 <div class="slabel">Métricas de conversión</div>
