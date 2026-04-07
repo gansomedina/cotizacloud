@@ -1053,20 +1053,21 @@ function applyC(){
     const v   = document.getElementById('cInp').value.trim().toUpperCase();
     const inp = document.getElementById('cInp'), err = document.getElementById('cErr');
 
-    // Disparar SIEMPRE al intentar validar — válido o no.
-    // Buscar un descuento ya es señal fuerte de intención de compra.
-    // El radar lee "coupon_validate_click" como booster de price_signal_score (+0.75)
-    // y como señal débil en el bucket inminente.
+    // Disparar intento de validación
     if(window.sendCouponValidateClick) window.sendCouponValidateClick();
 
     const c   = COUPONS.find(x => x.code===v);
     const now = new Date();
     const ok  = c && (!c.exp || now < new Date(c.exp));
     if (!ok) {
+        // Cupón inválido
+        if(window.czTrack) window.czTrack('coupon_invalid');
         inp.classList.add('err'); err.classList.add('on');
         setTimeout(()=>{inp.classList.remove('err');err.classList.remove('on')}, 3000);
         return;
     }
+    // Cupón válido
+    if(window.czTrack) window.czTrack('coupon_valid');
     applied = c;
     document.getElementById('cApp').classList.add('on');
     document.getElementById('coupFld').style.display = 'none';

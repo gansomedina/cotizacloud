@@ -29,7 +29,7 @@ if (!$cot_id || !$tipo) exit;
 
 $tipos_validos = [
     'quote_open','quote_close','quote_scroll',
-    'coupon_validate_click',
+    'coupon_validate_click','coupon_valid','coupon_invalid',
     'section_view_totals','section_revisit_totals',
     'quote_price_review_loop','promo_timer_present',
     'accept_open','accept_confirm',

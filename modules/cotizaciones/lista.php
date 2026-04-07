@@ -83,6 +83,8 @@ $rows = DB::query(
             c.cupon_codigo, c.cupon_monto,
             c.descuento_auto_activo, c.descuento_auto_amt,
             (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_validate_click') AS cupon_intentos,
+            (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_valid') AS cupon_validos,
+            (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_invalid') AS cupon_invalidos,
             cl.nombre AS cnombre, cl.telefono AS ctel,
             u.nombre AS asesor, c.vendedor_id,
             COALESCE(uv.nombre, u.nombre) AS vendedor
@@ -378,14 +380,17 @@ foreach ($chips as $k => $lbl):
     $vistas = (int)($c['visitas'] ?? 0);
     $vis_txt = $vistas > 0 ? ico('eye',12,'#6a6a64').' '.$vistas : '—';
     $cupon_intentos = (int)($c['cupon_intentos'] ?? 0);
+    $cupon_validos = (int)($c['cupon_validos'] ?? 0);
+    $cupon_invalidos = (int)($c['cupon_invalidos'] ?? 0);
     $tiene_cupon = !empty($c['cupon_codigo']);
     $tiene_desc = (float)($c['descuento_auto_amt'] ?? 0) > 0;
     $cupon_html = '';
-    if ($cupon_intentos > 0 || $tiene_cupon || $tiene_desc) {
+    if ($cupon_intentos > 0 || $cupon_validos > 0 || $cupon_invalidos > 0 || $tiene_cupon || $tiene_desc) {
         $parts = [];
         if ($tiene_cupon) $parts[] = '🏷 ' . e($c['cupon_codigo']);
         if ($tiene_desc) $parts[] = '⏱ -' . format_money((float)$c['descuento_auto_amt'], $empresa['moneda']);
-        if ($cupon_intentos > 0) $parts[] = '🔑×' . $cupon_intentos;
+        if ($cupon_validos > 0) $parts[] = '✅×' . $cupon_validos;
+        if ($cupon_invalidos > 0) $parts[] = '❌×' . $cupon_invalidos;
         $cupon_html = '<span style="font:500 11px var(--num);color:#7c3aed;background:#ede9fe;padding:2px 7px;border-radius:5px">' . implode(' ', $parts) . '</span>';
     }
     $radar  = radar_badge($c['radar_bucket'], (int)($c['radar_score'] ?? 0), $vistas);
