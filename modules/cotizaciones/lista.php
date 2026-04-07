@@ -255,7 +255,7 @@ ob_start();
 
   .tbl-header{
     display:grid;
-    grid-template-columns:minmax(180px,2.5fr) minmax(90px,0.9fr) minmax(70px,0.7fr) 74px 80px minmax(85px,0.8fr) 160px;
+    grid-template-columns:minmax(140px,1.6fr) minmax(90px,0.9fr) minmax(70px,0.7fr) 74px 80px minmax(85px,0.8fr) 200px;
     align-items:center;padding:8px 18px;
     border-bottom:2px solid var(--border);background:var(--bg)
   }
@@ -263,7 +263,7 @@ ob_start();
 
   .cot-row{
     display:grid;
-    grid-template-columns:minmax(180px,2.5fr) minmax(90px,0.9fr) minmax(70px,0.7fr) 74px 80px minmax(85px,0.8fr) 160px;
+    grid-template-columns:minmax(140px,1.6fr) minmax(90px,0.9fr) minmax(70px,0.7fr) 74px 80px minmax(85px,0.8fr) 200px;
     align-items:center;padding:11px 18px;
   }
 
