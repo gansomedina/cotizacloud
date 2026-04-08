@@ -87,7 +87,10 @@ if ($resultado['usuario']['rol'] === 'superadmin' && $empresa_slug === '_admin')
 
 // ── Sync cross-domain: setear cz_vid en dominios custom ──────────
 // Solo si hay visitor_id y existen dominios custom
-if ($visitor_id_post !== '') {
+// ── Sync cross-domain: solo si NO es app nativa (Capacitor abre URLs externas en Safari)
+$is_native_app = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+
+if ($visitor_id_post !== '' && !$is_native_app) {
     // Superadmin: sync con todos los dominios custom
     // Asesor/admin: solo con el dominio de su empresa
     $es_super = ($resultado['usuario']['rol'] ?? '') === 'superadmin';
