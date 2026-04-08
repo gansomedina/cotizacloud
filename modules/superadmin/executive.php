@@ -1273,6 +1273,53 @@ $logins_asesores = DB::query(
     </div>
 </div>
 
+<!-- MONITOR: Sesiones internas no filtradas -->
+<?php
+$fugas = DB::query(
+    "SELECT qs.id, qs.cotizacion_id, qs.ip, qs.visitor_id, qs.created_at, c.empresa_id, c.titulo,
+            CASE WHEN ri.id IS NOT NULL THEN 'IP' ELSE '' END AS match_ip,
+            CASE WHEN vi.id IS NOT NULL THEN 'VID' ELSE '' END AS match_vid
+     FROM quote_sessions qs
+     JOIN cotizaciones c ON c.id = qs.cotizacion_id
+     LEFT JOIN radar_ips_internas ri ON ri.empresa_id = c.empresa_id AND ri.ip = qs.ip
+     LEFT JOIN radar_visitors_internos vi ON vi.empresa_id = c.empresa_id AND vi.visitor_id = qs.visitor_id
+     WHERE c.empresa_id IN ({$emp_ids})
+       AND (ri.id IS NOT NULL OR vi.id IS NOT NULL)
+       AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+     ORDER BY qs.created_at DESC LIMIT 20"
+);
+?>
+<div class="sec" style="margin-top:28px">
+    <div class="sec-hdr">
+        <div class="sec-title">Monitor de filtrado <?= count($fugas) === 0 ? '<span style="color:var(--g)">✓ Limpio</span>' : '<span style="color:var(--r)">⚠ ' . count($fugas) . ' fugas</span>' ?></div>
+        <div class="sec-count">últimos 7 días</div>
+    </div>
+    <?php if ($fugas): ?>
+    <div class="tbl-card">
+    <table>
+    <thead><tr><th></th><th>Cotización</th><th>IP</th><th>Visitor ID</th><th>Detectado por</th><th class="r">Fecha</th></tr></thead>
+    <tbody>
+    <?php foreach ($fugas as $fg):
+        $ec = $empresas_cfg[(int)$fg['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+        $matched = trim($fg['match_ip'] . ($fg['match_ip'] && $fg['match_vid'] ? '+' : '') . $fg['match_vid']);
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td style="font-size:12px"><?= e(mb_substr($fg['titulo'],0,30)) ?></td>
+        <td class="mono" style="font-size:11px;color:var(--t2)"><?= e($fg['ip']) ?></td>
+        <td class="mono" style="font-size:10px;color:var(--t3)"><?= e(substr($fg['visitor_id'] ?? 'NULL',0,12)) ?>…</td>
+        <td><span style="font:700 10px 'Inter',sans-serif;color:var(--r);background:rgba(239,68,68,.15);padding:2px 8px;border-radius:4px"><?= $matched ?></span></td>
+        <td class="r mono" style="font-size:11px;color:var(--t2)"><?= date('d/m H:i', strtotime($fg['created_at'])) ?></td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    <?php else: ?>
+    <div class="tbl-card" style="padding:24px;text-align:center;color:var(--g);font:600 14px 'Inter',sans-serif">✓ Sin fugas — el filtrado funciona correctamente</div>
+    <?php endif; ?>
+</div>
+
 </div><!-- /wrap -->
 
 <script>
