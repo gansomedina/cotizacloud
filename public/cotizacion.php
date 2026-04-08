@@ -139,11 +139,20 @@ if (!empty($_GET['_sv'])) {
 }
 
 // Leer visitor_id desde cookie (key 'cz_vid' — mismo que usa el JS)
-// Disponible desde la primera carga, antes de que JS envíe cualquier evento
+// Si no existe, generar uno en PHP para que la primera sesión no sea NULL
 $visitor_id_cookie = substr(
     preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')),
     0, 64
 );
+if ($visitor_id_cookie === '') {
+    // Generar UUID v4 en PHP — el JS lo leerá de la cookie y lo reutilizará
+    $visitor_id_cookie = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+        random_int(0,0xffff), random_int(0,0xffff), random_int(0,0xffff),
+        random_int(0,0x0fff)|0x4000, random_int(0,0x3fff)|0x8000,
+        random_int(0,0xffff), random_int(0,0xffff), random_int(0,0xffff)
+    );
+    setcookie('cz_vid', $visitor_id_cookie, time() + 730 * 86400, '/', '', !DEBUG, false);
+}
 
 require_once MODULES_PATH . '/radar/Radar.php';
 
