@@ -562,7 +562,9 @@ class Radar
         if ($e_sv_price) $priority += 0.75;
         if ($e_mv_price) $priority += 0.50;
         // v3.1: booster multi-persona por visitor_ids únicos
-        $multi_vid_count = max($vids_post_guest_count, $e_uniq_v);
+        // v3.1: booster multi-vid — usar solo vids de sesiones (más confiable que eventos JS)
+        // e_uniq_v puede estar inflado por vids fantasma de antes del fix de PHP
+        $multi_vid_count = $vids_post_guest_count;
         if ($multi_vid_count >= 3) $priority += 2.0;       // 3+ personas — señal muy fuerte
         elseif ($multi_vid_count >= 2) $priority += 1.0;   // 2 personas — señal débil
         $priority = min(100.0, $priority);
