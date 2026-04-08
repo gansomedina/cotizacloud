@@ -88,9 +88,19 @@ if ($resultado['usuario']['rol'] === 'superadmin' && $empresa_slug === '_admin')
 // ── Sync cross-domain: setear cz_vid en dominios custom ──────────
 // Solo si hay visitor_id y existen dominios custom
 if ($visitor_id_post !== '') {
-    $dominios_custom = DB::query(
-        "SELECT dominio_custom FROM empresas WHERE dominio_custom IS NOT NULL AND activa = 1"
-    );
+    // Superadmin: sync con todos los dominios custom
+    // Asesor/admin: solo con el dominio de su empresa
+    $es_super = ($resultado['usuario']['rol'] ?? '') === 'superadmin';
+    if ($es_super) {
+        $dominios_custom = DB::query(
+            "SELECT dominio_custom FROM empresas WHERE dominio_custom IS NOT NULL AND activa = 1"
+        );
+    } else {
+        $dominios_custom = DB::query(
+            "SELECT dominio_custom FROM empresas WHERE id = ? AND dominio_custom IS NOT NULL AND activa = 1",
+            [(int)$emp['id']]
+        );
+    }
     if ($dominios_custom) {
         // Construir cadena de redirects: dominio1 → dominio2 → dominio3 → dashboard
         $final_url = BASE_URL . $redirect_to;
