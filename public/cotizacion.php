@@ -139,14 +139,30 @@ if (!empty($_GET['_sv'])) {
     }
 }
 
-// Si estamos en dominio custom y NO hay cookie cz_vid y no venimos del sync → redirigir
-if (defined('DOMINIO_CUSTOM') && DOMINIO_CUSTOM && empty($_COOKIE['cz_vid']) && empty($_COOKIE['_synced'])) {
-    // Marcar que ya intentamos sync (evita loop infinito)
-    setcookie('_synced', '1', time() + 300, '/', '', true, false); // 5 min
-    $current_url = 'https://' . DOMINIO_CUSTOM . $_SERVER['REQUEST_URI'];
-    $sync_url = BASE_URL . '/api/sync-vid?r=' . urlencode($current_url);
-    header('Location: ' . $sync_url, true, 302);
-    exit;
+// Si estamos en dominio custom y no venimos del sync → verificar si necesita sync
+if (defined('DOMINIO_CUSTOM') && DOMINIO_CUSTOM && empty($_COOKIE['_synced'])) {
+    $necesita_sync = false;
+
+    if (empty($_COOKIE['cz_vid'])) {
+        // No tiene cookie → primera visita en este dominio
+        $necesita_sync = true;
+    } else {
+        // Tiene cookie pero ¿está marcada como interna? Si no, re-sincronizar
+        $vid_actual = preg_replace('/[^a-zA-Z0-9\-_]/', '', $_COOKIE['cz_vid']);
+        require_once MODULES_PATH . '/radar/Radar.php';
+        $ya_interno = Radar::es_visitor_interno(EMPRESA_ID, $vid_actual);
+        if (!$ya_interno) {
+            $necesita_sync = true;
+        }
+    }
+
+    if ($necesita_sync) {
+        setcookie('_synced', '1', time() + 86400, '/', '', true, false); // 24h
+        $current_url = 'https://' . DOMINIO_CUSTOM . $_SERVER['REQUEST_URI'];
+        $sync_url = BASE_URL . '/api/sync-vid?r=' . urlencode($current_url);
+        header('Location: ' . $sync_url, true, 302);
+        exit;
+    }
 }
 
 // Leer visitor_id desde cookie (key 'cz_vid' — mismo que usa el JS)
