@@ -478,6 +478,18 @@ class Radar
         $ips_post_guest_count = count($ips_post_guest);
         $vids_post_guest_count = count($vids_post_guest);
 
+        // Dispositivos únicos de guests (para debug)
+        $devices = [];
+        foreach ($sess_rows as $s) {
+            $s_ua = (string)($s['ua'] ?? '');
+            $s_vid = trim((string)($s['visitor_id'] ?? ''));
+            $s_ip = trim((string)($s['ip'] ?? ''));
+            if ($s_ip === '') continue;
+            if (($cfg['excluir_internos'] ?? true) && (isset($intern_ip[$s_ip]) || ($s_vid !== '' && isset($intern_v[$s_vid])))) continue;
+            $dev = self::parse_device($s_ua);
+            if (!in_array($dev, $devices, true)) $devices[] = $dev;
+        }
+
         // Span en ventana 48h
         $ts48 = array_values(array_filter($session_ts, fn($t) => $t >= $now - 48 * 3600));
         $span48 = count($ts48) >= 2 ? max($ts48) - min($ts48) : 0;
@@ -941,7 +953,8 @@ class Radar
                 'gap_days'=>$gap_days,'guest'=>$guest_sessions,
                 'views24'=>$views24,'views48'=>$views48,
                 'span48h'=>round($span48/3600,1).'h','pss'=>round($pss,2),
-                'ev_uniq_v'=>$e_uniq_v,'vids_post'=>$vids_post_guest_count,'multi_vid'=>$multi_vid_count,'modo'=>$modo,'momentum'=>$momentum,
+                'ev_uniq_v'=>$e_uniq_v,'vids_post'=>$vids_post_guest_count,'multi_vid'=>$multi_vid_count,
+                'devices'=>$devices,'modo'=>$modo,'momentum'=>$momentum,
                 'scroll_cls'=>$e_scroll_cls,'scroll_any'=>$e_scroll_any,
                 'vis_max'=>$e_vis_max,'vis_sum'=>$e_vis_sum,
                 'ips_post_guest'=>$ips_post_guest_count,
@@ -1277,6 +1290,37 @@ class Radar
             "SELECT 1 FROM radar_visitors_internos WHERE empresa_id=? AND visitor_id=? AND last_seen > UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 365 DAY)) LIMIT 1",
             [$empresa_id, $visitor_id]
         );
+    }
+
+    // ============================================================
+    //  PARSEAR USER-AGENT → etiqueta compacta (SO-Tipo-Nav)
+    // ============================================================
+    public static function parse_device(string $ua): string
+    {
+        $ua = strtolower($ua);
+        // SO
+        if (str_contains($ua, 'iphone'))         $so = 'iOS';
+        elseif (str_contains($ua, 'ipad'))        $so = 'iPd';
+        elseif (str_contains($ua, 'android'))     $so = 'And';
+        elseif (str_contains($ua, 'windows'))     $so = 'Win';
+        elseif (str_contains($ua, 'macintosh'))   $so = 'Mac';
+        elseif (str_contains($ua, 'linux'))       $so = 'Lin';
+        else $so = '?';
+        // Tipo
+        if (str_contains($ua, 'iphone') || (str_contains($ua, 'android') && str_contains($ua, 'mobile')))
+            $tipo = 'M';
+        elseif (str_contains($ua, 'ipad') || (str_contains($ua, 'android') && !str_contains($ua, 'mobile')))
+            $tipo = 'T';
+        else
+            $tipo = 'D';
+        // Navegador
+        if (str_contains($ua, 'edg/'))            $nav = 'Edge';
+        elseif (str_contains($ua, 'firefox'))     $nav = 'FF';
+        elseif (str_contains($ua, 'crios'))       $nav = 'Chr';
+        elseif (str_contains($ua, 'chrome') && !str_contains($ua, 'edg/')) $nav = 'Chr';
+        elseif (str_contains($ua, 'safari') && !str_contains($ua, 'chrome')) $nav = 'Saf';
+        else $nav = '?';
+        return "{$so}-{$tipo}-{$nav}";
     }
 
     // ============================================================

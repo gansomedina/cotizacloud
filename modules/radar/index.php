@@ -370,6 +370,12 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             echo "ev_v:<b>".($dbg['ev_uniq_v']??'?')."</b> ";
             echo "modo:<b>".($dbg['modo']??'?')."</b>";
             echo "</div></div>";
+            // Devices
+            if (!empty($dbg['devices'])) {
+                echo "<div class='dbg-sec'><div class='dbg-lbl'>Dispositivos</div><div class='dbg-val'>";
+                echo implode(' · ', array_map(fn($d) => "<b>{$d}</b>", $dbg['devices']));
+                echo "</div></div>";
+            }
             // Signals
             if ($sn) {
                 echo "<div class='dbg-sec'><div class='dbg-lbl'>Señales</div><div class='dbg-val'>";
@@ -849,6 +855,11 @@ render_bkt('🟡 Activos 48h (todos los activos)',
           ev_v:<b><?= $dbg['ev_uniq_v']??'?' ?></b>
           modo:<b><?= $dbg['modo']??'?' ?></b>
         </div></div>
+        <?php if (!empty($dbg['devices'])): ?>
+        <div class="dbg-sec"><div class="dbg-lbl">Dispositivos</div><div class="dbg-val">
+          <?= implode(' · ', array_map(fn($d) => "<b>{$d}</b>", $dbg['devices'])) ?>
+        </div></div>
+        <?php endif; ?>
         <?php if ($sn): ?>
         <div class="dbg-sec"><div class="dbg-lbl">Señales</div><div class="dbg-val">
           <?php foreach ($sn as $sk=>$sv): ?><span class="dbg-tag<?= $sv?' dbg-on':'' ?>"><?= $sk ?></span> <?php endforeach; ?>
