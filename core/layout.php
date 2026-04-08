@@ -7,9 +7,24 @@
 defined('COTIZAAPP') or die;
 
 // Registrar IP del usuario como interna en cada carga del panel
-// Esto fortalece el filtrado cuando el asesor abre slugs en dominios custom
+// También registrar IPs recientes de las sesiones del usuario (últimos 7 días)
+// Esto cubre IPs dinámicas que cambian entre WiFi y celular
 if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
-    try { Radar::aprender_ip_radar(EMPRESA_ID, ip_real()); } catch (\Throwable $e) {}
+    try {
+        Radar::aprender_ip_radar(EMPRESA_ID, ip_real());
+        // Sincronizar IPs recientes del usuario (solo 1 vez por sesión para no sobrecargar)
+        if (empty($_SESSION['_ips_synced'])) {
+            $ips_recientes = DB::query(
+                "SELECT DISTINCT SUBSTRING_INDEX(ip, ',', 1) AS ip FROM user_sessions
+                 WHERE usuario_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)",
+                [Auth::id()]
+            );
+            foreach ($ips_recientes as $r) {
+                if (!empty($r['ip'])) Radar::aprender_ip_radar(EMPRESA_ID, trim($r['ip']));
+            }
+            $_SESSION['_ips_synced'] = true;
+        }
+    } catch (\Throwable $e) {}
 }
 
 // Detectar app nativa iOS/Android (Capacitor)
