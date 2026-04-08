@@ -49,23 +49,27 @@ if (!$resultado['ok']) {
     redirect('/login?error=' . $error . '&empresa=' . urlencode($empresa_slug));
 }
 
-// Login exitoso — registrar visitor_id como interno (skip para superadmin _system)
+// Login exitoso — registrar visitor_id como interno
 $visitor_id_post = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_POST['visitor_id'] ?? '')), 0, 64);
-$emp_slug_check = $resultado['empresa']['slug'] ?? '';
-if ($visitor_id_post !== '' && $emp_slug_check !== '_system') {
+if ($visitor_id_post !== '') {
     require_once MODULES_PATH . '/radar/Radar.php';
     $ip_login = ip_real();
     $ua_login = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
     $emp = $resultado['empresa'];
-    Radar::marcar_visitor_interno(
-        (int)$emp['id'],
-        $visitor_id_post,
-        'login',
-        (int)Auth::id(),
-        $ip_login,
-        $ua_login
-    );
-    Radar::aprender_ip_radar((int)$emp['id'], $ip_login);
+    $emp_slug_check = $emp['slug'] ?? '';
+
+    if ($emp_slug_check === '_system' || ($resultado['usuario']['rol'] ?? '') === 'superadmin') {
+        // Superadmin: marcar como interno en TODAS las empresas activas
+        $todas = DB::query("SELECT id FROM empresas WHERE activa = 1 AND slug != '_system'");
+        foreach ($todas as $te) {
+            Radar::marcar_visitor_interno((int)$te['id'], $visitor_id_post, 'login', (int)Auth::id(), $ip_login, $ua_login);
+            Radar::aprender_ip_radar((int)$te['id'], $ip_login);
+        }
+    } else {
+        // Usuario normal: marcar solo en su empresa
+        Radar::marcar_visitor_interno((int)$emp['id'], $visitor_id_post, 'login', (int)Auth::id(), $ip_login, $ua_login);
+        Radar::aprender_ip_radar((int)$emp['id'], $ip_login);
+    }
 }
 
 // Redirigir: superadmin con _admin va al panel, otros al dashboard
