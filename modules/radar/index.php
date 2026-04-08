@@ -738,8 +738,8 @@ render_bkt('🟣 Re-enganche',
     'v2.3: Regresó tras gap + señal de interés, pero sin foco directo en precio. Oportunidad de seguimiento.',
     $buckets['re_enganche'],$sort,$dir,true,false,'re_enganche');
 
-render_bkt('👥 Revisión multi-persona',
-    'Last < 72h + 2+ visitors o IPs post primer guest/90min + guest_total ≥ 2',
+render_bkt('👥 Multi-persona',
+    '2+ visitor_ids o IPs desde diferentes dispositivos · decisión compartida · booster +1/+2 en score',
     $buckets['multi_persona'],$sort,$dir,false,false,'multi_persona');
 
 render_bkt('🧾 Revisión profunda',
