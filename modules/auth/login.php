@@ -315,6 +315,12 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
         btn.disabled = true;
         btn.textContent = 'Ingresando...';
     });
+    // Detectar app Capacitor y marcar el formulario
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+        var h = document.createElement('input');
+        h.type = 'hidden'; h.name = 'is_app'; h.value = '1';
+        document.getElementById('login-form').appendChild(h);
+    }
 })();
 </script>
 </body>

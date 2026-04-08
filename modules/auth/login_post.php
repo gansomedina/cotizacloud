@@ -87,11 +87,9 @@ if ($resultado['usuario']['rol'] === 'superadmin' && $empresa_slug === '_admin')
 
 // ── Sync cross-domain: setear cz_vid en dominios custom ──────────
 // Solo si hay visitor_id y existen dominios custom
-// ── Sync cross-domain: solo si NO es app nativa (Capacitor abre URLs externas en Safari)
-// Capacitor WebView: UA termina en "Mobile/15E148" sin "Safari/"
-// Safari real: UA termina en "Mobile/15E148 Safari/605.1.15"
-$ua_check = $_SERVER['HTTP_USER_AGENT'] ?? '';
-$is_native_app = str_contains($ua_check, 'Mobile/') && !str_contains($ua_check, 'Safari/');
+// ── Sync cross-domain: solo si NO es app nativa
+// La app Capacitor envía is_app=1 desde JS (detección 100% confiable)
+$is_native_app = !empty($_POST['is_app']);
 
 if ($visitor_id_post !== '' && !$is_native_app) {
     // Superadmin: sync con todos los dominios custom
