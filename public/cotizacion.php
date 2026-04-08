@@ -124,43 +124,16 @@ $ip  = ip_real();
 $ua  = $_SERVER['HTTP_USER_AGENT'] ?? '';
 $ref = $_SERVER['HTTP_REFERER'] ?? '';
 
-// ── SYNC CROSS-DOMAIN: sincronizar visitor_id entre dominios ──────
-// Si llega _sv desde el redirect de sync_vid.php, guardar como cookie en este dominio
+// ── SYNC CROSS-DOMAIN: recibir visitor_id desde login redirect chain ──
+// Si llega _sv, guardar como cookie cz_vid en este dominio custom
 if (!empty($_GET['_sv'])) {
     $sync_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', $_GET['_sv']), 0, 64);
     if ($sync_vid) {
         setcookie('cz_vid', $sync_vid, time() + 730 * 86400, '/', '', true, false);
-        $_COOKIE['cz_vid'] = $sync_vid; // Disponible inmediatamente en este request
-        // Redirigir sin el parámetro _sv para URL limpia
+        $_COOKIE['cz_vid'] = $sync_vid;
         $clean_url = preg_replace('/[?&]_sv=[^&]*/', '', $_SERVER['REQUEST_URI']);
         $clean_url = rtrim($clean_url, '?&');
         header('Location: ' . $clean_url, true, 302);
-        exit;
-    }
-}
-
-// Si estamos en dominio custom y no venimos del sync → verificar si necesita sync
-if (defined('DOMINIO_CUSTOM') && DOMINIO_CUSTOM && empty($_COOKIE['_synced'])) {
-    $necesita_sync = false;
-
-    if (empty($_COOKIE['cz_vid'])) {
-        // No tiene cookie → primera visita en este dominio
-        $necesita_sync = true;
-    } else {
-        // Tiene cookie pero ¿está marcada como interna? Si no, re-sincronizar
-        $vid_actual = preg_replace('/[^a-zA-Z0-9\-_]/', '', $_COOKIE['cz_vid']);
-        require_once MODULES_PATH . '/radar/Radar.php';
-        $ya_interno = Radar::es_visitor_interno(EMPRESA_ID, $vid_actual);
-        if (!$ya_interno) {
-            $necesita_sync = true;
-        }
-    }
-
-    if ($necesita_sync) {
-        setcookie('_synced', '1', time() + 86400, '/', '', true, false); // 24h
-        $current_url = 'https://' . DOMINIO_CUSTOM . $_SERVER['REQUEST_URI'];
-        $sync_url = BASE_URL . '/api/sync-vid?r=' . urlencode($current_url);
-        header('Location: ' . $sync_url, true, 302);
         exit;
     }
 }

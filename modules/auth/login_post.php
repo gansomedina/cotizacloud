@@ -85,4 +85,23 @@ if ($resultado['usuario']['rol'] === 'superadmin' && $empresa_slug === '_admin')
     $redirect_to = '/superadmin';
 }
 
+// ── Sync cross-domain: setear cz_vid en dominios custom ──────────
+// Solo si hay visitor_id y existen dominios custom
+if ($visitor_id_post !== '') {
+    $dominios_custom = DB::query(
+        "SELECT dominio_custom FROM empresas WHERE dominio_custom IS NOT NULL AND activa = 1"
+    );
+    if ($dominios_custom) {
+        // Construir cadena de redirects: dominio1 → dominio2 → dominio3 → dashboard
+        $final_url = BASE_URL . $redirect_to;
+        // Recorrer en reversa para construir la cadena desde el final
+        $chain_url = $final_url;
+        foreach (array_reverse($dominios_custom) as $dc) {
+            $chain_url = 'https://' . $dc['dominio_custom'] . '/api/set-vid?v=' . urlencode($visitor_id_post) . '&next=' . urlencode($chain_url);
+        }
+        header('Location: ' . $chain_url, true, 302);
+        exit;
+    }
+}
+
 redirect($redirect_to);
