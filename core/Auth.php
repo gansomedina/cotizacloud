@@ -16,9 +16,10 @@ class Auth
     public static function init(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
+            // Cookie de sesión PHP dura 30 días (máximo) — el token real valida la expiración
             session_name(SESSION_NAME);
             session_set_cookie_params([
-                'lifetime' => SESSION_LIFETIME,
+                'lifetime' => 60 * 60 * 24 * 30,
                 'path'     => '/',
                 'domain'   => '.' . BASE_DOMAIN,
                 'secure'   => !DEBUG,
