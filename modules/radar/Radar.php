@@ -453,8 +453,9 @@ class Radar
             return ['score'=>0,'fit_pct'=>0.0,'priority_pct'=>0.0,'bucket'=>null,'buckets'=>[],'senales'=>[],'debug'=>[],'icons'=>[]];
         }
 
-        // IPs post primer guest (para multi-persona)
+        // IPs y visitor_ids post primer guest (para multi-persona)
         // IMPORTANTE: aplicar los mismos filtros que el loop principal de sesiones
+        $vids_post_guest = [];
         if ($first_guest_ts > 0) {
             foreach ($sess_rows as $s) {
                 $ts2 = strtotime($s['created_at']);
@@ -466,6 +467,7 @@ class Radar
                 if (($cfg['filtrar_bots'] ?? true) && (self::bot_ip($ip2) || self::bot_ua($ua2))) continue;
                 if (($cfg['excluir_internos'] ?? true) && (isset($intern_ip[$ip2]) || ($vid2 !== '' && isset($intern_v[$vid2])))) continue;
                 $ips_post_guest[$ip2] = true;
+                if ($vid2 !== '') $vids_post_guest[$vid2] = true;
             }
         }
 
@@ -474,6 +476,7 @@ class Radar
         $compare_ips_count    = count($compare_ips);
         $ips_120m_count       = count($ips_120m);
         $ips_post_guest_count = count($ips_post_guest);
+        $vids_post_guest_count = count($vids_post_guest);
 
         // Span en ventana 48h
         $ts48 = array_values(array_filter($session_ts, fn($t) => $t >= $now - 48 * 3600));
@@ -546,6 +549,10 @@ class Radar
         $priority += min(4.0, $pss * 0.55);
         if ($e_sv_price) $priority += 0.75;
         if ($e_mv_price) $priority += 0.50;
+        // v3.1: booster multi-persona por visitor_ids únicos
+        $multi_vid_count = max($vids_post_guest_count, $e_uniq_v);
+        if ($multi_vid_count >= 3) $priority += 2.0;       // 3+ personas — señal muy fuerte
+        elseif ($multi_vid_count >= 2) $priority += 1.0;   // 2 personas — señal débil
         $priority = min(100.0, $priority);
 
         // Datos de cotización (edad)
@@ -708,14 +715,17 @@ class Radar
             $has_tot_rev || $has_loop || $pss >= 3.0 || $e_opens >= 2 ||
             $e_closes >= 1 || $e_vis_max >= (int)self::u('multip_boost_vis_max', $modo) || $e_mv_price || $e_uniq_v >= 2
         );
+        // v3.1: multi_persona rediseñado — basado en visitor_ids + IPs como respaldo
+        // 2+ visitor_ids = señal fuerte de múltiples personas evaluando
+        // 3+ visitor_ids = señal muy fuerte (casi imposible que sea 1 persona)
         if (
             !$accepted &&
             $last_ts >= $now - (int)self::u('multip_recent_hours', $modo) * 3600 &&
             $guest_sessions >= (int)self::u('multip_min_guest_total', $modo) &&
             (
-                ($e_uniq_v >= 2 && ($e_mv_price || $e_sv_sess)) ||
-                $ips_post_guest_count >= (int)self::u('multip_min_ips_post_guest', $modo) ||
-                ($ips_post_guest_count >= max(2, (int)self::u('multip_min_ips_post_guest', $modo) - 1) && $multip_boost)
+                $vids_post_guest_count >= 2 ||
+                $e_uniq_v >= 2 ||
+                $ips_post_guest_count >= (int)self::u('multip_min_ips_post_guest', $modo)
             )
         ) {
             $buckets[] = 'multi_persona';
@@ -858,7 +868,7 @@ class Radar
             $cat_precio      = ($has_tot_rev || $has_loop || $e_coupons > 0 ||
                                 $e_sv_price || $e_mv_price || $pss >= 2.0);
             $cat_persistencia = ($sessions >= 2 || ($gap_days !== null && $gap_days >= 1));
-            $cat_social       = ($e_uniq_v >= 2 || $ips_post_guest_count >= 2 || $e_mv_price);
+            $cat_social       = ($vids_post_guest_count >= 2 || $e_uniq_v >= 2 || $ips_post_guest_count >= 2 || $e_mv_price);
 
             $cat_count = (int)$cat_engagement + (int)$cat_precio +
                          (int)$cat_persistencia + (int)$cat_social;
@@ -884,11 +894,12 @@ class Radar
         if ($e_mv_price) $icons['mv_price'] = true;
         // not_opened solo aplica vía early return cuando sessions=0
 
+        // v3.1: multi_persona movido a zona caliente (después de decision_activa)
         static $PRIORIDAD = [
             'probable_cierre',
             'onfire','inminente','validando_precio',
-            'prediccion_alta','alto_importe','decision_activa','revivio',
-            'no_abierta','re_enganche_caliente','re_enganche','multi_persona',
+            'prediccion_alta','alto_importe','decision_activa','multi_persona','revivio',
+            'no_abierta','re_enganche_caliente','re_enganche',
             'revision_profunda','vistas_multiples','hesitacion','sobre_analisis',
             'regreso','comparando','enfriandose',
         ];
@@ -930,7 +941,7 @@ class Radar
                 'gap_days'=>$gap_days,'guest'=>$guest_sessions,
                 'views24'=>$views24,'views48'=>$views48,
                 'span48h'=>round($span48/3600,1).'h','pss'=>round($pss,2),
-                'ev_uniq_v'=>$e_uniq_v,'modo'=>$modo,'momentum'=>$momentum,
+                'ev_uniq_v'=>$e_uniq_v,'vids_post'=>$vids_post_guest_count,'multi_vid'=>$multi_vid_count,'modo'=>$modo,'momentum'=>$momentum,
                 'scroll_cls'=>$e_scroll_cls,'scroll_any'=>$e_scroll_any,
                 'vis_max'=>$e_vis_max,'vis_sum'=>$e_vis_sum,
                 'ips_post_guest'=>$ips_post_guest_count,
