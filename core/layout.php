@@ -6,6 +6,12 @@
 
 defined('COTIZAAPP') or die;
 
+// Registrar IP del usuario como interna en cada carga del panel
+// Esto fortalece el filtrado cuando el asesor abre slugs en dominios custom
+if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
+    try { Radar::aprender_ip_radar(EMPRESA_ID, ip_real()); } catch (\Throwable $e) {}
+}
+
 // Detectar app nativa iOS/Android (Capacitor)
 $is_native_app = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
 

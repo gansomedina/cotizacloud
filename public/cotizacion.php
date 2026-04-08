@@ -133,11 +133,12 @@ $visitor_id_cookie = substr(
 
 require_once MODULES_PATH . '/radar/Radar.php';
 
-// ── CAPA 0: Usuario logueado de esta empresa ──────────────────────────
+// ── CAPA 0: Usuario logueado de esta empresa o superadmin ────────────
 // Es la verificación más importante y debe ser la primera.
 // Certeza absoluta: conocemos usuario_id, IP, UA y visitor_id.
 // Aprendemos todo y no registramos nada — es ruido interno.
-$es_usuario_interno = (Auth::id() !== null && (int)(Auth::empresa()['id'] ?? 0) === (int)$cot['empresa_id']);
+$es_superadmin = Auth::id() !== null && (Auth::usuario()['rol'] ?? '') === 'superadmin';
+$es_usuario_interno = (Auth::id() !== null && (int)(Auth::empresa()['id'] ?? 0) === (int)$cot['empresa_id']) || $es_superadmin;
 
 if ($es_usuario_interno) {
     // Aprender IP de este acceso como interna

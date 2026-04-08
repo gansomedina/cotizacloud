@@ -64,7 +64,8 @@ if ($rcfg['filtrar_bots'] ?? true) {
 if (($rcfg['filtrar_bots'] ?? true) && es_bot($ua)) exit;
 
 // ── Pre-calcular flags de interno ────────────────────────────────
-$es_usuario_interno = (Auth::id() !== null && (int)(Auth::empresa()['id'] ?? 0) === $empresa_id);
+$es_superadmin = Auth::id() !== null && (Auth::usuario()['rol'] ?? '') === 'superadmin';
+$es_usuario_interno = (Auth::id() !== null && (int)(Auth::empresa()['id'] ?? 0) === $empresa_id) || $es_superadmin;
 $es_visitor_interno = ($visitor_id !== '' && ($rcfg['excluir_internos'] ?? true))
     ? Radar::es_visitor_interno($empresa_id, $visitor_id)
     : false;
