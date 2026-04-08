@@ -368,6 +368,8 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             echo "span48:<b>".($dbg['span48h']??'?')."</b> ";
             echo "pss:<b>".($dbg['pss']??'?')."</b> ";
             echo "ev_v:<b>".($dbg['ev_uniq_v']??'?')."</b> ";
+            echo "vids:<b>".($dbg['vids_post']??'0')."</b> ";
+            echo "mvid:<b>".($dbg['multi_vid']??'0')."</b> ";
             echo "modo:<b>".($dbg['modo']??'?')."</b>";
             echo "</div></div>";
             // Devices
@@ -853,6 +855,8 @@ render_bkt('🟡 Activos 48h (todos los activos)',
           span48:<b><?= $dbg['span48h']??'?' ?></b>
           pss:<b><?= $dbg['pss']??'?' ?></b>
           ev_v:<b><?= $dbg['ev_uniq_v']??'?' ?></b>
+          vids:<b><?= $dbg['vids_post']??'0' ?></b>
+          mvid:<b><?= $dbg['multi_vid']??'0' ?></b>
           modo:<b><?= $dbg['modo']??'?' ?></b>
         </div></div>
         <?php if (!empty($dbg['devices'])): ?>
