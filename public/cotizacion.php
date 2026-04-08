@@ -124,6 +124,31 @@ $ip  = ip_real();
 $ua  = $_SERVER['HTTP_USER_AGENT'] ?? '';
 $ref = $_SERVER['HTTP_REFERER'] ?? '';
 
+// ── SYNC CROSS-DOMAIN: sincronizar visitor_id entre dominios ──────
+// Si llega _sv desde el redirect de sync_vid.php, guardar como cookie en este dominio
+if (!empty($_GET['_sv'])) {
+    $sync_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', $_GET['_sv']), 0, 64);
+    if ($sync_vid) {
+        setcookie('cz_vid', $sync_vid, time() + 730 * 86400, '/', '', true, false);
+        $_COOKIE['cz_vid'] = $sync_vid; // Disponible inmediatamente en este request
+        // Redirigir sin el parámetro _sv para URL limpia
+        $clean_url = preg_replace('/[?&]_sv=[^&]*/', '', $_SERVER['REQUEST_URI']);
+        $clean_url = rtrim($clean_url, '?&');
+        header('Location: ' . $clean_url, true, 302);
+        exit;
+    }
+}
+
+// Si estamos en dominio custom y NO hay cookie cz_vid y no venimos del sync → redirigir
+if (defined('DOMINIO_CUSTOM') && DOMINIO_CUSTOM && empty($_COOKIE['cz_vid']) && empty($_COOKIE['_synced'])) {
+    // Marcar que ya intentamos sync (evita loop infinito)
+    setcookie('_synced', '1', time() + 300, '/', '', true, false); // 5 min
+    $current_url = 'https://' . DOMINIO_CUSTOM . $_SERVER['REQUEST_URI'];
+    $sync_url = BASE_URL . '/api/sync-vid?r=' . urlencode($current_url);
+    header('Location: ' . $sync_url, true, 302);
+    exit;
+}
+
 // Leer visitor_id desde cookie (key 'cz_vid' — mismo que usa el JS)
 // Disponible desde la primera carga, antes de que JS envíe cualquier evento
 $visitor_id_cookie = substr(
