@@ -336,8 +336,8 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
   body.modo-recibo .print-only:not(#recibo-print-tpl){display:none!important}
   body.modo-recibo #recibo-print-tpl{display:block!important}
   body{background:#fff;margin:0;padding:0}
-  #main{margin-left:0!important}
-  #content{padding:0!important}
+  #main{margin-left:0!important;height:auto!important;overflow:visible!important}
+  #content{padding:0!important;overflow:visible!important}
   .fac,#recibo-print-tpl{font-size:10pt}
   /* Estilos del recibo individual (compacto, 2 copias por página) */
   .rp-copia{padding:8pt 0}
