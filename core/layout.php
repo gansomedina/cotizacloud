@@ -144,7 +144,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         .sidebar-logo-text{font-size:18px;font-weight:700;color:var(--g);letter-spacing:-.3px}
         .empresa-nombre{font-size:11px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
-        .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-sm);color:var(--t2);text-decoration:none;font-size:13.5px;font-weight:500;transition:background .12s,color .12s;margin-bottom:2px;touch-action:manipulation}
+        .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-sm);color:var(--t2);text-decoration:none;font-size:13.5px;font-weight:500;transition:background .12s,color .12s;margin-bottom:2px}
         .nav-item:hover{background:var(--bg);color:var(--text)}
         .nav-item.active{background:var(--g-bg);color:var(--g);font-weight:600}
         .nav-item svg,.nav-item i[data-feather]{width:16px;height:16px;flex-shrink:0;display:inline-block}
@@ -280,7 +280,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
                 flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
                 gap:3px;text-decoration:none;color:var(--t3);font-size:10.5px;font-weight:500;
                 padding:6px 4px;border:none;background:none;cursor:pointer;
-                -webkit-tap-highlight-color:transparent;position:relative;touch-action:manipulation;
+                -webkit-tap-highlight-color:transparent;position:relative;
             }
             .bn-item svg{width:22px;height:22px;display:block;flex-shrink:0;stroke:currentColor;fill:none}
             .bn-item.active{color:var(--g)}
