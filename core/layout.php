@@ -540,7 +540,7 @@ if ($vid_cookie !== '' && Auth::id()) {
             <div style="font:700 14px -apple-system,system-ui,sans-serif;color:#1a1a18">Escudo Radar</div>
             <div style="font:400 12px -apple-system,system-ui,sans-serif;color:#6a6a64;margin-top:2px">Activa para que tus visitas a cotizaciones no contaminen las metricas</div>
         </div>
-        <button id="btn-escudo-radar" style="background:#1a5c38;color:#fff;border:none;border-radius:10px;padding:10px 18px;font:700 13px -apple-system,system-ui,sans-serif;cursor:pointer;white-space:nowrap">Activar</button>
+        <a id="btn-escudo-radar" href="#" target="_blank" style="background:#1a5c38;color:#fff;border:none;border-radius:10px;padding:10px 18px;font:700 13px -apple-system,system-ui,sans-serif;cursor:pointer;white-space:nowrap;text-decoration:none">Activar</a>
     </div>
 </div>
 <script>
@@ -554,12 +554,8 @@ if ($vid_cookie !== '' && Auth::id()) {
     var btn = document.getElementById('btn-escudo-radar');
     if (!banner || !btn) return;
     banner.style.display = 'block';
+    btn.href = url;
     btn.addEventListener('click', function(){
-        if (Cap.Plugins && Cap.Plugins.Browser) {
-            Cap.Plugins.Browser.open({ url: url });
-        } else {
-            window.open(url, '_blank');
-        }
         localStorage.setItem('escudo_radar_active', '1');
         banner.style.display = 'none';
     });
