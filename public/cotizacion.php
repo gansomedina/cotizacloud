@@ -1195,18 +1195,20 @@ async function doAcc(){
     const msgExito = EMPRESA.texto_aceptar
         ? EMPRESA.texto_aceptar.replace(/\n/g,'<br>')
         : 'Gracias, '+nombre+'. El equipo se pondrá en contacto contigo pronto.';
+    // Recargar para mostrar estado actualizado (antes de pixels para que no bloquee)
+    setTimeout(() => { window.location.href = window.location.href.split('?')[0]; }, 1500);
+
     mostrarExito('<?= addslashes(ico('check',48,'#16a34a')) ?>', '¡Cotización aceptada!',
         msgExito,
         'WhatsApp: '+(EMPRESA.tel||'')+(EMPRESA.email?' · '+EMPRESA.email:'')
     );
 
     // Marketing pixels — evento de conversión
+    try {
     var totalFinal = total_base;
     var MONEDA = '<?= e($cot['moneda'] ?? 'MXN') ?>';
     <?= MarketingPixels::evento_aceptar_js(EMPRESA_ID) ?>
-
-    // Recargar inmediato para mostrar estado actualizado
-    if(respOk) setTimeout(() => { window.location.href = window.location.href.split('?')[0]; }, 1500);
+    } catch(e) {}
 }
 
 // ─── Rechazar ────────────────────────────────────────────
