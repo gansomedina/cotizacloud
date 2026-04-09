@@ -331,6 +331,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
                 <?= e($item['label']) ?>
             </a>
         <?php endforeach; ?>
+        <a href="/logout" class="nav-item" style="color:var(--danger);margin-top:8px;border-top:1px solid var(--border);padding-top:12px" onclick="closeSidebar()">
+            <?= $S['sal'] ?>
+            Cerrar sesion
+        </a>
     </nav>
     <div class="sidebar-footer">
         <div class="sidebar-user">
@@ -358,10 +362,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             </span>
         </div>
         <?php endif; ?>
-        <a href="/logout" class="nav-item" style="color:var(--danger)">
-            <?= $S['sal'] ?>
-            Cerrar sesión
-        </a>
     </div>
 </aside>
 
