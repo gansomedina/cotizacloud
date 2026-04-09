@@ -57,9 +57,16 @@ if ($vid === '') {
 
 // ── Poner cookie cz_vid en este dominio ──────────────────────
 // HttpOnly=false para que JS pueda leerlo y sincronizar con localStorage
+// Si estamos en cotiza.cloud (o subdominio), poner dominio .cotiza.cloud
+// para que la cookie sea visible en empresa.cotiza.cloud
+$host = strtolower($_SERVER['HTTP_HOST'] ?? '');
+$cookie_domain = str_ends_with($host, '.' . BASE_DOMAIN) || $host === BASE_DOMAIN
+    ? '.' . BASE_DOMAIN   // .cotiza.cloud → visible en todos los subdominios
+    : '';                  // dominio custom → solo este dominio exacto
 setcookie('cz_vid', $vid, [
     'expires'  => time() + 730 * 86400,
     'path'     => '/',
+    'domain'   => $cookie_domain,
     'secure'   => true,
     'httponly'  => false,
     'samesite' => 'Lax',
