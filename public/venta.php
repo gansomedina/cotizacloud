@@ -15,7 +15,7 @@ $venta = DB::row(
             e.nombre AS emp_nombre, e.ciudad AS emp_ciudad,
             e.telefono AS emp_tel, e.email AS emp_email,
             e.moneda, e.logo_url AS emp_logo, e.vta_terminos AS terminos, e.ocultar_cant_pu,
-            cl.nombre AS cliente_nombre, cl.telefono AS cli_tel,
+            cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.direccion AS cli_direccion,
 
             c.numero  AS cot_numero,
             c.cupon_monto AS cupon_amt, c.cupon_codigo, c.cupon_pct,
@@ -345,7 +345,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       </div>
       <div class="venta-title"><?= e($venta['titulo']) ?></div>
       <div class="venta-grid">
-        <div><div class="meta-lbl">Cliente</div><div class="meta-val"><?= e($venta['cliente_nombre'] ?? '—') ?></div></div>
+        <div><div class="meta-lbl">Cliente</div><div class="meta-val"><?= e($venta['cliente_nombre'] ?? '—') ?><?php if ($venta['cli_direccion'] ?? ''): ?><div style="font:400 12px var(--body);color:var(--t3);margin-top:2px"><?= e($venta['cli_direccion']) ?></div><?php endif ?></div></div>
         <div><div class="meta-lbl">Fecha</div><div class="meta-val"><?= date('d M Y', strtotime($venta['created_at'])) ?></div></div>
         <?php if (''): ?>
         <div><div class="meta-lbl">Asesor</div><div class="meta-val"><?= e('') ?></div></div>
@@ -576,7 +576,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   </div>
 
   <div class="fac-info-row">
-    <div class="fac-info-cell"><div class="fac-info-lbl">Cliente</div><div class="fac-info-val"><?= e($venta['cliente_nombre'] ?? '—') ?></div></div>
+    <div class="fac-info-cell"><div class="fac-info-lbl">Cliente</div><div class="fac-info-val"><?= e($venta['cliente_nombre'] ?? '—') ?><?php if ($venta['cli_direccion'] ?? ''): ?><div style="font:400 8pt var(--body);color:#555;margin-top:1pt"><?= e($venta['cli_direccion']) ?></div><?php endif ?></div></div>
     <?php if ($venta['cli_tel']): ?><div class="fac-info-cell"><div class="fac-info-lbl">Teléfono</div><div class="fac-info-val"><?= e($venta['cli_tel']) ?></div></div><?php endif; ?>
     <div class="fac-info-cell"><div class="fac-info-lbl">Fecha</div><div class="fac-info-val"><?= date('d M Y', strtotime($venta['created_at'])) ?></div></div>
     <?php if (''): ?><div class="fac-info-cell"><div class="fac-info-lbl">Asesor</div><div class="fac-info-val"><?= e('') ?></div></div><?php endif; ?>

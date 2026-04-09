@@ -19,7 +19,7 @@ $cot = DB::row(
             e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado, e.cot_theme,
             e.texto_aceptar, e.texto_rechazar,
             e.slug AS emp_slug, e.ocultar_cant_pu,
-            cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.email AS cli_email,
+            cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.email AS cli_email, cl.direccion AS cli_direccion,
             u.nombre  AS asesor_nombre
      FROM cotizaciones c
      JOIN empresas  e  ON e.id = c.empresa_id
@@ -633,6 +633,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <?php if ($cot['cli_tel'] ?? null): ?>
     <div style="font:400 8pt 'DM Sans',sans-serif;color:#555;margin-top:1pt"><?= e($cot['cli_tel']) ?></div>
     <?php endif; ?>
+    <?php if ($cot['cli_direccion'] ?? null): ?>
+    <div style="font:400 8pt 'DM Sans',sans-serif;color:#555;margin-top:1pt"><?= e($cot['cli_direccion']) ?></div>
+    <?php endif; ?>
   </div>
   <div class="pi-cell">
     <div class="pi-lbl">Concepto</div>
@@ -661,7 +664,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <div class="qh-top">
       <div class="qh-title"><?= e($cot['titulo']) ?></div>
       <?php if ($cot['cliente_nombre']): ?>
-      <div class="qh-client"><?= e($cot['cliente_nombre']) ?><?php if ($cot['cli_tel']): ?> <span>· <?= e($cot['cli_tel']) ?></span><?php endif ?></div>
+      <div class="qh-client"><?= e($cot['cliente_nombre']) ?><?php if ($cot['cli_tel']): ?> <span>· <?= e($cot['cli_tel']) ?></span><?php endif ?><?php if ($cot['cli_direccion'] ?? ''): ?><br><span style="font-size:12px;color:var(--t3)"><?= e($cot['cli_direccion']) ?></span><?php endif ?></div>
       <?php endif ?>
     </div>
     <div class="qh-pills">
