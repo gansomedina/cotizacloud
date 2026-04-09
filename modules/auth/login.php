@@ -290,7 +290,10 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
         return m ? decodeURIComponent(m[1]) : '';
     }
     function setCookie(n, v, sec) {
-        document.cookie = n + '=' + encodeURIComponent(v) + '; path=/; max-age=' + sec + '; SameSite=Lax';
+        // domain=.cotiza.cloud para que la cookie sea visible en empresa.cotiza.cloud
+        var d = location.hostname, dom = '';
+        if (d === 'cotiza.cloud' || d.endsWith('.cotiza.cloud')) dom = '; domain=.cotiza.cloud';
+        document.cookie = n + '=' + encodeURIComponent(v) + '; path=/' + dom + '; max-age=' + sec + '; SameSite=Lax';
     }
     function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch(e) { return ''; } }
     function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
