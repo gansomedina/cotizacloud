@@ -747,10 +747,20 @@ ALTER TABLE dispositivos_push ADD COLUMN badge_count INT UNSIGNED NOT NULL DEFAU
    - Redirige al editor de la cotización clonada
    - Permiso: admin + usuarios con `crear_cotizaciones`
 
+### Fixes adicionales (continuación sesión)
+1. **PDF ventas imprime desde slug público** — botón "Imprimir / PDF" abre el slug público con `?print=1` que auto-ejecuta `window.print()`. Resuelve problema de 1 sola página por layout flex del panel.
+2. **Términos en PDF** — usa `e_html()` para renderizar HTML (h, strong) igual que slug público
+3. **Clonar cotización** — CSRF fix (variable `CSRF` → `CSRF_TOKEN`)
+4. **Sidebar footer visible** — padding-bottom 80px para no taparse con bottom nav
+5. **Cerrar sesión reubicado** — al final del menú después de Ayuda/Super Admin
+6. **Bottom nav Inicio** — href cambiado de `/` a `/dashboard`, ya no siempre verde
+7. **Viewport maximum-scale** — agregado para iOS
+8. **Bottom nav touchend** — tap instantáneo via touchend handler
+
 ### Pendiente
 1. **iCloud Keychain autofill** — esperar 24-48h para que Apple cachee el AASA
-2. **Apple Review** — esperando respuesta (24-48h)
+2. **Apple Review v1.1** — enviado, esperando respuesta (24-48h)
 3. **Git credentials en Mac** — configurar token GitHub para push
 4. **Probar push notifications** — enviar notificación real para verificar badge increment/clear
 5. **Probar Escudo Radar con OnTime** — verificar cadena de dominios custom desde la app
-6. **Bottom nav tap delay en iOS** — limitación de WKWebView, se mitigó con touchend handler pero el primer tap a veces falla
+6. **Bottom nav primer tap iOS** — limitación WKWebView, mitigado con touchend pero no 100%
