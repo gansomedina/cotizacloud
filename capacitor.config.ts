@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'CotizaCloud',
   webDir: 'www',
   server: {
-    url: 'https://cotiza.cloud',
+    url: 'https://cotiza.cloud/login',
     cleartext: false,
   },
   ios: {
