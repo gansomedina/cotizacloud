@@ -569,7 +569,7 @@ async function clonarCot(id) {
   try {
     const res = await fetch('/cotizaciones/' + id + '/clonar', {
       method: 'POST',
-      headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF},
+      headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
       credentials: 'same-origin'
     });
     const data = await res.json();
