@@ -420,7 +420,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             <?php endif;
         }
         // ── Escudo Radar: generar token para el botón ──
+        // Ocultar para empresa apple-review (cuenta de revisión de Apple)
         $escudo_url = '';
+        if (EMPRESA_SLUG === 'apple-review') goto skip_escudo;
         $vid_cookie = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
         if ($vid_cookie !== '' && Auth::id()) {
             $escudo_payload = base64_encode(json_encode([
@@ -457,6 +459,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             </div>
         </div>
         <?php if (isset($content)) echo $content; ?>
+        <?php skip_escudo: ?>
     </main>
 </div>
 
