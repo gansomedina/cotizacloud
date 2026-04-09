@@ -96,7 +96,7 @@ if ($visitor_id_post !== '') {
         'uid'   => (int)Auth::id(),
         'eid'   => (int)$emp['id'],
         'super' => $es_super ? 1 : 0,
-        'exp'   => time() + 120,
+        'exp'   => time() + 300,
     ]));
     $bridge_sig   = hash_hmac('sha256', $bridge_payload, APP_SECRET);
     $bridge_token = $bridge_payload . '.' . $bridge_sig;
@@ -176,7 +176,7 @@ p{font-size:15px;opacity:.9}
 
         // Esperar a que la cadena de redirects complete, luego cerrar y continuar
         var dominios = <?= count($dominios_custom ?: []) ?>;
-        var waitMs = 2500 + (dominios * 800); // ~2.5s base + 0.8s por dominio
+        var waitMs = 3500 + (dominios * 1200); // ~3.5s base + 1.2s por dominio
         setTimeout(function(){
             try { Browser.close(); } catch(e){}
             window.location.href = dashUrl;

@@ -262,9 +262,16 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
         </form>
     </div>
 
-    <div class="auth-link">
+    <div class="auth-link" id="registro-link">
         ¿Tu empresa no tiene cuenta? <a href="/registro">Crear cuenta nueva</a>
     </div>
+    <script>
+    // Ocultar registro en app iOS (Apple Guideline 3.1.1)
+    if (window.Capacitor || navigator.userAgent.includes('CotizaCloud')) {
+        var el = document.getElementById('registro-link');
+        if (el) el.style.display = 'none';
+    }
+    </script>
 
 </div>
 
@@ -308,6 +315,13 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
         btn.disabled = true;
         btn.textContent = 'Ingresando...';
     });
+
+    // Detectar app Capacitor y marcar el formulario
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+        var h = document.createElement('input');
+        h.type = 'hidden'; h.name = 'is_app'; h.value = '1';
+        document.getElementById('login-form').appendChild(h);
+    }
 })();
 </script>
 </body>
