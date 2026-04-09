@@ -630,45 +630,50 @@ Conversión:   35%  (era 40%)
 ### Branch de trabajo
 - `claude/review-apple-store-build-xB5jg`
 
-## Sesión 9 abril 2026
+## Sesión 9 abril 2026 (continuación)
 
 ### Completado — Server side (desplegado y funcionando)
 1. **Safari bridge endpoint** — `api/safari_bridge.php` con token HMAC firmado, pone cookie cz_vid, marca visitor interno, aprende IP, soporta redirect chain
 2. **Cookie `.cotiza.cloud`** — JS setCookie en login.php con domain=.cotiza.cloud para cubrir subdominios
 3. **Safari bridge cookie domain** — detecta si es cotiza.cloud (pone `.cotiza.cloud`) o custom domain (pone dominio exacto)
 4. **Landing en `/`** — cotiza.cloud muestra landing para visitantes, dashboard para logueados
-5. **Capacitor config** — `server.url` cambiado a `cotiza.cloud/login` (app va directo al login)
-6. **Push badge increment** — badge_count por dispositivo, incrementa con cada push
-7. **Push badge clear** — AppDelegate.swift limpia badge al abrir app + push.js clearBadge + POST /api/push/reset-badge
-8. **Restaurar is_app detection** — JS Capacitor detection + ocultar registro iOS
-9. **Redirect chain navegador** — login_post.php mantiene redirect chain para navegadores con dominios custom (funciona perfecto)
-10. **Escudo Radar (botón)** — banner en layout.php solo visible en app Capacitor, genera token + URL con cadena de dominios custom
+5. **Push badge increment** — badge_count por dispositivo, incrementa con cada push
+6. **Push badge clear** — AppDelegate.swift limpia badge al abrir app + push.js clearBadge + POST /api/push/reset-badge
+7. **Restaurar is_app detection** — JS Capacitor detection + ocultar registro iOS
+8. **Redirect chain navegador** — login_post.php mantiene redirect chain para navegadores con dominios custom
+9. **Escudo Radar (botón)** — banner en layout.php dentro del contenido principal, solo visible en app Capacitor, abre Safari al primer tap usando `<a target="_blank">` con subdominio empresa
+10. **Botón Inicio** — apunta a /dashboard en vez de / (evita mostrar landing si sesión expira)
+11. **iCloud Keychain autofill** — apple-app-site-association + webcredentials entitlement (tarda 24-48h en activarse)
 
-### Problema pendiente — App iOS abre Safari en dispositivo real
-**Síntoma**: Al abrir la app en iPhone real, el WKWebView NO carga la URL. En vez de mostrar cotiza.cloud/login dentro de la app, abre Safari externo. La app queda en blanco.
+### Problema resuelto — App iOS abría Safari en dispositivo real
 
-**Lo que se probó y NO funcionó:**
-- Bridge automático desde login POST (página inline HTML) → Safari externo
-- Bridge desde layout.php (página Capacitor normal) → Safari externo
-- `@capacitor/browser` plugin (SFSafariViewController) → abre Safari externo en vez de sheet
-- Quitar `@capacitor/browser` → SIGUE abriendo Safari (el plugin NO era el problema)
-- Eliminar app + Clean Build + Cmd+R → mismo resultado
-- Funciona en SIMULADOR pero NO en dispositivo real
+**Causa raíz**: `server.url: 'https://cotiza.cloud/login'` con path `/login` causaba error WebKit 102 (Frame load interrupted). Capacitor cancela la navegación cuando el servidor redirige de `/login` a `/dashboard` porque interpreta que la navegación sale del URL configurado.
 
-**Hipótesis por investigar próxima sesión:**
-1. **Xcode console logs** — revisar qué dice la consola cuando la app lanza y abre Safari (NO se revisó aún, es lo primero)
-2. **UINavigationController wrapper** en AppDelegate.swift podría interferir con CAPBridgeViewController en dispositivo real
-3. **Capacitor allowNavigation** — sin config, Capacitor podría redirigir a Safari. Probar `allowNavigation: ['*']`
-4. **WKWebView SSL/ATS** — verificar que el dispositivo confía en el certificado
-5. **iOS version del dispositivo** — verificar compatibilidad
-6. **Derived Data** — probar borrar ~/Library/Developer/Xcode/DerivedData/
-7. **Build anterior residual** — Build 2 previo podría tener datos residuales
+**Solución**: Revertir `server.url` a `'https://cotiza.cloud'` (sin path). Para evitar que la app muestre la landing page, `landing.php` detecta Capacitor vía `window.Capacitor.isNativePlatform()` y redirige a `/login` instantáneamente.
 
-**IMPORTANTE**: El problema existía ANTES de nuestros cambios. El app Build 2 (enviado a Apple) usaba `server.url: 'https://cotiza.cloud'` (sin /login). Verificar si ese build también abría Safari en dispositivo real, o si el cambio a `/login` causó el problema.
+**Escudo Radar — lecciones aprendidas:**
+- `@capacitor/browser` plugin: interfería con el WebView, abría Safari al cargar la app. NO usar.
+- Bridge automático (SFSafariViewController): no funciona en dispositivo real, escala a Safari externo
+- `window.open()` en WKWebView: se bloquea como popup, requiere múltiples taps
+- `<a href target="_blank">` con URL del MISMO origin (cotiza.cloud): Capacitor lo mantiene en el WebView, no abre Safari
+- `<a href target="_blank">` con URL de OTRO origin (empresa.cotiza.cloud): Capacitor lo abre en Safari ← **ESTA ES LA SOLUCIÓN**
+- El href debe estar directo en el HTML (no asignado por JS), y NO ocultar el elemento en el click handler
 
-**Estado actual del plugin @capacitor/browser:**
-- DESINSTALADO. Solo 3 plugins: push-notifications, splash-screen, status-bar
-- Código del Escudo Radar tiene fallback window.open() si no hay Browser plugin
+### Capacitor config final
+```typescript
+server: {
+    url: 'https://cotiza.cloud',  // SIN path — con path causa error 102
+    cleartext: false,
+}
+```
+- 3 plugins: push-notifications, splash-screen, status-bar
+- SIN @capacitor/browser (interfiere con WebView)
+
+### Build 3 (v1.1 build 3) — subido a App Store Connect
+Cambios vs Build 2:
+1. `AppDelegate.swift` — limpia badge + notificaciones al abrir app
+2. `App.entitlements` — webcredentials:cotiza.cloud para iCloud Keychain autofill
+3. `server.url` — sin cambio (sigue en cotiza.cloud, igual que Build 2)
 
 ### Estado del sistema de cookies (funcionando en web)
 
@@ -680,12 +685,12 @@ Conversión:   35%  (era 40%)
 | `cz_vid` (cotizacion.php PHP) | empresa.cotiza.cloud/c/slug | dominio exacto | Solo ese subdominio |
 | `cza_session` (Auth.php) | cotiza.cloud/login | `.cotiza.cloud` | Todos los subdominios |
 
-### 3 Capas de filtrado Radar (funcionando en web)
+### 3 Capas de filtrado Radar (funcionando en web + app con Escudo)
 
 | Capa | Qué checa | Cuándo funciona |
 |------|-----------|----------------|
 | 0 | Auth::id() (sesión) | Mientras esté logueado en ese navegador |
-| 1 | visitor_id (cookie cz_vid) | Cookie persiste 2 años en ese navegador |
+| 1 | visitor_id (cookie cz_vid) | Cookie persiste 2 años — Escudo Radar la pone en Safari |
 | 2 | IP aprendida | Misma red que usó al loguearse |
 
 ### Migración ejecutada
@@ -696,21 +701,25 @@ ALTER TABLE dispositivos_push ADD COLUMN badge_count INT UNSIGNED NOT NULL DEFAU
 ### Archivos modificados esta sesión
 | Archivo | Cambio |
 |---------|--------|
-| `api/safari_bridge.php` | NUEVO — endpoint bridge con token HMAC |
+| `api/safari_bridge.php` | NUEVO — endpoint bridge con token HMAC, cookie .cotiza.cloud, IP learning |
 | `api/push_reset_badge.php` | NUEVO — resetear badge count |
-| `modules/auth/login_post.php` | Redirect chain navegador + eliminado bridge automático app |
-| `modules/auth/login.php` | setCookie con .cotiza.cloud + restaurar is_app + registro iOS |
-| `core/Router.php` | Rutas safari-bridge + reset-badge + landing en / |
-| `core/layout.php` | Escudo Radar banner + IP learning |
-| `core/PushNotification.php` | Badge increment + reset_badge() |
+| `.well-known/apple-app-site-association` | NUEVO — webcredentials para iCloud Keychain |
+| `modules/auth/login_post.php` | Redirect chain solo navegador, sin bridge automático app |
+| `modules/auth/login.php` | setCookie con .cotiza.cloud + is_app detection + ocultar registro |
+| `modules/auth/landing.php` | Detectar Capacitor → redirigir a /login |
+| `core/Router.php` | Rutas safari-bridge + reset-badge + landing en / + botón Inicio a /dashboard |
+| `core/layout.php` | Escudo Radar banner en contenido principal + token generation |
+| `core/PushNotification.php` | Badge increment por dispositivo + reset_badge() |
+| `index.php` | Servir apple-app-site-association con Content-Type JSON |
+| `.cpanel.yml` | Deploy .well-known |
 | `ios/App/App/AppDelegate.swift` | Clear badge + removeAllDeliveredNotifications |
-| `assets/js/push.js` | clearBadge() on load + visibilitychange |
-| `capacitor.config.ts` | server.url → cotiza.cloud/login |
-| `migrations/add_push_badge_count.sql` | badge_count column |
+| `ios/App/App/App.entitlements` | webcredentials:cotiza.cloud |
+| `assets/js/push.js` | clearBadge() on load + visibilitychange + reset-badge API |
+| `capacitor.config.ts` | server.url se mantiene en cotiza.cloud (sin path) |
 
-### Pasos para próxima sesión
-1. **Diagnosticar por qué Capacitor abre Safari en dispositivo real** — PRIMERO revisar Xcode console logs
-2. **Probar revertir server.url a cotiza.cloud** (sin /login) para ver si el /login path causa el problema
-3. **Si se resuelve**: reinstalar @capacitor/browser, probar Escudo Radar en dispositivo real
-4. **Build 3 para App Store** — una vez que login funcione en dispositivo real
-5. **Git credentials en Mac** — configurar token GitHub para poder hacer push
+### Pendiente
+1. **iCloud Keychain autofill** — esperar 24-48h para que Apple cachee el AASA
+2. **Apple Review Build 3** — enviar a revisión desde App Store Connect
+3. **Git credentials en Mac** — configurar token GitHub para push
+4. **Probar push notifications** — enviar notificación real para verificar badge increment/clear
+5. **Probar Escudo Radar con OnTime** — verificar que la cadena de dominios custom funcione desde la app
