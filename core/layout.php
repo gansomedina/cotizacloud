@@ -148,7 +148,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         .nav-item:hover{background:var(--bg);color:var(--text)}
         .nav-item.active{background:var(--g-bg);color:var(--g);font-weight:600}
         .nav-item svg,.nav-item i[data-feather]{width:16px;height:16px;flex-shrink:0;display:inline-block}
-        .sidebar-footer{padding:12px 10px;border-top:1px solid var(--border)}
+        .sidebar-footer{padding:12px 10px 80px;border-top:1px solid var(--border)}
 
         /* Overlay sidebar mobile */
         #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:190}
