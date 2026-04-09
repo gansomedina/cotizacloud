@@ -1205,8 +1205,8 @@ async function doAcc(){
     var MONEDA = '<?= e($cot['moneda'] ?? 'MXN') ?>';
     <?= MarketingPixels::evento_aceptar_js(EMPRESA_ID) ?>
 
-    // Recargar después de 4 segundos para mostrar estado actualizado
-    if(respOk) setTimeout(() => { window.location.href = window.location.href.split('?')[0]; }, 4000);
+    // Recargar inmediato para mostrar estado actualizado
+    if(respOk) setTimeout(() => { window.location.href = window.location.href.split('?')[0]; }, 1500);
 }
 
 // ─── Rechazar ────────────────────────────────────────────
