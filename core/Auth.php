@@ -297,6 +297,7 @@ class Auth
             'agregar_extras',
             'ver_reportes',
             'adjuntar',
+            'editar_clientes',
         ];
 
         if (!in_array($permiso, $permisos_validos)) return false;
