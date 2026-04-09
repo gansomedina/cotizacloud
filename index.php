@@ -57,6 +57,17 @@ if (preg_match('#^/assets/(.+)$#', $req_uri, $m)) {
     }
 }
 
+// ─── Apple App Site Association (autofill, webcredentials) ──
+if ($req_uri === '/.well-known/apple-app-site-association') {
+    $aaFile = __DIR__ . '/.well-known/apple-app-site-association';
+    if (is_file($aaFile)) {
+        header('Content-Type: application/json');
+        header('Cache-Control: public, max-age=86400');
+        readfile($aaFile);
+        exit;
+    }
+}
+
 // ─── Service Worker (Web Push) — debe servirse desde raíz ───
 if ($req_uri === '/sw.js') {
     $swFile = __DIR__ . '/public/sw.js';
