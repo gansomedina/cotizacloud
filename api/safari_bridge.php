@@ -75,10 +75,12 @@ if ($es_super) {
     if ($todas) {
         foreach ($todas as $te) {
             Radar::marcar_visitor_interno((int)$te['id'], $vid, 'safari_bridge', $uid, $ip, $ua);
+            Radar::aprender_ip_radar((int)$te['id'], $ip);
         }
     }
 } else if ($eid > 0) {
     Radar::marcar_visitor_interno($eid, $vid, 'safari_bridge', $uid, $ip, $ua);
+    Radar::aprender_ip_radar($eid, $ip);
 }
 
 // ── Si hay siguiente dominio en la cadena, redirigir ─────────
