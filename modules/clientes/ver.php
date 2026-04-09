@@ -376,7 +376,9 @@ ob_start();
     </div>
 
     <!-- ACCIONES -->
+    <?php if (Auth::es_admin() || Auth::puede('editar_clientes')): ?>
     <button class="action-btn primary" onclick="openEditSheet()">Editar cliente</button>
+    <?php endif; ?>
 
 
     <a href="/cotizaciones/nueva?cliente_id=<?= $cliente_id ?>" class="action-btn">

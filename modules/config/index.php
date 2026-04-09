@@ -866,6 +866,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <?php if (empty($usr['puede_ver_proveedores'] ?? 1)): ?><span class="ubadge ubadge-off">Sin proveedores</span><?php endif; ?>
           <?php if (empty($usr['puede_ver_reportes'] ?? 1)): ?><span class="ubadge ubadge-off">Sin reportes</span><?php endif; ?>
           <?php if (empty($usr['puede_adjuntar'] ?? 1)): ?><span class="ubadge ubadge-off">Sin adjuntar</span><?php endif; ?>
+          <?php if (empty($usr['puede_editar_clientes'] ?? 1)): ?><span class="ubadge ubadge-off">Sin editar clientes</span><?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
@@ -1567,9 +1568,13 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <div><div class="perm-lbl">Reportes</div><div class="perm-sub">Ver reportes financieros y de cotizaciones</div></div>
           <label class="toggle"><input type="checkbox" id="perm_ver_reportes" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
-        <div class="perm-row" style="border-bottom:none">
+        <div class="perm-row">
           <div><div class="perm-lbl">Adjuntar archivos</div><div class="perm-sub">Subir imágenes y documentos a cotizaciones</div></div>
           <label class="toggle"><input type="checkbox" id="perm_adjuntar" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div class="perm-row" style="border-bottom:none">
+          <div><div class="perm-lbl">Editar clientes</div><div class="perm-sub">Modificar datos de clientes existentes</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_editar_clientes" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
       </div>
     </div>
@@ -1975,6 +1980,7 @@ function nuevoUsuario() {
     document.getElementById('perm_ver_proveedores').checked = true;
     document.getElementById('perm_ver_reportes').checked = true;
     document.getElementById('perm_adjuntar').checked = true;
+    document.getElementById('perm_editar_clientes').checked = true;
     openSheet('shUsr');
 }
 function editarUsuario(id, data) {
@@ -2003,6 +2009,7 @@ function editarUsuario(id, data) {
     document.getElementById('perm_ver_proveedores').checked = !!parseInt(data.puede_ver_proveedores ?? 1);
     document.getElementById('perm_ver_reportes').checked = !!parseInt(data.puede_ver_reportes ?? 1);
     document.getElementById('perm_adjuntar').checked = !!parseInt(data.puede_adjuntar ?? 1);
+    document.getElementById('perm_editar_clientes').checked = !!parseInt(data.puede_editar_clientes ?? 1);
     togglePerms(data.rol);
     openSheet('shUsr');
 }
@@ -2037,6 +2044,7 @@ async function guardarUsuario() {
         puede_ver_proveedores:       document.getElementById('perm_ver_proveedores').checked ? 1 : 0,
         puede_ver_reportes:          document.getElementById('perm_ver_reportes').checked ? 1 : 0,
         puede_adjuntar:              document.getElementById('perm_adjuntar').checked ? 1 : 0,
+        puede_editar_clientes:       document.getElementById('perm_editar_clientes').checked ? 1 : 0,
     };
     if (pass) payload.password = pass;
     const url = id ? '/config/usuario/' + id : '/config/usuario';

@@ -21,9 +21,11 @@ $cliente = DB::row(
 );
 if (!$cliente) json_error('Cliente no encontrado', 404);
 
-// Solo el asesor dueño o admin puede editar
-if (!Auth::es_admin() && (int)$cliente['usuario_id'] !== (int)Auth::id()) {
-    if (!Auth::es_admin()) json_error('Sin permiso', 403);
+// Admin siempre puede, asesor necesita permiso o ser el dueño del cliente
+if (!Auth::es_admin()) {
+    if (!Auth::puede('editar_clientes')) {
+        json_error('Sin permiso para editar clientes', 403);
+    }
 }
 
 $body = json_decode(file_get_contents('php://input'), true);
