@@ -420,6 +420,13 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             <?php endif;
         }
         ?>
+        <div id="escudo-radar-banner" style="display:none;background:#eef7f2;border:1.5px solid #b8ddc8;border-radius:10px;padding:12px 16px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:12px">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a5c38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <div style="flex:1;font:500 13px -apple-system,sans-serif;color:#1a1a18">Protege tus metricas del Radar</div>
+                <a href="<?= htmlspecialchars($escudo_url) ?>" target="_blank" style="background:#1a5c38;color:#fff;border-radius:8px;padding:8px 14px;font:700 12px -apple-system,sans-serif;text-decoration:none">Activar</a>
+            </div>
+        </div>
         <?php if (isset($content)) echo $content; ?>
     </main>
 </div>
@@ -534,15 +541,15 @@ if ($vid_cookie !== '' && Auth::id()) {
     }
 }
 ?>
-<div id="escudo-radar-test" style="display:none;padding:12px;text-align:center">
-    <a href="<?= htmlspecialchars($escudo_url) ?>" target="_blank" style="color:#1a5c38;font:600 14px -apple-system,sans-serif">Activar Escudo Radar</a>
-</div>
 <script>
 (function(){
     if(!window.Capacitor||!window.Capacitor.isNativePlatform||!window.Capacitor.isNativePlatform())return;
     if(localStorage.getItem('escudo_radar_active'))return;
-    var el=document.getElementById('escudo-radar-test');
-    if(el)el.style.display='block';
+    var b=document.getElementById('escudo-radar-banner');
+    if(!b)return;
+    b.style.display='block';
+    var a=b.querySelector('a[target]');
+    if(a)a.addEventListener('click',function(){localStorage.setItem('escudo_radar_active','1');});
 })();
 </script>
 
