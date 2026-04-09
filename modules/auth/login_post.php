@@ -129,19 +129,14 @@ if ($visitor_id_post !== '') {
 
     if ($is_native_app) {
         // ── APP CAPACITOR: abrir SFSafariViewController para bridge ──
-        // Sincronizar cz_vid en Safari para que el asesor no contamine el Radar
-        $bridge_main = BASE_URL . '/api/safari-bridge?t=' . $t_encoded;
-        $chain_url = $bridge_main;
-        if ($dominios_custom) {
-            foreach (array_reverse($dominios_custom) as $dc) {
-                $chain_url = 'https://' . $dc['dominio_custom']
-                           . '/api/safari-bridge?t=' . $t_encoded
-                           . '&next=' . urlencode($chain_url);
-            }
-        }
+        // Solo visitar cotiza.cloud (una parada) — cubre todos los subdominios
+        // con cookie .cotiza.cloud. NO hacer redirect chain entre dominios
+        // porque SFSafariViewController lo escala a Safari externo.
+        // Los dominios custom se cubren con IP (Capa 2) del login.
+        $bridge_url = BASE_URL . '/api/safari-bridge?t=' . $t_encoded;
 
         // Mostrar página bridge que abre SFSafariViewController
-        $bridge_url_js = htmlspecialchars($chain_url, ENT_QUOTES);
+        $bridge_url_js = htmlspecialchars($bridge_url, ENT_QUOTES);
         $dash_url_js   = htmlspecialchars($redirect_to, ENT_QUOTES);
         ?>
 <!DOCTYPE html>
@@ -169,18 +164,16 @@ p{font-size:15px;opacity:.9}
     var dashUrl   = '<?= $dash_url_js ?>';
     var Cap = window.Capacitor;
 
-    // @capacitor/browser abre SFSafariViewController (comparte cookies con Safari)
+    // @capacitor/browser abre SFSafariViewController (una sola URL, sin redirects)
     if (Cap && Cap.Plugins && Cap.Plugins.Browser) {
         var Browser = Cap.Plugins.Browser;
-        Browser.open({ url: bridgeUrl, presentationStyle: 'popover' });
+        Browser.open({ url: bridgeUrl });
 
-        // Esperar a que la cadena de redirects complete, luego cerrar y continuar
-        var dominios = <?= count($dominios_custom ?: []) ?>;
-        var waitMs = 3500 + (dominios * 1200); // ~3.5s base + 1.2s por dominio
+        // Esperar a que la cookie se ponga, cerrar y continuar
         setTimeout(function(){
             try { Browser.close(); } catch(e){}
             window.location.href = dashUrl;
-        }, waitMs);
+        }, 2500);
 
         // Si el usuario cierra manualmente, ir al dashboard
         Browser.addListener('browserFinished', function(){
