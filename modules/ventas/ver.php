@@ -821,7 +821,8 @@ function closeRec(){
   <?php if (($empresa['vta_terminos'] ?? '')): ?>
   <hr class="fac-divider">
   <div class="fac-terminos-lbl">Términos y condiciones</div>
-  <div class="fac-terminos"><?= nl2br(e($empresa['vta_terminos'] ?? '')) ?></div>
+<?php $t = $empresa['vta_terminos'] ?? ''; ?>
+  <div class="fac-terminos"><?= nl2br(str_contains($t, '<') ? e_html($t) : e($t)) ?></div>
   <?php endif; ?>
 
   <div class="fac-footer">
