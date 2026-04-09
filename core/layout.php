@@ -534,34 +534,15 @@ if ($vid_cookie !== '' && Auth::id()) {
     }
 }
 ?>
-<div id="escudo-radar-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9998;background:#fff;border-top:2px solid #1a5c38;padding:16px 20px;box-shadow:0 -4px 20px rgba(0,0,0,.1)">
-    <div style="max-width:480px;margin:0 auto;display:flex;align-items:center;gap:14px">
-        <div style="width:44px;height:44px;border-radius:12px;background:#eef7f2;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a5c38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        </div>
-        <div style="flex:1;min-width:0">
-            <div style="font:700 14px -apple-system,system-ui,sans-serif;color:#1a1a18">Escudo Radar</div>
-            <div style="font:400 12px -apple-system,system-ui,sans-serif;color:#6a6a64;margin-top:2px">Activa para que tus visitas a cotizaciones no contaminen las metricas</div>
-        </div>
-        <a id="btn-escudo-radar" href="<?= htmlspecialchars($escudo_url) ?>" target="_blank" style="background:#1a5c38;color:#fff;border:none;border-radius:10px;padding:10px 18px;font:700 13px -apple-system,system-ui,sans-serif;cursor:pointer;white-space:nowrap;text-decoration:none">Activar</a>
-    </div>
+<div id="escudo-radar-test" style="display:none;padding:12px;text-align:center">
+    <a href="<?= htmlspecialchars($escudo_url) ?>" target="_blank" style="color:#1a5c38;font:600 14px -apple-system,sans-serif">Activar Escudo Radar</a>
 </div>
 <script>
 (function(){
-    var Cap = window.Capacitor;
-    if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return;
-    if (localStorage.getItem('escudo_radar_active')) return;
-    var url = <?= json_encode($escudo_url) ?>;
-    if (!url) return;
-    var banner = document.getElementById('escudo-radar-banner');
-    var btn = document.getElementById('btn-escudo-radar');
-    if (!banner || !btn) return;
-    banner.style.display = 'block';
-    btn.addEventListener('click', function(){
-        localStorage.setItem('escudo_radar_active', '1');
-        // No ocultar el banner aquí — al esconderlo se cancela la navegación
-        // El banner desaparece solo al recargar la página (localStorage check)
-    });
+    if(!window.Capacitor||!window.Capacitor.isNativePlatform||!window.Capacitor.isNativePlatform())return;
+    if(localStorage.getItem('escudo_radar_active'))return;
+    var el=document.getElementById('escudo-radar-test');
+    if(el)el.style.display='block';
 })();
 </script>
 
