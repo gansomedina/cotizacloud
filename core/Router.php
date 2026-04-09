@@ -116,10 +116,10 @@ class Router
             : self::load('auth', 'landing')
         );
 
-        // Raíz: dashboard si logueado, login si no
+        // Raíz: dashboard si logueado, landing si no (app Capacitor usa /login directo)
         self::get('/', fn() => Auth::logueado()
             ? redirect('/dashboard')
-            : redirect('/login')
+            : self::load('auth', 'landing')
         );
 
         // ── API endpoints ────────────────────────────────────
