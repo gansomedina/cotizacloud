@@ -10,6 +10,11 @@ defined('COTIZAAPP') or die;
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<script>
+// App Capacitor: redirigir al login sin mostrar landing
+// window.Capacitor se inyecta antes de que cualquier JS corra
+if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()){window.location.replace('/login');}
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cotiza.cloud — ¿Sabes quien va a comprar antes de que te llame?</title>
 <meta name="description" content="Manda cotizaciones y sabe ¿cuales se van a cerrar? El Radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando esta listo para comprar.">
