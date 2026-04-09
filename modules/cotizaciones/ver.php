@@ -218,6 +218,10 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     @media(max-width:820px){
         .dlg-sheet { margin-bottom:64px; }
     }
+    .item-extra-toggle{width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t3);flex-shrink:0;transition:all .12s;padding:0}
+    .item-extra-toggle:hover{border-color:var(--g);color:var(--g);background:var(--g-bg)}
+    .item-card[data-es-extra="1"]{border-left:3px solid var(--amb);background:#fffdf7}
+    .item-card[data-es-extra="1"] .item-extra-toggle{border-color:var(--amb);color:var(--amb);background:#fffbeb}
 
     /* Badge de estado inline */
     .badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:99px; font:600 12px var(--body); }
@@ -785,6 +789,7 @@ function agregarItem(titulo, sku, desc, precio, articulo_id, editable=true, esEx
             </div>
             <div class="item-title-prev">${esc(titulo)||'Sin nombre'}</div>
             <div class="item-amt-prev">${amt}</div>
+            ${editable?`<button class="item-extra-toggle" onclick="toggleExtra(this)" title="${esExtra?'Mover a principal':'Mover a extra'}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg></button>`:''}
             ${editable?`<button class="item-del" onclick="eliminarItem(this)"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>`:''}
         </div>
         <div class="item-body">
@@ -828,6 +833,26 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 function eliminarItem(btn){btn.closest('.item-card').remove();renumerarItems();calcularTotales();}
+
+function toggleExtra(btn){
+    var card=btn.closest('.item-card');
+    var isExtra=parseInt(card.dataset.esExtra)||0;
+    card.dataset.esExtra=isExtra?0:1;
+    // Mover la tarjeta: extras van al final, principales al inicio de extras
+    var list=document.getElementById('items-list');
+    var cards=[...list.querySelectorAll('.item-card')];
+    if(!isExtra){
+        // Era principal → ahora es extra → mover al final
+        list.appendChild(card);
+    } else {
+        // Era extra → ahora es principal → mover antes del primer extra
+        var firstExtra=cards.find(c=>c!==card&&parseInt(c.dataset.esExtra));
+        if(firstExtra)list.insertBefore(card,firstExtra);
+        else list.appendChild(card);
+    }
+    renumerarItems();
+    calcularTotales();
+}
 function moverItem(btn,dir){const card=btn.closest('.item-card');const list=document.getElementById('items-list');const items=[...list.children];const idx=items.indexOf(card);const target=items[idx+dir];if(!target)return;dir===-1?list.insertBefore(card,target):list.insertBefore(target,card);renumerarItems();}
 function renumerarItems(){document.querySelectorAll('#items-list .item-card').forEach((c,i)=>c.querySelector('.item-num').textContent=i+1);}
 function updateItemPreview(input){input.closest('.item-card').querySelector('.item-title-prev').textContent=input.value||'Sin nombre';}

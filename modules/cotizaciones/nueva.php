@@ -201,6 +201,10 @@ $page_title = 'Nueva cotización';
     .item-amt-prev   { font:700 13px var(--num); color:var(--g); flex-shrink:0; }
     .item-del { width:26px; height:26px; border-radius:6px; border:none; background:transparent; display:flex; align-items:center; justify-content:center; color:var(--t3); cursor:pointer; font-size:14px; flex-shrink:0; transition:all .1s; }
     .item-del:hover { background:var(--danger-bg); color:var(--danger); }
+    .item-extra-toggle{width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t3);flex-shrink:0;transition:all .12s;padding:0}
+    .item-extra-toggle:hover{border-color:var(--g);color:var(--g);background:var(--g-bg)}
+    .item-card[data-es-extra="1"]{border-left:3px solid var(--amb);background:#fffdf7}
+    .item-card[data-es-extra="1"] .item-extra-toggle{border-color:var(--amb);color:var(--amb);background:#fffbeb}
     .item-field { padding:10px 13px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:3px; }
     .item-field:last-child { border-bottom:none; }
     .item-field-lbl { font:700 10px var(--body); letter-spacing:.08em; text-transform:uppercase; color:var(--t3); }
@@ -837,6 +841,7 @@ function agregarItem(titulo, sku, desc, precio, articulo_id, esExtra=false) {
             </div>
             <div class="item-title-prev">${esc(titulo) || 'Sin nombre'}</div>
             <div class="item-amt-prev">${amt}</div>
+            <button class="item-extra-toggle" onclick="toggleExtra(this)" title="${esExtra?'Mover a principal':'Mover a extra'}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg></button>
             <button class="item-del" onclick="eliminarItem(this)" title="Eliminar">✕</button>
         </div>
         <div class="item-body">
@@ -883,6 +888,23 @@ function agregarItem(titulo, sku, desc, precio, articulo_id, esExtra=false) {
 
 function eliminarItem(btn) {
     btn.closest('.item-card').remove();
+    renumerarItems();
+    calcularTotales();
+}
+
+function toggleExtra(btn){
+    var card=btn.closest('.item-card');
+    var isExtra=parseInt(card.dataset.esExtra)||0;
+    card.dataset.esExtra=isExtra?0:1;
+    var list=document.getElementById('items-list');
+    var cards=[...list.querySelectorAll('.item-card')];
+    if(!isExtra){
+        list.appendChild(card);
+    } else {
+        var firstExtra=cards.find(c=>c!==card&&parseInt(c.dataset.esExtra));
+        if(firstExtra)list.insertBefore(card,firstExtra);
+        else list.appendChild(card);
+    }
     renumerarItems();
     calcularTotales();
 }
