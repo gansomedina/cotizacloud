@@ -81,11 +81,11 @@ class Router
             self::get('/r/:token', fn($p) => self::load_public('recibo',     $p));
             self::get('/w/:codigo',fn($p) => self::load_public('warranty',   $p));
 
+            self::get('/api/safari-bridge', fn() => self::load_api('safari_bridge'));
             self::post('/api/track',        fn() => self::load_api('track'));
             self::post('/api/quote-action', fn() => self::load_api('quote_action'));
             self::post('/api/push/register',   fn() => self::load_api('push_register'));
             self::post('/api/push/unregister', fn() => self::load_api('push_unregister'));
-            self::get('/api/set-vid',           fn() => self::load_api('set_vid'));
 
             // Backward compat: si alguien accede al subdominio, redirigir al login centralizado
             self::get('/login', fn() => redirect(BASE_URL . '/login'));
@@ -116,17 +116,18 @@ class Router
             : self::load('auth', 'landing')
         );
 
-        // Raíz: dashboard si logueado, login si no
+        // Raíz: dashboard si logueado, landing si no (app Capacitor usa /login directo)
         self::get('/', fn() => Auth::logueado()
             ? redirect('/dashboard')
-            : redirect('/login')
+            : self::load('auth', 'landing')
         );
 
-        // ── Push notifications API ───────────────────────────
-        self::post('/api/push/register',   fn() => self::load_api('push_register'));
-        self::post('/api/push/unregister', fn() => self::load_api('push_unregister'));
-        self::post('/api/radar-feedback',  fn() => self::load_api('radar_feedback'));
-        // sync-vid removido — sync se hace en cadena al login via set-vid
+        // ── API endpoints ────────────────────────────────────
+        self::get('/api/safari-bridge',    fn() => self::load_api('safari_bridge'));
+        self::post('/api/push/register',    fn() => self::load_api('push_register'));
+        self::post('/api/push/unregister',  fn() => self::load_api('push_unregister'));
+        self::post('/api/push/reset-badge', fn() => self::load_api('push_reset_badge'));
+        self::post('/api/radar-feedback',   fn() => self::load_api('radar_feedback'));
 
         // ── Páginas legales (público) ───────────────────────
         self::get('/privacidad', fn() => self::load_public('privacidad'));
