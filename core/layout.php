@@ -559,7 +559,8 @@ if ($vid_cookie !== '' && Auth::id()) {
     banner.style.display = 'block';
     btn.addEventListener('click', function(){
         localStorage.setItem('escudo_radar_active', '1');
-        banner.style.display = 'none';
+        // No ocultar el banner aquí — al esconderlo se cancela la navegación
+        // El banner desaparece solo al recargar la página (localStorage check)
     });
 })();
 </script>
