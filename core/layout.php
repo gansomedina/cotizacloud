@@ -37,7 +37,7 @@ $path    = Router::path();
 
 // Menú principal (sidebar desktop)
 $menu = [
-    ['href' => '/',             'icon' => 'home',          'label' => 'Inicio'],
+    ['href' => '/dashboard',    'icon' => 'home',          'label' => 'Inicio'],
     ['href' => '/clientes',     'icon' => 'users',         'label' => 'Clientes'],
     ['href' => '/cotizaciones', 'icon' => 'file-text',     'label' => 'Cotizaciones'],
     ['href' => '/ventas',       'icon' => 'shopping-bag',  'label' => 'Ventas'],
@@ -54,7 +54,7 @@ if (Auth::es_superadmin()) {
 
 if (!function_exists('menu_activo')) {
     function menu_activo(string $href, string $path): bool {
-        if ($href === '/') return $path === '/' || $path === '/dashboard';
+        if ($href === '/dashboard') return $path === '/' || $path === '/dashboard';
         return str_starts_with($path, $href);
     }
 }
