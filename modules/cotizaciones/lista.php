@@ -441,6 +441,7 @@ foreach ($chips as $k => $lbl):
           <a href="<?= $ed_url ?>" class="exp-btn"><?= ico('edit',12) ?> Editar</a>
           <a href="<?= e($url) ?>" target="_blank" class="exp-btn"><?= ico('link',12) ?> Ver</a>
           <button class="exp-btn" onclick="copyLink('<?= e($url) ?>')"><?= ico('copy',12) ?> Copiar</button>
+          <button class="exp-btn" onclick="clonarCot(<?= (int)$c['id'] ?>)">&#x2398; Clonar</button>
           <?php if ($puedeS): ?>
           <button class="exp-btn <?= $esSusp ? '' : 'exp-btn-danger' ?>" onclick="suspenderCot(<?= (int)$c['id'] ?>,this)">
             <?= $esSusp ? '▶ Reactivar' : '⏸ Suspender' ?>
@@ -496,6 +497,7 @@ foreach ($chips as $k => $lbl):
       <a href="<?= $ed_url ?>" class="act-btn"><?= ico('edit',12) ?> Editar</a>
       <a href="<?= e($url) ?>" target="_blank" class="act-btn"><?= ico('link',12) ?> Ver</a>
       <button class="act-btn" onclick="copyLink('<?= e($url) ?>')"><?= ico('copy',12) ?></button>
+      <button class="act-btn" onclick="clonarCot(<?= (int)$c['id'] ?>)" title="Clonar">&#x2398;</button>
       <?php if ($puedeS): ?>
       <button class="act-btn <?= $esSusp ? '' : 'danger' ?>" onclick="suspenderCot(<?= (int)$c['id'] ?>,this)" title="<?= $esSusp ? 'Reactivar' : 'Suspender' ?>">
         <?= $esSusp ? '▶' : '⏸' ?>
@@ -560,6 +562,23 @@ function copyLink(url) {
   }).catch(() => {
     prompt('Copia este enlace:', url);
   });
+}
+
+async function clonarCot(id) {
+  if (!confirm('¿Clonar esta cotización?')) return;
+  try {
+    const res = await fetch('/cotizaciones/' + id + '/clonar', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF},
+      credentials: 'same-origin'
+    });
+    const data = await res.json();
+    if (data.ok) {
+      window.location.href = '/cotizaciones/' + data.data.id;
+    } else {
+      alert(data.error || 'Error al clonar');
+    }
+  } catch(e) { alert('Error de conexión'); }
 }
 
 async function eliminarCot(id, btn) {
