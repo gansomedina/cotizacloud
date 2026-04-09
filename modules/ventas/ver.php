@@ -360,7 +360,8 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
     .web-only{display:none!important}
     .modal-overlay{display:none!important}
     .print-only{display:block!important}
-    .fac{font-size:10pt;font-family:var(--body)}
+    .fac{font-size:10pt;font-family:var(--body);overflow:visible!important;max-height:none!important}
+    .print-only{overflow:visible!important;max-height:none!important}
     .fac-header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10pt;border-bottom:2pt solid #000;margin-bottom:10pt}
     .fac-emp-name{font:800 17pt var(--body);letter-spacing:-.02em}
     .fac-emp-sub{font:400 9pt var(--body);color:#555;margin-top:2pt;line-height:1.5}
@@ -405,8 +406,8 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
     .fac-pagado-lbl{font:400 8pt var(--body);color:#333}
     .fac-pagado-val{font:400 10pt var(--num)}
     .fac-divider{border:none;border-top:1pt solid #ccc;margin:10pt 0 6pt}
-    .fac-terminos-lbl{font:700 8pt var(--body);letter-spacing:.07em;text-transform:uppercase;color:#555;margin-bottom:3pt;page-break-before:auto}
-    .fac-terminos{font:400 9pt var(--body);color:#444;line-height:1.6;page-break-inside:avoid}
+    .fac-terminos-lbl{font:700 8pt var(--body);letter-spacing:.07em;text-transform:uppercase;color:#555;margin-bottom:3pt}
+    .fac-terminos{font:400 9pt var(--body);color:#444;line-height:1.6}
     .fac-footer{display:flex;justify-content:space-between;margin-top:8pt;padding-top:6pt;border-top:1pt solid #ccc}
     .fac-footer-l,.fac-footer-r{font:400 8.5pt var(--body);color:#444;line-height:1.5}
     .fac-footer-r{text-align:right}
