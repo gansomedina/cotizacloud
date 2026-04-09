@@ -1125,12 +1125,16 @@ function renderLineas(){
   const extras    = lineas.filter(l => l.es_extra);
 
   function renderItem(l, i, esExtra) {
+    const toggleBtn = (ES_ADMIN || PUEDE_EXTRAS)
+      ? `<button onclick="toggleExtraVenta(${i},${esExtra?1:0})" class="line-toggle-btn" title="${esExtra?'Mover a principal':'Mover a extra'}" style="background:none;border:1px solid var(--border);border-radius:5px;width:24px;height:24px;cursor:pointer;color:var(--t3);display:inline-flex;align-items:center;justify-content:center;padding:0;margin-right:4px;font-size:11px">${esExtra?'↑':'↓'}</button>`
+      : '';
     const acciones = esExtra
-      ? (PUEDE_EXTRAS ? `<div class="item-actions"><button onclick="eliminarExtra(${l.id})" class="line-del-btn" title="Eliminar extra">✕</button></div>` : '')
+      ? (PUEDE_EXTRAS ? `<div class="item-actions">${toggleBtn}<button onclick="eliminarExtra(${l.id})" class="line-del-btn" title="Eliminar extra">✕</button></div>` : '')
       : ((ES_ADMIN || PUEDE_ELIM_ITEMS) ? `<div class="item-actions">
+           ${toggleBtn}
            ${ES_ADMIN ? `<button onclick="uiEditarLinea(${i})" class="line-edit-btn" title="Editar">✏️</button>` : ''}
            <button onclick="uiEliminarLinea(${i})" class="line-del-btn" title="Eliminar">🗑</button>
-         </div>` : '');
+         </div>` : (toggleBtn ? `<div class="item-actions">${toggleBtn}</div>` : ''));
     const sku  = l.sku  ? `<div class="item-sku">${escHtml(l.sku)}</div>` : '';
     const desc = l.descripcion ? `<div class="item-desc">${escHtml(l.descripcion).replace(/\n/g,'<br>')}</div>` : '';
     const cant = fmtCant(l.cantidad);
@@ -1208,6 +1212,19 @@ function markDirty(isDirty){
 }
 
 function render(){ renderLineas(); renderTotales(); }
+
+// ── Toggle extra/principal en venta ──
+function toggleExtraVenta(idx, esExtra){
+  lineas[idx].es_extra = esExtra ? 0 : 1;
+  // Reordenar: principales primero, extras al final
+  const regulares = lineas.filter(l => !l.es_extra);
+  const extras = lineas.filter(l => l.es_extra);
+  lineas.length = 0;
+  regulares.forEach(l => lineas.push(l));
+  extras.forEach(l => lineas.push(l));
+  markDirty(true);
+  render();
+}
 
 // ── Acciones sobre líneas (sin guardar aún) ──
 function uiEliminarLinea(idx){
