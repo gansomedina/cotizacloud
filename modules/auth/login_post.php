@@ -127,9 +127,9 @@ if ($visitor_id_post !== '') {
         exit;
     }
 
-    if ($is_native_app) {
+    if ($is_native_app && $dominios_custom) {
         // ── APP CAPACITOR: abrir SFSafariViewController para bridge ──
-        // Cadena: dominios custom → cotiza.cloud → pagina final "✓"
+        // Solo cuando hay dominios custom — sin ellos no hay nada que sincronizar
         $bridge_main = BASE_URL . '/api/safari-bridge?t=' . $t_encoded;
         $chain_url = $bridge_main;
         if ($dominios_custom) {
