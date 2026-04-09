@@ -85,24 +85,12 @@ if ($es_super && $empresa_slug === '_admin') {
     $redirect_to = '/superadmin';
 }
 
-// ── Cross-domain sync: poner cz_vid en dominios custom + Safari ──
-// La app Capacitor envía is_app=1 desde JS (detección confiable)
+// ── Cross-domain sync (solo navegador, no app) ──────────────────
+// Para la app Capacitor, el sync se hace con el Escudo Radar (botón manual en dashboard)
 $is_native_app = !empty($_POST['is_app']);
 
-if ($visitor_id_post !== '') {
-    // Token firmado HMAC para el bridge (válido 5 minutos)
-    $bridge_payload = base64_encode(json_encode([
-        'vid'   => $visitor_id_post,
-        'uid'   => (int)Auth::id(),
-        'eid'   => (int)$emp['id'],
-        'super' => $es_super ? 1 : 0,
-        'exp'   => time() + 300,
-    ]));
-    $bridge_sig   = hash_hmac('sha256', $bridge_payload, APP_SECRET);
-    $bridge_token = $bridge_payload . '.' . $bridge_sig;
-    $t_encoded    = urlencode($bridge_token);
-
-    // Obtener dominios custom
+if ($visitor_id_post !== '' && !$is_native_app) {
+    // Obtener dominios custom para redirect chain
     if ($es_super) {
         $dominios_custom = DB::query(
             "SELECT dominio_custom FROM empresas WHERE dominio_custom IS NOT NULL AND dominio_custom != '' AND activa = 1"
@@ -114,8 +102,20 @@ if ($visitor_id_post !== '') {
         );
     }
 
-    if (!$is_native_app && $dominios_custom) {
-        // ── NAVEGADOR: redirect chain dominio a dominio → dashboard ──
+    if ($dominios_custom) {
+        // Token firmado HMAC para el bridge (válido 5 minutos)
+        $bridge_payload = base64_encode(json_encode([
+            'vid'   => $visitor_id_post,
+            'uid'   => (int)Auth::id(),
+            'eid'   => (int)$emp['id'],
+            'super' => $es_super ? 1 : 0,
+            'exp'   => time() + 300,
+        ]));
+        $bridge_sig   = hash_hmac('sha256', $bridge_payload, APP_SECRET);
+        $bridge_token = $bridge_payload . '.' . $bridge_sig;
+        $t_encoded    = urlencode($bridge_token);
+
+        // Redirect chain: dominio1 → dominio2 → ... → dashboard
         $final_url = BASE_URL . $redirect_to;
         $chain_url = $final_url;
         foreach (array_reverse($dominios_custom) as $dc) {
@@ -125,14 +125,6 @@ if ($visitor_id_post !== '') {
         }
         header('Location: ' . $chain_url, true, 302);
         exit;
-    }
-
-    if ($is_native_app) {
-        // ── APP CAPACITOR: guardar token para disparar bridge desde dashboard ──
-        // No se puede abrir SFSafariViewController desde la página inline del
-        // login POST — Capacitor lo escala a Safari externo. El bridge se
-        // dispara desde el dashboard (página Capacitor normal).
-        $_SESSION['safari_bridge_url'] = BASE_URL . '/api/safari-bridge?t=' . $t_encoded;
     }
 }
 

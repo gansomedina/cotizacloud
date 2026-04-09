@@ -97,14 +97,14 @@ if ($next !== '' && str_starts_with($next, 'https://')) {
     exit;
 }
 
-// ── Página final — el usuario ve esto brevemente ─────────────
+// ── Página final — el usuario ve esto cuando termina la cadena ──
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Listo</title>
+    <title>Escudo Radar</title>
     <style>
         body {
             display: flex; align-items: center; justify-content: center;
@@ -112,22 +112,24 @@ if ($next !== '' && str_starts_with($next, 'https://')) {
             font-family: -apple-system, system-ui, sans-serif;
             background: #f4f4f0; color: #1a1a18;
         }
-        .done { text-align: center; }
-        .check {
-            width: 56px; height: 56px; border-radius: 50%;
+        .done { text-align: center; max-width: 300px; }
+        .shield {
+            width: 64px; height: 64px; border-radius: 50%;
             background: #eef7f2; display: flex;
             align-items: center; justify-content: center;
-            margin: 0 auto 12px;
+            margin: 0 auto 16px;
         }
-        .msg { font-size: 15px; color: #4a4a46; }
+        h2 { font-size: 20px; margin: 0 0 8px; color: #1a5c38; }
+        .msg { font-size: 14px; color: #4a4a46; line-height: 1.5; }
     </style>
 </head>
 <body>
 <div class="done">
-    <div class="check">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1a5c38" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+    <div class="shield">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1a5c38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
     </div>
-    <div class="msg">Sesion sincronizada</div>
+    <h2>Escudo Radar activado</h2>
+    <p class="msg">Tus visitas a cotizaciones ya no contaminaran las metricas. Vuelve a la app.</p>
 </div>
 </body>
 </html>

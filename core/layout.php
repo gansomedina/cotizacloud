@@ -497,25 +497,74 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
 </script>
 
 <?php
-// ── Safari bridge: sincronizar cz_vid en Safari después del login ──
-// Se dispara desde aquí (página Capacitor normal) y no desde el login POST
-// porque SFSafariViewController no funciona desde páginas inline
-if (!empty($_SESSION['safari_bridge_url'])):
-    $bridge_url_safe = htmlspecialchars($_SESSION['safari_bridge_url'], ENT_QUOTES);
-    unset($_SESSION['safari_bridge_url']);
+// ── Escudo Radar: botón para sincronizar cz_vid en Safari (solo app Capacitor) ──
+// Genera token firmado + URL con cadena de dominios custom
+$escudo_url = '';
+$vid_cookie = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
+if ($vid_cookie !== '' && Auth::id()) {
+    $escudo_payload = base64_encode(json_encode([
+        'vid'   => $vid_cookie,
+        'uid'   => (int)Auth::id(),
+        'eid'   => EMPRESA_ID,
+        'super' => Auth::es_superadmin() ? 1 : 0,
+        'exp'   => time() + 86400, // 24 horas
+    ]));
+    $escudo_sig = hash_hmac('sha256', $escudo_payload, APP_SECRET);
+    $escudo_token = $escudo_payload . '.' . $escudo_sig;
+    $t_enc = urlencode($escudo_token);
+
+    // URL final: cotiza.cloud (pone cookie .cotiza.cloud)
+    $escudo_url = BASE_URL . '/api/safari-bridge?t=' . $t_enc;
+
+    // Agregar dominios custom a la cadena
+    if (Auth::es_superadmin()) {
+        $dc_list = DB::query("SELECT dominio_custom FROM empresas WHERE dominio_custom IS NOT NULL AND dominio_custom != '' AND activa = 1");
+    } else {
+        $dc_list = DB::query("SELECT dominio_custom FROM empresas WHERE id = ? AND dominio_custom IS NOT NULL AND dominio_custom != '' AND activa = 1", [EMPRESA_ID]);
+    }
+    if ($dc_list) {
+        $chain = $escudo_url;
+        foreach (array_reverse($dc_list) as $dc) {
+            $chain = 'https://' . $dc['dominio_custom'] . '/api/safari-bridge?t=' . $t_enc . '&next=' . urlencode($chain);
+        }
+        $escudo_url = $chain;
+    }
+}
 ?>
+<div id="escudo-radar-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9998;background:#fff;border-top:2px solid #1a5c38;padding:16px 20px;box-shadow:0 -4px 20px rgba(0,0,0,.1)">
+    <div style="max-width:480px;margin:0 auto;display:flex;align-items:center;gap:14px">
+        <div style="width:44px;height:44px;border-radius:12px;background:#eef7f2;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a5c38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+            <div style="font:700 14px -apple-system,system-ui,sans-serif;color:#1a1a18">Escudo Radar</div>
+            <div style="font:400 12px -apple-system,system-ui,sans-serif;color:#6a6a64;margin-top:2px">Activa para que tus visitas a cotizaciones no contaminen las metricas</div>
+        </div>
+        <button id="btn-escudo-radar" style="background:#1a5c38;color:#fff;border:none;border-radius:10px;padding:10px 18px;font:700 13px -apple-system,system-ui,sans-serif;cursor:pointer;white-space:nowrap">Activar</button>
+    </div>
+</div>
 <script>
 (function(){
     var Cap = window.Capacitor;
     if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return;
-    if (!Cap.Plugins || !Cap.Plugins.Browser) return;
-    var Browser = Cap.Plugins.Browser;
-    Browser.open({ url: '<?= $bridge_url_safe ?>' });
-    setTimeout(function(){ try { Browser.close(); } catch(e){} }, 2500);
-    Browser.addListener('browserFinished', function(){});
+    if (localStorage.getItem('escudo_radar_active')) return;
+    var url = <?= json_encode($escudo_url) ?>;
+    if (!url) return;
+    var banner = document.getElementById('escudo-radar-banner');
+    var btn = document.getElementById('btn-escudo-radar');
+    if (!banner || !btn) return;
+    banner.style.display = 'block';
+    btn.addEventListener('click', function(){
+        if (Cap.Plugins && Cap.Plugins.Browser) {
+            Cap.Plugins.Browser.open({ url: url });
+        } else {
+            window.open(url, '_blank');
+        }
+        localStorage.setItem('escudo_radar_active', '1');
+        banner.style.display = 'none';
+    });
 })();
 </script>
-<?php endif; ?>
 
 </body>
 </html>
