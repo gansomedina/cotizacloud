@@ -124,9 +124,10 @@ class Router
 
         // ── API endpoints ────────────────────────────────────
         self::get('/api/safari-bridge',    fn() => self::load_api('safari_bridge'));
-        self::post('/api/push/register',   fn() => self::load_api('push_register'));
-        self::post('/api/push/unregister', fn() => self::load_api('push_unregister'));
-        self::post('/api/radar-feedback',  fn() => self::load_api('radar_feedback'));
+        self::post('/api/push/register',    fn() => self::load_api('push_register'));
+        self::post('/api/push/unregister',  fn() => self::load_api('push_unregister'));
+        self::post('/api/push/reset-badge', fn() => self::load_api('push_reset_badge'));
+        self::post('/api/radar-feedback',   fn() => self::load_api('radar_feedback'));
 
         // ── Páginas legales (público) ───────────────────────
         self::get('/privacidad', fn() => self::load_public('privacidad'));

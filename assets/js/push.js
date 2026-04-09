@@ -96,6 +96,26 @@
         }
     });
 
+    // ── Limpiar notificaciones y badge al volver a la app ────
+    function clearBadge() {
+        // Limpiar notificaciones del notification center
+        PushNotifications.removeAllDeliveredNotifications().catch(function(){});
+        // Resetear badge count en el servidor
+        fetch('/api/push/reset-badge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin'
+        }).catch(function(){});
+    }
+
+    // Limpiar al cargar la página (app abierta/resumida)
+    clearBadge();
+
+    // Limpiar al volver del background
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) clearBadge();
+    });
+
     // Iniciar
     initPush();
 })();

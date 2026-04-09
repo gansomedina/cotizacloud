@@ -66,9 +66,19 @@ class PushNotification
             $ok = false;
             $error = null;
 
+            // Incrementar badge_count y obtener el nuevo valor
+            DB::execute(
+                "UPDATE dispositivos_push SET badge_count = badge_count + 1 WHERE id = ?",
+                [(int)$disp['id']]
+            );
+            $badge = (int)DB::val(
+                "SELECT badge_count FROM dispositivos_push WHERE id = ?",
+                [(int)$disp['id']]
+            );
+
             try {
                 if ($disp['plataforma'] === 'ios') {
-                    $ok = self::enviar_apns($disp['token'], $titulo, $cuerpo, $datos);
+                    $ok = self::enviar_apns($disp['token'], $titulo, $cuerpo, $datos, $badge);
                 } elseif ($disp['plataforma'] === 'web') {
                     $ok = WebPush::enviar($disp['token'], $titulo, $cuerpo, $datos);
                 }
@@ -110,7 +120,8 @@ class PushNotification
         string $token,
         string $titulo,
         string $cuerpo,
-        array $datos = []
+        array $datos = [],
+        int $badge = 1
     ): bool {
         // Configuración APNs — se lee de constantes o env
         $key_path  = defined('APNS_KEY_PATH')  ? APNS_KEY_PATH  : (getenv('APNS_KEY_PATH')  ?: '');
@@ -139,7 +150,7 @@ class PushNotification
                     'body'  => $cuerpo,
                 ],
                 'sound' => 'default',
-                'badge' => 1,
+                'badge' => $badge,
             ],
         ];
 
@@ -285,9 +296,18 @@ class PushNotification
             $ok = false;
             $error = null;
 
+            DB::execute(
+                "UPDATE dispositivos_push SET badge_count = badge_count + 1 WHERE id = ?",
+                [(int)$disp['id']]
+            );
+            $badge = (int)DB::val(
+                "SELECT badge_count FROM dispositivos_push WHERE id = ?",
+                [(int)$disp['id']]
+            );
+
             try {
                 if ($disp['plataforma'] === 'ios') {
-                    $ok = self::enviar_apns($disp['token'], $titulo, $cuerpo, $datos);
+                    $ok = self::enviar_apns($disp['token'], $titulo, $cuerpo, $datos, $badge);
                 } elseif ($disp['plataforma'] === 'web') {
                     $ok = WebPush::enviar($disp['token'], $titulo, $cuerpo, $datos);
                 }
@@ -318,6 +338,15 @@ class PushNotification
         }
 
         return $enviadas;
+    }
+
+    // ─── Resetear badge de todos los dispositivos del usuario ──
+    public static function reset_badge(int $usuario_id): void
+    {
+        DB::execute(
+            "UPDATE dispositivos_push SET badge_count = 0 WHERE usuario_id = ? AND activo = 1",
+            [$usuario_id]
+        );
     }
 
     private static function es_token_invalido(string $error): bool
