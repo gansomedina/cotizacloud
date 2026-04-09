@@ -405,8 +405,8 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
     .fac-pagado-lbl{font:400 8pt var(--body);color:#333}
     .fac-pagado-val{font:400 10pt var(--num)}
     .fac-divider{border:none;border-top:1pt solid #ccc;margin:10pt 0 6pt}
-    .fac-terminos-lbl{font:700 8pt var(--body);letter-spacing:.07em;text-transform:uppercase;color:#555;margin-bottom:3pt}
-    .fac-terminos{font:400 9pt var(--body);color:#444;line-height:1.6}
+    .fac-terminos-lbl{font:700 8pt var(--body);letter-spacing:.07em;text-transform:uppercase;color:#555;margin-bottom:3pt;page-break-before:auto}
+    .fac-terminos{font:400 9pt var(--body);color:#444;line-height:1.6;page-break-inside:avoid}
     .fac-footer{display:flex;justify-content:space-between;margin-top:8pt;padding-top:6pt;border-top:1pt solid #ccc}
     .fac-footer-l,.fac-footer-r{font:400 8.5pt var(--body);color:#444;line-height:1.5}
     .fac-footer-r{text-align:right}
@@ -821,7 +821,7 @@ function closeRec(){
   <?php if (($empresa['vta_terminos'] ?? '')): ?>
   <hr class="fac-divider">
   <div class="fac-terminos-lbl">Términos y condiciones</div>
-  <div class="fac-terminos"><?= e(mb_substr(strip_tags(($empresa['vta_terminos'] ?? '')),0,400)) ?></div>
+  <div class="fac-terminos"><?= nl2br(e($empresa['vta_terminos'] ?? '')) ?></div>
   <?php endif; ?>
 
   <div class="fac-footer">
