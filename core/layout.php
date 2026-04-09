@@ -419,6 +419,35 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             </div>
             <?php endif;
         }
+        // ── Escudo Radar: generar token para el botón ──
+        $escudo_url = '';
+        $vid_cookie = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
+        if ($vid_cookie !== '' && Auth::id()) {
+            $escudo_payload = base64_encode(json_encode([
+                'vid'   => $vid_cookie,
+                'uid'   => (int)Auth::id(),
+                'eid'   => EMPRESA_ID,
+                'super' => Auth::es_superadmin() ? 1 : 0,
+                'exp'   => time() + 86400,
+            ]));
+            $escudo_sig = hash_hmac('sha256', $escudo_payload, APP_SECRET);
+            $escudo_token = $escudo_payload . '.' . $escudo_sig;
+            $t_enc = urlencode($escudo_token);
+            $escudo_host = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN;
+            $escudo_url = $escudo_host . '/api/safari-bridge?t=' . $t_enc;
+            if (Auth::es_superadmin()) {
+                $dc_list = DB::query("SELECT dominio_custom FROM empresas WHERE dominio_custom IS NOT NULL AND dominio_custom != '' AND activa = 1");
+            } else {
+                $dc_list = DB::query("SELECT dominio_custom FROM empresas WHERE id = ? AND dominio_custom IS NOT NULL AND dominio_custom != '' AND activa = 1", [EMPRESA_ID]);
+            }
+            if ($dc_list) {
+                $chain = $escudo_url;
+                foreach (array_reverse($dc_list) as $dc) {
+                    $chain = 'https://' . $dc['dominio_custom'] . '/api/safari-bridge?t=' . $t_enc . '&next=' . urlencode($chain);
+                }
+                $escudo_url = $chain;
+            }
+        }
         ?>
         <div id="escudo-radar-banner" style="display:none;background:#eef7f2;border:1.5px solid #b8ddc8;border-radius:10px;padding:12px 16px;margin-bottom:16px">
             <div style="display:flex;align-items:center;gap:12px">
@@ -503,44 +532,8 @@ function toggleMoreDrawer(){
 if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'.svg',base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});}
 </script>
 
-<?php
-// ── Escudo Radar: botón para sincronizar cz_vid en Safari (solo app Capacitor) ──
-// Genera token firmado + URL con cadena de dominios custom
-$escudo_url = '';
-$vid_cookie = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
-if ($vid_cookie !== '' && Auth::id()) {
-    $escudo_payload = base64_encode(json_encode([
-        'vid'   => $vid_cookie,
-        'uid'   => (int)Auth::id(),
-        'eid'   => EMPRESA_ID,
-        'super' => Auth::es_superadmin() ? 1 : 0,
-        'exp'   => time() + 86400, // 24 horas
-    ]));
-    $escudo_sig = hash_hmac('sha256', $escudo_payload, APP_SECRET);
-    $escudo_token = $escudo_payload . '.' . $escudo_sig;
-    $t_enc = urlencode($escudo_token);
+<?php // Escudo Radar token se genera arriba, antes del banner ?>
 
-    // URL final: usar subdominio de la empresa (diferente origin que cotiza.cloud)
-    // Capacitor abre links del mismo origin en el WebView, pero links de
-    // otro origin (subdominio) los abre en Safari — igual que "Ver liga"
-    $escudo_host = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN;
-    $escudo_url = $escudo_host . '/api/safari-bridge?t=' . $t_enc;
-
-    // Agregar dominios custom a la cadena
-    if (Auth::es_superadmin()) {
-        $dc_list = DB::query("SELECT dominio_custom FROM empresas WHERE dominio_custom IS NOT NULL AND dominio_custom != '' AND activa = 1");
-    } else {
-        $dc_list = DB::query("SELECT dominio_custom FROM empresas WHERE id = ? AND dominio_custom IS NOT NULL AND dominio_custom != '' AND activa = 1", [EMPRESA_ID]);
-    }
-    if ($dc_list) {
-        $chain = $escudo_url;
-        foreach (array_reverse($dc_list) as $dc) {
-            $chain = 'https://' . $dc['dominio_custom'] . '/api/safari-bridge?t=' . $t_enc . '&next=' . urlencode($chain);
-        }
-        $escudo_url = $chain;
-    }
-}
-?>
 <script>
 (function(){
     if(!window.Capacitor||!window.Capacitor.isNativePlatform||!window.Capacitor.isNativePlatform())return;
