@@ -513,8 +513,11 @@ if ($vid_cookie !== '' && Auth::id()) {
     $escudo_token = $escudo_payload . '.' . $escudo_sig;
     $t_enc = urlencode($escudo_token);
 
-    // URL final: cotiza.cloud (pone cookie .cotiza.cloud)
-    $escudo_url = BASE_URL . '/api/safari-bridge?t=' . $t_enc;
+    // URL final: usar subdominio de la empresa (diferente origin que cotiza.cloud)
+    // Capacitor abre links del mismo origin en el WebView, pero links de
+    // otro origin (subdominio) los abre en Safari — igual que "Ver liga"
+    $escudo_host = 'https://' . EMPRESA_SLUG . '.' . BASE_DOMAIN;
+    $escudo_url = $escudo_host . '/api/safari-bridge?t=' . $t_enc;
 
     // Agregar dominios custom a la cadena
     if (Auth::es_superadmin()) {
