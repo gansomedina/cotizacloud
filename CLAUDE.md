@@ -717,9 +717,40 @@ ALTER TABLE dispositivos_push ADD COLUMN badge_count INT UNSIGNED NOT NULL DEFAU
 | `assets/js/push.js` | clearBadge() on load + visibilitychange + reset-badge API |
 | `capacitor.config.ts` | server.url se mantiene en cotiza.cloud (sin path) |
 
+### Build 3 (v1.1) — Enviado a revisión Apple
+- Subido y enviado a App Review (puede tardar 24-48h)
+- Cambios vs Build 2: AppDelegate badge clearing + webcredentials autofill
+- server.url: `cotiza.cloud` (sin path, igual que Build 2)
+- Escudo Radar oculto para empresa `apple-review`
+
+### Fixes adicionales esta sesión
+1. **Botón Inicio siempre verde** — bottom nav usaba `href="/"` que matcheaba todos los paths, cambiado a `/dashboard`
+2. **Sidebar footer tapado por bottom nav** — agregado padding-bottom 80px
+3. **Cerrar sesión reubicado** — movido al final del menú (después de Ayuda/Super Admin), antes estaba tapado abajo
+4. **Viewport maximum-scale** — agregado para eliminar 300ms tap delay en iOS
+5. **Tap instantáneo bottom nav** — touchend handler para bypass del click delay de iOS en WKWebView
+6. **Escudo Radar oculto para apple-review** — no aparece durante revisión de Apple
+
+### Features nuevos esta sesión
+1. **Mover a extra / Mover a principal** — botón toggle en artículos de cotizaciones (nueva y editar)
+   - Click alterna entre principal y extra
+   - Tarjeta extra se diferencia visualmente (borde ámbar, fondo cálido)
+   - Se reordena automáticamente (extras al final)
+   - Funciona en `modules/cotizaciones/ver.php` y `nueva.php`
+2. **Mover a extra / principal en ventas** — mismo toggle en `modules/ventas/ver.php`
+   - Botón ↓/↑ en cada línea
+   - Marca como dirty → guardar con botón existente
+3. **Clonar cotización** — botón en listado de cotizaciones
+   - `modules/cotizaciones/clonar.php` (nuevo)
+   - Copia artículos, extras, cliente, notas, impuestos
+   - Nuevo folio y slug, estado "enviada" (normal)
+   - Redirige al editor de la cotización clonada
+   - Permiso: admin + usuarios con `crear_cotizaciones`
+
 ### Pendiente
 1. **iCloud Keychain autofill** — esperar 24-48h para que Apple cachee el AASA
-2. **Apple Review Build 3** — enviar a revisión desde App Store Connect
+2. **Apple Review** — esperando respuesta (24-48h)
 3. **Git credentials en Mac** — configurar token GitHub para push
 4. **Probar push notifications** — enviar notificación real para verificar badge increment/clear
-5. **Probar Escudo Radar con OnTime** — verificar que la cadena de dominios custom funcione desde la app
+5. **Probar Escudo Radar con OnTime** — verificar cadena de dominios custom desde la app
+6. **Bottom nav tap delay en iOS** — limitación de WKWebView, se mitigó con touchend handler pero el primer tap a veces falla
