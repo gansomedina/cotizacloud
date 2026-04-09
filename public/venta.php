@@ -756,6 +756,7 @@ function closeRec(){
     document.getElementById('modalOverlay').classList.remove('open');
     document.body.style.overflow = '';
 }
+if(new URLSearchParams(location.search).get('print')==='1'){window.addEventListener('load',function(){setTimeout(function(){window.print()},400)});}
 </script>
 </body>
 </html>

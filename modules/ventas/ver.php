@@ -685,7 +685,7 @@ function closeRec(){
     style="display:none;background:var(--g);color:#fff;border-color:var(--g);font-weight:700">
     <?= ico('check',14,'#fff') ?> Guardar cambios
   </button>
-  <button class="action-btn" onclick="window.print()">🖨️ Imprimir / PDF</button>
+  <a href="<?= e($url_vta) ?>?print=1" target="_blank" class="action-btn">🖨️ Imprimir / PDF</a>
 
   <!-- HISTORIAL DE ACTIVIDAD -->
   <?php if (!empty($venta_log)): ?>
