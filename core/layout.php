@@ -278,9 +278,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             }
             .bn-item{
                 flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-                gap:3px;text-decoration:none;color:var(--t3);font-size:10.5px;font-weight:500;
-                padding:6px 4px;border:none;background:none;cursor:pointer;
+                gap:2px;text-decoration:none;color:var(--t3);font-size:10.5px;font-weight:500;
+                padding:8px 4px;border:none;background:none;cursor:pointer;
                 -webkit-tap-highlight-color:transparent;position:relative;
+                min-height:44px;
             }
             .bn-item svg{width:22px;height:22px;display:block;flex-shrink:0;stroke:currentColor;fill:none}
             .bn-item.active{color:var(--g)}
