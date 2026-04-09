@@ -518,6 +518,23 @@ function toggleMoreDrawer(){
     dr.addEventListener('touchstart',function(e){sy=e.touches[0].clientY},{passive:true});
     dr.addEventListener('touchend',function(e){if(e.changedTouches[0].clientY-sy>55)closeMoreDrawer()},{passive:true});
 })();
+
+// Tap instantáneo en bottom nav — navega en touchend sin esperar click de iOS
+(function(){
+    var items=document.querySelectorAll('#bottom-nav a.bn-item');
+    var sy;
+    items.forEach(function(el){
+        el.addEventListener('touchstart',function(e){sy=e.touches[0].clientY;el.style.opacity='0.6';},{passive:true});
+        el.addEventListener('touchend',function(e){
+            el.style.opacity='';
+            if(Math.abs(e.changedTouches[0].clientY-sy)<10){
+                e.preventDefault();
+                window.location.href=el.getAttribute('href');
+            }
+        });
+        el.addEventListener('touchcancel',function(){el.style.opacity='';},{passive:true});
+    });
+})();
 </script>
 
 <?php if (isset($extra_scripts)) echo $extra_scripts; ?>
