@@ -128,67 +128,11 @@ if ($visitor_id_post !== '') {
     }
 
     if ($is_native_app) {
-        // ── APP CAPACITOR: abrir SFSafariViewController para bridge ──
-        // Solo visitar cotiza.cloud (una parada) — cubre todos los subdominios
-        // con cookie .cotiza.cloud. NO hacer redirect chain entre dominios
-        // porque SFSafariViewController lo escala a Safari externo.
-        // Los dominios custom se cubren con IP (Capa 2) del login.
-        $bridge_url = BASE_URL . '/api/safari-bridge?t=' . $t_encoded;
-
-        // Mostrar página bridge que abre SFSafariViewController
-        $bridge_url_js = htmlspecialchars($bridge_url, ENT_QUOTES);
-        $dash_url_js   = htmlspecialchars($redirect_to, ENT_QUOTES);
-        ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sincronizando...</title>
-<style>
-body{display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:-apple-system,system-ui,sans-serif;background:#1a5c38;color:#fff}
-.msg{text-align:center}
-.spinner{width:32px;height:32px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
-@keyframes spin{to{transform:rotate(360deg)}}
-p{font-size:15px;opacity:.9}
-</style>
-</head>
-<body>
-<div class="msg">
-    <div class="spinner"></div>
-    <p>Configurando sesion...</p>
-</div>
-<script>
-(function(){
-    var bridgeUrl = '<?= $bridge_url_js ?>';
-    var dashUrl   = '<?= $dash_url_js ?>';
-    var Cap = window.Capacitor;
-
-    // @capacitor/browser abre SFSafariViewController (una sola URL, sin redirects)
-    if (Cap && Cap.Plugins && Cap.Plugins.Browser) {
-        var Browser = Cap.Plugins.Browser;
-        Browser.open({ url: bridgeUrl });
-
-        // Esperar a que la cookie se ponga, cerrar y continuar
-        setTimeout(function(){
-            try { Browser.close(); } catch(e){}
-            window.location.href = dashUrl;
-        }, 2500);
-
-        // Si el usuario cierra manualmente, ir al dashboard
-        Browser.addListener('browserFinished', function(){
-            window.location.href = dashUrl;
-        });
-    } else {
-        // Plugin no instalado — ir directo al dashboard
-        window.location.href = dashUrl;
-    }
-})();
-</script>
-</body>
-</html>
-        <?php
-        exit;
+        // ── APP CAPACITOR: guardar token para disparar bridge desde dashboard ──
+        // No se puede abrir SFSafariViewController desde la página inline del
+        // login POST — Capacitor lo escala a Safari externo. El bridge se
+        // dispara desde el dashboard (página Capacitor normal).
+        $_SESSION['safari_bridge_url'] = BASE_URL . '/api/safari-bridge?t=' . $t_encoded;
     }
 }
 

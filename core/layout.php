@@ -496,5 +496,26 @@ function toggleMoreDrawer(){
 if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'.svg',base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});}
 </script>
 
+<?php
+// ── Safari bridge: sincronizar cz_vid en Safari después del login ──
+// Se dispara desde aquí (página Capacitor normal) y no desde el login POST
+// porque SFSafariViewController no funciona desde páginas inline
+if (!empty($_SESSION['safari_bridge_url'])):
+    $bridge_url_safe = htmlspecialchars($_SESSION['safari_bridge_url'], ENT_QUOTES);
+    unset($_SESSION['safari_bridge_url']);
+?>
+<script>
+(function(){
+    var Cap = window.Capacitor;
+    if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return;
+    if (!Cap.Plugins || !Cap.Plugins.Browser) return;
+    var Browser = Cap.Plugins.Browser;
+    Browser.open({ url: '<?= $bridge_url_safe ?>' });
+    setTimeout(function(){ try { Browser.close(); } catch(e){} }, 2500);
+    Browser.addListener('browserFinished', function(){});
+})();
+</script>
+<?php endif; ?>
+
 </body>
 </html>
