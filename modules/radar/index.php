@@ -676,6 +676,7 @@ $comp_visitors = DB::query(
      WHERE c.empresa_id = ?
        AND qs.visitor_id IS NOT NULL AND qs.visitor_id != ''
        AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+       AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
        AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
      GROUP BY qs.visitor_id, qs.ip
      HAVING clientes_distintos > 1
