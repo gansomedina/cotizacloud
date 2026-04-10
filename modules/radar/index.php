@@ -665,8 +665,69 @@ ob_start();
 
 <!-- Alerta Posible Competencia -->
 <?php
-// 1. Encontrar visitor_ids sospechosos
-$comp_visitors = DB::query(
+// ── Helper para renderizar detalle de competencia ──
+function render_comp_detail($rows, $empresa_id) {
+    foreach ($rows as $cv):
+        $vid_filter = isset($cv['visitor_id']) ? "qs.visitor_id = ?" : "1=1";
+        $ip_filter  = "qs.ip = ?";
+        $params_detail = isset($cv['visitor_id'])
+            ? [$cv['visitor_id'], $empresa_id]
+            : [$cv['ip'], $empresa_id];
+        $where_main = isset($cv['visitor_id']) ? "qs.visitor_id" : "qs.ip";
+        // Detalle por cliente
+        $cv_detail = DB::query(
+            "SELECT cl.nombre AS cliente, c.titulo AS cotizacion, MAX(qs.created_at) AS ultima_vista
+             FROM quote_sessions qs
+             JOIN cotizaciones c ON c.id = qs.cotizacion_id
+             LEFT JOIN clientes cl ON cl.id = c.cliente_id
+             WHERE {$where_main} = ? AND c.empresa_id = ?
+               AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+             GROUP BY c.cliente_id, c.id
+             ORDER BY ultima_vista DESC",
+            $params_detail
+        );
+        // Dispositivos
+        $cv_devs = DB::query(
+            "SELECT DISTINCT SUBSTRING(qs.user_agent, 1, 120) AS ua
+             FROM quote_sessions qs
+             JOIN cotizaciones c ON c.id = qs.cotizacion_id
+             WHERE {$where_main} = ? AND c.empresa_id = ?
+               AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+             LIMIT 5",
+            $params_detail
+        );
+        $devices = [];
+        foreach ($cv_devs as $d) {
+            $ua = $d['ua'];
+            if (str_contains($ua, 'iPhone')) $devices[] = 'iPhone';
+            elseif (str_contains($ua, 'Android')) $devices[] = 'Android';
+            elseif (str_contains($ua, 'iPad')) $devices[] = 'iPad';
+            elseif (str_contains($ua, 'Mac')) $devices[] = 'Mac';
+            elseif (str_contains($ua, 'Windows')) $devices[] = 'Windows';
+            else $devices[] = 'Otro';
+        }
+        $devices = array_unique($devices);
+        $lbl = isset($cv['visitor_id']) ? 'ID: '.substr($cv['visitor_id'],0,12).'...' : '';
+    ?>
+    <div style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font:700 13px var(--body);color:#991b1b">
+                IP: <?= e($cv['ip']) ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cots<?= $lbl ? " · <span style='font-weight:400;font-size:11px;opacity:.7'>{$lbl}</span>" : '' ?>
+            </div>
+            <div style="font:500 11px var(--num);color:#7f1d1d"><?= implode(', ', $devices) ?></div>
+        </div>
+        <?php foreach ($cv_detail as $det): ?>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;font:400 12px var(--body);color:#7f1d1d;border-bottom:1px solid rgba(252,165,165,.3)">
+            <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e($det['cotizacion']) ?></span>
+            <span style="font-family:var(--num);flex-shrink:0;margin-left:8px"><?= date('d/m H:i', strtotime($det['ultima_vista'])) ?></span>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endforeach;
+}
+
+// ── 1. Alerta por Usuario (visitor_id) ──
+$comp_by_user = DB::query(
     "SELECT qs.visitor_id, qs.ip,
             COUNT(DISTINCT c.cliente_id) AS clientes_distintos,
             COUNT(DISTINCT qs.cotizacion_id) AS cots_vistas,
@@ -678,66 +739,47 @@ $comp_visitors = DB::query(
        AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
        AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
        AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
-     GROUP BY qs.visitor_id, qs.ip
+     GROUP BY qs.visitor_id
      HAVING clientes_distintos > 1
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
     [$empresa_id, $empresa_id]
 );
-if ($comp_visitors): ?>
+
+// ── 2. Alerta por IP ──
+$comp_by_ip = DB::query(
+    "SELECT qs.ip,
+            COUNT(DISTINCT c.cliente_id) AS clientes_distintos,
+            COUNT(DISTINCT qs.cotizacion_id) AS cots_vistas,
+            COUNT(DISTINCT qs.visitor_id) AS visitors_distintos,
+            MAX(qs.created_at) AS ultima_visita
+     FROM quote_sessions qs
+     JOIN cotizaciones c ON c.id = qs.cotizacion_id
+     WHERE c.empresa_id = ?
+       AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+       AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
+       AND qs.ip NOT IN (SELECT ip FROM radar_ips_internas WHERE empresa_id = ?)
+     GROUP BY qs.ip
+     HAVING clientes_distintos > 1
+     ORDER BY clientes_distintos DESC, ultima_visita DESC
+     LIMIT 10",
+    [$empresa_id, $empresa_id]
+);
+
+if ($comp_by_user || $comp_by_ip): ?>
 <div style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:var(--r);padding:14px 18px;margin-bottom:16px">
-    <div style="font:700 14px var(--body);color:#991b1b;margin-bottom:8px">⚠️ Alerta: Posible Competencia (<?= count($comp_visitors) ?>)</div>
-    <div style="font:400 12px var(--body);color:#7f1d1d;margin-bottom:12px">Visitantes que vieron cotizaciones de distintos clientes en los ultimos 6 meses</div>
-    <?php foreach ($comp_visitors as $cv):
-        // Detalle por cliente
-        $cv_detail = DB::query(
-            "SELECT cl.nombre AS cliente, c.titulo AS cotizacion, MAX(qs.created_at) AS ultima_vista
-             FROM quote_sessions qs
-             JOIN cotizaciones c ON c.id = qs.cotizacion_id
-             LEFT JOIN clientes cl ON cl.id = c.cliente_id
-             WHERE qs.visitor_id = ? AND c.empresa_id = ?
-               AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
-             GROUP BY c.cliente_id, c.id
-             ORDER BY ultima_vista DESC",
-            [$cv['visitor_id'], $empresa_id]
-        );
-        // Dispositivos
-        $cv_devices = DB::query(
-            "SELECT DISTINCT SUBSTRING(qs.user_agent, 1, 120) AS ua
-             FROM quote_sessions qs
-             JOIN cotizaciones c ON c.id = qs.cotizacion_id
-             WHERE qs.visitor_id = ? AND c.empresa_id = ?
-               AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
-             LIMIT 3",
-            [$cv['visitor_id'], $empresa_id]
-        );
-        $devices = [];
-        foreach ($cv_devices as $d) {
-            $ua = $d['ua'];
-            if (str_contains($ua, 'iPhone')) $devices[] = 'iPhone';
-            elseif (str_contains($ua, 'Android')) $devices[] = 'Android';
-            elseif (str_contains($ua, 'iPad')) $devices[] = 'iPad';
-            elseif (str_contains($ua, 'Mac')) $devices[] = 'Mac';
-            elseif (str_contains($ua, 'Windows')) $devices[] = 'Windows';
-            else $devices[] = 'Otro';
-        }
-        $devices = array_unique($devices);
-    ?>
-    <div style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <div style="font:700 13px var(--body);color:#991b1b">
-                IP: <?= e($cv['ip']) ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cotizaciones
-            </div>
-            <div style="font:500 11px var(--num);color:#7f1d1d"><?= implode(', ', $devices) ?></div>
-        </div>
-        <?php foreach ($cv_detail as $det): ?>
-        <div style="display:flex;justify-content:space-between;padding:3px 0;font:400 12px var(--body);color:#7f1d1d;border-bottom:1px solid rgba(252,165,165,.3)">
-            <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e($det['cotizacion']) ?></span>
-            <span style="font-family:var(--num);flex-shrink:0;margin-left:8px"><?= date('d/m H:i', strtotime($det['ultima_vista'])) ?></span>
-        </div>
-        <?php endforeach; ?>
-    </div>
-    <?php endforeach; ?>
+    <div style="font:700 14px var(--body);color:#991b1b;margin-bottom:4px">⚠️ Alerta: Posible Competencia</div>
+    <div style="font:400 12px var(--body);color:#7f1d1d;margin-bottom:12px">Actividad sospechosa en los ultimos 6 meses — visitantes que vieron cotizaciones de distintos clientes</div>
+
+    <?php if ($comp_by_user): ?>
+    <div style="font:700 12px var(--body);color:#991b1b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Por Usuario (<?= count($comp_by_user) ?>)</div>
+    <?php render_comp_detail($comp_by_user, $empresa_id); ?>
+    <?php endif; ?>
+
+    <?php if ($comp_by_ip): ?>
+    <div style="font:700 12px var(--body);color:#991b1b;margin:<?= $comp_by_user ? '10px' : '0' ?> 0 6px;text-transform:uppercase;letter-spacing:.05em">Por IP (<?= count($comp_by_ip) ?>)</div>
+    <?php render_comp_detail($comp_by_ip, $empresa_id); ?>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 
