@@ -682,6 +682,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
          LEFT JOIN clientes cl ON cl.id = c.cliente_id
          WHERE {$where_main} = ? AND c.empresa_id = ?
            AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+           AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
          GROUP BY c.cliente_id
          ORDER BY ultima_vista DESC",
         [$param_val, $empresa_id]
