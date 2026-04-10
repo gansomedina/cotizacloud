@@ -1223,24 +1223,30 @@ usort($sorted, fn($a,$b) => $b['monto'] <=> $a['monto']);
 <?php
 $logins_asesores = DB::query(
     "SELECT u.id, u.nombre, u.email, u.empresa_id, u.activo,
-            (SELECT MAX(us2.created_at) FROM user_sessions us2 WHERE us2.usuario_id = u.id) AS ultimo_login
+            GREATEST(
+                COALESCE(u.ultimo_login, '2000-01-01'),
+                COALESCE((SELECT MAX(us2.created_at) FROM user_sessions us2 WHERE us2.usuario_id = u.id), '2000-01-01'),
+                COALESCE((SELECT MAX(created_at) FROM cotizaciones WHERE usuario_id = u.id OR vendedor_id = u.id), '2000-01-01'),
+                COALESCE((SELECT MAX(created_at) FROM recibos WHERE usuario_id = u.id), '2000-01-01')
+            ) AS ultima_actividad
      FROM usuarios u
      WHERE u.empresa_id IN ({$emp_ids}) AND u.rol = 'asesor'
-     ORDER BY ultimo_login DESC"
+     ORDER BY ultima_actividad DESC"
 );
 ?>
 <div class="sec" style="margin-top:28px">
     <div class="sec-hdr">
-        <div class="sec-title">Último login por asesor</div>
+        <div class="sec-title">Ultima actividad por asesor</div>
         <div class="sec-count"><?= count($logins_asesores) ?> asesores</div>
     </div>
     <div class="tbl-card">
     <table>
-    <thead><tr><th></th><th>Asesor</th><th>Email</th><th>Estado</th><th class="r">Último login</th><th class="r">Hace</th></tr></thead>
+    <thead><tr><th></th><th>Asesor</th><th>Email</th><th>Estado</th><th class="r">Ultima actividad</th><th class="r">Hace</th></tr></thead>
     <tbody>
     <?php foreach ($logins_asesores as $la):
         $ec = $empresas_cfg[(int)$la['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
-        $ultimo = $la['ultimo_login'];
+        $ultimo = $la['ultima_actividad'];
+        if ($ultimo && $ultimo <= '2000-01-02') $ultimo = null;
         if ($ultimo) {
             $diff = (int)((time() - strtotime($ultimo)) / 3600);
             if ($diff < 1) $hace = 'ahora';
