@@ -673,13 +673,16 @@ function render_comp_row($cv, $empresa_id, $tipo) {
     $key = $is_user ? 'u_'.($cv['visitor_id'] ?? '') : 'ip_'.$cv['ip'];
 
     $cv_detail = DB::query(
-        "SELECT cl.nombre AS cliente, c.titulo AS cotizacion, MAX(qs.created_at) AS ultima_vista
+        "SELECT cl.nombre AS cliente,
+                SUBSTRING_INDEX(GROUP_CONCAT(c.titulo ORDER BY qs.created_at DESC SEPARATOR '|||'), '|||', 1) AS cotizacion,
+                MAX(qs.created_at) AS ultima_vista,
+                COUNT(DISTINCT c.id) AS num_cots
          FROM quote_sessions qs
          JOIN cotizaciones c ON c.id = qs.cotizacion_id
          LEFT JOIN clientes cl ON cl.id = c.cliente_id
          WHERE {$where_main} = ? AND c.empresa_id = ?
            AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
-         GROUP BY c.cliente_id, c.id
+         GROUP BY c.cliente_id
          ORDER BY ultima_vista DESC",
         [$param_val, $empresa_id]
     );
@@ -720,7 +723,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
         </div>
         <?php foreach ($cv_detail as $det): ?>
         <div style="display:flex;justify-content:space-between;padding:3px 0;font:400 12px var(--body);color:#7f1d1d;border-bottom:1px solid rgba(252,165,165,.3)">
-            <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e(mb_substr($det['cotizacion'],0,40)) ?></span>
+            <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e(mb_substr($det['cotizacion'],0,40)) ?><?= (int)($det['num_cots'] ?? 1) > 1 ? ' <span style="opacity:.6">(+'.(($det['num_cots'])-1).' cots)</span>' : '' ?></span>
             <span style="font-family:var(--num);flex-shrink:0;margin-left:8px"><?= date('d/m H:i', strtotime($det['ultima_vista'])) ?></span>
         </div>
         <?php endforeach; ?>
