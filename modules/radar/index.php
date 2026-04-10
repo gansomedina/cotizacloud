@@ -663,6 +663,52 @@ ob_start();
   <?php if ($debug_mode): ?><span style="padding:4px 10px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font-weight:700;font-size:11px;color:#92400e">DEBUG ON</span><?php endif; ?>
 </div>
 
+<!-- Alerta Posible Competencia -->
+<?php
+$competencia = DB::query(
+    "SELECT qs.visitor_id, qs.ip,
+            COUNT(DISTINCT c.cliente_id) AS clientes_distintos,
+            COUNT(DISTINCT qs.cotizacion_id) AS cots_vistas,
+            MAX(qs.created_at) AS ultima_visita,
+            GROUP_CONCAT(DISTINCT SUBSTRING(cl.nombre, 1, 30) ORDER BY cl.nombre SEPARATOR ', ') AS clientes
+     FROM quote_sessions qs
+     JOIN cotizaciones c ON c.id = qs.cotizacion_id
+     LEFT JOIN clientes cl ON cl.id = c.cliente_id
+     WHERE c.empresa_id = ?
+       AND qs.visitor_id IS NOT NULL AND qs.visitor_id != ''
+       AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 120 DAY)
+       AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
+     GROUP BY qs.visitor_id, qs.ip
+     HAVING clientes_distintos > 1
+     ORDER BY clientes_distintos DESC, ultima_visita DESC
+     LIMIT 10",
+    [$empresa_id, $empresa_id]
+);
+if ($competencia): ?>
+<div style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:var(--r);padding:14px 18px;margin-bottom:16px">
+    <div style="font:700 14px var(--body);color:#991b1b;margin-bottom:8px">⚠️ Alerta: Posible Competencia (<?= count($competencia) ?>)</div>
+    <div style="font:400 12px var(--body);color:#7f1d1d;margin-bottom:10px">Visitantes que vieron cotizaciones de distintos clientes en los ultimos 120 dias</div>
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+        <thead><tr style="border-bottom:1px solid #fca5a5;color:#991b1b;font-weight:700;text-align:left">
+            <th style="padding:4px 8px">IP</th>
+            <th style="padding:4px 8px">Clientes vistos</th>
+            <th style="padding:4px 8px">Cotizaciones</th>
+            <th style="padding:4px 8px">Ultima visita</th>
+        </tr></thead>
+        <tbody>
+        <?php foreach ($competencia as $comp): ?>
+        <tr style="border-bottom:1px solid #fee2e2">
+            <td style="padding:6px 8px;font-family:var(--num);color:#7f1d1d"><?= e($comp['ip']) ?></td>
+            <td style="padding:6px 8px;color:#991b1b"><b><?= (int)$comp['clientes_distintos'] ?></b> — <?= e($comp['clientes']) ?></td>
+            <td style="padding:6px 8px;text-align:center"><?= (int)$comp['cots_vistas'] ?></td>
+            <td style="padding:6px 8px;font-family:var(--num);color:#7f1d1d"><?= date('d/m H:i', strtotime($comp['ultima_visita'])) ?></td>
+        </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
+
 <!-- Stats -->
 <div class="rdr-stats">
   <div class="card" style="padding:12px 16px">
