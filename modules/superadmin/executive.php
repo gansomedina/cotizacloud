@@ -1320,6 +1320,85 @@ $fugas = DB::query(
     <?php endif; ?>
 </div>
 
+<!-- Alerta Competencia por empresa -->
+<?php
+$comp_por_empresa = [];
+foreach ($empresas_cfg as $eid => $ecfg) {
+    $comp_cnt = (int)DB::val(
+        "SELECT COUNT(DISTINCT qs.visitor_id)
+         FROM quote_sessions qs
+         JOIN cotizaciones c ON c.id = qs.cotizacion_id
+         WHERE c.empresa_id = ?
+           AND qs.visitor_id IS NOT NULL AND qs.visitor_id != ''
+           AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+           AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
+           AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
+         GROUP BY qs.visitor_id
+         HAVING COUNT(DISTINCT c.cliente_id) > 1",
+        [$eid, $eid]
+    ) ? DB::val(
+        "SELECT COUNT(*) FROM (
+            SELECT qs.visitor_id
+            FROM quote_sessions qs
+            JOIN cotizaciones c ON c.id = qs.cotizacion_id
+            WHERE c.empresa_id = ?
+              AND qs.visitor_id IS NOT NULL AND qs.visitor_id != ''
+              AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+              AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
+              AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
+            GROUP BY qs.visitor_id
+            HAVING COUNT(DISTINCT c.cliente_id) > 1
+        ) sub",
+        [$eid, $eid]
+    ) : 0;
+    $comp_ip_cnt = (int)(DB::val(
+        "SELECT COUNT(*) FROM (
+            SELECT qs.ip
+            FROM quote_sessions qs
+            JOIN cotizaciones c ON c.id = qs.cotizacion_id
+            WHERE c.empresa_id = ?
+              AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+              AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
+              AND qs.ip NOT IN (SELECT ip FROM radar_ips_internas WHERE empresa_id = ?)
+            GROUP BY qs.ip
+            HAVING COUNT(DISTINCT c.cliente_id) > 1
+        ) sub",
+        [$eid, $eid]
+    ) ?: 0);
+    if ($comp_cnt || $comp_ip_cnt) {
+        $comp_por_empresa[$eid] = ['user' => (int)$comp_cnt, 'ip' => (int)$comp_ip_cnt];
+    }
+}
+?>
+<div class="sec" style="margin-top:28px">
+    <div class="sec-hdr">
+        <div class="sec-title">⚠️ Posible Competencia <?= $comp_por_empresa ? '<span style="color:var(--r)">' . count($comp_por_empresa) . ' empresas</span>' : '<span style="color:var(--g)">✓ Sin alertas</span>' ?></div>
+        <div class="sec-count">últimos 6 meses</div>
+    </div>
+    <?php if ($comp_por_empresa): ?>
+    <div class="tbl-card">
+    <table>
+    <thead><tr><th></th><th>Empresa</th><th class="r">Por Usuario</th><th class="r">Por IP</th><th class="r">Total</th></tr></thead>
+    <tbody>
+    <?php foreach ($comp_por_empresa as $eid => $cc):
+        $ec = $empresas_cfg[$eid];
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td><?= e($ec['nombre']) ?></td>
+        <td class="r"><?= $cc['user'] ?: '—' ?></td>
+        <td class="r"><?= $cc['ip'] ?: '—' ?></td>
+        <td class="r" style="font-weight:700;color:var(--r)"><?= $cc['user'] + $cc['ip'] ?></td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    <?php else: ?>
+    <div class="tbl-card" style="padding:24px;text-align:center;color:var(--g);font:600 14px 'Inter',sans-serif">✓ Sin actividad sospechosa en los últimos 6 meses</div>
+    <?php endif; ?>
+</div>
+
 </div><!-- /wrap -->
 
 <script>
