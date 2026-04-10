@@ -87,13 +87,28 @@ $raw = DB::query(
     [$empresa_id]
 );
 
-// Cargar feedbacks del usuario actual
+// Cargar feedbacks — superadmin ve todos los de la empresa, asesor solo los suyos
 $feedback_map = [];
-$fb_rows = DB::query(
-    "SELECT cotizacion_id, tipo FROM radar_feedback WHERE usuario_id=? AND empresa_id=?",
-    [Auth::id(), $empresa_id]
-);
-foreach ($fb_rows as $fb) $feedback_map[(int)$fb['cotizacion_id']] = $fb['tipo'];
+if (Auth::es_superadmin()) {
+    $fb_rows = DB::query(
+        "SELECT rf.cotizacion_id, rf.tipo, u.nombre AS asesor_nombre
+         FROM radar_feedback rf
+         LEFT JOIN usuarios u ON u.id = rf.usuario_id
+         WHERE rf.empresa_id=?",
+        [$empresa_id]
+    );
+} else {
+    $fb_rows = DB::query(
+        "SELECT cotizacion_id, tipo, NULL AS asesor_nombre FROM radar_feedback WHERE usuario_id=? AND empresa_id=?",
+        [Auth::id(), $empresa_id]
+    );
+}
+foreach ($fb_rows as $fb) {
+    $feedback_map[(int)$fb['cotizacion_id']] = [
+        'tipo' => $fb['tipo'],
+        'asesor' => $fb['asesor_nombre'] ?? null,
+    ];
+}
 $GLOBALS['feedback_map'] = $feedback_map;
 $GLOBALS['fb_shown'] = []; // track qué cotizaciones ya mostraron botones
 
@@ -313,16 +328,25 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         // Botones de feedback al lado del título
         $r_bucket_fb = $r['bucket'] ?? '';
         $r_vendedor_fb = (int)($r['vendedor_id'] ?? 0);
-        $r_fb_val = ($GLOBALS['feedback_map'] ?? [])[(int)$r['id']] ?? null;
+        $r_fb_data = ($GLOBALS['feedback_map'] ?? [])[(int)$r['id']] ?? null;
+        $r_fb_tipo = $r_fb_data['tipo'] ?? null;
+        $r_fb_asesor = $r_fb_data['asesor'] ?? null;
         $hot_bkts_fb = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta'];
         $show_fb_td = in_array($r_bucket_fb, $hot_bkts_fb) && ($r_vendedor_fb === Auth::id() || Auth::es_admin());
         $fb_html = '';
         $cot_id_fb = (int)$r['id'];
         $already_shown = isset($GLOBALS['fb_shown'][$cot_id_fb]);
+        // Mostrar badge de señalado para superadmin (aunque no tenga botones)
+        if ($r_fb_tipo && Auth::es_superadmin() && !$show_fb_td && !$already_shown) {
+            $GLOBALS['fb_shown'][$cot_id_fb] = true;
+            $fb_lbl = $r_fb_tipo === 'con_interes' ? '👍' : '👎';
+            $fb_who = $r_fb_asesor ? ' '.htmlspecialchars($r_fb_asesor) : '';
+            $fb_html = "<span class='fb-badge' title='Señalado por{$fb_who}' style='font-size:12px;opacity:.7'>{$fb_lbl}</span>";
+        }
         if ($show_fb_td && !$already_shown) {
             $GLOBALS['fb_shown'][$cot_id_fb] = true;
-            $cls_ci = $r_fb_val === 'con_interes' ? 'fb-active fb-pos' : '';
-            $cls_si = $r_fb_val === 'sin_interes' ? 'fb-active fb-neg' : '';
+            $cls_ci = $r_fb_tipo === 'con_interes' ? 'fb-active fb-pos' : '';
+            $cls_si = $r_fb_tipo === 'sin_interes' ? 'fb-active fb-neg' : '';
             $fb_html = "<div class='fb-btns' style='flex-shrink:0'>"
                 . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'con_interes',this)\" title='Con interés'>👍</button>"
                 . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_interes',this)\" title='Sin interés'>👎</button>"
