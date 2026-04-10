@@ -665,18 +665,17 @@ ob_start();
 
 <!-- Alerta Posible Competencia -->
 <?php
-$competencia = DB::query(
+// 1. Encontrar visitor_ids sospechosos
+$comp_visitors = DB::query(
     "SELECT qs.visitor_id, qs.ip,
             COUNT(DISTINCT c.cliente_id) AS clientes_distintos,
             COUNT(DISTINCT qs.cotizacion_id) AS cots_vistas,
-            MAX(qs.created_at) AS ultima_visita,
-            GROUP_CONCAT(DISTINCT SUBSTRING(cl.nombre, 1, 30) ORDER BY cl.nombre SEPARATOR ', ') AS clientes
+            MAX(qs.created_at) AS ultima_visita
      FROM quote_sessions qs
      JOIN cotizaciones c ON c.id = qs.cotizacion_id
-     LEFT JOIN clientes cl ON cl.id = c.cliente_id
      WHERE c.empresa_id = ?
        AND qs.visitor_id IS NOT NULL AND qs.visitor_id != ''
-       AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 120 DAY)
+       AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
        AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
      GROUP BY qs.visitor_id, qs.ip
      HAVING clientes_distintos > 1
@@ -684,28 +683,60 @@ $competencia = DB::query(
      LIMIT 10",
     [$empresa_id, $empresa_id]
 );
-if ($competencia): ?>
+if ($comp_visitors): ?>
 <div style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:var(--r);padding:14px 18px;margin-bottom:16px">
-    <div style="font:700 14px var(--body);color:#991b1b;margin-bottom:8px">⚠️ Alerta: Posible Competencia (<?= count($competencia) ?>)</div>
-    <div style="font:400 12px var(--body);color:#7f1d1d;margin-bottom:10px">Visitantes que vieron cotizaciones de distintos clientes en los ultimos 120 dias</div>
-    <table style="width:100%;font-size:12px;border-collapse:collapse">
-        <thead><tr style="border-bottom:1px solid #fca5a5;color:#991b1b;font-weight:700;text-align:left">
-            <th style="padding:4px 8px">IP</th>
-            <th style="padding:4px 8px">Clientes vistos</th>
-            <th style="padding:4px 8px">Cotizaciones</th>
-            <th style="padding:4px 8px">Ultima visita</th>
-        </tr></thead>
-        <tbody>
-        <?php foreach ($competencia as $comp): ?>
-        <tr style="border-bottom:1px solid #fee2e2">
-            <td style="padding:6px 8px;font-family:var(--num);color:#7f1d1d"><?= e($comp['ip']) ?></td>
-            <td style="padding:6px 8px;color:#991b1b"><b><?= (int)$comp['clientes_distintos'] ?></b> — <?= e($comp['clientes']) ?></td>
-            <td style="padding:6px 8px;text-align:center"><?= (int)$comp['cots_vistas'] ?></td>
-            <td style="padding:6px 8px;font-family:var(--num);color:#7f1d1d"><?= date('d/m H:i', strtotime($comp['ultima_visita'])) ?></td>
-        </tr>
+    <div style="font:700 14px var(--body);color:#991b1b;margin-bottom:8px">⚠️ Alerta: Posible Competencia (<?= count($comp_visitors) ?>)</div>
+    <div style="font:400 12px var(--body);color:#7f1d1d;margin-bottom:12px">Visitantes que vieron cotizaciones de distintos clientes en los ultimos 6 meses</div>
+    <?php foreach ($comp_visitors as $cv):
+        // Detalle por cliente
+        $cv_detail = DB::query(
+            "SELECT cl.nombre AS cliente, c.titulo AS cotizacion, MAX(qs.created_at) AS ultima_vista
+             FROM quote_sessions qs
+             JOIN cotizaciones c ON c.id = qs.cotizacion_id
+             LEFT JOIN clientes cl ON cl.id = c.cliente_id
+             WHERE qs.visitor_id = ? AND c.empresa_id = ?
+               AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+             GROUP BY c.cliente_id, c.id
+             ORDER BY ultima_vista DESC",
+            [$cv['visitor_id'], $empresa_id]
+        );
+        // Dispositivos
+        $cv_devices = DB::query(
+            "SELECT DISTINCT SUBSTRING(qs.user_agent, 1, 120) AS ua
+             FROM quote_sessions qs
+             JOIN cotizaciones c ON c.id = qs.cotizacion_id
+             WHERE qs.visitor_id = ? AND c.empresa_id = ?
+               AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+             LIMIT 3",
+            [$cv['visitor_id'], $empresa_id]
+        );
+        $devices = [];
+        foreach ($cv_devices as $d) {
+            $ua = $d['ua'];
+            if (str_contains($ua, 'iPhone')) $devices[] = 'iPhone';
+            elseif (str_contains($ua, 'Android')) $devices[] = 'Android';
+            elseif (str_contains($ua, 'iPad')) $devices[] = 'iPad';
+            elseif (str_contains($ua, 'Mac')) $devices[] = 'Mac';
+            elseif (str_contains($ua, 'Windows')) $devices[] = 'Windows';
+            else $devices[] = 'Otro';
+        }
+        $devices = array_unique($devices);
+    ?>
+    <div style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font:700 13px var(--body);color:#991b1b">
+                IP: <?= e($cv['ip']) ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cotizaciones
+            </div>
+            <div style="font:500 11px var(--num);color:#7f1d1d"><?= implode(', ', $devices) ?></div>
+        </div>
+        <?php foreach ($cv_detail as $det): ?>
+        <div style="display:flex;justify-content:space-between;padding:3px 0;font:400 12px var(--body);color:#7f1d1d;border-bottom:1px solid rgba(252,165,165,.3)">
+            <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e($det['cotizacion']) ?></span>
+            <span style="font-family:var(--num);flex-shrink:0;margin-left:8px"><?= date('d/m H:i', strtotime($det['ultima_vista'])) ?></span>
+        </div>
         <?php endforeach; ?>
-        </tbody>
-    </table>
+    </div>
+    <?php endforeach; ?>
 </div>
 <?php endif; ?>
 
