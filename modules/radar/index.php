@@ -666,64 +666,66 @@ ob_start();
 <!-- Alerta Posible Competencia -->
 <?php
 // ── Helper para renderizar detalle de competencia ──
-function render_comp_detail($rows, $empresa_id) {
-    foreach ($rows as $cv):
-        $vid_filter = isset($cv['visitor_id']) ? "qs.visitor_id = ?" : "1=1";
-        $ip_filter  = "qs.ip = ?";
-        $params_detail = isset($cv['visitor_id'])
-            ? [$cv['visitor_id'], $empresa_id]
-            : [$cv['ip'], $empresa_id];
-        $where_main = isset($cv['visitor_id']) ? "qs.visitor_id" : "qs.ip";
-        // Detalle por cliente
-        $cv_detail = DB::query(
-            "SELECT cl.nombre AS cliente, c.titulo AS cotizacion, MAX(qs.created_at) AS ultima_vista
-             FROM quote_sessions qs
-             JOIN cotizaciones c ON c.id = qs.cotizacion_id
-             LEFT JOIN clientes cl ON cl.id = c.cliente_id
-             WHERE {$where_main} = ? AND c.empresa_id = ?
-               AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
-             GROUP BY c.cliente_id, c.id
-             ORDER BY ultima_vista DESC",
-            $params_detail
-        );
-        // Dispositivos
-        $cv_devs = DB::query(
-            "SELECT DISTINCT SUBSTRING(qs.user_agent, 1, 120) AS ua
-             FROM quote_sessions qs
-             JOIN cotizaciones c ON c.id = qs.cotizacion_id
-             WHERE {$where_main} = ? AND c.empresa_id = ?
-               AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
-             LIMIT 5",
-            $params_detail
-        );
-        $devices = [];
-        foreach ($cv_devs as $d) {
-            $ua = $d['ua'];
-            if (str_contains($ua, 'iPhone')) $devices[] = 'iPhone';
-            elseif (str_contains($ua, 'Android')) $devices[] = 'Android';
-            elseif (str_contains($ua, 'iPad')) $devices[] = 'iPad';
-            elseif (str_contains($ua, 'Mac')) $devices[] = 'Mac';
-            elseif (str_contains($ua, 'Windows')) $devices[] = 'Windows';
-            else $devices[] = 'Otro';
-        }
-        $devices = array_unique($devices);
-        $lbl = isset($cv['visitor_id']) ? 'ID: '.substr($cv['visitor_id'],0,12).'...' : '';
+function render_comp_row($cv, $empresa_id, $tipo) {
+    $is_user = $tipo === 'user';
+    $where_main = $is_user ? "qs.visitor_id" : "qs.ip";
+    $param_val = $is_user ? $cv['visitor_id'] : $cv['ip'];
+    $key = $is_user ? 'u_'.($cv['visitor_id'] ?? '') : 'ip_'.$cv['ip'];
+
+    $cv_detail = DB::query(
+        "SELECT cl.nombre AS cliente, c.titulo AS cotizacion, MAX(qs.created_at) AS ultima_vista
+         FROM quote_sessions qs
+         JOIN cotizaciones c ON c.id = qs.cotizacion_id
+         LEFT JOIN clientes cl ON cl.id = c.cliente_id
+         WHERE {$where_main} = ? AND c.empresa_id = ?
+           AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+         GROUP BY c.cliente_id, c.id
+         ORDER BY ultima_vista DESC",
+        [$param_val, $empresa_id]
+    );
+    $cv_devs = DB::query(
+        "SELECT DISTINCT SUBSTRING(qs.user_agent, 1, 120) AS ua
+         FROM quote_sessions qs
+         JOIN cotizaciones c ON c.id = qs.cotizacion_id
+         WHERE {$where_main} = ? AND c.empresa_id = ?
+           AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+         LIMIT 5",
+        [$param_val, $empresa_id]
+    );
+    $devices = [];
+    foreach ($cv_devs as $d) {
+        $ua = $d['ua'];
+        if (str_contains($ua, 'iPhone')) $devices[] = 'iPhone';
+        elseif (str_contains($ua, 'Android')) $devices[] = 'Android';
+        elseif (str_contains($ua, 'iPad')) $devices[] = 'iPad';
+        elseif (str_contains($ua, 'Mac')) $devices[] = 'Mac';
+        elseif (str_contains($ua, 'Windows')) $devices[] = 'Windows';
+        else $devices[] = 'Otro';
+    }
+    $devices = array_unique($devices);
+    $dev_str = implode(', ', $devices);
+    $visitors_lbl = isset($cv['visitors_distintos']) && $cv['visitors_distintos'] > 1
+        ? ' · '.(int)$cv['visitors_distintos'].' dispositivos' : '';
+    $safe_key = htmlspecialchars($key, ENT_QUOTES);
     ?>
-    <div style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <div style="font:700 13px var(--body);color:#991b1b">
-                IP: <?= e($cv['ip']) ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cots<?= $lbl ? " · <span style='font-weight:400;font-size:11px;opacity:.7'>{$lbl}</span>" : '' ?>
+    <div class="comp-row" data-comp-key="<?= $safe_key ?>" style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font:700 12px var(--body);color:#991b1b">
+                <?= e($cv['ip']) ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cots<?= $visitors_lbl ?>
             </div>
-            <div style="font:500 11px var(--num);color:#7f1d1d"><?= implode(', ', $devices) ?></div>
+            <div style="display:flex;align-items:center;gap:8px">
+                <span style="font:500 11px var(--num);color:#7f1d1d"><?= $dev_str ?></span>
+                <button onclick="descartarComp('<?= $safe_key ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Descartar esta alerta">✕</button>
+            </div>
         </div>
         <?php foreach ($cv_detail as $det): ?>
         <div style="display:flex;justify-content:space-between;padding:3px 0;font:400 12px var(--body);color:#7f1d1d;border-bottom:1px solid rgba(252,165,165,.3)">
-            <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e($det['cotizacion']) ?></span>
+            <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e(mb_substr($det['cotizacion'],0,40)) ?></span>
             <span style="font-family:var(--num);flex-shrink:0;margin-left:8px"><?= date('d/m H:i', strtotime($det['ultima_vista'])) ?></span>
         </div>
         <?php endforeach; ?>
     </div>
-    <?php endforeach;
+    <?php
 }
 
 // ── 1. Alerta por Usuario (visitor_id) ──
@@ -766,21 +768,51 @@ $comp_by_ip = DB::query(
     [$empresa_id, $empresa_id]
 );
 
-if ($comp_by_user || $comp_by_ip): ?>
-<div style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:var(--r);padding:14px 18px;margin-bottom:16px">
-    <div style="font:700 14px var(--body);color:#991b1b;margin-bottom:4px">⚠️ Alerta: Posible Competencia</div>
-    <div style="font:400 12px var(--body);color:#7f1d1d;margin-bottom:12px">Actividad sospechosa en los ultimos 6 meses — visitantes que vieron cotizaciones de distintos clientes</div>
+$total_comp = count($comp_by_user ?: []) + count($comp_by_ip ?: []);
+if ($total_comp): ?>
+<div id="comp-alert" style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:var(--r);padding:14px 18px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById('comp-body').style.display=document.getElementById('comp-body').style.display==='none'?'block':'none'">
+        <div style="font:700 14px var(--body);color:#991b1b">⚠️ Posible Competencia (<?= $total_comp ?>)</div>
+        <span style="font:400 12px var(--body);color:#991b1b">▼ ver detalle</span>
+    </div>
+    <div id="comp-body" style="display:none;margin-top:10px">
 
     <?php if ($comp_by_user): ?>
-    <div style="font:700 12px var(--body);color:#991b1b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Por Usuario (<?= count($comp_by_user) ?>)</div>
-    <?php render_comp_detail($comp_by_user, $empresa_id); ?>
+    <div style="font:700 11px var(--body);color:#991b1b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
+        🔍 Mismo navegador vio multiples clientes (<?= count($comp_by_user) ?>)
+    </div>
+    <?php foreach ($comp_by_user as $cv) render_comp_row($cv, $empresa_id, 'user'); ?>
     <?php endif; ?>
 
     <?php if ($comp_by_ip): ?>
-    <div style="font:700 12px var(--body);color:#991b1b;margin:<?= $comp_by_user ? '10px' : '0' ?> 0 6px;text-transform:uppercase;letter-spacing:.05em">Por IP (<?= count($comp_by_ip) ?>)</div>
-    <?php render_comp_detail($comp_by_ip, $empresa_id); ?>
+    <div style="font:700 11px var(--body);color:#991b1b;margin:<?= $comp_by_user ? '12px' : '0' ?> 0 6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
+        🌐 Misma red vio multiples clientes (<?= count($comp_by_ip) ?>)
+    </div>
+    <?php foreach ($comp_by_ip as $cv) render_comp_row($cv, $empresa_id, 'ip'); ?>
     <?php endif; ?>
+
+    </div>
 </div>
+<script>
+function descartarComp(key, btn) {
+    if (!confirm('¿Descartar esta alerta? No aparecera de nuevo.')) return;
+    var dismissed = JSON.parse(localStorage.getItem('comp_dismissed_<?= $empresa_id ?>') || '[]');
+    dismissed.push(key);
+    localStorage.setItem('comp_dismissed_<?= $empresa_id ?>', JSON.stringify(dismissed));
+    btn.closest('.comp-row').style.display = 'none';
+}
+// Ocultar descartadas
+(function(){
+    var dismissed = JSON.parse(localStorage.getItem('comp_dismissed_<?= $empresa_id ?>') || '[]');
+    if (!dismissed.length) return;
+    document.querySelectorAll('.comp-row').forEach(function(el){
+        if (dismissed.indexOf(el.dataset.compKey) !== -1) el.style.display = 'none';
+    });
+    // Si todas fueron descartadas, ocultar el bloque
+    var visible = document.querySelectorAll('.comp-row:not([style*="display: none"])');
+    if (!visible.length) document.getElementById('comp-alert').style.display = 'none';
+})();
+</script>
 <?php endif; ?>
 
 <!-- Stats -->
