@@ -338,16 +338,17 @@ class ActividadScore
                 $is_up   = ($temp_order[$temp_new] ?? 0) > ($temp_order[$temp_ant] ?? 0);
                 $is_down = ($temp_order[$temp_new] ?? 0) < ($temp_order[$temp_ant] ?? 0);
 
-                // Para Engagement (todas las transiciones)
+                // Excluir aceptadas — perder bucket al cerrar venta no es negativo
+                $es_aceptada = in_array($t['estado'], ['aceptada', 'convertida', 'aceptada_cliente']);
+                if ($es_aceptada) continue;
+
+                // Para Engagement (transiciones sin aceptadas)
                 if ($is_up) $transiciones_up++;
                 elseif ($is_down) $transiciones_down++;
 
-                // Para Radar Health (excluir aceptadas — perder bucket al aceptar no es negativo)
-                $es_aceptada = in_array($t['estado'], ['aceptada', 'convertida', 'aceptada_cliente']);
-                if (!$es_aceptada) {
-                    if ($is_up) $health_up++;
-                    elseif ($is_down) $health_down++;
-                }
+                // Para Radar Health (misma exclusión)
+                if ($is_up) $health_up++;
+                elseif ($is_down) $health_down++;
             }
         } catch (\Throwable $e) { /* tabla aún no migrada */ }
 
