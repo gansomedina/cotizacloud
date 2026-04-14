@@ -206,9 +206,10 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     .dlg-sheet {
         border:none; padding:0; margin:auto auto 0;
         background:var(--white); border-radius:20px 20px 0 0;
-        max-height:90vh; width:100%; max-width:720px;
+        max-height:80vh; width:100%; max-width:720px;
         box-shadow:0 -8px 32px rgba(0,0,0,.15);
         animation:dlgUp .25s ease-out;
+        padding-bottom:calc(70px + env(safe-area-inset-bottom,0px));
     }
     .dlg-sheet[open] {
         display:flex; flex-direction:column;

@@ -295,7 +295,7 @@ $page_title = 'Nueva cotización';
     /* SHEETS */
     .sh-overlay  { position:fixed; top:0; left:0; right:0; bottom:0; z-index:490; background:rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity .25s; display:none; }
     .sh-overlay.open { opacity:1; pointer-events:all; display:block; }
-    .bottom-sheet { display:none; position:fixed; bottom:0; left:0; right:0; z-index:500; background:var(--white); border-radius:20px 20px 0 0; max-height:90vh; flex-direction:column; box-shadow:0 -8px 32px rgba(0,0,0,.1); max-width:720px; margin:0 auto; }
+    .bottom-sheet { display:none; position:fixed; bottom:0; left:0; right:0; z-index:500; background:var(--white); border-radius:20px 20px 0 0; max-height:80vh; flex-direction:column; box-shadow:0 -8px 32px rgba(0,0,0,.1); max-width:720px; margin:0 auto; padding-bottom:calc(10px + env(safe-area-inset-bottom,0px)); }
     .bottom-sheet.open { display:flex; animation:sheetUp .28s cubic-bezier(.32,0,.15,1); }
     @keyframes sheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
     @media(max-width:768px){

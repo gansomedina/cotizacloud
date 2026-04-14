@@ -17,8 +17,8 @@
     body { font-family: var(--body); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
     /* TOPBAR */
-    .topbar { position:sticky; top:0; z-index:100; background:var(--white); border-bottom:1px solid var(--border); height:54px; display:flex; align-items:center; padding:0 16px; }
-    .topbar-inner { width:100%; max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .topbar { position:sticky; top:0; z-index:100; background:var(--white); border-bottom:1px solid var(--border); min-height:54px; display:flex; align-items:center; padding:env(safe-area-inset-top,0px) 16px 0; }
+    .topbar-inner { width:100%; max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:54px; }
     .topbar-l { display:flex; align-items:center; gap:8px; flex:1; min-width:0; overflow:hidden; }
     .topbar-l > div { min-width:0; overflow:hidden; }
     .back-btn { width:34px; height:34px; border-radius:8px; border:1px solid var(--border); background:var(--bg); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--t2); text-decoration:none; transition:all .12s; flex-shrink:0; }
@@ -29,11 +29,12 @@
     @media(max-width:640px) {
         .topbar-secondary { display:none !important; }
         .topbar-title { font-size:13px; }
+        .accion-btn-primary { padding:8px 16px; font-size:13px; }
     }
 
     /* LAYOUT */
     .page-wrap   { max-width:1200px; margin:0 auto; padding:0 20px; }
-    .page-layout { display:flex; gap:24px; padding:24px 0 80px; align-items:flex-start; }
+    .page-layout { display:flex; gap:24px; padding:24px 0 calc(80px + env(safe-area-inset-bottom,0px)); align-items:flex-start; }
     .col-main    { flex:1; min-width:0; }
     .col-panel   { width:300px; flex-shrink:0; background:var(--white); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; position:sticky; top:70px; box-shadow:var(--sh); }
 
@@ -218,7 +219,7 @@
         .col-panel     { display:none; }
         .mobile-panel  { display:block; }
         .sticky-bottom { display:block !important; }
-        .page-layout   { padding:16px 0 120px; }
+        .page-layout   { padding:16px 0 calc(120px + env(safe-area-inset-bottom,0px)); }
         .page-wrap     { padding:0 14px; }
         .item-field input, .item-field textarea { font-size:16px; }
         .item-arrow { width:34px; height:34px; font-size:14px; }
