@@ -364,7 +364,7 @@ $asesores = DB::query(
             us.score, us.nivel, us.s_activacion, us.s_seguimiento, us.s_conversion
      FROM usuarios u
      LEFT JOIN usuario_score us ON us.usuario_id = u.id AND us.empresa_id = u.empresa_id
-     WHERE u.empresa_id IN ({$emp_ids}) AND u.activo = 1 AND u.rol = 'asesor'
+     WHERE u.empresa_id IN ({$emp_ids}) AND u.empresa_id != 7 AND u.activo = 1 AND u.rol = 'asesor'
      ORDER BY us.score DESC"
 );
 
