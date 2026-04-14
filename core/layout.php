@@ -25,7 +25,7 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
             $_SESSION['_ips_synced'] = true;
         }
         // Autolimpieza: marcar sesiones propias como internas (1 vez por sesión)
-        if (empty($_SESSION['_sessions_cleaned'])) {
+        if (($_SESSION['_sessions_cleaned'] ?? '') !== date('Y-m-d')) {
             $my_ip  = ip_real();
             $my_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
             if ($my_ip) {
@@ -44,7 +44,7 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
                     [$my_vid, EMPRESA_ID]
                 );
             }
-            $_SESSION['_sessions_cleaned'] = true;
+            $_SESSION['_sessions_cleaned'] = date('Y-m-d');
         }
     } catch (\Throwable $e) {}
 }
