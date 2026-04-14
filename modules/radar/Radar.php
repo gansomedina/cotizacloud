@@ -1284,16 +1284,6 @@ class Radar
             [$empresa_id, substr($visitor_id,0,64), $source, $usuario_id, $ip, $label, $now, $now]
         );
 
-        // Marcar sesiones existentes de este visitor como internas (autolimpieza)
-        try {
-            DB::execute(
-                "UPDATE quote_sessions qs
-                 JOIN cotizaciones c ON c.id = qs.cotizacion_id
-                 SET qs.es_interno = 1
-                 WHERE qs.visitor_id = ? AND c.empresa_id = ? AND qs.es_interno = 0",
-                [$visitor_id, $empresa_id]
-            );
-        } catch (\Throwable $e) {}
     }
 
     public static function es_visitor_interno(int $empresa_id, string $visitor_id): bool
@@ -1353,14 +1343,6 @@ class Radar
                 [$empresa_id, $ip, time()]
             );
 
-            // Marcar sesiones existentes de esta IP como internas (autolimpieza)
-            DB::execute(
-                "UPDATE quote_sessions qs
-                 JOIN cotizaciones c ON c.id = qs.cotizacion_id
-                 SET qs.es_interno = 1
-                 WHERE qs.ip = ? AND c.empresa_id = ? AND qs.es_interno = 0",
-                [$ip, $empresa_id]
-            );
         } catch (\Throwable $e) { /* No bloquear */ }
     }
 

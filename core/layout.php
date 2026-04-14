@@ -24,6 +24,28 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
             }
             $_SESSION['_ips_synced'] = true;
         }
+        // Autolimpieza: marcar sesiones propias como internas (1 vez por sesión)
+        if (empty($_SESSION['_sessions_cleaned'])) {
+            $my_ip  = ip_real();
+            $my_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
+            if ($my_ip) {
+                DB::execute(
+                    "UPDATE quote_sessions qs JOIN cotizaciones c ON c.id = qs.cotizacion_id
+                     SET qs.es_interno = 1
+                     WHERE qs.ip = ? AND c.empresa_id = ? AND qs.es_interno = 0",
+                    [$my_ip, EMPRESA_ID]
+                );
+            }
+            if ($my_vid !== '') {
+                DB::execute(
+                    "UPDATE quote_sessions qs JOIN cotizaciones c ON c.id = qs.cotizacion_id
+                     SET qs.es_interno = 1
+                     WHERE qs.visitor_id = ? AND c.empresa_id = ? AND qs.es_interno = 0",
+                    [$my_vid, EMPRESA_ID]
+                );
+            }
+            $_SESSION['_sessions_cleaned'] = true;
+        }
     } catch (\Throwable $e) {}
 }
 
