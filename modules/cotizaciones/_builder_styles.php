@@ -176,7 +176,7 @@
     .sh-search   { padding:0 16px 10px; flex-shrink:0; }
     .sh-search-wrap { display:flex; align-items:center; gap:8px; background:var(--bg); border:1px solid var(--border); border-radius:var(--r-sm); padding:10px 13px; }
     .sh-search-wrap input { flex:1; background:transparent; border:none; outline:none; font:400 15px var(--body); color:var(--text); }
-    .sh-list     { overflow-y:auto; flex:1; padding:0 16px 32px; }
+    .sh-list     { overflow-y:auto; flex:1; padding:0 16px 32px; min-height:50vh; }
     .sh-item     { display:flex; align-items:center; gap:12px; padding:12px; border-radius:var(--r-sm); cursor:pointer; border:1px solid transparent; margin-bottom:6px; transition:all .12s; }
     .sh-item:hover { background:var(--g-bg); border-color:var(--g-border); }
     .sh-item-body { flex:1; }
