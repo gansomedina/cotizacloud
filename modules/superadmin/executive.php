@@ -785,96 +785,104 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
-<!-- GRÁFICA ACUMULADO HISTÓRICO -->
+<!-- GRÁFICA VENTAS HISTÓRICAS -->
 <?php
-// Años disponibles: desde historial_mensual + ventas
+// Años disponibles
 $anios_hist = DB::query(
     "SELECT DISTINCT anio FROM historial_mensual WHERE empresa_id IN ({$emp_ids})
      UNION
      SELECT DISTINCT YEAR(created_at) AS anio FROM ventas WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
-     ORDER BY anio DESC"
+     ORDER BY anio ASC"
 );
-$anio_sel = (int)($_GET['anio_hist'] ?? date('Y'));
 $anios_list = array_column($anios_hist ?: [], 'anio');
-if (!in_array($anio_sel, $anios_list) && $anios_list) $anio_sel = $anios_list[0];
+$anio_sel = $_GET['anio_hist'] ?? 'todo';
+if ($anio_sel !== 'todo') $anio_sel = (int)$anio_sel;
+if ($anio_sel !== 'todo' && !in_array($anio_sel, $anios_list)) $anio_sel = 'todo';
 
-// Datos por mes para el año seleccionado, por empresa
-$hist_data = [];
-foreach ($empresas_cfg as $eid => $ecfg) {
-    $hist_data[$eid] = array_fill(1, 12, 0.0);
-
-    // Historial importado
-    $h_rows = DB::query(
-        "SELECT mes, ventas_monto FROM historial_mensual WHERE empresa_id = ? AND anio = ?",
-        [$eid, $anio_sel]
-    );
-    foreach ($h_rows ?: [] as $hr) {
-        $hist_data[$eid][(int)$hr['mes']] += (float)$hr['ventas_monto'];
-    }
-
-    // Ventas reales (sumar al mismo mes, no duplicar con historial)
-    $v_rows = DB::query(
-        "SELECT MONTH(created_at) AS mes, SUM(total) AS monto
-         FROM ventas
-         WHERE empresa_id = ? AND YEAR(created_at) = ? AND estado != 'cancelada'
-         GROUP BY MONTH(created_at)",
-        [$eid, $anio_sel]
-    );
-    foreach ($v_rows ?: [] as $vr) {
-        $m = (int)$vr['mes'];
-        // Solo sumar ventas reales si NO hay historial para ese mes (evitar duplicar)
-        if (empty($h_rows) || !array_filter($h_rows ?: [], fn($h) => (int)$h['mes'] === $m)) {
-            $hist_data[$eid][$m] += (float)$vr['monto'];
-        }
-    }
+// Determinar rango de meses
+if ($anio_sel === 'todo') {
+    $anio_min = min($anios_list ?: [date('Y')]);
+    $anio_max = max($anios_list ?: [date('Y')]);
+} else {
+    $anio_min = $anio_sel;
+    $anio_max = $anio_sel;
 }
 
-// Totales por mes (todas las empresas) + acumulado
-$hist_totals = array_fill(1, 12, 0.0);
-foreach ($hist_data as $eid => $meses) {
-    foreach ($meses as $m => $val) $hist_totals[$m] += $val;
-}
-$hist_acum = [];
-$running = 0;
-for ($m = 1; $m <= 12; $m++) {
-    $running += $hist_totals[$m];
-    $hist_acum[$m] = $running;
-}
-$hist_labels_js = json_encode(['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']);
-$hist_acum_js = json_encode(array_values($hist_acum));
-
-// Datasets por empresa
-$hist_emp_datasets = [];
-foreach ($empresas_cfg as $eid => $ecfg) {
-    $acum = [];
-    $r = 0;
+// Construir lista de meses en el rango
+$hist_months = [];
+for ($y = $anio_min; $y <= $anio_max; $y++) {
     for ($m = 1; $m <= 12; $m++) {
-        $r += $hist_data[$eid][$m];
-        $acum[] = round($r, 2);
+        if ($y == $anio_max && $anio_sel === 'todo' && $y == date('Y') && $m > date('n')) break;
+        $hist_months[] = ['y' => $y, 'm' => $m, 'key' => sprintf('%d-%02d', $y, $m)];
     }
-    $hist_emp_datasets[] = [
-        'label' => $ecfg['short'],
-        'data' => $acum,
-        'borderColor' => $ecfg['color'],
-        'backgroundColor' => $ecfg['color'] . '18',
-        'fill' => true,
-        'tension' => 0.3,
-    ];
 }
+
+// Cargar datos: historial + ventas reales, sumados por mes
+$hist_bars = [];
+foreach ($hist_months as $hm) $hist_bars[$hm['key']] = 0.0;
+
+// Historial importado
+$h_all = DB::query(
+    "SELECT anio, mes, SUM(ventas_monto) AS monto
+     FROM historial_mensual
+     WHERE empresa_id IN ({$emp_ids}) AND anio BETWEEN ? AND ?
+     GROUP BY anio, mes",
+    [$anio_min, $anio_max]
+);
+$h_meses_con_historial = [];
+foreach ($h_all ?: [] as $h) {
+    $k = sprintf('%d-%02d', $h['anio'], $h['mes']);
+    if (isset($hist_bars[$k])) {
+        $hist_bars[$k] += (float)$h['monto'];
+        $h_meses_con_historial[$k] = true;
+    }
+}
+
+// Ventas reales (no duplicar meses con historial)
+$v_all = DB::query(
+    "SELECT YEAR(created_at) AS anio, MONTH(created_at) AS mes, SUM(total) AS monto
+     FROM ventas
+     WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
+       AND YEAR(created_at) BETWEEN ? AND ?
+     GROUP BY YEAR(created_at), MONTH(created_at)",
+    [$anio_min, $anio_max]
+);
+foreach ($v_all ?: [] as $v) {
+    $k = sprintf('%d-%02d', $v['anio'], $v['mes']);
+    if (isset($hist_bars[$k]) && !isset($h_meses_con_historial[$k])) {
+        $hist_bars[$k] += (float)$v['monto'];
+    }
+}
+
+// Labels y datos para Chart.js
+$hist_labels = [];
+$hist_values = [];
+$meses_es = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+foreach ($hist_months as $hm) {
+    $hist_labels[] = $meses_es[$hm['m']] . ' ' . $hm['y'];
+    $hist_values[] = round($hist_bars[$hm['key']], 2);
+}
+
+// Promedio
+$hist_vals_nz = array_filter($hist_values, fn($v) => $v > 0);
+$hist_promedio = count($hist_vals_nz) > 0 ? array_sum($hist_vals_nz) / count($hist_vals_nz) : 0;
+$hist_prom_line = array_fill(0, count($hist_values), round($hist_promedio, 2));
+$hist_total = array_sum($hist_values);
 ?>
 <div class="chart-card">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
         <div>
-            <div class="chart-title">Ventas acumuladas <?= $anio_sel ?></div>
-            <div class="chart-sub">Histórico por empresa — total: $<?= number_format($running, 0) ?></div>
+            <div class="chart-title">Ventas mensuales <?= $anio_sel === 'todo' ? 'históricas' : $anio_sel ?></div>
+            <div class="chart-sub">Todas las empresas — total: $<?= number_format($hist_total, 0) ?> · promedio: $<?= number_format($hist_promedio, 0) ?>/mes</div>
         </div>
-        <div style="display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px">
+        <div style="display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px;flex-wrap:wrap">
+            <a href="?<?= http_build_query(array_merge($_GET, ['anio_hist' => 'todo'])) ?>" class="op-tab <?= $anio_sel === 'todo' ? 'on' : '' ?>" style="text-decoration:none">Todo</a>
             <?php foreach ($anios_list as $a): ?>
-            <a href="?<?= http_build_query(array_merge($_GET, ['anio_hist' => $a])) ?>" class="op-tab <?= $a == $anio_sel ? 'on' : '' ?>" style="text-decoration:none"><?= $a ?></a>
+            <a href="?<?= http_build_query(array_merge($_GET, ['anio_hist' => $a])) ?>" class="op-tab <?= $anio_sel === $a ? 'on' : '' ?>" style="text-decoration:none"><?= $a ?></a>
             <?php endforeach; ?>
         </div>
     </div>
-    <div class="chart-canvas" style="height:300px">
+    <div class="chart-canvas" style="height:<?= $anio_sel === 'todo' ? '340' : '300' ?>px">
         <canvas id="histChart"></canvas>
     </div>
 </div>
@@ -1838,12 +1846,31 @@ function filterTable(tab, empId) {
     });
 }
 
-// ── Gráfica acumulado histórico ──
+// ── Gráfica ventas históricas (barras + promedio) ──
 new Chart(document.getElementById('histChart').getContext('2d'), {
-    type: 'line',
+    type: 'bar',
     data: {
-        labels: <?= $hist_labels_js ?>,
-        datasets: <?= json_encode($hist_emp_datasets) ?>
+        labels: <?= json_encode($hist_labels) ?>,
+        datasets: [
+            {
+                label: 'Total',
+                data: <?= json_encode($hist_values) ?>,
+                backgroundColor: 'rgba(147,197,253,.6)',
+                borderColor: 'rgba(96,165,250,.8)',
+                borderWidth: 1,
+                borderRadius: 3,
+            },
+            {
+                label: 'Promedio',
+                data: <?= json_encode($hist_prom_line) ?>,
+                type: 'line',
+                borderColor: 'rgba(239,68,68,.5)',
+                borderWidth: 2,
+                borderDash: [6,4],
+                pointRadius: 0,
+                fill: false,
+            }
+        ]
     },
     options: {
         responsive: true,
@@ -1868,7 +1895,7 @@ new Chart(document.getElementById('histChart').getContext('2d'), {
                 },
                 grid: { color: 'rgba(0,0,0,.06)' }
             },
-            x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 45 } }
         }
     }
 });
