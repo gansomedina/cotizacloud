@@ -785,6 +785,100 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
+<!-- GRÁFICA ACUMULADO HISTÓRICO -->
+<?php
+// Años disponibles: desde historial_mensual + ventas
+$anios_hist = DB::query(
+    "SELECT DISTINCT anio FROM historial_mensual WHERE empresa_id IN ({$emp_ids})
+     UNION
+     SELECT DISTINCT YEAR(created_at) AS anio FROM ventas WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
+     ORDER BY anio DESC"
+);
+$anio_sel = (int)($_GET['anio_hist'] ?? date('Y'));
+$anios_list = array_column($anios_hist ?: [], 'anio');
+if (!in_array($anio_sel, $anios_list) && $anios_list) $anio_sel = $anios_list[0];
+
+// Datos por mes para el año seleccionado, por empresa
+$hist_data = [];
+foreach ($empresas_cfg as $eid => $ecfg) {
+    $hist_data[$eid] = array_fill(1, 12, 0.0);
+
+    // Historial importado
+    $h_rows = DB::query(
+        "SELECT mes, ventas_monto FROM historial_mensual WHERE empresa_id = ? AND anio = ?",
+        [$eid, $anio_sel]
+    );
+    foreach ($h_rows ?: [] as $hr) {
+        $hist_data[$eid][(int)$hr['mes']] += (float)$hr['ventas_monto'];
+    }
+
+    // Ventas reales (sumar al mismo mes, no duplicar con historial)
+    $v_rows = DB::query(
+        "SELECT MONTH(created_at) AS mes, SUM(total) AS monto
+         FROM ventas
+         WHERE empresa_id = ? AND YEAR(created_at) = ? AND estado != 'cancelada'
+         GROUP BY MONTH(created_at)",
+        [$eid, $anio_sel]
+    );
+    foreach ($v_rows ?: [] as $vr) {
+        $m = (int)$vr['mes'];
+        // Solo sumar ventas reales si NO hay historial para ese mes (evitar duplicar)
+        if (empty($h_rows) || !array_filter($h_rows ?: [], fn($h) => (int)$h['mes'] === $m)) {
+            $hist_data[$eid][$m] += (float)$vr['monto'];
+        }
+    }
+}
+
+// Totales por mes (todas las empresas) + acumulado
+$hist_totals = array_fill(1, 12, 0.0);
+foreach ($hist_data as $eid => $meses) {
+    foreach ($meses as $m => $val) $hist_totals[$m] += $val;
+}
+$hist_acum = [];
+$running = 0;
+for ($m = 1; $m <= 12; $m++) {
+    $running += $hist_totals[$m];
+    $hist_acum[$m] = $running;
+}
+$hist_labels_js = json_encode(['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']);
+$hist_acum_js = json_encode(array_values($hist_acum));
+
+// Datasets por empresa
+$hist_emp_datasets = [];
+foreach ($empresas_cfg as $eid => $ecfg) {
+    $acum = [];
+    $r = 0;
+    for ($m = 1; $m <= 12; $m++) {
+        $r += $hist_data[$eid][$m];
+        $acum[] = round($r, 2);
+    }
+    $hist_emp_datasets[] = [
+        'label' => $ecfg['short'],
+        'data' => $acum,
+        'borderColor' => $ecfg['color'],
+        'backgroundColor' => $ecfg['color'] . '18',
+        'fill' => true,
+        'tension' => 0.3,
+    ];
+}
+?>
+<div class="chart-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
+        <div>
+            <div class="chart-title">Ventas acumuladas <?= $anio_sel ?></div>
+            <div class="chart-sub">Histórico por empresa — total: $<?= number_format($running, 0) ?></div>
+        </div>
+        <div style="display:flex;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px">
+            <?php foreach ($anios_list as $a): ?>
+            <a href="?<?= http_build_query(array_merge($_GET, ['anio_hist' => $a])) ?>" class="op-tab <?= $a == $anio_sel ? 'on' : '' ?>" style="text-decoration:none"><?= $a ?></a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <div class="chart-canvas" style="height:300px">
+        <canvas id="histChart"></canvas>
+    </div>
+</div>
+
 <!-- TABLA + PAGOS -->
 <div class="grid-2">
 
@@ -1743,6 +1837,41 @@ function filterTable(tab, empId) {
         r.style.display = (!empId || r.dataset.emp === empId) ? '' : 'none';
     });
 }
+
+// ── Gráfica acumulado histórico ──
+new Chart(document.getElementById('histChart').getContext('2d'), {
+    type: 'line',
+    data: {
+        labels: <?= $hist_labels_js ?>,
+        datasets: <?= json_encode($hist_emp_datasets) ?>
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, padding: 14, font: { size: 11 } } },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        return ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(v) { return '$' + (v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v); },
+                    font: { size: 11 }
+                },
+                grid: { color: 'rgba(0,0,0,.06)' }
+            },
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        }
+    }
+});
 </script>
 </body>
 </html>
