@@ -854,13 +854,17 @@ foreach ($v_all ?: [] as $v) {
     }
 }
 
-// Labels y datos para Chart.js
+// Labels y datos para Chart.js — saltar meses sin datos al inicio
 $hist_labels = [];
 $hist_values = [];
 $meses_es = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+$hist_started = false;
 foreach ($hist_months as $hm) {
+    $val = round($hist_bars[$hm['key']], 2);
+    if (!$hist_started && $val == 0 && $anio_sel === 'todo') continue;
+    $hist_started = true;
     $hist_labels[] = $meses_es[$hm['m']] . ' ' . $hm['y'];
-    $hist_values[] = round($hist_bars[$hm['key']], 2);
+    $hist_values[] = $val;
 }
 
 // Promedio
@@ -1569,6 +1573,7 @@ new Chart(document.getElementById('trendChart').getContext('2d'), {
                 bodyFont: { family: 'Inter', size: 12 },
                 padding: 12,
                 cornerRadius: 8,
+                itemSort: function(a, b) { return b.parsed.y - a.parsed.y; },
                 callbacks: {
                     label: function(c) {
                         return c.dataset.label + ': $' + c.parsed.y.toLocaleString('en-US', {maximumFractionDigits:0});
