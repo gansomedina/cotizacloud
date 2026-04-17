@@ -2,6 +2,12 @@ AddDefaultCharset UTF-8
 
 RewriteEngine On
 
+# Desactivar ModSecurity para webhook de MercadoPago
+# (MP hace POST con payloads que a veces trigger WAF rules)
+<If "%{REQUEST_URI} =~ m#^/api/mp/#">
+    SecRuleEngine Off
+</If>
+
 # Si el archivo o directorio existe físicamente, servirlo directo
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
