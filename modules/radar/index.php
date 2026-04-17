@@ -81,7 +81,12 @@ $raw = DB::query(
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id=c.cliente_id
      LEFT JOIN usuarios  u  ON u.id=COALESCE(c.vendedor_id, c.usuario_id)
-     WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada','rechazada') AND c.suspendida = 0 $uw
+     WHERE c.empresa_id=? AND c.suspendida = 0 $uw
+       AND (
+         c.estado IN ('enviada','vista')
+         OR (c.estado IN ('aceptada','rechazada')
+             AND COALESCE(c.accion_at, c.ultima_vista_at) >= DATE_SUB(NOW(), INTERVAL 7 DAY))
+       )
      ORDER BY c.radar_score IS NULL ASC, c.radar_score DESC, c.ultima_vista_at DESC
      LIMIT 500",
     [$empresa_id]
