@@ -786,6 +786,7 @@ ALTER TABLE dispositivos_push ADD COLUMN badge_count INT UNSIGNED NOT NULL DEFAU
 - **iOS (Apple)**: Estilo Netflix — ocultar membresías en la app. Al intentar upgrade: "Para gestionar tu plan, visita cotiza.cloud desde tu navegador"
 - **Sesiones**: Quitar "Recordarme 30 días" para forzar re-login más seguido → beneficia Escudo Radar (re-pone cookie, aprende IP)
 - **Cron**: Diario 3am para procesar grace/degradaciones/emails
+- **Superadmin manual**: MANTENER el `toggle_plan.php` actual con activación/renovación manual con 1 clic, SIN pago. Casos de uso: cliente paga por transferencia, gift licenses, extensiones de cortesía, arreglo manual si MP falla. El nuevo sistema MP corre EN PARALELO — no reemplaza el manual.
 
 ### Flujo
 ```
