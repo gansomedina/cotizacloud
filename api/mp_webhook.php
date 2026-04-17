@@ -10,6 +10,22 @@ defined('COTIZAAPP') or die;
 
 header('Content-Type: application/json');
 
+// DEBUG: log todas las peticiones entrantes (método, headers, body, IP)
+$_debug_headers = [];
+foreach ($_SERVER as $k => $v) {
+    if (strpos($k, 'HTTP_') === 0 || in_array($k, ['CONTENT_TYPE','CONTENT_LENGTH','REQUEST_METHOD','REQUEST_URI','REMOTE_ADDR','HTTPS','SERVER_PROTOCOL'], true)) {
+        $_debug_headers[$k] = $v;
+    }
+}
+$_debug_body = file_get_contents('php://input');
+error_log('[MP Webhook IN] ' . json_encode([
+    'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+    'ip'     => $_SERVER['REMOTE_ADDR'] ?? '',
+    'ua'     => $_SERVER['HTTP_USER_AGENT'] ?? '',
+    'headers'=> $_debug_headers,
+    'body'   => $_debug_body,
+]));
+
 // Health check — permite que MP y tú verifiquen que el endpoint existe
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     http_response_code(200);
