@@ -217,9 +217,10 @@
         .sh-overlay  { bottom:0; }
         .bottom-sheet{ bottom:0; border-radius:16px 16px 0 0; }
         .col-panel     { display:none; }
+        .col-panel.col-panel-mobile-show { display:block; width:100%; position:static; top:auto; margin-top:16px; }
         .mobile-panel  { display:block; }
         .sticky-bottom { display:block !important; }
-        .page-layout   { padding:16px 0 calc(120px + env(safe-area-inset-bottom,0px)); }
+        .page-layout   { flex-direction:column; padding:16px 0 calc(120px + env(safe-area-inset-bottom,0px)); }
         .page-wrap     { padding:0 14px; }
         .item-field input, .item-field textarea { font-size:16px; }
         .item-arrow { width:34px; height:34px; font-size:14px; }

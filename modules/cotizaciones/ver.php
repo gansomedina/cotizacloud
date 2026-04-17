@@ -421,7 +421,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     </div><!-- /col-main -->
 
     <!-- PANEL DERECHO -->
-    <div class="col-panel">
+    <div class="col-panel col-panel-mobile-show">
 
         <?php if (!empty($cupones) && $puede_descuentos && $es_editable): ?>
         <div class="panel-section">
