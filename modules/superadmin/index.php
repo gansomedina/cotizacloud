@@ -186,6 +186,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         </div>
     </div>
     <div class="sa-actions">
+        <a href="/superadmin/suscripciones" class="sa-btn sa-btn-ghost"><i data-feather="credit-card" style="width:14px;height:14px"></i> Suscripciones</a>
         <a href="/superadmin/executive" class="sa-btn sa-btn-ghost"><i data-feather="bar-chart-2" style="width:14px;height:14px"></i> Ejecutivo</a>
         <a href="/logout" class="sa-btn sa-btn-ghost" style="color:var(--danger);border-color:#fca5a5"><i data-feather="log-out" style="width:14px;height:14px"></i> Salir</a>
     </div>

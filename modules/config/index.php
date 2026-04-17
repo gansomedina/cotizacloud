@@ -9,7 +9,7 @@ defined('COTIZAAPP') or die;
 Auth::requerir_admin();
 
 $empresa_id = EMPRESA_ID;
-$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing','historial'])
+$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing','historial','suscripcion'])
     ? $_GET['tab'] : 'empresa';
 
 // Usuarios solo disponible en plan Business
@@ -22,6 +22,12 @@ if ($tab_activo === 'usuarios') {
 if ($tab_activo === 'costos') {
     $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
     if (!$plan_check['es_pagado']) $tab_activo = 'empresa';
+}
+
+// Suscripción oculta en app nativa (Apple Guideline 3.1.1)
+$is_native_app_cfg = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+if ($tab_activo === 'suscripcion' && $is_native_app_cfg) {
+    $tab_activo = 'empresa';
 }
 
 // Marketing solo disponible en plan Business
@@ -341,6 +347,9 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <?php if ($plan_info['es_business']): ?>
     <a class="cfg-tab <?= $tab_activo==='marketing' ?'on':'' ?>" href="/config?tab=marketing">Marketing</a>
     <a class="cfg-tab <?= $tab_activo==='historial' ?'on':'' ?>" href="/config?tab=historial">Historial</a>
+    <?php endif; ?>
+    <?php if (!$is_native_app_cfg): ?>
+    <a class="cfg-tab <?= $tab_activo==='suscripcion'?'on':'' ?>" href="/config?tab=suscripcion">Suscripción</a>
     <?php endif; ?>
   </div>
 </div>
@@ -2136,6 +2145,13 @@ async function eliminarHistorial(id, btn) {
     } catch(e) { alert('Error de conexión.'); }
 }
 </script>
+
+<!-- ══ TAB: SUSCRIPCIÓN ═════════════════════════════════════ -->
+<?php if (!$is_native_app_cfg): ?>
+<div class="tab-panel <?= $tab_activo==='suscripcion'?'on':'' ?>" id="panel-suscripcion">
+<?php require MODULES_PATH . '/config/suscripcion.php'; ?>
+</div>
+<?php endif; ?>
 
 <?php
 $content = ob_get_clean();

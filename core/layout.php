@@ -437,7 +437,15 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
                 <i data-feather="alert-triangle"></i>
                 <div>
                     <strong>Tu licencia vence en <?= $trial['dias_restantes'] ?> día<?= $trial['dias_restantes'] !== 1 ? 's' : '' ?>.</strong>
-                    <a href="/licencia" style="color:inherit;font-weight:700;text-decoration:underline">Renueva tu licencia</a>
+                    <a href="/config?tab=suscripcion" style="color:inherit;font-weight:700;text-decoration:underline">Renueva tu plan</a>
+                </div>
+            </div>
+            <?php elseif (!empty($trial['en_grace'])): ?>
+            <div class="flash flash-error" style="margin-bottom:16px">
+                <i data-feather="alert-circle"></i>
+                <div>
+                    <strong>Tu pago no se pudo procesar.</strong> Tienes hasta el <?= date('d/m/Y', strtotime($trial['grace_hasta'])) ?> para regularizar.
+                    <a href="/config?tab=suscripcion" style="color:inherit;font-weight:700;text-decoration:underline">Ver suscripción</a>
                 </div>
             </div>
             <?php endif;

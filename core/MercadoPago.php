@@ -1,0 +1,325 @@
+<?php
+// ============================================================
+//  CotizaCloud — core/MercadoPago.php
+//  Wrapper para MercadoPago Preapproval (suscripciones recurrentes)
+//  API: https://api.mercadopago.com/preapproval
+// ============================================================
+
+defined('COTIZAAPP') or die;
+
+class MercadoPago
+{
+    private const API_BASE = 'https://api.mercadopago.com';
+
+    private static function accessToken(): string
+    {
+        return defined('MP_ACCESS_TOKEN') ? MP_ACCESS_TOKEN : '';
+    }
+
+    // ─── Precios ────────────────────────────────────────────────
+    public static function precios(): array
+    {
+        return [
+            'pro' => [
+                'mensual' => 299.00,
+                'anual'   => 2868.00,
+            ],
+            'business' => [
+                'mensual' => 799.00,
+                'anual'   => 7668.00,
+            ],
+        ];
+    }
+
+    public static function precio(string $plan, string $ciclo): float
+    {
+        return self::precios()[$plan][$ciclo] ?? 0.0;
+    }
+
+    // ─── Crear suscripción (preapproval) ────────────────────────
+    public static function crearPreapproval(array $data): array
+    {
+        $plan  = $data['plan'];
+        $ciclo = $data['ciclo'];
+        $email = $data['email'];
+        $empresa_id = $data['empresa_id'];
+
+        $monto = self::precio($plan, $ciclo);
+        if ($monto <= 0) {
+            return ['error' => 'Plan o ciclo inválido'];
+        }
+
+        $plan_label = $plan === 'business' ? 'Business' : 'Pro';
+        $ciclo_label = $ciclo === 'anual' ? 'Anual' : 'Mensual';
+        $frequency = $ciclo === 'anual' ? ['frequency' => 12, 'frequency_type' => 'months']
+                                         : ['frequency' => 1,  'frequency_type' => 'months'];
+
+        $body = [
+            'reason'             => "CotizaCloud {$plan_label} — {$ciclo_label}",
+            'external_reference' => "cz_{$empresa_id}_{$plan}_{$ciclo}",
+            'payer_email'        => $email,
+            'auto_recurring'     => [
+                'frequency'      => $frequency['frequency'],
+                'frequency_type' => $frequency['frequency_type'],
+                'transaction_amount' => $ciclo === 'anual' ? $monto : $monto,
+                'currency_id'    => 'MXN',
+            ],
+            'back_url'  => BASE_URL . '/api/mp/return?empresa_id=' . $empresa_id,
+            'status'    => 'pending',
+        ];
+
+        return self::post('/preapproval', $body);
+    }
+
+    // ─── Consultar suscripción ──────────────────────────────────
+    public static function obtenerPreapproval(string $preapprovalId): array
+    {
+        return self::get('/preapproval/' . $preapprovalId);
+    }
+
+    // ─── Cancelar suscripción ───────────────────────────────────
+    public static function cancelarPreapproval(string $preapprovalId): array
+    {
+        return self::put('/preapproval/' . $preapprovalId, [
+            'status' => 'cancelled',
+        ]);
+    }
+
+    // ─── Pausar suscripción ─────────────────────────────────────
+    public static function pausarPreapproval(string $preapprovalId): array
+    {
+        return self::put('/preapproval/' . $preapprovalId, [
+            'status' => 'paused',
+        ]);
+    }
+
+    // ─── Validar firma webhook ──────────────────────────────────
+    public static function validarWebhook(): bool
+    {
+        $secret = defined('MP_WEBHOOK_SECRET') ? MP_WEBHOOK_SECRET : '';
+        if (!$secret) return false;
+
+        $xSignature = $_SERVER['HTTP_X_SIGNATURE'] ?? '';
+        $xRequestId = $_SERVER['HTTP_X_REQUEST_ID'] ?? '';
+
+        if (!$xSignature || !$xRequestId) return false;
+
+        $parts = [];
+        foreach (explode(',', $xSignature) as $part) {
+            $kv = explode('=', trim($part), 2);
+            if (count($kv) === 2) $parts[trim($kv[0])] = trim($kv[1]);
+        }
+
+        $ts   = $parts['ts'] ?? '';
+        $hash = $parts['v1'] ?? '';
+        if (!$ts || !$hash) return false;
+
+        $dataId = $_GET['data.id'] ?? $_GET['id'] ?? '';
+
+        $manifest = "id:{$dataId};request-id:{$xRequestId};ts:{$ts};";
+        $expected = hash_hmac('sha256', $manifest, $secret);
+
+        return hash_equals($expected, $hash);
+    }
+
+    // ─── Procesar evento webhook ────────────────────────────────
+    public static function procesarWebhook(array $body): array
+    {
+        $type   = $body['type'] ?? '';
+        $action = $body['action'] ?? '';
+        $dataId = $body['data']['id'] ?? '';
+
+        if (!$dataId) return ['processed' => false, 'reason' => 'no data.id'];
+
+        if ($type === 'subscription_preapproval') {
+            return self::procesarPreapproval($dataId, $action);
+        }
+
+        if ($type === 'payment') {
+            return self::procesarPago($dataId, $action);
+        }
+
+        return ['processed' => false, 'reason' => "type not handled: {$type}"];
+    }
+
+    private static function procesarPreapproval(string $preapprovalId, string $action): array
+    {
+        $remote = self::obtenerPreapproval($preapprovalId);
+        if (isset($remote['error'])) return $remote;
+
+        $status = $remote['status'] ?? '';
+        $extRef = $remote['external_reference'] ?? '';
+
+        preg_match('/^cz_(\d+)_(pro|business)_(mensual|anual)$/', $extRef, $m);
+        if (!$m) return ['processed' => false, 'reason' => 'invalid external_reference'];
+
+        $empresa_id = (int)$m[1];
+        $plan  = $m[2];
+        $ciclo = $m[3];
+        $monto = (float)($remote['auto_recurring']['transaction_amount'] ?? 0);
+
+        if ($status === 'authorized') {
+            $dias = $ciclo === 'anual' ? 365 : 30;
+            $vence = date('Y-m-d', strtotime("+{$dias} days"));
+
+            $exists = DB::row("SELECT id FROM suscripciones WHERE empresa_id = ?", [$empresa_id]);
+            if ($exists) {
+                DB::execute(
+                    "UPDATE suscripciones SET plan=?, ciclo=?, mp_preapproval_id=?, estado='active',
+                     monto_mxn=?, cancel_al_vencer=0, cancelled_at=NULL, updated_at=NOW()
+                     WHERE empresa_id=?",
+                    [$plan, $ciclo, $preapprovalId, $monto, $empresa_id]
+                );
+            } else {
+                DB::insert(
+                    "INSERT INTO suscripciones (empresa_id, plan, ciclo, mp_preapproval_id, estado, monto_mxn)
+                     VALUES (?, ?, ?, ?, 'active', ?)",
+                    [$empresa_id, $plan, $ciclo, $preapprovalId, $monto]
+                );
+            }
+
+            DB::execute(
+                "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1 WHERE id=?",
+                [$plan, $vence, $empresa_id]
+            );
+
+            return ['processed' => true, 'action' => 'activated', 'empresa_id' => $empresa_id];
+        }
+
+        if ($status === 'cancelled') {
+            DB::execute(
+                "UPDATE suscripciones SET estado='cancelled', cancel_al_vencer=1, cancelled_at=NOW() WHERE empresa_id=?",
+                [$empresa_id]
+            );
+            return ['processed' => true, 'action' => 'cancelled', 'empresa_id' => $empresa_id];
+        }
+
+        if ($status === 'paused') {
+            DB::execute(
+                "UPDATE suscripciones SET estado='paused', updated_at=NOW() WHERE empresa_id=?",
+                [$empresa_id]
+            );
+            return ['processed' => true, 'action' => 'paused', 'empresa_id' => $empresa_id];
+        }
+
+        return ['processed' => false, 'reason' => "preapproval status: {$status}"];
+    }
+
+    private static function procesarPago(string $paymentId, string $action): array
+    {
+        $idempotent = DB::row("SELECT id FROM pagos_suscripcion WHERE mp_payment_id = ?", [$paymentId]);
+        if ($idempotent) return ['processed' => true, 'action' => 'already_processed'];
+
+        $remote = self::get('/v1/payments/' . $paymentId);
+        if (isset($remote['error'])) return $remote;
+
+        $status     = $remote['status'] ?? '';
+        $preapId    = $remote['metadata']['preapproval_id'] ?? '';
+        $monto      = (float)($remote['transaction_amount'] ?? 0);
+        $fechaPago  = $remote['date_approved'] ?? $remote['date_created'] ?? date('Y-m-d H:i:s');
+
+        $sub = null;
+        if ($preapId) {
+            $sub = DB::row("SELECT * FROM suscripciones WHERE mp_preapproval_id = ?", [$preapId]);
+        }
+        if (!$sub) {
+            $extRef = $remote['external_reference'] ?? '';
+            preg_match('/^cz_(\d+)/', $extRef, $m);
+            if ($m) {
+                $sub = DB::row("SELECT * FROM suscripciones WHERE empresa_id = ?", [(int)$m[1]]);
+            }
+        }
+        if (!$sub) return ['processed' => false, 'reason' => 'subscription not found for payment'];
+
+        DB::insert(
+            "INSERT INTO pagos_suscripcion (suscripcion_id, empresa_id, mp_payment_id, monto_mxn, estado, fecha_pago, detalle)
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [
+                $sub['id'], $sub['empresa_id'], $paymentId, $monto, $status,
+                $fechaPago, json_encode(['status_detail' => $remote['status_detail'] ?? ''])
+            ]
+        );
+
+        if ($status === 'approved') {
+            $ciclo = $sub['ciclo'];
+            $dias  = $ciclo === 'anual' ? 365 : 30;
+            $vence_actual = DB::val("SELECT plan_vence FROM empresas WHERE id=?", [$sub['empresa_id']]);
+            $base = ($vence_actual && $vence_actual >= date('Y-m-d')) ? $vence_actual : date('Y-m-d');
+            $nuevo_vence = date('Y-m-d', strtotime($base . " +{$dias} days"));
+
+            DB::execute(
+                "UPDATE empresas SET plan_vence=?, grace_hasta=NULL, activa=1 WHERE id=?",
+                [$nuevo_vence, $sub['empresa_id']]
+            );
+
+            return ['processed' => true, 'action' => 'payment_approved', 'empresa_id' => $sub['empresa_id']];
+        }
+
+        if ($status === 'rejected') {
+            $grace = date('Y-m-d', strtotime('+7 days'));
+            DB::execute(
+                "UPDATE empresas SET grace_hasta=? WHERE id=? AND grace_hasta IS NULL",
+                [$grace, $sub['empresa_id']]
+            );
+            return ['processed' => true, 'action' => 'payment_rejected_grace', 'empresa_id' => $sub['empresa_id']];
+        }
+
+        return ['processed' => true, 'action' => "payment_{$status}"];
+    }
+
+    // ─── HTTP helpers ───────────────────────────────────────────
+    private static function get(string $path): array
+    {
+        return self::request('GET', $path);
+    }
+
+    private static function post(string $path, array $body): array
+    {
+        return self::request('POST', $path, $body);
+    }
+
+    private static function put(string $path, array $body): array
+    {
+        return self::request('PUT', $path, $body);
+    }
+
+    private static function request(string $method, string $path, ?array $body = null): array
+    {
+        $url = self::API_BASE . $path;
+        $ch  = curl_init($url);
+
+        $headers = [
+            'Authorization: Bearer ' . self::accessToken(),
+            'Content-Type: application/json',
+        ];
+
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CUSTOMREQUEST  => $method,
+        ]);
+
+        if ($body !== null) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+        }
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            return ['error' => 'curl_error', 'message' => $error];
+        }
+
+        $data = json_decode($response, true) ?: [];
+
+        if ($httpCode >= 400) {
+            $data['error'] = $data['error'] ?? 'http_error';
+            $data['http_code'] = $httpCode;
+        }
+
+        return $data;
+    }
+}
