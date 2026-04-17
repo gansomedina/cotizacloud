@@ -128,6 +128,8 @@ class Router
         self::post('/api/push/unregister',  fn() => self::load_api('push_unregister'));
         self::post('/api/push/reset-badge', fn() => self::load_api('push_reset_badge'));
         self::post('/api/radar-feedback',   fn() => self::load_api('radar_feedback'));
+        self::post('/api/mp/webhook',       fn() => self::load_api('mp_webhook'));
+        self::get('/api/mp/return',         fn() => self::load_api('mp_return'));
 
         // ── Páginas legales (público) ───────────────────────
         self::get('/privacidad', fn() => self::load_public('privacidad'));
@@ -185,6 +187,7 @@ class Router
         // ── Super Admin ──────────────────────────────────
         self::get('/superadmin',                     fn()   => self::superadmin('index'));
         self::get('/superadmin/executive',            fn()   => self::superadmin('executive'));
+        self::get('/superadmin/suscripciones',        fn()   => self::superadmin('suscripciones'));
         self::get('/superadmin/empresa/:id',         fn($p) => self::superadmin('empresa', $p));
         self::post('/superadmin/impersonar',         fn()   => self::superadmin('impersonar'));
         self::post('/superadmin/empresa/:id/toggle', fn($p) => self::superadmin('toggle_empresa', $p));
@@ -228,6 +231,8 @@ class Router
         self::post('/config/radar',                       fn()   => self::app('config', 'guardar_radar'));
         self::post('/config/radar/calibrar',              fn()   => self::app('config', 'calibrar_radar'));
         self::post('/config/costos-modo',                  fn()   => self::app('config', 'guardar_costos_modo'));
+        self::post('/config/suscripcion/crear',             fn()   => self::app('config', 'suscripcion_crear'));
+        self::post('/config/suscripcion/cancelar',          fn()   => self::app('config', 'suscripcion_cancelar'));
         self::post('/config/marketing',                    fn()   => self::app('config', 'guardar_marketing'));
         self::post('/config/historial',                    fn()   => self::app('config', 'guardar_historial'));
         self::post('/config/historial/:id/eliminar',       fn($p) => self::app('config', 'eliminar_historial', $p));

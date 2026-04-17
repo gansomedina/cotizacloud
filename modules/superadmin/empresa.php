@@ -280,6 +280,34 @@ tr:hover td{background:#fafaf8}
     <div style="margin-top:8px;font-size:12px;color:var(--t3)">
         <?= $trial['usadas'] ?> cotizaciones creadas en total
     </div>
+    <?php
+    $sub_info = DB::row("SELECT * FROM suscripciones WHERE empresa_id=?", [$emp['id']]);
+    if ($sub_info): ?>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid <?= $plan_border ?>">
+        <div style="font:700 11px var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:6px">Suscripción MercadoPago</div>
+        <div style="font:400 13px var(--body);color:var(--text);display:flex;gap:16px;flex-wrap:wrap">
+            <span>Estado: <strong style="color:<?= $sub_info['estado']==='active' ? 'var(--g)' : 'var(--amb)' ?>"><?= ucfirst($sub_info['estado']) ?></strong></span>
+            <span>Ciclo: <strong><?= ucfirst($sub_info['ciclo']) ?></strong></span>
+            <span>Monto: <strong>$<?= number_format($sub_info['monto_mxn'],2) ?> MXN</strong></span>
+            <?php if ($sub_info['cancel_al_vencer']): ?><span style="color:var(--danger);font-weight:600">Cancelará al vencer</span><?php endif; ?>
+        </div>
+        <?php if ($sub_info['mp_preapproval_id']): ?>
+        <div style="font:400 11px var(--num);color:var(--t3);margin-top:4px">MP ID: <?= e($sub_info['mp_preapproval_id']) ?></div>
+        <?php endif; ?>
+        <?php
+        $ultimo_pago = DB::row("SELECT * FROM pagos_suscripcion WHERE empresa_id=? ORDER BY fecha_pago DESC LIMIT 1", [$emp['id']]);
+        if ($ultimo_pago): ?>
+        <div style="font:400 12px var(--body);color:var(--t3);margin-top:4px">
+            Último pago: <?= date('d/m/Y', strtotime($ultimo_pago['fecha_pago'])) ?> — $<?= number_format($ultimo_pago['monto_mxn'],2) ?> (<?= $ultimo_pago['estado'] ?>)
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <?php if ($trial['en_grace'] ?? false): ?>
+    <div style="margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--r-sm);font:500 12px var(--body);color:var(--danger)">
+        En período de gracia hasta <?= date('d/m/Y', strtotime($trial['grace_hasta'])) ?>
+    </div>
+    <?php endif; ?>
 </div>
 
 <!-- Dominio custom -->

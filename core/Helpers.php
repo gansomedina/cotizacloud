@@ -404,17 +404,18 @@ function trial_info(int $empresa_id): array
         $migrated = true;
     }
 
-    $row = DB::row("SELECT plan, plan_vence, activa FROM empresas WHERE id = ?", [$empresa_id]);
+    $row = DB::row("SELECT plan, plan_vence, grace_hasta, activa FROM empresas WHERE id = ?", [$empresa_id]);
     $plan = $row['plan'] ?? 'free';
-    // Compatibilidad: si aún hay registros con 'trial', tratar como 'free'
     if ($plan === 'trial') $plan = 'free';
     $plan_vence = $row['plan_vence'] ?? null;
+    $grace_hasta = $row['grace_hasta'] ?? null;
     $activa = (int)($row['activa'] ?? 1);
     $es_pagado = in_array($plan, ['pro', 'business']);
+    $en_grace = $es_pagado && $grace_hasta && $grace_hasta >= date('Y-m-d');
 
-    // Auto-suspender si el plan pagado venció
+    // Auto-suspender si el plan pagado venció (y no está en grace period)
     $vencido = false;
-    if ($es_pagado && $plan_vence && $plan_vence < date('Y-m-d')) {
+    if ($es_pagado && $plan_vence && $plan_vence < date('Y-m-d') && !$en_grace) {
         $vencido = true;
         if ($activa) {
             DB::execute("UPDATE empresas SET activa = 0 WHERE id = ?", [$empresa_id]);
@@ -440,7 +441,7 @@ function trial_info(int $empresa_id): array
         'plan'            => $plan,
         'plan_label'      => $plan_label,
         'es_free'         => $plan === 'free',
-        'es_trial'        => $plan === 'free',  // compatibilidad con código existente
+        'es_trial'        => $plan === 'free',
         'es_pro'          => $plan === 'pro',
         'es_business'     => $plan === 'business',
         'es_pagado'       => $es_pagado,
@@ -454,6 +455,8 @@ function trial_info(int $empresa_id): array
         'vencido'         => $vencido,
         'dias_restantes'  => $dias_restantes,
         'por_vencer'      => $dias_restantes !== null && $dias_restantes <= 7,
+        'grace_hasta'     => $grace_hasta,
+        'en_grace'        => $en_grace,
     ];
 }
 
