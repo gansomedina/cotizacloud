@@ -129,6 +129,7 @@ class Router
         self::post('/api/push/reset-badge', fn() => self::load_api('push_reset_badge'));
         self::post('/api/radar-feedback',   fn() => self::load_api('radar_feedback'));
         self::post('/api/mp/webhook',       fn() => self::load_api('mp_webhook'));
+        self::get('/api/mp/webhook',        fn() => self::load_api('mp_webhook'));
         self::get('/api/mp/return',         fn() => self::load_api('mp_return'));
 
         // ── Páginas legales (público) ───────────────────────

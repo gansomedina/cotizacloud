@@ -10,6 +10,13 @@ defined('COTIZAAPP') or die;
 
 header('Content-Type: application/json');
 
+// Health check — permite que MP y tú verifiquen que el endpoint existe
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    http_response_code(200);
+    echo json_encode(['ok' => true, 'endpoint' => 'mp_webhook', 'method' => 'POST expected']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'method_not_allowed']);
