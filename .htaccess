@@ -4,23 +4,9 @@ RewriteEngine On
 
 # Desactivar ModSecurity para webhook de MercadoPago
 # (MP hace POST con payloads que a veces trigger WAF rules)
-<IfModule mod_security2.c>
-    <LocationMatch "^/api/mp/">
-        SecRuleEngine Off
-    </LocationMatch>
-    <If "%{REQUEST_URI} =~ m#^/api/mp/#">
-        SecRuleEngine Off
-        SecRequestBodyAccess Off
-    </If>
-</IfModule>
-
-# Fallback: si SecRuleEngine no está permitido, remover reglas comunes
-<IfModule mod_security.c>
-    <Files "mp_webhook.php">
-        SecFilterEngine Off
-        SecFilterScanPOST Off
-    </Files>
-</IfModule>
+<If "%{REQUEST_URI} =~ m#^/api/mp/#">
+    SecRuleEngine Off
+</If>
 
 # Si el archivo o directorio existe físicamente, servirlo directo
 RewriteCond %{REQUEST_FILENAME} -f [OR]
