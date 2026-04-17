@@ -223,7 +223,7 @@
         .col-panel.col-panel-mobile-show { display:block; width:100%; position:static; top:auto; margin-top:16px; }
         .mobile-panel  { display:block; }
         .sticky-bottom { display:block !important; }
-        .page-layout   { flex-direction:column; padding:16px 0 calc(120px + env(safe-area-inset-bottom,0px)); }
+        .page-layout   { flex-direction:column; padding:16px 0 calc(160px + env(safe-area-inset-bottom,0px)); }
         .page-wrap     { padding:0 14px; max-width:100vw; overflow-x:hidden; }
         .col-main      { max-width:100%; }
         .item-card     { max-width:100%; overflow:hidden; }
