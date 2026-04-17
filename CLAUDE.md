@@ -764,3 +764,125 @@ ALTER TABLE dispositivos_push ADD COLUMN badge_count INT UNSIGNED NOT NULL DEFAU
 4. **Probar push notifications** — enviar notificación real para verificar badge increment/clear
 5. **Probar Escudo Radar con OnTime** — verificar cadena de dominios custom desde la app
 6. **Bottom nav primer tap iOS** — limitación WKWebView, mitigado con touchend pero no 100%
+
+## Sesión 17 abril 2026
+
+### Completado
+1. **Filtro Radar aceptadas/rechazadas** — en `modules/radar/index.php:84` filtro en query: aceptadas/rechazadas solo aparecen si `accion_at/ultima_vista_at >= NOW() - 7 DAY`. Evita que buckets calientes se llenen de cotizaciones zombie. Datos en BD intactos, termómetro sigue funcionando.
+2. **Panel derecho en mobile en ver.php** — nueva clase `col-panel-mobile-show` hace visible el panel inline bajo el contenido en mobile (cupones, descuentos, totales, notas cliente/internas, vendedor, historial, log, botón guardar). Scope específico — nueva.php no afectado.
+3. **Sin scroll horizontal en mobile editor** — `overflow-x:hidden` en html/body, `word-break:break-word` en campos de texto, `item-card { overflow:hidden; max-width:100% }`, `col-main { max-width:100% }`.
+4. **Botón Guardar no se corta en mobile** — `col-panel.col-panel-mobile-show` tiene `margin-bottom: 120px + env(safe-area-inset-bottom)` directamente. Garantiza espacio fijo para bottom-nav sin depender de padding del page-layout.
+
+## Sistema de Suscripciones — Plan para próxima sesión
+
+### Decisiones tomadas (17 abril 2026)
+- **Pasarela**: MercadoPago Preapproval (suscripciones recurrentes)
+- **Moneda**: Solo MXN en el sistema. USD solo cosmético en landing (precios fijos hardcoded)
+- **Trial**: No hay trial por tiempo. El Free (25 cotizaciones) ES el trial
+- **Grace period**: 7 días tras fallo de pago → degradar a Free
+- **Cambio de plan**: Manual por superadmin (ajustar cuenta). Más adelante automático al vencer ciclo.
+- **Cancelación**: Al final del ciclo pagado (no inmediata)
+- **Facturación**: No (sin CFDI por ahora)
+- **iOS (Apple)**: Estilo Netflix — ocultar membresías en la app. Al intentar upgrade: "Para gestionar tu plan, visita cotiza.cloud desde tu navegador"
+- **Sesiones**: Quitar "Recordarme 30 días" para forzar re-login más seguido → beneficia Escudo Radar (re-pone cookie, aprende IP)
+- **Cron**: Diario 3am para procesar grace/degradaciones/emails
+
+### Flujo
+```
+1. Signup → Free (25 cotizaciones)
+2. Llega al límite o quiere features → "Actualizar plan"
+3. Elige Pro/Business + Mensual/Anual (todo en MXN)
+4. Crea preapproval en MP → redirige a checkout
+5. Cliente paga → Webhook "authorized" + "payment.approved"
+6. Plan activo, licencia_vence = +30 o +365 días
+7. Cada ciclo MP cobra → webhook extiende licencia_vence
+8. Falla pago → grace_hasta = +7 días → emails × 3 → degrada a Free
+9. Cancelar → plan activo hasta licencia_vence → luego Free
+```
+
+### BD
+
+```sql
+CREATE TABLE suscripciones (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    empresa_id INT UNSIGNED NOT NULL UNIQUE,
+    plan ENUM('pro','business') NOT NULL,
+    ciclo ENUM('mensual','anual') NOT NULL,
+    mp_preapproval_id VARCHAR(100) UNIQUE,
+    estado ENUM('active','paused','cancelled') NOT NULL DEFAULT 'active',
+    monto_mxn DECIMAL(10,2) NOT NULL,
+    cancel_al_vencer TINYINT(1) DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    cancelled_at DATETIME NULL,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
+);
+
+CREATE TABLE pagos_suscripcion (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    suscripcion_id INT UNSIGNED NOT NULL,
+    empresa_id INT UNSIGNED NOT NULL,
+    mp_payment_id VARCHAR(100) UNIQUE NOT NULL,
+    monto_mxn DECIMAL(10,2) NOT NULL,
+    estado ENUM('approved','pending','rejected','refunded') NOT NULL,
+    fecha_pago DATETIME NOT NULL,
+    detalle JSON NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (suscripcion_id) REFERENCES suscripciones(id),
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
+);
+
+ALTER TABLE empresas
+    ADD COLUMN licencia_vence DATE NULL,
+    ADD COLUMN grace_hasta DATE NULL;
+```
+
+### Archivos a crear
+
+| Archivo | Función |
+|---------|---------|
+| `core/MercadoPago.php` | SDK wrapper: crear/cancelar preapproval, validar firma webhook |
+| `api/mp_webhook.php` | Endpoint público de webhooks MP (valida HMAC, idempotente) |
+| `api/mp_return.php` | Return URL post-checkout |
+| `modules/config/suscripcion.php` | UI cliente: plan actual, próximo cobro, historial, botones |
+| `modules/config/suscripcion_crear.php` | POST: crea preapproval y redirige a MP |
+| `modules/config/suscripcion_cancelar.php` | POST: cancela en MP, mantiene hasta fin ciclo |
+| `modules/superadmin/suscripciones.php` | Admin: lista todas, ajuste manual |
+| `cron/procesar_suscripciones.php` | Cron diario: grace, degradación, emails aviso |
+| `core/layout.php` | Banner en grace period + detección iOS para ocultar membresías |
+| `migrations/add_suscripciones.sql` | Tablas + columnas |
+
+### Config.php del servidor (manual)
+```php
+define('MP_ACCESS_TOKEN',    'APP_USR-xxxxx');
+define('MP_PUBLIC_KEY',      'APP_USR-xxxxx');
+define('MP_WEBHOOK_SECRET',  'xxxxx');
+```
+
+### Webhook flow
+```
+MP → POST /api/mp/webhook
+  → validar firma HMAC (secret)
+  → idempotencia por mp_payment_id UNIQUE
+  → procesar evento:
+     - preapproval.authorized → activar, set licencia_vence
+     - payment.approved → registrar, extender licencia_vence
+     - payment.rejected → schedule grace + email
+     - preapproval.cancelled → cancel_al_vencer=1
+  → return 200
+```
+
+### Orden de implementación sugerido
+1. Migración BD
+2. `core/MercadoPago.php` (wrapper SDK)
+3. `api/mp_webhook.php` (testeable con herramienta MP)
+4. UI `modules/config/suscripcion.php`
+5. `modules/config/suscripcion_crear.php` + flujo checkout
+6. `cron/procesar_suscripciones.php`
+7. Detección iOS en layout.php (ocultar módulo suscripción)
+8. Superadmin panel
+9. Quitar cookie "Recordarme 30 días"
+10. Testing con MP sandbox
+
+### Checkpoint tag
+Git tag `pre-suscripciones-v1` creado en SHA `d644dba` antes de empezar.
