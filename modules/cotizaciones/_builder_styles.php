@@ -216,15 +216,14 @@
     .btn-gen { width:100%; padding:13px; border-radius:var(--r-sm); border:none; background:var(--g); font:700 15px var(--body); color:#fff; cursor:pointer; margin-top:10px; }
 
     @media(max-width:820px) {
-        html, body { overflow-x:hidden; max-width:100vw; }
         .sh-overlay  { bottom:0; }
         .bottom-sheet{ bottom:0; border-radius:16px 16px 0 0; }
         .col-panel     { display:none; }
-        .col-panel.col-panel-mobile-show { display:block; width:100%; position:static; top:auto; margin-top:16px; }
-        .mobile-panel  { display:block; }
+        .col-panel.col-panel-mobile-show { display:block; width:100%; position:static; top:auto; margin-top:16px; margin-bottom:calc(120px + env(safe-area-inset-bottom,0px)); }
+        .mobile-panel  { display:block; margin-bottom:calc(120px + env(safe-area-inset-bottom,0px)); }
         .sticky-bottom { display:block !important; }
-        .page-layout   { flex-direction:column; padding:16px 0 calc(160px + env(safe-area-inset-bottom,0px)); }
-        .page-wrap     { padding:0 14px; max-width:100vw; overflow-x:hidden; }
+        .page-layout   { flex-direction:column; padding:16px 0 24px; }
+        .page-wrap     { padding:0 14px; overflow-x:hidden; }
         .col-main      { max-width:100%; }
         .item-card     { max-width:100%; overflow:hidden; }
         .item-field input, .item-field textarea { font-size:16px; max-width:100%; }
