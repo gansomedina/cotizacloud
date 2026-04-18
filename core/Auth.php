@@ -67,7 +67,7 @@ class Auth
     }
 
     // ─── Login (centralizado: recibe slug de empresa) ───────
-    public static function login(string $empresa_slug, string $email, string $password, bool $recordar = false): array
+    public static function login(string $empresa_slug, string $email, string $password): array
     {
         // Buscar empresa por slug
         $empresa = DB::row(
@@ -105,8 +105,9 @@ class Auth
             return ['ok' => false, 'error' => 'Usuario o contraseña incorrectos'];
         }
 
-        // Duración: 30 días si "Recordarme", 8 horas normal
-        $duracion = $recordar ? (60 * 60 * 24 * 30) : SESSION_LIFETIME;
+        // Duración fija: 5 días. Re-login semanal mejora seguridad y
+        // refresca la cookie del Escudo Radar + aprendizaje de IP.
+        $duracion = 60 * 60 * 24 * 5;
 
         // Crear sesión en DB
         $token  = generar_token(32);

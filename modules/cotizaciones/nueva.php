@@ -340,23 +340,20 @@ $page_title = 'Nueva cotización';
     .mob-section.open .mob-sec-body  { display:block; }
     .mob-sec-inner { padding:14px 16px; }
 
-    /* Sticky bottom móvil */
-    .sticky-bottom { position:fixed; bottom:calc(60px + env(safe-area-inset-bottom,0px)); left:0; right:0; z-index:550; background:var(--white); border-top:1px solid var(--border); padding:12px 20px 14px; display:none; box-shadow:0 -4px 16px rgba(0,0,0,.06); }
+    /* Total + botón inline (al final del scroll, como en ver.php) */
+    .inline-bottom { display:none; background:var(--white); border:1px solid var(--border); border-radius:var(--r); box-shadow:var(--sh); padding:16px; margin-top:12px; }
     .sticky-total-lbl { font:400 11px var(--body); color:var(--t3); }
-    .sticky-total-val { font:700 20px var(--num); color:var(--text); }
-    .btn-gen { width:100%; padding:13px; border-radius:var(--r-sm); border:none; background:var(--g); font:700 15px var(--body); color:#fff; cursor:pointer; margin-top:10px; }
+    .sticky-total-val { font:700 22px var(--num); color:var(--text); margin-bottom:12px; }
+    .btn-gen { width:100%; padding:14px; border-radius:var(--r-sm); border:none; background:var(--g); font:700 15px var(--body); color:#fff; cursor:pointer; }
 
     @media(max-width:820px) {
         .col-panel     { display:none; }
         .mobile-panel  { display:block; }
-        .sticky-bottom { display:block !important; }
-        .page-layout   { padding:16px 0 calc(190px + env(safe-area-inset-bottom,0px)); }
+        .inline-bottom { display:block; }
+        .page-layout   { padding:16px 0 calc(80px + env(safe-area-inset-bottom,0px)); }
         .page-wrap     { padding:0 14px; }
         .item-field input, .item-field textarea { font-size:16px; }
         .item-arrow { width:34px; height:34px; font-size:14px; }
-    }
-    @media(min-width:821px) {
-        .sticky-bottom { display:none !important; }
     }
     </style>
 </head>
@@ -509,6 +506,11 @@ $page_title = 'Nueva cotización';
                     </div>
                 </div>
             </div>
+            <div class="inline-bottom">
+                <div class="sticky-total-lbl">Total estimado</div>
+                <div class="sticky-total-val" id="total-mob">$0.00</div>
+                <button class="btn-gen" onclick="guardarCotizacion()">Generar cotización</button>
+            </div>
         </div><!-- /mobile-panel -->
 
     </div><!-- /col-main -->
@@ -635,12 +637,6 @@ $page_title = 'Nueva cotización';
 </div><!-- /page-layout -->
 </div><!-- /page-wrap -->
 
-<!-- STICKY BOTTOM MÓVIL -->
-<div class="sticky-bottom">
-    <div class="sticky-total-lbl">Total estimado</div>
-    <div class="sticky-total-val" id="total-mob">$0.00</div>
-    <button class="btn-gen" onclick="guardarCotizacion()">Generar cotización</button>
-</div>
 
 <!-- ══ SHEET: Catálogo ══ -->
 <div class="sh-overlay" id="catalogOverlay" onclick="closeSheet('catalogSheet','catalogOverlay')"></div>

@@ -15,7 +15,6 @@ csrf_check();
 $empresa_slug = trim(strtolower($_POST['empresa_slug'] ?? ''));
 $usuario_str  = trim($_POST['usuario'] ?? '');
 $password     = $_POST['password'] ?? '';
-$recordar     = !empty($_POST['recordar']);
 
 // Rate limit: máximo 5 intentos de login por IP cada 15 minutos
 $rate = rate_check('login', 5, 15);
@@ -32,7 +31,7 @@ if (empty($usuario_str) || empty($password)) {
     redirect('/login?error=credenciales&empresa=' . urlencode($empresa_slug));
 }
 
-$resultado = Auth::login($empresa_slug, $usuario_str, $password, $recordar);
+$resultado = Auth::login($empresa_slug, $usuario_str, $password);
 
 if (!$resultado['ok']) {
     rate_hit('login'); // Registrar intento fallido
