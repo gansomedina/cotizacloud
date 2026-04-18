@@ -450,6 +450,31 @@ foreach ($empresas_cfg as $eid => $ec) {
     ];
 }
 
+// ─── COMISIONES: ventas 100% pagadas del periodo ────────────
+$comisiones = DB::query(
+    "SELECT v.id, v.empresa_id, v.titulo, v.numero, v.total, v.pagado, v.created_at,
+            COALESCE(v.vendedor_id, v.usuario_id) AS asesor_id,
+            u.nombre AS asesor_nombre,
+            cl.nombre AS cliente_nombre,
+            (SELECT MAX(r.fecha) FROM recibos r
+             WHERE r.venta_id = v.id AND r.tipo='abono' AND r.cancelado=0) AS ultimo_pago,
+            (SELECT COALESCE(SUM(r.monto),0) FROM recibos r
+             WHERE r.venta_id = v.id AND r.tipo='abono' AND r.cancelado=0) AS pagado_recibos
+     FROM ventas v
+     LEFT JOIN usuarios u ON u.id = COALESCE(v.vendedor_id, v.usuario_id)
+     LEFT JOIN clientes cl ON cl.id = v.cliente_id
+     WHERE v.empresa_id IN ({$emp_ids}) AND v.estado IN ('pagada','entregada')
+       AND v.created_at BETWEEN ? AND ?
+     ORDER BY v.empresa_id, ultimo_pago DESC, v.created_at DESC",
+    [$p_ini_dt, $p_fin_dt]
+);
+$comi_por_empresa = [];
+foreach ($comisiones as $cm) {
+    $eid = (int)$cm['empresa_id'];
+    if (!isset($empresas_cfg[$eid])) continue;
+    $comi_por_empresa[$eid][] = $cm;
+}
+
 // ─── Helpers ────────────────────────────────────────────────
 function xm(float $n): string {
     if (abs($n) >= 1000000) return '$' . number_format($n/1000000, 1) . 'M';
@@ -582,6 +607,10 @@ tbody tr:hover td{background:var(--card-hover)}
 .donut-item{display:flex;align-items:center;gap:8px;font-size:13px}
 .donut-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
 .donut-val{font:700 13px 'Inter',sans-serif;margin-left:auto;font-variant-numeric:tabular-nums}
+
+/* Comisiones */
+.btn-comi{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--g);font:700 11px 'Inter',sans-serif;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-comi:hover{background:var(--g);color:#fff;border-color:var(--g)}
 
 /* Grid 3 */
 .grid-3{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
@@ -1520,9 +1549,129 @@ foreach ($empresas_cfg as $eid => $ecfg) {
     <?php endif; ?>
 </div>
 
+<!-- ─── COMISIONES ─────────────────────────────────────────── -->
+<?php
+$total_comi_empresas = count($comi_por_empresa);
+$total_comi_rows = count($comisiones);
+?>
+<div class="sec" style="margin-top:28px" id="sec-comisiones">
+    <div class="sec-hdr">
+        <div class="sec-title">💰 Comisiones por pagar</div>
+        <div class="sec-count">
+            <span id="comi-pendientes-count"><?= $total_comi_rows ?></span> ventas pagadas ·
+            <?= $total_comi_empresas ?> empresa<?= $total_comi_empresas === 1 ? '' : 's' ?> · <?= $p_label ?>
+        </div>
+    </div>
+
+    <?php if ($total_comi_rows === 0): ?>
+    <div class="tbl-card" style="padding:24px;text-align:center;color:var(--t2);font:600 14px 'Inter',sans-serif">
+        Sin ventas pagadas en el periodo seleccionado
+    </div>
+    <?php else: ?>
+        <?php foreach ($comi_por_empresa as $eid => $filas):
+            $ec = $empresas_cfg[$eid];
+            $sum_contrato = 0; $sum_pagado = 0;
+            foreach ($filas as $f) {
+                $sum_contrato += (float)$f['total'];
+                $sum_pagado   += (float)$f['pagado_recibos'];
+            }
+        ?>
+        <div class="comi-empresa" data-empresa="<?= $eid ?>" style="margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span>
+                <div style="font:700 14px 'Inter',sans-serif"><?= e($ec['nombre']) ?></div>
+                <div style="font-size:12px;color:var(--t2)">
+                    · <span class="comi-empresa-count"><?= count($filas) ?></span> pendientes
+                    · <?= xf($sum_pagado) ?> cobrado
+                </div>
+            </div>
+            <div class="tbl-card">
+            <table>
+            <thead><tr>
+                <th>Asesor</th>
+                <th>Cliente / Venta</th>
+                <th class="r">Contrato</th>
+                <th class="r">Total pagado</th>
+                <th class="r">Último pago</th>
+                <th class="r">Acción</th>
+            </tr></thead>
+            <tbody>
+            <?php foreach ($filas as $f):
+                $asesor = $f['asesor_nombre'] ?: '—';
+                $cliente = $f['cliente_nombre'] ?: 'Sin cliente';
+                $titulo = $f['titulo'] ?: ('Venta #' . $f['numero']);
+                $contrato = (float)$f['total'];
+                $pag_tot  = (float)$f['pagado_recibos'];
+                $fecha_up = $f['ultimo_pago'] ? date('d/m/Y', strtotime($f['ultimo_pago'])) : '—';
+            ?>
+            <tr class="comi-row" data-comi-id="<?= (int)$f['id'] ?>" data-empresa="<?= $eid ?>">
+                <td style="font-weight:600"><?= e($asesor) ?></td>
+                <td>
+                    <div style="font-weight:600"><?= e($cliente) ?></div>
+                    <div style="font-size:11px;color:var(--t3)"><?= e($titulo) ?> · #<?= e($f['numero']) ?></div>
+                </td>
+                <td class="r mono"><?= xf($contrato) ?></td>
+                <td class="r mono" style="font-weight:700;color:var(--g)"><?= xf($pag_tot) ?></td>
+                <td class="r" style="font-size:12px;color:var(--t2)"><?= $fecha_up ?></td>
+                <td class="r">
+                    <button class="btn-comi" type="button" onclick="marcarComision(<?= (int)$f['id'] ?>)">
+                        Comisión pagada
+                    </button>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+            </table>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</div>
+
 </div><!-- /wrap -->
 
 <script>
+// ─── Comisiones (persistencia en localStorage) ─────────────
+const COMI_KEY = 'cz_comisiones_pagadas';
+function comiLoad() {
+    try { return JSON.parse(localStorage.getItem(COMI_KEY) || '{}') || {}; }
+    catch(e) { return {}; }
+}
+function comiSave(map) { localStorage.setItem(COMI_KEY, JSON.stringify(map)); }
+function comiRefresh() {
+    const map = comiLoad();
+    let totalVisibles = 0;
+    const countsPorEmpresa = {};
+    document.querySelectorAll('.comi-row').forEach(row => {
+        const id = row.dataset.comiId;
+        const eid = row.dataset.empresa;
+        if (map[id]) {
+            row.style.display = 'none';
+        } else {
+            row.style.display = '';
+            totalVisibles++;
+            countsPorEmpresa[eid] = (countsPorEmpresa[eid] || 0) + 1;
+        }
+    });
+    const elTotal = document.getElementById('comi-pendientes-count');
+    if (elTotal) elTotal.textContent = totalVisibles;
+    document.querySelectorAll('.comi-empresa').forEach(bloque => {
+        const eid = bloque.dataset.empresa;
+        const n = countsPorEmpresa[eid] || 0;
+        bloque.style.display = n === 0 ? 'none' : '';
+        const c = bloque.querySelector('.comi-empresa-count');
+        if (c) c.textContent = n;
+    });
+}
+function marcarComision(id) {
+    if (!confirm('¿Marcar esta comisión como pagada? Ya no aparecerá en el listado.')) return;
+    const map = comiLoad();
+    map[id] = { t: Date.now() };
+    comiSave(map);
+    comiRefresh();
+}
+document.addEventListener('DOMContentLoaded', comiRefresh);
+
 <?php // $emp_sorted ya definido arriba ?>
 // ─── Trend Chart ────────────────────────────────────────────
 new Chart(document.getElementById('trendChart').getContext('2d'), {
