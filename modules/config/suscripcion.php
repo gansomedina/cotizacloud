@@ -9,6 +9,14 @@
 defined('COTIZAAPP') or die;
 
 $empresa_id = EMPRESA_ID;
+
+// Sincronizar con MP si tiene suscripción y último sync hace +10 min
+$ultima_sync = DB::val("SELECT ultima_sync_mp FROM empresas WHERE id=?", [$empresa_id]);
+$tiene_sub   = DB::val("SELECT COUNT(*) FROM suscripciones WHERE empresa_id=? AND mp_preapproval_id IS NOT NULL", [$empresa_id]);
+if ($tiene_sub && (!$ultima_sync || strtotime($ultima_sync) < time() - 600)) {
+    MercadoPago::sincronizar($empresa_id);
+}
+
 $trial = trial_info($empresa_id);
 $empresa = DB::row("SELECT email, nombre FROM empresas WHERE id=?", [$empresa_id]);
 $sub = DB::row("SELECT * FROM suscripciones WHERE empresa_id=?", [$empresa_id]);

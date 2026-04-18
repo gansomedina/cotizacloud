@@ -17,6 +17,20 @@ $log = function(string $msg) {
 
 $log('Iniciando procesamiento de suscripciones...');
 
+// ─── 0. Sincronizar todas las suscripciones activas con MP ───
+// Detecta cobros recurrentes exitosos y cancelaciones antes de
+// decidir grace/degradación (reemplaza al webhook)
+$activas = DB::query(
+    "SELECT empresa_id FROM suscripciones
+     WHERE mp_preapproval_id IS NOT NULL AND estado IN ('active','paused')"
+);
+$syncs_ok = 0; $syncs_err = 0;
+foreach ($activas as $row) {
+    $r = MercadoPago::sincronizar((int)$row['empresa_id']);
+    if ($r['synced'] ?? false) { $syncs_ok++; } else { $syncs_err++; }
+}
+$log("Sync MP: {$syncs_ok} ok, {$syncs_err} err (de " . count($activas) . ")");
+
 // ─── 1. Empresas en grace period que ya expiraron ───────────
 $expiradas_grace = DB::query(
     "SELECT e.id, e.nombre, e.email, e.plan, e.grace_hasta, s.mp_preapproval_id

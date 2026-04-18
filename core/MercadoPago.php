@@ -93,6 +93,79 @@ class MercadoPago
         ]);
     }
 
+    // ─── Sincronizar estado con MP (reemplaza webhook) ──────────
+    // Consulta MP por el estado del preapproval y los pagos recientes
+    // Actualiza plan/plan_vence/estado local con la verdad de MP
+    public static function sincronizar(int $empresa_id): array
+    {
+        $sub = DB::row(
+            "SELECT id, mp_preapproval_id, ciclo FROM suscripciones
+             WHERE empresa_id = ? AND mp_preapproval_id IS NOT NULL",
+            [$empresa_id]
+        );
+
+        // Marca sync timestamp siempre (aunque no haya suscripción, evita queries repetidas)
+        DB::execute("UPDATE empresas SET ultima_sync_mp = NOW() WHERE id = ?", [$empresa_id]);
+
+        if (!$sub) {
+            return ['synced' => false, 'reason' => 'no_subscription'];
+        }
+
+        $remote = self::obtenerPreapproval($sub['mp_preapproval_id']);
+        if (isset($remote['error'])) {
+            error_log('[MP sync] Error obteniendo preapproval ' . $sub['mp_preapproval_id'] . ': ' . json_encode($remote));
+            return ['synced' => false, 'reason' => 'mp_api_error', 'detail' => $remote];
+        }
+
+        $status   = $remote['status'] ?? '';
+        $extRef   = $remote['external_reference'] ?? '';
+        $nextDate = $remote['next_payment_date'] ?? null;
+
+        preg_match('/^cz_(\d+)_(pro|business)_(mensual|anual)$/', $extRef, $m);
+        if (!$m) {
+            return ['synced' => false, 'reason' => 'invalid_external_reference'];
+        }
+        $plan  = $m[2];
+        $ciclo = $m[3];
+
+        if ($status === 'authorized') {
+            if ($nextDate) {
+                $vence = date('Y-m-d', strtotime($nextDate));
+            } else {
+                $dias  = $ciclo === 'anual' ? 365 : 30;
+                $vence = date('Y-m-d', strtotime("+{$dias} days"));
+            }
+
+            DB::execute(
+                "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1 WHERE id=?",
+                [$plan, $vence, $empresa_id]
+            );
+            DB::execute(
+                "UPDATE suscripciones SET plan=?, estado='active', updated_at=NOW() WHERE empresa_id=?",
+                [$plan, $empresa_id]
+            );
+            return ['synced' => true, 'status' => 'authorized', 'plan_vence' => $vence];
+        }
+
+        if ($status === 'cancelled') {
+            DB::execute(
+                "UPDATE suscripciones SET estado='cancelled', cancel_al_vencer=1, cancelled_at=COALESCE(cancelled_at, NOW()) WHERE empresa_id=?",
+                [$empresa_id]
+            );
+            return ['synced' => true, 'status' => 'cancelled'];
+        }
+
+        if ($status === 'paused') {
+            DB::execute(
+                "UPDATE suscripciones SET estado='paused', updated_at=NOW() WHERE empresa_id=?",
+                [$empresa_id]
+            );
+            return ['synced' => true, 'status' => 'paused'];
+        }
+
+        return ['synced' => true, 'status' => $status];
+    }
+
     // ─── Validar firma webhook ──────────────────────────────────
     public static function validarWebhook(): bool
     {
