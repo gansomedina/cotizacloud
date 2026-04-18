@@ -2,20 +2,13 @@
 // ============================================================
 //  CotizaCloud — modules/config/suscripcion.php
 //  Tab "Suscripción" en Configuración
-//  Muestra plan actual, botones de upgrade, historial de pagos
-//  Oculto en app nativa iOS (Apple Guideline 3.1.1)
+//  Muestra plan actual, tarjeta guardada, botones de upgrade,
+//  historial de pagos. Oculto en app nativa iOS.
 // ============================================================
 
 defined('COTIZAAPP') or die;
 
 $empresa_id = EMPRESA_ID;
-
-// Sincronizar con MP si tiene suscripción y último sync hace +10 min
-$ultima_sync = DB::val("SELECT ultima_sync_mp FROM empresas WHERE id=?", [$empresa_id]);
-$tiene_sub   = DB::val("SELECT COUNT(*) FROM suscripciones WHERE empresa_id=? AND mp_preapproval_id IS NOT NULL", [$empresa_id]);
-if ($tiene_sub && (!$ultima_sync || strtotime($ultima_sync) < time() - 600)) {
-    MercadoPago::sincronizar($empresa_id);
-}
 
 $trial = trial_info($empresa_id);
 $empresa = DB::row("SELECT email, nombre FROM empresas WHERE id=?", [$empresa_id]);
@@ -26,6 +19,9 @@ $pagos = DB::query(
 );
 $precios = MercadoPago::precios();
 $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
+
+$tiene_auto_renew = $sub && $sub['estado'] === 'active' && !$sub['cancel_al_vencer'] && !empty($sub['mp_customer_id']);
+$cobro_fallido = $sub && (int)($sub['intentos_cobro'] ?? 0) > 0 && !empty($sub['ultimo_error']);
 ?>
 
 <div class="sec">
@@ -57,7 +53,7 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
               <?php endif; ?>
             <?php endif; ?>
           </div>
-          <?php if ($sub && $sub['estado'] === 'active' && !$sub['cancel_al_vencer']): ?>
+          <?php if ($tiene_auto_renew): ?>
             <div style="font:500 12px var(--body);color:var(--g);margin-top:4px">
               Renovación automática activa (<?= $sub['ciclo'] ?>)
             </div>
@@ -69,6 +65,39 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
         <?php endif; ?>
       </div>
     </div>
+
+    <?php if ($tiene_auto_renew && !empty($sub['card_last4'])): ?>
+    <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg width="28" height="20" viewBox="0 0 28 20" fill="none" style="flex-shrink:0"><rect width="28" height="20" rx="3" fill="var(--bg)" stroke="var(--border)"/><rect x="3" y="6" width="6" height="4" rx="1" fill="var(--amb)"/><rect x="3" y="13" width="18" height="1.5" fill="var(--t3)"/></svg>
+        <div>
+          <div style="font:500 13px var(--body);color:var(--text)">
+            <?= strtoupper(htmlspecialchars($sub['card_brand'] ?: 'Tarjeta')) ?> ****<?= htmlspecialchars($sub['card_last4']) ?>
+          </div>
+          <?php if ($sub['card_exp_month'] && $sub['card_exp_year']): ?>
+            <div style="font:400 11px var(--body);color:var(--t3)">
+              Vence <?= str_pad($sub['card_exp_month'], 2, '0', STR_PAD_LEFT) ?>/<?= $sub['card_exp_year'] ?>
+            </div>
+          <?php endif; ?>
+        </div>
+      </div>
+      <?php if ($sub['proximo_cobro']): ?>
+      <div style="font:400 12px var(--body);color:var(--t3)">
+        Próximo cobro: <span style="color:var(--text);font-weight:500"><?= date('d/m/Y', strtotime($sub['proximo_cobro'])) ?></span>
+      </div>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($cobro_fallido): ?>
+    <div style="padding:12px 20px;background:color-mix(in srgb, var(--danger) 8%, white);border-top:1px solid var(--danger);display:flex;align-items:flex-start;gap:10px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div style="font:400 12px var(--body);color:var(--danger);line-height:1.5;flex:1">
+        <strong>No pudimos cobrar tu tarjeta</strong><?= $sub['intentos_cobro'] > 1 ? ' (intento ' . $sub['intentos_cobro'] . ' de 3)' : '' ?>.
+        Actualiza tu método de pago para no perder tu plan.
+      </div>
+    </div>
+    <?php endif; ?>
 
     <?php
     $grace = DB::val("SELECT grace_hasta FROM empresas WHERE id=?", [$empresa_id]);
@@ -83,20 +112,29 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
   </div>
 </div>
 
-<?php if ($trial['es_free'] || ($trial['es_pagado'] && (!$sub || $sub['cancel_al_vencer']))): ?>
-<div class="sec">
-  <div class="sec-lbl">Actualizar plan</div>
+<?php
+$mostrar_planes = $trial['es_free']
+    || ($trial['es_pagado'] && (!$sub || $sub['cancel_al_vencer'] || empty($sub['mp_customer_id'])))
+    || $cobro_fallido;
+$titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar plan';
+?>
 
+<?php if ($mostrar_planes): ?>
+<div class="sec">
+  <div class="sec-lbl"><?= $titulo_seccion ?></div>
+
+  <?php if (!$cobro_fallido): ?>
   <div style="padding:12px 14px;background:var(--amb-bg);border:1px solid var(--amb);border-radius:var(--r-sm);margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--amb-dark)" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     <div style="font:400 12px var(--body);color:var(--amb-dark);line-height:1.5">
       <strong>Si tu banco rechaza el cargo</strong>, llama al número al reverso de tu tarjeta y pide <em>autorizar cargos recurrentes de MercadoPago</em>. Muchos bancos bloquean el primer cobro por defecto como protección.
     </div>
   </div>
+  <?php endif; ?>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
     <?php foreach (['pro' => 'Pro', 'business' => 'Business'] as $plan_key => $plan_name):
-      $is_current = $trial['plan'] === $plan_key && $trial['es_pagado'] && $sub && !$sub['cancel_al_vencer'];
+      $is_current = $trial['plan'] === $plan_key && $trial['es_pagado'] && $tiene_auto_renew && !$cobro_fallido;
       $color = $plan_key === 'business' ? 'var(--blue)' : 'var(--g)';
     ?>
     <div class="card" style="border-color:<?= $is_current ? $color : 'var(--border)' ?>">
@@ -108,35 +146,29 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
       </div>
 
       <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
-        <!-- Mensual -->
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>
             <div style="font:700 16px var(--num);color:var(--text)">$<?= number_format($precios[$plan_key]['mensual'], 0) ?> <span style="font:400 12px var(--body);color:var(--t3)">MXN/mes</span></div>
           </div>
-          <?php if (!$is_current): ?>
           <form method="POST" action="/config/suscripcion/crear" style="margin:0">
             <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrf ?>">
             <input type="hidden" name="plan" value="<?= $plan_key ?>">
             <input type="hidden" name="ciclo" value="mensual">
             <button type="submit" class="btn-main" style="padding:8px 18px;font-size:12px;background:<?= $color ?>;border-color:<?= $color ?>">Mensual</button>
           </form>
-          <?php endif; ?>
         </div>
 
-        <!-- Anual -->
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>
             <div style="font:700 16px var(--num);color:var(--text)">$<?= number_format($precios[$plan_key]['anual'] / 12, 0) ?> <span style="font:400 12px var(--body);color:var(--t3)">MXN/mes</span></div>
             <div style="font:400 11px var(--body);color:var(--t3)">$<?= number_format($precios[$plan_key]['anual'], 0) ?>/año — <span style="color:var(--g);font-weight:600">20% descuento</span></div>
           </div>
-          <?php if (!$is_current): ?>
           <form method="POST" action="/config/suscripcion/crear" style="margin:0">
             <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrf ?>">
             <input type="hidden" name="plan" value="<?= $plan_key ?>">
             <input type="hidden" name="ciclo" value="anual">
             <button type="submit" class="btn-main" style="padding:8px 18px;font-size:12px;background:<?= $color ?>;border-color:<?= $color ?>">Anual</button>
           </form>
-          <?php endif; ?>
         </div>
       </div>
 
@@ -155,10 +187,26 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
 </div>
 <?php endif; ?>
 
-<?php if ($sub && $sub['estado'] === 'active' && !$sub['cancel_al_vencer']): ?>
+<?php if ($tiene_auto_renew): ?>
 <div class="sec">
   <div class="sec-lbl">Gestionar suscripción</div>
   <div class="card">
+    <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font:500 14px var(--body);color:var(--text)">Cambiar método de pago</div>
+        <div style="font:400 12px var(--body);color:var(--t3);margin-top:2px">
+          Haz un pago con una nueva tarjeta — reemplaza la actual para los próximos cobros
+        </div>
+      </div>
+      <form method="POST" action="/config/suscripcion/crear" style="margin:0">
+        <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrf ?>">
+        <input type="hidden" name="plan" value="<?= htmlspecialchars($sub['plan']) ?>">
+        <input type="hidden" name="ciclo" value="<?= htmlspecialchars($sub['ciclo']) ?>">
+        <button type="submit" style="padding:8px 18px;border-radius:var(--r-sm);border:1px solid var(--border);background:transparent;font:600 12px var(--body);color:var(--text);cursor:pointer">
+          Cambiar tarjeta
+        </button>
+      </form>
+    </div>
     <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
       <div>
         <div style="font:500 14px var(--body);color:var(--text)">Cancelar renovación automática</div>

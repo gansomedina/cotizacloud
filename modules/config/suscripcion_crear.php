@@ -2,7 +2,9 @@
 // ============================================================
 //  CotizaCloud — modules/config/suscripcion_crear.php
 //  POST /config/suscripcion/crear
-//  Crea preapproval en MercadoPago y redirige al checkout
+//  Crea Preference en MercadoPago (Checkout Pro) y redirige
+//  Al volver, api/mp/return procesa el pago y guarda el token
+//  de la tarjeta para cobros recurrentes automáticos.
 // ============================================================
 
 defined('COTIZAAPP') or die;
@@ -23,7 +25,7 @@ if (!$empresa) {
     redirect('/config?tab=suscripcion');
 }
 
-$result = MercadoPago::crearPreapproval([
+$result = MercadoPago::crearPreference([
     'plan'       => $plan,
     'ciclo'      => $ciclo,
     'email'      => $empresa['email'],
@@ -31,17 +33,25 @@ $result = MercadoPago::crearPreapproval([
 ]);
 
 if (isset($result['error'])) {
-    error_log('[MP Crear] Error: ' . json_encode($result));
+    error_log('[MP Preference] Error: ' . json_encode($result));
     $_SESSION['flash'] = ['tipo' => 'error', 'msg' => 'Error al conectar con MercadoPago. Intenta de nuevo.'];
     redirect('/config?tab=suscripcion');
 }
 
 $init_point = $result['init_point'] ?? '';
 if (!$init_point) {
-    error_log('[MP Crear] Sin init_point: ' . json_encode($result));
+    error_log('[MP Preference] Sin init_point: ' . json_encode($result));
     $_SESSION['flash'] = ['tipo' => 'error', 'msg' => 'No se pudo iniciar el proceso de pago.'];
     redirect('/config?tab=suscripcion');
 }
+
+$_SESSION['mp_intento'] = [
+    'empresa_id'    => EMPRESA_ID,
+    'plan'          => $plan,
+    'ciclo'         => $ciclo,
+    'preference_id' => $result['id'] ?? '',
+    'created_at'    => time(),
+];
 
 header('Location: ' . $init_point);
 exit;
