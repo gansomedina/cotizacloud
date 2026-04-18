@@ -7,6 +7,9 @@ RewriteEngine On
 <If "%{REQUEST_URI} =~ m#^/api/mp/#">
     SecRuleEngine Off
 </If>
+<If "%{REQUEST_URI} =~ m#^/hook/#">
+    SecRuleEngine Off
+</If>
 
 # Si el archivo o directorio existe físicamente, servirlo directo
 RewriteCond %{REQUEST_FILENAME} -f [OR]

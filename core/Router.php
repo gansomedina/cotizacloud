@@ -130,6 +130,9 @@ class Router
         self::post('/api/radar-feedback',   fn() => self::load_api('radar_feedback'));
         self::post('/api/mp/webhook',       fn() => self::load_api('mp_webhook'));
         self::get('/api/mp/webhook',        fn() => self::load_api('mp_webhook'));
+        // Ruta ofuscada (Imunify360 bloquea /api/mp/webhook)
+        self::post('/hook/c5f8-2a19',       fn() => self::load_api('mp_webhook'));
+        self::get('/hook/c5f8-2a19',        fn() => self::load_api('mp_webhook'));
         self::get('/api/mp/return',         fn() => self::load_api('mp_return'));
 
         // ── Páginas legales (público) ───────────────────────
