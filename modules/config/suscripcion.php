@@ -87,6 +87,13 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
 <div class="sec">
   <div class="sec-lbl">Actualizar plan</div>
 
+  <div style="padding:12px 14px;background:var(--amb-bg);border:1px solid var(--amb);border-radius:var(--r-sm);margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--amb-dark)" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div style="font:400 12px var(--body);color:var(--amb-dark);line-height:1.5">
+      <strong>Si tu banco rechaza el cargo</strong>, llama al número al reverso de tu tarjeta y pide <em>autorizar cargos recurrentes de MercadoPago</em>. Muchos bancos bloquean el primer cobro por defecto como protección.
+    </div>
+  </div>
+
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
     <?php foreach (['pro' => 'Pro', 'business' => 'Business'] as $plan_key => $plan_name):
       $is_current = $trial['plan'] === $plan_key && $trial['es_pagado'] && $sub && !$sub['cancel_al_vencer'];

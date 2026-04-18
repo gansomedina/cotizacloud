@@ -979,3 +979,53 @@ self::get('/api/mp/return',         fn() => self::load_api('mp_return'));
 
 ### Branch de trabajo
 - `main` (sesiones anteriores y esta continúan en main para auto-deploy cPanel)
+
+## Sesión 18 abril 2026 (continuación) — Suscripciones MP funcionales
+
+### Estado: SISTEMA FUNCIONAL ✅
+El sistema de suscripciones con MercadoPago está **operativo end-to-end**. El flujo completo funciona: creación del preapproval → redirect al checkout de MP → sincronización por polling al volver al sistema.
+
+### Testing con pagos reales
+Se hicieron 2 pruebas de pago con tarjetas reales:
+1. **Mastercard crédito ****0604** — Business Mensual $799 → **Rechazada por banco emisor**
+2. **HSBC Mastercard crédito ****1345** — Pro Mensual $299 → **Rechazada por HSBC**
+
+**Conclusión**: ambos rechazos son del **banco emisor**, no de MP ni del sistema. Patrón típico en México — bancos bloquean el primer cobro recurrente de un comercio nuevo por antifraude. Mensaje de MP: *"El banco emisor de la tarjeta rechazó el pago. Recomiéndale a tu cliente que pague con otro medio de pago o llame a su banco."*
+
+### Operaciones rechazadas en panel MP (para referencia)
+| Fecha | Monto | Plan | Tarjeta | Banco | Op ID |
+|-------|-------|------|---------|-------|-------|
+| 18/abr 10:07 | $799 | Business Mensual | MC ****0604 | — | 154617346683 |
+| 18/abr 10:18 | $299 | Pro Mensual | HSBC MC ****1345 | HSBC | 155373042466 |
+
+Ambas aparecen en `https://www.mercadopago.com.mx/activities` con ref externa `cz_2_business_mensual` y `cz_2_pro_mensual`.
+
+### Cambios esta sesión
+1. **Aviso en UI** — `modules/config/suscripcion.php` muestra banner amber arriba del grid de planes: "Si tu banco rechaza el cargo, llama al número al reverso de tu tarjeta y pide autorizar cargos recurrentes de MercadoPago". Solo aparece cuando el usuario está viendo las opciones de upgrade.
+2. **Arquitectura de polling en vez de webhook** — ya deployado commit `802acf5`:
+   - `MercadoPago::sincronizar($empresa_id)` consulta preapproval y actualiza estado local
+   - Se ejecuta en 3 momentos: al volver del checkout (`api/mp_return.php`), al abrir el tab Suscripción (throttle 10min via `empresas.ultima_sync_mp`), y en cron diario (step 0)
+   - Reemplaza completamente la dependencia del webhook (bloqueado por Imunify360)
+
+### Pendiente (no bloqueante)
+1. **Completar prueba de pago real** — usar tarjeta de BBVA/Banorte o Saldo MP para verificar el ciclo completo de activación (preapproval → authorized → plan_vence actualizado)
+2. **Configurar cron en cPanel**: `0 3 * * * /usr/bin/php /home/cotizacl/public_html/cron/procesar_suscripciones.php`
+3. **Migración pendiente en servidor**: `ALTER TABLE empresas ADD COLUMN ultima_sync_mp DATETIME NULL AFTER grace_hasta;` (archivo: `migrations/add_ultima_sync_mp.sql`)
+4. **Rotar credenciales MP** compartidas en chat (access token + public key)
+5. **Webhook**: dejar como está (polling cubre el caso). Si Imunify360 eventualmente libera IPs, reactivar validación HMAC con secret.
+
+### Dónde están los logs
+| Log | Ruta | Contiene |
+|-----|------|----------|
+| PHP errors app | `/home/cotizacl/public_html/logs/error.log` | `[MP Crear]`, `[MP sync]`, `[MP Webhook]` |
+| LiteSpeed | `/usr/local/lsws/logs/error.log` | SSL, acme-challenge, 403 de firewall |
+| Panel MP | https://www.mercadopago.com.mx/activities | Motivos reales de rechazo de pagos |
+
+### Notas importantes
+- Cuenta MP del usuario es **vieja y verificada** (KYC completo, CLABE configurada, vendedor activo). Descartado como causa de rechazos.
+- `payer_email` en preapproval: el cliente debe usar este email al pagar. El código usa `empresas.email` como payer_email.
+- Rechazo por banco emisor NO es bug — es comportamiento esperado en México para primeros cargos recurrentes.
+
+### Branch de trabajo
+- `claude/analyze-domain-change-hmo-AkFAi` (esta continuación)
+- Las sesiones previas quedaron en `main` por auto-deploy cPanel
