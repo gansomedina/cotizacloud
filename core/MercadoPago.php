@@ -74,7 +74,6 @@ class MercadoPago
                 'failure' => BASE_URL . '/api/mp/return?empresa_id=' . $empresa_id,
             ],
             'auto_return' => 'approved',
-            'binary_mode' => true,
             'statement_descriptor' => 'CotizaCloud',
             'metadata' => [
                 'empresa_id' => $empresa_id,
