@@ -149,7 +149,7 @@ $page_title = 'Nueva cotización';
     body { font-family: var(--body); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
     /* TOPBAR */
-    .topbar { position:sticky; top:0; z-index:100; background:var(--white); border-bottom:1px solid var(--border); height:54px; display:flex; align-items:center; padding:0 20px; }
+    .topbar { position:sticky; top:0; z-index:100; background:var(--white); border-bottom:1px solid var(--border); min-height:54px; display:flex; align-items:center; padding:env(safe-area-inset-top,0px) 20px 0; }
     .topbar-inner { width:100%; max-width:1200px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; }
     .topbar-l { display:flex; align-items:center; gap:10px; }
     .back-btn { width:34px; height:34px; border-radius:8px; border:1px solid var(--border); background:var(--bg); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--t2); text-decoration:none; transition:all .12s; }
@@ -341,7 +341,7 @@ $page_title = 'Nueva cotización';
     .mob-sec-inner { padding:14px 16px; }
 
     /* Sticky bottom móvil */
-    .sticky-bottom { position:fixed; bottom:0; left:0; right:0; z-index:50; background:var(--white); border-top:1px solid var(--border); padding:12px 20px 24px; display:none; box-shadow:0 -4px 16px rgba(0,0,0,.06); }
+    .sticky-bottom { position:fixed; bottom:calc(60px + env(safe-area-inset-bottom,0px)); left:0; right:0; z-index:550; background:var(--white); border-top:1px solid var(--border); padding:12px 20px 14px; display:none; box-shadow:0 -4px 16px rgba(0,0,0,.06); }
     .sticky-total-lbl { font:400 11px var(--body); color:var(--t3); }
     .sticky-total-val { font:700 20px var(--num); color:var(--text); }
     .btn-gen { width:100%; padding:13px; border-radius:var(--r-sm); border:none; background:var(--g); font:700 15px var(--body); color:#fff; cursor:pointer; margin-top:10px; }
@@ -350,7 +350,7 @@ $page_title = 'Nueva cotización';
         .col-panel     { display:none; }
         .mobile-panel  { display:block; }
         .sticky-bottom { display:block !important; }
-        .page-layout   { padding:16px 0 120px; }
+        .page-layout   { padding:16px 0 calc(190px + env(safe-area-inset-bottom,0px)); }
         .page-wrap     { padding:0 14px; }
         .item-field input, .item-field textarea { font-size:16px; }
         .item-arrow { width:34px; height:34px; font-size:14px; }
@@ -1280,7 +1280,7 @@ function toggleMob(hdr)   { hdr.closest('.mob-section').classList.toggle('open')
 #app-more-overlay{display:none}
 @media(max-width:768px){
   html,body{height:100%;overflow:hidden}
-  #app-main{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
+  #app-main{height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:none}
   body.sheet-open #app-bottom-nav{display:none!important}
   #app-bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;height:calc(60px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);background:#fff;border-top:1px solid #e2e2dc;z-index:600;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
   .app-bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;color:#6a6a64;font-size:10.5px;font-weight:500;padding:6px 4px;border:none;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent;position:relative}
