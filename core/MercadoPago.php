@@ -45,6 +45,9 @@ class MercadoPago
         $ciclo = $data['ciclo'];
         $email = $data['email'];
         $empresa_id = $data['empresa_id'];
+        $nombre  = $data['nombre'] ?? '';
+        $telefono = $data['telefono'] ?? '';
+        $rfc = $data['rfc'] ?? '';
 
         $monto = self::precio($plan, $ciclo);
         if ($monto <= 0) {
@@ -53,6 +56,25 @@ class MercadoPago
 
         $plan_label = $plan === 'business' ? 'Business' : 'Pro';
         $ciclo_label = $ciclo === 'anual' ? 'Anual' : 'Mensual';
+
+        $payer = ['email' => $email];
+        if ($nombre) {
+            $parts = explode(' ', trim($nombre), 2);
+            $payer['name'] = $parts[0];
+            if (isset($parts[1])) $payer['surname'] = $parts[1];
+        }
+        if ($telefono) {
+            $payer['phone'] = [
+                'area_code' => '',
+                'number' => preg_replace('/[^0-9]/', '', $telefono),
+            ];
+        }
+        if ($rfc) {
+            $payer['identification'] = [
+                'type' => 'RFC',
+                'number' => $rfc,
+            ];
+        }
 
         $body = [
             'items' => [[
@@ -64,9 +86,7 @@ class MercadoPago
                 'unit_price'  => (float)$monto,
                 'category_id' => 'services',
             ]],
-            'payer' => [
-                'email' => $email,
-            ],
+            'payer' => $payer,
             'external_reference' => "cz_{$empresa_id}_{$plan}_{$ciclo}",
             'back_urls' => [
                 'success' => BASE_URL . '/api/mp/return?empresa_id=' . $empresa_id,
@@ -74,7 +94,6 @@ class MercadoPago
                 'failure' => BASE_URL . '/api/mp/return?empresa_id=' . $empresa_id,
             ],
             'auto_return' => 'approved',
-            'binary_mode' => true,
             'statement_descriptor' => 'CotizaCloud',
             'metadata' => [
                 'empresa_id' => $empresa_id,
