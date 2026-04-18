@@ -55,7 +55,6 @@ class MercadoPago
         $ciclo_label = $ciclo === 'anual' ? 'Anual' : 'Mensual';
 
         // Solo email: MP captura datos del cardholder en el checkout.
-        // wallet_purchase fuerza login en MP → mejor score antifraude.
         $body = [
             'items' => [[
                 'id'          => "cz_{$plan}_{$ciclo}",
@@ -70,7 +69,6 @@ class MercadoPago
             'payer' => [
                 'email' => $email,
             ],
-            'purpose' => 'wallet_purchase',
             'payment_methods' => [
                 'installments' => 1,
             ],
