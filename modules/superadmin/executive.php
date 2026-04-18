@@ -450,22 +450,28 @@ foreach ($empresas_cfg as $eid => $ec) {
     ];
 }
 
-// ─── COMISIONES: ventas 100% pagadas del periodo ────────────
+// ─── COMISIONES: ventas 100% pagadas (filtro por fecha del último pago) ──
 $comisiones = DB::query(
     "SELECT v.id, v.empresa_id, v.titulo, v.numero, v.total, v.pagado, v.created_at,
             COALESCE(v.vendedor_id, v.usuario_id) AS asesor_id,
             u.nombre AS asesor_nombre,
             cl.nombre AS cliente_nombre,
-            (SELECT MAX(r.fecha) FROM recibos r
-             WHERE r.venta_id = v.id AND r.tipo='abono' AND r.cancelado=0) AS ultimo_pago,
-            (SELECT COALESCE(SUM(r.monto),0) FROM recibos r
-             WHERE r.venta_id = v.id AND r.tipo='abono' AND r.cancelado=0) AS pagado_recibos
+            rx.ultimo_pago,
+            rx.pagado_recibos
      FROM ventas v
      LEFT JOIN usuarios u ON u.id = COALESCE(v.vendedor_id, v.usuario_id)
      LEFT JOIN clientes cl ON cl.id = v.cliente_id
+     INNER JOIN (
+        SELECT venta_id,
+               MAX(fecha) AS ultimo_pago,
+               COALESCE(SUM(monto),0) AS pagado_recibos
+        FROM recibos
+        WHERE tipo='abono' AND cancelado=0
+        GROUP BY venta_id
+     ) rx ON rx.venta_id = v.id
      WHERE v.empresa_id IN ({$emp_ids}) AND v.estado IN ('pagada','entregada')
-       AND v.created_at BETWEEN ? AND ?
-     ORDER BY v.empresa_id, ultimo_pago DESC, v.created_at DESC",
+       AND rx.ultimo_pago BETWEEN ? AND ?
+     ORDER BY v.empresa_id, rx.ultimo_pago DESC",
     [$p_ini_dt, $p_fin_dt]
 );
 $comi_por_empresa = [];
