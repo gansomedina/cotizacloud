@@ -36,7 +36,144 @@ class MercadoPago
         return self::precios()[$plan][$ciclo] ?? 0.0;
     }
 
-    // ─── Crear suscripción (preapproval) ────────────────────────
+    // ─── Crear Preference (Checkout Pro) ────────────────────────
+    // Flujo nuevo: pago único con tokenización de tarjeta para
+    // cobros recurrentes via /v1/payments. Sustituye Preapproval.
+    public static function crearPreference(array $data): array
+    {
+        $plan  = $data['plan'];
+        $ciclo = $data['ciclo'];
+        $email = $data['email'];
+        $empresa_id = $data['empresa_id'];
+
+        $monto = self::precio($plan, $ciclo);
+        if ($monto <= 0) {
+            return ['error' => 'Plan o ciclo inválido'];
+        }
+
+        $plan_label = $plan === 'business' ? 'Business' : 'Pro';
+        $ciclo_label = $ciclo === 'anual' ? 'Anual' : 'Mensual';
+
+        $body = [
+            'items' => [[
+                'id'          => "cz_{$plan}_{$ciclo}",
+                'title'       => "CotizaCloud {$plan_label} — {$ciclo_label}",
+                'description' => "Suscripción {$plan_label} {$ciclo_label} a CotizaCloud",
+                'quantity'    => 1,
+                'currency_id' => 'MXN',
+                'unit_price'  => (float)$monto,
+                'category_id' => 'services',
+            ]],
+            'payer' => [
+                'email' => $email,
+            ],
+            'external_reference' => "cz_{$empresa_id}_{$plan}_{$ciclo}",
+            'back_urls' => [
+                'success' => BASE_URL . '/api/mp/return?empresa_id=' . $empresa_id,
+                'pending' => BASE_URL . '/api/mp/return?empresa_id=' . $empresa_id,
+                'failure' => BASE_URL . '/api/mp/return?empresa_id=' . $empresa_id,
+            ],
+            'auto_return' => 'approved',
+            'binary_mode' => true,
+            'statement_descriptor' => 'CotizaCloud',
+            'metadata' => [
+                'empresa_id' => $empresa_id,
+                'plan'       => $plan,
+                'ciclo'      => $ciclo,
+            ],
+        ];
+
+        return self::post('/checkout/preferences', $body);
+    }
+
+    // ─── Obtener pago (consulta /v1/payments/{id}) ──────────────
+    public static function obtenerPago(string $paymentId): array
+    {
+        return self::get('/v1/payments/' . $paymentId);
+    }
+
+    // ─── Cobrar tarjeta guardada (cobro recurrente) ─────────────
+    // Usa card_id + customer_id para cobrar sin intervención del
+    // usuario. Solo funciona si la tarjeta fue guardada previamente
+    // desde un pago exitoso (first-payment Checkout Pro).
+    public static function cobrarTarjetaGuardada(array $data): array
+    {
+        $empresa_id = $data['empresa_id'];
+        $customer_id = $data['customer_id'];
+        $card_id = $data['card_id'];
+        $monto = (float)$data['monto'];
+        $descripcion = $data['descripcion'] ?? 'CotizaCloud — Renovación';
+        $plan = $data['plan'];
+        $ciclo = $data['ciclo'];
+        $email = $data['email'];
+
+        // Generar card token a partir de la tarjeta guardada
+        $tokenResp = self::post('/v1/card_tokens', [
+            'card_id'     => $card_id,
+            'customer_id' => $customer_id,
+        ]);
+
+        if (isset($tokenResp['error']) || empty($tokenResp['id'])) {
+            return [
+                'error'   => 'token_error',
+                'message' => 'No se pudo generar token de la tarjeta guardada',
+                'detail'  => $tokenResp,
+            ];
+        }
+
+        $idempotencyKey = 'cz_renew_' . $empresa_id . '_' . date('Ymd') . '_' . bin2hex(random_bytes(4));
+
+        $body = [
+            'transaction_amount'   => $monto,
+            'token'                => $tokenResp['id'],
+            'description'          => $descripcion,
+            'installments'         => 1,
+            'payer'                => [
+                'type'  => 'customer',
+                'id'    => $customer_id,
+                'email' => $email,
+            ],
+            'binary_mode'          => true,
+            'statement_descriptor' => 'CotizaCloud',
+            'external_reference'   => "cz_{$empresa_id}_{$plan}_{$ciclo}_renew",
+            'metadata'             => [
+                'empresa_id' => $empresa_id,
+                'plan'       => $plan,
+                'ciclo'      => $ciclo,
+                'tipo'       => 'renovacion',
+            ],
+        ];
+
+        if (!empty($data['payment_method_id'])) {
+            $body['payment_method_id'] = $data['payment_method_id'];
+        }
+
+        return self::requestWithIdempotency('POST', '/v1/payments', $body, $idempotencyKey);
+    }
+
+    // ─── Extraer datos relevantes de un pago ────────────────────
+    public static function extraerDatosPago(array $pago): array
+    {
+        return [
+            'status'            => $pago['status'] ?? '',
+            'status_detail'     => $pago['status_detail'] ?? '',
+            'payment_id'        => (string)($pago['id'] ?? ''),
+            'transaction_amount'=> (float)($pago['transaction_amount'] ?? 0),
+            'customer_id'       => $pago['payer']['id'] ?? null,
+            'card_id'           => $pago['card']['id'] ?? null,
+            'card_last4'        => $pago['card']['last_four_digits'] ?? null,
+            'card_brand'        => $pago['payment_method_id'] ?? null,
+            'card_exp_month'    => $pago['card']['expiration_month'] ?? null,
+            'card_exp_year'     => $pago['card']['expiration_year'] ?? null,
+            'payment_method_id' => $pago['payment_method_id'] ?? null,
+            'payment_type_id'   => $pago['payment_type_id'] ?? null,
+            'external_reference'=> $pago['external_reference'] ?? '',
+            'date_approved'     => $pago['date_approved'] ?? null,
+        ];
+    }
+
+    // ─── LEGACY: Crear suscripción (preapproval) ────────────────
+    // Mantener por compatibilidad — no se usa en flujo nuevo.
     public static function crearPreapproval(array $data): array
     {
         $plan  = $data['plan'];
@@ -359,15 +496,21 @@ class MercadoPago
         return self::request('PUT', $path, $body);
     }
 
-    private static function request(string $method, string $path, ?array $body = null): array
+    // POST con X-Idempotency-Key (requerido por MP en /v1/payments)
+    private static function requestWithIdempotency(string $method, string $path, array $body, string $key): array
+    {
+        return self::request($method, $path, $body, ['X-Idempotency-Key: ' . $key]);
+    }
+
+    private static function request(string $method, string $path, ?array $body = null, array $extraHeaders = []): array
     {
         $url = self::API_BASE . $path;
         $ch  = curl_init($url);
 
-        $headers = [
+        $headers = array_merge([
             'Authorization: Bearer ' . self::accessToken(),
             'Content-Type: application/json',
-        ];
+        ], $extraHeaders);
 
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,

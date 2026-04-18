@@ -2,7 +2,8 @@
 // ============================================================
 //  CotizaCloud — modules/config/suscripcion_cancelar.php
 //  POST /config/suscripcion/cancelar
-//  Cancela la suscripción en MercadoPago (activa hasta fin de ciclo)
+//  Cancela la renovación automática. El plan sigue activo hasta
+//  el fin del ciclo ya pagado. El cron no la cobrará de nuevo.
 // ============================================================
 
 defined('COTIZAAPP') or die;
@@ -16,10 +17,11 @@ if (!$sub) {
     redirect('/config?tab=suscripcion');
 }
 
-if ($sub['mp_preapproval_id']) {
+// Legacy: si tiene preapproval viejo, también lo cancelamos en MP
+if (!empty($sub['mp_preapproval_id'])) {
     $result = MercadoPago::cancelarPreapproval($sub['mp_preapproval_id']);
     if (isset($result['error'])) {
-        error_log('[MP Cancelar] Error: ' . json_encode($result));
+        error_log('[MP Cancelar Legacy] ' . json_encode($result));
     }
 }
 
@@ -28,5 +30,5 @@ DB::execute(
     [$sub['id']]
 );
 
-$_SESSION['flash'] = ['tipo' => 'ok', 'msg' => 'Suscripción cancelada. Tu plan seguirá activo hasta el fin del ciclo actual.'];
+$_SESSION['flash'] = ['tipo' => 'ok', 'msg' => 'Renovación automática cancelada. Tu plan seguirá activo hasta el fin del ciclo actual.'];
 redirect('/config?tab=suscripcion');
