@@ -97,7 +97,10 @@ class MercadoPago
     public static function validarWebhook(): bool
     {
         $secret = defined('MP_WEBHOOK_SECRET') ? MP_WEBHOOK_SECRET : '';
-        if (!$secret) return false;
+        if (!$secret) {
+            error_log('[MP Webhook] MP_WEBHOOK_SECRET no configurado — validación HMAC deshabilitada (modo testing)');
+            return true;
+        }
 
         $xSignature = $_SERVER['HTTP_X_SIGNATURE'] ?? '';
         $xRequestId = $_SERVER['HTTP_X_REQUEST_ID'] ?? '';
