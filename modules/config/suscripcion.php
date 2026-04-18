@@ -108,7 +108,7 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
           </div>
           <?php if (!$is_current): ?>
           <form method="POST" action="/config/suscripcion/crear" style="margin:0">
-            <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+            <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrf ?>">
             <input type="hidden" name="plan" value="<?= $plan_key ?>">
             <input type="hidden" name="ciclo" value="mensual">
             <button type="submit" class="btn-main" style="padding:8px 18px;font-size:12px;background:<?= $color ?>;border-color:<?= $color ?>">Mensual</button>
@@ -124,7 +124,7 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
           </div>
           <?php if (!$is_current): ?>
           <form method="POST" action="/config/suscripcion/crear" style="margin:0">
-            <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+            <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrf ?>">
             <input type="hidden" name="plan" value="<?= $plan_key ?>">
             <input type="hidden" name="ciclo" value="anual">
             <button type="submit" class="btn-main" style="padding:8px 18px;font-size:12px;background:<?= $color ?>;border-color:<?= $color ?>">Anual</button>
@@ -161,7 +161,7 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
       </div>
       <form method="POST" action="/config/suscripcion/cancelar" style="margin:0"
             onsubmit="return confirm('¿Cancelar la renovación automática?\nTu plan seguirá activo hasta el fin del ciclo actual.')">
-        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+        <input type="hidden" name="<?= CSRF_TOKEN_NAME ?>" value="<?= $csrf ?>">
         <button type="submit" style="padding:8px 18px;border-radius:var(--r-sm);border:1px solid var(--danger);background:transparent;font:600 12px var(--body);color:var(--danger);cursor:pointer">
           Cancelar suscripción
         </button>
