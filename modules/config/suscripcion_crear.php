@@ -19,7 +19,7 @@ if (!in_array($plan, ['pro', 'business']) || !in_array($ciclo, ['mensual', 'anua
     redirect('/config?tab=suscripcion');
 }
 
-$empresa = DB::row("SELECT email, nombre FROM empresas WHERE id=?", [EMPRESA_ID]);
+$empresa = DB::row("SELECT email, nombre, telefono, rfc FROM empresas WHERE id=?", [EMPRESA_ID]);
 if (!$empresa) {
     $_SESSION['flash'] = ['tipo' => 'error', 'msg' => 'Empresa no encontrada.'];
     redirect('/config?tab=suscripcion');
@@ -29,6 +29,9 @@ $result = MercadoPago::crearPreference([
     'plan'       => $plan,
     'ciclo'      => $ciclo,
     'email'      => $empresa['email'],
+    'nombre'     => $empresa['nombre'] ?? '',
+    'telefono'   => $empresa['telefono'] ?? '',
+    'rfc'        => $empresa['rfc'] ?? '',
     'empresa_id' => EMPRESA_ID,
 ]);
 
