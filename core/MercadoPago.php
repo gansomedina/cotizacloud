@@ -45,9 +45,6 @@ class MercadoPago
         $ciclo = $data['ciclo'];
         $email = $data['email'];
         $empresa_id = $data['empresa_id'];
-        $nombre  = $data['nombre'] ?? '';
-        $telefono = $data['telefono'] ?? '';
-        $rfc = $data['rfc'] ?? '';
 
         $monto = self::precio($plan, $ciclo);
         if ($monto <= 0) {
@@ -57,25 +54,10 @@ class MercadoPago
         $plan_label = $plan === 'business' ? 'Business' : 'Pro';
         $ciclo_label = $ciclo === 'anual' ? 'Anual' : 'Mensual';
 
-        $payer = ['email' => $email];
-        if ($nombre) {
-            $parts = explode(' ', trim($nombre), 2);
-            $payer['name'] = $parts[0];
-            if (isset($parts[1])) $payer['surname'] = $parts[1];
-        }
-        if ($telefono) {
-            $payer['phone'] = [
-                'area_code' => '',
-                'number' => preg_replace('/[^0-9]/', '', $telefono),
-            ];
-        }
-        if ($rfc) {
-            $payer['identification'] = [
-                'type' => 'RFC',
-                'number' => $rfc,
-            ];
-        }
-
+        // Solo enviamos email del payer. Nombre/teléfono/RFC los
+        // captura MP del cardholder real (pueden no ser los del
+        // registro de la empresa — contador, admin, etc.).
+        // Enviar datos divergentes al cardholder aumenta antifraude.
         $body = [
             'items' => [[
                 'id'          => "cz_{$plan}_{$ciclo}",
@@ -86,7 +68,9 @@ class MercadoPago
                 'unit_price'  => (float)$monto,
                 'category_id' => 'services',
             ]],
-            'payer' => $payer,
+            'payer' => [
+                'email' => $email,
+            ],
             'external_reference' => "cz_{$empresa_id}_{$plan}_{$ciclo}",
             'back_urls' => [
                 'success' => BASE_URL . '/api/mp/return?empresa_id=' . $empresa_id,
