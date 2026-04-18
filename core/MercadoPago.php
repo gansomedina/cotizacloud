@@ -54,15 +54,13 @@ class MercadoPago
         $plan_label = $plan === 'business' ? 'Business' : 'Pro';
         $ciclo_label = $ciclo === 'anual' ? 'Anual' : 'Mensual';
 
-        // Solo enviamos email del payer. Nombre/teléfono/RFC los
-        // captura MP del cardholder real (pueden no ser los del
-        // registro de la empresa — contador, admin, etc.).
-        // Enviar datos divergentes al cardholder aumenta antifraude.
+        // Solo email: MP captura datos del cardholder en el checkout.
         $body = [
             'items' => [[
                 'id'          => "cz_{$plan}_{$ciclo}",
                 'title'       => "CotizaCloud {$plan_label} — {$ciclo_label}",
                 'description' => "Suscripción {$plan_label} {$ciclo_label} a CotizaCloud",
+                'picture_url' => 'https://cotiza.cloud/assets/img/logo.png',
                 'quantity'    => 1,
                 'currency_id' => 'MXN',
                 'unit_price'  => (float)$monto,
@@ -70,6 +68,9 @@ class MercadoPago
             ]],
             'payer' => [
                 'email' => $email,
+            ],
+            'payment_methods' => [
+                'installments' => 1,
             ],
             'external_reference' => "cz_{$empresa_id}_{$plan}_{$ciclo}",
             'back_urls' => [
@@ -79,6 +80,9 @@ class MercadoPago
             ],
             'auto_return' => 'approved',
             'statement_descriptor' => 'CotizaCloud',
+            'expires'              => true,
+            'expiration_date_from' => date('c'),
+            'expiration_date_to'   => date('c', strtotime('+2 hours')),
             'metadata' => [
                 'empresa_id' => $empresa_id,
                 'plan'       => $plan,
