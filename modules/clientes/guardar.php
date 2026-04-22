@@ -32,10 +32,11 @@ $body = json_decode(file_get_contents('php://input'), true);
 if (!$body) json_error('Payload inválido', 400);
 
 // ─── Validar ─────────────────────────────────────────────
-$nombre   = trim($body['nombre']   ?? '');
-$telefono = trim($body['telefono'] ?? '');
-$email    = trim($body['email']    ?? '');
-$nota     = trim($body['nota']     ?? '');
+$nombre    = trim($body['nombre']    ?? '');
+$telefono  = trim($body['telefono']  ?? '');
+$email     = trim($body['email']     ?? '');
+$direccion = trim($body['direccion'] ?? '');
+$nota      = trim($body['nota']      ?? '');
 
 if (empty($nombre))   json_error('El nombre es requerido');
 if (empty($telefono)) json_error('El teléfono es requerido');
@@ -52,12 +53,13 @@ if ($dup) json_error('Ya existe otro cliente con ese teléfono', 409);
 
 // ─── Actualizar ──────────────────────────────────────────
 DB::execute(
-    "UPDATE clientes SET nombre=?, telefono=?, email=?, nota=?, updated_at=NOW() WHERE id=?",
+    "UPDATE clientes SET nombre=?, telefono=?, email=?, direccion=?, nota=?, updated_at=NOW() WHERE id=?",
     [
         $nombre,
         $telefono,
-        $email   ?: null,
-        $nota    ?: null,
+        $email     ?: null,
+        $direccion ?: null,
+        $nota      ?: null,
         $cliente_id,
     ]
 );

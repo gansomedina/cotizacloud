@@ -420,6 +420,11 @@ ob_start();
                        value="<?= e($cliente['email'] ?? '') ?>">
             </div>
         </div>
+        <div class="sh-field">
+            <div class="sh-lbl">Dirección (opcional)</div>
+            <input class="sh-input" type="text" id="edit-direccion"
+                   value="<?= e($cliente['direccion'] ?? '') ?>">
+        </div>
         <div class="sh-field" style="border-bottom:none;">
             <div class="sh-lbl">Nota (opcional)</div>
             <textarea class="sh-input" id="edit-nota"
@@ -451,10 +456,11 @@ function openEditSheet() { openSheet('shEditCliente'); }
 
 // ─── Guardar edición ─────────────────────────────────────
 async function guardarEdicion() {
-    const nombre   = document.getElementById('edit-nombre').value.trim();
-    const telefono = document.getElementById('edit-telefono').value.trim();
-    const email    = document.getElementById('edit-email').value.trim();
-    const nota     = document.getElementById('edit-nota').value.trim();
+    const nombre    = document.getElementById('edit-nombre').value.trim();
+    const telefono  = document.getElementById('edit-telefono').value.trim();
+    const email     = document.getElementById('edit-email').value.trim();
+    const direccion = document.getElementById('edit-direccion').value.trim();
+    const nota      = document.getElementById('edit-nota').value.trim();
 
     if (!nombre)   { alert('El nombre es requerido'); return; }
     if (!telefono) { alert('El teléfono es requerido'); return; }
@@ -466,7 +472,7 @@ async function guardarEdicion() {
         const r = await fetch('/clientes/' + CLIENTE_ID, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ nombre, telefono, email, nota })
+            body: JSON.stringify({ nombre, telefono, email, direccion, nota })
         });
         const d = await r.json();
         if (!d.ok) { alert(d.error || 'Error al guardar'); btn.disabled=false; btn.textContent='Guardar cambios'; return; }
