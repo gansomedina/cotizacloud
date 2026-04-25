@@ -722,22 +722,36 @@ function render_comp_row($cv, $empresa_id, $tipo) {
     }
     $devices = array_unique($devices);
     $dev_str = implode(', ', $devices);
-    $visitors_lbl = isset($cv['visitors_distintos']) && $cv['visitors_distintos'] > 1
-        ? ' · '.(int)$cv['visitors_distintos'].' dispositivos' : '';
+    $dev_count = count($devices);
     $safe_key = htmlspecialchars($key, ENT_QUOTES);
     $dismiss_tipo = $tipo;
     $dismiss_val = $param_val;
+
+    if ($tipo === 'user') {
+        $conf_label = 'Alta';
+        $conf_color = '#dc2626';
+        $conf_desc = 'Mismo navegador (cookie) vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes. Es la misma persona con certeza.';
+    } elseif ($tipo === 'device') {
+        $conf_label = 'Alta';
+        $conf_color = '#dc2626';
+        $conf_desc = 'Mismo dispositivo (' . $dev_str . ') vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes, aunque las cookies cambiaron.';
+    } else {
+        $conf_label = 'Media';
+        $conf_color = '#d97706';
+        $conf_desc = 'Misma IP vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes. Puede ser la misma persona o diferentes personas en la misma red (ej. Telcel rota IPs).';
+    }
+    $visitas_total = (int)($cv['cots_vistas'] ?? 0);
     ?>
-    <div class="comp-row" data-comp-key="<?= $safe_key ?>" style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:6px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-            <div style="font:700 12px var(--body);color:#991b1b">
-                <?= e($cv['device_sig'] ?? $cv['ip'] ?? $cv['visitor_id'] ?? '?') ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cots<?= $visitors_lbl ?>
-            </div>
+    <div class="comp-row" data-comp-key="<?= $safe_key ?>" style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <div style="display:flex;align-items:center;gap:8px">
-                <span style="font:500 11px var(--num);color:#7f1d1d"><?= $dev_str ?></span>
-                <button onclick="compAction('review','<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Ya revisé, limpiar">✓ Revisado</button>
+                <span style="font:700 12px var(--body);color:#991b1b"><?= $dev_str ?></span>
+                <span style="background:<?= $conf_color ?>;color:#fff;padding:1px 7px;border-radius:4px;font:700 9px var(--body);letter-spacing:.03em"><?= $conf_label ?></span>
+                <span style="font:500 11px var(--num);color:#7f1d1d"><?= (int)$cv['clientes_distintos'] ?> clientes · <?= $visitas_total ?> cots</span>
             </div>
+            <button onclick="compAction('review','<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Ya revisé, limpiar">✓ Revisado</button>
         </div>
+        <div style="font:400 11px var(--body);color:#991b1b;opacity:.75;margin-bottom:6px"><?= $conf_desc ?></div>
         <?php foreach ($cv_detail as $det): ?>
         <div style="display:flex;justify-content:space-between;padding:3px 0;font:400 12px var(--body);color:#7f1d1d;border-bottom:1px solid rgba(252,165,165,.3)">
             <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e(mb_substr($det['cotizacion'],0,40)) ?><?= (int)($det['num_cots'] ?? 1) > 1 ? ' <span style="opacity:.6">(+'.(($det['num_cots'])-1).' cots)</span>' : '' ?></span>
@@ -835,21 +849,21 @@ if ($total_comp): ?>
 
     <?php if ($comp_by_user): ?>
     <div style="font:700 11px var(--body);color:#991b1b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
-        🔍 Mismo navegador vio multiples clientes (<?= count($comp_by_user) ?>)
+        🔍 Mismo navegador vio múltiples clientes (<?= count($comp_by_user) ?>) — confianza alta
     </div>
     <?php foreach ($comp_by_user as $cv) render_comp_row($cv, $empresa_id, 'user'); ?>
     <?php endif; ?>
 
     <?php if ($comp_by_ip): ?>
     <div style="font:700 11px var(--body);color:#991b1b;margin:<?= $comp_by_user ? '12px' : '0' ?> 0 6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
-        🌐 Misma red vio multiples clientes (<?= count($comp_by_ip) ?>)
+        🌐 Misma red vio múltiples clientes (<?= count($comp_by_ip) ?>) — confianza media
     </div>
     <?php foreach ($comp_by_ip as $cv) render_comp_row($cv, $empresa_id, 'ip'); ?>
     <?php endif; ?>
 
     <?php if ($comp_by_device): ?>
     <div style="font:700 11px var(--body);color:#991b1b;margin:<?= ($comp_by_user || $comp_by_ip) ? '12px' : '0' ?> 0 6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
-        📱 Mismo dispositivo vio multiples clientes (<?= count($comp_by_device) ?>)
+        📱 Mismo dispositivo vio múltiples clientes (<?= count($comp_by_device) ?>) — confianza alta
     </div>
     <?php foreach ($comp_by_device as $cv) render_comp_row($cv, $empresa_id, 'device'); ?>
     <?php endif; ?>
