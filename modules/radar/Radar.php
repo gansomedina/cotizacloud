@@ -329,14 +329,25 @@ class Radar
 
         // ── A. Cargar eventos JS ─────────────────────────────
         $lookback = $now - 150 * 86400;
-        $ev_rows = DB::query(
-            "SELECT tipo, ts_unix, max_scroll, visible_ms, open_ms,
-                    visitor_id, session_id, page_id, ip, ua
-             FROM quote_events
-             WHERE cotizacion_id=? AND ts_unix >= ?
-             ORDER BY id ASC",
-            [$cotizacion_id, $lookback]
-        );
+        try {
+            $ev_rows = DB::query(
+                "SELECT tipo, ts_unix, max_scroll, visible_ms, open_ms,
+                        visitor_id, device_sig, session_id, page_id, ip, ua
+                 FROM quote_events
+                 WHERE cotizacion_id=? AND ts_unix >= ?
+                 ORDER BY id ASC",
+                [$cotizacion_id, $lookback]
+            );
+        } catch (Throwable $e) {
+            $ev_rows = DB::query(
+                "SELECT tipo, ts_unix, max_scroll, visible_ms, open_ms,
+                        visitor_id, NULL AS device_sig, session_id, page_id, ip, ua
+                 FROM quote_events
+                 WHERE cotizacion_id=? AND ts_unix >= ?
+                 ORDER BY id ASC",
+                [$cotizacion_id, $lookback]
+            );
+        }
 
         // ── B. Internos ──────────────────────────────────────
         $intern_v = [];
@@ -363,7 +374,7 @@ class Radar
         }
 
         // ── C. Agregar eventos JS (misma lógica que event_stats_by_quote) ──
-        $es = self::_agregar_eventos($ev_rows, $intern_v, $intern_ip, $cfg);
+        $es = self::_agregar_eventos($ev_rows, $intern_v, $intern_ip, $intern_dsig, $cfg);
 
         // ── D. Cargar sesiones históricas ─────────────────────
         try {
@@ -498,8 +509,13 @@ class Radar
                 $vid2 = trim((string)($s['visitor_id'] ?? ''));
                 if ($ip2 === '' || $ts2 < $first_guest_ts) continue;
                 if ($ts2 > $first_guest_ts + $multip_win) break;
+                $dsig2 = trim((string)($s['device_sig'] ?? ''));
                 if (($cfg['filtrar_bots'] ?? true) && (self::bot_ip($ip2) || self::bot_ua($ua2))) continue;
-                if (($cfg['excluir_internos'] ?? true) && (isset($intern_ip[$ip2]) || ($vid2 !== '' && isset($intern_v[$vid2])))) continue;
+                if (($cfg['excluir_internos'] ?? true) && (
+                    isset($intern_ip[$ip2]) ||
+                    ($vid2 !== '' && isset($intern_v[$vid2])) ||
+                    ($dsig2 !== '' && isset($intern_dsig[$dsig2]))
+                )) continue;
                 $ips_post_guest[$ip2] = true;
                 if ($vid2 !== '') $vids_post_guest[$vid2] = true;
             }
@@ -1011,7 +1027,7 @@ class Radar
     //  AGREGACIÓN DE EVENTOS JS
     //  Portado del bloque event_stats_by_quote del radar original
     // ============================================================
-    private static function _agregar_eventos(array $rows, array $intern_v, array $intern_ip, array $cfg): array
+    private static function _agregar_eventos(array $rows, array $intern_v, array $intern_ip, array $intern_dsig, array $cfg): array
     {
         $s = [
             'opens'=>0,'closes'=>0,'coupons'=>0,'tot_views'=>0,'tot_rev'=>0,
@@ -1024,9 +1040,11 @@ class Radar
             $vid = trim((string)($r['visitor_id'] ?? ''));
             if ($vid !== '' && isset($intern_v[$vid])) continue;
 
-            // v2.1: filtrar IPs internas en eventos (paridad con sesiones)
             $ev_ip = trim((string)($r['ip'] ?? ''));
             if ($ev_ip !== '' && ($cfg['excluir_internos'] ?? true) && isset($intern_ip[$ev_ip])) continue;
+
+            $ev_dsig = trim((string)($r['device_sig'] ?? ''));
+            if ($ev_dsig !== '' && ($cfg['excluir_internos'] ?? true) && isset($intern_dsig[$ev_dsig])) continue;
 
             $ua = (string)($r['ua'] ?? '');
             if (($cfg['filtrar_bots'] ?? true) && self::bot_ua($ua)) continue;
