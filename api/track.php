@@ -124,10 +124,11 @@ if (!$sess) {
     $sess_id = (int)$sess['id'];
     DB::execute(
         "UPDATE quote_sessions SET updated_at=NOW(),
+            visitor_id=COALESCE(?, visitor_id),
             scroll_max=GREATEST(COALESCE(scroll_max,0),?),
             visible_ms=GREATEST(COALESCE(visible_ms,0),?)
          WHERE id=?",
-        [$max_scroll, $visible_ms, $sess_id]
+        [$visitor_id ?: null, $max_scroll, $visible_ms, $sess_id]
     );
 }
 
