@@ -735,7 +735,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
             </div>
             <div style="display:flex;align-items:center;gap:8px">
                 <span style="font:500 11px var(--num);color:#7f1d1d"><?= $dev_str ?></span>
-                <button onclick="descartarComp('<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Marcar como interno">✕</button>
+                <button onclick="descartarComp('<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Ya revisé — limpiar alerta">✓ Revisado</button>
             </div>
         </div>
         <?php foreach ($cv_detail as $det): ?>
@@ -763,9 +763,10 @@ $comp_by_user = DB::query(
        AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
      GROUP BY qs.visitor_id
      HAVING clientes_distintos > 1
+       AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'user' AND valor = qs.visitor_id), '2000-01-01')
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
-    [$empresa_id, $empresa_id]
+    [$empresa_id, $empresa_id, $empresa_id]
 );
 
 // ── 2. Alerta por IP ──
@@ -783,9 +784,10 @@ $comp_by_ip = DB::query(
        AND qs.ip NOT IN (SELECT ip FROM radar_ips_internas WHERE empresa_id = ?)
      GROUP BY qs.ip
      HAVING clientes_distintos > 1
+       AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
-    [$empresa_id, $empresa_id]
+    [$empresa_id, $empresa_id, $empresa_id]
 );
 
 // ── 3. Alerta por Device Signature (descarte) ──
@@ -810,9 +812,10 @@ $comp_by_device = DB::query(
        )
      GROUP BY qs.device_sig
      HAVING clientes_distintos > 1
+       AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'device' AND valor = qs.device_sig), '2000-01-01')
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
-    [$empresa_id, $empresa_id]
+    [$empresa_id, $empresa_id, $empresa_id]
 );
 
 $total_comp = count($comp_by_user ?: []) + count($comp_by_ip ?: []) + count($comp_by_device ?: []);
