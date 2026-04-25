@@ -367,6 +367,7 @@ class Radar
         $ip_win = (int) self::u('imminent_ip_window_min', $modo) * 60;
 
         $last_by_ip    = [];
+        $last_by_vid   = [];
         $session_ts    = [];
         $sessions = $views24 = $views7d = $views48 = 0;
         $guest_sessions = $guest_24h = $guest_48h = $guest_7d = 0;
@@ -402,9 +403,11 @@ class Radar
                 if (!$ip_has_events) continue;
             }
 
-            // Deduplicar por IP en ventana
+            // Deduplicar: visitor_id primero (misma persona), IP como fallback
+            if ($vid !== '' && isset($last_by_vid[$vid]) && ($ts - $last_by_vid[$vid]) < $dedupe) continue;
             if (isset($last_by_ip[$ip]) && ($ts - $last_by_ip[$ip]) < $dedupe) continue;
 
+            if ($vid !== '') $last_by_vid[$vid] = $ts;
             $last_by_ip[$ip] = $ts;
             $sessions++;
             $session_ts[] = $ts;

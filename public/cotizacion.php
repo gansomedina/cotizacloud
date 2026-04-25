@@ -207,14 +207,27 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         }
 
         // ── Pasa todos los filtros → cliente real ─────────────────────
-        // Deduplicación por IP: una sesión cada 30 minutos (igual que el original)
-        $session_existe = DB::row(
-            "SELECT id FROM quote_sessions
-             WHERE cotizacion_id=? AND ip=? AND activa=1
-               AND updated_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
-             LIMIT 1",
-            [$cot['id'], $ip]
-        );
+        // Deduplicación: visitor_id primero (misma persona sin importar IP),
+        // luego IP como fallback (cuando no hay cookie)
+        $session_existe = null;
+        if ($visitor_id_cookie !== '') {
+            $session_existe = DB::row(
+                "SELECT id FROM quote_sessions
+                 WHERE cotizacion_id=? AND visitor_id=? AND activa=1
+                   AND updated_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                 LIMIT 1",
+                [$cot['id'], $visitor_id_cookie]
+            );
+        }
+        if (!$session_existe) {
+            $session_existe = DB::row(
+                "SELECT id FROM quote_sessions
+                 WHERE cotizacion_id=? AND ip=? AND activa=1
+                   AND updated_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                 LIMIT 1",
+                [$cot['id'], $ip]
+            );
+        }
 
         if (!$session_existe) {
             // Nueva sesión — registrar y contar visita
