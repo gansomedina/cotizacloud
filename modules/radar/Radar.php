@@ -341,12 +341,22 @@ class Radar
         // ── B. Internos ──────────────────────────────────────
         $intern_v = [];
         $intern_ip = [];
+        $intern_dsig = [];
         if ($cfg['excluir_internos'] ?? true) {
             foreach (DB::query("SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id=?", [$empresa_id]) as $r) {
                 $intern_v[$r['visitor_id']] = true;
             }
             foreach (DB::query("SELECT ip FROM radar_ips_internas WHERE empresa_id=?", [$empresa_id]) as $r) {
                 $intern_ip[$r['ip']] = true;
+            }
+            foreach (DB::query(
+                "SELECT DISTINCT us.device_sig FROM user_sessions us
+                 JOIN usuarios u ON u.id = us.usuario_id
+                 WHERE (u.empresa_id = ? OR u.rol = 'superadmin')
+                   AND us.device_sig IS NOT NULL AND us.device_sig != ''",
+                [$empresa_id]
+            ) as $r) {
+                $intern_dsig[$r['device_sig']] = true;
             }
         }
 
@@ -355,7 +365,7 @@ class Radar
 
         // ── D. Cargar sesiones históricas ─────────────────────
         $sess_rows = DB::query(
-            "SELECT ip, user_agent AS ua, visitor_id, created_at, scroll_max, visible_ms
+            "SELECT ip, user_agent AS ua, visitor_id, device_sig, created_at, scroll_max, visible_ms
              FROM quote_sessions WHERE cotizacion_id=? ORDER BY created_at ASC",
             [$cotizacion_id]
         );
@@ -379,14 +389,19 @@ class Radar
         $ips_post_guest = [];
 
         foreach ($sess_rows as $s) {
-            $ip  = trim((string)($s['ip'] ?? ''));
-            $ua  = (string)($s['ua'] ?? '');
-            $ts  = strtotime($s['created_at']);
-            $vid = trim((string)($s['visitor_id'] ?? ''));
+            $ip   = trim((string)($s['ip'] ?? ''));
+            $ua   = (string)($s['ua'] ?? '');
+            $ts   = strtotime($s['created_at']);
+            $vid  = trim((string)($s['visitor_id'] ?? ''));
+            $dsig = trim((string)($s['device_sig'] ?? ''));
 
             if ($ip === '') continue;
             if (($cfg['filtrar_bots'] ?? true) && (self::bot_ip($ip) || self::bot_ua($ua))) continue;
-            if (($cfg['excluir_internos'] ?? true) && (isset($intern_ip[$ip]) || ($vid !== '' && isset($intern_v[$vid])))) continue;
+            if (($cfg['excluir_internos'] ?? true) && (
+                isset($intern_ip[$ip]) ||
+                ($vid !== '' && isset($intern_v[$vid])) ||
+                ($dsig !== '' && isset($intern_dsig[$dsig]))
+            )) continue;
 
             // ── Filtro behavioral: sesión fantasma de bot de preview ──
             // Si scroll=0, visible=0, sesión tiene >2 min de vida,
