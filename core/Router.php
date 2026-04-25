@@ -187,6 +187,7 @@ class Router
         self::post('/ventas/:id/guardar',             fn($p) => self::app_extra('ventas', 'guardar', $p));
 
         self::get('/radar',                  fn()   => self::app('radar',       'index'));
+        self::post('/radar/descartar-comp',  fn()   => self::app('radar',       'descartar_comp'));
 
         // ── Super Admin ──────────────────────────────────
         self::get('/superadmin',                     fn()   => self::superadmin('index'));

@@ -349,26 +349,36 @@ class Radar
             foreach (DB::query("SELECT ip FROM radar_ips_internas WHERE empresa_id=?", [$empresa_id]) as $r) {
                 $intern_ip[$r['ip']] = true;
             }
-            foreach (DB::query(
-                "SELECT DISTINCT us.device_sig FROM user_sessions us
-                 JOIN usuarios u ON u.id = us.usuario_id
-                 WHERE (u.empresa_id = ? OR u.rol = 'superadmin')
-                   AND us.device_sig IS NOT NULL AND us.device_sig != ''",
-                [$empresa_id]
-            ) as $r) {
-                $intern_dsig[$r['device_sig']] = true;
-            }
+            try {
+                foreach (DB::query(
+                    "SELECT DISTINCT us.device_sig FROM user_sessions us
+                     JOIN usuarios u ON u.id = us.usuario_id
+                     WHERE (u.empresa_id = ? OR u.rol = 'superadmin')
+                       AND us.device_sig IS NOT NULL AND us.device_sig != ''",
+                    [$empresa_id]
+                ) as $r) {
+                    $intern_dsig[$r['device_sig']] = true;
+                }
+            } catch (Throwable $e) {}
         }
 
         // ── C. Agregar eventos JS (misma lógica que event_stats_by_quote) ──
         $es = self::_agregar_eventos($ev_rows, $intern_v, $intern_ip, $cfg);
 
         // ── D. Cargar sesiones históricas ─────────────────────
-        $sess_rows = DB::query(
-            "SELECT ip, user_agent AS ua, visitor_id, device_sig, created_at, scroll_max, visible_ms
-             FROM quote_sessions WHERE cotizacion_id=? ORDER BY created_at ASC",
-            [$cotizacion_id]
-        );
+        try {
+            $sess_rows = DB::query(
+                "SELECT ip, user_agent AS ua, visitor_id, device_sig, created_at, scroll_max, visible_ms
+                 FROM quote_sessions WHERE cotizacion_id=? ORDER BY created_at ASC",
+                [$cotizacion_id]
+            );
+        } catch (Throwable $e) {
+            $sess_rows = DB::query(
+                "SELECT ip, user_agent AS ua, visitor_id, NULL AS device_sig, created_at, scroll_max, visible_ms
+                 FROM quote_sessions WHERE cotizacion_id=? ORDER BY created_at ASC",
+                [$cotizacion_id]
+            );
+        }
 
         // ── E. Procesar sesiones (deduplicar, filtrar, contar) ─
         $dedupe = (int) self::u('dedupe_seconds', $modo);

@@ -722,20 +722,36 @@ function render_comp_row($cv, $empresa_id, $tipo) {
     }
     $devices = array_unique($devices);
     $dev_str = implode(', ', $devices);
-    $visitors_lbl = isset($cv['visitors_distintos']) && $cv['visitors_distintos'] > 1
-        ? ' · '.(int)$cv['visitors_distintos'].' dispositivos' : '';
+    $dev_count = count($devices);
     $safe_key = htmlspecialchars($key, ENT_QUOTES);
+    $dismiss_tipo = $tipo;
+    $dismiss_val = $param_val;
+
+    if ($tipo === 'user') {
+        $conf_label = 'Alta';
+        $conf_color = '#dc2626';
+        $conf_desc = 'Mismo navegador (cookie) vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes. Es la misma persona con certeza.';
+    } elseif ($tipo === 'device') {
+        $conf_label = 'Alta';
+        $conf_color = '#dc2626';
+        $conf_desc = 'Mismo dispositivo (' . $dev_str . ') vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes, aunque las cookies cambiaron.';
+    } else {
+        $conf_label = 'Media';
+        $conf_color = '#d97706';
+        $conf_desc = 'Misma IP vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes. Puede ser la misma persona o diferentes personas en la misma red (ej. Telcel rota IPs).';
+    }
+    $visitas_total = (int)($cv['cots_vistas'] ?? 0);
     ?>
-    <div class="comp-row" data-comp-key="<?= $safe_key ?>" style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:6px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-            <div style="font:700 12px var(--body);color:#991b1b">
-                <?= e($cv['device_sig'] ?? $cv['ip'] ?? $cv['visitor_id'] ?? '?') ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cots<?= $visitors_lbl ?>
-            </div>
+    <div class="comp-row" data-comp-key="<?= $safe_key ?>" style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <div style="display:flex;align-items:center;gap:8px">
-                <span style="font:500 11px var(--num);color:#7f1d1d"><?= $dev_str ?></span>
-                <button onclick="descartarComp('<?= $safe_key ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Descartar esta alerta">✕</button>
+                <span style="font:700 12px var(--body);color:#991b1b"><?= $dev_str ?></span>
+                <span style="background:<?= $conf_color ?>;color:#fff;padding:1px 7px;border-radius:4px;font:700 9px var(--body);letter-spacing:.03em"><?= $conf_label ?></span>
+                <span style="font:500 11px var(--num);color:#7f1d1d"><?= (int)$cv['clientes_distintos'] ?> clientes · <?= $visitas_total ?> cots</span>
             </div>
+            <button onclick="compAction('review','<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Ya revisé, limpiar">✓ Revisado</button>
         </div>
+        <div style="font:400 11px var(--body);color:#991b1b;opacity:.75;margin-bottom:6px"><?= $conf_desc ?></div>
         <?php foreach ($cv_detail as $det): ?>
         <div style="display:flex;justify-content:space-between;padding:3px 0;font:400 12px var(--body);color:#7f1d1d;border-bottom:1px solid rgba(252,165,165,.3)">
             <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e(mb_substr($det['cotizacion'],0,40)) ?><?= (int)($det['num_cots'] ?? 1) > 1 ? ' <span style="opacity:.6">(+'.(($det['num_cots'])-1).' cots)</span>' : '' ?></span>
@@ -745,6 +761,11 @@ function render_comp_row($cv, $empresa_id, $tipo) {
     </div>
     <?php
 }
+
+$has_comp_reviewed = (bool)DB::val("SELECT 1 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='radar_comp_reviewed'");
+$reviewed_filter_user   = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$empresa_id} AND tipo = 'user' AND valor = qs.visitor_id), '2000-01-01')" : "";
+$reviewed_filter_ip     = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$empresa_id} AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')" : "";
+$reviewed_filter_device = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$empresa_id} AND tipo = 'device' AND valor = qs.device_sig), '2000-01-01')" : "";
 
 // ── 1. Alerta por Usuario (visitor_id) ──
 $comp_by_user = DB::query(
@@ -761,6 +782,7 @@ $comp_by_user = DB::query(
        AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
      GROUP BY qs.visitor_id
      HAVING clientes_distintos > 1
+       {$reviewed_filter_user}
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
     [$empresa_id, $empresa_id]
@@ -779,16 +801,18 @@ $comp_by_ip = DB::query(
        AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
        AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
        AND qs.ip NOT IN (SELECT ip FROM radar_ips_internas WHERE empresa_id = ?)
+       AND qs.ip NOT IN (SELECT DISTINCT us.ip FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id WHERE (u.empresa_id = ? OR u.rol = 'superadmin') AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY))
      GROUP BY qs.ip
      HAVING clientes_distintos > 1
+       {$reviewed_filter_ip}
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
-    [$empresa_id, $empresa_id]
+    [$empresa_id, $empresa_id, $empresa_id]
 );
 
 // ── 3. Alerta por Device Signature (descarte) ──
 // Excluir device_sigs de empleados del sistema
-$comp_by_device = DB::query(
+try { $comp_by_device = DB::query(
     "SELECT qs.device_sig,
             COUNT(DISTINCT c.cliente_id) AS clientes_distintos,
             COUNT(DISTINCT qs.cotizacion_id) AS cots_vistas,
@@ -808,10 +832,11 @@ $comp_by_device = DB::query(
        )
      GROUP BY qs.device_sig
      HAVING clientes_distintos > 1
+       {$reviewed_filter_device}
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
     [$empresa_id, $empresa_id]
-);
+); } catch (Throwable $e) { $comp_by_device = []; }
 
 $total_comp = count($comp_by_user ?: []) + count($comp_by_ip ?: []) + count($comp_by_device ?: []);
 if ($total_comp): ?>
@@ -824,21 +849,21 @@ if ($total_comp): ?>
 
     <?php if ($comp_by_user): ?>
     <div style="font:700 11px var(--body);color:#991b1b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
-        🔍 Mismo navegador vio multiples clientes (<?= count($comp_by_user) ?>)
+        🔍 Mismo navegador vio múltiples clientes (<?= count($comp_by_user) ?>) — confianza alta
     </div>
     <?php foreach ($comp_by_user as $cv) render_comp_row($cv, $empresa_id, 'user'); ?>
     <?php endif; ?>
 
     <?php if ($comp_by_ip): ?>
     <div style="font:700 11px var(--body);color:#991b1b;margin:<?= $comp_by_user ? '12px' : '0' ?> 0 6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
-        🌐 Misma red vio multiples clientes (<?= count($comp_by_ip) ?>)
+        🌐 Misma red vio múltiples clientes (<?= count($comp_by_ip) ?>) — confianza media
     </div>
     <?php foreach ($comp_by_ip as $cv) render_comp_row($cv, $empresa_id, 'ip'); ?>
     <?php endif; ?>
 
     <?php if ($comp_by_device): ?>
     <div style="font:700 11px var(--body);color:#991b1b;margin:<?= ($comp_by_user || $comp_by_ip) ? '12px' : '0' ?> 0 6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
-        📱 Mismo dispositivo vio multiples clientes (<?= count($comp_by_device) ?>)
+        📱 Mismo dispositivo vio múltiples clientes (<?= count($comp_by_device) ?>) — confianza alta
     </div>
     <?php foreach ($comp_by_device as $cv) render_comp_row($cv, $empresa_id, 'device'); ?>
     <?php endif; ?>
@@ -846,24 +871,28 @@ if ($total_comp): ?>
     </div>
 </div>
 <script>
-function descartarComp(key, btn) {
-    if (!confirm('¿Descartar esta alerta? No aparecera de nuevo.')) return;
-    var dismissed = JSON.parse(localStorage.getItem('comp_dismissed_<?= $empresa_id ?>') || '[]');
-    dismissed.push(key);
-    localStorage.setItem('comp_dismissed_<?= $empresa_id ?>', JSON.stringify(dismissed));
-    btn.closest('.comp-row').style.display = 'none';
+async function compAction(accion, tipo, valor, btn) {
+    var msg = accion === 'internal'
+        ? '¿Marcar como interno (empleado)? No volverá a generar alertas.'
+        : '¿Marcar como revisado? Si hay actividad nueva, reaparecerá.';
+    if (!confirm(msg)) return;
+    btn.disabled = true; btn.textContent = '...';
+    try {
+        const r = await fetch('/radar/descartar-comp', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+            body: JSON.stringify({accion, tipo, valor, empresa_id: <?= $empresa_id ?>})
+        });
+        const d = await r.json();
+        if (d.ok) {
+            btn.closest('.comp-row').style.display = 'none';
+            var visible = document.querySelectorAll('.comp-row:not([style*="display: none"])');
+            if (!visible.length && document.getElementById('comp-alert')) {
+                document.getElementById('comp-alert').style.display = 'none';
+            }
+        } else { alert(d.error || 'Error'); btn.disabled = false; btn.textContent = accion === 'internal' ? '👤' : '✓'; }
+    } catch(e) { alert('Error de conexión'); btn.disabled = false; btn.textContent = accion === 'internal' ? '👤' : '✓'; }
 }
-// Ocultar descartadas
-(function(){
-    var dismissed = JSON.parse(localStorage.getItem('comp_dismissed_<?= $empresa_id ?>') || '[]');
-    if (!dismissed.length) return;
-    document.querySelectorAll('.comp-row').forEach(function(el){
-        if (dismissed.indexOf(el.dataset.compKey) !== -1) el.style.display = 'none';
-    });
-    // Si todas fueron descartadas, ocultar el bloque
-    var visible = document.querySelectorAll('.comp-row:not([style*="display: none"])');
-    if (!visible.length) document.getElementById('comp-alert').style.display = 'none';
-})();
 </script>
 <?php endif; ?>
 
