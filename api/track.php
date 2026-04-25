@@ -19,6 +19,7 @@ if (empty($data) || empty($data['cotizacion_id'])) exit;
 $cot_id     = (int)$data['cotizacion_id'];
 $tipo       = preg_replace('/[^a-z0-9_]/', '', strtolower((string)($data['tipo'] ?? '')));
 $visitor_id = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($data['visitor_id'] ?? '')), 0, 64);
+$device_sig = substr(preg_replace('/[^a-fA-F0-9]/',    '', (string)($data['device_sig'] ?? '')), 0, 20);
 $session_id = substr(preg_replace('/[^a-zA-Z0-9\-]/',  '', (string)($data['session_id'] ?? '')), 0, 36);
 $page_id    = substr(preg_replace('/[^a-zA-Z0-9\-]/',  '', (string)($data['page_id']    ?? '')), 0, 36);
 $max_scroll = min(100, max(0, (int)($data['max_scroll'] ?? 0)));
@@ -116,28 +117,29 @@ $ts_now = time();
 
 if (!$sess) {
     $sess_id = DB::insert(
-        "INSERT INTO quote_sessions (cotizacion_id, ip, user_agent, visitor_id, session_id, page_id, activa, scroll_max, visible_ms)
-         VALUES (?,?,?,?,?,?,1,?,?)",
-        [$cot_id, $ip, substr($ua,0,300), $visitor_id ?: null, $session_id ?: null, $page_id ?: null, $max_scroll, $visible_ms]
+        "INSERT INTO quote_sessions (cotizacion_id, ip, user_agent, visitor_id, device_sig, session_id, page_id, activa, scroll_max, visible_ms)
+         VALUES (?,?,?,?,?,?,?,1,?,?)",
+        [$cot_id, $ip, substr($ua,0,300), $visitor_id ?: null, $device_sig ?: null, $session_id ?: null, $page_id ?: null, $max_scroll, $visible_ms]
     );
 } else {
     $sess_id = (int)$sess['id'];
     DB::execute(
         "UPDATE quote_sessions SET updated_at=NOW(),
             visitor_id=COALESCE(?, visitor_id),
+            device_sig=COALESCE(?, device_sig),
             scroll_max=GREATEST(COALESCE(scroll_max,0),?),
             visible_ms=GREATEST(COALESCE(visible_ms,0),?)
          WHERE id=?",
-        [$visitor_id ?: null, $max_scroll, $visible_ms, $sess_id]
+        [$visitor_id ?: null, $device_sig ?: null, $max_scroll, $visible_ms, $sess_id]
     );
 }
 
 // Registrar evento
 try {
     DB::execute(
-        "INSERT INTO quote_events (cotizacion_id, session_id, visitor_id, page_id, tipo, max_scroll, visible_ms, open_ms, ua, ip, ts_unix)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-        [$cot_id, $session_id ?: null, $visitor_id ?: null, $page_id ?: null, $tipo, $max_scroll, $visible_ms, $open_ms, substr($ua,0,255), $ip, $ts_now]
+        "INSERT INTO quote_events (cotizacion_id, session_id, visitor_id, device_sig, page_id, tipo, max_scroll, visible_ms, open_ms, ua, ip, ts_unix)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        [$cot_id, $session_id ?: null, $visitor_id ?: null, $device_sig ?: null, $page_id ?: null, $tipo, $max_scroll, $visible_ms, $open_ms, substr($ua,0,255), $ip, $ts_now]
     );
 } catch (Throwable $e) { exit; }
 
