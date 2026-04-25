@@ -725,6 +725,8 @@ function render_comp_row($cv, $empresa_id, $tipo) {
     $visitors_lbl = isset($cv['visitors_distintos']) && $cv['visitors_distintos'] > 1
         ? ' · '.(int)$cv['visitors_distintos'].' dispositivos' : '';
     $safe_key = htmlspecialchars($key, ENT_QUOTES);
+    $dismiss_tipo = $tipo;
+    $dismiss_val = $param_val;
     ?>
     <div class="comp-row" data-comp-key="<?= $safe_key ?>" style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:6px">
         <div style="display:flex;align-items:center;justify-content:space-between">
@@ -733,7 +735,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
             </div>
             <div style="display:flex;align-items:center;gap:8px">
                 <span style="font:500 11px var(--num);color:#7f1d1d"><?= $dev_str ?></span>
-                <button onclick="descartarComp('<?= $safe_key ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Descartar esta alerta">✕</button>
+                <button onclick="descartarComp('<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Marcar como interno">✕</button>
             </div>
         </div>
         <?php foreach ($cv_detail as $det): ?>
@@ -846,24 +848,25 @@ if ($total_comp): ?>
     </div>
 </div>
 <script>
-function descartarComp(key, btn) {
-    if (!confirm('¿Descartar esta alerta? No aparecera de nuevo.')) return;
-    var dismissed = JSON.parse(localStorage.getItem('comp_dismissed_<?= $empresa_id ?>') || '[]');
-    dismissed.push(key);
-    localStorage.setItem('comp_dismissed_<?= $empresa_id ?>', JSON.stringify(dismissed));
-    btn.closest('.comp-row').style.display = 'none';
+async function descartarComp(tipo, valor, btn) {
+    if (!confirm('¿Marcar como interno? No volverá a generar alertas.')) return;
+    btn.disabled = true; btn.textContent = '...';
+    try {
+        const r = await fetch('/radar/descartar-comp', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+            body: JSON.stringify({tipo, valor, empresa_id: <?= $empresa_id ?>})
+        });
+        const d = await r.json();
+        if (d.ok) {
+            btn.closest('.comp-row').style.display = 'none';
+            var visible = document.querySelectorAll('.comp-row:not([style*="display: none"])');
+            if (!visible.length && document.getElementById('comp-alert')) {
+                document.getElementById('comp-alert').style.display = 'none';
+            }
+        } else { alert(d.error || 'Error'); btn.disabled = false; btn.textContent = '✕'; }
+    } catch(e) { alert('Error de conexión'); btn.disabled = false; btn.textContent = '✕'; }
 }
-// Ocultar descartadas
-(function(){
-    var dismissed = JSON.parse(localStorage.getItem('comp_dismissed_<?= $empresa_id ?>') || '[]');
-    if (!dismissed.length) return;
-    document.querySelectorAll('.comp-row').forEach(function(el){
-        if (dismissed.indexOf(el.dataset.compKey) !== -1) el.style.display = 'none';
-    });
-    // Si todas fueron descartadas, ocultar el bloque
-    var visible = document.querySelectorAll('.comp-row:not([style*="display: none"])');
-    if (!visible.length) document.getElementById('comp-alert').style.display = 'none';
-})();
 </script>
 <?php endif; ?>
 
