@@ -1301,9 +1301,35 @@ const TRACK_URL = '/api/track';
         return id;
     }
 
-    var visitorId = getVisitorId();
-    var sessionId = getSessionId();
-    var pageId    = uuidv4(); // Nuevo por cada carga de página
+    function getDeviceSig() {
+        try {
+            var sw = Math.min(screen.width, screen.height);
+            var sh = Math.max(screen.width, screen.height);
+            var dpr = window.devicePixelRatio || 1;
+            var cores = navigator.hardwareConcurrency || 0;
+            var tp = navigator.maxTouchPoints || 0;
+            var maxTex = 0;
+            try {
+                var c = document.createElement('canvas');
+                var gl = c.getContext('webgl');
+                if (gl) maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
+            } catch(e) {}
+            var lang = navigator.language || '';
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+            var motion = window.matchMedia('(prefers-reduced-motion:reduce)').matches ? 1 : 0;
+            var contrast = window.matchMedia('(prefers-contrast:more)').matches ? 1 : 0;
+            var iosM = (navigator.userAgent.match(/OS (\d+)/) || [])[1] || '0';
+            var raw = [sw,sh,dpr,cores,tp,maxTex,lang,tz,motion,contrast,iosM].join('|');
+            var h = 0;
+            for (var i = 0; i < raw.length; i++) h = ((h << 5) - h) + raw.charCodeAt(i) | 0;
+            return Math.abs(h).toString(16).padStart(8, '0');
+        } catch(e) { return ''; }
+    }
+
+    var visitorId  = getVisitorId();
+    var sessionId  = getSessionId();
+    var deviceSig  = getDeviceSig();
+    var pageId     = uuidv4(); // Nuevo por cada carga de página
 
     // ── Métricas de tiempo ────────────────────────────────────────
     var openStartedAt = Date.now();
@@ -1352,6 +1378,7 @@ const TRACK_URL = '/api/track';
             cotizacion_id: quoteId,
             tipo:          tipo,
             visitor_id:    visitorId,
+            device_sig:    deviceSig,
             session_id:    sessionId,
             page_id:       pageId,
             max_scroll:    maxScroll,
