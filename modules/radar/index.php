@@ -672,10 +672,19 @@ ob_start();
 <?php
 // ── Helper para renderizar detalle de competencia ──
 function render_comp_row($cv, $empresa_id, $tipo) {
-    $is_user = $tipo === 'user';
-    $where_main = $is_user ? "qs.visitor_id" : "qs.ip";
-    $param_val = $is_user ? $cv['visitor_id'] : $cv['ip'];
-    $key = $is_user ? 'u_'.($cv['visitor_id'] ?? '') : 'ip_'.$cv['ip'];
+    if ($tipo === 'user') {
+        $where_main = "qs.visitor_id";
+        $param_val = $cv['visitor_id'];
+        $key = 'u_' . ($cv['visitor_id'] ?? '');
+    } elseif ($tipo === 'device') {
+        $where_main = "qs.device_sig";
+        $param_val = $cv['device_sig'];
+        $key = 'd_' . ($cv['device_sig'] ?? '');
+    } else {
+        $where_main = "qs.ip";
+        $param_val = $cv['ip'];
+        $key = 'ip_' . $cv['ip'];
+    }
 
     $cv_detail = DB::query(
         "SELECT cl.nombre AS cliente,
@@ -720,7 +729,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
     <div class="comp-row" data-comp-key="<?= $safe_key ?>" style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:6px">
         <div style="display:flex;align-items:center;justify-content:space-between">
             <div style="font:700 12px var(--body);color:#991b1b">
-                <?= e($cv['ip']) ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cots<?= $visitors_lbl ?>
+                <?= e($cv['device_sig'] ?? $cv['ip'] ?? $cv['visitor_id'] ?? '?') ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cots<?= $visitors_lbl ?>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
                 <span style="font:500 11px var(--num);color:#7f1d1d"><?= $dev_str ?></span>
@@ -777,7 +786,34 @@ $comp_by_ip = DB::query(
     [$empresa_id, $empresa_id]
 );
 
-$total_comp = count($comp_by_user ?: []) + count($comp_by_ip ?: []);
+// ── 3. Alerta por Device Signature (descarte) ──
+// Excluir device_sigs de empleados del sistema
+$comp_by_device = DB::query(
+    "SELECT qs.device_sig,
+            COUNT(DISTINCT c.cliente_id) AS clientes_distintos,
+            COUNT(DISTINCT qs.cotizacion_id) AS cots_vistas,
+            COUNT(DISTINCT qs.visitor_id) AS visitors_distintos,
+            MAX(qs.created_at) AS ultima_visita
+     FROM quote_sessions qs
+     JOIN cotizaciones c ON c.id = qs.cotizacion_id
+     WHERE c.empresa_id = ?
+       AND qs.device_sig IS NOT NULL AND qs.device_sig != ''
+       AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+       AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
+       AND qs.device_sig NOT IN (
+           SELECT DISTINCT us.device_sig FROM user_sessions us
+           JOIN usuarios u ON u.id = us.usuario_id
+           WHERE (u.empresa_id = ? OR u.rol = 'superadmin')
+             AND us.device_sig IS NOT NULL AND us.device_sig != ''
+       )
+     GROUP BY qs.device_sig
+     HAVING clientes_distintos > 1
+     ORDER BY clientes_distintos DESC, ultima_visita DESC
+     LIMIT 10",
+    [$empresa_id, $empresa_id]
+);
+
+$total_comp = count($comp_by_user ?: []) + count($comp_by_ip ?: []) + count($comp_by_device ?: []);
 if ($total_comp): ?>
 <div id="comp-alert" style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:var(--r);padding:14px 18px;margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById('comp-body').style.display=document.getElementById('comp-body').style.display==='none'?'block':'none'">
@@ -798,6 +834,13 @@ if ($total_comp): ?>
         🌐 Misma red vio multiples clientes (<?= count($comp_by_ip) ?>)
     </div>
     <?php foreach ($comp_by_ip as $cv) render_comp_row($cv, $empresa_id, 'ip'); ?>
+    <?php endif; ?>
+
+    <?php if ($comp_by_device): ?>
+    <div style="font:700 11px var(--body);color:#991b1b;margin:<?= ($comp_by_user || $comp_by_ip) ? '12px' : '0' ?> 0 6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
+        📱 Mismo dispositivo vio multiples clientes (<?= count($comp_by_device) ?>)
+    </div>
+    <?php foreach ($comp_by_device as $cv) render_comp_row($cv, $empresa_id, 'device'); ?>
     <?php endif; ?>
 
     </div>
