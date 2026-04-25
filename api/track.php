@@ -105,13 +105,25 @@ if (!in_array($cot['estado'], ['enviada','vista','aceptada','rechazada'], true))
 
 // Sesión activa (ventana de deduplicación)
 $dedupe_min = ($rcfg['deduplicar_30min'] ?? true) ? 30 : 60;
-$sess = DB::row(
-    "SELECT id FROM quote_sessions
-     WHERE cotizacion_id=? AND ip=? AND activa=1
-       AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
-     ORDER BY updated_at DESC LIMIT 1",
-    [$cot_id, $ip, $dedupe_min]
-);
+$sess = null;
+if ($visitor_id !== '') {
+    $sess = DB::row(
+        "SELECT id FROM quote_sessions
+         WHERE cotizacion_id=? AND visitor_id=? AND activa=1
+           AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+         ORDER BY updated_at DESC LIMIT 1",
+        [$cot_id, $visitor_id, $dedupe_min]
+    );
+}
+if (!$sess) {
+    $sess = DB::row(
+        "SELECT id FROM quote_sessions
+         WHERE cotizacion_id=? AND ip=? AND activa=1
+           AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
+         ORDER BY updated_at DESC LIMIT 1",
+        [$cot_id, $ip, $dedupe_min]
+    );
+}
 
 $ts_now = time();
 
