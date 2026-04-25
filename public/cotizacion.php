@@ -88,16 +88,13 @@ if ($adc_exp && $adc_exp < time()) { $adc_on = false; }
 // ─── Calcular totales ────────────────────────────────────
 $subtotal = array_sum(array_column($lineas, 'subtotal'));
 
-// Si ya fue aceptada, usar los valores guardados al momento de la aceptación
+$cupon_monto_guardado = (float)($cot['cupon_monto'] ?? 0);
 if ($cot['estado'] === 'aceptada' || $cot['estado'] === 'convertida') {
     $desc_auto_amt = (float)($cot['descuento_auto_amt'] ?? 0);
-    $cupon_monto_guardado = (float)($cot['cupon_monto'] ?? 0);
-    $base = $subtotal - $desc_auto_amt - $cupon_monto_guardado;
 } else {
     $desc_auto_amt = $adc_on ? round($subtotal * $adc_pct / 100, 2) : 0;
-    $cupon_monto_guardado = 0;
-    $base = $subtotal - $desc_auto_amt;
 }
+$base = $subtotal - $cupon_monto_guardado - $desc_auto_amt;
 $impuesto_amt = 0;
 if ($cot['impuesto_modo'] === 'suma') {
     $impuesto_amt = round($base * ((float)$cot['impuesto_pct'] / 100), 2);

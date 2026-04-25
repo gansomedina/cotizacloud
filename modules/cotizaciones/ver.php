@@ -905,8 +905,7 @@ async function guardarCotizacion(preview){
     if(btn){btn.disabled=true;btn.textContent='Guardando...';}
     try{
         const vendedorSel=document.getElementById('cot-vendedor');
-        const payload={titulo,cliente_id:clienteSeleccionado?.id||null,vendedor_id:vendedorSel?parseInt(vendedorSel.value):null,valida_hasta:document.getElementById('cot-vence').value,cupon_id:cuponSeleccionado?.id||null,descuento_auto_activo:document.getElementById('desc-auto-toggle')?.checked?1:0,descuento_auto_pct:parseFloat(document.getElementById('desc-pct')?.value)||0,descuento_auto_dias:parseInt(document.getElementById('desc-dias')?.value)||3,notas_cliente:document.getElementById('notas-cliente-desk')?.value||'',notas_internas:document.getElementById('notas-internas-desk')?.value||'',items,preview};
-        console.log('[DEBUG DESCUENTO]','toggle elem:',document.getElementById('desc-auto-toggle'),'checked:',document.getElementById('desc-auto-toggle')?.checked,'pct:',document.getElementById('desc-pct')?.value,'payload.descuento_auto_activo:',payload.descuento_auto_activo,'payload.descuento_auto_pct:',payload.descuento_auto_pct);
+        const payload={titulo,cliente_id:clienteSeleccionado?.id||null,vendedor_id:vendedorSel?parseInt(vendedorSel.value):null,valida_hasta:document.getElementById('cot-vence').value,cupon_id:cuponSeleccionado?.id||null,descuento_auto_activo:descAutoActivo?1:0,descuento_auto_pct:descAutoPct,descuento_auto_dias:descAutoDias,notas_cliente:document.getElementById('notas-cliente-desk')?.value||'',notas_internas:document.getElementById('notas-internas-desk')?.value||'',items,preview};
         const r=await fetch('/cotizaciones/'+COT_ID,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:JSON.stringify(payload)});
         const data=await r.json();
         if(!data.ok){alert(data.error||'Error al guardar');if(btn){btn.disabled=false;btn.textContent='Guardar cambios';}return;}
