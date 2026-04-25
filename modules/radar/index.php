@@ -724,6 +724,43 @@ function render_comp_row($cv, $empresa_id, $tipo) {
     $dev_str = implode(', ', $devices);
     $visitors_lbl = isset($cv['visitors_distintos']) && $cv['visitors_distintos'] > 1
         ? ' · '.(int)$cv['visitors_distintos'].' dispositivos' : '';
+
+    // Detectar si coincide con algún empleado
+    $probable_empleado = null;
+    if ($tipo === 'ip' || $tipo === 'user') {
+        $emp_match = DB::row(
+            "SELECT u.nombre FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id
+             WHERE us.ip = ? AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+             ORDER BY us.created_at DESC LIMIT 1",
+            [$cv['ip'] ?? '']
+        );
+        if ($emp_match) $probable_empleado = $emp_match['nombre'];
+    }
+    if (!$probable_empleado && ($tipo === 'device' || !empty($cv['device_sig']))) {
+        $dsig_val = $cv['device_sig'] ?? '';
+        if ($dsig_val) {
+            $emp_match = DB::row(
+                "SELECT u.nombre FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id
+                 WHERE us.device_sig = ? AND us.device_sig IS NOT NULL
+                 ORDER BY us.created_at DESC LIMIT 1",
+                [$dsig_val]
+            );
+            if ($emp_match) $probable_empleado = $emp_match['nombre'];
+        }
+    }
+    if (!$probable_empleado) {
+        // Buscar por rango de IP similar (/24) en user_sessions
+        $ip_prefix = substr($cv['ip'] ?? '', 0, strrpos($cv['ip'] ?? '0.0.0.0', '.') + 1);
+        if ($ip_prefix) {
+            $emp_match = DB::row(
+                "SELECT u.nombre FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id
+                 WHERE us.ip LIKE ? AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+                 ORDER BY us.created_at DESC LIMIT 1",
+                [$ip_prefix . '%']
+            );
+            if ($emp_match) $probable_empleado = $emp_match['nombre'] . ' (red similar)';
+        }
+    }
     $safe_key = htmlspecialchars($key, ENT_QUOTES);
     $dismiss_tipo = $tipo;
     $dismiss_val = $param_val;
@@ -732,10 +769,14 @@ function render_comp_row($cv, $empresa_id, $tipo) {
         <div style="display:flex;align-items:center;justify-content:space-between">
             <div style="font:700 12px var(--body);color:#991b1b">
                 <?= e($cv['device_sig'] ?? $cv['ip'] ?? $cv['visitor_id'] ?? '?') ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cots<?= $visitors_lbl ?>
+                <?php if ($probable_empleado): ?>
+                    <span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font:600 10px var(--body);margin-left:6px">Probable: <?= e($probable_empleado) ?></span>
+                <?php endif; ?>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
                 <span style="font:500 11px var(--num);color:#7f1d1d"><?= $dev_str ?></span>
-                <button onclick="descartarComp('<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Ya revisé — limpiar alerta">✓ Revisado</button>
+                <button onclick="compAction('review','<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Ya revisé, limpiar">✓</button>
+                <button onclick="compAction('internal','<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Marcar como interno (empleado)">👤</button>
             </div>
         </div>
         <?php foreach ($cv_detail as $det): ?>
@@ -851,14 +892,17 @@ if ($total_comp): ?>
     </div>
 </div>
 <script>
-async function descartarComp(tipo, valor, btn) {
-    if (!confirm('¿Marcar como interno? No volverá a generar alertas.')) return;
+async function compAction(accion, tipo, valor, btn) {
+    var msg = accion === 'internal'
+        ? '¿Marcar como interno (empleado)? No volverá a generar alertas.'
+        : '¿Marcar como revisado? Si hay actividad nueva, reaparecerá.';
+    if (!confirm(msg)) return;
     btn.disabled = true; btn.textContent = '...';
     try {
         const r = await fetch('/radar/descartar-comp', {
             method: 'POST',
             headers: {'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
-            body: JSON.stringify({tipo, valor, empresa_id: <?= $empresa_id ?>})
+            body: JSON.stringify({accion, tipo, valor, empresa_id: <?= $empresa_id ?>})
         });
         const d = await r.json();
         if (d.ok) {
@@ -867,8 +911,8 @@ async function descartarComp(tipo, valor, btn) {
             if (!visible.length && document.getElementById('comp-alert')) {
                 document.getElementById('comp-alert').style.display = 'none';
             }
-        } else { alert(d.error || 'Error'); btn.disabled = false; btn.textContent = '✕'; }
-    } catch(e) { alert('Error de conexión'); btn.disabled = false; btn.textContent = '✕'; }
+        } else { alert(d.error || 'Error'); btn.disabled = false; btn.textContent = accion === 'internal' ? '👤' : '✓'; }
+    } catch(e) { alert('Error de conexión'); btn.disabled = false; btn.textContent = accion === 'internal' ? '👤' : '✓'; }
 }
 </script>
 <?php endif; ?>
