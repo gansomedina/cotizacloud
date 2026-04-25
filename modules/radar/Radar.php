@@ -404,8 +404,14 @@ class Radar
             }
 
             // Deduplicar: visitor_id primero (misma persona), IP como fallback
-            if ($vid !== '' && isset($last_by_vid[$vid]) && ($ts - $last_by_vid[$vid]) < $dedupe) continue;
-            if (isset($last_by_ip[$ip]) && ($ts - $last_by_ip[$ip]) < $dedupe) continue;
+            if ($vid !== '' && isset($last_by_vid[$vid]) && ($ts - $last_by_vid[$vid]) < $dedupe) {
+                $last_by_vid[$vid] = $ts;
+                continue;
+            }
+            if (isset($last_by_ip[$ip]) && ($ts - $last_by_ip[$ip]) < $dedupe) {
+                if ($vid !== '') $last_by_vid[$vid] = $ts;
+                continue;
+            }
 
             if ($vid !== '') $last_by_vid[$vid] = $ts;
             $last_by_ip[$ip] = $ts;
