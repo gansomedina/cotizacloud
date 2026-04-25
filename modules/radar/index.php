@@ -724,43 +724,6 @@ function render_comp_row($cv, $empresa_id, $tipo) {
     $dev_str = implode(', ', $devices);
     $visitors_lbl = isset($cv['visitors_distintos']) && $cv['visitors_distintos'] > 1
         ? ' · '.(int)$cv['visitors_distintos'].' dispositivos' : '';
-
-    // Detectar si coincide con algún empleado
-    $probable_empleado = null;
-    if ($tipo === 'ip' || $tipo === 'user') {
-        $emp_match = DB::row(
-            "SELECT u.nombre FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id
-             WHERE us.ip = ? AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
-             ORDER BY us.created_at DESC LIMIT 1",
-            [$cv['ip'] ?? '']
-        );
-        if ($emp_match) $probable_empleado = $emp_match['nombre'];
-    }
-    if (!$probable_empleado && ($tipo === 'device' || !empty($cv['device_sig']))) {
-        $dsig_val = $cv['device_sig'] ?? '';
-        if ($dsig_val) {
-            $emp_match = DB::row(
-                "SELECT u.nombre FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id
-                 WHERE us.device_sig = ? AND us.device_sig IS NOT NULL
-                 ORDER BY us.created_at DESC LIMIT 1",
-                [$dsig_val]
-            );
-            if ($emp_match) $probable_empleado = $emp_match['nombre'];
-        }
-    }
-    if (!$probable_empleado) {
-        // Buscar por rango de IP similar (/24) en user_sessions
-        $ip_prefix = substr($cv['ip'] ?? '', 0, strrpos($cv['ip'] ?? '0.0.0.0', '.') + 1);
-        if ($ip_prefix) {
-            $emp_match = DB::row(
-                "SELECT u.nombre FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id
-                 WHERE us.ip LIKE ? AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
-                 ORDER BY us.created_at DESC LIMIT 1",
-                [$ip_prefix . '%']
-            );
-            if ($emp_match) $probable_empleado = $emp_match['nombre'] . ' (red similar)';
-        }
-    }
     $safe_key = htmlspecialchars($key, ENT_QUOTES);
     $dismiss_tipo = $tipo;
     $dismiss_val = $param_val;
@@ -769,14 +732,10 @@ function render_comp_row($cv, $empresa_id, $tipo) {
         <div style="display:flex;align-items:center;justify-content:space-between">
             <div style="font:700 12px var(--body);color:#991b1b">
                 <?= e($cv['device_sig'] ?? $cv['ip'] ?? $cv['visitor_id'] ?? '?') ?> · <?= (int)$cv['clientes_distintos'] ?> clientes · <?= (int)$cv['cots_vistas'] ?> cots<?= $visitors_lbl ?>
-                <?php if ($probable_empleado): ?>
-                    <span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font:600 10px var(--body);margin-left:6px">Probable: <?= e($probable_empleado) ?></span>
-                <?php endif; ?>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
                 <span style="font:500 11px var(--num);color:#7f1d1d"><?= $dev_str ?></span>
-                <button onclick="compAction('review','<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Ya revisé, limpiar">✓</button>
-                <button onclick="compAction('internal','<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Marcar como interno (empleado)">👤</button>
+                <button onclick="compAction('review','<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Ya revisé, limpiar">✓ Revisado</button>
             </div>
         </div>
         <?php foreach ($cv_detail as $det): ?>
@@ -823,12 +782,13 @@ $comp_by_ip = DB::query(
        AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
        AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
        AND qs.ip NOT IN (SELECT ip FROM radar_ips_internas WHERE empresa_id = ?)
+       AND qs.ip NOT IN (SELECT DISTINCT us.ip FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id WHERE (u.empresa_id = ? OR u.rol = 'superadmin') AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY))
      GROUP BY qs.ip
      HAVING clientes_distintos > 1
        AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
-    [$empresa_id, $empresa_id, $empresa_id]
+    [$empresa_id, $empresa_id, $empresa_id, $empresa_id]
 );
 
 // ── 3. Alerta por Device Signature (descarte) ──
