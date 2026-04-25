@@ -458,12 +458,12 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             <div id="desc-auto-fields" style="display:<?= $cot['descuento_auto_activo'] ? 'block' : 'none' ?>;margin-top:8px">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                     <span style="font-size:12px;color:var(--t3);min-width:70px">Porcentaje</span>
-                    <input type="number" id="desc-pct" value="<?= (float)$cot['descuento_auto_pct'] ?: (float)($empresa['descuento_auto_pct_default'] ?? 0) ?>" min="0" max="100" style="width:60px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font:500 13px var(--num)">
+                    <input type="number" id="desc-pct" value="<?= (float)$cot['descuento_auto_pct'] ?: (float)($empresa['descuento_auto_pct_default'] ?? 0) ?>" min="0" max="100" oninput="updateDescAuto()" style="width:60px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font:500 13px var(--num)">
                     <span style="font-size:12px;color:var(--t3)">%</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                     <span style="font-size:12px;color:var(--t3);min-width:70px">Expira en</span>
-                    <input type="number" id="desc-dias" value="<?= (int)($empresa['descuento_auto_dias_default'] ?? 3) ?>" min="1" style="width:60px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font:500 13px var(--num)">
+                    <input type="number" id="desc-dias" value="<?= (int)($empresa['descuento_auto_dias_default'] ?? 3) ?>" min="1" oninput="updateDescAuto()" style="width:60px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font:500 13px var(--num)">
                     <span style="font-size:12px;color:var(--t3)">días</span>
                 </div>
                 <div style="font-size:11px;color:var(--t3);margin-top:6px">El cliente ve el descuento con cronómetro.</div>
@@ -480,12 +480,10 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <span class="panel-t-val" id="total-cupon">-<?= format_money($cot['cupon_monto'], $empresa['moneda']) ?></span>
             </div>
             <?php endif; ?>
-            <?php if ($cot['descuento_auto_activo'] && $cot['descuento_auto_amt'] > 0): ?>
-            <div class="panel-t-row disc">
-                <span class="panel-t-lbl">Descuento <?= number_format($cot['descuento_auto_pct'],1) ?>%</span>
-                <span class="panel-t-val">-<?= format_money($cot['descuento_auto_amt'], $empresa['moneda']) ?></span>
+            <div class="panel-t-row disc" id="row-desc-auto" style="display:<?= ($cot['descuento_auto_activo'] && $cot['descuento_auto_amt'] > 0) ? '' : 'none' ?>">
+                <span class="panel-t-lbl" id="lbl-desc-auto">Descuento <?= $cot['descuento_auto_pct'] > 0 ? number_format($cot['descuento_auto_pct'],1).'%' : '' ?></span>
+                <span class="panel-t-val" id="total-desc-auto">-<?= format_money($cot['descuento_auto_amt'] ?? 0, $empresa['moneda']) ?></span>
             </div>
-            <?php endif; ?>
             <div class="panel-t-row tot-row" style="display:none">
                 <span class="panel-t-lbl">Subtotal extras</span>
                 <span class="panel-t-val" id="total-extras">$0.00</span>
@@ -681,6 +679,13 @@ function toggleDescAuto() {
     const on = document.getElementById('desc-auto-toggle').checked;
     document.getElementById('desc-auto-fields').style.display = on ? 'block' : 'none';
     descAutoActivo = on;
+    if (on) updateDescAuto();
+    calcularTotales();
+}
+function updateDescAuto() {
+    descAutoPct  = parseFloat(document.getElementById('desc-pct')?.value) || 0;
+    descAutoDias = parseInt(document.getElementById('desc-dias')?.value) || 3;
+    calcularTotales();
 }
 let itemCounter    = 0;
 
@@ -879,9 +884,12 @@ function calcularTotales(){
     else if(modo==='incluido'){impAmt=base-(base/(1+pct));}
     const total=totalBase+subExtras;
     setText('total-subtotal',fmt(subRegular));
-    // Mostrar/ocultar extras subtotal
+    const rdEl=document.getElementById('row-desc-auto');
+    if(rdEl){rdEl.style.display=descAutoAmt>0?'':'none';setText('total-desc-auto','-'+fmt(descAutoAmt));setText('lbl-desc-auto','Descuento '+descAutoPct+'%');}
     const extEl=document.getElementById('total-extras');
     if(extEl){extEl.textContent=fmt(subExtras);extEl.closest('.tot-row').style.display=subExtras>0?'':'none';}
+    const impEl=document.getElementById('total-impuesto');
+    if(impEl)impEl.textContent=fmt(impAmt);
     setText('total-final',fmt(total));
 }
 
