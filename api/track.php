@@ -128,22 +128,41 @@ if (!$sess) {
 $ts_now = time();
 
 if (!$sess) {
-    $sess_id = DB::insert(
-        "INSERT INTO quote_sessions (cotizacion_id, ip, user_agent, visitor_id, device_sig, session_id, page_id, activa, scroll_max, visible_ms)
-         VALUES (?,?,?,?,?,?,?,1,?,?)",
-        [$cot_id, $ip, substr($ua,0,300), $visitor_id ?: null, $device_sig ?: null, $session_id ?: null, $page_id ?: null, $max_scroll, $visible_ms]
-    );
+    try {
+        $sess_id = DB::insert(
+            "INSERT INTO quote_sessions (cotizacion_id, ip, user_agent, visitor_id, device_sig, session_id, page_id, activa, scroll_max, visible_ms)
+             VALUES (?,?,?,?,?,?,?,1,?,?)",
+            [$cot_id, $ip, substr($ua,0,300), $visitor_id ?: null, $device_sig ?: null, $session_id ?: null, $page_id ?: null, $max_scroll, $visible_ms]
+        );
+    } catch (Throwable $e) {
+        $sess_id = DB::insert(
+            "INSERT INTO quote_sessions (cotizacion_id, ip, user_agent, visitor_id, session_id, page_id, activa, scroll_max, visible_ms)
+             VALUES (?,?,?,?,?,?,1,?,?)",
+            [$cot_id, $ip, substr($ua,0,300), $visitor_id ?: null, $session_id ?: null, $page_id ?: null, $max_scroll, $visible_ms]
+        );
+    }
 } else {
     $sess_id = (int)$sess['id'];
-    DB::execute(
-        "UPDATE quote_sessions SET updated_at=NOW(),
-            visitor_id=COALESCE(?, visitor_id),
-            device_sig=COALESCE(?, device_sig),
-            scroll_max=GREATEST(COALESCE(scroll_max,0),?),
-            visible_ms=GREATEST(COALESCE(visible_ms,0),?)
-         WHERE id=?",
-        [$visitor_id ?: null, $device_sig ?: null, $max_scroll, $visible_ms, $sess_id]
-    );
+    try {
+        DB::execute(
+            "UPDATE quote_sessions SET updated_at=NOW(),
+                visitor_id=COALESCE(?, visitor_id),
+                device_sig=COALESCE(?, device_sig),
+                scroll_max=GREATEST(COALESCE(scroll_max,0),?),
+                visible_ms=GREATEST(COALESCE(visible_ms,0),?)
+             WHERE id=?",
+            [$visitor_id ?: null, $device_sig ?: null, $max_scroll, $visible_ms, $sess_id]
+        );
+    } catch (Throwable $e) {
+        DB::execute(
+            "UPDATE quote_sessions SET updated_at=NOW(),
+                visitor_id=COALESCE(?, visitor_id),
+                scroll_max=GREATEST(COALESCE(scroll_max,0),?),
+                visible_ms=GREATEST(COALESCE(visible_ms,0),?)
+             WHERE id=?",
+            [$visitor_id ?: null, $max_scroll, $visible_ms, $sess_id]
+        );
+    }
 }
 
 // Registrar evento
@@ -153,7 +172,15 @@ try {
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
         [$cot_id, $session_id ?: null, $visitor_id ?: null, $device_sig ?: null, $page_id ?: null, $tipo, $max_scroll, $visible_ms, $open_ms, substr($ua,0,255), $ip, $ts_now]
     );
-} catch (Throwable $e) { exit; }
+} catch (Throwable $e) {
+    try {
+        DB::execute(
+            "INSERT INTO quote_events (cotizacion_id, session_id, visitor_id, page_id, tipo, max_scroll, visible_ms, open_ms, ua, ip, ts_unix)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            [$cot_id, $session_id ?: null, $visitor_id ?: null, $page_id ?: null, $tipo, $max_scroll, $visible_ms, $open_ms, substr($ua,0,255), $ip, $ts_now]
+        );
+    } catch (Throwable $e2) { exit; }
+}
 
 // Marcar como vista — solo cambio de estado, NO incrementar visitas
 // El contador visitas lo maneja cotizacion.php server-side con deduplicación correcta

@@ -748,6 +748,11 @@ function render_comp_row($cv, $empresa_id, $tipo) {
     <?php
 }
 
+$has_comp_reviewed = (bool)DB::val("SELECT 1 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='radar_comp_reviewed'");
+$reviewed_filter_user   = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$empresa_id} AND tipo = 'user' AND valor = qs.visitor_id), '2000-01-01')" : "";
+$reviewed_filter_ip     = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$empresa_id} AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')" : "";
+$reviewed_filter_device = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$empresa_id} AND tipo = 'device' AND valor = qs.device_sig), '2000-01-01')" : "";
+
 // ── 1. Alerta por Usuario (visitor_id) ──
 $comp_by_user = DB::query(
     "SELECT qs.visitor_id, qs.ip,
@@ -763,10 +768,10 @@ $comp_by_user = DB::query(
        AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
      GROUP BY qs.visitor_id
      HAVING clientes_distintos > 1
-       AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'user' AND valor = qs.visitor_id), '2000-01-01')
+       {$reviewed_filter_user}
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
-    [$empresa_id, $empresa_id, $empresa_id]
+    [$empresa_id, $empresa_id]
 );
 
 // ── 2. Alerta por IP ──
@@ -785,15 +790,15 @@ $comp_by_ip = DB::query(
        AND qs.ip NOT IN (SELECT DISTINCT us.ip FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id WHERE (u.empresa_id = ? OR u.rol = 'superadmin') AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY))
      GROUP BY qs.ip
      HAVING clientes_distintos > 1
-       AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')
+       {$reviewed_filter_ip}
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
-    [$empresa_id, $empresa_id, $empresa_id, $empresa_id]
+    [$empresa_id, $empresa_id, $empresa_id]
 );
 
 // ── 3. Alerta por Device Signature (descarte) ──
 // Excluir device_sigs de empleados del sistema
-$comp_by_device = DB::query(
+try { $comp_by_device = DB::query(
     "SELECT qs.device_sig,
             COUNT(DISTINCT c.cliente_id) AS clientes_distintos,
             COUNT(DISTINCT qs.cotizacion_id) AS cots_vistas,
@@ -813,11 +818,11 @@ $comp_by_device = DB::query(
        )
      GROUP BY qs.device_sig
      HAVING clientes_distintos > 1
-       AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'device' AND valor = qs.device_sig), '2000-01-01')
+       {$reviewed_filter_device}
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
-    [$empresa_id, $empresa_id, $empresa_id]
-);
+    [$empresa_id, $empresa_id]
+); } catch (Throwable $e) { $comp_by_device = []; }
 
 $total_comp = count($comp_by_user ?: []) + count($comp_by_ip ?: []) + count($comp_by_device ?: []);
 if ($total_comp): ?>
