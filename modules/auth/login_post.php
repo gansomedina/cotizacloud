@@ -50,8 +50,17 @@ if (!$resultado['ok']) {
 
 // Login exitoso — registrar visitor_id como interno en WKWebView/browser
 $visitor_id_post = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_POST['visitor_id'] ?? '')), 0, 64);
+$device_sig_post = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_POST['device_sig'] ?? '')), 0, 20);
 $emp = $resultado['empresa'];
 $es_super = ($resultado['usuario']['rol'] ?? '') === 'superadmin';
+
+// Guardar device_sig en la sesión del usuario
+if ($device_sig_post !== '') {
+    DB::execute(
+        "UPDATE user_sessions SET device_sig = ? WHERE usuario_id = ? AND ip = ? ORDER BY created_at DESC LIMIT 1",
+        [$device_sig_post, (int)Auth::id(), ip_real()]
+    );
+}
 
 if ($visitor_id_post !== '') {
     require_once MODULES_PATH . '/radar/Radar.php';

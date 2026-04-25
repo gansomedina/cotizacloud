@@ -203,6 +203,7 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
         <form method="POST" action="/login" id="login-form">
             <?= csrf_field() ?>
             <input type="hidden" id="vid_field" name="visitor_id" value="">
+            <input type="hidden" id="dsig_field" name="device_sig" value="">
 
             <div class="field">
                 <label class="lbl" for="empresa_slug">Tu empresa</label>
@@ -301,6 +302,30 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
 
     var f = document.getElementById('vid_field');
     if (f) f.value = vid;
+
+    // Device signature para descarte del Radar
+    function getDeviceSig() {
+        try {
+            var sw = Math.min(screen.width, screen.height);
+            var sh = Math.max(screen.width, screen.height);
+            var dpr = window.devicePixelRatio || 1;
+            var cores = navigator.hardwareConcurrency || 0;
+            var tp = navigator.maxTouchPoints || 0;
+            var maxTex = 0;
+            try { var c = document.createElement('canvas'), gl = c.getContext('webgl'); if (gl) maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0; } catch(e) {}
+            var lang = navigator.language || '';
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+            var motion = window.matchMedia('(prefers-reduced-motion:reduce)').matches ? 1 : 0;
+            var contrast = window.matchMedia('(prefers-contrast:more)').matches ? 1 : 0;
+            var iosM = (navigator.userAgent.match(/OS (\d+)/) || [])[1] || '0';
+            var raw = [sw,sh,dpr,cores,tp,maxTex,lang,tz,motion,contrast,iosM].join('|');
+            var h = 0;
+            for (var i = 0; i < raw.length; i++) h = ((h << 5) - h) + raw.charCodeAt(i) | 0;
+            return Math.abs(h).toString(16).padStart(8, '0');
+        } catch(e) { return ''; }
+    }
+    var df = document.getElementById('dsig_field');
+    if (df) df.value = getDeviceSig();
 
     // Recordar último slug de empresa usado
     var sk = 'cz_empresa_slug';
