@@ -56,10 +56,12 @@ $es_super = ($resultado['usuario']['rol'] ?? '') === 'superadmin';
 
 // Guardar device_sig en la sesión del usuario
 if ($device_sig_post !== '') {
-    DB::execute(
-        "UPDATE user_sessions SET device_sig = ? WHERE usuario_id = ? AND ip = ? ORDER BY created_at DESC LIMIT 1",
-        [$device_sig_post, (int)Auth::id(), ip_real()]
-    );
+    try {
+        DB::execute(
+            "UPDATE user_sessions SET device_sig = ? WHERE usuario_id = ? AND ip = ? ORDER BY created_at DESC LIMIT 1",
+            [$device_sig_post, (int)Auth::id(), ip_real()]
+        );
+    } catch (Throwable $e) {}
 }
 
 if ($visitor_id_post !== '') {
