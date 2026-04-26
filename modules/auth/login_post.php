@@ -48,11 +48,24 @@ if (!$resultado['ok']) {
     redirect('/login?error=' . $error . '&empresa=' . urlencode($empresa_slug));
 }
 
-// Login exitoso — registrar señales internas
+// Login exitoso — registrar las 3 señales internas: visitor_id + IP + device_sig
 $visitor_id_post = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_POST['visitor_id'] ?? '')), 0, 64);
 $device_sig_post = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_POST['device_sig'] ?? '')), 0, 20);
 $emp = $resultado['empresa'];
 $es_super = ($resultado['usuario']['rol'] ?? '') === 'superadmin';
+
+// visitor_id es la señal principal — si JS no lo generó, crear uno server-side
+if ($visitor_id_post === '') {
+    $visitor_id_post = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+        random_int(0,0xffff), random_int(0,0xffff), random_int(0,0xffff),
+        random_int(0,0x0fff)|0x4000, random_int(0,0x3fff)|0x8000,
+        random_int(0,0xffff), random_int(0,0xffff), random_int(0,0xffff)
+    );
+}
+
+require_once MODULES_PATH . '/radar/Radar.php';
+$ip_login = ip_real();
+$ua_login = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
 
 // Guardar device_sig en la sesión del usuario
 if ($device_sig_post !== '') {
@@ -64,30 +77,16 @@ if ($device_sig_post !== '') {
     } catch (Throwable $e) {}
 }
 
-// Aprender IP SIEMPRE (el empleado se logueó — certeza absoluta)
-require_once MODULES_PATH . '/radar/Radar.php';
-$ip_login = ip_real();
-$ua_login = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
-
+// Registrar las 3 señales: visitor_id + IP + (device_sig ya guardado arriba)
 if ($es_super) {
     $todas = DB::query("SELECT id FROM empresas WHERE activa = 1 AND slug != '_system'");
     if ($todas) foreach ($todas as $te) {
+        Radar::marcar_visitor_interno((int)$te['id'], $visitor_id_post, 'login', (int)Auth::id(), $ip_login, $ua_login);
         Radar::aprender_ip_radar((int)$te['id'], $ip_login);
     }
 } else {
+    Radar::marcar_visitor_interno((int)$emp['id'], $visitor_id_post, 'login', (int)Auth::id(), $ip_login, $ua_login);
     Radar::aprender_ip_radar((int)$emp['id'], $ip_login);
-}
-
-// Aprender visitor_id si el JS lo generó
-if ($visitor_id_post !== '') {
-    if ($es_super) {
-        $todas = $todas ?? DB::query("SELECT id FROM empresas WHERE activa = 1 AND slug != '_system'");
-        if ($todas) foreach ($todas as $te) {
-            Radar::marcar_visitor_interno((int)$te['id'], $visitor_id_post, 'login', (int)Auth::id(), $ip_login, $ua_login);
-        }
-    } else {
-        Radar::marcar_visitor_interno((int)$emp['id'], $visitor_id_post, 'login', (int)Auth::id(), $ip_login, $ua_login);
-    }
 }
 
 // Redirigir: superadmin con _admin va al panel, otros al dashboard
