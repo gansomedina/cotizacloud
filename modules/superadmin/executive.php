@@ -1549,11 +1549,12 @@ foreach ($empresas_cfg as $eid => $ecfg) {
             WHERE c.empresa_id = ?
               AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
               AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
-              AND qs.ip NOT IN (SELECT ip FROM radar_ips_internas WHERE empresa_id = ?)
+              AND qs.ip NOT IN (SELECT ip FROM radar_ips_internas WHERE empresa_id = ? AND aprendida_ts >= UNIX_TIMESTAMP() - 604800)
+              AND qs.ip NOT IN (SELECT DISTINCT us.ip FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id WHERE (u.empresa_id = ? OR u.rol = 'superadmin') AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY))
             GROUP BY qs.ip
             HAVING COUNT(DISTINCT c.cliente_id) > 1
         ) sub",
-        [$eid, $eid]
+        [$eid, $eid, $eid]
     ) ?: 0);
     if ($comp_cnt || $comp_ip_cnt) {
         $comp_por_empresa[$eid] = ['user' => (int)$comp_cnt, 'ip' => (int)$comp_ip_cnt];
