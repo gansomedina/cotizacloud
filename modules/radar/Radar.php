@@ -841,13 +841,7 @@ class Radar
         }
 
         // ── 8. Multi-persona ────────────────────────────────
-        $multip_boost = (
-            $has_tot_rev || $has_loop || $pss >= 3.0 || $e_opens >= 2 ||
-            $e_closes >= 1 || $e_vis_max >= (int)self::u('multip_boost_vis_max', $modo) || $e_mv_price || $e_uniq_v >= 2
-        );
-        // v3.1: multi_persona rediseñado — basado en visitor_ids + IPs como respaldo
-        // 2+ visitor_ids = señal fuerte de múltiples personas evaluando
-        // 3+ visitor_ids = señal muy fuerte (casi imposible que sea 1 persona)
+        // Basado en visitor_ids (validados por descarte) + IPs como respaldo
         if (
             !$accepted &&
             $last_ts >= $now - (int)self::u('multip_recent_hours', $modo) * 3600 &&
