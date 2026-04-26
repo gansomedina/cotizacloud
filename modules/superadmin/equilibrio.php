@@ -23,7 +23,9 @@ foreach ($body as $eid => $val) {
     $metas[(string)(int)$eid] = max(0, (float)$val);
 }
 
-$file = dirname(__DIR__, 2) . '/config/equilibrio.json';
+$dir = dirname(__DIR__, 2) . '/config';
+if (!is_dir($dir)) mkdir($dir, 0755, true);
+$file = $dir . '/equilibrio.json';
 $ok = file_put_contents($file, json_encode($metas, JSON_PRETTY_PRINT));
 
 if ($ok === false) json_error('No se pudo guardar el archivo');
