@@ -13,6 +13,12 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
     try {
         Radar::aprender_ip_radar(EMPRESA_ID, ip_real());
 
+        // Aprender visitor_id del navegador actual como interno
+        $vid_cookie = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
+        if ($vid_cookie !== '') {
+            Radar::marcar_visitor_interno(EMPRESA_ID, $vid_cookie, 'layout', (int)Auth::id(), ip_real(), substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255));
+        }
+
         // Aprender device_sig desde cookie (puesta por JS en carga anterior)
         $dsig_cookie = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 20);
         if ($dsig_cookie !== '') {
