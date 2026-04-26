@@ -192,8 +192,8 @@ function rbadge(?string $b,?int $sc,array $BM,string $momentum='stable'): string
 // PRIORIDAD v3: probable_cierre es #1 (cross-bucket agregador)
 $PRIO = ['probable_cierre',
          'onfire','inminente','validando_precio',
-         'prediccion_alta','lectura_comprometida','alto_importe','decision_activa','revivio',
-         'no_abierta','re_enganche_caliente','re_enganche','multi_persona',
+         'prediccion_alta','lectura_comprometida','multi_persona','alto_importe','decision_activa','revivio',
+         'no_abierta','re_enganche_caliente','re_enganche',
          'revision_profunda','vistas_multiples','hesitacion','sobre_analisis',
          'regreso','comparando','enfriandose'];
 
@@ -277,7 +277,7 @@ $rows_all = array_slice($rows_all,0,$limit);
 // probable_cierre es cross-bucket: ya está duplicada en su bucket origen.
 // Contar solo cotizaciones ÚNICAS entre los 3 buckets urgentes.
 $urgentes_ids = [];
-foreach (['onfire','inminente','probable_cierre','lectura_comprometida'] as $ub) {
+foreach (['onfire','inminente','probable_cierre','lectura_comprometida','multi_persona','alto_importe'] as $ub) {
     foreach ($buckets[$ub] as $r) $urgentes_ids[(int)$r['id']] = true;
 }
 $cnt_urgentes = count($urgentes_ids);
@@ -346,7 +346,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $r_fb_data = ($GLOBALS['feedback_map'] ?? [])[(int)$r['id']] ?? null;
         $r_fb_tipo = $r_fb_data['tipo'] ?? null;
         $r_fb_asesor = $r_fb_data['asesor'] ?? null;
-        $hot_bkts_fb = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida'];
+        $hot_bkts_fb = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
         $show_fb_td = in_array($r_bucket_fb, $hot_bkts_fb) && ($r_vendedor_fb === Auth::id() || Auth::es_admin());
         $fb_html = '';
         $cot_id_fb = (int)$r['id'];
@@ -992,6 +992,14 @@ render_bkt('🔮 Predicción alta (ciclo: '.$ciclo_venta['dias'].'d)',
 render_bkt('📖 Lectura comprometida',
     'Lectura por encima del promedio de compradores (scroll ≥'.$ea_ui['scroll'].'%, visible ≥'.round($ea_ui['vis_ms']/1000).'s) + interacción con precio. '.($ea_ui['auto'] ? 'Auto-calibrado con '.$ea_ui['ventas'].' ventas.' : 'Defaults (< 3 ventas).'),
     $buckets['lectura_comprometida'] ?? [],$sort,$dir,false,false,'lectura_comprometida');
+
+render_bkt('👥 Multi-persona',
+    'Múltiples personas evaluando la cotización (2+ dispositivos/visitantes). Decisión compartida en curso.',
+    $buckets['multi_persona'],$sort,$dir,false,false,'multi_persona');
+
+render_bkt('💰 Alto importe',
+    'Cotización de alto valor (≥ P80 de tu empresa) con actividad reciente.',
+    $buckets['alto_importe'],$sort,$dir,false,false,'alto_importe');
 ?>
 </div>
 
@@ -1002,10 +1010,6 @@ render_bkt('🧠 Decisión activa',
     '4+ vistas en 48h y regresos reales (span ≥ 6h)',
     $buckets['decision_activa'],$sort,$dir,false,false,'decision_activa');
 
-render_bkt('💰 Alto importe',
-    'v2.2: Umbral dinámico P80 de la empresa (auto-calculado). Vista reciente.',
-    $buckets['alto_importe'],$sort,$dir,false,false,'alto_importe');
-
 render_bkt('🔥 Re-enganche caliente',
     'v2.3: Regresó tras gap + interactuó con precio (revisó totales, loop, cupón o sv_price). Señal de compra fuerte.',
     $buckets['re_enganche_caliente'] ?? [],$sort,$dir,true,false,'re_enganche_caliente');
@@ -1013,10 +1017,6 @@ render_bkt('🔥 Re-enganche caliente',
 render_bkt('🟣 Re-enganche',
     'v2.3: Regresó tras gap + señal de interés, pero sin foco directo en precio. Oportunidad de seguimiento.',
     $buckets['re_enganche'],$sort,$dir,true,false,'re_enganche');
-
-render_bkt('👥 Multi-persona',
-    '2+ visitor_ids o IPs desde diferentes dispositivos · decisión compartida · booster +1/+2 en score',
-    $buckets['multi_persona'],$sort,$dir,false,false,'multi_persona');
 
 render_bkt('🧾 Revisión profunda',
     'Exige lectura real (visible) y foco en precio/totales. Análisis serio, no solo muchas vistas.',

@@ -1072,7 +1072,7 @@ class Radar
         static $PRIORIDAD = [
             'probable_cierre',
             'onfire','inminente','validando_precio',
-            'prediccion_alta','lectura_comprometida','alto_importe','decision_activa','multi_persona','revivio',
+            'prediccion_alta','lectura_comprometida','multi_persona','alto_importe','decision_activa','revivio',
             'no_abierta','re_enganche_caliente','re_enganche',
             'revision_profunda','vistas_multiples','hesitacion','sobre_analisis',
             'regreso','comparando','enfriandose',
@@ -1350,11 +1350,14 @@ class Radar
         'validando_precio'      => 'Validando precio',
         'prediccion_alta'       => 'Predicción alta',
         'lectura_comprometida'  => 'Lectura comprometida',
+        'multi_persona'         => 'Multi-persona',
+        'alto_importe'          => 'Alto importe',
     ];
 
     // Buckets de alta prioridad — NO aplica sticky (ya tienen ventanas amplias)
     const HIGH_PRIORITY_BUCKETS = [
         'probable_cierre', 'inminente', 'onfire', 'validando_precio', 'prediccion_alta', 'lectura_comprometida',
+        'multi_persona', 'alto_importe',
     ];
 
     public static function recalcular(int $cotizacion_id, int $empresa_id): void
