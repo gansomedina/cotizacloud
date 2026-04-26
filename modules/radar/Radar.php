@@ -1016,7 +1016,9 @@ class Radar
             if (in_array($qb, $buckets, true)) { $pc_source = $qb; break; }
         }
 
-        if ($pc_source !== null && !$accepted && $last_ts >= $now - 72 * 3600 && $sessions >= 2) {
+        $pc_min_sessions = ($pc_source === 'lectura_comprometida') ? 1 : 2;
+
+        if ($pc_source !== null && !$accepted && $last_ts >= $now - 72 * 3600 && $sessions >= $pc_min_sessions) {
             // Contar categorías de señal presentes
             // Engagement: visibilidad real (no 8ms) + scroll significativo
             $pc_scroll_min = match($modo) { 'agresivo' => 50, 'ligero' => 90, default => 70 };
