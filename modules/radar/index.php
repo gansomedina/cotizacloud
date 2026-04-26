@@ -69,6 +69,7 @@ $stat_cierre    = $stat_total > 0 ? round(100 * $stat_aceptadas / $stat_total, 2
 $raw = DB::query(
     "SELECT c.id, c.titulo, c.numero, c.slug, c.total, c.estado,
             c.radar_score, c.radar_bucket, c.radar_senales, c.radar_updated_at,
+            c.radar_bucket_at,
             c.visitas,
             c.ultima_vista_at AS raw_vista_at,
             COALESCE(c.ultima_vista_at,
@@ -231,6 +232,7 @@ foreach ($raw as $c) {
         'senales'     => $senales,
         'last_ts'     => $last_ts,
         'visitas'     => (int)($c['visitas'] ?? 0),
+        'bucket_at'   => $c['radar_bucket_at'] ?? null,
         'vendedor_id' => (int)($c['vendedor_id'] ?? 0),
     ];
 
@@ -379,6 +381,13 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         echo "<td class='tr'>".rmoney($r['total'])."</td>";
         $last_fmt = date('m-d H:i',$r['last_ts'])." <span class='ago'>(".rhace($r['last_ts']).")</span>";
         if ($gap && isset($r['gap_days'])) $last_fmt .= " <b style='color:#6a1b9a'>gap ".(int)$r['gap_days']."d</b>";
+        // Leyenda sticky: "Activado hace Xd" si el bucket se mantiene por hold
+        $sticky_flag = ($r['senales']['sticky'] ?? false);
+        $bkt_at = $r['bucket_at'] ?? null;
+        if ($bkt_at && $sticky_flag) {
+            $bkt_ago = max(1, (int)round((time() - strtotime($bkt_at)) / 86400));
+            $last_fmt .= " <span style='background:#dbeafe;color:#1d4ed8;font:600 9px \"Inter\",sans-serif;padding:1px 5px;border-radius:3px;margin-left:4px'>⏳ hace {$bkt_ago}d</span>";
+        }
         echo "<td class='col-vista'>$last_fmt</td>";
         echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a></td>";
         echo "</tr>";
