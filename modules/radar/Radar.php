@@ -993,7 +993,10 @@ class Radar
             $cat_precio      = ($has_tot_rev || $has_loop || $e_coupons > 0 ||
                                 $e_sv_price || $e_mv_price || $pss >= 2.0);
             $cat_persistencia = ($sessions >= 2 || ($gap_days !== null && $gap_days >= 1));
-            $cat_social       = ($vids_post_guest_count >= 2 || $e_uniq_v >= 2 || $ips_post_guest_count >= 2 || $e_mv_price);
+            // Si hay datos de device_sig, confiar en vids validados (no IPs sin validar)
+            $cat_social = (!empty($vid_dsig) || !empty($ip_dsig))
+                ? ($vids_post_guest_count >= 2 || $e_uniq_v >= 2 || $e_mv_price)
+                : ($vids_post_guest_count >= 2 || $e_uniq_v >= 2 || $ips_post_guest_count >= 2 || $e_mv_price);
 
             $cat_count = (int)$cat_engagement + (int)$cat_precio +
                          (int)$cat_persistencia + (int)$cat_social;
