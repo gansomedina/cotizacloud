@@ -18,7 +18,7 @@ $empresas_cfg = [
 $emp_ids = implode(',', array_keys($empresas_cfg));
 
 // Metas de equilibrio (archivo JSON, sin BD)
-$eq_file = dirname(__DIR__, 2) . '/config/equilibrio.json';
+$eq_file = dirname(__DIR__, 2) . '/data/equilibrio.json';
 $eq_metas = file_exists($eq_file) ? (json_decode(file_get_contents($eq_file), true) ?: []) : [];
 foreach ($empresas_cfg as $eid => &$ec) {
     $ec['meta'] = (float)($eq_metas[(string)$eid] ?? 0);
