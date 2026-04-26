@@ -1043,6 +1043,13 @@ class Radar
             if ($cat_count >= $pc_min_cats && $has_strong_cat) {
                 $buckets[] = 'probable_cierre';
             }
+
+            // DEBUG probable_cierre — quitar después de verificar
+            error_log("[PC debug] cot={$cotizacion_id} src={$pc_source} sess={$sessions} cats={$cat_count}/{$pc_min_cats} eng=" . ($cat_engagement?'Y':'N')
+                . "(scroll_cls={$e_scroll_cls},scroll_any={$e_scroll_any},vis_max={$e_vis_max},vis_sum={$e_vis_sum},tot_view=".($has_tot_view?'Y':'N').")"
+                . " precio=" . ($cat_precio?'Y':'N') . "(tot_rev=".($has_tot_rev?'Y':'N').",loop=".($has_loop?'Y':'N').",coupons={$e_coupons},sv=".($e_sv_price?'Y':'N').",mv=".($e_mv_price?'Y':'N').",pss={$pss})"
+                . " persist=" . ($cat_persistencia?'Y':'N') . " social=" . ($cat_social?'Y':'N')
+                . " strong=" . ($has_strong_cat?'Y':'N') . " → " . ($cat_count >= $pc_min_cats && $has_strong_cat ? 'PC' : 'NO'));
         }
 
         // ── Iconos para la UI (mismos que el radar original) ─
