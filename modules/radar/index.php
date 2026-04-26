@@ -367,7 +367,17 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_interes',this)\" title='Sin interés'>👎</button>"
                 . "</div>";
         }
-        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."</div></a></td>";
+        $cal_badge = '';
+        $is_calentura = !empty($r['senales']['calentura']);
+        if ($is_calentura) {
+            $cal_tiene_precio = !empty($r['senales']['cat_precio']);
+            if ($cal_tiene_precio) {
+                $cal_badge = "<div style='margin-top:2px'><span style='background:#dcfce7;color:#166534;font:600 10px \"Inter\",sans-serif;padding:2px 6px;border-radius:4px;display:inline-block' title='Cotización reciente — el cliente ya evaluó el precio, decidido rápido'>⚡ Decidido rápido</span></div>";
+            } else {
+                $cal_badge = "<div style='margin-top:2px'><span style='background:#fef3c7;color:#92400e;font:600 10px \"Inter\",sans-serif;padding:2px 6px;border-radius:4px;display:inline-block' title='Cotización reciente — el cliente está conociendo tu propuesta. Aprovecha la novedad antes de que se enfríe'>🔥 Aprovecha la novedad antes de que se enfríe</span></div>";
+            }
+        }
+        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."{$cal_badge}</div></a></td>";
         if ($motivo) {
             $reason_key = $r['reason'] ?? '';
             $reason_meta = $BM[$reason_key] ?? null;
@@ -389,15 +399,6 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         if ($bkt_at && $sticky_flag) {
             $bkt_ago = max(1, (int)round((time() - strtotime($bkt_at)) / 86400));
             $last_fmt .= " <span style='background:#dbeafe;color:#1d4ed8;font:600 9px \"Inter\",sans-serif;padding:1px 5px;border-radius:3px;margin-left:4px'>⏳ hace {$bkt_ago}d</span>";
-        }
-        $is_calentura = !empty($r['senales']['calentura']);
-        if ($is_calentura) {
-            $cal_tiene_precio = !empty($r['senales']['cat_precio']);
-            if ($cal_tiene_precio) {
-                $last_fmt .= " <span style='background:#dcfce7;color:#166534;font:600 9px \"Inter\",sans-serif;padding:1px 5px;border-radius:3px;margin-left:4px' title='Cotización reciente — el cliente ya evaluó el precio, decidido rápido'>⚡ Decidido</span>";
-            } else {
-                $last_fmt .= " <span style='background:#fef3c7;color:#92400e;font:600 9px \"Inter\",sans-serif;padding:1px 5px;border-radius:3px;margin-left:4px' title='Cotización reciente — el cliente está conociendo tu propuesta. Aprovecha la novedad antes de que se enfríe'>🔥 Nueva — aprovecha la calentura</span>";
-            }
         }
         echo "<td class='col-vista'>$last_fmt</td>";
         echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a></td>";
