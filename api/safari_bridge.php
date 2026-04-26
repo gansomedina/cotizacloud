@@ -76,6 +76,7 @@ setcookie('cz_vid', $vid, [
 require_once MODULES_PATH . '/radar/Radar.php';
 $ip = ip_real();
 $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+error_log("[Safari Bridge] vid={$vid} uid={$uid} eid={$eid} super=" . ($es_super?'1':'0') . " ip={$ip} host={$host}");
 
 if ($es_super) {
     $todas = DB::query("SELECT id FROM empresas WHERE activa = 1 AND slug != '_system'");
