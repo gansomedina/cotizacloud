@@ -824,14 +824,28 @@ class Radar
         // Thresholds adaptativos: scroll y visible del promedio de ventas.
         $ea = self::engage_avg($empresa_id);
         $engage_has_plus = ($has_tot_rev || $has_loop || $e_coupons > 0);
+        $lc_max_sess = (int)self::u('engage_max_sessions', $modo);
+        $lc_recent_ts = $now - (int)self::u('engage_recent_hours', $modo) * 3600;
+        $lc_min_vis = (int)self::u('engage_min_vis_ms', $modo);
+        // DEBUG lectura_comprometida — quitar después de verificar
+        if (!$accepted && $guest_sessions >= 1 && $has_tot_view) {
+            $lc_fails = [];
+            if ($sessions > $lc_max_sess) $lc_fails[] = "sessions={$sessions}>{$lc_max_sess}";
+            if ($last_ts < $lc_recent_ts) $lc_fails[] = "last_ts=".date('Y-m-d H:i',$last_ts)." too_old";
+            if ($e_scroll_any < $ea['scroll']) $lc_fails[] = "scroll={$e_scroll_any}<{$ea['scroll']}";
+            if ($e_vis_max < $ea['vis_ms']) $lc_fails[] = "vis={$e_vis_max}<{$ea['vis_ms']}";
+            if ($e_vis_max < $lc_min_vis) $lc_fails[] = "vis={$e_vis_max}<min_{$lc_min_vis}";
+            if (!$engage_has_plus) $lc_fails[] = "no_price_interact";
+            if (!empty($lc_fails)) error_log("[LC debug] cot={$cotizacion_id} FAIL: ".implode(', ',$lc_fails));
+        }
         if (
             !$accepted &&
-            $sessions <= (int)self::u('engage_max_sessions', $modo) &&
+            $sessions <= $lc_max_sess &&
             $guest_sessions >= 1 &&
-            $last_ts >= $now - (int)self::u('engage_recent_hours', $modo) * 3600 &&
+            $last_ts >= $lc_recent_ts &&
             $e_scroll_any >= $ea['scroll'] &&
             $e_vis_max >= $ea['vis_ms'] &&
-            $e_vis_max >= (int)self::u('engage_min_vis_ms', $modo) &&
+            $e_vis_max >= $lc_min_vis &&
             $has_tot_view &&
             $engage_has_plus
         ) {
