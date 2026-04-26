@@ -524,6 +524,14 @@ class Radar
                     ($vid2 !== '' && isset($intern_v[$vid2])) ||
                     ($dsig2 !== '' && isset($intern_dsig[$dsig2]))
                 )) continue;
+                // Filtro ghost (paridad con loop principal)
+                $sc2 = (int)($s['scroll_max'] ?? 0);
+                $vi2 = (int)($s['visible_ms'] ?? 0);
+                if (($cfg['filtrar_bots'] ?? true) && $sc2 === 0 && $vi2 === 0 && ($now - $ts2) > 120) {
+                    $ip2_has_ev = false;
+                    foreach ($ev_rows as $ev) { if (($ev['ip'] ?? '') === $ip2) { $ip2_has_ev = true; break; } }
+                    if (!$ip2_has_ev) continue;
+                }
                 $ips_post_guest[$ip2] = true;
                 if ($vid2 !== '') $vids_post_guest[$vid2] = true;
             }
@@ -1161,11 +1169,28 @@ class Radar
             $mv_price = count($s['price_v']) >= 2;
         }
 
-        // Visitor principal
-        $max_ev = 0; $main_v = '';
-        foreach ($s['v_ev'] as $vid => $cnt) { if ($cnt > $max_ev) { $max_ev = $cnt; $main_v = $vid; } }
+        // Visitor principal (merge por persona si hay dsig)
+        if (!empty($ev_vd)) {
+            $p_ev = [];
+            foreach ($s['v_ev'] as $vid => $cnt) {
+                $key = $ev_vd[$vid] ?? $vid;
+                $p_ev[$key] = ($p_ev[$key] ?? 0) + $cnt;
+            }
+            $max_ev = 0; $main_v = '';
+            foreach ($p_ev as $key => $cnt) { if ($cnt > $max_ev) { $max_ev = $cnt; $main_v = $key; } }
 
-        // Flags de comportamiento
+            $p_pev = [];
+            foreach ($s['v_price_ev'] as $vid => $cnt) {
+                $key = $ev_vd[$vid] ?? $vid;
+                $p_pev[$key] = ($p_pev[$key] ?? 0) + $cnt;
+            }
+        } else {
+            $max_ev = 0; $main_v = '';
+            foreach ($s['v_ev'] as $vid => $cnt) { if ($cnt > $max_ev) { $max_ev = $cnt; $main_v = $vid; } }
+            $p_pev = $s['v_price_ev'];
+        }
+
+        // Flags de comportamiento (sv = same-visitor, NO se tocan por descarte)
         $sv_sess = false;
         foreach ($s['v_sess'] as $sids) { if (count($sids) >= 2) { $sv_sess = true; break; } }
         $sv_page = false;
@@ -1183,7 +1208,7 @@ class Radar
             'sv_price' => $sv_price,         'mv_price' => $mv_price,
             'sv_sess'  => $sv_sess,          'sv_page'  => $sv_page,
             'main_ev'  => $max_ev,           'main_v'   => $main_v,
-            'main_pev' => (function($vpc) { $mx=0; foreach($vpc as $c){if($c>$mx)$mx=$c;} return $mx; })($s['v_price_ev']),
+            'main_pev' => (function($vpc) { $mx=0; foreach($vpc as $c){if($c>$mx)$mx=$c;} return $mx; })($p_pev),
             'uniq_sess'=> $s['uniq_sess'],
         ];
     }
