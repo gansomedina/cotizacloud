@@ -10,8 +10,13 @@ Auth::requerir_superadmin();
 
 header('Content-Type: application/json; charset=utf-8');
 
-$body = json_decode(file_get_contents('php://input'), true);
-if (!is_array($body)) json_error('Payload inválido', 400);
+$raw = file_get_contents('php://input');
+$body = $raw ? json_decode($raw, true) : null;
+if (!is_array($body) || empty($body)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'error' => 'Payload inválido', 'raw_length' => strlen($raw ?: '')]);
+    exit;
+}
 
 $metas = [];
 foreach ($body as $eid => $val) {
