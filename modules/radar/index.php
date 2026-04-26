@@ -270,7 +270,13 @@ rsort_arr($rows_all,$sort,$dir);
 rsort_arr($activos48,$sort,$dir);
 $rows_all = array_slice($rows_all,0,$limit);
 
-$cnt_urgentes = count($buckets['onfire'])+count($buckets['inminente'])+count($buckets['probable_cierre']);
+// probable_cierre es cross-bucket: ya está duplicada en su bucket origen.
+// Contar solo cotizaciones ÚNICAS entre los 3 buckets urgentes.
+$urgentes_ids = [];
+foreach (['onfire','inminente','probable_cierre'] as $ub) {
+    foreach ($buckets[$ub] as $r) $urgentes_ids[(int)$r['id']] = true;
+}
+$cnt_urgentes = count($urgentes_ids);
 $cierre_pct   = $stat_cierre;
 $ciclo_venta  = Radar::ciclo_venta($empresa_id);
 
