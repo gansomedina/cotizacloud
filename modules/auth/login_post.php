@@ -89,6 +89,11 @@ if ($es_super) {
     Radar::aprender_ip_radar((int)$emp['id'], $ip_login);
 }
 
+// Verificar que las 3 señales se registraron
+if ($device_sig_post === '') {
+    flash('warning', 'Tu dispositivo no se pudo registrar completamente en el Radar. Desactiva bloqueadores de contenido y vuelve a ingresar.');
+}
+
 // Redirigir: superadmin con _admin va al panel, otros al dashboard
 $redirect_to = $_SESSION['redirect_after_login'] ?? '/dashboard';
 unset($_SESSION['redirect_after_login']);
