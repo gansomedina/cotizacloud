@@ -857,8 +857,7 @@ class Radar
             !$accepted &&
             $views48 >= (int)self::u('decision_min_views48', $modo) &&
             $span48  >= (int)self::u('decision_min_span_h', $modo) * 3600 &&
-            $last_ts >= $now - (int)self::u('decision_window_h', $modo) * 3600 &&
-            ($has_tot_view || $has_tot_rev || $has_loop || $e_sv_price || $e_coupons > 0)
+            $last_ts >= $now - (int)self::u('decision_window_h', $modo) * 3600
         ) {
             $buckets[] = 'decision_activa';
         }
@@ -1011,15 +1010,10 @@ class Radar
 
         // Buckets que califican como alta intención
         $pc_qualifying = ['onfire','inminente','validando_precio','decision_activa',
-                          're_enganche_caliente','prediccion_alta','lectura_comprometida','alto_importe'];
+                          're_enganche_caliente','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
         $pc_source = null;
         foreach ($pc_qualifying as $qb) {
             if (in_array($qb, $buckets, true)) { $pc_source = $qb; break; }
-        }
-        // multi_persona solo califica para PC si hay señal de precio
-        if ($pc_source === null && in_array('multi_persona', $buckets, true) &&
-            ($has_tot_rev || $has_loop || $e_coupons > 0 || $e_sv_price || $e_mv_price || $pss >= 2.5)) {
-            $pc_source = 'multi_persona';
         }
 
         if ($pc_source !== null && !$accepted && $last_ts >= $now - 72 * 3600 && $sessions >= 2) {
