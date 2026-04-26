@@ -17,6 +17,14 @@ $empresas_cfg = [
 ];
 $emp_ids = implode(',', array_keys($empresas_cfg));
 
+// Metas de equilibrio (archivo JSON, sin BD)
+$eq_file = dirname(__DIR__, 2) . '/config/equilibrio.json';
+$eq_metas = file_exists($eq_file) ? (json_decode(file_get_contents($eq_file), true) ?: []) : [];
+foreach ($empresas_cfg as $eid => &$ec) {
+    $ec['meta'] = (float)($eq_metas[(string)$eid] ?? 0);
+}
+unset($ec);
+
 // ─── Periodo seleccionable ──────────────────────────────────
 $now = new DateTimeImmutable('now', new DateTimeZone('America/Hermosillo'));
 $periodo = $_GET['periodo'] ?? 'mes_actual';
@@ -824,11 +832,13 @@ tbody tr:hover td{background:var(--card-hover)}
                 <span class="tag" style="background:<?= $ec['color'] ?>;font-size:9px"><?= $ec['short'] ?></span>
                 <span style="font:500 12px 'Inter',sans-serif;color:var(--t2)">$</span>
                 <input type="number" id="eq-<?= $eid ?>" data-eid="<?= $eid ?>"
+                       value="<?= (int)$ec['meta'] ?>"
                        style="width:100px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font:500 13px 'Inter',sans-serif;text-align:right"
-                       oninput="saveEquilibrio(this)" placeholder="0">
+                       oninput="saveEquilibrio()" placeholder="0">
             </div>
             <?php endforeach; ?>
         </div>
+        <div id="eq-status" style="font:400 11px 'Inter',sans-serif;color:var(--t3);margin-top:6px"></div>
     </div>
     <div class="chart-canvas" style="height:320px">
         <canvas id="empChart"></canvas>
@@ -1819,7 +1829,32 @@ function toggleEmpChart(btn) {
 }
 function toggleMetric(btn) {
     btn.classList.toggle('on');
+    var eqPanel = document.getElementById('equilibrio-config');
+    var eqActive = document.querySelector('.metric-btn[data-metric="equilibrio"]');
+    if (eqPanel) eqPanel.style.display = (eqActive && eqActive.classList.contains('on')) ? 'block' : 'none';
     rebuildEmpChart();
+}
+
+let eqTimer = null;
+function saveEquilibrio() {
+    clearTimeout(eqTimer);
+    eqTimer = setTimeout(async function() {
+        var metas = {};
+        document.querySelectorAll('[id^="eq-"][data-eid]').forEach(function(el) {
+            metas[el.dataset.eid] = parseFloat(el.value) || 0;
+        });
+        var st = document.getElementById('eq-status');
+        try {
+            var r = await fetch('/superadmin/equilibrio', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(metas)
+            });
+            var d = await r.json();
+            if (st) { st.textContent = d.ok ? '✓ Guardado' : 'Error'; setTimeout(function(){ st.textContent=''; }, 2000); }
+        } catch(e) { if (st) st.textContent = 'Error de conexión'; }
+        rebuildEmpChart();
+    }, 600);
 }
 
 function rebuildEmpChart() {
@@ -1903,10 +1938,11 @@ function rebuildEmpChart() {
         }
 
         if (metrics.equilibrio) {
-            var eqVal = parseFloat(localStorage.getItem('eq_' + eid)) || 0;
+            var eqInput = document.getElementById('eq-' + eid);
+            var eqVal = eqInput ? parseFloat(eqInput.value) || 0 : 0;
             if (eqVal > 0) {
                 datasets.push({
-                    label: d.short + ' Equilibrio $' + eqVal.toLocaleString('en-US', {maximumFractionDigits:0}),
+                    label: d.short + ' Meta $' + eqVal.toLocaleString('en-US', {maximumFractionDigits:0}),
                     data: Array(12).fill(eqVal),
                     borderColor: d.color,
                     borderWidth: 2,
@@ -1915,7 +1951,7 @@ function rebuildEmpChart() {
                     fill: false
                 });
                 datasets.push({
-                    label: d.short + ' Ingresos vs Eq.',
+                    label: d.short + ' Ingresos vs Meta',
                     data: d.ventas,
                     borderColor: d.color,
                     backgroundColor: d.ventas.map(v => v >= eqVal ? d.color + '20' : '#ef444420'),
