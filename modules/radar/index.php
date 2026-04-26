@@ -390,6 +390,15 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             $bkt_ago = max(1, (int)round((time() - strtotime($bkt_at)) / 86400));
             $last_fmt .= " <span style='background:#dbeafe;color:#1d4ed8;font:600 9px \"Inter\",sans-serif;padding:1px 5px;border-radius:3px;margin-left:4px'>⏳ hace {$bkt_ago}d</span>";
         }
+        $is_calentura = !empty($r['senales']['calentura']);
+        if ($is_calentura) {
+            $cal_tiene_precio = !empty($r['senales']['cat_precio']);
+            if ($cal_tiene_precio) {
+                $last_fmt .= " <span style='background:#dcfce7;color:#166534;font:600 9px \"Inter\",sans-serif;padding:1px 5px;border-radius:3px;margin-left:4px' title='Cotización reciente — el cliente ya evaluó el precio, decidido rápido'>⚡ Decidido</span>";
+            } else {
+                $last_fmt .= " <span style='background:#fef3c7;color:#92400e;font:600 9px \"Inter\",sans-serif;padding:1px 5px;border-radius:3px;margin-left:4px' title='Cotización reciente — el cliente está conociendo tu propuesta. Aprovecha la novedad antes de que se enfríe'>🔥 Nueva — aprovecha la calentura</span>";
+            }
+        }
         echo "<td class='col-vista'>$last_fmt</td>";
         echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a></td>";
         echo "</tr>";

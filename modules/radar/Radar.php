@@ -1045,26 +1045,16 @@ class Radar
             $has_strong_cat = ($cat_precio || $cat_engagement);
 
             $pc_min_cats = ($modo === 'ligero') ? 3 : 2;
-
-            // Periodo de calentura: cotización recién creada, actividad es esperada.
-            // Durante calentura, PC requiere evaluación de precio (decidido real).
-            // Después de calentura, reglas normales (el cliente VOLVIÓ = señal real).
-            $calentura_horas = max(12, $ciclo['dias'] * 24 / 5);
-            $en_calentura = ($age_hours < $calentura_horas);
-            $pasa_calentura = !$en_calentura || $cat_precio;
-
-            if ($cat_count >= $pc_min_cats && $has_strong_cat && $pasa_calentura) {
+            if ($cat_count >= $pc_min_cats && $has_strong_cat) {
                 $buckets[] = 'probable_cierre';
             }
 
             // DEBUG probable_cierre — quitar después de verificar
-            error_log("[PC debug] cot={$cotizacion_id} src={$pc_source} sess={$sessions} age={$age_hours}h calentura=" . ($en_calentura ? "SI({$calentura_horas}h)" : "NO")
-                . " cats={$cat_count}/{$pc_min_cats} eng=" . ($cat_engagement?'Y':'N')
+            error_log("[PC debug] cot={$cotizacion_id} src={$pc_source} sess={$sessions} cats={$cat_count}/{$pc_min_cats} eng=" . ($cat_engagement?'Y':'N')
                 . "(scroll_cls={$e_scroll_cls},scroll_any={$e_scroll_any},vis_max={$e_vis_max},vis_sum={$e_vis_sum},tot_view=".($has_tot_view?'Y':'N').")"
                 . " precio=" . ($cat_precio?'Y':'N') . "(tot_rev=".($has_tot_rev?'Y':'N').",loop=".($has_loop?'Y':'N').",coupons={$e_coupons},sv=".($e_sv_price?'Y':'N').",mv=".($e_mv_price?'Y':'N').",pss={$pss})"
                 . " persist=" . ($cat_persistencia?'Y':'N') . " social=" . ($cat_social?'Y':'N')
-                . " strong=" . ($has_strong_cat?'Y':'N') . " pasa_cal=" . ($pasa_calentura?'Y':'N')
-                . " → " . ($cat_count >= $pc_min_cats && $has_strong_cat && $pasa_calentura ? 'PC' : 'NO'));
+                . " strong=" . ($has_strong_cat?'Y':'N') . " → " . ($cat_count >= $pc_min_cats && $has_strong_cat ? 'PC' : 'NO'));
         }
 
         // ── Iconos para la UI (mismos que el radar original) ─
@@ -1103,6 +1093,9 @@ class Radar
         // Momentum: indicador visual de frescura (no modifica bucket ni score)
         $momentum = self::momentum($bucket_main, $last_ts, $now, $modo);
 
+        $calentura_horas = max(12, $ciclo['dias'] * 24 / 5);
+        $en_calentura = ($age_hours < $calentura_horas) && in_array('probable_cierre', $buckets, true);
+
         return [
             'score'        => (int) round($priority),
             'fit_pct'      => round($fit_pct, 2),
@@ -1111,6 +1104,8 @@ class Radar
             'buckets'      => $buckets,
             'momentum'     => $momentum,
             'pc_source'    => $pc_source,
+            'calentura'    => $en_calentura,
+            'cat_precio'   => $cat_precio ?? false,
             'cooling_price_touched' => $cooling_price_touched,
             'cooling_reason'        => $cooling_reason,
             'icons'        => $icons,
@@ -1418,7 +1413,7 @@ class Radar
                 [
                     $r['score'],
                     $new_bucket,
-                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','sticky'=>($new_bucket !== $r['bucket'])]),
+                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false,'sticky'=>($new_bucket !== $r['bucket'])]),
                     $cotizacion_id,
                 ]
             );
@@ -1429,7 +1424,7 @@ class Radar
                 [
                     $r['score'],
                     $new_bucket,
-                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable']),
+                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false]),
                     $cotizacion_id,
                 ]
             );
