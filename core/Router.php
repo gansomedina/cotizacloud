@@ -200,6 +200,7 @@ class Router
         self::post('/superadmin/empresa/:id/dominio', fn($p) => self::superadmin('dominio_custom', $p));
         self::post('/superadmin/ticket/:id/estado',   fn($p) => self::superadmin('ticket_estado', $p));
         self::post('/superadmin/compensacion',          fn()   => self::superadmin('compensacion'));
+        self::post('/superadmin/equilibrio',             fn()   => self::superadmin('equilibrio'));
 
         self::get('/proveedores',                          fn()   => self::app('proveedores', 'lista'));
         self::post('/proveedores',                         fn()   => self::app('proveedores', 'crear'));
