@@ -12,6 +12,17 @@ defined('COTIZAAPP') or die;
 if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
     try {
         Radar::aprender_ip_radar(EMPRESA_ID, ip_real());
+
+        // Aprender device_sig desde cookie (puesta por JS en carga anterior)
+        $dsig_cookie = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 20);
+        if ($dsig_cookie !== '') {
+            try {
+                DB::execute(
+                    "UPDATE user_sessions SET device_sig = COALESCE(device_sig, ?) WHERE usuario_id = ? ORDER BY created_at DESC LIMIT 1",
+                    [$dsig_cookie, (int)Auth::id()]
+                );
+            } catch (Throwable $e) {}
+        }
         // Sincronizar IPs recientes del usuario (solo 1 vez por sesión para no sobrecargar)
         if (empty($_SESSION['_ips_synced'])) {
             $ips_recientes = DB::query(
@@ -581,6 +592,26 @@ function toggleMoreDrawer(){
 <script>
 // Twemoji: convierte emojis Unicode a imágenes SVG para iOS WKWebView
 if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'.svg',base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});}
+
+// Device signature: poner en cookie para que PHP la lea en la siguiente carga
+(function(){
+    try {
+        var sw=Math.min(screen.width,screen.height),sh=Math.max(screen.width,screen.height);
+        var dpr=window.devicePixelRatio||1,cores=navigator.hardwareConcurrency||0,tp=navigator.maxTouchPoints||0;
+        var maxTex=0;try{var c=document.createElement('canvas'),gl=c.getContext('webgl');if(gl)maxTex=gl.getParameter(gl.MAX_TEXTURE_SIZE)||0;}catch(e){}
+        var lang=navigator.language||'',tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
+        var hc=Intl.DateTimeFormat().resolvedOptions().hourCycle||'';
+        var motion=window.matchMedia('(prefers-reduced-motion:reduce)').matches?1:0;
+        var contrast=window.matchMedia('(prefers-contrast:more)').matches?1:0;
+        var inverted=window.matchMedia('(inverted-colors:inverted)').matches?1:0;
+        var transp=window.matchMedia('(prefers-reduced-transparency:reduce)').matches?1:0;
+        var iosM=(navigator.userAgent.match(/OS (\d+)/)||[])[1]||'0';
+        var raw=[sw,sh,dpr,cores,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
+        var h=0;for(var i=0;i<raw.length;i++)h=((h<<5)-h)+raw.charCodeAt(i)|0;
+        var dsig=Math.abs(h).toString(16).padStart(8,'0');
+        if(dsig)document.cookie='cz_dsig='+dsig+';path=/;max-age=86400;SameSite=Lax';
+    }catch(e){}
+})();
 </script>
 
 <?php // Escudo Radar token se genera arriba, antes del banner ?>
