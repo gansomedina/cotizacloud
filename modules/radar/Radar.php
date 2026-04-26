@@ -1093,6 +1093,9 @@ class Radar
         // Momentum: indicador visual de frescura (no modifica bucket ni score)
         $momentum = self::momentum($bucket_main, $last_ts, $now, $modo);
 
+        $calentura_horas = max(12, $ciclo['dias'] * 24 / 5);
+        $en_calentura = ($age_hours < $calentura_horas) && in_array('probable_cierre', $buckets, true);
+
         return [
             'score'        => (int) round($priority),
             'fit_pct'      => round($fit_pct, 2),
@@ -1101,6 +1104,8 @@ class Radar
             'buckets'      => $buckets,
             'momentum'     => $momentum,
             'pc_source'    => $pc_source,
+            'calentura'    => $en_calentura,
+            'cat_precio'   => $cat_precio ?? false,
             'cooling_price_touched' => $cooling_price_touched,
             'cooling_reason'        => $cooling_reason,
             'icons'        => $icons,
@@ -1408,7 +1413,7 @@ class Radar
                 [
                     $r['score'],
                     $new_bucket,
-                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','sticky'=>($new_bucket !== $r['bucket'])]),
+                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false,'sticky'=>($new_bucket !== $r['bucket'])]),
                     $cotizacion_id,
                 ]
             );
@@ -1419,7 +1424,7 @@ class Radar
                 [
                     $r['score'],
                     $new_bucket,
-                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable']),
+                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false]),
                     $cotizacion_id,
                 ]
             );
