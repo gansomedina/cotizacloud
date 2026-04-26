@@ -35,6 +35,7 @@ class Radar
     private static array $p80_cache = [];
     private static array $fit_cal_cache = [];
     private static array $ciclo_cache = [];
+    private static array $engage_avg_cache = [];
 
     // ============================================================
     //  UMBRALES × 3 MODOS
@@ -155,6 +156,11 @@ class Radar
         // ── Bucket alto importe ──────────────────────────────
         'high_amount_threshold'      => [80000, 120000, 160000],
         'high_amount_recent_hours'   => [72,    48,    36   ],
+
+        // ── Bucket lectura comprometida ──────────────────────
+        'engage_recent_hours'        => [48,    36,    24   ],
+        'engage_max_sessions'        => [3,     2,     2    ],
+        'engage_min_vis_ms'          => [15000, 15000, 20000],
 
         // ── Bucket vistas múltiples ──────────────────────────
         'multi_min_ips'              => [2,     2,     3    ],
@@ -812,6 +818,26 @@ class Radar
             $buckets[] = 'prediccion_alta';
         }
 
+        // ── 5b. Lectura comprometida ────────────────────────
+        // Primera impresión fuerte: pocas sesiones, engagement por encima
+        // del promedio de compradores, interacción con precio.
+        // Thresholds adaptativos: scroll y visible del promedio de ventas.
+        $ea = self::engage_avg($empresa_id);
+        $engage_has_plus = ($has_tot_rev || $has_loop || $e_coupons > 0);
+        if (
+            !$accepted &&
+            $sessions <= (int)self::u('engage_max_sessions', $modo) &&
+            $guest_sessions >= 1 &&
+            $last_ts >= $now - (int)self::u('engage_recent_hours', $modo) * 3600 &&
+            $e_scroll_any >= $ea['scroll'] &&
+            $e_vis_max >= $ea['vis_ms'] &&
+            $e_vis_max >= (int)self::u('engage_min_vis_ms', $modo) &&
+            $has_tot_view &&
+            $engage_has_plus
+        ) {
+            $buckets[] = 'lectura_comprometida';
+        }
+
         // ── 6. Decisión activa ──────────────────────────────
         if (
             !$accepted &&
@@ -970,7 +996,7 @@ class Radar
 
         // Buckets que califican como alta intención
         $pc_qualifying = ['onfire','inminente','validando_precio','decision_activa',
-                          're_enganche_caliente','prediccion_alta','multi_persona','alto_importe'];
+                          're_enganche_caliente','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
         $pc_source = null;
         foreach ($pc_qualifying as $qb) {
             if (in_array($qb, $buckets, true)) { $pc_source = $qb; break; }
@@ -1069,6 +1095,7 @@ class Radar
                 'vis_max'=>$e_vis_max,'vis_sum'=>$e_vis_sum,
                 'ips_post_guest'=>$ips_post_guest_count,
                 'dsig_maps'=>count($vid_dsig).'/'.count($ip_dsig),
+                'engage_avg'=>$ea['scroll'].'%/'.$ea['vis_ms'].'ms('.($ea['auto']?'auto':'default').')',
                 'pc_cats'=>isset($cat_count) ? [
                     'engagement'=>(bool)($cat_engagement ?? false),
                     'precio'=>(bool)($cat_precio ?? false),
@@ -1291,16 +1318,17 @@ class Radar
     // ============================================================
     // Buckets que disparan push notification a la empresa
     const PUSH_BUCKETS = [
-        'probable_cierre'  => 'Probable cierre',
-        'onfire'           => 'On Fire',
-        'inminente'        => 'Cierre inminente',
-        'validando_precio' => 'Validando precio',
-        'prediccion_alta'  => 'Predicción alta',
+        'probable_cierre'       => 'Probable cierre',
+        'onfire'                => 'On Fire',
+        'inminente'             => 'Cierre inminente',
+        'validando_precio'      => 'Validando precio',
+        'prediccion_alta'       => 'Predicción alta',
+        'lectura_comprometida'  => 'Lectura comprometida',
     ];
 
     // Buckets de alta prioridad — NO aplica sticky (ya tienen ventanas amplias)
     const HIGH_PRIORITY_BUCKETS = [
-        'probable_cierre', 'inminente', 'onfire', 'validando_precio', 'prediccion_alta',
+        'probable_cierre', 'inminente', 'onfire', 'validando_precio', 'prediccion_alta', 'lectura_comprometida',
     ];
 
     public static function recalcular(int $cotizacion_id, int $empresa_id): void
@@ -1834,5 +1862,41 @@ class Radar
              ORDER BY c.radar_score IS NULL ASC, c.radar_score DESC, c.ultima_vista_at DESC",
             $params
         );
+    }
+
+    // ============================================================
+    //  PROMEDIOS DE ENGAGEMENT DE VENTAS CERRADAS
+    //  Para bucket "lectura_comprometida" — auto-ajustable
+    // ============================================================
+    public static function engage_avg(int $empresa_id): array
+    {
+        if (isset(self::$engage_avg_cache[$empresa_id])) return self::$engage_avg_cache[$empresa_id];
+
+        $row = DB::row(
+            "SELECT ROUND(AVG(qs.scroll_max)) AS scroll_avg,
+                    ROUND(AVG(qs.visible_ms)) AS vis_avg,
+                    COUNT(DISTINCT v.id) AS ventas
+             FROM quote_sessions qs
+             JOIN cotizaciones c ON c.id = qs.cotizacion_id
+             JOIN ventas v ON v.cotizacion_id = c.id
+             WHERE v.empresa_id = ? AND v.estado != 'cancelada'
+               AND qs.scroll_max > 0 AND qs.visible_ms > 0",
+            [$empresa_id]
+        );
+
+        $ventas = (int)($row['ventas'] ?? 0);
+        if ($ventas < 3) {
+            $result = ['scroll' => 85, 'vis_ms' => 45000, 'ventas' => $ventas, 'auto' => false];
+        } else {
+            $result = [
+                'scroll' => max(50, min(95, (int)$row['scroll_avg'])),
+                'vis_ms' => max(10000, min(180000, (int)$row['vis_avg'])),
+                'ventas' => $ventas,
+                'auto'   => true,
+            ];
+        }
+
+        self::$engage_avg_cache[$empresa_id] = $result;
+        return $result;
     }
 }
