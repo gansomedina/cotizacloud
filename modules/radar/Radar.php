@@ -1046,7 +1046,7 @@ class Radar
         static $PRIORIDAD = [
             'probable_cierre',
             'onfire','inminente','validando_precio',
-            'prediccion_alta','alto_importe','decision_activa','multi_persona','revivio',
+            'prediccion_alta','lectura_comprometida','alto_importe','decision_activa','multi_persona','revivio',
             'no_abierta','re_enganche_caliente','re_enganche',
             'revision_profunda','vistas_multiples','hesitacion','sobre_analisis',
             'regreso','comparando','enfriandose',
