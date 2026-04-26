@@ -58,8 +58,8 @@ $es_super = ($resultado['usuario']['rol'] ?? '') === 'superadmin';
 if ($device_sig_post !== '') {
     try {
         DB::execute(
-            "UPDATE user_sessions SET device_sig = ? WHERE usuario_id = ? AND ip = ? ORDER BY created_at DESC LIMIT 1",
-            [$device_sig_post, (int)Auth::id(), ip_real()]
+            "UPDATE user_sessions SET device_sig = ? WHERE usuario_id = ? ORDER BY created_at DESC LIMIT 1",
+            [$device_sig_post, (int)Auth::id()]
         );
     } catch (Throwable $e) {}
 }
