@@ -376,18 +376,18 @@ class Radar
         // ── C. Agregar eventos JS (misma lógica que event_stats_by_quote) ──
         $es = self::_agregar_eventos($ev_rows, $intern_v, $intern_ip, $intern_dsig, $cfg);
 
-        // ── D. Cargar sesiones históricas ─────────────────────
+        // ── D. Cargar sesiones históricas (mismo lookback que eventos: 150d) ──
         try {
             $sess_rows = DB::query(
                 "SELECT ip, user_agent AS ua, visitor_id, device_sig, created_at, scroll_max, visible_ms
-                 FROM quote_sessions WHERE cotizacion_id=? ORDER BY created_at ASC",
-                [$cotizacion_id]
+                 FROM quote_sessions WHERE cotizacion_id=? AND created_at >= FROM_UNIXTIME(?) ORDER BY created_at ASC",
+                [$cotizacion_id, $lookback]
             );
         } catch (Throwable $e) {
             $sess_rows = DB::query(
                 "SELECT ip, user_agent AS ua, visitor_id, NULL AS device_sig, created_at, scroll_max, visible_ms
-                 FROM quote_sessions WHERE cotizacion_id=? ORDER BY created_at ASC",
-                [$cotizacion_id]
+                 FROM quote_sessions WHERE cotizacion_id=? AND created_at >= FROM_UNIXTIME(?) ORDER BY created_at ASC",
+                [$cotizacion_id, $lookback]
             );
         }
 
