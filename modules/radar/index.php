@@ -950,9 +950,6 @@ async function compAction(accion, tipo, valor, btn) {
 <!-- Filtros -->
 <div class="rdr-bar">
   <a href="<?= rurlq(['range'=>'all']) ?>"  class="rdr-bt <?= $range==='all'?'active':'' ?>">Todas</a>
-  <a href="<?= rurlq(['range'=>'48h']) ?>" class="rdr-bt <?= $range==='48h'?'active':'' ?>">48 horas</a>
-  <a href="<?= rurlq(['range'=>'4h']) ?>"  class="rdr-bt <?= $range==='4h'?'active':'' ?>">4 horas</a>
-  <a href="<?= rurlq(['range'=>'30m']) ?>" class="rdr-bt <?= $range==='30m'?'active':'' ?>">30 min</a>
   <form method="get" style="display:flex;align-items:center;gap:8px;margin:0">
     <?php foreach($_GET as $k=>$v): if($k==='limit') continue; ?><input type="hidden" name="<?= e($k) ?>" value="<?= e($v) ?>"><?php endforeach; ?>
     <input type="number" name="limit" value="<?= $limit ?>" min="10" max="300"

@@ -1022,10 +1022,11 @@ class Radar
             $pc_scroll_min = match($modo) { 'agresivo' => 50, 'ligero' => 90, default => 70 };
             $pc_vis_min    = match($modo) { 'agresivo' => 5000, 'ligero' => 20000, default => 15000 };
             $cat_engagement  = ($e_scroll_cls >= $pc_scroll_min || $e_scroll_any >= $pc_scroll_min ||
-                                $e_vis_max >= $pc_vis_min || $e_vis_sum >= ($pc_vis_min * 2));
+                                $e_vis_max >= $pc_vis_min || $e_vis_sum >= ($pc_vis_min * 2) ||
+                                ($has_tot_view && $sessions >= 2));
             $cat_precio      = ($has_tot_rev || $has_loop || $e_coupons > 0 ||
                                 $e_sv_price || $e_mv_price || $pss >= 2.0);
-            $cat_persistencia = ($sessions >= 3 || ($gap_days !== null && $gap_days >= 1));
+            $cat_persistencia = ($sessions >= 2 || ($gap_days !== null && $gap_days >= 1));
             // Con dsig: confiar en vids validados. Sin dsig: IPs solo si vids también confirman.
             $cat_social = (!empty($vid_dsig) || !empty($ip_dsig))
                 ? ($vids_post_guest_count >= 2 || $e_uniq_v >= 2 || $e_mv_price)
