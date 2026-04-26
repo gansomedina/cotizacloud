@@ -1478,18 +1478,28 @@ class Radar
     //  del asesor en radar_ips_internas para excluir sus vistas futuras.
     //  Llamar desde modules/radar/index.php al inicio de cada request.
     // ============================================================
-    public static function aprender_ip_radar(int $empresa_id, string $ip): void
+    public static function aprender_ip_radar(int $empresa_id, string $ip, ?int $usuario_id = null): void
     {
         if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) return;
+        $uid = $usuario_id ?: (Auth::id() ?: null);
         try {
             DB::execute(
-                "INSERT INTO radar_ips_internas (empresa_id, ip, aprendida_ts, fuente)
-                 VALUES (?, ?, ?, 'radar_open')
-                 ON DUPLICATE KEY UPDATE aprendida_ts = VALUES(aprendida_ts), fuente = VALUES(fuente)",
-                [$empresa_id, $ip, time()]
+                "INSERT INTO radar_ips_internas (empresa_id, ip, aprendida_ts, fuente, usuario_id)
+                 VALUES (?, ?, ?, 'radar_open', ?)
+                 ON DUPLICATE KEY UPDATE aprendida_ts = VALUES(aprendida_ts), fuente = VALUES(fuente), usuario_id = VALUES(usuario_id)",
+                [$empresa_id, $ip, time(), $uid]
             );
-
-        } catch (\Throwable $e) { /* No bloquear */ }
+        } catch (\Throwable $e) {
+            // Fallback sin usuario_id si la columna no existe aún
+            try {
+                DB::execute(
+                    "INSERT INTO radar_ips_internas (empresa_id, ip, aprendida_ts, fuente)
+                     VALUES (?, ?, ?, 'radar_open')
+                     ON DUPLICATE KEY UPDATE aprendida_ts = VALUES(aprendida_ts), fuente = VALUES(fuente)",
+                    [$empresa_id, $ip, time()]
+                );
+            } catch (\Throwable $e2) {}
+        }
     }
 
     // ============================================================
