@@ -1017,8 +1017,11 @@ class Radar
         }
 
         $pc_min_sessions = ($pc_source === 'lectura_comprometida') ? 1 : 2;
+        $pc_window = ($pc_source === 'lectura_comprometida')
+            ? (int)self::u('engage_recent_hours', $modo) * 3600
+            : 72 * 3600;
 
-        if ($pc_source !== null && !$accepted && $last_ts >= $now - 72 * 3600 && $sessions >= $pc_min_sessions) {
+        if ($pc_source !== null && !$accepted && $last_ts >= $now - $pc_window && $sessions >= $pc_min_sessions) {
             // Contar categorías de señal presentes
             // Engagement: visibilidad real (no 8ms) + scroll significativo
             $pc_scroll_min = match($modo) { 'agresivo' => 50, 'ligero' => 90, default => 70 };
