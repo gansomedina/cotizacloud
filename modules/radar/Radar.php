@@ -1298,39 +1298,75 @@ class Radar
         'prediccion_alta'  => 'Predicción alta',
     ];
 
+    // Buckets de alta prioridad — NO aplica sticky (ya tienen ventanas amplias)
+    const HIGH_PRIORITY_BUCKETS = [
+        'probable_cierre', 'inminente', 'onfire', 'validando_precio', 'prediccion_alta',
+    ];
+
     public static function recalcular(int $cotizacion_id, int $empresa_id): void
     {
-        $cot = DB::row("SELECT estado, suspendida, radar_bucket, radar_score, vendedor_id, titulo, numero FROM cotizaciones WHERE id=? AND empresa_id=?", [$cotizacion_id, $empresa_id]);
+        $cot = DB::row("SELECT estado, suspendida, radar_bucket, radar_bucket_at, radar_score, vendedor_id, titulo, numero FROM cotizaciones WHERE id=? AND empresa_id=?", [$cotizacion_id, $empresa_id]);
         if (!$cot || !in_array($cot['estado'], ['enviada','vista','aceptada']) || !empty($cot['suspendida'])) return;
 
         // Si está aceptada, preservar el bucket que tenía — no recalcular
-        // El bucket se usa para contar "cierres asistidos por radar" en el termómetro
         if ($cot['estado'] === 'aceptada') return;
 
         $old_bucket = $cot['radar_bucket'];
         $old_rscore = $cot['radar_score'];
         $r = self::score($cotizacion_id, $empresa_id);
 
+        $new_bucket = $r['bucket'];
+
+        // ── Sticky: mantener buckets secundarios por ciclo_venta/5 ──
+        // Si el bucket BAJARÍA a NULL y el anterior es secundario reciente → mantener
+        if ($new_bucket === null && $old_bucket !== null && !in_array($old_bucket, self::HIGH_PRIORITY_BUCKETS, true)) {
+            $bucket_at = $cot['radar_bucket_at'] ? strtotime($cot['radar_bucket_at']) : 0;
+            if ($bucket_at > 0) {
+                $ciclo = self::ciclo_venta($empresa_id);
+                $hold_seconds = max(1, (int)round($ciclo['dias'] / 5)) * 86400;
+                $hold_seconds = max(86400, min($hold_seconds, 7 * 86400)); // min 1d, max 7d
+                if ((time() - $bucket_at) < $hold_seconds) {
+                    $new_bucket = $old_bucket; // mantener
+                }
+            }
+        }
+
         // Registrar transición de bucket si cambió
-        if ($r['bucket'] !== $old_bucket) {
+        if ($new_bucket !== $old_bucket) {
             try {
                 DB::execute(
                     "INSERT INTO bucket_transitions (cotizacion_id, empresa_id, vendedor_id, bucket_anterior, bucket_nuevo, radar_score_ant, radar_score_new)
                      VALUES (?,?,?,?,?,?,?)",
-                    [$cotizacion_id, $empresa_id, $cot['vendedor_id'], $old_bucket, $r['bucket'], $old_rscore, $r['score']]
+                    [$cotizacion_id, $empresa_id, $cot['vendedor_id'], $old_bucket, $new_bucket, $old_rscore, $r['score']]
                 );
-            } catch (\Throwable $e) { /* tabla aún no migrada */ }
+            } catch (\Throwable $e) {}
         }
 
-        DB::execute(
-            "UPDATE cotizaciones SET radar_score=?, radar_bucket=?, radar_senales=?, radar_updated_at=NOW() WHERE id=?",
-            [
-                $r['score'],
-                $r['bucket'],
-                json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable']),
-                $cotizacion_id,
-            ]
-        );
+        // radar_bucket_at: actualizar solo cuando el bucket CAMBIA
+        $bucket_at_sql = ($new_bucket !== $old_bucket) ? ', radar_bucket_at=NOW()' : '';
+
+        try {
+            DB::execute(
+                "UPDATE cotizaciones SET radar_score=?, radar_bucket=?, radar_senales=?, radar_updated_at=NOW() {$bucket_at_sql} WHERE id=?",
+                [
+                    $r['score'],
+                    $new_bucket,
+                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','sticky'=>($new_bucket !== $r['bucket'])]),
+                    $cotizacion_id,
+                ]
+            );
+        } catch (\Throwable $e) {
+            // Fallback sin radar_bucket_at si columna no existe
+            DB::execute(
+                "UPDATE cotizaciones SET radar_score=?, radar_bucket=?, radar_senales=?, radar_updated_at=NOW() WHERE id=?",
+                [
+                    $r['score'],
+                    $new_bucket,
+                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable']),
+                    $cotizacion_id,
+                ]
+            );
+        }
 
         // Push notification cuando entra en un bucket importante
         // Condiciones: bucket cambió + no se envió push para esta cotización en 24h
