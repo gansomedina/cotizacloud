@@ -1094,10 +1094,9 @@ class Radar
         $momentum = self::momentum($bucket_main, $last_ts, $now, $modo);
 
         $calentura_horas = max(12, $ciclo['dias'] * 24 / 5);
-        $calentura_badge_horas = $calentura_horas + 48;
         $first_view_ts = !empty($session_ts) ? $session_ts[0] : $now;
         $horas_desde_primera_vista = ($now - $first_view_ts) / 3600.0;
-        $en_calentura = ($horas_desde_primera_vista < $calentura_badge_horas) && in_array('probable_cierre', $buckets, true);
+        $en_calentura = ($horas_desde_primera_vista < ($calentura_horas + 48)) && in_array('probable_cierre', $buckets, true);
 
         return [
             'score'        => (int) round($priority),
