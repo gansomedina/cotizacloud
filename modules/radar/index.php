@@ -372,9 +372,9 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         if ($is_calentura) {
             $cal_tiene_precio = !empty($r['senales']['cat_precio']);
             if ($cal_tiene_precio) {
-                $cal_badge = "<div style='margin-top:2px'><span style='background:#dcfce7;color:#166534;font:600 10px \"Inter\",sans-serif;padding:2px 6px;border-radius:4px;display:inline-block' title='Cotización reciente — el cliente ya evaluó el precio, decidido rápido'>⚡ Decidido rápido</span></div>";
+                $cal_badge = "<div style='margin-top:2px'><span style='background:#dcfce7;color:#166534;font:600 10px \"Inter\",sans-serif;padding:2px 6px;border-radius:4px;display:inline-block' title='Cotización reciente — el cliente se enganchó rápido con tu propuesta y ya revisó el precio'>⚡ Enganchado rápido — conectó con tu propuesta</span></div>";
             } else {
-                $cal_badge = "<div style='margin-top:2px'><span style='background:#fef3c7;color:#92400e;font:600 10px \"Inter\",sans-serif;padding:2px 6px;border-radius:4px;display:inline-block' title='Cotización reciente — el cliente está conociendo tu propuesta. Aprovecha la novedad antes de que se enfríe'>🔥 Aprovecha la novedad antes de que se enfríe</span></div>";
+                $cal_badge = "<div style='margin-top:2px'><span style='background:#fef3c7;color:#92400e;font:600 10px \"Inter\",sans-serif;padding:2px 6px;border-radius:4px;display:inline-block' title='Cotización reciente — el cliente tiene el impulso inicial de la novedad. Actúa rápido antes de que pierda la motivación'>🔥 Impulso inicial — actúa antes de que se enfríe</span></div>";
             }
         }
         echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."{$cal_badge}</div></a></td>";
