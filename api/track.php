@@ -92,6 +92,26 @@ if ($es_usuario_interno) {
     exit;
 }
 
+// CAPA 2.5 — Device signature interno (cubre dominios custom donde la cookie no viaja)
+// El device_sig se registró al loguearse. Mismo hash en cualquier dominio.
+if ($device_sig !== '' && ($rcfg['excluir_internos'] ?? true)) {
+    $dsig_usuario = DB::val(
+        "SELECT u.id FROM user_sessions us
+         JOIN usuarios u ON u.id = us.usuario_id
+         WHERE us.device_sig = ? AND (u.empresa_id = ? OR u.rol = 'superadmin')
+           AND us.device_sig IS NOT NULL AND us.device_sig != ''
+         LIMIT 1",
+        [$device_sig, $empresa_id]
+    );
+    if ($dsig_usuario) {
+        if ($visitor_id !== '') {
+            Radar::marcar_visitor_interno($empresa_id, $visitor_id, 'internal_device', (int)$dsig_usuario, $ip, $ua);
+        }
+        Radar::aprender_ip_radar($empresa_id, $ip, (int)$dsig_usuario);
+        exit;
+    }
+}
+
 // CAPA 3 — IP interna (aunque no esté logueado — home office, revisar cotiz sin login)
 // Aprender visitor_id + device_sig para futuras visitas
 if ($es_ip_interna) {
