@@ -192,7 +192,7 @@ function rbadge(?string $b,?int $sc,array $BM,string $momentum='stable'): string
 // PRIORIDAD v3: probable_cierre es #1 (cross-bucket agregador)
 $PRIO = ['probable_cierre',
          'onfire','inminente','validando_precio',
-         'prediccion_alta','alto_importe','decision_activa','revivio',
+         'prediccion_alta','lectura_comprometida','alto_importe','decision_activa','revivio',
          'no_abierta','re_enganche_caliente','re_enganche','multi_persona',
          'revision_profunda','vistas_multiples','hesitacion','sobre_analisis',
          'regreso','comparando','enfriandose'];
