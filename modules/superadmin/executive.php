@@ -81,13 +81,22 @@ $kpi_mes = DB::row(
     [$p_ini_dt, $p_fin_dt]
 );
 
-$kpi_ant = DB::row(
+$kpi_ant_real = DB::row(
     "SELECT COALESCE(SUM(total),0) AS ventas, COUNT(*) AS num
      FROM ventas
      WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
        AND created_at BETWEEN ? AND ?",
     [$ant_ini_dt, $ant_fin_dt]
 );
+$kpi_ant_hist = (float)DB::val(
+    "SELECT COALESCE(SUM(ventas_monto),0) FROM historial_mensual
+     WHERE empresa_id IN ({$emp_ids}) AND anio = ? AND mes = ?",
+    [(int)$now->modify('first day of last month')->format('Y'), (int)$now->modify('first day of last month')->format('n')]
+);
+$kpi_ant = [
+    'ventas' => (float)$kpi_ant_real['ventas'] + $kpi_ant_hist,
+    'num'    => (int)$kpi_ant_real['num'],
+];
 
 $cobrado_hoy = (float)DB::val(
     "SELECT COALESCE(SUM(monto),0) FROM recibos
