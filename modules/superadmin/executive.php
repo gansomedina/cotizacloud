@@ -1553,8 +1553,9 @@ foreach ($empresas_cfg as $eid => $ecfg) {
               AND qs.ip NOT IN (SELECT DISTINCT us.ip FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id WHERE (u.empresa_id = ? OR u.rol = 'superadmin') AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY))
             GROUP BY qs.ip
             HAVING COUNT(DISTINCT c.cliente_id) > 1
+              AND MAX(qs.created_at) > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')
         ) sub",
-        [$eid, $eid, $eid]
+        [$eid, $eid, $eid, $eid]
     ) ?: 0);
     if ($comp_cnt || $comp_ip_cnt) {
         $comp_por_empresa[$eid] = ['user' => (int)$comp_cnt, 'ip' => (int)$comp_ip_cnt];
