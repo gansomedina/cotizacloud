@@ -84,16 +84,28 @@ if ($es_usuario_interno) {
     if ($visitor_id !== '') {
         Radar::marcar_visitor_interno($empresa_id, $visitor_id, 'internal_user', (int)Auth::id(), $ip, $ua);
     }
-    // También aprender la IP de este acceso como interna
     Radar::aprender_ip_radar($empresa_id, $ip);
+    // Aprender device_sig en su sesión más reciente
+    if ($device_sig !== '' && Auth::id()) {
+        try { DB::execute("UPDATE user_sessions SET device_sig=COALESCE(device_sig,?) WHERE usuario_id=? ORDER BY created_at DESC LIMIT 1", [$device_sig, (int)Auth::id()]); } catch (Throwable $e) {}
+    }
     exit;
 }
 
 // CAPA 3 — IP interna (aunque no esté logueado — home office, revisar cotiz sin login)
-// Aprender el visitor_id de este navegador para futuras visitas, aunque no esté logueado
+// Aprender visitor_id + device_sig para futuras visitas
 if ($es_ip_interna) {
     if ($visitor_id !== '') {
         Radar::marcar_visitor_interno($empresa_id, $visitor_id, 'internal_ip', null, $ip, $ua);
+    }
+    // Aprender device_sig: buscar qué usuario usa esta IP y guardar dsig en su sesión
+    if ($device_sig !== '') {
+        try {
+            $uid_by_ip = DB::val("SELECT usuario_id FROM user_sessions WHERE ip=? ORDER BY created_at DESC LIMIT 1", [$ip]);
+            if ($uid_by_ip) {
+                DB::execute("UPDATE user_sessions SET device_sig=COALESCE(device_sig,?) WHERE usuario_id=? ORDER BY created_at DESC LIMIT 1", [$device_sig, (int)$uid_by_ip]);
+            }
+        } catch (Throwable $e) {}
     }
     exit;
 }

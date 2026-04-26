@@ -209,23 +209,25 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         // ── Pasa todos los filtros → cliente real ─────────────────────
         // Deduplicación: visitor_id primero (misma persona sin importar IP),
         // luego IP como fallback (cuando no hay cookie)
+        $rcfg = Radar::config((int)$cot['empresa_id']);
+        $dedupe_min = ($rcfg['deduplicar_30min'] ?? true) ? 30 : 60;
         $session_existe = null;
         if ($visitor_id_cookie !== '') {
             $session_existe = DB::row(
                 "SELECT id FROM quote_sessions
                  WHERE cotizacion_id=? AND visitor_id=? AND activa=1
-                   AND updated_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                   AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
                  LIMIT 1",
-                [$cot['id'], $visitor_id_cookie]
+                [$cot['id'], $visitor_id_cookie, $dedupe_min]
             );
         }
         if (!$session_existe) {
             $session_existe = DB::row(
                 "SELECT id FROM quote_sessions
                  WHERE cotizacion_id=? AND ip=? AND activa=1
-                   AND updated_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                   AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
                  LIMIT 1",
-                [$cot['id'], $ip]
+                [$cot['id'], $ip, $dedupe_min]
             );
         }
 
