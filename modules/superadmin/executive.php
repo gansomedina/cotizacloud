@@ -814,6 +814,21 @@ tbody tr:hover td{background:var(--card-hover)}
         <button class="metric-btn" data-metric="media" onclick="toggleMetric(this)" style="border-left:3px solid #ef4444">Media</button>
         <button class="metric-btn" data-metric="variacion" onclick="toggleMetric(this)" style="border-left:3px solid #22c55e">Variación %</button>
         <button class="metric-btn" data-metric="tasa" onclick="toggleMetric(this)" style="border-left:3px solid #f59e0b">Tasa cierre</button>
+        <button class="metric-btn" data-metric="equilibrio" onclick="toggleMetric(this)" style="border-left:3px solid #8b5cf6">Equilibrio</button>
+    </div>
+    <div id="equilibrio-config" style="display:none;margin-bottom:14px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+        <div style="font:600 11px 'Inter',sans-serif;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Meta mensual por empresa</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <?php foreach ($empresas_cfg as $eid => $ec): ?>
+            <div style="display:flex;align-items:center;gap:6px">
+                <span class="tag" style="background:<?= $ec['color'] ?>;font-size:9px"><?= $ec['short'] ?></span>
+                <span style="font:500 12px 'Inter',sans-serif;color:var(--t2)">$</span>
+                <input type="number" id="eq-<?= $eid ?>" data-eid="<?= $eid ?>"
+                       style="width:100px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font:500 13px 'Inter',sans-serif;text-align:right"
+                       oninput="saveEquilibrio(this)" placeholder="0">
+            </div>
+            <?php endforeach; ?>
+        </div>
     </div>
     <div class="chart-canvas" style="height:320px">
         <canvas id="empChart"></canvas>
@@ -1885,6 +1900,32 @@ function rebuildEmpChart() {
                 fill: false,
                 yAxisID: 'y1'
             });
+        }
+
+        if (metrics.equilibrio) {
+            var eqVal = parseFloat(localStorage.getItem('eq_' + eid)) || 0;
+            if (eqVal > 0) {
+                datasets.push({
+                    label: d.short + ' Equilibrio $' + eqVal.toLocaleString('en-US', {maximumFractionDigits:0}),
+                    data: Array(12).fill(eqVal),
+                    borderColor: d.color,
+                    borderWidth: 2,
+                    borderDash: [12, 6],
+                    pointRadius: 0,
+                    fill: false
+                });
+                datasets.push({
+                    label: d.short + ' Ingresos vs Eq.',
+                    data: d.ventas,
+                    borderColor: d.color,
+                    backgroundColor: d.ventas.map(v => v >= eqVal ? d.color + '20' : '#ef444420'),
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: d.ventas.map(v => v >= eqVal ? '#22c55e' : '#ef4444'),
+                    tension: 0.3,
+                    fill: true
+                });
+            }
         }
     });
 
