@@ -190,8 +190,8 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         // ── CAPA 2: IP interna conocida ───────────────────────────────
         // Asesor sin login desde la oficina, o home office con IP aprendida antes
         $es_ip_interna = (bool)DB::val(
-            "SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? LIMIT 1",
-            [(int)$cot['empresa_id'], $ip]
+            "SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? AND aprendida_ts >= ? LIMIT 1",
+            [(int)$cot['empresa_id'], $ip, time() - 7 * 86400]
         );
         if ($es_ip_interna) {
             // Aprovechar para aprender el visitor_id de este navegador
