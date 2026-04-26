@@ -400,6 +400,8 @@ class Radar
         $last_by_ip    = [];
         $last_by_vid   = [];
         $session_ts    = [];
+        $vid_dsig      = [];  // vid → dsig (para descarte)
+        $ip_dsig       = [];  // ip → [dsig => true, ...] (para descarte, array por IP)
         $sessions = $views24 = $views7d = $views48 = 0;
         $guest_sessions = $guest_24h = $guest_48h = $guest_7d = 0;
         $first_guest_ts = 0;
@@ -437,6 +439,12 @@ class Radar
                     if (($ev['ip'] ?? '') === $ip) { $ip_has_events = true; break; }
                 }
                 if (!$ip_has_events) continue;
+            }
+
+            // Construir mapas vid→dsig e ip→dsig (después de filtros, antes de dedup)
+            if ($dsig !== '') {
+                if ($vid !== '') $vid_dsig[$vid] = $dsig;
+                $ip_dsig[$ip][$dsig] = true;
             }
 
             // Deduplicar: visitor_id primero (misma persona), IP como fallback
@@ -528,6 +536,56 @@ class Radar
         $ips_post_guest_count = count($ips_post_guest);
         $vids_post_guest_count = count($vids_post_guest);
 
+        // Guardar raw para FIT (calibrado con IPs sin descarte)
+        $fit_uniq_ips = $uniq_ips_total;
+
+        // ── F2. Descarte por device_sig ──────────────────────
+        // Agrupa visitor_ids y IPs por device_sig para contar personas reales.
+        // Solo reduce o mantiene conteos — nunca rompe la lógica existente.
+        // Si no hay datos de device_sig, no cambia nada.
+        if (!empty($vid_dsig) || !empty($ip_dsig)) {
+
+            // Validar vids: agrupar por dsig (mismo device = misma persona)
+            $g = [];
+            foreach ($vids_post_guest as $vid => $_) {
+                $g[$vid_dsig[$vid] ?? $vid] = true;
+            }
+            $vids_post_guest_count = count($g);
+
+            // Validar IPs: expandir por dsigs, excluyendo empleados
+            $validate_ips = function(array $ips) use ($ip_dsig, $intern_dsig): int {
+                $g = [];
+                foreach ($ips as $ip => $_) {
+                    if (isset($ip_dsig[$ip])) {
+                        foreach ($ip_dsig[$ip] as $dsig => $_2) {
+                            if (!isset($intern_dsig[$dsig])) $g[$dsig] = true;
+                        }
+                    } else {
+                        $g[$ip] = true;
+                    }
+                }
+                return count($g);
+            };
+
+            $ips_post_guest_count = $validate_ips($ips_post_guest);
+            $compare_ips_count    = $validate_ips($compare_ips);
+            $ips_120m_count       = $validate_ips($ips_120m);
+            $uniq_ips_total       = $validate_ips($last_by_ip);
+
+            // multi_ips_24h (calculado aquí en vez de en la sección de buckets)
+            $ips_24h_raw = [];
+            foreach ($last_by_ip as $ip_addr => $ip_ts) {
+                if ($ip_ts >= $now - 24 * 3600) $ips_24h_raw[$ip_addr] = true;
+            }
+            $multi_ips_24h = $validate_ips($ips_24h_raw);
+        } else {
+            // Sin datos de device_sig — calcular multi_ips_24h raw
+            $multi_ips_24h = 0;
+            foreach ($last_by_ip as $ip_addr => $ip_ts) {
+                if ($ip_ts >= $now - 24 * 3600) $multi_ips_24h++;
+            }
+        }
+
         // Dispositivos únicos de guests (para debug)
         $devices = [];
         foreach ($sess_rows as $s) {
@@ -595,7 +653,7 @@ class Radar
             $cal_row = self::$fit_cal_cache[$empresa_id] ?? null;
             $fit_prob = $cal_row ? (float)($cal_row['global_rate'] ?? self::FIT_GLOBAL) : self::FIT_GLOBAL;
         } else {
-            $fit_prob = self::fit_prob($sessions, $uniq_ips_total, $gap_days, $empresa_id);
+            $fit_prob = self::fit_prob($sessions, $fit_uniq_ips, $gap_days, $empresa_id);
         }
         $fit_pct     = min(100.0, $fit_prob * 100.0);
 
@@ -857,12 +915,7 @@ class Radar
         }
 
         // ── 13. Vistas múltiples ─────────────────────────────
-        // Portado de is_multi del radar original:
-        // (2+ IPs distintas en 24h) OR (3+ vistas en 24h) + última vista reciente
-        $multi_ips_24h = 0;
-        foreach ($last_by_ip as $ip_addr => $ip_ts) {
-            if ($ip_ts >= $now - 24 * 3600) $multi_ips_24h++;
-        }
+        // $multi_ips_24h ya calculado en F2 (con descarte por device_sig)
         if (
             !$accepted &&
             $last_ts >= $now - (int)self::u('multi_recent_hours', $modo) * 3600 &&
@@ -1001,7 +1054,7 @@ class Radar
                 $last_ts, $now, $accepted
             ),
             'debug' => [
-                'sessions'=>$sessions,'uniq_ips'=>$uniq_ips_total,
+                'sessions'=>$sessions,'uniq_ips'=>$uniq_ips_total,'uniq_ips_raw'=>$fit_uniq_ips,
                 'gap_days'=>$gap_days,'guest'=>$guest_sessions,
                 'views24'=>$views24,'views48'=>$views48,
                 'span48h'=>round($span48/3600,1).'h','pss'=>round($pss,2),
@@ -1010,6 +1063,7 @@ class Radar
                 'scroll_cls'=>$e_scroll_cls,'scroll_any'=>$e_scroll_any,
                 'vis_max'=>$e_vis_max,'vis_sum'=>$e_vis_sum,
                 'ips_post_guest'=>$ips_post_guest_count,
+                'dsig_maps'=>count($vid_dsig).'/'.count($ip_dsig),
                 'pc_cats'=>isset($cat_count) ? [
                     'engagement'=>(bool)($cat_engagement ?? false),
                     'precio'=>(bool)($cat_precio ?? false),
@@ -1034,6 +1088,7 @@ class Radar
             'loops'=>0,'promo'=>0,'scroll_any'=>0,'scroll_cls'=>0,
             'vis_max'=>0,'vis_by_page'=>[],'uniq_v'=>[],'uniq_sess'=>[],
             'v_ev'=>[],'v_price_ev'=>[],'v_sess'=>[],'v_page'=>[],'price_v'=>[],
+            'ev_vid_dsig'=>[],
         ];
 
         foreach ($rows as $r) {
@@ -1083,11 +1138,28 @@ class Radar
                 $s['v_price_ev'][$vid] = ($s['v_price_ev'][$vid] ?? 0) + 1;
                 $s['price_v'][$vid]    = true;
             }
+
+            // Mapa vid→dsig desde eventos filtrados
+            if ($vid !== '' && $ev_dsig !== '') $s['ev_vid_dsig'][$vid] = $ev_dsig;
         }
 
         // Totales derivados
         $vis_sum = array_sum($s['vis_by_page']);
-        $uniq_v_count = count($s['uniq_v']);
+
+        // Descarte: agrupar uniq_v y price_v por device_sig
+        $ev_vd = $s['ev_vid_dsig'] ?? [];
+        if (!empty($ev_vd)) {
+            $g = [];
+            foreach ($s['uniq_v'] as $vid => $_) $g[$ev_vd[$vid] ?? $vid] = true;
+            $uniq_v_count = count($g);
+
+            $gp = [];
+            foreach ($s['price_v'] as $vid => $_) $gp[$ev_vd[$vid] ?? $vid] = true;
+            $mv_price = count($gp) >= 2;
+        } else {
+            $uniq_v_count = count($s['uniq_v']);
+            $mv_price = count($s['price_v']) >= 2;
+        }
 
         // Visitor principal
         $max_ev = 0; $main_v = '';
@@ -1108,7 +1180,7 @@ class Radar
             'promo'    => $s['promo'],       'scroll_any'=>$s['scroll_any'],
             'scroll_cls'=>$s['scroll_cls'],  'vis_max'  => $s['vis_max'],
             'vis_sum'  => $vis_sum,          'uniq_v'   => $uniq_v_count,
-            'sv_price' => $sv_price,         'mv_price' => count($s['price_v']) >= 2,
+            'sv_price' => $sv_price,         'mv_price' => $mv_price,
             'sv_sess'  => $sv_sess,          'sv_page'  => $sv_page,
             'main_ev'  => $max_ev,           'main_v'   => $main_v,
             'main_pev' => (function($vpc) { $mx=0; foreach($vpc as $c){if($c>$mx)$mx=$c;} return $mx; })($s['v_price_ev']),
