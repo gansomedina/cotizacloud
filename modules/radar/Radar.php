@@ -357,7 +357,7 @@ class Radar
             foreach (DB::query("SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id=?", [$empresa_id]) as $r) {
                 $intern_v[$r['visitor_id']] = true;
             }
-            foreach (DB::query("SELECT ip FROM radar_ips_internas WHERE empresa_id=?", [$empresa_id]) as $r) {
+            foreach (DB::query("SELECT ip FROM radar_ips_internas WHERE empresa_id=? AND aprendida_ts >= ?", [$empresa_id, time() - 7 * 86400]) as $r) {
                 $intern_ip[$r['ip']] = true;
             }
             try {

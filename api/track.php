@@ -71,7 +71,7 @@ $es_visitor_interno = ($visitor_id !== '' && ($rcfg['excluir_internos'] ?? true)
     ? Radar::es_visitor_interno($empresa_id, $visitor_id)
     : false;
 $es_ip_interna = ($rcfg['excluir_internos'] ?? true)
-    ? (bool)DB::val("SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? LIMIT 1", [$empresa_id, $ip])
+    ? (bool)DB::val("SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? AND aprendida_ts >= ? LIMIT 1", [$empresa_id, $ip, time() - 7 * 86400])
     : false;
 
 // CAPA 1 — visitor_id ya conocido como interno (consulta más barata, primera)
