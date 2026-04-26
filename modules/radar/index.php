@@ -142,6 +142,7 @@ $GLOBALS['BM'] = $BM = [
     'decision_activa'       => ['🟡','#92400e','#fffbeb','Decisión activa'],
     'validando_precio'      => ['💸','#92400e','#fffbeb','Validando precio'],
     'prediccion_alta'       => ['🔮','#166534','#f0fdf4','Predicción alta'],
+    'lectura_comprometida'  => ['📖','#0369a1','#e0f2fe','Lectura comprometida'],
     'alto_importe'          => ['💰','#1d4ed8','#dbeafe','Alto importe'],
     're_enganche_caliente'  => ['🔥','#6d28d9','#ede9fe','Re-enganche caliente'],
     're_enganche'           => ['🟣','#6d28d9','#ede9fe','Re-enganche'],
@@ -163,6 +164,7 @@ $GLOBALS['BKT_HINTS'] = [
     'probable_cierre'      => 'Cross-bucket: confirma intención real con 2+ categorías de señal + lectura real (≥15s) + foco en precio',
     'validando_precio'     => 'Foco real en precio: exige mín 2 sesiones guest + señal de lectura/precio + intent (loop/revisita)',
     'prediccion_alta'      => 'FIT ≥ 14% + edad ≤ ciclo venta real + actividad reciente. Ciclo auto-calculado con mediana de días envío→cierre',
+    'lectura_comprometida' => 'Primera impresión fuerte: leyó por encima del promedio de compradores + interactuó con el precio (revisitó totales, loop precio, o cupón). Actúa rápido — el cliente está evaluando AHORA.',
     'decision_activa'      => 'Sesiones recientes con señales de decisión: scroll profundo, revisión de precio, múltiples vistas',
     'alto_importe'         => 'Cotizaciones de alto valor con actividad reciente y señales de interés genuino',
     're_enganche_caliente' => 'Regresó después de inactividad con señales fuertes: scroll, precio, múltiples páginas',
@@ -275,7 +277,7 @@ $rows_all = array_slice($rows_all,0,$limit);
 // probable_cierre es cross-bucket: ya está duplicada en su bucket origen.
 // Contar solo cotizaciones ÚNICAS entre los 3 buckets urgentes.
 $urgentes_ids = [];
-foreach (['onfire','inminente','probable_cierre'] as $ub) {
+foreach (['onfire','inminente','probable_cierre','lectura_comprometida'] as $ub) {
     foreach ($buckets[$ub] as $r) $urgentes_ids[(int)$r['id']] = true;
 }
 $cnt_urgentes = count($urgentes_ids);
@@ -344,7 +346,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $r_fb_data = ($GLOBALS['feedback_map'] ?? [])[(int)$r['id']] ?? null;
         $r_fb_tipo = $r_fb_data['tipo'] ?? null;
         $r_fb_asesor = $r_fb_data['asesor'] ?? null;
-        $hot_bkts_fb = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta'];
+        $hot_bkts_fb = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida'];
         $show_fb_td = in_array($r_bucket_fb, $hot_bkts_fb) && ($r_vendedor_fb === Auth::id() || Auth::es_admin());
         $fb_html = '';
         $cot_id_fb = (int)$r['id'];
@@ -985,9 +987,14 @@ render_bkt('💸 Validando precio',
     'Detecta foco real en precio: exige base guest + validación individual (misma huella) o compartida (multi-visitor)',
     $buckets['validando_precio'],$sort,$dir,false,false,'validando_precio');
 
+$ea_ui = Radar::engage_avg($empresa_id);
 render_bkt('🔮 Predicción alta (ciclo: '.$ciclo_venta['dias'].'d)',
     'v2.3: FIT ≥ 14% + edad ≤ ciclo venta real ('.$ciclo_venta['dias'].'d) + actividad reciente. El ciclo se auto-calcula con la mediana de días envío→cierre de tu empresa.',
     $buckets['prediccion_alta'],$sort,$dir,false,false,'prediccion_alta');
+
+render_bkt('📖 Lectura comprometida',
+    'Lectura por encima del promedio de compradores (scroll ≥'.$ea_ui['scroll'].'%, visible ≥'.round($ea_ui['vis_ms']/1000).'s) + interacción con precio. '.($ea_ui['auto'] ? 'Auto-calibrado con '.$ea_ui['ventas'].' ventas.' : 'Defaults (< 3 ventas).'),
+    $buckets['lectura_comprometida'] ?? [],$sort,$dir,false,false,'lectura_comprometida');
 ?>
 </div>
 
