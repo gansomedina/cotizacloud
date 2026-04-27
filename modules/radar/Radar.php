@@ -997,6 +997,10 @@ class Radar
         // Persistencia: sessions ≥ 2 o gap ≥ 1d
         // Social: multi-IP, multi-visitor (no se endurece — respeta al comprador solo)
 
+        // Variables de PC — inicializar antes del bloque condicional (PHP 8.1+ compat)
+        $cat_engagement = $cat_precio = $cat_persistencia = $cat_social = false;
+        $cat_count = 0; $has_strong_cat = false;
+
         // Buckets que califican como alta intención
         $pc_qualifying = ['onfire','inminente','validando_precio','decision_activa',
                           're_enganche_caliente','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
