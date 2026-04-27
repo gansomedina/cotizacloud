@@ -1451,7 +1451,7 @@ class Radar
     {
         self::auto_suspender($empresa_id);
 
-        $cots = DB::query("SELECT id FROM cotizaciones WHERE empresa_id=? AND estado IN ('enviada','vista','aceptada') AND suspendida = 0", [$empresa_id]);
+        $cots = DB::query("SELECT id FROM cotizaciones WHERE empresa_id=? AND estado IN ('enviada','vista','aceptada') AND suspendida = 0 ORDER BY ultima_vista_at DESC, id DESC", [$empresa_id]);
         $count = 0;
         $start = time();
         foreach ($cots as $c) {
