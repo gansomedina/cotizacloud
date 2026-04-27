@@ -1366,7 +1366,7 @@ class Radar
 
         // ── Sticky: mantener buckets secundarios por ciclo_venta/5 ──
         // Si el bucket BAJARÍA a NULL y el anterior es secundario reciente → mantener
-        if ($new_bucket === null && $old_bucket !== null && !in_array($old_bucket, self::HIGH_PRIORITY_BUCKETS, true)) {
+        if ($new_bucket === null && $old_bucket !== null && $old_bucket !== 'no_abierta' && !in_array($old_bucket, self::HIGH_PRIORITY_BUCKETS, true)) {
             $bucket_at = $cot['radar_bucket_at'] ? strtotime($cot['radar_bucket_at']) : 0;
             if ($bucket_at > 0) {
                 $ciclo = self::ciclo_venta($empresa_id);
