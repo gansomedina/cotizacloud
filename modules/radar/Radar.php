@@ -1615,7 +1615,7 @@ class Radar
              FROM cotizaciones c
              LEFT JOIN quote_sessions qs ON qs.cotizacion_id = c.id
              WHERE c.empresa_id=? AND c.estado NOT IN ('borrador') AND c.suspendida = 0
-             GROUP BY c.id",
+             GROUP BY c.id, c.estado, c.total",
             [$empresa_id]
         );
 
