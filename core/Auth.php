@@ -536,6 +536,6 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
     // ─── Limpiar sesiones expiradas (llamar desde cron) ──────
     public static function limpiar_sesiones_expiradas(): int
     {
-        return DB::execute("DELETE FROM user_sessions WHERE expires_at < NOW()");
+        return DB::execute("DELETE FROM user_sessions WHERE expires_at < DATE_SUB(NOW(), INTERVAL 90 DAY)");
     }
 }
