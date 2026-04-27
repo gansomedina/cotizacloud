@@ -24,7 +24,7 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
         if ($dsig_cookie !== '') {
             try {
                 DB::execute(
-                    "UPDATE user_sessions SET device_sig = COALESCE(device_sig, ?) WHERE usuario_id = ? ORDER BY created_at DESC LIMIT 1",
+                    "UPDATE user_sessions SET device_sig = ? WHERE usuario_id = ? ORDER BY created_at DESC LIMIT 1",
                     [$dsig_cookie, (int)Auth::id()]
                 );
             } catch (Throwable $e) {}
@@ -615,7 +615,7 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
         var raw=[sw,sh,dpr,cores,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
         var h=0;for(var i=0;i<raw.length;i++)h=((h<<5)-h)+raw.charCodeAt(i)|0;
         var dsig=Math.abs(h).toString(16).padStart(8,'0');
-        if(dsig)document.cookie='cz_dsig='+dsig+';path=/;max-age=86400;SameSite=Lax';
+        if(dsig)document.cookie='cz_dsig='+dsig+';path=/;max-age=86400;SameSite=Lax;domain=.<?= BASE_DOMAIN ?>';
     }catch(e){}
 })();
 </script>
