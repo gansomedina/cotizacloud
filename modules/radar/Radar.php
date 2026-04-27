@@ -1607,14 +1607,13 @@ class Radar
 
         $cots = DB::query(
             "SELECT c.id, c.estado, c.total,
-                    (SELECT COUNT(*)        FROM quote_sessions qs WHERE qs.cotizacion_id=c.id) AS num_sess,
-                    (SELECT COUNT(DISTINCT qs2.ip) FROM quote_sessions qs2 WHERE qs2.cotizacion_id=c.id) AS num_ips,
-                    DATEDIFF(
-                        (SELECT qs3.created_at FROM quote_sessions qs3 WHERE qs3.cotizacion_id=c.id ORDER BY qs3.created_at DESC LIMIT 1),
-                        (SELECT qs4.created_at FROM quote_sessions qs4 WHERE qs4.cotizacion_id=c.id ORDER BY qs4.created_at DESC LIMIT 1 OFFSET 1)
-                    ) AS gap_d
+                    COUNT(qs.id) AS num_sess,
+                    COUNT(DISTINCT qs.ip) AS num_ips,
+                    DATEDIFF(MAX(qs.created_at), MIN(qs.created_at)) AS gap_d
              FROM cotizaciones c
-             WHERE c.empresa_id=? AND c.estado NOT IN ('borrador') AND c.suspendida = 0",
+             LEFT JOIN quote_sessions qs ON qs.cotizacion_id = c.id
+             WHERE c.empresa_id=? AND c.estado NOT IN ('borrador') AND c.suspendida = 0
+             GROUP BY c.id",
             [$empresa_id]
         );
 

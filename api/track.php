@@ -23,8 +23,8 @@ $device_sig = substr(preg_replace('/[^a-fA-F0-9]/',    '', (string)($data['devic
 $session_id = substr(preg_replace('/[^a-zA-Z0-9\-]/',  '', (string)($data['session_id'] ?? '')), 0, 36);
 $page_id    = substr(preg_replace('/[^a-zA-Z0-9\-]/',  '', (string)($data['page_id']    ?? '')), 0, 36);
 $max_scroll = min(100, max(0, (int)($data['max_scroll'] ?? 0)));
-$visible_ms = max(0, (int)($data['visible_ms'] ?? 0));
-$open_ms    = max(0, (int)($data['open_ms']    ?? 0));
+$visible_ms = min(600000, max(0, (int)($data['visible_ms'] ?? 0)));
+$open_ms    = min(600000, max(0, (int)($data['open_ms']    ?? 0)));
 
 if (!$cot_id || !$tipo) exit;
 
