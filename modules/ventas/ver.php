@@ -469,16 +469,24 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
       </div>
       <div class="meta-item">
         <div class="meta-lbl">Asesor</div>
-        <?php if (Auth::es_admin()): ?>
-        <select id="vendedor-sel" style="font:600 14px var(--body);color:var(--text);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 8px;background:var(--white);cursor:pointer" onchange="cambiarVendedor(this.value)">
-          <?php
+        <?php if (Auth::es_admin()):
           $vendedor_actual = (int)($venta['vendedor_id'] ?? $venta['usuario_id'] ?? 0);
           $usuarios_emp = DB::query("SELECT id, nombre FROM usuarios WHERE empresa_id=? AND activo=1 ORDER BY nombre", [$empresa_id]);
-          foreach ($usuarios_emp as $ue):
-          ?>
-          <option value="<?= (int)$ue['id'] ?>" <?= (int)$ue['id'] === $vendedor_actual ? 'selected' : '' ?>><?= e($ue['nombre']) ?></option>
-          <?php endforeach; ?>
-        </select>
+          $asesor_display = e($venta['asesor_nombre'] ?: ($empresa['nombre'] ?? '—'));
+        ?>
+        <div class="meta-val" id="vendedor-display" style="display:flex;align-items:center;gap:6px">
+          <span id="vendedor-nombre"><?= $asesor_display ?></span>
+          <button onclick="document.getElementById('vendedor-display').style.display='none';document.getElementById('vendedor-edit').style.display='flex'" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.5;padding:0" title="Cambiar asesor">✏️</button>
+        </div>
+        <div id="vendedor-edit" style="display:none;align-items:center;gap:6px">
+          <select id="vendedor-sel" style="font:600 14px var(--body);color:var(--text);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 8px;background:var(--white);cursor:pointer;flex:1">
+            <?php foreach ($usuarios_emp as $ue): ?>
+            <option value="<?= (int)$ue['id'] ?>" <?= (int)$ue['id'] === $vendedor_actual ? 'selected' : '' ?>><?= e($ue['nombre']) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <button onclick="cambiarVendedor(document.getElementById('vendedor-sel').value)" style="background:var(--g);color:#fff;border:none;border-radius:var(--r-sm);padding:4px 10px;font:700 12px var(--body);cursor:pointer">✓</button>
+          <button onclick="document.getElementById('vendedor-edit').style.display='none';document.getElementById('vendedor-display').style.display='flex'" style="background:none;border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 8px;font:700 12px var(--body);cursor:pointer;color:var(--t3)">✕</button>
+        </div>
         <?php else: ?>
         <div class="meta-val"><?= e($venta['asesor_nombre'] ?: ($empresa['nombre'] ?? '—')) ?></div>
         <?php endif; ?>
@@ -1616,9 +1624,9 @@ async function cambiarVendedor(uid) {
         });
         const d = await r.json();
         if (d.ok) {
-            var sel = document.getElementById('vendedor-sel');
-            sel.style.borderColor = 'var(--g)';
-            setTimeout(function(){ sel.style.borderColor = 'var(--border)'; }, 1500);
+            document.getElementById('vendedor-nombre').textContent = d.nombre;
+            document.getElementById('vendedor-edit').style.display = 'none';
+            document.getElementById('vendedor-display').style.display = 'flex';
         }
     } catch(e) {}
 }
