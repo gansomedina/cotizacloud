@@ -2147,12 +2147,10 @@ async function eliminarHistorial(id, btn) {
 <?php require MODULES_PATH . '/config/suscripcion.php'; ?>
 </div>
 <script>
-// Apple Guideline 3.1.1: ocultar suscripción en app iOS (estilo Netflix)
+// Apple Guideline 3.1.1: mostrar tab pero sin flujo de pago en app iOS
 if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()){
-    var tl=document.getElementById('tab-suscripcion-link');
-    if(tl)tl.style.display='none';
     var tp=document.getElementById('panel-suscripcion');
-    if(tp)tp.innerHTML='<div style="padding:40px 20px;text-align:center"><div style="font-size:32px;margin-bottom:12px">🌐</div><div style="font:700 16px var(--body);margin-bottom:8px">Gestiona tu plan desde el navegador</div><div style="font:400 13px var(--body);color:var(--t3);line-height:1.6">Para ver o cambiar tu suscripción,<br>visita <b>cotiza.cloud</b> desde Safari o Chrome.</div></div>';
+    if(tp)tp.innerHTML='<div style="padding:40px 20px;text-align:center"><div style="font-size:40px;margin-bottom:16px">🌐</div><div style="font:700 18px var(--body);margin-bottom:10px">Gestiona tu plan desde el navegador</div><div style="font:400 14px var(--body);color:var(--t3);line-height:1.7;max-width:320px;margin:0 auto">Para ver, cambiar o cancelar tu suscripción, abre <b>cotiza.cloud</b> en Safari o Chrome desde tu dispositivo.</div></div>';
 }
 </script>
 
