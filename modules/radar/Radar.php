@@ -1397,7 +1397,7 @@ class Radar
                 [
                     $r['score'],
                     $new_bucket,
-                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false,'calentura_hasta'=>$r['calentura_hasta'] ?? null,'sticky'=>($new_bucket !== $r['bucket'])]),
+                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false,'calentura_hasta'=>$r['calentura_hasta'] ?? null,'fit_pct'=>$r['fit_pct'] ?? 0,'sticky'=>($new_bucket !== $r['bucket'])]),
                     $cotizacion_id,
                 ]
             );
@@ -1408,7 +1408,7 @@ class Radar
                 [
                     $r['score'],
                     $new_bucket,
-                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false,'calentura_hasta'=>$r['calentura_hasta'] ?? null]),
+                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false,'calentura_hasta'=>$r['calentura_hasta'] ?? null,'fit_pct'=>$r['fit_pct'] ?? 0]),
                     $cotizacion_id,
                 ]
             );

@@ -227,7 +227,7 @@ foreach ($raw as $c) {
         'estado'      => $c['estado'],
         'accepted'    => $accepted,
         'score'       => $score,
-        'fit_pct'     => max(0,min(100,(float)$score*0.65)),
+        'fit_pct'     => (float)($senales['fit_pct'] ?? max(0,min(100,(float)$score*0.65))),
         'priority_pct'=> (float)$score,
         'bucket'      => $bucket,
         'momentum'    => $momentum,
