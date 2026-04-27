@@ -24,7 +24,7 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
         if ($dsig_cookie !== '') {
             try {
                 DB::execute(
-                    "UPDATE user_sessions SET device_sig = COALESCE(device_sig, ?) WHERE usuario_id = ? ORDER BY created_at DESC LIMIT 1",
+                    "UPDATE user_sessions SET device_sig = ? WHERE usuario_id = ? ORDER BY created_at DESC LIMIT 1",
                     [$dsig_cookie, (int)Auth::id()]
                 );
             } catch (Throwable $e) {}
