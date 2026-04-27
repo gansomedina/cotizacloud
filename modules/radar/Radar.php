@@ -1400,7 +1400,7 @@ class Radar
                 [
                     $r['score'],
                     $new_bucket,
-                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false,'sticky'=>($new_bucket !== $r['bucket'])]),
+                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false,'calentura_hasta'=>$r['calentura_hasta'] ?? null,'sticky'=>($new_bucket !== $r['bucket'])]),
                     $cotizacion_id,
                 ]
             );
@@ -1411,7 +1411,7 @@ class Radar
                 [
                     $r['score'],
                     $new_bucket,
-                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false]),
+                    json_encode(['senales'=>$r['senales'],'buckets'=>$r['buckets'],'debug'=>$r['debug'],'icons'=>$r['icons'] ?? [],'pc_source'=>$r['pc_source'] ?? null,'momentum'=>$r['momentum'] ?? 'stable','calentura'=>$r['calentura'] ?? false,'cat_precio'=>$r['cat_precio'] ?? false,'calentura_hasta'=>$r['calentura_hasta'] ?? null]),
                     $cotizacion_id,
                 ]
             );
@@ -1905,6 +1905,7 @@ class Radar
             [$empresa_id]
         );
 
+        $row = $row ?? ['ventas' => 0, 'scroll_avg' => null, 'vis_avg' => null];
         $ventas = (int)($row['ventas'] ?? 0);
         if ($ventas < 3) {
             $result = ['scroll' => 85, 'vis_ms' => 45000, 'ventas' => $ventas, 'auto' => false];
