@@ -368,7 +368,8 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 . "</div>";
         }
         $cal_badge = '';
-        $is_calentura = !empty($r['senales']['calentura']);
+        $cal_hasta = $r['senales']['calentura_hasta'] ?? null;
+        $is_calentura = $cal_hasta && time() < $cal_hasta;
         if ($is_calentura) {
             $cal_tiene_precio = !empty($r['senales']['cat_precio']);
             if ($cal_tiene_precio) {

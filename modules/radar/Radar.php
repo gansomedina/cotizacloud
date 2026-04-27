@@ -827,17 +827,6 @@ class Radar
         $lc_max_sess = (int)self::u('engage_max_sessions', $modo);
         $lc_recent_ts = $now - (int)self::u('engage_recent_hours', $modo) * 3600;
         $lc_min_vis = (int)self::u('engage_min_vis_ms', $modo);
-        // DEBUG lectura_comprometida — quitar después de verificar
-        if (!$accepted && $guest_sessions >= 1 && $has_tot_view) {
-            $lc_fails = [];
-            if ($sessions > $lc_max_sess) $lc_fails[] = "sessions={$sessions}>{$lc_max_sess}";
-            if ($last_ts < $lc_recent_ts) $lc_fails[] = "last_ts=".date('Y-m-d H:i',$last_ts)." too_old";
-            if ($e_scroll_any < $ea['scroll']) $lc_fails[] = "scroll={$e_scroll_any}<{$ea['scroll']}";
-            if ($e_vis_max < $ea['vis_ms']) $lc_fails[] = "vis={$e_vis_max}<{$ea['vis_ms']}";
-            if ($e_vis_max < $lc_min_vis) $lc_fails[] = "vis={$e_vis_max}<min_{$lc_min_vis}";
-            if (!$engage_has_plus) $lc_fails[] = "no_price_interact";
-            if (!empty($lc_fails)) error_log("[LC debug] cot={$cotizacion_id} FAIL: ".implode(', ',$lc_fails));
-        }
         if (
             !$accepted &&
             $sessions <= $lc_max_sess &&
@@ -1049,12 +1038,6 @@ class Radar
                 $buckets[] = 'probable_cierre';
             }
 
-            // DEBUG probable_cierre — quitar después de verificar
-            error_log("[PC debug] cot={$cotizacion_id} src={$pc_source} sess={$sessions} cats={$cat_count}/{$pc_min_cats} eng=" . ($cat_engagement?'Y':'N')
-                . "(scroll_cls={$e_scroll_cls},scroll_any={$e_scroll_any},vis_max={$e_vis_max},vis_sum={$e_vis_sum},tot_view=".($has_tot_view?'Y':'N').")"
-                . " precio=" . ($cat_precio?'Y':'N') . "(tot_rev=".($has_tot_rev?'Y':'N').",loop=".($has_loop?'Y':'N').",coupons={$e_coupons},sv=".($e_sv_price?'Y':'N').",mv=".($e_mv_price?'Y':'N').",pss={$pss})"
-                . " persist=" . ($cat_persistencia?'Y':'N') . " social=" . ($cat_social?'Y':'N')
-                . " strong=" . ($has_strong_cat?'Y':'N') . " → " . ($cat_count >= $pc_min_cats && $has_strong_cat ? 'PC' : 'NO'));
         }
 
         // ── Iconos para la UI (mismos que el radar original) ─
@@ -1108,6 +1091,8 @@ class Radar
             'pc_source'    => $pc_source,
             'calentura'    => $en_calentura,
             'cat_precio'   => $cat_precio ?? false,
+            'first_view_ts'=> $first_view_ts,
+            'calentura_hasta' => $en_calentura ? ($first_view_ts + ($calentura_horas + 48) * 3600) : null,
             'cooling_price_touched' => $cooling_price_touched,
             'cooling_reason'        => $cooling_reason,
             'icons'        => $icons,
