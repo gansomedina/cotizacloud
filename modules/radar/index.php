@@ -326,7 +326,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
     foreach ($items as $r) {
         $ago = time()-$r['last_ts'];
         $rc = $ago<1800?'hot30':($ago<14400?'hot4h':'');
-        $ab = $r['accepted']?"<span class='bok'>ACCEPTED</span>":"<span class='bno'>".$r['estado']."</span>";
+        $ab = $r['accepted']?"<span class='bok'>ACCEPTED</span>":"<span class='bno'>".htmlspecialchars($r['estado'])."</span>";
         echo "<tr class='$rc'>";
         $r_icons = $r['senales']['icons'] ?? [];
         $r_ico_str = '';
@@ -782,7 +782,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
     <?php
 }
 
-$has_comp_reviewed = (bool)DB::val("SELECT 1 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='radar_comp_reviewed'");
+$has_comp_reviewed = true;
 $eid_safe = intval($empresa_id);
 $reviewed_filter_user   = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$eid_safe} AND tipo = 'user' AND valor = qs.visitor_id), '2000-01-01')" : "";
 $reviewed_filter_ip     = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$eid_safe} AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')" : "";
@@ -1142,25 +1142,25 @@ render_bkt('🟡 Activos 48h (todos los activos)',
         </div></div>
         <?php if (!empty($dbg['devices'])): ?>
         <div class="dbg-sec"><div class="dbg-lbl">Dispositivos</div><div class="dbg-val">
-          <?= implode(' · ', array_map(fn($d) => "<b>{$d}</b>", $dbg['devices'])) ?>
+          <?= implode(' · ', array_map(fn($d) => "<b>".htmlspecialchars($d)."</b>", $dbg['devices'])) ?>
         </div></div>
         <?php endif; ?>
         <?php if ($sn): ?>
         <div class="dbg-sec"><div class="dbg-lbl">Señales</div><div class="dbg-val">
-          <?php foreach ($sn as $sk=>$sv): ?><span class="dbg-tag<?= $sv?' dbg-on':'' ?>"><?= $sk ?></span> <?php endforeach; ?>
+          <?php foreach ($sn as $sk=>$sv): ?><span class="dbg-tag<?= $sv?' dbg-on':'' ?>"><?= htmlspecialchars($sk) ?></span> <?php endforeach; ?>
         </div></div>
         <?php endif; ?>
         <div class="dbg-sec"><div class="dbg-lbl">Buckets</div><div class="dbg-val">
           <?php if ($bks): foreach ($bks as $bk): $is_main=($bk===($r['bucket']??'')); ?>
-            <span class="dbg-bkt<?= $is_main?' dbg-main':'' ?>"><?= $bk ?></span>
+            <span class="dbg-bkt<?= $is_main?' dbg-main':'' ?>"><?= htmlspecialchars($bk) ?></span>
           <?php endforeach; else: ?>
             <span style="color:#9ca3af">ninguno</span>
           <?php endif; ?>
-          <?php if ($pcs): ?> <span style="color:#6b7280;font-size:11px">pc_source=<?= $pcs ?></span><?php endif; ?>
+          <?php if ($pcs): ?> <span style="color:#6b7280;font-size:11px">pc_source=<?= htmlspecialchars($pcs) ?></span><?php endif; ?>
         </div></div>
         <?php if ($ics): ?>
         <div class="dbg-sec"><div class="dbg-lbl">Icons</div><div class="dbg-val">
-          <?php foreach ($ics as $ik=>$iv): if($iv): ?><span class="dbg-tag dbg-on"><?= $ik ?></span> <?php endif; endforeach; ?>
+          <?php foreach ($ics as $ik=>$iv): if($iv): ?><span class="dbg-tag dbg-on"><?= htmlspecialchars($ik) ?></span> <?php endif; endforeach; ?>
         </div></div>
         <?php endif; ?>
         <?php $pc_d = $dbg['pc_cats'] ?? null; if ($pc_d):
