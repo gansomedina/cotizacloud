@@ -47,7 +47,7 @@ $_icons_missing = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND radar_bucket IS NOT NULL AND (radar_senales IS NULL OR radar_senales NOT LIKE '%\"icons\"%')",
     [$empresa_id]
 );
-if (!$ult || $ult < date('Y-m-d H:i:s', time()-60) || $_icons_missing > 0 || $debug_mode) {
+if (!$ult || $ult < date('Y-m-d H:i:s', time()-300) || $_icons_missing > 0) {
     try { Radar::check_auto_calibrar($empresa_id); Radar::recalcular_empresa($empresa_id); } catch(Throwable $e){}
 }
 
