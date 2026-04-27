@@ -49,11 +49,6 @@ class Radar
         // ── Deduplicación de vistas (ventana de sesión) ──────
         'dedupe_seconds'             => [1200,  1800,  3600 ],
 
-        // ── Bucket 1: Probable cierre ────────────────────────
-        'hot_close_last_hours'       => [48,    24,    12   ],
-        'hot_close_min_views24'      => [1,     2,     2    ],
-        'hot_close_min_views7d'      => [2,     2,     3    ],
-
         // ── Bucket 2: Inminente ──────────────────────────────
         'imminent_recent_hours'      => [48,    36,    24   ],
         'imminent_min_fit_pct'       => [4.0,   5.0,   7.0  ],
@@ -89,11 +84,9 @@ class Radar
         'priceval_vis_hard'          => [5000,  8000,  12000],
         'priceval_vis_sum'           => [10000, 14000, 20000],
         'priceval_scroll_soft'       => [40,    50,    70   ],
-        'priceval_scroll_hard'       => [70,    90,    90   ],
 
         // ── Bucket 5: Predicción alta ────────────────────────
         'predict_min_fit_pct'        => [10.0,  14.0,  18.0 ],
-        'predict_recent_days'        => [45,    30,    21   ],
 
         // ── Bucket 6: Decisión activa ────────────────────────
         'decision_window_h'          => [72,    48,    48   ],
@@ -111,7 +104,6 @@ class Radar
         'multip_ip_window_min'       => [720,   480,   360  ],
         'multip_min_ips_post_guest'  => [2,     3,     4    ],
         'multip_min_guest_total'     => [1,     2,     3    ],
-        'multip_boost_vis_max'       => [8000,  12000, 16000],
 
         // ── Bucket 9: Revisión profunda ──────────────────────
         'deep_recent_hours'          => [96,    72,    48   ],
@@ -1118,7 +1110,7 @@ class Radar
                 'ips_post_guest'=>$ips_post_guest_count,
                 'dsig_maps'=>count($vid_dsig).'/'.count($ip_dsig),
                 'engage_avg'=>$ea['scroll'].'%/'.$ea['vis_ms'].'ms('.($ea['auto']?'auto':'default').')',
-                'pc_cats'=>isset($cat_count) ? [
+                'pc_cats'=>($pc_source !== null) ? [
                     'engagement'=>(bool)($cat_engagement ?? false),
                     'precio'=>(bool)($cat_precio ?? false),
                     'persistencia'=>(bool)($cat_persistencia ?? false),
