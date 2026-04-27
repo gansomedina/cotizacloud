@@ -1286,6 +1286,7 @@ class Radar
             'decision_activa'       => 'decision_window_h',
             're_enganche_caliente'  => 'reeng_recent_hours',
             're_enganche'           => 'reeng_recent_hours',
+            'lectura_comprometida'  => 'engage_recent_hours',
             'multi_persona'         => 'multip_recent_hours',
             'revision_profunda'     => 'deep_recent_hours',
             'vistas_multiples'      => 'multi_recent_hours',

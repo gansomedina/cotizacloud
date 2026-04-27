@@ -1053,7 +1053,8 @@ render_bkt('🟠 Comparando / Compartiendo (señal exclusiva)',
 // Enfriándose con motivo
 $cooling = $buckets['enfriandose'];
 foreach ($cooling as &$cr) {
-    $keys = is_array($cr['senales']) ? array_keys($cr['senales']) : [];
+    $sn_data = $cr['senales']['senales'] ?? $cr['senales'] ?? [];
+    $keys = is_array($sn_data) ? array_keys($sn_data) : [];
     $with_p = array_intersect(['price_loop','tot_rev','tot_view','cupon','sv_price','mv_price'], $keys);
     $cr['reason'] = count($with_p) ? '💸 con precio' : '🧊 sin precio';
 }
@@ -1094,7 +1095,7 @@ render_bkt('🟡 Activos 48h (todos los activos)',
     <?php foreach ($rows_all as $r):
       $ago2=time()-$r['last_ts'];
       $rc=$ago2<1800?'hot30':($ago2<14400?'hot4h':'');
-      $ab=$r['accepted']?"<span class='bok'>ACCEPTED</span>":"<span class='bno'>".$r['estado']."</span>";
+      $ab=$r['accepted']?"<span class='bok'>ACCEPTED</span>":"<span class='bno'>".htmlspecialchars($r['estado'])."</span>";
     ?>
     <tr class="<?= $rc ?>" onclick="window.location='/cotizaciones/<?= (int)$r['id'] ?>'">
       <?php
