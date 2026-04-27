@@ -1455,12 +1455,17 @@ class Radar
 
     public static function recalcular_empresa(int $empresa_id): int
     {
-        // Auto-suspender cotizaciones si la empresa lo tiene activo
         self::auto_suspender($empresa_id);
 
         $cots = DB::query("SELECT id FROM cotizaciones WHERE empresa_id=? AND estado IN ('enviada','vista','aceptada') AND suspendida = 0", [$empresa_id]);
-        foreach ($cots as $c) self::recalcular((int)$c['id'], $empresa_id);
-        return count($cots);
+        $count = 0;
+        $start = time();
+        foreach ($cots as $c) {
+            self::recalcular((int)$c['id'], $empresa_id);
+            $count++;
+            if (time() - $start > 120) break;
+        }
+        return $count;
     }
 
     /**

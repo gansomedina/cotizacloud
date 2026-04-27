@@ -718,7 +718,8 @@ function render_comp_row($cv, $empresa_id, $tipo) {
         "SELECT cl.nombre AS cliente,
                 SUBSTRING_INDEX(GROUP_CONCAT(c.titulo ORDER BY qs.created_at DESC SEPARATOR '|||'), '|||', 1) AS cotizacion,
                 MAX(qs.created_at) AS ultima_vista,
-                COUNT(DISTINCT c.id) AS num_cots
+                COUNT(DISTINCT c.id) AS num_cots,
+                SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT SUBSTRING(qs.user_agent, 1, 120) SEPARATOR '|||'), '|||', 5) AS ua_list
          FROM quote_sessions qs
          JOIN cotizaciones c ON c.id = qs.cotizacion_id
          LEFT JOIN clientes cl ON cl.id = c.cliente_id
@@ -729,27 +730,18 @@ function render_comp_row($cv, $empresa_id, $tipo) {
          ORDER BY ultima_vista DESC",
         [$param_val, $empresa_id]
     );
-    $cv_devs = DB::query(
-        "SELECT DISTINCT SUBSTRING(qs.user_agent, 1, 120) AS ua
-         FROM quote_sessions qs
-         JOIN cotizaciones c ON c.id = qs.cotizacion_id
-         WHERE {$where_main} = ? AND c.empresa_id = ?
-           AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
-         LIMIT 5",
-        [$param_val, $empresa_id]
-    );
     $devices = [];
-    foreach ($cv_devs as $d) {
-        $ua = $d['ua'];
-        if (str_contains($ua, 'iPhone')) $devices[] = 'iPhone';
-        elseif (str_contains($ua, 'Android')) $devices[] = 'Android';
-        elseif (str_contains($ua, 'iPad')) $devices[] = 'iPad';
-        elseif (str_contains($ua, 'Mac')) $devices[] = 'Mac';
-        elseif (str_contains($ua, 'Windows')) $devices[] = 'Windows';
-        else $devices[] = 'Otro';
+    foreach ($cv_detail as $d) {
+        foreach (explode('|||', $d['ua_list'] ?? '') as $ua) {
+            if (str_contains($ua, 'iPhone')) $devices['iPhone'] = true;
+            elseif (str_contains($ua, 'Android')) $devices['Android'] = true;
+            elseif (str_contains($ua, 'iPad')) $devices['iPad'] = true;
+            elseif (str_contains($ua, 'Mac')) $devices['Mac'] = true;
+            elseif (str_contains($ua, 'Windows')) $devices['Windows'] = true;
+            elseif ($ua !== '') $devices['Otro'] = true;
+        }
     }
-    $devices = array_unique($devices);
-    $dev_str = implode(', ', $devices);
+    $dev_str = implode(', ', array_keys($devices));
     $dev_count = count($devices);
     $safe_key = htmlspecialchars($key, ENT_QUOTES);
     $dismiss_tipo = $tipo;
