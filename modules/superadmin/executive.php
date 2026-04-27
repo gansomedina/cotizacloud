@@ -834,7 +834,10 @@ tbody tr:hover td{background:var(--card-hover)}
         <button class="metric-btn" data-metric="equilibrio" onclick="toggleMetric(this)" style="border-left:3px solid #8b5cf6">Equilibrio</button>
     </div>
     <div id="equilibrio-config" style="display:none;margin-bottom:14px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
-        <div style="font:600 11px 'Inter',sans-serif;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Meta mensual por empresa</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font:600 11px 'Inter',sans-serif;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">Meta mensual por empresa</div>
+            <label style="display:flex;align-items:center;gap:4px;font:500 11px 'Inter',sans-serif;color:var(--t3);cursor:pointer"><input type="checkbox" onchange="toggleEqCifras(this.checked)" style="cursor:pointer"> Ocultar cifras</label>
+        </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
             <?php foreach ($empresas_cfg as $eid => $ec): ?>
             <div style="display:flex;align-items:center;gap:6px">
@@ -967,7 +970,6 @@ $hist_total = array_sum($hist_values);
 <div class="sec">
     <div class="sec-hdr">
         <div class="sec-title">Ventas por empresa</div>
-        <label style="display:flex;align-items:center;gap:4px;font:500 11px 'Inter',sans-serif;color:var(--t3);cursor:pointer"><input type="checkbox" onchange="toggleEmpCifras(this.checked)" style="cursor:pointer"> Ocultar cifras</label>
         <div class="sec-count"><?= $p_label ?></div>
     </div>
     <div class="tbl-card">
@@ -976,8 +978,8 @@ $hist_total = array_sum($hist_values);
         <tr>
             <th>Empresa</th>
             <th class="r">Ventas</th>
-            <th class="r emp-cifras">Monto</th>
-            <th class="r emp-cifras">Anterior</th>
+            <th class="r">Monto</th>
+            <th class="r">Anterior</th>
             <th class="r">Var</th>
             <th class="r">Tasa</th>
         </tr>
@@ -1004,8 +1006,8 @@ $hist_total = array_sum($hist_values);
     <tr>
         <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span> <span style="margin-left:6px;font-weight:600"><?= $ec['nombre'] ?></span></td>
         <td class="r mono" style="font-weight:600"><?= $num ?></td>
-        <td class="r mono emp-cifras" style="font-weight:700;color:var(--g)"><?= xf($act) ?></td>
-        <td class="r mono emp-cifras" style="color:var(--t2)"><?= xf($ant) ?></td>
+        <td class="r mono" style="font-weight:700;color:var(--g)"><?= xf($act) ?></td>
+        <td class="r mono" style="color:var(--t2)"><?= xf($ant) ?></td>
         <td class="r"><span class="var <?= $var > 0 ? 'up' : ($var < 0 ? 'dn' : 'eq') ?>"><?= abs($var) ?>%</span></td>
         <td class="r mono" style="font-weight:600;color:<?= $tasa >= 15 ? 'var(--g)' : ($tasa >= 8 ? 'var(--a)' : 'var(--r)') ?>"><?= number_format($tasa,1) ?>%</td>
     </tr>
@@ -1013,8 +1015,8 @@ $hist_total = array_sum($hist_values);
     <tr style="border-top:2px solid var(--border2)">
         <td style="font-weight:800">TOTAL</td>
         <td class="r mono" style="font-weight:800"><?= (int)$kpi_mes['num'] ?></td>
-        <td class="r mono emp-cifras" style="font-weight:800;color:var(--g)"><?= xf($total_act) ?></td>
-        <td class="r mono emp-cifras" style="font-weight:800;color:var(--t2)"><?= xf($total_ant_sum) ?></td>
+        <td class="r mono" style="font-weight:800;color:var(--g)"><?= xf($total_act) ?></td>
+        <td class="r mono" style="font-weight:800;color:var(--t2)"><?= xf($total_ant_sum) ?></td>
         <td class="r"><span class="var <?= $var_ventas > 0 ? 'up' : ($var_ventas < 0 ? 'dn' : 'eq') ?>"><?= abs($var_ventas) ?>%</span></td>
         <td></td>
     </tr>
@@ -1845,9 +1847,11 @@ function toggleAsesorVentas(hide) {
         el.style.display = hide ? 'none' : '';
     });
 }
-function toggleEmpCifras(hide) {
-    document.querySelectorAll('.emp-cifras').forEach(function(el) {
-        el.style.display = hide ? 'none' : '';
+function toggleEqCifras(hide) {
+    var panel = document.getElementById('equilibrio-config');
+    if (!panel) return;
+    panel.querySelectorAll('input[type="number"]').forEach(function(el) {
+        el.style.visibility = hide ? 'hidden' : 'visible';
     });
 }
 function toggleMetric(btn) {
