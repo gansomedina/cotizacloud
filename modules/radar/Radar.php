@@ -1873,11 +1873,15 @@ class Radar
                     c.visitas, c.ultima_vista_at, c.enviada_at,
                     cl.nombre AS cliente_nombre, cl.telefono AS cli_tel,
                     u.nombre  AS asesor_nombre,
-                    (SELECT COUNT(*)              FROM quote_sessions qs  WHERE qs.cotizacion_id=c.id) AS num_sesiones,
-                    (SELECT COUNT(DISTINCT qs2.ip) FROM quote_sessions qs2 WHERE qs2.cotizacion_id=c.id) AS num_ips
+                    IFNULL(qs_agg.num_sesiones, 0) AS num_sesiones,
+                    IFNULL(qs_agg.num_ips, 0) AS num_ips
              FROM cotizaciones c
              LEFT JOIN clientes cl ON cl.id=c.cliente_id
              LEFT JOIN usuarios  u  ON u.id=c.usuario_id
+             LEFT JOIN (
+                 SELECT cotizacion_id, COUNT(*) AS num_sesiones, COUNT(DISTINCT ip) AS num_ips
+                 FROM quote_sessions GROUP BY cotizacion_id
+             ) qs_agg ON qs_agg.cotizacion_id = c.id
              WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada') $uw
              ORDER BY c.radar_score IS NULL ASC, c.radar_score DESC, c.ultima_vista_at DESC",
             $params
