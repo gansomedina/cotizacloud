@@ -24,11 +24,9 @@ if ($tab_activo === 'costos') {
     if (!$plan_check['es_pagado']) $tab_activo = 'empresa';
 }
 
-// Suscripción oculta en app nativa (Apple Guideline 3.1.1)
-$is_native_app_cfg = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
-if ($tab_activo === 'suscripcion' && $is_native_app_cfg) {
-    $tab_activo = 'empresa';
-}
+// Suscripción se oculta en app iOS vía JS (window.Capacitor)
+// Apple Guideline 3.1.1: no mostrar pagos externos en la app
+$is_native_app_cfg = false;
 
 // Marketing solo disponible en plan Business
 if ($tab_activo === 'marketing') {
@@ -348,9 +346,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <a class="cfg-tab <?= $tab_activo==='marketing' ?'on':'' ?>" href="/config?tab=marketing">Marketing</a>
     <a class="cfg-tab <?= $tab_activo==='historial' ?'on':'' ?>" href="/config?tab=historial">Historial</a>
     <?php endif; ?>
-    <?php if (!$is_native_app_cfg): ?>
-    <a class="cfg-tab <?= $tab_activo==='suscripcion'?'on':'' ?>" href="/config?tab=suscripcion">Suscripción</a>
-    <?php endif; ?>
+    <a class="cfg-tab <?= $tab_activo==='suscripcion'?'on':'' ?>" href="/config?tab=suscripcion" id="tab-suscripcion-link">Suscripción</a>
   </div>
 </div>
 
@@ -2147,11 +2143,18 @@ async function eliminarHistorial(id, btn) {
 </script>
 
 <!-- ══ TAB: SUSCRIPCIÓN ═════════════════════════════════════ -->
-<?php if (!$is_native_app_cfg): ?>
 <div class="tab-panel <?= $tab_activo==='suscripcion'?'on':'' ?>" id="panel-suscripcion">
 <?php require MODULES_PATH . '/config/suscripcion.php'; ?>
 </div>
-<?php endif; ?>
+<script>
+// Apple Guideline 3.1.1: ocultar suscripción en app iOS (estilo Netflix)
+if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()){
+    var tl=document.getElementById('tab-suscripcion-link');
+    if(tl)tl.style.display='none';
+    var tp=document.getElementById('panel-suscripcion');
+    if(tp)tp.innerHTML='<div style="padding:40px 20px;text-align:center"><div style="font-size:32px;margin-bottom:12px">🌐</div><div style="font:700 16px var(--body);margin-bottom:8px">Gestiona tu plan desde el navegador</div><div style="font:400 13px var(--body);color:var(--t3);line-height:1.6">Para ver o cambiar tu suscripción,<br>visita <b>cotiza.cloud</b> desde Safari o Chrome.</div></div>';
+}
+</script>
 
 <?php
 $content = ob_get_clean();
