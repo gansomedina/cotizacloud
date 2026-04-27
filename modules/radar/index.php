@@ -432,7 +432,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             // Devices
             if (!empty($dbg['devices'])) {
                 echo "<div class='dbg-sec'><div class='dbg-lbl'>Dispositivos</div><div class='dbg-val'>";
-                echo implode(' · ', array_map(fn($d) => "<b>{$d}</b>", $dbg['devices']));
+                echo implode(' · ', array_map(fn($d) => "<b>".htmlspecialchars($d)."</b>", $dbg['devices']));
                 echo "</div></div>";
             }
             // Signals
@@ -440,7 +440,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 echo "<div class='dbg-sec'><div class='dbg-lbl'>Señales</div><div class='dbg-val'>";
                 $sn_parts = [];
                 foreach ($sn as $sk => $sv) {
-                    $sn_parts[] = "<span class='dbg-tag".($sv?' dbg-on':'')."'>$sk</span>";
+                    $sn_parts[] = "<span class='dbg-tag".($sv?' dbg-on':'')."'>".htmlspecialchars($sk)."</span>";
                 }
                 echo implode(' ', $sn_parts);
                 echo "</div></div>";
@@ -450,7 +450,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             if ($bks) {
                 foreach ($bks as $bk) {
                     $is_main = ($bk === ($r['bucket'] ?? ''));
-                    echo "<span class='dbg-bkt".($is_main?' dbg-main':'')."'>$bk</span> ";
+                    echo "<span class='dbg-bkt".($is_main?' dbg-main':'')."'>".htmlspecialchars($bk)."</span> ";
                 }
             } else {
                 echo "<span style='color:#9ca3af'>ninguno</span>";
@@ -461,7 +461,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             if ($ics) {
                 echo "<div class='dbg-sec'><div class='dbg-lbl'>Icons</div><div class='dbg-val'>";
                 foreach ($ics as $ik => $iv) {
-                    if ($iv) echo "<span class='dbg-tag dbg-on'>$ik</span> ";
+                    if ($iv) echo "<span class='dbg-tag dbg-on'>".htmlspecialchars($ik)."</span> ";
                 }
                 echo "</div></div>";
             }
@@ -791,9 +791,10 @@ function render_comp_row($cv, $empresa_id, $tipo) {
 }
 
 $has_comp_reviewed = (bool)DB::val("SELECT 1 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='radar_comp_reviewed'");
-$reviewed_filter_user   = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$empresa_id} AND tipo = 'user' AND valor = qs.visitor_id), '2000-01-01')" : "";
-$reviewed_filter_ip     = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$empresa_id} AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')" : "";
-$reviewed_filter_device = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$empresa_id} AND tipo = 'device' AND valor = qs.device_sig), '2000-01-01')" : "";
+$eid_safe = intval($empresa_id);
+$reviewed_filter_user   = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$eid_safe} AND tipo = 'user' AND valor = qs.visitor_id), '2000-01-01')" : "";
+$reviewed_filter_ip     = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$eid_safe} AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')" : "";
+$reviewed_filter_device = $has_comp_reviewed ? "AND ultima_visita > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = {$eid_safe} AND tipo = 'device' AND valor = qs.device_sig), '2000-01-01')" : "";
 
 // ── 1. Alerta por Usuario (visitor_id) ──
 $comp_by_user = DB::query(

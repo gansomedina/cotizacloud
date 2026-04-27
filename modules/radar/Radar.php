@@ -1671,8 +1671,8 @@ class Radar
             }
             $result = []; $idx = 0;
             foreach ($blocks as $b) {
-                $avg = round($b['sum'] / $b['cnt'], 4);
-                for ($j = 0; $j < $b['cnt']; $j++) {
+                $avg = round($b['sum'] / max(1, $b['cnt']), 4);
+                for ($j = 0; $j < $b['cnt'] && $idx < $n; $j++) {
                     $result[$ordered_keys[$idx]] = $avg;
                     $idx++;
                 }
