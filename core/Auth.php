@@ -156,7 +156,7 @@ class Auth
     {
         $token = $_COOKIE[SESSION_NAME] ?? null;
         if ($token) {
-            DB::execute("DELETE FROM user_sessions WHERE token = ?", [$token]);
+            DB::execute("UPDATE user_sessions SET expires_at = NOW() WHERE token = ?", [$token]);
         }
 
         setcookie(SESSION_NAME, '', [
