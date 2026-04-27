@@ -178,6 +178,7 @@ class Router
         self::post('/ventas/:id/cancelar',            fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'cancelar']));
         self::post('/ventas/:id/agregar-item',        fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'agregar-item']));
         self::post('/ventas/:id/notas',               fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'notas']));
+        self::post('/ventas/:id/vendedor',            fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'vendedor']));
         self::post('/ventas/:id/descuento',           fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'descuento']));
         self::post('/ventas/:id/agregar-item',        fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'agregar-item']));
         self::post('/ventas/:id/editar-linea',        fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'editar-linea']));
