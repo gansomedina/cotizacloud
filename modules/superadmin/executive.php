@@ -967,6 +967,7 @@ $hist_total = array_sum($hist_values);
 <div class="sec">
     <div class="sec-hdr">
         <div class="sec-title">Ventas por empresa</div>
+        <label style="display:flex;align-items:center;gap:4px;font:500 11px 'Inter',sans-serif;color:var(--t3);cursor:pointer"><input type="checkbox" onchange="toggleEmpCifras(this.checked)" style="cursor:pointer"> Ocultar cifras</label>
         <div class="sec-count"><?= $p_label ?></div>
     </div>
     <div class="tbl-card">
@@ -975,8 +976,8 @@ $hist_total = array_sum($hist_values);
         <tr>
             <th>Empresa</th>
             <th class="r">Ventas</th>
-            <th class="r">Monto</th>
-            <th class="r">Anterior</th>
+            <th class="r emp-cifras">Monto</th>
+            <th class="r emp-cifras">Anterior</th>
             <th class="r">Var</th>
             <th class="r">Tasa</th>
         </tr>
@@ -1003,8 +1004,8 @@ $hist_total = array_sum($hist_values);
     <tr>
         <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span> <span style="margin-left:6px;font-weight:600"><?= $ec['nombre'] ?></span></td>
         <td class="r mono" style="font-weight:600"><?= $num ?></td>
-        <td class="r mono" style="font-weight:700;color:var(--g)"><?= xf($act) ?></td>
-        <td class="r mono" style="color:var(--t2)"><?= xf($ant) ?></td>
+        <td class="r mono emp-cifras" style="font-weight:700;color:var(--g)"><?= xf($act) ?></td>
+        <td class="r mono emp-cifras" style="color:var(--t2)"><?= xf($ant) ?></td>
         <td class="r"><span class="var <?= $var > 0 ? 'up' : ($var < 0 ? 'dn' : 'eq') ?>"><?= abs($var) ?>%</span></td>
         <td class="r mono" style="font-weight:600;color:<?= $tasa >= 15 ? 'var(--g)' : ($tasa >= 8 ? 'var(--a)' : 'var(--r)') ?>"><?= number_format($tasa,1) ?>%</td>
     </tr>
@@ -1012,8 +1013,8 @@ $hist_total = array_sum($hist_values);
     <tr style="border-top:2px solid var(--border2)">
         <td style="font-weight:800">TOTAL</td>
         <td class="r mono" style="font-weight:800"><?= (int)$kpi_mes['num'] ?></td>
-        <td class="r mono" style="font-weight:800;color:var(--g)"><?= xf($total_act) ?></td>
-        <td class="r mono" style="font-weight:800;color:var(--t2)"><?= xf($total_ant_sum) ?></td>
+        <td class="r mono emp-cifras" style="font-weight:800;color:var(--g)"><?= xf($total_act) ?></td>
+        <td class="r mono emp-cifras" style="font-weight:800;color:var(--t2)"><?= xf($total_ant_sum) ?></td>
         <td class="r"><span class="var <?= $var_ventas > 0 ? 'up' : ($var_ventas < 0 ? 'dn' : 'eq') ?>"><?= abs($var_ventas) ?>%</span></td>
         <td></td>
     </tr>
@@ -1168,11 +1169,12 @@ $hist_total = array_sum($hist_values);
 <div class="sec" style="margin:0">
     <div class="sec-hdr">
         <div class="sec-title">Asesores</div>
+        <label style="display:flex;align-items:center;gap:4px;font:500 11px 'Inter',sans-serif;color:var(--t3);cursor:pointer"><input type="checkbox" onchange="toggleAsesorVentas(this.checked)" style="cursor:pointer"> Ocultar ventas</label>
         <div class="sec-count"><?= count($asesores) ?> activos</div>
     </div>
     <div class="tbl-card" style="max-height:350px;overflow-y:auto">
     <table>
-    <thead><tr><th>Asesor</th><th class="r">Ventas</th><th class="r">Score</th></tr></thead>
+    <thead><tr><th>Asesor</th><th class="r asesor-ventas">Ventas</th><th class="r">Score</th></tr></thead>
     <tbody>
     <?php foreach ($asesores as $a):
         $ec = $empresas_cfg[(int)$a['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
@@ -1187,11 +1189,11 @@ $hist_total = array_sum($hist_values);
                 <span class="tag" style="background:<?= $ec['color'] ?>;font-size:8px;min-width:28px;padding:3px 6px"><?= $ec['short'] ?></span>
                 <div>
                     <div style="font-weight:600;font-size:13px"><?= e($a['nombre']) ?></div>
-                    <div style="font-size:11px;color:var(--t3)"><?= xf((float)$vad['monto']) ?></div>
+                    <div class="asesor-ventas" style="font-size:11px;color:var(--t3)"><?= xf((float)$vad['monto']) ?></div>
                 </div>
             </div>
         </td>
-        <td class="r mono" style="font-weight:700"><?= (int)$vad['num'] ?></td>
+        <td class="r mono asesor-ventas" style="font-weight:700"><?= (int)$vad['num'] ?></td>
         <td class="r">
             <div class="score-wrap" style="justify-content:flex-end">
                 <div class="score-bar"><div class="score-fill" style="width:<?= $score ?>%;background:<?= $nc ?>"></div></div>
@@ -1837,6 +1839,16 @@ let empChartInstance = null;
 function toggleEmpChart(btn) {
     btn.classList.toggle('on');
     rebuildEmpChart();
+}
+function toggleAsesorVentas(hide) {
+    document.querySelectorAll('.asesor-ventas').forEach(function(el) {
+        el.style.display = hide ? 'none' : '';
+    });
+}
+function toggleEmpCifras(hide) {
+    document.querySelectorAll('.emp-cifras').forEach(function(el) {
+        el.style.display = hide ? 'none' : '';
+    });
 }
 function toggleMetric(btn) {
     btn.classList.toggle('on');
