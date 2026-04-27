@@ -624,9 +624,7 @@ class ActividadScore
         }
 
         // Penalizaciones ratio-based — escaladas con sqrt(1/close_rate)
-        // sqrt modera: CR=0.10 → ×3.2 (no ×10), CR=0.50 → ×1.4, CR=0.02 → ×7.1
         $sqrt_inv_cr = sqrt(1.0 / $close_rate_safe);
-        $pen_vencidas = ($vencidas_sin_accion / $asignadas_validas) * $sqrt_inv_cr;
         $pen_zona_muerta = ($zona_muerta / $asignadas_validas) * $sqrt_inv_cr;
 
         // Volumen sin resultado: déficit vs benchmark de la empresa
@@ -636,7 +634,7 @@ class ActividadScore
             $pen_volumen_sin_cierre = $deficit * ($cot_vistas / $asignadas_validas);
         }
 
-        $pen_conversion = min($pen_vencidas + $pen_zona_muerta + $pen_volumen_sin_cierre, 1.0);
+        $pen_conversion = min($pen_zona_muerta + $pen_volumen_sin_cierre, 1.0);
 
         // Tendencia de volumen: ¿vendes más o menos que antes?
         // 1.0 = igual o mejor, 0.0 = cero ventas con benchmark alto
