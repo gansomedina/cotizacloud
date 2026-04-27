@@ -1729,9 +1729,10 @@ class Radar
             $bc = (int)DB::val("SELECT COUNT(*) FROM cotizaciones c WHERE c.empresa_id=? AND c.total>=? $mc AND estado IN ('aceptada','convertida')", $params_c);
             $b['total'] = $bt;
             $b['cerradas'] = $bc;
-            $b['tasa_cierre'] = $bt > 0 ? round($bc / $bt, 4) : $base;
+            $b['tasa_cierre'] = $bt > 0 ? round($bc / $bt, 4) : 0;
         }
         unset($b);
+        $bandas = array_values(array_filter($bandas, fn($b) => $b['total'] > 0));
 
         DB::execute("UPDATE radar_fit_calibracion SET activa=0 WHERE empresa_id=?", [$empresa_id]);
         DB::execute(
