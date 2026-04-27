@@ -363,7 +363,8 @@ class Radar
                     "SELECT DISTINCT us.device_sig FROM user_sessions us
                      JOIN usuarios u ON u.id = us.usuario_id
                      WHERE (u.empresa_id = ? OR u.rol = 'superadmin')
-                       AND us.device_sig IS NOT NULL AND us.device_sig != ''",
+                       AND us.device_sig IS NOT NULL AND us.device_sig != ''
+                       AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)",
                     [$empresa_id]
                 ) as $r) {
                     $intern_dsig[$r['device_sig']] = true;
