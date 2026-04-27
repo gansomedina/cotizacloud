@@ -1913,7 +1913,11 @@ class Radar
         $row = $row ?? ['ventas' => 0, 'scroll_avg' => null, 'vis_avg' => null];
         $ventas = (int)($row['ventas'] ?? 0);
         if ($ventas < 3) {
-            $result = ['scroll' => 85, 'vis_ms' => 45000, 'ventas' => $ventas, 'auto' => false];
+            $cfg = self::config($empresa_id);
+            $modo = $cfg['sensibilidad'] ?? 'medio';
+            $def_scroll = match($modo) { 'agresivo' => 60, 'ligero' => 80, default => 70 };
+            $def_vis    = match($modo) { 'agresivo' => 20000, 'ligero' => 35000, default => 25000 };
+            $result = ['scroll' => $def_scroll, 'vis_ms' => $def_vis, 'ventas' => $ventas, 'auto' => false];
         } else {
             $result = [
                 'scroll' => max(50, min(95, (int)$row['scroll_avg'])),
