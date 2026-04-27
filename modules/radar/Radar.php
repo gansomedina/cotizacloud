@@ -1609,7 +1609,7 @@ class Radar
             "SELECT c.id, c.estado, c.total,
                     COUNT(qs.id) AS num_sess,
                     COUNT(DISTINCT qs.ip) AS num_ips,
-                    DATEDIFF(MAX(qs.created_at), MIN(qs.created_at)) AS gap_d
+                    DATEDIFF(MAX(qs.created_at), MIN(qs.created_at)) AS span_d
              FROM cotizaciones c
              LEFT JOIN quote_sessions qs ON qs.cotizacion_id = c.id
              WHERE c.empresa_id=? AND c.estado NOT IN ('borrador') AND c.suspendida = 0
@@ -1629,7 +1629,7 @@ class Radar
 
             $bs = self::bk_sess($sess);
             $bi = self::bk_ips((int)$c['num_ips']);
-            $bg = self::bk_gap($c['gap_d'] !== null ? (int)$c['gap_d'] : null);
+            $bg = self::bk_gap($c['span_d'] !== null ? (int)$c['span_d'] : null);
             $bk_sess[$bs] = ($bk_sess[$bs] ?? [0,0]); $bk_sess[$bs][0]++; if ($closed) $bk_sess[$bs][1]++;
             $bk_ips[$bi]  = ($bk_ips[$bi]  ?? [0,0]); $bk_ips[$bi][0]++;  if ($closed) $bk_ips[$bi][1]++;
             $bk_gap[$bg]  = ($bk_gap[$bg]  ?? [0,0]); $bk_gap[$bg][0]++;  if ($closed) $bk_gap[$bg][1]++;
