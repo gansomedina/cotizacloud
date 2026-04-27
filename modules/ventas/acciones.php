@@ -286,6 +286,27 @@ elseif ($accion === 'cliente') {
     json_ok(['nombre' => $cli['nombre']]);
 }
 
+elseif ($accion === 'vendedor') {
+    if (!Auth::es_admin()) json_error('Solo administradores', 403);
+
+    $nuevo_vendedor_id = (int)($body['vendedor_id'] ?? 0);
+    if (!$nuevo_vendedor_id) json_error('vendedor_id requerido');
+
+    $usr = DB::row("SELECT id, nombre FROM usuarios WHERE id=? AND empresa_id=? AND activo=1", [$nuevo_vendedor_id, $empresa_id]);
+    if (!$usr) json_error('Usuario no encontrado');
+
+    $anterior = DB::val("SELECT COALESCE(u.nombre, '—') FROM ventas v LEFT JOIN usuarios u ON u.id = v.vendedor_id WHERE v.id=?", [$venta_id]);
+
+    DB::execute("UPDATE ventas SET vendedor_id=?, updated_at=NOW() WHERE id=?", [$nuevo_vendedor_id, $venta_id]);
+
+    if ($venta['cotizacion_id']) {
+        DB::execute("UPDATE cotizaciones SET vendedor_id=?, updated_at=NOW() WHERE id=?", [$nuevo_vendedor_id, $venta['cotizacion_id']]);
+    }
+
+    VentaLog::registrar($venta_id, $empresa_id, 'vendedor_cambiado', ($anterior ?: '—') . ' → ' . $usr['nombre'], Auth::id());
+    json_ok(['nombre' => $usr['nombre']]);
+}
+
 
 else {
     json_error('Acción no reconocida: ' . $accion, 404);

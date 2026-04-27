@@ -109,13 +109,13 @@ ob_start();
 ?>
 <style>
 /* ── OVERRIDE TAILWIND PREFLIGHT ── */
-html { font-size: 16px !important; }
-body { font-size: 16px !important; font-family: var(--body) !important; }
+html { font-size: 16px !important; overflow-x: hidden; }
+body { font-size: 16px !important; font-family: var(--body) !important; overflow-x: hidden; }
 *, *::before, *::after { box-sizing: border-box; }
 
 /* ── LAYOUT ── */
-.detail-layout{display:flex;gap:20px;align-items:flex-start}
-.col-main{flex:1;min-width:0}
+.detail-layout{display:flex;gap:20px;align-items:flex-start;max-width:100%;overflow:hidden}
+.col-main{flex:1;min-width:0;max-width:100%}
 .col-side{width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;position:sticky;top:72px;max-height:calc(100vh - 90px);overflow-y:auto}
 @media(max-width:900px){.detail-layout{flex-direction:column}.col-side{width:100%;position:static;max-height:none;overflow-y:visible}}
 @media(max-width:768px){
@@ -163,9 +163,9 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
 .item-hdr span{font:700 10px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
 .item-row{display:grid;grid-template-columns:1fr 56px 80px 80px;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border);align-items:start}
 .item-row:last-child{border-bottom:none}
-.item-name{font:600 15px var(--body);line-height:1.3}
+.item-name{font:600 15px var(--body);line-height:1.3;word-break:break-word}
 .item-sku{font:400 11px var(--num);color:var(--t3);margin-top:2px}
-.item-desc{font:400 13px var(--body);color:var(--t3);margin-top:4px;line-height:1.5;white-space:pre-line}
+.item-desc{font:400 13px var(--body);color:var(--t3);margin-top:4px;line-height:1.5;white-space:pre-line;word-break:break-word}
 .item-cell{text-align:right;font:400 13px var(--num);color:var(--t2);padding-top:2px}
 .item-total{text-align:right;font:700 13px var(--num);color:var(--g);padding-top:2px}
 .item-add-btn{width:100%;padding:13px;border:none;background:transparent;font:600 14px var(--body);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .12s;border-top:1.5px dashed var(--border2)}
@@ -467,10 +467,21 @@ body { font-size: 16px !important; font-family: var(--body) !important; }
         <div class="meta-lbl">Fecha</div>
         <div class="meta-val"><?= date('d M Y', strtotime($venta['created_at'])) ?></div>
       </div>
-      <!-- Punto 3: asesor de cotización, no de venta -->
       <div class="meta-item">
         <div class="meta-lbl">Asesor</div>
+        <?php if (Auth::es_admin()): ?>
+        <select id="vendedor-sel" style="font:600 14px var(--body);color:var(--text);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 8px;background:var(--white);cursor:pointer" onchange="cambiarVendedor(this.value)">
+          <?php
+          $vendedor_actual = (int)($venta['vendedor_id'] ?? $venta['usuario_id'] ?? 0);
+          $usuarios_emp = DB::query("SELECT id, nombre FROM usuarios WHERE empresa_id=? AND activo=1 ORDER BY nombre", [$empresa_id]);
+          foreach ($usuarios_emp as $ue):
+          ?>
+          <option value="<?= (int)$ue['id'] ?>" <?= (int)$ue['id'] === $vendedor_actual ? 'selected' : '' ?>><?= e($ue['nombre']) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <?php else: ?>
         <div class="meta-val"><?= e($venta['asesor_nombre'] ?: ($empresa['nombre'] ?? '—')) ?></div>
+        <?php endif; ?>
       </div>
       <?php if ($venta['cot_numero']): ?>
       <div class="meta-item">
@@ -1595,6 +1606,21 @@ function guardarNotas(){
     const notas=document.getElementById('notas-txt').value;
     await fetch('/ventas/'+VENTA_ID+'/notas',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:JSON.stringify({notas_internas:notas})});
   },800);
+}
+async function cambiarVendedor(uid) {
+    try {
+        const r = await fetch('/ventas/'+VENTA_ID+'/vendedor',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+            body:JSON.stringify({vendedor_id:parseInt(uid)})
+        });
+        const d = await r.json();
+        if (d.ok) {
+            var sel = document.getElementById('vendedor-sel');
+            sel.style.borderColor = 'var(--g)';
+            setTimeout(function(){ sel.style.borderColor = 'var(--border)'; }, 1500);
+        }
+    } catch(e) {}
 }
 </script>
 <?php
