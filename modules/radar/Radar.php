@@ -997,6 +997,10 @@ class Radar
         // Persistencia: sessions ≥ 2 o gap ≥ 1d
         // Social: multi-IP, multi-visitor (no se endurece — respeta al comprador solo)
 
+        // Variables de PC — inicializar antes del bloque condicional (PHP 8.1+ compat)
+        $cat_engagement = $cat_precio = $cat_persistencia = $cat_social = false;
+        $cat_count = 0; $has_strong_cat = false;
+
         // Buckets que califican como alta intención
         $pc_qualifying = ['onfire','inminente','validando_precio','decision_activa',
                           're_enganche_caliente','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
@@ -1282,6 +1286,7 @@ class Radar
             'decision_activa'       => 'decision_window_h',
             're_enganche_caliente'  => 'reeng_recent_hours',
             're_enganche'           => 'reeng_recent_hours',
+            'lectura_comprometida'  => 'engage_recent_hours',
             'multi_persona'         => 'multip_recent_hours',
             'revision_profunda'     => 'deep_recent_hours',
             'vistas_multiples'      => 'multi_recent_hours',
@@ -1451,12 +1456,17 @@ class Radar
 
     public static function recalcular_empresa(int $empresa_id): int
     {
-        // Auto-suspender cotizaciones si la empresa lo tiene activo
         self::auto_suspender($empresa_id);
 
         $cots = DB::query("SELECT id FROM cotizaciones WHERE empresa_id=? AND estado IN ('enviada','vista','aceptada') AND suspendida = 0", [$empresa_id]);
-        foreach ($cots as $c) self::recalcular((int)$c['id'], $empresa_id);
-        return count($cots);
+        $count = 0;
+        $start = time();
+        foreach ($cots as $c) {
+            self::recalcular((int)$c['id'], $empresa_id);
+            $count++;
+            if (time() - $start > 120) break;
+        }
+        return $count;
     }
 
     /**

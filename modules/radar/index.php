@@ -47,7 +47,7 @@ $_icons_missing = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND radar_bucket IS NOT NULL AND (radar_senales IS NULL OR radar_senales NOT LIKE '%\"icons\"%')",
     [$empresa_id]
 );
-if (!$ult || $ult < date('Y-m-d H:i:s', time()-60) || $_icons_missing > 0 || $debug_mode) {
+if (!$ult || $ult < date('Y-m-d H:i:s', time()-300) || $_icons_missing > 0) {
     try { Radar::check_auto_calibrar($empresa_id); Radar::recalcular_empresa($empresa_id); } catch(Throwable $e){}
 }
 
@@ -718,7 +718,8 @@ function render_comp_row($cv, $empresa_id, $tipo) {
         "SELECT cl.nombre AS cliente,
                 SUBSTRING_INDEX(GROUP_CONCAT(c.titulo ORDER BY qs.created_at DESC SEPARATOR '|||'), '|||', 1) AS cotizacion,
                 MAX(qs.created_at) AS ultima_vista,
-                COUNT(DISTINCT c.id) AS num_cots
+                COUNT(DISTINCT c.id) AS num_cots,
+                SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT SUBSTRING(qs.user_agent, 1, 120) SEPARATOR '|||'), '|||', 5) AS ua_list
          FROM quote_sessions qs
          JOIN cotizaciones c ON c.id = qs.cotizacion_id
          LEFT JOIN clientes cl ON cl.id = c.cliente_id
@@ -729,27 +730,18 @@ function render_comp_row($cv, $empresa_id, $tipo) {
          ORDER BY ultima_vista DESC",
         [$param_val, $empresa_id]
     );
-    $cv_devs = DB::query(
-        "SELECT DISTINCT SUBSTRING(qs.user_agent, 1, 120) AS ua
-         FROM quote_sessions qs
-         JOIN cotizaciones c ON c.id = qs.cotizacion_id
-         WHERE {$where_main} = ? AND c.empresa_id = ?
-           AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
-         LIMIT 5",
-        [$param_val, $empresa_id]
-    );
     $devices = [];
-    foreach ($cv_devs as $d) {
-        $ua = $d['ua'];
-        if (str_contains($ua, 'iPhone')) $devices[] = 'iPhone';
-        elseif (str_contains($ua, 'Android')) $devices[] = 'Android';
-        elseif (str_contains($ua, 'iPad')) $devices[] = 'iPad';
-        elseif (str_contains($ua, 'Mac')) $devices[] = 'Mac';
-        elseif (str_contains($ua, 'Windows')) $devices[] = 'Windows';
-        else $devices[] = 'Otro';
+    foreach ($cv_detail as $d) {
+        foreach (explode('|||', $d['ua_list'] ?? '') as $ua) {
+            if (str_contains($ua, 'iPhone')) $devices['iPhone'] = true;
+            elseif (str_contains($ua, 'Android')) $devices['Android'] = true;
+            elseif (str_contains($ua, 'iPad')) $devices['iPad'] = true;
+            elseif (str_contains($ua, 'Mac')) $devices['Mac'] = true;
+            elseif (str_contains($ua, 'Windows')) $devices['Windows'] = true;
+            elseif ($ua !== '') $devices['Otro'] = true;
+        }
     }
-    $devices = array_unique($devices);
-    $dev_str = implode(', ', $devices);
+    $dev_str = implode(', ', array_keys($devices));
     $dev_count = count($devices);
     $safe_key = htmlspecialchars($key, ENT_QUOTES);
     $dismiss_tipo = $tipo;
@@ -1061,7 +1053,8 @@ render_bkt('🟠 Comparando / Compartiendo (señal exclusiva)',
 // Enfriándose con motivo
 $cooling = $buckets['enfriandose'];
 foreach ($cooling as &$cr) {
-    $keys = is_array($cr['senales']) ? array_keys($cr['senales']) : [];
+    $sn_data = $cr['senales']['senales'] ?? $cr['senales'] ?? [];
+    $keys = is_array($sn_data) ? array_keys($sn_data) : [];
     $with_p = array_intersect(['price_loop','tot_rev','tot_view','cupon','sv_price','mv_price'], $keys);
     $cr['reason'] = count($with_p) ? '💸 con precio' : '🧊 sin precio';
 }
@@ -1102,7 +1095,7 @@ render_bkt('🟡 Activos 48h (todos los activos)',
     <?php foreach ($rows_all as $r):
       $ago2=time()-$r['last_ts'];
       $rc=$ago2<1800?'hot30':($ago2<14400?'hot4h':'');
-      $ab=$r['accepted']?"<span class='bok'>ACCEPTED</span>":"<span class='bno'>".$r['estado']."</span>";
+      $ab=$r['accepted']?"<span class='bok'>ACCEPTED</span>":"<span class='bno'>".htmlspecialchars($r['estado'])."</span>";
     ?>
     <tr class="<?= $rc ?>" onclick="window.location='/cotizaciones/<?= (int)$r['id'] ?>'">
       <?php
