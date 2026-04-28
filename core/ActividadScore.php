@@ -1140,8 +1140,8 @@ class ActividadScore
         $mom  = (float)($s['momentum'] ?? 1);
         $score = (int)($s['score'] ?? 0);
         $vsp = (int)($s['ventas_sin_pago'] ?? 0);
-        $h_up = (int)($s['health_up'] ?? 0);
-        $h_down = (int)($s['health_down'] ?? 0);
+        $h_up = (int)($s['health_up'] ?? $s['transiciones_up'] ?? 0);
+        $h_down = (int)($s['health_down'] ?? $s['senales_ignoradas'] ?? 0);
         $nab = (int)($s['no_abiertas_5d'] ?? 0);
         $vt_diag = (int)($s['ventas_periodo'] ?? $s['ventas_totales'] ?? 0);
         $bv_diag = (float)($s['bench_ventas'] ?? 0);
