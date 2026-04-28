@@ -1059,9 +1059,54 @@ class ActividadScore
         $periodo = self::PERIODO;
         $total = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0 AND suspendida=0 AND estado != 'borrador' AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)", [$empresa_id, $periodo]);
         $cerr = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado IN ('aceptada','convertida') AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND total > 0", [$empresa_id, $periodo]);
+
+        $mes_actual = (int)date('n');
+        $anio_actual = (int)date('Y');
+
+        // Promedio 12 meses y mismo mes año anterior
+        $hist = DB::query(
+            "SELECT anio, mes, ventas_cantidad, ventas_monto, tasa_cierre
+             FROM historial_mensual WHERE empresa_id=?
+             ORDER BY anio DESC, mes DESC LIMIT 24",
+            [$empresa_id]
+        );
+        $avg_ventas = 0; $avg_monto = 0; $avg_cierre = 0; $meses_count = 0;
+        $mismo_mes_ventas = null; $mismo_mes_monto = null; $mismo_mes_cierre = null;
+        $mes_anterior_ventas = null; $mes_anterior_monto = null;
+        foreach ($hist as $h) {
+            $a = (int)$h['anio']; $m = (int)$h['mes'];
+            if ($meses_count < 12 && !($a === $anio_actual && $m === $mes_actual)) {
+                $avg_ventas += (int)$h['ventas_cantidad'];
+                $avg_monto += (float)$h['ventas_monto'];
+                $avg_cierre += (float)$h['tasa_cierre'];
+                $meses_count++;
+            }
+            if ($a === $anio_actual - 1 && $m === $mes_actual && $mismo_mes_ventas === null) {
+                $mismo_mes_ventas = (int)$h['ventas_cantidad'];
+                $mismo_mes_monto = (float)$h['ventas_monto'];
+                $mismo_mes_cierre = (float)$h['tasa_cierre'];
+            }
+            $mes_ant = $mes_actual - 1 ?: 12;
+            $anio_ant = $mes_actual === 1 ? $anio_actual - 1 : $anio_actual;
+            if ($a === $anio_ant && $m === $mes_ant && $mes_anterior_ventas === null) {
+                $mes_anterior_ventas = (int)$h['ventas_cantidad'];
+                $mes_anterior_monto = (float)$h['ventas_monto'];
+            }
+        }
+        if ($meses_count > 0) { $avg_ventas = round($avg_ventas / $meses_count, 1); $avg_monto = round($avg_monto / $meses_count); $avg_cierre = round($avg_cierre / $meses_count, 1); }
+
         return [
-            'close_rate' => $total > 0 ? $cerr / $total : 0.10,
-            'team_size'  => $team_size,
+            'close_rate'         => $total > 0 ? $cerr / $total : 0.10,
+            'team_size'          => $team_size,
+            'avg_ventas_mes'     => $avg_ventas,
+            'avg_monto_mes'      => $avg_monto,
+            'avg_cierre'         => $avg_cierre,
+            'mismo_mes_ventas'   => $mismo_mes_ventas,
+            'mismo_mes_monto'    => $mismo_mes_monto,
+            'mismo_mes_cierre'   => $mismo_mes_cierre,
+            'mes_anterior_ventas'=> $mes_anterior_ventas,
+            'mes_anterior_monto' => $mes_anterior_monto,
+            'mes_nombre'         => ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][$mes_actual],
         ];
     }
 
@@ -1091,6 +1136,14 @@ class ActividadScore
         $bv_diag = (float)($s['bench_ventas'] ?? 0);
         $bench_cr = (float)($ctx['close_rate'] ?? 0);
         $team_size = (int)($ctx['team_size'] ?? 1);
+        $avg_ventas_mes = (float)($ctx['avg_ventas_mes'] ?? 0);
+        $avg_monto_mes = (float)($ctx['avg_monto_mes'] ?? 0);
+        $avg_cierre_hist = (float)($ctx['avg_cierre'] ?? 0);
+        $mismo_mes_v = $ctx['mismo_mes_ventas'] ?? null;
+        $mismo_mes_m = $ctx['mismo_mes_monto'] ?? null;
+        $mes_ant_v = $ctx['mes_anterior_ventas'] ?? null;
+        $mes_ant_m = $ctx['mes_anterior_monto'] ?? null;
+        $mes_nombre = $ctx['mes_nombre'] ?? '';
         $rot = (((int)($s['usuario_id'] ?? 0)) + (int)date('j')) % 3;
 
         if (($s['nivel'] ?? '') === 'nuevo') return 'Recopilando información — score en proceso de activación.';
@@ -1127,7 +1180,7 @@ class ActividadScore
             $frases[] = $v[$rot];
         }
 
-        // ═══ BLOQUE 2: CIERRES — con comparación ═══
+        // ═══ BLOQUE 2: CIERRES — con comparación histórica ═══
         $fb_calientes = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
         $fb_dados = (int)($s['fb_total'] ?? $s['radar_views'] ?? 0);
         if ($fb_calientes > 0 && $fb_dados > $fb_calientes) $fb_dados = $fb_calientes;
@@ -1142,19 +1195,23 @@ class ActividadScore
             $frases[] = "Sin ventas cerradas en el período";
         } elseif ($cierres > 0) {
             $frases[] = "$cierres de $vist, cierre del $tasa_cierre_pct%";
+            // Comparación: empresa (multi) o historial (solo)
             if ($team_size >= 2 && $bench_cr > 0) {
-                if ($tasa_cierre_real > $bench_cr * 1.2) {
-                    $frases[] = "Arriba del {$bench_cr_pct}% de la empresa";
-                } elseif ($tasa_cierre_real < $bench_cr * 0.8) {
-                    $frases[] = "Por debajo del {$bench_cr_pct}% de la empresa";
+                if ($tasa_cierre_real > $bench_cr * 1.2) $frases[] = "Arriba del {$bench_cr_pct}% de la empresa";
+                elseif ($tasa_cierre_real < $bench_cr * 0.8) $frases[] = "Por debajo del {$bench_cr_pct}% de la empresa";
+            }
+            // Comparación: mismo mes año anterior
+            if ($mismo_mes_v !== null && $mismo_mes_v > 0 && $avg_ventas_mes > 0) {
+                $ventas_emp_actual = $vt_diag * $team_size;
+                if ($ventas_emp_actual < $mismo_mes_v * 0.7) {
+                    $frases[] = "$mes_nombre del año pasado la empresa cerró $mismo_mes_v ventas";
+                } elseif ($ventas_emp_actual > $mismo_mes_v * 1.3) {
+                    $frases[] = "Arriba de $mes_nombre del año pasado ($mismo_mes_v ventas)";
                 }
-            } elseif ($bv_diag > 0) {
-                $bv_int = (int)round($bv_diag);
-                if ($vt_diag < $bv_diag) {
-                    $frases[] = "$vt_diag venta" . ($vt_diag !== 1 ? 's' : '') . " vs $bv_int del período anterior";
-                } elseif ($vt_diag > $bv_diag) {
-                    $frases[] = "Arriba del período anterior ($bv_int venta" . ($bv_int !== 1 ? 's' : '') . ")";
-                }
+            }
+            // Comparación: promedio histórico
+            if ($avg_cierre_hist > 0 && $tasa_cierre_pct < $avg_cierre_hist * 0.7) {
+                $frases[] = "El promedio de cierre de la empresa es " . round($avg_cierre_hist) . "%";
             }
             if ($cbkt > 0) $frases[] = "$cbkt con apoyo del Radar";
         }
