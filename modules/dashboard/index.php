@@ -471,7 +471,7 @@ ob_start();
 .thermo-bar{flex:1;height:4px;border-radius:2px;background:var(--border)}
 .thermo-bar-fill{height:100%;border-radius:2px;transition:width .4s}
 .thermo-bar-lbl{font:500 9px var(--body);color:var(--t3);margin-top:2px;text-align:center}
-.thermo-diag{font:400 12px var(--body);color:var(--t3);margin-top:8px;line-height:1.4}
+.thermo-diag{font:400 14px var(--body);color:var(--t2);margin-top:10px;line-height:1.6}
 @media(max-width:600px){.thermo{flex-direction:column;text-align:center;gap:10px}.thermo-bars{justify-content:center}}
 
 /* LEADERBOARD */
@@ -488,7 +488,7 @@ ob_start();
 .lb-rank-3{color:#cd7f32}
 .lb-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 11px var(--body);color:#fff}
 .lb-name{font:600 13px var(--body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.lb-diag{font:400 11px var(--body);color:var(--t3);white-space:normal;line-height:1.3;margin-top:2px}
+.lb-diag{font:400 13px var(--body);color:var(--t2);white-space:normal;line-height:1.5;margin-top:4px}
 .lb-stats{display:grid;grid-template-columns:repeat(4,52px);gap:4px}
 .lb-stat{text-align:center}
 .lb-stat-val{font:700 12px var(--num);display:block}

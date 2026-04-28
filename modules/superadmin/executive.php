@@ -6,6 +6,7 @@
 // ============================================================
 defined('COTIZAAPP') or die;
 Auth::requerir_superadmin();
+require_once BASE_PATH . '/core/ActividadScore.php';
 
 // ─── Empresas monitoreadas ──────────────────────────────────
 $empresas_cfg = [
@@ -1178,12 +1179,20 @@ $hist_total = array_sum($hist_values);
     <table>
     <thead><tr><th>Asesor</th><th class="r asesor-ventas">Ventas</th><th class="r">Score</th></tr></thead>
     <tbody>
-    <?php foreach ($asesores as $a):
+    <?php
+    $exec_diag_ctx = [];
+    foreach ($asesores as $a):
         $ec = $empresas_cfg[(int)$a['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
         $vad = $va_asesor[(int)$a['id']] ?? ['num'=>0,'monto'=>0];
         $score = (int)($a['score'] ?? 0);
         $nivel = $a['nivel'] ?? 'nuevo';
         $nc = match($nivel) { 'top'=>'var(--g)', 'activo'=>'var(--b)', 'regular'=>'var(--a)', 'bajo'=>'var(--r)', default=>'var(--t3)' };
+        $eid_a = (int)$a['empresa_id'];
+        if (!isset($exec_diag_ctx[$eid_a])) {
+            $team_a = 0; foreach ($asesores as $aa) { if ((int)$aa['empresa_id'] === $eid_a) $team_a++; }
+            $exec_diag_ctx[$eid_a] = ActividadScore::diagnostico_ctx($eid_a, $team_a);
+        }
+        $a_diag = ActividadScore::diagnostico($a, $exec_diag_ctx[$eid_a]);
     ?>
     <tr>
         <td>
@@ -1203,6 +1212,7 @@ $hist_total = array_sum($hist_values);
             </div>
         </td>
     </tr>
+    <tr><td colspan="3" style="padding:4px 16px 12px;font:400 12px var(--body);color:var(--t2);line-height:1.5;border-bottom:2px solid var(--border)"><?= e($a_diag) ?></td></tr>
     <?php endforeach; ?>
     </tbody>
     </table>
