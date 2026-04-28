@@ -1223,9 +1223,10 @@ class ActividadScore
         }
 
         // ═══ 4. PIPELINE ═══
-        if ($h_down > $h_up && $h_down > 2) {
+        $h_ratio = ($h_up + $h_down) > 0 ? $h_down / ($h_up + $h_down) : 0.5;
+        if ($h_down > $h_up && $h_down > 2 && $h_ratio > 0.55) {
             if ($score >= 75) {
-                $v = ["El Radar muestra clientes con actividad a la baja — revísalos para no perder el ritmo. Sigue cotizando.", "Tienes clientes enfriándose en el Radar. Si los atiendes a tiempo, sostienes el flujo de cierre. Cotiza más para reponer."];
+                $v = ["El Radar muestra clientes con actividad a la baja — revísalos para no perder el ritmo.", "Tienes clientes enfriándose en el Radar. Si los atiendes a tiempo, sostienes el flujo de cierre."];
             } elseif ($score >= 70) {
                 $v = ["$h_down clientes bajando de actividad contra $h_up que regresaron. El Radar los tiene identificados — esa diferencia se va a reflejar en los cierres si no les das seguimiento.", "Se están enfriando más clientes de los que recuperas. Revisa el Radar antes de que los pierdas."];
             } else {
