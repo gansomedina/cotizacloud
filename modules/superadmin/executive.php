@@ -6,7 +6,6 @@
 // ============================================================
 defined('COTIZAAPP') or die;
 Auth::requerir_superadmin();
-require_once BASE_PATH . '/core/ActividadScore.php';
 
 // ─── Empresas monitoreadas ──────────────────────────────────
 $empresas_cfg = [
