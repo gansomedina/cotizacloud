@@ -1223,18 +1223,22 @@ class ActividadScore
         }
 
         // ═══ 4. PIPELINE ═══
-        $h_ratio = ($h_up + $h_down) > 0 ? $h_down / ($h_up + $h_down) : 0.5;
-        if ($h_down > $h_up && $h_down > 2 && $h_ratio > 0.55) {
-            if ($score >= 75) {
+        $h_diff = $h_down - $h_up;
+        if ($h_down > $h_up && $h_down > 2) {
+            if ($h_diff <= 5) {
+                $frases[] = "El Radar muestra un ligero desbalance en tu cartera — más clientes bajando que subiendo. Revísalos.";
+            } elseif ($score >= 75) {
                 $v = ["El Radar muestra clientes con actividad a la baja — revísalos para no perder el ritmo.", "Tienes clientes enfriándose en el Radar. Si los atiendes a tiempo, sostienes el flujo de cierre."];
+                $frases[] = $v[$rot % count($v)];
             } elseif ($score >= 70) {
-                $v = ["$h_down clientes bajando de actividad contra $h_up que regresaron. El Radar los tiene identificados — esa diferencia se va a reflejar en los cierres si no les das seguimiento.", "Se están enfriando más clientes de los que recuperas. Revisa el Radar antes de que los pierdas."];
+                $v = ["$h_down clientes bajando de actividad contra $h_up que regresaron. Revisa el Radar para identificar a los que aún tienen movimiento.", "Se están enfriando más clientes de los que recuperas. Revisa el Radar."];
+                $frases[] = $v[$rot % count($v)];
             } else {
-                $v = ["$h_down clientes bajando de actividad, $h_up regresaron. La cartera se está enfriando. Esto impacta directamente las ventas.", "Más clientes perdiendo interés que regresando. Los números lo reflejan. Revisa el Radar."];
+                $v = ["$h_down clientes bajando de actividad, $h_up regresaron. La cartera se está enfriando. Revisa el Radar.", "Más clientes perdiendo interés que regresando. Revisa el Radar."];
+                $frases[] = $v[$rot % count($v)];
             }
-            $frases[] = $v[$rot % count($v)];
         } elseif ($h_up > $h_down && $h_up >= 3) {
-            $frases[] = "$h_up clientes con actividad en aumento en el Radar — buen momento para darles seguimiento.";
+            $frases[] = "$h_up clientes con actividad en aumento en el Radar.";
         }
 
         // ═══ 5. SIN ABRIR / DORMIDAS ═══
