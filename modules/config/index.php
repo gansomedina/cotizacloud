@@ -9,7 +9,7 @@ defined('COTIZAAPP') or die;
 Auth::requerir_admin();
 
 $empresa_id = EMPRESA_ID;
-$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing','historial','suscripcion'])
+$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing','historial','termometro','suscripcion'])
     ? $_GET['tab'] : 'empresa';
 
 // Usuarios solo disponible en plan Business
@@ -345,6 +345,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <?php if ($plan_info['es_business']): ?>
     <a class="cfg-tab <?= $tab_activo==='marketing' ?'on':'' ?>" href="/config?tab=marketing">Marketing</a>
     <a class="cfg-tab <?= $tab_activo==='historial' ?'on':'' ?>" href="/config?tab=historial">Historial</a>
+    <a class="cfg-tab <?= $tab_activo==='termometro' ?'on':'' ?>" href="/config?tab=termometro">Termómetro</a>
     <?php endif; ?>
     <a class="cfg-tab <?= $tab_activo==='suscripcion'?'on':'' ?>" href="/config?tab=suscripcion" id="tab-suscripcion-link">Suscripción</a>
   </div>
@@ -2141,6 +2142,36 @@ async function eliminarHistorial(id, btn) {
     } catch(e) { alert('Error de conexión.'); }
 }
 </script>
+
+<!-- ══ TAB: TERMÓMETRO ══════════════════════════════════════ -->
+<?php if ($plan_info['es_business']): ?>
+<div class="tab-panel <?= $tab_activo==='termometro'?'on':'' ?>" id="panel-termometro">
+<div class="card" style="margin-bottom:16px">
+  <div class="tog-row">
+    <div>
+      <div class="tog-lbl">Mostrar termómetro a los asesores</div>
+      <div class="tog-sub">El score, las frases de diagnóstico y el leaderboard se muestran en el dashboard de cada asesor. Si lo desactivas, solo tú lo ves en el panel ejecutivo.</div>
+    </div>
+    <label class="tog">
+      <input type="checkbox" id="termometro-toggle" <?= !empty($empresa['termometro_visible']) ? 'checked' : '' ?> onchange="guardarTermometro(this.checked)">
+      <span class="tog-track"></span>
+      <span class="tog-thumb"></span>
+    </label>
+  </div>
+</div>
+</div>
+<script>
+async function guardarTermometro(on) {
+    try {
+        await fetch('/config/termometro', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+            body: JSON.stringify({termometro_visible: on ? 1 : 0})
+        });
+    } catch(e) {}
+}
+</script>
+<?php endif; ?>
 
 <!-- ══ TAB: SUSCRIPCIÓN ═════════════════════════════════════ -->
 <div class="tab-panel <?= $tab_activo==='suscripcion'?'on':'' ?>" id="panel-suscripcion">

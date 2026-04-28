@@ -669,7 +669,7 @@ ob_start();
 </div>
 
 <!-- ══ TERMÓMETRO + LEADERBOARD ══ -->
-<?php
+<?php if (!empty($empresa['termometro_visible'])):
 $ts = $mi_score;
 $ts_en_gracia = ($ts['nivel'] ?? '') === 'nuevo' || !empty($ts['en_gracia']);
 
@@ -889,6 +889,7 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
     </div><!-- /lb-body -->
   </div>
 <?php endif; ?>
+<?php endif; // termometro_visible ?>
 
 <!-- ══ KPIs FINANCIEROS ══ -->
 <div class="slabel">Resumen financiero · <?= e($mes_lbl_cap) ?></div>

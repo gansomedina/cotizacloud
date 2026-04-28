@@ -1,0 +1,1 @@
+ALTER TABLE empresas ADD COLUMN termometro_visible TINYINT(1) NOT NULL DEFAULT 1;
