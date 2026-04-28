@@ -1084,48 +1084,48 @@ class ActividadScore
 
         $frases = [];
 
-        // ── ACTIVACIÓN — qué pasa con las cotizaciones enviadas ──
+        // ── ENTREGA ──
         $tasa_ap = $asig > 0 ? $vist / $asig : 0;
         $sin_abrir = $asig - $vist;
         if ($nab > 0) {
-            $frases[] = "$nab cotización" . ($nab > 1 ? 'es llevan' : ' lleva') . " más de 5 días sin abrirse — vale la pena contactar al cliente por otro canal para confirmar que la recibió";
+            $frases[] = "$nab cotización" . ($nab > 1 ? 'es llevan' : ' lleva') . " más de 5 días sin abrirse, contactar al cliente para confirmar que la recibió";
         } elseif ($tasa_ap >= 0.95) {
-            $frases[] = "Excelente entrega — prácticamente todas las cotizaciones llegan al cliente";
+            $frases[] = "Todas las cotizaciones llegan al cliente";
         } elseif ($tasa_ap >= 0.80) {
-            $frases[] = "Buena tasa de entrega. $sin_abrir cotización" . ($sin_abrir > 1 ? 'es aún no se abren' : ' aún no se abre') . " — es normal, el cliente puede tardar";
+            $frases[] = "$sin_abrir cotización" . ($sin_abrir > 1 ? 'es' : '') . " aún sin abrir";
         } elseif ($tasa_ap >= 0.50) {
-            $frases[] = "$sin_abrir de $asig cotizaciones no se han abierto — verificar que el canal de envío funcione (WhatsApp, email) o confirmar los datos del cliente";
+            $frases[] = "$sin_abrir de $asig cotizaciones no se han abierto, verificar el envío";
         } else {
-            $frases[] = "La mayoría de las cotizaciones no llegan al cliente — revisar urgentemente el método de envío";
+            $frases[] = "La mayoría de cotizaciones no llegan al cliente, revisar método de envío";
         }
 
-        // ── SEGUIMIENTO — usa el Radar? ──
+        // ── CLIENTES INTERESADOS ──
         $fb_calientes = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
         $fb_dados = (int)($s['fb_total'] ?? $s['radar_views'] ?? 0);
         if ($fb_calientes > 0 && $fb_dados > $fb_calientes) $fb_dados = $fb_calientes;
         if ($ign > 0) {
-            $frases[] = "Tiene $ign señal" . ($ign > 1 ? 'es' : '') . " caliente" . ($ign > 1 ? 's' : '') . " en el Radar sin marcar — abrir el Radar y dar feedback (\"Con interés\" / \"Sin interés\") para que el sistema aprenda";
+            $frases[] = "$ign cliente" . ($ign > 1 ? 's muestran' : ' muestra') . " interés y " . ($ign > 1 ? 'necesitan' : 'necesita') . " seguimiento en el Radar";
         } elseif ($seg >= 0.80) {
-            $frases[] = "Excelente uso del Radar — marca las señales y el sistema aprende de sus decisiones";
+            $frases[] = "Da seguimiento oportuno a los clientes interesados";
         } elseif ($seg >= 0.50) {
-            $frases[] = "Buen uso del Radar, puede mejorar dando feedback más seguido a las cotizaciones calientes";
+            $frases[] = "Seguimiento aceptable, puede mejorar atendiendo más rápido a los clientes interesados";
         } elseif ($fb_calientes > 0) {
-            $frases[] = "Hay $fb_calientes cotizaciones calientes esperando su atención en el Radar";
+            $frases[] = "$fb_calientes cliente" . ($fb_calientes > 1 ? 's están' : ' está') . " mostrando interés y no se les ha dado seguimiento";
         }
 
-        // ── CONVERSIÓN — cierra ventas? ──
+        // ── CIERRES ──
         if ($cierres === 0 && $vist >= 5) {
-            $frases[] = "$vist cotizaciones abiertas y ningún cierre — enfocarse en las que tienen más actividad del cliente en el Radar";
+            $frases[] = "$vist clientes vieron la cotización pero ninguno compró, enfocarse en los que revisaron el precio";
         } elseif ($cierres === 0 && $vist >= 1) {
-            $frases[] = "Aún sin cierres en el período — dar seguimiento personal a las cotizaciones que el cliente ya abrió";
+            $frases[] = "Aún sin ventas cerradas, llamar a los clientes que ya vieron la cotización";
         } elseif ($conv >= 0.70) {
-            $frases[] = "Excelente tasa de cierre: $cierres venta" . ($cierres > 1 ? 's' : '') . " de $vist cotizaciones abiertas";
-            if ($cbkt > 0) $frases[] = "$cbkt cierre" . ($cbkt > 1 ? 's' : '') . " asistido" . ($cbkt > 1 ? 's' : '') . " por el Radar — el seguimiento de señales da resultado";
+            $frases[] = "Excelente: $cierres venta" . ($cierres > 1 ? 's' : '') . " de $vist clientes que vieron la cotización";
+            if ($cbkt > 0) $frases[] = "$cbkt venta" . ($cbkt > 1 ? 's' : '') . " cerrada" . ($cbkt > 1 ? 's' : '') . " gracias al seguimiento del Radar";
         } elseif ($conv >= 0.30) {
-            $frases[] = "$cierres cierre" . ($cierres > 1 ? 's' : '') . " de $vist abiertas — buen ritmo, se puede mejorar dando seguimiento a las cotizaciones con más actividad del cliente";
+            $frases[] = "$cierres venta" . ($cierres > 1 ? 's' : '') . " cerrada" . ($cierres > 1 ? 's' : '') . ", llamar a los clientes que siguen revisando su cotización";
         } else {
             if ($cierres > 0) {
-                $frases[] = "$cierres cierre" . ($cierres > 1 ? 's' : '') . " de $vist abiertas — revisar en el Radar cuáles tienen señales fuertes y priorizarlas";
+                $frases[] = "$cierres venta" . ($cierres > 1 ? 's' : '') . " de $vist clientes, priorizar a los que más revisan su cotización";
             }
         }
 
@@ -1134,41 +1134,41 @@ class ActividadScore
             $bv_int = (int)round($bv_diag);
             $frases[] = "Volumen a la baja: $vt_diag venta" . ($vt_diag !== 1 ? 's' : '') . " vs $bv_int del período anterior";
         } elseif ($bv_diag > 0 && $vt_diag >= $bv_diag * 1.5) {
-            $frases[] = "Volumen en crecimiento — $vt_diag venta" . ($vt_diag !== 1 ? 's' : '') . " vs " . (int)round($bv_diag) . " del período anterior";
+            $frases[] = "Buen ritmo de ventas vs el período anterior";
         }
 
-        // ── ENGAGEMENT — calidad de las ventas ──
+        // ── COBROS Y DESCUENTOS ──
         if ($vsp > 0) {
-            $frases[] = "$vsp venta" . ($vsp > 1 ? 's' : '') . " sin cobrar después de 5 días — dar seguimiento al cobro mejora directamente el score";
+            $frases[] = "$vsp venta" . ($vsp > 1 ? 's' : '') . " sin cobrar, dar seguimiento al pago";
         }
         if ($cierres > 0 && $sdto < $cierres) {
             $con_dto = $cierres - $sdto;
             $pct_dto = round($con_dto / $cierres * 100);
             if ($pct_dto >= 70) {
-                $frases[] = "$pct_dto% de cierres con descuento — intentar cerrar a precio completo cuando sea posible";
+                $frases[] = "$pct_dto% de ventas con descuento";
             }
         }
 
-        // ── PIPELINE — se calienta o se enfría? ──
+        // ── CLIENTES QUE SE ENFRÍAN ──
         if ($h_down > 0 && $h_down > $h_up * 2) {
-            $frases[] = "Pipeline enfriándose: $h_down cotizaciones perdieron temperatura vs $h_up que subieron — dar seguimiento rápido a las que se enfrían antes de que se pierdan";
+            $frases[] = "$h_down clientes están perdiendo interés, llamarlos antes de que se vayan con la competencia";
         } elseif ($h_up > $h_down && $h_up >= 3) {
-            $frases[] = "Pipeline calentándose: $h_up cotizaciones subieron de temperatura — buen momento para cerrar";
+            $frases[] = "$h_up clientes están cada vez más interesados, buen momento para cerrar";
         }
 
-        // ── DORMIDAS ──
+        // ── SIN ABRIR ──
         if ($dorm > 0) {
-            $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " enviada" . ($dorm > 1 ? 's' : '') . " que nadie abrió en 7+ días — considerar reenviar o contactar al cliente";
+            $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " que nadie abrió en 7+ días, reenviar o llamar al cliente";
         }
 
-        // ── MOMENTUM ──
+        // ── TENDENCIA ──
         if ($mom >= 1.20) {
-            $frases[] = "Tendencia positiva — el desempeño va mejorando";
+            $frases[] = "Desempeño en mejora";
         } elseif ($mom <= 0.80) {
-            $frases[] = "Tendencia a la baja — necesita recuperar ritmo de actividad";
+            $frases[] = "El desempeño va a la baja, necesita retomar ritmo";
         }
 
-        // ── META DE NIVEL ──
+        // ── META ──
         $nivel_actual = $s['nivel'] ?? 'bajo';
         if ($nivel_actual === 'bajo' && $score < 31) {
             $frases[] = "A " . (31 - $score) . " puntos de subir a Regular";
@@ -1180,33 +1180,32 @@ class ActividadScore
 
         $txt = implode('. ', $frases) . '.';
 
-        // ── RECOMENDACIÓN — basada en la dimensión más débil ──
-        // Ignorar health si hay una dimensión peor que sea más accionable
+        // ── QUÉ HACER — acción concreta según el área más débil ──
         $dims = ['act' => $act, 'eng' => $eng, 'seg' => $seg, 'hlt' => $hlt, 'conv' => $conv];
-        arsort($dims);
-        $peores = array_keys(array_slice($dims, -2, 2, true));
-        $peor = $peores[0];
-        // Si health es la peor pero hay otra dimensión baja, recomendar la otra
-        if ($peor === 'hlt' && count($peores) > 1 && $dims[$peores[1]] < 0.50) {
-            $peor = $peores[1];
+        asort($dims);
+        $peor = array_key_first($dims);
+        // Si health es la peor pero hay otra baja, dar la acción de la otra
+        if ($peor === 'hlt') {
+            $segunda = array_keys($dims)[1] ?? 'hlt';
+            if ($dims[$segunda] < 0.50) $peor = $segunda;
         }
 
         $reco = match($peor) {
             'act'  => $sin_abrir > 2
-                ? ' 💡 Recomendación: confirmar con el cliente que recibió la cotización — un mensaje por WhatsApp o llamada rápida puede hacer la diferencia.'
+                ? ' 💡 Llamar o enviar WhatsApp a los clientes que no han abierto su cotización.'
                 : '',
             'eng'  => $vsp > 0
-                ? ' 💡 Recomendación: cobrar las ventas pendientes — cada venta sin cobro reduce el score de engagement.'
-                : ' 💡 Recomendación: al negociar, intentar mantener el precio — los descuentos afectan el score del equipo.',
+                ? ' 💡 Cobrar las ventas pendientes, cada día sin cobro reduce el score.'
+                : ' 💡 Intentar cerrar a precio completo, los descuentos reducen el score.',
             'seg'  => $ign > 0
-                ? " 💡 Recomendación: abrir el Radar y marcar las $ign señales pendientes como \"Con interés\" o \"Sin interés\"."
-                : ' 💡 Recomendación: revisar el Radar diariamente y dar feedback a las cotizaciones calientes.',
+                ? " 💡 Entrar al Radar y marcar las $ign cotizaciones calientes como \"Con interés\" o \"Sin interés\"."
+                : ' 💡 Revisar el Radar diariamente para identificar clientes interesados.',
             'hlt'  => $h_down > $h_up
-                ? ' 💡 Recomendación: las cotizaciones se están enfriando — contactar a los clientes con actividad reciente antes de que pierdan interés.'
-                : ' 💡 Recomendación: enviar nuevas cotizaciones para mantener el pipeline activo.',
+                ? ' 💡 Llamar a los clientes que están perdiendo interés antes de que busquen con la competencia.'
+                : ' 💡 Enviar nuevas cotizaciones para tener más clientes activos.',
             'conv' => $cierres === 0
-                ? ' 💡 Recomendación: revisar en el Radar cuáles cotizaciones tienen más actividad del cliente y priorizarlas para cierre.'
-                : ' 💡 Recomendación: enfocarse en las cotizaciones con señales fuertes — el Radar muestra cuáles clientes están más interesados.',
+                ? ' 💡 Llamar a los clientes que más han revisado su cotización, están considerando comprar.'
+                : ' 💡 El Radar muestra qué clientes están más interesados, priorizarlos para cierre.',
         };
 
         return $txt . $reco;
