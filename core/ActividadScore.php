@@ -1270,29 +1270,25 @@ class ActividadScore
 
         // ═══ CIERRE: COMPARACIÓN HISTÓRICA EMPRESA ═══
         $monto_actual = (float)($ctx['monto_mes_actual'] ?? 0);
-        $dia = (int)($ctx['dia_mes'] ?? (int)date('j'));
-        $dias_total = (int)($ctx['dias_mes'] ?? (int)date('t'));
-        if ($avg_monto_mes > 0 && $dia >= 5) {
-            $esperado_hoy = $avg_monto_mes * ($dia / $dias_total);
-            $pace = $esperado_hoy > 0 ? $monto_actual / $esperado_hoy : 0;
-            if ($pace < 0.4) {
+        if ($avg_monto_mes > 0) {
+            $ratio_mes = $monto_actual / $avg_monto_mes;
+            if ($ratio_mes < 0.5) {
                 $v = [
-                    "La empresa va muy por debajo de su promedio mensual de ventas. Se necesita reaccionar.",
+                    "Falta bastante para alcanzar el promedio mensual de ventas de la empresa.",
                     "Las ventas del mes están lejos del promedio mensual de la empresa.",
-                    "El ritmo de ventas del mes está muy por debajo de lo que la empresa acostumbra.",
+                    "El mes va por debajo del promedio mensual de la empresa.",
                 ];
                 $frases[] = $v[$rot];
-            } elseif ($pace < 0.7) {
+            } elseif ($ratio_mes < 0.85) {
                 $v = [
-                    "La empresa va por debajo de su promedio mensual. Falta cerrar más.",
-                    "Las ventas del mes van por debajo del ritmo que la empresa acostumbra.",
-                    "El mes va abajo del promedio. Se necesita más volumen de cierre.",
+                    "Las ventas del mes van acercándose al promedio mensual de la empresa.",
+                    "Falta para alcanzar el promedio mensual de la empresa.",
                 ];
-                $frases[] = $v[$rot];
-            } elseif ($pace >= 1.2) {
+                $frases[] = $v[$rot % count($v)];
+            } elseif ($ratio_mes >= 1.0) {
                 $v = [
-                    "El mes va arriba del ritmo promedio de la empresa.",
-                    "Buen ritmo de ventas este mes.",
+                    "El mes ya alcanzó el promedio mensual de ventas de la empresa.",
+                    "Las ventas del mes ya están al nivel del promedio de la empresa.",
                 ];
                 $frases[] = $v[$rot % count($v)];
             }
