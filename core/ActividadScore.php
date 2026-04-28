@@ -761,7 +761,7 @@ class ActividadScore
             $ema_seg  = $alpha * $s_seguimiento + (1 - $alpha) * (float)($prev['ema_seguimiento'] ?? $s_seguimiento);
             $ema_conv = $alpha * $s_conversion  + (1 - $alpha) * (float)($prev['ema_conversion'] ?? $s_conversion);
 
-            $ema_composite = $ema_act * $w_act + $ema_seg * $w_seg + $ema_conv * $w_conv;
+            $ema_composite = (float)($prev['ema_gestion'] ?? $proporcional);
             $cur_composite = $proporcional;
 
             // Momentum simétrico con log: mejorar 2x = +0.69, empeorar 2x = -0.69
