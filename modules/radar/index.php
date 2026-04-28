@@ -362,9 +362,18 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             $GLOBALS['fb_shown'][$cot_id_fb] = true;
             $cls_ci = $r_fb_tipo === 'con_interes' ? 'fb-active fb-pos' : '';
             $cls_si = $r_fb_tipo === 'sin_interes' ? 'fb-active fb-neg' : '';
+            $hot_why = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
+            $why_btn = '';
+            if (in_array($r_bucket_fb, $hot_why, true) && !empty($r['senales'])) {
+                $why_fb = $r_fb_tipo ?? null;
+                $why_text = htmlspecialchars(Radar::explicar_bucket($r['senales'], $why_fb));
+                $why_id = 'why-' . $cot_id_fb . '-' . substr(md5($bkt_key ?? ''), 0, 4);
+                $why_btn = "<button class='fb-btn' onclick=\"event.preventDefault();event.stopPropagation();var e=document.getElementById('{$why_id}');e.style.display=e.style.display==='none'?'block':'none'\" title='¿Por qué aparece aquí?' style='font-size:10px'>❓</button>";
+            }
             $fb_html = "<div class='fb-btns' style='flex-shrink:0'>"
                 . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'con_interes',this)\" title='Con interés'>👍</button>"
                 . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_interes',this)\" title='Sin interés'>👎</button>"
+                . $why_btn
                 . "</div>";
         }
         $cal_badge = '';
@@ -378,15 +387,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 $cal_badge = "<div style='margin-top:2px'><span style='background:#fef3c7;color:#92400e;font:600 10px \"Inter\",sans-serif;padding:2px 6px;border-radius:4px;display:inline-block' title='Cotización reciente — el cliente tiene el impulso inicial de la novedad. Actúa rápido antes de que pierda la motivación'>🔥 Impulso inicial — actúa antes de que el cliente se enfríe</span></div>";
             }
         }
-        $why_html = '';
-        $hot_why = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
-        if (in_array($r_bucket_fb, $hot_why, true) && !empty($r['senales'])) {
-            $why_fb = $r_fb_tipo ?? null;
-            $why_text = htmlspecialchars(Radar::explicar_bucket($r['senales'], $why_fb));
-            $why_id = 'why-' . (int)$r['id'] . '-' . substr(md5($bkt_key ?? ''), 0, 4);
-            $why_html = "<div style='margin-top:3px'><button onclick=\"var e=document.getElementById('{$why_id}');e.style.display=e.style.display==='none'?'block':'none'\" style='background:none;border:1px solid #e0e7ff;border-radius:4px;padding:1px 6px;font:500 10px \"Inter\",sans-serif;color:#4f46e5;cursor:pointer'>¿Por qué?</button><div id='{$why_id}' style='display:none;margin-top:4px;padding:6px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font:400 12px var(--body);color:var(--t2);line-height:1.5'>{$why_text}</div></div>";
-        }
-        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."{$cal_badge}{$why_html}</div></a></td>";
+        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."{$cal_badge}</div></a></td>";
         if ($motivo) {
             $reason_key = $r['reason'] ?? '';
             $reason_meta = $BM[$reason_key] ?? null;
@@ -412,6 +413,12 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         echo "<td class='col-vista'>$last_fmt</td>";
         echo "<td class='col-ver'><a href='{$cot_url}' class='rlnk'>Editar</a></td>";
         echo "</tr>";
+        // Why row: expandable explanation
+        if (isset($why_id) && $why_id) {
+            $cols = $motivo ? 8 : 7;
+            echo "<tr id='{$why_id}' style='display:none'><td colspan='{$cols}' style='padding:6px 16px 10px;background:#f8fafc;border-bottom:2px solid #e0e7ff'><div style='font:400 13px var(--body);color:var(--t2);line-height:1.6'>💡 {$why_text}</div></td></tr>";
+            $why_id = null;
+        }
         // Debug row: show all scoring internals
         if ($debug_mode) {
             $dbg = $r['senales']['debug'] ?? [];
