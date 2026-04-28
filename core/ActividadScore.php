@@ -63,6 +63,7 @@ class ActividadScore
         'revision_profunda'    => 'tibio',
         'vistas_multiples'     => 'tibio',
         're_enganche_caliente' => 'caliente',
+        'lectura_comprometida' => 'caliente',
         'multi_persona'        => 'caliente',
         'alto_importe'         => 'caliente',
         'decision_activa'      => 'caliente',
@@ -318,8 +319,10 @@ class ActividadScore
         // Transiciones consolidadas (1 query para Engagement + Radar Health)
         $transiciones_up = 0;
         $transiciones_down = 0;
-        $health_up = 0;
-        $health_down = 0;
+        $health_up_pts = 0.0;
+        $health_down_pts = 0.0;
+        $health_null_a_caliente = 0;
+        $health_caidas_caliente = 0;
         try {
             $all_trans = DB::query(
                 "SELECT bt.bucket_anterior, bt.bucket_nuevo, c.estado
@@ -330,27 +333,59 @@ class ActividadScore
                  AND c.suspendida = 0",
                 [$usuario_id, $empresa_id, $periodo]
             );
-            $temp_order = ['frio' => 0, 'tibio' => 1, 'caliente' => 2];
+            $temp_order = ['ninguno' => -1, 'frio' => 0, 'tibio' => 1, 'caliente' => 2];
             foreach ($all_trans as $t) {
-                $temp_ant = self::BUCKET_TEMP[$t['bucket_anterior']] ?? null;
-                $temp_new = self::BUCKET_TEMP[$t['bucket_nuevo']] ?? null;
-                if (!$temp_ant || !$temp_new) continue;
-                $is_up   = ($temp_order[$temp_new] ?? 0) > ($temp_order[$temp_ant] ?? 0);
-                $is_down = ($temp_order[$temp_new] ?? 0) < ($temp_order[$temp_ant] ?? 0);
+                $temp_ant = self::BUCKET_TEMP[$t['bucket_anterior']] ?? ($t['bucket_anterior'] === null ? 'ninguno' : null);
+                $temp_new = self::BUCKET_TEMP[$t['bucket_nuevo']] ?? ($t['bucket_nuevo'] === null ? 'ninguno' : null);
+                if ($temp_ant === null || $temp_new === null) continue;
+                $ord_ant = $temp_order[$temp_ant];
+                $ord_new = $temp_order[$temp_new];
+                if ($ord_ant === $ord_new) continue;
 
-                // Excluir aceptadas — perder bucket al cerrar venta no es negativo
                 $es_aceptada = in_array($t['estado'], ['aceptada', 'convertida', 'aceptada_cliente']);
                 if ($es_aceptada) continue;
 
-                // Para Engagement (transiciones sin aceptadas)
-                if ($is_up) $transiciones_up++;
-                elseif ($is_down) $transiciones_down++;
+                $is_up = $ord_new > $ord_ant;
+                $is_down = $ord_new < $ord_ant;
 
-                // Para Radar Health (misma exclusión)
-                if ($is_up) $health_up++;
-                elseif ($is_down) $health_down++;
+                // Engagement: solo transiciones entre buckets reales (sin NULL)
+                if ($t['bucket_anterior'] !== null && $t['bucket_nuevo'] !== null) {
+                    if ($is_up) $transiciones_up++;
+                    elseif ($is_down) $transiciones_down++;
+                }
+
+                // Radar Health: con pesos por tipo de movimiento
+                if ($is_up) {
+                    if ($temp_ant === 'ninguno' && $temp_new === 'caliente') {
+                        $health_null_a_caliente++;
+                    } elseif ($temp_ant === 'ninguno' && $temp_new === 'tibio') {
+                        $health_up_pts += 0.5;
+                    } else {
+                        $health_up_pts += 1.0;
+                    }
+                } elseif ($is_down) {
+                    if ($temp_new === 'ninguno' && $temp_ant === 'frio') {
+                        $health_down_pts += 0.5;
+                    } elseif ($temp_ant === 'ninguno' && $temp_new === 'frio') {
+                        $health_down_pts += 0.5;
+                    } elseif ($temp_new === 'ninguno' && $temp_ant === 'caliente') {
+                        $health_caidas_caliente++;
+                        $health_down_pts += 1.0;
+                    } else {
+                        if ($temp_ant === 'caliente') $health_caidas_caliente++;
+                        $health_down_pts += 1.0;
+                    }
+                }
             }
         } catch (\Throwable $e) { /* tabla aún no migrada */ }
+
+        // Multiplicador auto-ajustable para entradas calientes
+        $health_mult = $health_null_a_caliente > 0
+            ? max(1.0, $health_caidas_caliente / $health_null_a_caliente)
+            : 1.0;
+        $health_up_pts += $health_null_a_caliente * $health_mult;
+        $health_up = (int)round($health_up_pts);
+        $health_down = (int)round($health_down_pts);
 
         // Puntos de cierre ponderados por bucket y descuento
         $cierres_con_bucket = DB::query(
@@ -696,21 +731,11 @@ class ActividadScore
         //  Balance de temperatura del pipeline (up vs down)
         // ═══════════════════════════════════════════════════
 
-        // health_up y health_down ya calculados en el bloque de transiciones consolidado
-
-        // Denominador: promedio entre cots con bucket y asignadas totales
-        // Puro bucket (4) amplifica demasiado, puro asignadas (21) diluye demasiado
-        $cots_con_bucket = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
-             AND radar_bucket IS NOT NULL
-             AND estado IN ('enviada','vista')",
-            [$usuario_id, $empresa_id]
-        );
-        $cot_activas_health = max(($cots_con_bucket + $cot_asignadas) / 2, 1);
-
-        // Centro 0.5: neutro. Net positivo → sube, net negativo → baja
-        $health_net = $health_up - $health_down;
-        $s_radar_health = max(0.0, min(1.0, 0.5 + ($health_net / $cot_activas_health)));
+        // health_up_pts y health_down_pts ya calculados con pesos en el bloque de transiciones
+        $health_total = $health_up_pts + $health_down_pts;
+        $s_radar_health = $health_total > 0
+            ? $health_up_pts / $health_total
+            : 0.50;
 
         // ═══════════════════════════════════════════════════
         //  SCORE PROPORCIONAL — v5
