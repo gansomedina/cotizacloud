@@ -378,7 +378,11 @@ $sin_abrir = DB::query(
 // ─── PERFORMANCE ASESORES ───────────────────────────────────
 $asesores = DB::query(
     "SELECT u.id, u.nombre, u.empresa_id,
-            us.score, us.nivel, us.s_activacion, us.s_seguimiento, us.s_conversion
+            us.score, us.nivel, us.s_activacion, us.s_engagement, us.s_seguimiento, us.s_conversion,
+            us.s_radar_health, us.cot_asignadas, us.cot_vistas, us.conversiones, us.cot_dormidas,
+            us.cierres_bucket, us.cierres_sin_dto, us.transiciones_up, us.senales_ignoradas,
+            us.radar_views, us.radar_benchmark, us.ventas_sin_pago, us.ventas_periodo, us.bench_ventas,
+            us.tasa_cierre, us.momentum, us.penalizaciones, us.bonuses
      FROM usuarios u
      LEFT JOIN usuario_score us ON us.usuario_id = u.id AND us.empresa_id = u.empresa_id
      WHERE u.empresa_id IN ({$emp_ids}) AND u.empresa_id != 7 AND u.activo = 1 AND u.rol = 'asesor'
