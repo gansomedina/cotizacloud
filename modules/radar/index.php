@@ -378,7 +378,15 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 $cal_badge = "<div style='margin-top:2px'><span style='background:#fef3c7;color:#92400e;font:600 10px \"Inter\",sans-serif;padding:2px 6px;border-radius:4px;display:inline-block' title='Cotización reciente — el cliente tiene el impulso inicial de la novedad. Actúa rápido antes de que pierda la motivación'>🔥 Impulso inicial — actúa antes de que el cliente se enfríe</span></div>";
             }
         }
-        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."{$cal_badge}</div></a></td>";
+        $why_html = '';
+        $hot_why = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
+        if (in_array($r_bucket_fb, $hot_why, true) && !empty($r['senales'])) {
+            $why_fb = $r_fb_tipo ?? null;
+            $why_text = htmlspecialchars(Radar::explicar_bucket($r['senales'], $why_fb));
+            $why_id = 'why-' . (int)$r['id'] . '-' . substr(md5($bkt_key ?? ''), 0, 4);
+            $why_html = "<div style='margin-top:3px'><button onclick=\"var e=document.getElementById('{$why_id}');e.style.display=e.style.display==='none'?'block':'none'\" style='background:none;border:1px solid #e0e7ff;border-radius:4px;padding:1px 6px;font:500 10px \"Inter\",sans-serif;color:#4f46e5;cursor:pointer'>¿Por qué?</button><div id='{$why_id}' style='display:none;margin-top:4px;padding:6px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font:400 12px var(--body);color:var(--t2);line-height:1.5'>{$why_text}</div></div>";
+        }
+        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."{$cal_badge}{$why_html}</div></a></td>";
         if ($motivo) {
             $reason_key = $r['reason'] ?? '';
             $reason_meta = $BM[$reason_key] ?? null;

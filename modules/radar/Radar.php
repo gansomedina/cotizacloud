@@ -1530,6 +1530,137 @@ class Radar
     }
 
     // ============================================================
+    //  EXPLICAR BUCKET — lenguaje natural para el vendedor
+    // ============================================================
+    public static function explicar_bucket(array $senales, ?string $feedback_tipo = null): string
+    {
+        $dbg = $senales['debug'] ?? [];
+        $sn  = $senales['senales'] ?? [];
+        $bks = $senales['buckets'] ?? [];
+        $icons = $senales['icons'] ?? [];
+        $pc_src = $senales['pc_source'] ?? null;
+
+        $sess = (int)($dbg['sessions'] ?? 0);
+        $guest = (int)($dbg['guest'] ?? 0);
+        $vids = (int)($dbg['vids_post'] ?? 0);
+        $vis_max = (int)($dbg['vis_max'] ?? 0);
+        $vis_sum = (int)($dbg['vis_sum'] ?? 0);
+        $scroll = (int)($dbg['scroll_any'] ?? 0);
+        $pss = (float)($dbg['pss'] ?? 0);
+        $devices = $dbg['devices'] ?? [];
+        $gap = $dbg['gap_days'] ?? null;
+        $h_down = (int)($dbg['ips_post_guest'] ?? 0);
+
+        $has_loop = isset($sn['price_loop']);
+        $has_rev = isset($sn['tot_rev']);
+        $has_sv = isset($sn['sv_price']);
+        $has_mv = isset($sn['mv_price']);
+        $has_multi = isset($sn['multi_ip']);
+        $has_reciente = isset($sn['reciente']);
+        $has_regreso = isset($sn['regreso']) || isset($sn['revivio']);
+        $is_multi_persona = in_array('multi_persona', $bks, true);
+        $is_lectura = in_array('lectura_comprometida', $bks, true);
+        $is_alto = in_array('alto_importe', $bks, true);
+
+        $f = [];
+
+        // Personas y dispositivos
+        if ($vids >= 2 && count($devices) >= 2) {
+            $dev_str = implode(' y ', $devices);
+            $f[] = "Varias personas están revisando esta cotización desde $dev_str.";
+        } elseif ($vids >= 2) {
+            $f[] = "Varias personas están revisando esta cotización.";
+        } elseif (count($devices) >= 2) {
+            $dev_str = implode(' y ', $devices);
+            $f[] = "El cliente la revisó desde $dev_str.";
+        } elseif ($sess === 1) {
+            $f[] = "Una persona ha revisado esta cotización.";
+        }
+
+        // Lectura
+        if ($vis_max >= 120000) {
+            $min = round($vis_max / 60000, 1);
+            $f[] = $scroll >= 80
+                ? "Leyó toda la propuesta y le dedicó más de {$min} minutos."
+                : "Le dedicó más de {$min} minutos de lectura.";
+        } elseif ($scroll >= 80) {
+            $f[] = "Leyó la propuesta completa.";
+        } elseif ($scroll >= 50 && $scroll < 80) {
+            $f[] = "Leyó parte de la propuesta.";
+        }
+
+        // Precio
+        if ($has_loop && $has_rev) {
+            $f[] = "Revisó el precio varias veces y regresó a comparar.";
+        } elseif ($has_loop) {
+            $f[] = "Revisó el precio varias veces.";
+        } elseif ($has_rev) {
+            $f[] = "Regresó a revisar el precio.";
+        } elseif ($pss >= 4) {
+            $f[] = "Mostró interés en el precio.";
+        }
+
+        // Multi-visitor precio
+        if ($has_mv) {
+            $f[] = "Varias personas revisaron el precio.";
+        } elseif ($has_sv && !$has_mv) {
+            $f[] = "La misma persona regresó al precio.";
+        }
+
+        // Alto importe
+        if ($is_alto) {
+            $f[] = "Cotización de alto valor.";
+        }
+
+        // Regreso
+        if ($has_regreso) {
+            $f[] = "El cliente regresó después de varios días.";
+        } elseif ($gap !== null && $gap >= 2) {
+            $f[] = "El cliente regresó después de $gap días.";
+        }
+
+        // Actividad
+        if ($has_reciente) {
+            $f[] = "La actividad es reciente.";
+        } elseif ($sess === 1 && $vis_max <= 100) {
+            $f[] = "El cliente aún no ha revisado el contenido.";
+        }
+
+        // Lectura comprometida
+        if ($is_lectura && $sess <= 2) {
+            $f[] = "Está evaluando seriamente desde la primera visita.";
+        }
+
+        // Calentura
+        $cal_hasta = $senales['calentura_hasta'] ?? null;
+        if ($cal_hasta && time() < $cal_hasta) {
+            $has_precio_cal = !empty($senales['cat_precio']);
+            if ($has_precio_cal) {
+                $f[] = "Se enganchó rápido con la propuesta.";
+            }
+        }
+
+        // Feedback del vendedor vs señales del Radar
+        if ($feedback_tipo === 'con_interes') {
+            if ($pss >= 4 || $has_loop || $has_rev) {
+                $f[] = "Confirmaste interés y el Radar lo respalda con actividad del cliente en el precio.";
+            } else {
+                $f[] = "Confirmaste interés. La actividad del cliente es moderada.";
+            }
+        } elseif ($feedback_tipo === 'sin_interes') {
+            if ($pss >= 4 || $has_loop || $has_rev || $has_reciente) {
+                $f[] = "Marcaste sin interés, pero el Radar sigue detectando actividad del cliente. Vale la pena revisar si algo cambió.";
+            } else {
+                $f[] = "Marcaste sin interés.";
+            }
+        }
+
+        if (empty($f)) return "Cotización en evaluación.";
+
+        return implode(' ', $f);
+    }
+
+    // ============================================================
     //  PARSEAR USER-AGENT → etiqueta compacta (SO-Tipo-Nav)
     // ============================================================
     public static function parse_device(string $ua): string

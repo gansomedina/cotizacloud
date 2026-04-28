@@ -240,6 +240,7 @@ class Router
         self::post('/config/costos-modo',                  fn()   => self::app('config', 'guardar_costos_modo'));
         self::post('/config/suscripcion/crear',             fn()   => self::app('config', 'suscripcion_crear'));
         self::post('/config/suscripcion/cancelar',          fn()   => self::app('config', 'suscripcion_cancelar'));
+        self::post('/config/termometro',                   fn()   => self::app('config', 'guardar_termometro'));
         self::post('/config/marketing',                    fn()   => self::app('config', 'guardar_marketing'));
         self::post('/config/historial',                    fn()   => self::app('config', 'guardar_historial'));
         self::post('/config/historial/:id/eliminar',       fn($p) => self::app('config', 'eliminar_historial', $p));
