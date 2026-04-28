@@ -1211,8 +1211,8 @@ class ActividadScore
                 $frases[] = $v[$rot % count($v)];
             } else {
                 $v = [
-                    "Tu cierre está arriba del promedio pero necesitas más volumen. Cotiza más para generar oportunidades.",
-                    "Cierre arriba del promedio. Sigue cotizando para mantener el flujo de clientes.",
+                    "Necesitas más volumen de cotizaciones para generar oportunidades. Cotiza más y usa el Radar para priorizar.",
+                    "Sigue cotizando para mantener el flujo de oportunidades. El Radar te ayuda a identificar a quién darle prioridad.",
                 ];
                 $frases[] = $v[$rot % count($v)];
             }
