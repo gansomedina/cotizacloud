@@ -63,6 +63,7 @@ class ActividadScore
         'revision_profunda'    => 'tibio',
         'vistas_multiples'     => 'tibio',
         're_enganche_caliente' => 'caliente',
+        'lectura_comprometida' => 'caliente',
         'multi_persona'        => 'caliente',
         'alto_importe'         => 'caliente',
         'decision_activa'      => 'caliente',
@@ -318,8 +319,10 @@ class ActividadScore
         // Transiciones consolidadas (1 query para Engagement + Radar Health)
         $transiciones_up = 0;
         $transiciones_down = 0;
-        $health_up = 0;
-        $health_down = 0;
+        $health_up_pts = 0.0;
+        $health_down_pts = 0.0;
+        $health_null_a_caliente = 0;
+        $health_caidas_caliente = 0;
         try {
             $all_trans = DB::query(
                 "SELECT bt.bucket_anterior, bt.bucket_nuevo, c.estado
@@ -330,27 +333,59 @@ class ActividadScore
                  AND c.suspendida = 0",
                 [$usuario_id, $empresa_id, $periodo]
             );
-            $temp_order = ['frio' => 0, 'tibio' => 1, 'caliente' => 2];
+            $temp_order = ['ninguno' => -1, 'frio' => 0, 'tibio' => 1, 'caliente' => 2];
             foreach ($all_trans as $t) {
-                $temp_ant = self::BUCKET_TEMP[$t['bucket_anterior']] ?? null;
-                $temp_new = self::BUCKET_TEMP[$t['bucket_nuevo']] ?? null;
-                if (!$temp_ant || !$temp_new) continue;
-                $is_up   = ($temp_order[$temp_new] ?? 0) > ($temp_order[$temp_ant] ?? 0);
-                $is_down = ($temp_order[$temp_new] ?? 0) < ($temp_order[$temp_ant] ?? 0);
+                $temp_ant = self::BUCKET_TEMP[$t['bucket_anterior']] ?? ($t['bucket_anterior'] === null ? 'ninguno' : null);
+                $temp_new = self::BUCKET_TEMP[$t['bucket_nuevo']] ?? ($t['bucket_nuevo'] === null ? 'ninguno' : null);
+                if ($temp_ant === null || $temp_new === null) continue;
+                $ord_ant = $temp_order[$temp_ant];
+                $ord_new = $temp_order[$temp_new];
+                if ($ord_ant === $ord_new) continue;
 
-                // Excluir aceptadas — perder bucket al cerrar venta no es negativo
                 $es_aceptada = in_array($t['estado'], ['aceptada', 'convertida', 'aceptada_cliente']);
                 if ($es_aceptada) continue;
 
-                // Para Engagement (transiciones sin aceptadas)
-                if ($is_up) $transiciones_up++;
-                elseif ($is_down) $transiciones_down++;
+                $is_up = $ord_new > $ord_ant;
+                $is_down = $ord_new < $ord_ant;
 
-                // Para Radar Health (misma exclusión)
-                if ($is_up) $health_up++;
-                elseif ($is_down) $health_down++;
+                // Engagement: solo transiciones entre buckets reales (sin NULL)
+                if ($t['bucket_anterior'] !== null && $t['bucket_nuevo'] !== null) {
+                    if ($is_up) $transiciones_up++;
+                    elseif ($is_down) $transiciones_down++;
+                }
+
+                // Radar Health: con pesos por tipo de movimiento
+                if ($is_up) {
+                    if ($temp_ant === 'ninguno' && $temp_new === 'caliente') {
+                        $health_null_a_caliente++;
+                    } elseif ($temp_ant === 'ninguno' && $temp_new === 'tibio') {
+                        $health_up_pts += 0.5;
+                    } elseif ($temp_ant === 'ninguno' && $temp_new === 'frio') {
+                        $health_down_pts += 0.5;
+                    } else {
+                        $health_up_pts += 1.0;
+                    }
+                } elseif ($is_down) {
+                    if ($temp_new === 'ninguno' && $temp_ant === 'frio') {
+                        $health_down_pts += 0.5;
+                    } elseif ($temp_new === 'ninguno' && $temp_ant === 'caliente') {
+                        $health_caidas_caliente++;
+                        $health_down_pts += 1.0;
+                    } else {
+                        if ($temp_ant === 'caliente') $health_caidas_caliente++;
+                        $health_down_pts += 1.0;
+                    }
+                }
             }
         } catch (\Throwable $e) { /* tabla aún no migrada */ }
+
+        // Multiplicador auto-ajustable para entradas calientes
+        $health_mult = $health_null_a_caliente > 0
+            ? max(1.0, $health_caidas_caliente / $health_null_a_caliente)
+            : 1.0;
+        $health_up_pts += $health_null_a_caliente * $health_mult;
+        $health_up = (int)round($health_up_pts);
+        $health_down = (int)round($health_down_pts);
 
         // Puntos de cierre ponderados por bucket y descuento
         $cierres_con_bucket = DB::query(
@@ -696,21 +731,11 @@ class ActividadScore
         //  Balance de temperatura del pipeline (up vs down)
         // ═══════════════════════════════════════════════════
 
-        // health_up y health_down ya calculados en el bloque de transiciones consolidado
-
-        // Denominador: promedio entre cots con bucket y asignadas totales
-        // Puro bucket (4) amplifica demasiado, puro asignadas (21) diluye demasiado
-        $cots_con_bucket = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
-             AND radar_bucket IS NOT NULL
-             AND estado IN ('enviada','vista')",
-            [$usuario_id, $empresa_id]
-        );
-        $cot_activas_health = max(($cots_con_bucket + $cot_asignadas) / 2, 1);
-
-        // Centro 0.5: neutro. Net positivo → sube, net negativo → baja
-        $health_net = $health_up - $health_down;
-        $s_radar_health = max(0.0, min(1.0, 0.5 + ($health_net / $cot_activas_health)));
+        // health_up_pts y health_down_pts ya calculados con pesos en el bloque de transiciones
+        $health_total = $health_up_pts + $health_down_pts;
+        $s_radar_health = $health_total > 0
+            ? $health_up_pts / $health_total
+            : 0.50;
 
         // ═══════════════════════════════════════════════════
         //  SCORE PROPORCIONAL — v5
@@ -1032,195 +1057,156 @@ class ActividadScore
     public static function diagnostico(array $s): string
     {
         $act  = (float)($s['s_activacion'] ?? 0);
+        $eng  = (float)($s['s_engagement'] ?? 1);
         $seg  = (float)($s['s_seguimiento'] ?? 0);
+        $hlt  = (float)($s['s_radar_health'] ?? 0.5);
         $conv = (float)($s['s_conversion'] ?? 0);
         $asig = (int)($s['cot_asignadas'] ?? 0);
         $vist = (int)($s['cot_vistas'] ?? 0);
         $cierres = (int)($s['conversiones'] ?? 0);
         $dorm = (int)($s['cot_dormidas'] ?? 0);
-        // v5: calientes sin feedback. Datos vienen como cots_calientes/fb_total (return) o radar_benchmark/radar_views (BD)
         $calientes_diag = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
         $fb_diag = (int)($s['fb_total'] ?? $s['radar_views'] ?? 0);
         $ign = max(0, $calientes_diag - $fb_diag);
         $cbkt = (int)($s['cierres_bucket'] ?? 0);
         $sdto = (int)($s['cierres_sin_dto'] ?? 0);
-        $tup  = (int)($s['transiciones_up'] ?? 0);
         $mom  = (float)($s['momentum'] ?? 1);
         $score = (int)($s['score'] ?? 0);
-        $pen  = (float)($s['penalizaciones'] ?? 0);
+        $vsp = (int)($s['ventas_sin_pago'] ?? 0);
+        $h_up = (int)($s['health_up'] ?? 0);
+        $h_down = (int)($s['health_down'] ?? 0);
+        $nab = (int)($s['no_abiertas_5d'] ?? 0);
+        $vt_diag = (int)($s['ventas_periodo'] ?? $s['ventas_totales'] ?? 0);
+        $bv_diag = (float)($s['bench_ventas'] ?? 0);
 
-        // Período de gracia
         if (($s['nivel'] ?? '') === 'nuevo') return 'Recopilando información — score en proceso de activación.';
-        // Sin datos suficientes
         if ($asig === 0) return 'Sin cotizaciones en el período.';
 
         $frases = [];
 
-        // ── ACTIVACIÓN ──
+        // ── ACTIVACIÓN — qué pasa con las cotizaciones enviadas ──
         $tasa_ap = $asig > 0 ? $vist / $asig : 0;
-        $nab = (int)($s['no_abiertas_5d'] ?? 0);
+        $sin_abrir = $asig - $vist;
         if ($nab > 0) {
-            $frases[] = $nab === 1
-                ? "1 cotización sin abrir en más de 5 días — dar seguimiento urgente"
-                : "$nab cotizaciones sin abrir en más de 5 días — revisar seguimiento";
-        } elseif ($tasa_ap >= 0.90) {
-            $frases[] = "Casi todo lo que envía llega al cliente";
-        } elseif ($tasa_ap >= 0.60) {
-            $sin_abrir = $asig - $vist;
-            $frases[] = "Buena tasa de entrega, $sin_abrir " . ($sin_abrir === 1 ? "cotización sin abrir" : "cotizaciones sin abrir");
-        } elseif ($tasa_ap >= 0.30) {
-            $frases[] = "Muchas cotizaciones no se abren — revisar canal de envío";
+            $frases[] = "$nab cotización" . ($nab > 1 ? 'es llevan' : ' lleva') . " más de 5 días sin abrirse — vale la pena contactar al cliente por otro canal para confirmar que la recibió";
+        } elseif ($tasa_ap >= 0.95) {
+            $frases[] = "Excelente entrega — prácticamente todas las cotizaciones llegan al cliente";
+        } elseif ($tasa_ap >= 0.80) {
+            $frases[] = "Buena tasa de entrega. $sin_abrir cotización" . ($sin_abrir > 1 ? 'es aún no se abren' : ' aún no se abre') . " — es normal, el cliente puede tardar";
+        } elseif ($tasa_ap >= 0.50) {
+            $frases[] = "$sin_abrir de $asig cotizaciones no se han abierto — verificar que el canal de envío funcione (WhatsApp, email) o confirmar los datos del cliente";
         } else {
-            $frases[] = "La mayoría de sus cotizaciones no llegan al cliente";
+            $frases[] = "La mayoría de las cotizaciones no llegan al cliente — revisar urgentemente el método de envío";
         }
 
-        // ── SEGUIMIENTO (feedback v5) ──
+        // ── SEGUIMIENTO — usa el Radar? ──
         $fb_calientes = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
         $fb_dados = (int)($s['fb_total'] ?? $s['radar_views'] ?? 0);
         if ($fb_calientes > 0 && $fb_dados > $fb_calientes) $fb_dados = $fb_calientes;
-        $fb_calidad = (float)($s['fb_calidad'] ?? 0.50);
-        if ($seg >= 0.70) {
-            if ($fb_calidad >= 0.70) {
-                $frases[] = "excelente seguimiento — feedback acertado en las señales del radar";
-            } else {
-                $frases[] = "buen seguimiento — responde a las señales del radar";
-            }
-        } elseif ($seg >= 0.35) {
-            if ($fb_calientes > 0 && $fb_dados > 0 && $fb_dados < $fb_calientes) {
-                $sin_fb = $fb_calientes - $fb_dados;
-                $frases[] = "da seguimiento pero falta feedback en $sin_fb señal" . ($sin_fb > 1 ? 'es' : '') . " caliente" . ($sin_fb > 1 ? 's' : '');
-            } elseif ($fb_calientes > 0 && $fb_dados >= $fb_calientes) {
-                $frases[] = $fb_calidad > 0.50
-                    ? "dio feedback a todas las señales — resultados en evaluación"
-                    : "dio feedback a todas las señales — pendiente evaluación de resultados";
-            } else {
-                $frases[] = "seguimiento moderado — revisar señales calientes del radar";
-            }
-        } elseif ($seg > 0.05) {
-            $frases[] = $fb_calientes > 0
-                ? "poco seguimiento — {$fb_calientes} señales calientes sin atender"
-                : "poco seguimiento";
-        } else {
-            $frases[] = "no da seguimiento a las señales del radar";
+        if ($ign > 0) {
+            $frases[] = "Tiene $ign señal" . ($ign > 1 ? 'es' : '') . " caliente" . ($ign > 1 ? 's' : '') . " en el Radar sin marcar — abrir el Radar y dar feedback (\"Con interés\" / \"Sin interés\") para que el sistema aprenda";
+        } elseif ($seg >= 0.80) {
+            $frases[] = "Excelente uso del Radar — marca las señales y el sistema aprende de sus decisiones";
+        } elseif ($seg >= 0.50) {
+            $frases[] = "Buen uso del Radar, puede mejorar dando feedback más seguido a las cotizaciones calientes";
+        } elseif ($fb_calientes > 0) {
+            $frases[] = "Hay $fb_calientes cotizaciones calientes esperando su atención en el Radar";
         }
 
-        // ── CONVERSIÓN ──
-        $vt_diag = (int)($s['ventas_periodo'] ?? $s['ventas_totales'] ?? 0);
-        $bv_diag = (float)($s['bench_ventas'] ?? 0);
-        if ($cierres === 0 && $vist >= 3) {
-            $frases[] = "cotiza pero no cierra — $vist abiertas sin resultado";
-        } elseif ($cierres === 0) {
-            $frases[] = "aún sin cierres en el período";
+        // ── CONVERSIÓN — cierra ventas? ──
+        if ($cierres === 0 && $vist >= 5) {
+            $frases[] = "$vist cotizaciones abiertas y ningún cierre — enfocarse en las que tienen más actividad del cliente en el Radar";
+        } elseif ($cierres === 0 && $vist >= 1) {
+            $frases[] = "Aún sin cierres en el período — dar seguimiento personal a las cotizaciones que el cliente ya abrió";
         } elseif ($conv >= 0.70) {
-            $frases[] = "excelente tasa de cierre";
-            if ($cbkt > 0) $frases[] = "$cbkt cierres asistidos por radar";
-            if ($sdto === $cierres && $cierres > 0) $frases[] = "todos a precio completo";
-        } elseif ($conv >= 0.40) {
-            $frases[] = "$cierres cierres, ritmo aceptable";
+            $frases[] = "Excelente tasa de cierre: $cierres venta" . ($cierres > 1 ? 's' : '') . " de $vist cotizaciones abiertas";
+            if ($cbkt > 0) $frases[] = "$cbkt cierre" . ($cbkt > 1 ? 's' : '') . " asistido" . ($cbkt > 1 ? 's' : '') . " por el Radar — el seguimiento de señales da resultado";
+        } elseif ($conv >= 0.30) {
+            $frases[] = "$cierres cierre" . ($cierres > 1 ? 's' : '') . " de $vist abiertas — buen ritmo, se puede mejorar dando seguimiento a las cotizaciones con más actividad del cliente";
         } else {
-            $frases[] = "cierra poco para el volumen que maneja";
+            if ($cierres > 0) {
+                $frases[] = "$cierres cierre" . ($cierres > 1 ? 's' : '') . " de $vist abiertas — revisar en el Radar cuáles tienen señales fuertes y priorizarlas";
+            }
         }
+
         // Tendencia de volumen
         if ($bv_diag > 0 && $vt_diag < $bv_diag) {
             $bv_int = (int)round($bv_diag);
-            $frases[] = "$vt_diag ventas vs $bv_int del período anterior — volumen a la baja";
-        } elseif ($bv_diag > 0 && $vt_diag >= $bv_diag * 1.2) {
-            $frases[] = "volumen de ventas en crecimiento vs período anterior";
+            $frases[] = "Volumen a la baja: $vt_diag venta" . ($vt_diag !== 1 ? 's' : '') . " vs $bv_int del período anterior";
+        } elseif ($bv_diag > 0 && $vt_diag >= $bv_diag * 1.5) {
+            $frases[] = "Volumen en crecimiento — $vt_diag venta" . ($vt_diag !== 1 ? 's' : '') . " vs " . (int)round($bv_diag) . " del período anterior";
         }
 
-        // ── SEÑALES ESPECÍFICAS ──
-        if ($dorm > 0) {
-            $frases[] = $dorm === 1
-                ? "1 cotización enviada que nadie abrió en 7+ días"
-                : "$dorm cotizaciones enviadas que nadie abrió en 7+ días";
+        // ── ENGAGEMENT — calidad de las ventas ──
+        if ($vsp > 0) {
+            $frases[] = "$vsp venta" . ($vsp > 1 ? 's' : '') . " sin cobrar después de 5 días — dar seguimiento al cobro mejora directamente el score";
         }
-        if ($ign > 0) {
-            $frases[] = $ign === 1
-                ? "1 señal caliente sin feedback — dar seguimiento desde el radar"
-                : "$ign señales calientes sin feedback — dar seguimiento desde el radar";
-        }
-        // Fix P3: Mencionar descuentos si cierra mayormente con descuento
         if ($cierres > 0 && $sdto < $cierres) {
             $con_dto = $cierres - $sdto;
             $pct_dto = round($con_dto / $cierres * 100);
             if ($pct_dto >= 70) {
-                $frases[] = "$pct_dto% de cierres con descuento — afecta engagement";
-            } elseif ($pct_dto >= 40) {
-                $frases[] = "$con_dto de $cierres cierres con descuento";
+                $frases[] = "$pct_dto% de cierres con descuento — intentar cerrar a precio completo cuando sea posible";
             }
         }
 
-        // ── ENGAGEMENT ──
-        $vsp = (int)($s['ventas_sin_pago'] ?? 0);
-        if ($vsp > 0) {
-            $frases[] = $vsp === 1
-                ? "1 venta sin cobrar en más de 5 días — afecta engagement"
-                : "$vsp ventas sin cobrar en más de 5 días — afecta engagement";
+        // ── PIPELINE — se calienta o se enfría? ──
+        if ($h_down > 0 && $h_down > $h_up * 2) {
+            $frases[] = "Pipeline enfriándose: $h_down cotizaciones perdieron temperatura vs $h_up que subieron — dar seguimiento rápido a las que se enfrían antes de que se pierdan";
+        } elseif ($h_up > $h_down && $h_up >= 3) {
+            $frases[] = "Pipeline calentándose: $h_up cotizaciones subieron de temperatura — buen momento para cerrar";
         }
-        $vcd = (int)($s['ventas_con_descuento'] ?? 0);
-        if ($vcd > 0 && $cierres > 0) {
-            $pct_vcd = round($vcd / $cierres * 100);
-            if ($pct_vcd >= 50) {
-                $frases[] = "$pct_vcd% de ventas con descuento — mérito de empresa no del vendedor";
-            }
-        }
-        // ── RADAR HEALTH (pipeline) ──
-        $h_up = (int)($s['health_up'] ?? 0);
-        $h_down = (int)($s['health_down'] ?? 0);
-        $s_health = (float)($s['s_radar_health'] ?? 0.5);
-        if ($s_health >= 0.70) {
-            $frases[] = "pipeline en crecimiento — {$h_up} cotizaciones subieron de temperatura";
-        } elseif ($s_health >= 0.40) {
-            $frases[] = "pipeline estable — {$h_up} subieron, {$h_down} bajaron";
-        } elseif ($h_down > 0) {
-            $frases[] = "pipeline enfriándose — {$h_down} cotizaciones bajaron vs {$h_up} que subieron";
+
+        // ── DORMIDAS ──
+        if ($dorm > 0) {
+            $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " enviada" . ($dorm > 1 ? 's' : '') . " que nadie abrió en 7+ días — considerar reenviar o contactar al cliente";
         }
 
         // ── MOMENTUM ──
         if ($mom >= 1.20) {
-            $frases[] = "tendencia en mejora";
+            $frases[] = "Tendencia positiva — el desempeño va mejorando";
         } elseif ($mom <= 0.80) {
-            $frases[] = "tendencia a la baja vs su historial";
+            $frases[] = "Tendencia a la baja — necesita recuperar ritmo de actividad";
         }
 
-        // Fix P5: Meta concreta para subir de nivel
+        // ── META DE NIVEL ──
         $nivel_actual = $s['nivel'] ?? 'bajo';
-        $score_actual = (int)($s['score'] ?? 0);
-        if ($nivel_actual === 'bajo' && $score_actual < 31) {
-            $faltan = 31 - $score_actual;
-            $frases[] = "necesita $faltan puntos para subir a Regular";
-        } elseif ($nivel_actual === 'regular' && $score_actual < 61) {
-            $faltan = 61 - $score_actual;
-            $frases[] = "a $faltan puntos de nivel Activo";
-        } elseif ($nivel_actual === 'activo' && $score_actual < 86) {
-            $faltan = 86 - $score_actual;
-            $frases[] = "a $faltan puntos de nivel Top";
+        if ($nivel_actual === 'bajo' && $score < 31) {
+            $frases[] = "A " . (31 - $score) . " puntos de subir a Regular";
+        } elseif ($nivel_actual === 'regular' && $score < 61) {
+            $frases[] = "A " . (61 - $score) . " puntos de nivel Activo";
+        } elseif ($nivel_actual === 'activo' && $score < 86) {
+            $frases[] = "A " . (86 - $score) . " puntos de nivel Top";
         }
 
-        // Construir frase final — capitalizar primera letra
-        $txt = implode('. ', array_map(fn($f) => ucfirst($f), $frases)) . '.';
+        $txt = implode('. ', $frases) . '.';
 
-        // Recomendación final según la dimensión más débil (5 dimensiones v5.1)
-        $eng  = (float)($s['s_engagement'] ?? 1);
-        $hlt  = (float)($s['s_radar_health'] ?? 0.5);
+        // ── RECOMENDACIÓN — basada en la dimensión más débil ──
+        // Ignorar health si hay una dimensión peor que sea más accionable
         $dims = ['act' => $act, 'eng' => $eng, 'seg' => $seg, 'hlt' => $hlt, 'conv' => $conv];
-        $peor = array_keys($dims, min($dims))[0];
+        arsort($dims);
+        $peores = array_keys(array_slice($dims, -2, 2, true));
+        $peor = $peores[0];
+        // Si health es la peor pero hay otra dimensión baja, recomendar la otra
+        if ($peor === 'hlt' && count($peores) > 1 && $dims[$peores[1]] < 0.50) {
+            $peor = $peores[1];
+        }
+
         $reco = match($peor) {
-            'act'  => $asig - $vist <= 2
-                ? ''
-                : ' Tip: confirmar por WhatsApp que el cliente recibió la cotización, o reenviar por otro canal.',
+            'act'  => $sin_abrir > 2
+                ? ' 💡 Recomendación: confirmar con el cliente que recibió la cotización — un mensaje por WhatsApp o llamada rápida puede hacer la diferencia.'
+                : '',
             'eng'  => $vsp > 0
-                ? ' Tip: dar seguimiento al cobro de ventas pendientes — afecta directamente el score.'
-                : ' Tip: cerrar ventas a precio completo mejora el engagement.',
+                ? ' 💡 Recomendación: cobrar las ventas pendientes — cada venta sin cobro reduce el score de engagement.'
+                : ' 💡 Recomendación: al negociar, intentar mantener el precio — los descuentos afectan el score del equipo.',
             'seg'  => $ign > 0
-                ? " Tip: abrir el Radar y marcar \"Con interés\" o \"Sin interés\" en las $ign señales pendientes."
-                : ' Tip: revisar el Radar y dar feedback a las cotizaciones calientes.',
+                ? " 💡 Recomendación: abrir el Radar y marcar las $ign señales pendientes como \"Con interés\" o \"Sin interés\"."
+                : ' 💡 Recomendación: revisar el Radar diariamente y dar feedback a las cotizaciones calientes.',
             'hlt'  => $h_down > $h_up
-                ? ' Tip: dar seguimiento a cotizaciones que se están enfriando para reactivar el pipeline.'
-                : ' Tip: mantener el pipeline activo enviando nuevas cotizaciones.',
+                ? ' 💡 Recomendación: las cotizaciones se están enfriando — contactar a los clientes con actividad reciente antes de que pierdan interés.'
+                : ' 💡 Recomendación: enviar nuevas cotizaciones para mantener el pipeline activo.',
             'conv' => $cierres === 0
-                ? ' Tip: dar seguimiento personalizado a las cotizaciones más vistas.'
-                : ' Tip: enfocarse en cerrar las cotizaciones con mayor actividad del cliente.',
+                ? ' 💡 Recomendación: revisar en el Radar cuáles cotizaciones tienen más actividad del cliente y priorizarlas para cierre.'
+                : ' 💡 Recomendación: enfocarse en las cotizaciones con señales fuertes — el Radar muestra cuáles clientes están más interesados.',
         };
 
         return $txt . $reco;
