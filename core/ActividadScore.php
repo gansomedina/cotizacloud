@@ -1083,99 +1083,93 @@ class ActividadScore
         if ($asig === 0) return 'Sin cotizaciones en el período.';
 
         $frases = [];
+        $tasa_cierre_real = $vist > 0 ? $cierres / $vist : 0;
 
         // ── ENTREGA ──
         $tasa_ap = $asig > 0 ? $vist / $asig : 0;
         $sin_abrir = $asig - $vist;
         if ($nab > 0) {
             $frases[] = "$nab cotización" . ($nab > 1 ? 'es llevan' : ' lleva') . " más de 5 días sin abrirse, contactar al cliente para confirmar que la recibió";
-        } elseif ($tasa_ap >= 0.95) {
-            $frases[] = "Todas las cotizaciones llegan al cliente";
-        } elseif ($tasa_ap >= 0.80) {
-            $frases[] = "$sin_abrir cotización" . ($sin_abrir > 1 ? 'es' : '') . " aún sin abrir";
-        } elseif ($tasa_ap >= 0.50) {
-            $frases[] = "$sin_abrir de $asig cotizaciones no se han abierto, verificar el envío";
+        } elseif ($sin_abrir > 0) {
+            $frases[] = "$vist de $asig cotizaciones abiertas" . ($sin_abrir === 1 ? ", 1 pendiente" : ", $sin_abrir pendientes");
         } else {
-            $frases[] = "La mayoría de cotizaciones no llegan al cliente, revisar método de envío";
+            $frases[] = "Todas las cotizaciones fueron abiertas por el cliente";
         }
 
-        // ── CLIENTES INTERESADOS ──
+        // ── SEGUIMIENTO ──
         $fb_calientes = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
         $fb_dados = (int)($s['fb_total'] ?? $s['radar_views'] ?? 0);
         if ($fb_calientes > 0 && $fb_dados > $fb_calientes) $fb_dados = $fb_calientes;
         if ($ign > 0) {
-            $frases[] = "$ign cliente" . ($ign > 1 ? 's muestran' : ' muestra') . " interés y " . ($ign > 1 ? 'necesitan' : 'necesita') . " seguimiento en el Radar";
-        } elseif ($seg >= 0.80) {
-            $frases[] = "Da seguimiento oportuno a los clientes interesados";
-        } elseif ($seg >= 0.50) {
-            $frases[] = "Seguimiento aceptable, puede mejorar atendiendo más rápido a los clientes interesados";
-        } elseif ($fb_calientes > 0) {
-            $frases[] = "$fb_calientes cliente" . ($fb_calientes > 1 ? 's están' : ' está') . " mostrando interés y no se les ha dado seguimiento";
+            $frases[] = "$ign cliente" . ($ign > 1 ? 's muestran' : ' muestra') . " interés y no se les ha dado seguimiento";
+        } elseif ($seg >= 0.80 && $fb_calientes > 0) {
+            $frases[] = "Atiende a los clientes interesados oportunamente";
+        } elseif ($seg < 0.50 && $fb_calientes > 0) {
+            $frases[] = "Falta seguimiento a los clientes que muestran interés";
         }
 
-        // ── CIERRES ──
+        // ── CIERRES — tasa de cierre REAL, no score ──
+        $sin_cerrar = $vist - $cierres;
         if ($cierres === 0 && $vist >= 5) {
-            $frases[] = "$vist clientes vieron la cotización pero ninguno compró, enfocarse en los que revisaron el precio";
+            $frases[] = "$vist clientes vieron la cotización y ninguno compró";
         } elseif ($cierres === 0 && $vist >= 1) {
-            $frases[] = "Aún sin ventas cerradas, llamar a los clientes que ya vieron la cotización";
-        } elseif ($conv >= 0.70) {
-            $frases[] = "Excelente: $cierres venta" . ($cierres > 1 ? 's' : '') . " de $vist clientes que vieron la cotización";
-            if ($cbkt > 0) $frases[] = "$cbkt venta" . ($cbkt > 1 ? 's' : '') . " cerrada" . ($cbkt > 1 ? 's' : '') . " gracias al seguimiento del Radar";
-        } elseif ($conv >= 0.30) {
-            $frases[] = "$cierres venta" . ($cierres > 1 ? 's' : '') . " cerrada" . ($cierres > 1 ? 's' : '') . ", llamar a los clientes que siguen revisando su cotización";
+            $frases[] = "Sin cierres en el período";
+        } elseif ($tasa_cierre_real >= 0.30) {
+            $frases[] = "$cierres venta" . ($cierres > 1 ? 's' : '') . " de $vist cotizaciones abiertas";
+            if ($cbkt > 0) $frases[] = "$cbkt con apoyo del Radar";
+        } elseif ($tasa_cierre_real >= 0.10) {
+            $frases[] = "$cierres de $vist — hay $sin_cerrar clientes que vieron y no compraron, darles seguimiento";
         } else {
             if ($cierres > 0) {
-                $frases[] = "$cierres venta" . ($cierres > 1 ? 's' : '') . " de $vist clientes, priorizar a los que más revisan su cotización";
+                $frases[] = "Solo $cierres venta de $vist cotizaciones abiertas, revisar por qué no se están cerrando";
             }
         }
 
         // Tendencia de volumen
         if ($bv_diag > 0 && $vt_diag < $bv_diag) {
             $bv_int = (int)round($bv_diag);
-            $frases[] = "Volumen a la baja: $vt_diag venta" . ($vt_diag !== 1 ? 's' : '') . " vs $bv_int del período anterior";
-        } elseif ($bv_diag > 0 && $vt_diag >= $bv_diag * 1.5) {
-            $frases[] = "Buen ritmo de ventas vs el período anterior";
+            $frases[] = "$vt_diag venta" . ($vt_diag !== 1 ? 's' : '') . " vs $bv_int del período anterior";
         }
 
-        // ── COBROS Y DESCUENTOS ──
+        // ── COBROS ──
         if ($vsp > 0) {
-            $frases[] = "$vsp venta" . ($vsp > 1 ? 's' : '') . " sin cobrar, dar seguimiento al pago";
+            $frases[] = "$vsp venta" . ($vsp > 1 ? 's' : '') . " sin cobrar";
         }
         if ($cierres > 0 && $sdto < $cierres) {
             $con_dto = $cierres - $sdto;
             $pct_dto = round($con_dto / $cierres * 100);
-            if ($pct_dto >= 70) {
+            if ($pct_dto >= 50) {
                 $frases[] = "$pct_dto% de ventas con descuento";
             }
         }
 
         // ── CLIENTES QUE SE ENFRÍAN ──
-        if ($h_down > 0 && $h_down > $h_up * 2) {
-            $frases[] = "$h_down clientes están perdiendo interés, llamarlos antes de que se vayan con la competencia";
+        if ($h_down > 0 && $h_down > $h_up) {
+            $frases[] = "$h_down clientes perdieron interés vs $h_up que se reactivaron";
         } elseif ($h_up > $h_down && $h_up >= 3) {
-            $frases[] = "$h_up clientes están cada vez más interesados, buen momento para cerrar";
+            $frases[] = "$h_up clientes se están interesando más, cerrarlos";
         }
 
-        // ── SIN ABRIR ──
+        // ── DORMIDAS ──
         if ($dorm > 0) {
-            $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " que nadie abrió en 7+ días, reenviar o llamar al cliente";
+            $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " sin abrir en 7+ días";
         }
 
         // ── TENDENCIA ──
         if ($mom >= 1.20) {
-            $frases[] = "Desempeño en mejora";
+            $frases[] = "Mejorando vs su historial";
         } elseif ($mom <= 0.80) {
-            $frases[] = "El desempeño va a la baja, necesita retomar ritmo";
+            $frases[] = "Desempeño a la baja, necesita retomar ritmo";
         }
 
         // ── META ──
         $nivel_actual = $s['nivel'] ?? 'bajo';
         if ($nivel_actual === 'bajo' && $score < 31) {
-            $frases[] = "A " . (31 - $score) . " puntos de subir a Regular";
+            $frases[] = "A " . (31 - $score) . " puntos de Regular";
         } elseif ($nivel_actual === 'regular' && $score < 61) {
-            $frases[] = "A " . (61 - $score) . " puntos de nivel Activo";
+            $frases[] = "A " . (61 - $score) . " puntos de Activo";
         } elseif ($nivel_actual === 'activo' && $score < 86) {
-            $frases[] = "A " . (86 - $score) . " puntos de nivel Top";
+            $frases[] = "A " . (86 - $score) . " puntos de Top";
         }
 
         $txt = implode('. ', $frases) . '.';
