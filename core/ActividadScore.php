@@ -1223,19 +1223,13 @@ class ActividadScore
         }
 
         // ═══ 4. PIPELINE ═══
-        $h_diff = $h_down - $h_up;
         if ($h_down > $h_up && $h_down > 2) {
-            if ($h_diff <= 5) {
-                $frases[] = "El Radar muestra un ligero desbalance en tu cartera — más clientes bajando que subiendo. Revísalos.";
-            } elseif ($score >= 75) {
-                $v = ["El Radar muestra clientes con actividad a la baja — revísalos para no perder el ritmo.", "Tienes clientes enfriándose en el Radar. Si los atiendes a tiempo, sostienes el flujo de cierre."];
-                $frases[] = $v[$rot % count($v)];
+            if ($score >= 75) {
+                $frases[] = "$h_down clientes bajando de actividad, $h_up regresaron. Revisa el Radar.";
             } elseif ($score >= 70) {
-                $v = ["$h_down clientes bajando de actividad contra $h_up que regresaron. Revisa el Radar para identificar a los que aún tienen movimiento.", "Se están enfriando más clientes de los que recuperas. Revisa el Radar."];
-                $frases[] = $v[$rot % count($v)];
+                $frases[] = "$h_down clientes bajando de actividad contra $h_up que regresaron. Revisa el Radar para identificar a los que aún tienen movimiento.";
             } else {
-                $v = ["$h_down clientes bajando de actividad, $h_up regresaron. La cartera se está enfriando. Revisa el Radar.", "Más clientes perdiendo interés que regresando. Revisa el Radar."];
-                $frases[] = $v[$rot % count($v)];
+                $frases[] = "$h_down clientes bajando de actividad, $h_up regresaron. Revisa el Radar.";
             }
         } elseif ($h_up > $h_down && $h_up >= 3) {
             $frases[] = "$h_up clientes con actividad en aumento en el Radar.";
