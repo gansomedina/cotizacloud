@@ -1225,15 +1225,14 @@ class ActividadScore
         // ═══ 4. PIPELINE ═══
         if ($h_down > $h_up && $h_down > 2) {
             if ($score >= 75) {
-                $v = ["El Radar muestra clientes con actividad a la baja — revísalos para no perder el ritmo. Sigue cotizando.", "Tienes clientes enfriándose en el Radar. Si los atiendes a tiempo, sostienes el flujo de cierre. Cotiza más para reponer."];
+                $frases[] = "$h_down clientes bajando de actividad, $h_up regresaron. Revisa el Radar.";
             } elseif ($score >= 70) {
-                $v = ["$h_down clientes bajando de actividad contra $h_up que regresaron. El Radar los tiene identificados — esa diferencia se va a reflejar en los cierres si no les das seguimiento.", "Se están enfriando más clientes de los que recuperas. Revisa el Radar antes de que los pierdas."];
+                $frases[] = "$h_down clientes bajando de actividad contra $h_up que regresaron. Revisa el Radar para identificar a los que aún tienen movimiento.";
             } else {
-                $v = ["$h_down clientes bajando de actividad, $h_up regresaron. La cartera se está enfriando. Esto impacta directamente las ventas.", "Más clientes perdiendo interés que regresando. Los números lo reflejan. Revisa el Radar."];
+                $frases[] = "$h_down clientes bajando de actividad, $h_up regresaron. Revisa el Radar.";
             }
-            $frases[] = $v[$rot % count($v)];
         } elseif ($h_up > $h_down && $h_up >= 3) {
-            $frases[] = "$h_up clientes con actividad en aumento en el Radar — buen momento para darles seguimiento.";
+            $frases[] = "$h_up clientes con actividad en aumento en el Radar.";
         }
 
         // ═══ 5. SIN ABRIR / DORMIDAS ═══
