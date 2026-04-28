@@ -1176,6 +1176,7 @@ $hist_total = array_sum($hist_values);
     <div class="sec-hdr">
         <div class="sec-title">Asesores</div>
         <label style="display:flex;align-items:center;gap:4px;font:500 11px 'Inter',sans-serif;color:var(--t3);cursor:pointer"><input type="checkbox" onchange="toggleAsesorVentas(this.checked)" style="cursor:pointer"> Ocultar ventas</label>
+        <label style="display:flex;align-items:center;gap:4px;font:500 11px 'Inter',sans-serif;color:var(--t3);cursor:pointer"><input type="checkbox" onchange="toggleAsesorDiag(this.checked)" style="cursor:pointer"> Ocultar diagnóstico</label>
         <div class="sec-count"><?= count($asesores) ?> activos</div>
     </div>
     <div class="tbl-card" style="max-height:350px;overflow-y:auto">
@@ -1215,7 +1216,7 @@ $hist_total = array_sum($hist_values);
             </div>
         </td>
     </tr>
-    <tr><td colspan="3" style="padding:4px 16px 12px;font:400 12px var(--body);color:var(--t2);line-height:1.5;border-bottom:2px solid var(--border)"><?= e($a_diag) ?></td></tr>
+    <tr class="asesor-diag"><td colspan="3" style="padding:4px 16px 12px;font:400 12px var(--body);color:var(--t2);line-height:1.5;border-bottom:2px solid var(--border)"><?= e($a_diag) ?></td></tr>
     <?php endforeach; ?>
     </tbody>
     </table>
@@ -1854,6 +1855,11 @@ let empChartInstance = null;
 function toggleEmpChart(btn) {
     btn.classList.toggle('on');
     rebuildEmpChart();
+}
+function toggleAsesorDiag(hide) {
+    document.querySelectorAll('.asesor-diag').forEach(function(el) {
+        el.style.display = hide ? 'none' : '';
+    });
 }
 function toggleAsesorVentas(hide) {
     document.querySelectorAll('.asesor-ventas').forEach(function(el) {
