@@ -360,13 +360,13 @@ class ActividadScore
                         $health_null_a_caliente++;
                     } elseif ($temp_ant === 'ninguno' && $temp_new === 'tibio') {
                         $health_up_pts += 0.5;
+                    } elseif ($temp_ant === 'ninguno' && $temp_new === 'frio') {
+                        $health_down_pts += 0.5;
                     } else {
                         $health_up_pts += 1.0;
                     }
                 } elseif ($is_down) {
                     if ($temp_new === 'ninguno' && $temp_ant === 'frio') {
-                        $health_down_pts += 0.5;
-                    } elseif ($temp_ant === 'ninguno' && $temp_new === 'frio') {
                         $health_down_pts += 0.5;
                     } elseif ($temp_new === 'ninguno' && $temp_ant === 'caliente') {
                         $health_caidas_caliente++;
