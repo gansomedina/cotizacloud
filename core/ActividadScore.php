@@ -1054,7 +1054,18 @@ class ActividadScore
     }
 
     // ─── Diagnóstico textual — traduce el score a frase humana ──
-    public static function diagnostico(array $s): string
+    public static function diagnostico_ctx(int $empresa_id, int $team_size): array
+    {
+        $periodo = self::PERIODO;
+        $total = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0 AND suspendida=0 AND estado != 'borrador' AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)", [$empresa_id, $periodo]);
+        $cerr = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado IN ('aceptada','convertida') AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND total > 0", [$empresa_id, $periodo]);
+        return [
+            'close_rate' => $total > 0 ? $cerr / $total : 0.10,
+            'team_size'  => $team_size,
+        ];
+    }
+
+    public static function diagnostico(array $s, ?array $ctx = null): string
     {
         $act  = (float)($s['s_activacion'] ?? 0);
         $eng  = (float)($s['s_engagement'] ?? 1);
@@ -1078,136 +1089,203 @@ class ActividadScore
         $nab = (int)($s['no_abiertas_5d'] ?? 0);
         $vt_diag = (int)($s['ventas_periodo'] ?? $s['ventas_totales'] ?? 0);
         $bv_diag = (float)($s['bench_ventas'] ?? 0);
+        $bench_cr = (float)($ctx['close_rate'] ?? 0);
+        $team_size = (int)($ctx['team_size'] ?? 1);
+        $rot = (((int)($s['usuario_id'] ?? 0)) + (int)date('j')) % 3;
 
         if (($s['nivel'] ?? '') === 'nuevo') return 'Recopilando información — score en proceso de activación.';
         if ($asig === 0) return 'Sin cotizaciones en el período.';
 
         $frases = [];
+        $tasa_cierre_real = $vist > 0 ? $cierres / $vist : 0;
+        $sin_cerrar = max(0, $vist - $cierres);
 
-        // ── ACTIVACIÓN — qué pasa con las cotizaciones enviadas ──
-        $tasa_ap = $asig > 0 ? $vist / $asig : 0;
+        // ═══ BLOQUE 1: ENTREGA ═══
         $sin_abrir = $asig - $vist;
+        $tasa_cierre_pct = round($tasa_cierre_real * 100);
+        $bench_cr_pct = round($bench_cr * 100);
         if ($nab > 0) {
-            $frases[] = "$nab cotización" . ($nab > 1 ? 'es llevan' : ' lleva') . " más de 5 días sin abrirse — vale la pena contactar al cliente por otro canal para confirmar que la recibió";
-        } elseif ($tasa_ap >= 0.95) {
-            $frases[] = "Excelente entrega — prácticamente todas las cotizaciones llegan al cliente";
-        } elseif ($tasa_ap >= 0.80) {
-            $frases[] = "Buena tasa de entrega. $sin_abrir cotización" . ($sin_abrir > 1 ? 'es aún no se abren' : ' aún no se abre') . " — es normal, el cliente puede tardar";
-        } elseif ($tasa_ap >= 0.50) {
-            $frases[] = "$sin_abrir de $asig cotizaciones no se han abierto — verificar que el canal de envío funcione (WhatsApp, email) o confirmar los datos del cliente";
+            $v = [
+                "$nab cotización" . ($nab > 1 ? 'es llevan' : ' lleva') . " más de 5 días sin abrirse",
+                "$nab sin abrir en más de 5 días, confirmar que el cliente la recibió",
+                "Hay $nab que llevan más de 5 días sin abrirse, contactar al cliente",
+            ];
+            $frases[] = $v[$rot];
+        } elseif ($sin_abrir > 0) {
+            $v = [
+                "$vist de $asig abiertas, $sin_abrir pendiente" . ($sin_abrir > 1 ? 's' : ''),
+                "$sin_abrir cotización" . ($sin_abrir > 1 ? 'es' : '') . " sin abrir de $asig enviadas",
+                "$asig enviadas, $sin_abrir sin abrir todavía",
+            ];
+            $frases[] = $v[$rot];
         } else {
-            $frases[] = "La mayoría de las cotizaciones no llegan al cliente — revisar urgentemente el método de envío";
+            $v = [
+                "$asig cotizaciones enviadas, todas abiertas",
+                "Las $asig cotizaciones fueron abiertas por el cliente",
+                "Entrega completa: $asig de $asig abiertas",
+            ];
+            $frases[] = $v[$rot];
         }
 
-        // ── SEGUIMIENTO — usa el Radar? ──
+        // ═══ BLOQUE 2: CIERRES — con comparación ═══
         $fb_calientes = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
         $fb_dados = (int)($s['fb_total'] ?? $s['radar_views'] ?? 0);
         if ($fb_calientes > 0 && $fb_dados > $fb_calientes) $fb_dados = $fb_calientes;
-        if ($ign > 0) {
-            $frases[] = "Tiene $ign señal" . ($ign > 1 ? 'es' : '') . " caliente" . ($ign > 1 ? 's' : '') . " en el Radar sin marcar — abrir el Radar y dar feedback (\"Con interés\" / \"Sin interés\") para que el sistema aprenda";
-        } elseif ($seg >= 0.80) {
-            $frases[] = "Excelente uso del Radar — marca las señales y el sistema aprende de sus decisiones";
-        } elseif ($seg >= 0.50) {
-            $frases[] = "Buen uso del Radar, puede mejorar dando feedback más seguido a las cotizaciones calientes";
-        } elseif ($fb_calientes > 0) {
-            $frases[] = "Hay $fb_calientes cotizaciones calientes esperando su atención en el Radar";
-        }
-
-        // ── CONVERSIÓN — cierra ventas? ──
-        if ($cierres === 0 && $vist >= 5) {
-            $frases[] = "$vist cotizaciones abiertas y ningún cierre — enfocarse en las que tienen más actividad del cliente en el Radar";
-        } elseif ($cierres === 0 && $vist >= 1) {
-            $frases[] = "Aún sin cierres en el período — dar seguimiento personal a las cotizaciones que el cliente ya abrió";
-        } elseif ($conv >= 0.70) {
-            $frases[] = "Excelente tasa de cierre: $cierres venta" . ($cierres > 1 ? 's' : '') . " de $vist cotizaciones abiertas";
-            if ($cbkt > 0) $frases[] = "$cbkt cierre" . ($cbkt > 1 ? 's' : '') . " asistido" . ($cbkt > 1 ? 's' : '') . " por el Radar — el seguimiento de señales da resultado";
-        } elseif ($conv >= 0.30) {
-            $frases[] = "$cierres cierre" . ($cierres > 1 ? 's' : '') . " de $vist abiertas — buen ritmo, se puede mejorar dando seguimiento a las cotizaciones con más actividad del cliente";
-        } else {
-            if ($cierres > 0) {
-                $frases[] = "$cierres cierre" . ($cierres > 1 ? 's' : '') . " de $vist abiertas — revisar en el Radar cuáles tienen señales fuertes y priorizarlas";
+        if ($cierres === 0 && $vist >= 3) {
+            $v = [
+                "$vist clientes abrieron la cotización y ninguno compró, cierre en 0%",
+                "0 ventas de $vist cotizaciones abiertas",
+                "$vist cotizaciones abiertas sin ningún cierre",
+            ];
+            $frases[] = $v[$rot];
+        } elseif ($cierres === 0) {
+            $frases[] = "Sin ventas cerradas en el período";
+        } elseif ($cierres > 0) {
+            $frases[] = "$cierres de $vist, cierre del $tasa_cierre_pct%";
+            if ($team_size >= 2 && $bench_cr > 0) {
+                if ($tasa_cierre_real > $bench_cr * 1.2) {
+                    $frases[] = "Arriba del {$bench_cr_pct}% de la empresa";
+                } elseif ($tasa_cierre_real < $bench_cr * 0.8) {
+                    $frases[] = "Por debajo del {$bench_cr_pct}% de la empresa";
+                }
+            } elseif ($bv_diag > 0) {
+                $bv_int = (int)round($bv_diag);
+                if ($vt_diag < $bv_diag) {
+                    $frases[] = "$vt_diag venta" . ($vt_diag !== 1 ? 's' : '') . " vs $bv_int del período anterior";
+                } elseif ($vt_diag > $bv_diag) {
+                    $frases[] = "Arriba del período anterior ($bv_int venta" . ($bv_int !== 1 ? 's' : '') . ")";
+                }
             }
+            if ($cbkt > 0) $frases[] = "$cbkt con apoyo del Radar";
         }
 
-        // Tendencia de volumen
-        if ($bv_diag > 0 && $vt_diag < $bv_diag) {
-            $bv_int = (int)round($bv_diag);
-            $frases[] = "Volumen a la baja: $vt_diag venta" . ($vt_diag !== 1 ? 's' : '') . " vs $bv_int del período anterior";
-        } elseif ($bv_diag > 0 && $vt_diag >= $bv_diag * 1.5) {
-            $frases[] = "Volumen en crecimiento — $vt_diag venta" . ($vt_diag !== 1 ? 's' : '') . " vs " . (int)round($bv_diag) . " del período anterior";
+        // ═══ BLOQUE 3: OPORTUNIDAD — qué muestra el Radar ═══
+        if ($ign > 0) {
+            $v = [
+                "$ign cliente" . ($ign > 1 ? 's con' : ' con') . " actividad reciente en el Radar pendiente" . ($ign > 1 ? 's' : '') . " de seguimiento",
+                "$ign cliente" . ($ign > 1 ? 's muestran' : ' muestra') . " interés y no se les ha dado seguimiento",
+                "El Radar detectó $ign cliente" . ($ign > 1 ? 's' : '') . " con actividad reciente sin atender",
+            ];
+            $frases[] = $v[$rot];
+        }
+        if ($h_down > 0 && $h_down > $h_up) {
+            $v = [
+                "$h_down clientes bajando de actividad" . ($h_up > 0 ? " contra $h_up que se reactivaron" : ''),
+                "El Radar muestra $h_down clientes con actividad a la baja" . ($h_up > 0 ? ", $h_up se reactivaron" : ''),
+                "$h_down perdiendo interés" . ($h_up > 0 ? " vs $h_up que regresaron" : '') . " — revisar en el Radar",
+            ];
+            $frases[] = $v[$rot];
+        } elseif ($h_up > $h_down && $h_up >= 2) {
+            $v = [
+                "$h_up clientes aumentando su interés",
+                "El Radar detectó $h_up clientes con actividad en aumento",
+                "$h_up clientes revisando la cotización con más frecuencia",
+            ];
+            $frases[] = $v[$rot];
+        }
+        if ($sin_cerrar > 3 && $cierres > 0) {
+            $v = [
+                "$sin_cerrar clientes vieron la cotización y aún no compraron",
+                "Quedan $sin_cerrar clientes que abrieron su cotización y no han decidido",
+                "$sin_cerrar cotizaciones abiertas pendientes de cierre",
+            ];
+            $frases[] = $v[$rot];
         }
 
-        // ── ENGAGEMENT — calidad de las ventas ──
+        // ═══ BLOQUE 4: COBROS / DESCUENTOS ═══
         if ($vsp > 0) {
-            $frases[] = "$vsp venta" . ($vsp > 1 ? 's' : '') . " sin cobrar después de 5 días — dar seguimiento al cobro mejora directamente el score";
+            $v = [
+                "$vsp venta" . ($vsp > 1 ? 's' : '') . " sin cobrar después de 5 días",
+                "$vsp venta" . ($vsp > 1 ? 's pendientes' : ' pendiente') . " de cobro",
+                "Falta cobrar $vsp venta" . ($vsp > 1 ? 's' : ''),
+            ];
+            $frases[] = $v[$rot];
         }
         if ($cierres > 0 && $sdto < $cierres) {
             $con_dto = $cierres - $sdto;
             $pct_dto = round($con_dto / $cierres * 100);
-            if ($pct_dto >= 70) {
-                $frases[] = "$pct_dto% de cierres con descuento — intentar cerrar a precio completo cuando sea posible";
-            }
+            if ($pct_dto >= 50) $frases[] = "$pct_dto% de ventas con descuento";
         }
 
-        // ── PIPELINE — se calienta o se enfría? ──
-        if ($h_down > 0 && $h_down > $h_up * 2) {
-            $frases[] = "Pipeline enfriándose: $h_down cotizaciones perdieron temperatura vs $h_up que subieron — dar seguimiento rápido a las que se enfrían antes de que se pierdan";
-        } elseif ($h_up > $h_down && $h_up >= 3) {
-            $frases[] = "Pipeline calentándose: $h_up cotizaciones subieron de temperatura — buen momento para cerrar";
-        }
-
-        // ── DORMIDAS ──
+        // ═══ BLOQUE 5: DORMIDAS ═══
         if ($dorm > 0) {
-            $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " enviada" . ($dorm > 1 ? 's' : '') . " que nadie abrió en 7+ días — considerar reenviar o contactar al cliente";
+            $v = [
+                "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " sin abrir en 7+ días",
+                "$dorm enviada" . ($dorm > 1 ? 's' : '') . " que nadie ha abierto en más de una semana",
+                "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " que el cliente no ha visto en 7+ días",
+            ];
+            $frases[] = $v[$rot];
         }
 
-        // ── MOMENTUM ──
+        // ═══ BLOQUE 6: TENDENCIA ═══
         if ($mom >= 1.20) {
-            $frases[] = "Tendencia positiva — el desempeño va mejorando";
+            $v = ["Mejorando vs su historial", "Tendencia positiva", "En ascenso vs período anterior"];
+            $frases[] = $v[$rot];
         } elseif ($mom <= 0.80) {
-            $frases[] = "Tendencia a la baja — necesita recuperar ritmo de actividad";
+            $v = ["Desempeño a la baja", "Tendencia negativa vs su historial", "Por debajo de su propio promedio"];
+            $frases[] = $v[$rot];
         }
 
-        // ── META DE NIVEL ──
+        // ═══ BLOQUE 7: META ═══
         $nivel_actual = $s['nivel'] ?? 'bajo';
-        if ($nivel_actual === 'bajo' && $score < 31) {
-            $frases[] = "A " . (31 - $score) . " puntos de subir a Regular";
-        } elseif ($nivel_actual === 'regular' && $score < 61) {
-            $frases[] = "A " . (61 - $score) . " puntos de nivel Activo";
-        } elseif ($nivel_actual === 'activo' && $score < 86) {
-            $frases[] = "A " . (86 - $score) . " puntos de nivel Top";
-        }
+        if ($nivel_actual === 'bajo' && $score < 31) $frases[] = "A " . (31 - $score) . " puntos de Regular";
+        elseif ($nivel_actual === 'regular' && $score < 61) $frases[] = "A " . (61 - $score) . " puntos de Activo";
+        elseif ($nivel_actual === 'activo' && $score < 86) $frases[] = "A " . (86 - $score) . " puntos de Top";
 
         $txt = implode('. ', $frases) . '.';
 
-        // ── RECOMENDACIÓN — basada en la dimensión más débil ──
-        // Ignorar health si hay una dimensión peor que sea más accionable
+        // ═══ ACCIÓN — qué hacer ahora ═══
         $dims = ['act' => $act, 'eng' => $eng, 'seg' => $seg, 'hlt' => $hlt, 'conv' => $conv];
-        arsort($dims);
-        $peores = array_keys(array_slice($dims, -2, 2, true));
-        $peor = $peores[0];
-        // Si health es la peor pero hay otra dimensión baja, recomendar la otra
-        if ($peor === 'hlt' && count($peores) > 1 && $dims[$peores[1]] < 0.50) {
-            $peor = $peores[1];
-        }
+        asort($dims);
+        $peor = array_key_first($dims);
+        if ($peor === 'hlt') { $segunda = array_keys($dims)[1] ?? 'hlt'; if ($dims[$segunda] < 0.50) $peor = $segunda; }
 
-        $reco = match($peor) {
-            'act'  => $sin_abrir > 2
-                ? ' 💡 Recomendación: confirmar con el cliente que recibió la cotización — un mensaje por WhatsApp o llamada rápida puede hacer la diferencia.'
-                : '',
-            'eng'  => $vsp > 0
-                ? ' 💡 Recomendación: cobrar las ventas pendientes — cada venta sin cobro reduce el score de engagement.'
-                : ' 💡 Recomendación: al negociar, intentar mantener el precio — los descuentos afectan el score del equipo.',
-            'seg'  => $ign > 0
-                ? " 💡 Recomendación: abrir el Radar y marcar las $ign señales pendientes como \"Con interés\" o \"Sin interés\"."
-                : ' 💡 Recomendación: revisar el Radar diariamente y dar feedback a las cotizaciones calientes.',
-            'hlt'  => $h_down > $h_up
-                ? ' 💡 Recomendación: las cotizaciones se están enfriando — contactar a los clientes con actividad reciente antes de que pierdan interés.'
-                : ' 💡 Recomendación: enviar nuevas cotizaciones para mantener el pipeline activo.',
-            'conv' => $cierres === 0
-                ? ' 💡 Recomendación: revisar en el Radar cuáles cotizaciones tienen más actividad del cliente y priorizarlas para cierre.'
-                : ' 💡 Recomendación: enfocarse en las cotizaciones con señales fuertes — el Radar muestra cuáles clientes están más interesados.',
-        };
+        $acciones = [
+            'act' => [
+                ' 💡 Confirmar con los clientes que recibieron la cotización.',
+                ' 💡 Enviar WhatsApp a los clientes que no han abierto.',
+                ' 💡 Verificar que las cotizaciones estén llegando al cliente.',
+            ],
+            'eng' => $vsp > 0 ? [
+                ' 💡 Cobrar las ventas pendientes.',
+                " 💡 Dar seguimiento al cobro de las $vsp ventas pendientes.",
+                ' 💡 Contactar a los clientes que no han pagado.',
+            ] : [
+                ' 💡 Intentar cerrar a precio completo cuando sea posible.',
+                ' 💡 Negociar sin descuento mejora el score.',
+                ' 💡 Los descuentos reducen el score del equipo.',
+            ],
+            'seg' => $ign > 0 ? [
+                " 💡 Entrar al Radar y atender los $ign clientes interesados.",
+                " 💡 El Radar muestra $ign clientes esperando seguimiento.",
+                " 💡 Revisar el Radar, hay $ign clientes activos sin atender.",
+            ] : [
+                ' 💡 Revisar el Radar diariamente.',
+                ' 💡 Abrir el Radar para ver qué clientes están activos.',
+                ' 💡 El Radar detecta clientes interesados, revisarlo seguido.',
+            ],
+            'hlt' => $h_down > $h_up ? [
+                ' 💡 Contactar a los clientes que están perdiendo interés.',
+                ' 💡 Revisar en el Radar los clientes con actividad a la baja.',
+                ' 💡 Dar seguimiento a los clientes que se están enfriando.',
+            ] : [
+                ' 💡 Seguir cotizando para tener más clientes activos.',
+                ' 💡 Mandar más cotizaciones y usar el Radar para dar seguimiento.',
+                ' 💡 Más cotizaciones = más oportunidades que el Radar puede detectar.',
+            ],
+            'conv' => $cierres === 0 ? [
+                ' 💡 Llamar a los clientes que más revisaron su cotización.',
+                ' 💡 El Radar muestra quién está más interesado, empezar por ahí.',
+                ' 💡 Revisar en el Radar cuáles clientes muestran más actividad.',
+            ] : [
+                ' 💡 Priorizar a los clientes que el Radar marca como interesados.',
+                ' 💡 Enfocarse en los clientes con más actividad en el Radar.',
+                ' 💡 El Radar detecta quién está listo para comprar.',
+            ],
+        ];
+
+        $reco_arr = $acciones[$peor] ?? [' 💡 Revisar el Radar.'];
+        $reco = $reco_arr[$rot] ?? $reco_arr[0];
 
         return $txt . $reco;
     }
