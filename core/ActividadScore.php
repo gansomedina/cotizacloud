@@ -1241,7 +1241,6 @@ class ActividadScore
         if ($dorm > 0) $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " lleva" . ($dorm > 1 ? 'n' : '') . " más de 7 días sin abrirse.";
 
         // ═══ 6. HISTÓRICO ═══
-        if ($volumen_bajo && $score < 80) $frases[] = "Estás por debajo del promedio mensual de ventas de la empresa.";
         if ($cierre_hist_abajo && $score < 70) $frases[] = "Tu cierre está por debajo del promedio anual de la empresa.";
 
         // ═══ 7. COBROS ═══
