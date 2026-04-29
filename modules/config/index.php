@@ -2207,6 +2207,14 @@ async function guardarTermometro(on) {
     </div>
 
     <div style="margin-bottom:16px">
+      <div class="field-lbl">Texto secundario <span style="font-weight:400;color:var(--t3)">(opcional)</span></div>
+      <div class="field-sub" style="margin-bottom:6px">Línea más pequeña debajo de la pregunta. Útil para dar contexto antes de calificar. Déjalo vacío para no mostrarlo.</div>
+      <input class="field-box" id="fb-subtitulo" type="text" maxlength="255"
+             value="<?= e($empresa['feedback_subtitulo'] ?? '') ?>"
+             placeholder="Tu opinión es totalmente anónima y solo nos llega a nosotros">
+    </div>
+
+    <div style="margin-bottom:16px">
       <div class="field-lbl">Texto del campo de comentario</div>
       <div class="field-sub" style="margin-bottom:6px">Placeholder dentro del recuadro de texto opcional</div>
       <input class="field-box" id="fb-label" type="text" maxlength="255"
@@ -2236,7 +2244,8 @@ async function guardarTermometro(on) {
     </div>
 
     <div id="fb-preview" style="background:var(--white);border:1px solid var(--bd);border-radius:14px;padding:28px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04)">
-      <div id="fb-prev-q" style="font:600 17px var(--body);color:var(--text);margin-bottom:18px">¿Qué tan satisfecho estás con la atención recibida?</div>
+      <div id="fb-prev-q" style="font:600 17px var(--body);color:var(--text);margin-bottom:8px">¿Qué tan satisfecho estás con la atención recibida?</div>
+      <div id="fb-prev-s" style="font:400 13px var(--body);color:var(--t3);margin-bottom:18px;line-height:1.45;display:<?= !empty($empresa['feedback_subtitulo']) ? 'block' : 'none' ?>"><?= e($empresa['feedback_subtitulo'] ?? '') ?></div>
       <div style="display:flex;justify-content:center;gap:8px;margin-bottom:18px">
         <span style="font-size:36px;color:#e2e8f0;cursor:default">★</span>
         <span style="font-size:36px;color:#e2e8f0;cursor:default">★</span>
@@ -2254,10 +2263,17 @@ async function guardarTermometro(on) {
 <script>
 (function(){
   const q  = document.getElementById('fb-pregunta');
+  const s  = document.getElementById('fb-subtitulo');
   const l  = document.getElementById('fb-label');
   const pq = document.getElementById('fb-prev-q');
+  const ps = document.getElementById('fb-prev-s');
   const pl = document.getElementById('fb-prev-l');
   if (q && pq) q.addEventListener('input', () => pq.textContent = q.value || q.placeholder);
+  if (s && ps) s.addEventListener('input', () => {
+    const v = s.value.trim();
+    ps.textContent = v;
+    ps.style.display = v ? 'block' : 'none';
+  });
   if (l && pl) l.addEventListener('input', () => pl.placeholder = l.value || l.placeholder);
 })();
 
@@ -2269,6 +2285,7 @@ async function guardarFeedback() {
       body: JSON.stringify({
         feedback_activo: document.getElementById('fb-toggle').checked ? 1 : 0,
         feedback_pregunta: document.getElementById('fb-pregunta').value,
+        feedback_subtitulo: document.getElementById('fb-subtitulo').value,
         feedback_label_comentario: document.getElementById('fb-label').value,
         feedback_agradecimiento: document.getElementById('fb-thanks').value
       })
