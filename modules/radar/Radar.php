@@ -2007,11 +2007,10 @@ class Radar
         // (que puede tener delay administrativo).
         // Filtramos por venta real para asegurar que solo cuenta cierres efectivos.
         $rows = DB::query(
-            "SELECT DATEDIFF(c.accion_at, c.created_at) AS dias
+            "SELECT DATEDIFF(v.created_at, c.created_at) AS dias
              FROM ventas v
              JOIN cotizaciones c ON c.id = v.cotizacion_id
              WHERE v.empresa_id = ? AND v.estado != 'cancelada'
-               AND c.accion_at IS NOT NULL
              ORDER BY dias ASC",
             [$empresa_id]
         );
