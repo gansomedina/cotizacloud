@@ -685,14 +685,19 @@ class ActividadScore
         $w_vol_conv  = sqrt(max($bench_ventas, 0));           // tendencia: más historial → más peso
         $w_conv_total = max($w_cr_conv + $w_qual_conv + $w_ttc_conv + $w_vol_conv, 1);
 
-        $s_conversion = (
+        // Componentes de conversión (close_rate + calidad + velocidad + tendencia)
+        $componentes_conv = (
             self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01))
                 * ($w_cr_conv / $w_conv_total)
             + $cierre_quality * ($w_qual_conv / $w_conv_total)
             + $ttc_score * ($w_ttc_conv / $w_conv_total)
             + $vol_trend * ($w_vol_conv / $w_conv_total)
-        )
-                        - $pen_conversion;
+        );
+
+        // Penalización como multiplicador (no resta) — así cada cierre incrementa
+        // proporcionalmente el score sin quedar clamped a 0 cuando estás abajo del benchmark
+        $pen_factor_conv = min($pen_conversion, 0.85);
+        $s_conversion = $componentes_conv * (1.0 - $pen_factor_conv);
         $s_conversion = max(0.0, min(1.0, $s_conversion));
 
         // ═══════════════════════════════════════════════════
