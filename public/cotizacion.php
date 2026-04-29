@@ -996,8 +996,27 @@ if ($fb_render) {
     if (Auth::es_superadmin()) {
         $fb_admin = true; // superadmin sí lo ve para testing
     } elseif (Auth::id()) {
-        // Cualquier otro usuario logueado (asesor/admin de empresa) NO debe verlo
+        // Logueado (asesor/admin empresa) → ocultar
         $fb_render = false;
+    } else {
+        // Cliente sin login. Aún así verifico si viene desde dispositivo/IP/cookie interna
+        // (ej. asesor en modo incógnito o sin sesión activa pero desde su PC habitual)
+        $ip_v = ip_real();
+        $vid_v = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
+        $dsig_v = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 20);
+        if ($ip_v && DB::val("SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? LIMIT 1", [EMPRESA_ID, $ip_v])) {
+            $fb_render = false;
+        } elseif ($vid_v && DB::val("SELECT 1 FROM radar_visitors_internos WHERE empresa_id=? AND visitor_id=? LIMIT 1", [EMPRESA_ID, $vid_v])) {
+            $fb_render = false;
+        } elseif ($dsig_v && DB::val(
+            "SELECT 1 FROM user_sessions us JOIN usuarios u ON u.id=us.usuario_id
+              WHERE us.device_sig=? AND (u.empresa_id=? OR u.rol='superadmin')
+                AND us.device_sig IS NOT NULL AND us.device_sig!=''
+              LIMIT 1",
+            [$dsig_v, EMPRESA_ID]
+        )) {
+            $fb_render = false;
+        }
     }
 }
 if ($fb_render):
