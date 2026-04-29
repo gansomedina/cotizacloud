@@ -1636,11 +1636,22 @@ class Radar
             $f[] = "Mostró interés en el precio.";
         }
 
-        // Multi-visitor precio
+        // Multi-visitor precio (no duplicar si ya se dijo "regresó al precio")
         if ($has_mv) {
             $f[] = "Varias personas revisaron el precio.";
-        } elseif ($has_sv && !$has_mv) {
+        } elseif ($has_sv && !$has_rev && !$has_loop) {
             $f[] = "La misma persona regresó al precio.";
+        }
+
+        // Cupón — señal fuerte de intent
+        if (isset($sn['cupon'])) {
+            $f[] = "Intentó aplicar un cupón.";
+        }
+
+        // Frecuencia: lo abrió varias veces hoy
+        $v24 = (int)($dbg['views24'] ?? 0);
+        if ($v24 >= 3) {
+            $f[] = "Lo abrió {$v24} veces hoy.";
         }
 
         // Lectura comprometida
