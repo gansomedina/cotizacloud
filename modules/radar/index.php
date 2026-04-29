@@ -368,7 +368,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 $why_fb = $r_fb_tipo ?? null;
                 $why_text = htmlspecialchars(Radar::explicar_bucket($r['senales'], $why_fb, !empty($r['accepted'])));
                 $why_id = 'why-' . $cot_id_fb . '-' . substr(md5($bkt_key ?? ''), 0, 4);
-                $why_btn = "<button class='fb-btn why-btn' onclick=\"event.preventDefault();event.stopPropagation();toggleWhy('{$why_id}')\" title='¿Por qué aparece aquí?' style='font-size:10px'>❓</button>";
+                $why_btn = "<button class='fb-btn why-btn' onclick=\"event.preventDefault();event.stopPropagation();toggleWhy('{$why_id}',{$cot_id_fb})\" title='¿Por qué aparece aquí?' style='font-size:10px'>❓</button>";
             }
             $fb_html = "<div class='fb-btns' style='flex-shrink:0'>"
                 . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'con_interes',this)\" title='Con interés'>👍</button>"
@@ -1296,7 +1296,7 @@ render_bkt('🟡 Activos 48h (todos los activos)',
 const CSRF_R='<?= csrf_token() ?>';
 
 // Toggle "¿Por qué?" — solo uno expandido a la vez
-function toggleWhy(id) {
+function toggleWhy(id, cotId) {
     const target = document.getElementById(id);
     if (!target) return;
     const willOpen = target.style.display === 'none' || !target.style.display;
@@ -1304,6 +1304,9 @@ function toggleWhy(id) {
         if (tr.id !== id) tr.style.display = 'none';
     });
     target.style.display = willOpen ? 'table-row' : 'none';
+    if (willOpen && cotId) {
+        fetch('/api/track-tip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:'radar_why',cot_id:cotId})}).catch(function(){});
+    }
 }
 
 // Feedback del Radar

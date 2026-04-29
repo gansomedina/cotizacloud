@@ -661,6 +661,42 @@ class ActividadScore
                        - $pen_buckets;
         $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
 
+        // ── Exploración ❓ en Radar: multiplicador sobre Seguimiento ──
+        // Cuenta cuántas calientes el asesor ha explorado (click ❓) alguna vez.
+        // 1 click por cotización es suficiente — no se requiere diario.
+        $calientes_exploradas = 0;
+        $radar_why_score = 1.0;
+        if ($cots_calientes > 0) {
+            $calientes_ids = DB::query(
+                "SELECT id FROM cotizaciones WHERE $cw $no_susp
+                 AND radar_bucket IN $hot_buckets_sql
+                 AND estado IN ('enviada','vista')",
+                [$usuario_id, $empresa_id]
+            );
+            if (!empty($calientes_ids)) {
+                $ids_list = implode(',', array_map(fn($r) => (int)$r['id'], $calientes_ids));
+                $calientes_exploradas = (int)DB::val(
+                    "SELECT COUNT(DISTINCT ref_id) FROM actividad_log
+                     WHERE usuario_id=? AND tipo='radar_why_click'
+                     AND ref_id IN ($ids_list)",
+                    [$usuario_id]
+                );
+            }
+            // Grace period: si nunca ha clickeado ❓, no penalizar
+            $why_ever = (int)DB::val(
+                "SELECT 1 FROM actividad_log WHERE usuario_id=? AND tipo='radar_why_click' LIMIT 1",
+                [$usuario_id]
+            );
+            if ($why_ever) {
+                $pct_why = $calientes_exploradas / $cots_calientes;
+                if ($pct_why >= 0.70) $radar_why_score = 1.0;
+                elseif ($pct_why >= 0.30) $radar_why_score = 0.85;
+                else $radar_why_score = 0.70;
+            }
+        }
+        $s_seguimiento = $s_seguimiento * $radar_why_score;
+        $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
+
         // Guardar para debug
         $benchmark_radar = $cots_calientes; // para compatibilidad con debug display
 
@@ -944,7 +980,7 @@ class ActividadScore
               carga_activa, cot_asignadas, cot_vistas, cot_dormidas,
               cierres_bucket, cierres_sin_dto, transiciones_up, senales_ignoradas,
               radar_views, radar_benchmark, tasa_cierre, ventas_sin_pago, ventas_periodo, bench_ventas,
-              s_activacion, s_activacion_op, tips_score, dias_lectura, s_engagement, eng_pen_sin_pago, eng_pen_descuento, eng_pen_enfriamiento, eng_pen_bajo_benchmark,
+              s_activacion, s_activacion_op, tips_score, dias_lectura, radar_why_score, calientes_exploradas, s_engagement, eng_pen_sin_pago, eng_pen_descuento, eng_pen_enfriamiento, eng_pen_bajo_benchmark,
               s_seguimiento, s_radar_health, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
@@ -961,6 +997,7 @@ class ActividadScore
               radar_views=VALUES(radar_views), radar_benchmark=VALUES(radar_benchmark),
               tasa_cierre=VALUES(tasa_cierre), ventas_sin_pago=VALUES(ventas_sin_pago), ventas_periodo=VALUES(ventas_periodo), bench_ventas=VALUES(bench_ventas),
               s_activacion=VALUES(s_activacion), s_activacion_op=VALUES(s_activacion_op), tips_score=VALUES(tips_score), dias_lectura=VALUES(dias_lectura),
+              radar_why_score=VALUES(radar_why_score), calientes_exploradas=VALUES(calientes_exploradas),
               s_engagement=VALUES(s_engagement),
               eng_pen_sin_pago=VALUES(eng_pen_sin_pago), eng_pen_descuento=VALUES(eng_pen_descuento), eng_pen_enfriamiento=VALUES(eng_pen_enfriamiento), eng_pen_bajo_benchmark=VALUES(eng_pen_bajo_benchmark),
               s_seguimiento=VALUES(s_seguimiento),
@@ -980,6 +1017,7 @@ class ActividadScore
                 $cierres_bucket, $cierres_sin_dto, $health_up, $health_down,
                 $fb_total, round($cots_calientes, 1), round($tasa_cierre, 3), $ventas_sin_pago, $ventas_totales, round($bench_ventas, 1),
                 round($s_activacion, 3), round($s_activacion_op, 3), round($tips_score, 2), $dias_lectura,
+                round($radar_why_score, 2), $calientes_exploradas,
                 round($s_engagement, 3),
                 round($eng_pen_sin_pago, 3), round($eng_pen_descuento, 3), round($eng_pen_enfriamiento, 3), round($eng_pen_bajo_benchmark, 3),
                 round($s_seguimiento, 3), round($s_radar_health, 3), round($s_conversion, 3),
@@ -1013,6 +1051,8 @@ class ActividadScore
             'cots_calientes'    => $cots_calientes,
             'fb_total'          => $fb_total,
             'fb_calidad'        => round($calidad_fb, 3),
+            'radar_why_score'   => round($radar_why_score, 2),
+            'calientes_exploradas' => $calientes_exploradas,
             's_activacion'      => round($s_activacion, 3),
             's_activacion_op'   => round($s_activacion_op, 3),
             'tips_score'        => round($tips_score, 2),
@@ -1227,15 +1267,19 @@ class ActividadScore
         $pocos_cierres = ($cierres > 0 && $cierres <= 2 && $vist >= 10);
         $max_frases = match(true) { $score >= 85 => 4, $score >= 75 => 5, $score >= 70 => 6, $score >= 45 => 7, default => 5 };
 
-        // ═══ 0. LECTURA DE TIPS ═══
+        // ═══ 0. USO DE HERRAMIENTAS (tips + ❓) ═══
         $tips_s = (float)($s['tips_score'] ?? 1);
-        $dias_lec = (int)($s['dias_lectura'] ?? 0);
+        $why_s  = (float)($s['radar_why_score'] ?? 1);
         $dias_act_d = (int)($s['dias_activos'] ?? 0);
-        if ($tips_s < 1.0 && $dias_act_d > 0) {
-            if ($tips_s <= 0) {
-                $frases[] = "No lees los tips.";
-            } else {
-                $frases[] = "Estás leyendo a medias — revisa el análisis completo.";
+        if ($dias_act_d > 0) {
+            $no_lee = $tips_s < 1.0;
+            $no_explora = $why_s < 1.0;
+            if ($no_lee && $no_explora) {
+                $frases[] = "No lees los tips ni exploras las señales del Radar.";
+            } elseif ($no_lee) {
+                $frases[] = $tips_s <= 0 ? "No lees los tips." : "Estás leyendo a medias — revisa el análisis completo.";
+            } elseif ($no_explora) {
+                $frases[] = "No exploras las señales del Radar — usa el ❓ en tus cotizaciones calientes.";
             }
         }
 

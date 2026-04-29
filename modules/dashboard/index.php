@@ -890,11 +890,18 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <div class="dbg-row"><span class="dbg-lbl">  operativa</span><span class="dbg-val"><?= round(($es['s_activacion_op'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  tips <?= (int)($es['dias_lectura'] ?? 0) ?>/<?= (int)($es['dias_activos'] ?? 0) ?>d</span><span class="dbg-val"><?= round(($es['tips_score'] ?? 1) * 100) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Engagement (17%)</span><span class="dbg-val"><?= round(($es['s_engagement'] ?? 0) * 100, 1) ?>%</span></div>
+        <?php
+        $dbg_seg_val = round(($es['s_seguimiento'] ?? 0) * 100, 1);
+        $dbg_why_s   = (float)($es['radar_why_score'] ?? 1);
+        $dbg_why_exp = (int)($es['calientes_exploradas'] ?? 0);
+        $dbg_cal_tot = (int)($es['cots_calientes'] ?? $es['radar_benchmark'] ?? 0);
+        ?>
         <div class="dbg-row"><span class="dbg-lbl">  pen sin pago</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_sin_pago'] ?? 0) > 0 ? '-'.round(($es['eng_pen_sin_pago'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen descuento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_descuento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_descuento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen enfriamiento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_enfriamiento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_enfriamiento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen bajo benchmark</span><span class="dbg-val dbg-neg"><?php $epbb = $es['eng_pen_bajo_benchmark'] ?? 0; if ($epbb > 0) { echo '-'.round($epbb * 100, 1).'% ('.($es['ventas_periodo'] ?? '?').' vs '.($es['bench_ventas'] ?? '?').')'; } else echo '—'; ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Seguimiento (25%)</span><span class="dbg-val"><?= round(($es['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  ❓ exploradas <?= $dbg_why_exp ?>/<?= $dbg_cal_tot ?></span><span class="dbg-val"><?= $dbg_why_s < 1 ? '×'.round($dbg_why_s * 100).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Radar Health (15%)</span><span class="dbg-val"><?= round(($es['s_radar_health'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pipeline ↑ / ↓</span><span class="dbg-val"><?= (int)($es['health_up'] ?? $es['transiciones_up'] ?? 0) ?> / <?= (int)($es['health_down'] ?? $es['senales_ignoradas'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Conversión (35%)</span><span class="dbg-val"><?= round(($es['s_conversion'] ?? 0) * 100, 1) ?>%</span></div>
