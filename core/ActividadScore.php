@@ -302,6 +302,33 @@ class ActividadScore
             [$usuario_id, $periodo]
         );
 
+        // ── Lectura de tips del diagnóstico (3 "ver más") ──
+        // Cuenta días donde el asesor expandió los 3 "ver más" del diagnóstico
+        $dias_lectura = (int)DB::val(
+            "SELECT COUNT(*) FROM (
+                SELECT DATE(created_at) AS dia
+                FROM actividad_log
+                WHERE usuario_id=? AND tipo IN ('tip_expand_1','tip_expand_2','tip_expand_3')
+                AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                GROUP BY dia
+                HAVING COUNT(DISTINCT tipo) = 3
+            ) AS t",
+            [$usuario_id, $periodo]
+        );
+        // Si nunca ha habido un expand (feature nueva), dar crédito completo
+        $tips_ever = (int)DB::val(
+            "SELECT 1 FROM actividad_log WHERE usuario_id=? AND tipo='tip_expand_1' LIMIT 1",
+            [$usuario_id]
+        );
+        if (!$tips_ever) {
+            $tips_score = 1.0; // Feature no desplegada aún para este usuario
+        } else {
+            $pct_lectura = $dias_activos > 0 ? $dias_lectura / $dias_activos : 0;
+            if ($pct_lectura >= 0.70) $tips_score = 1.0;
+            elseif ($pct_lectura >= 0.30) $tips_score = 0.50;
+            else $tips_score = 0.0;
+        }
+
         // Velocidad de cierre — tiempo promedio vs benchmark empresa
         $avg_ttc_vendedor = $cierres_total > 0 ? DB::val(
             "SELECT AVG(DATEDIFF(accion_at, created_at)) FROM cotizaciones
@@ -455,8 +482,12 @@ class ActividadScore
         // v5: ratio directo, sin sigmoid, sin piso fijo
         // Dormidas ponderadas por (1 - apertura): si todo se abre, dormidas no pesan.
         // Si apertura es baja (0.50), dormidas pesan 0.50 — compounding real.
-        $s_activacion = $tasa_apertura - $pen_no_abiertas - $pen_dormidas * (1.0 - $tasa_apertura);
-        $s_activacion = max(0.0, min(1.0, $s_activacion));
+        // Activación se divide en 2 mitades:
+        // Operativa (50%): apertura, no abiertas, dormidas — lo de siempre
+        // Tips (50%): lectura del diagnóstico — 3 tiers (100%/50%/0%)
+        $s_activacion_op = $tasa_apertura - $pen_no_abiertas - $pen_dormidas * (1.0 - $tasa_apertura);
+        $s_activacion_op = max(0.0, min(1.0, $s_activacion_op));
+        $s_activacion = ($s_activacion_op * 0.5) + ($tips_score * 0.5);
 
         // Tasa de cierre (se calcula antes de engagement/seguimiento)
         $cot_vistas_safe = max($cot_vistas, 1);
@@ -981,6 +1012,10 @@ class ActividadScore
             'fb_total'          => $fb_total,
             'fb_calidad'        => round($calidad_fb, 3),
             's_activacion'      => round($s_activacion, 3),
+            's_activacion_op'   => round($s_activacion_op, 3),
+            'tips_score'        => round($tips_score, 2),
+            'dias_lectura'      => $dias_lectura,
+            'dias_activos'      => $dias_activos,
             's_engagement'      => round($s_engagement, 3),
             'eng_pen_sin_pago'  => round($eng_pen_sin_pago, 3),
             'eng_pen_descuento' => round($eng_pen_descuento, 3),
@@ -1189,6 +1224,18 @@ class ActividadScore
         $volumen_bajo = ($avg_ventas_mes > 0 && $team_size > 0 && $vt_diag < ($avg_ventas_mes / $team_size) * 0.7);
         $pocos_cierres = ($cierres > 0 && $cierres <= 2 && $vist >= 10);
         $max_frases = match(true) { $score >= 85 => 4, $score >= 75 => 5, $score >= 70 => 6, $score >= 45 => 7, default => 5 };
+
+        // ═══ 0. LECTURA DE TIPS ═══
+        $tips_s = (float)($s['tips_score'] ?? 1);
+        $dias_lec = (int)($s['dias_lectura'] ?? 0);
+        $dias_act_d = (int)($s['dias_activos'] ?? 0);
+        if ($tips_s < 1.0 && $dias_act_d > 0) {
+            if ($tips_s <= 0) {
+                $frases[] = "No lees los tips.";
+            } else {
+                $frases[] = "Estás leyendo a medias — revisa el análisis completo.";
+            }
+        }
 
         // ═══ 1. TASA DE CIERRE ═══
         if ($cierres === 0 && $vist >= 3) {

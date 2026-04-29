@@ -472,6 +472,8 @@ ob_start();
 .thermo-bar-fill{height:100%;border-radius:2px;transition:width .4s}
 .thermo-bar-lbl{font:500 9px var(--body);color:var(--t3);margin-top:2px;text-align:center}
 .thermo-diag{font:400 14px var(--body);color:var(--t2);margin-top:10px;line-height:1.6}
+.td-more{font:600 13px var(--body);color:var(--g);text-decoration:none;white-space:nowrap}
+.td-more:hover{text-decoration:underline}
 @media(max-width:600px){.thermo{flex-direction:column;text-align:center;gap:10px}.thermo-bars{justify-content:center}}
 
 /* LEADERBOARD */
@@ -772,7 +774,30 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
           <div class="thermo-bar-lbl">Conversión</div>
         </div>
       </div>
-      <div class="thermo-diag"><?= e($ts_diag) ?></div>
+      <?php
+      // Dividir diagnóstico en 3 bloques para "ver más" progresivo
+      $diag_oraciones = array_values(array_filter(preg_split('/(?<=\.)\s+/', trim($ts_diag))));
+      $diag_total = count($diag_oraciones);
+      $diag_corte1 = max(1, (int)ceil($diag_total / 3));
+      $diag_corte2 = max($diag_corte1 + 1, (int)ceil($diag_total * 2 / 3));
+      $diag_b1 = implode(' ', array_slice($diag_oraciones, 0, $diag_corte1));
+      $diag_b2 = implode(' ', array_slice($diag_oraciones, $diag_corte1, $diag_corte2 - $diag_corte1));
+      $diag_b3 = implode(' ', array_slice($diag_oraciones, $diag_corte2));
+      ?>
+      <div class="thermo-diag">
+        <span><?= e($diag_b1) ?></span>
+        <?php if ($diag_b2 !== ''): ?>
+        <span id="td-s2" style="display:none"> <?= e($diag_b2) ?></span>
+        <a href="#" id="td-m1" class="td-more" onclick="return tdExp(1)"> ver más →</a>
+        <?php endif; ?>
+        <?php if ($diag_b3 !== ''): ?>
+        <span id="td-s3" style="display:none"> <?= e($diag_b3) ?></span>
+        <a href="#" id="td-m2" class="td-more" style="display:none" onclick="return tdExp(2)"> ver más →</a>
+        <?php endif; ?>
+        <?php if ($diag_b2 !== '' || $diag_b3 !== ''): ?>
+        <a href="#" id="td-m3" class="td-more" style="display:none" onclick="return tdExp(3)"> ver más →</a>
+        <?php endif; ?>
+      </div>
     </div>
   </div>
 
@@ -861,7 +886,9 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
     <div style="border-top:1px dashed var(--border);padding:2px 14px 2px 52px">
       <span onclick="var p=this.nextElementSibling;p.style.display=p.style.display==='none'?'block':'none'" style="font:600 10px var(--body);color:var(--t3);cursor:pointer;letter-spacing:.05em;text-transform:uppercase;opacity:.6">▶ debug</span>
       <div style="display:none;padding:6px 0;font:400 11px var(--num);color:var(--t2);line-height:1.7">
-        <div class="dbg-row"><span class="dbg-lbl">Activación (10%)</span><span class="dbg-val"><?= round(($es['s_activacion'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Activación (8%)</span><span class="dbg-val"><?= round(($es['s_activacion'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  operativa</span><span class="dbg-val"><?= round(($es['s_activacion_op'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  tips <?= (int)($es['dias_lectura'] ?? 0) ?>/<?= (int)($es['dias_activos'] ?? 0) ?>d</span><span class="dbg-val"><?= round(($es['tips_score'] ?? 1) * 100) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Engagement (17%)</span><span class="dbg-val"><?= round(($es['s_engagement'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen sin pago</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_sin_pago'] ?? 0) > 0 ? '-'.round(($es['eng_pen_sin_pago'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen descuento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_descuento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_descuento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
@@ -1355,6 +1382,38 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
 
 </div>
 
+
+<script>
+function tdExp(n) {
+    if (n === 1) {
+        var s2 = document.getElementById('td-s2');
+        var m1 = document.getElementById('td-m1');
+        var m2 = document.getElementById('td-m2');
+        if (s2) s2.style.display = 'inline';
+        if (m1) m1.style.display = 'none';
+        if (m2) m2.style.display = 'inline';
+    } else if (n === 2) {
+        var s3 = document.getElementById('td-s3');
+        var m2 = document.getElementById('td-m2');
+        var m3 = document.getElementById('td-m3');
+        if (s3) s3.style.display = 'inline';
+        if (m2) m2.style.display = 'none';
+        if (m3) m3.style.display = 'inline';
+    } else if (n === 3) {
+        var m3 = document.getElementById('td-m3');
+        if (m3) m3.style.display = 'none';
+    }
+    // Trackear la expansión
+    try {
+        fetch('/api/track-tip', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({expand: n})
+        });
+    } catch(e) {}
+    return false;
+}
+</script>
 
 <?php
 $content = ob_get_clean();
