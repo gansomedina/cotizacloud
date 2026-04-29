@@ -52,8 +52,31 @@ if ($ya) {
 $ip = ip_real();
 $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
 
-// Superadmin puede calificar (para testing/demo)
+// Superadmin puede calificar (para testing/demo) — incluso desde dominios custom
+// donde la cookie de sesión no viaja: detectamos por IP/visitor/device_sig
 $es_superadmin_fb = Auth::es_superadmin();
+if (!$es_superadmin_fb && $ip) {
+    $es_superadmin_fb = (bool)DB::val(
+        "SELECT 1 FROM radar_ips_internas ri JOIN usuarios u ON u.id = ri.usuario_id
+          WHERE ri.ip = ? AND u.rol = 'superadmin' LIMIT 1",
+        [$ip]
+    );
+}
+if (!$es_superadmin_fb && $visitor_id) {
+    $es_superadmin_fb = (bool)DB::val(
+        "SELECT 1 FROM radar_visitors_internos rv JOIN usuarios u ON u.id = rv.usuario_id
+          WHERE rv.visitor_id = ? AND u.rol = 'superadmin' LIMIT 1",
+        [$visitor_id]
+    );
+}
+if (!$es_superadmin_fb && $device_sig) {
+    $es_superadmin_fb = (bool)DB::val(
+        "SELECT 1 FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id
+          WHERE us.device_sig = ? AND u.rol = 'superadmin'
+            AND us.device_sig IS NOT NULL AND us.device_sig != '' LIMIT 1",
+        [$device_sig]
+    );
+}
 
 // Bloquear si IP o visitor_id están marcados como internos (asesores no califican)
 // Superadmin se salta este check
