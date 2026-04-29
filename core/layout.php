@@ -20,12 +20,16 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
         }
 
         // Aprender device_sig desde cookie (puesta por JS en carga anterior)
+        // Aplicar SOLO a la sesión actual (identificada por su token), no a la más
+        // reciente del usuario — eso causaba que un dispositivo sobrescribiera el
+        // device_sig de otro dispositivo del mismo usuario.
         $dsig_cookie = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 20);
-        if ($dsig_cookie !== '') {
+        $cur_tok_layout = $_COOKIE[SESSION_NAME] ?? '';
+        if ($dsig_cookie !== '' && $cur_tok_layout !== '') {
             try {
                 DB::execute(
-                    "UPDATE user_sessions SET device_sig = ? WHERE usuario_id = ? ORDER BY created_at DESC LIMIT 1",
-                    [$dsig_cookie, (int)Auth::id()]
+                    "UPDATE user_sessions SET device_sig = ? WHERE token = ? AND usuario_id = ?",
+                    [$dsig_cookie, $cur_tok_layout, (int)Auth::id()]
                 );
             } catch (Throwable $e) {}
         }
