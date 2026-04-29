@@ -993,17 +993,47 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 $fb_render = !empty($cot['feedback_activo']);
 $fb_admin  = false;
 if ($fb_render) {
-    if (Auth::es_superadmin()) {
-        $fb_admin = true; // superadmin sí lo ve para testing
+    // Auth solo funciona en *.cotiza.cloud — en dominios custom la cookie no llega.
+    // Por eso detectamos al usuario por IP/visitor/device contra los registros internos,
+    // y si pertenece a un superadmin, igual renderizamos para testing.
+    $ip_v = ip_real();
+    $vid_v = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
+    $dsig_v = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 20);
+
+    // ¿Es superadmin (por sesión o por IP/visitor/device registrado)?
+    $es_super = Auth::es_superadmin();
+    if (!$es_super && $ip_v) {
+        $es_super = (bool)DB::val(
+            "SELECT 1 FROM radar_ips_internas ri
+              JOIN usuarios u ON u.id = ri.usuario_id
+              WHERE ri.ip = ? AND u.rol = 'superadmin' LIMIT 1",
+            [$ip_v]
+        );
+    }
+    if (!$es_super && $vid_v) {
+        $es_super = (bool)DB::val(
+            "SELECT 1 FROM radar_visitors_internos rv
+              JOIN usuarios u ON u.id = rv.usuario_id
+              WHERE rv.visitor_id = ? AND u.rol = 'superadmin' LIMIT 1",
+            [$vid_v]
+        );
+    }
+    if (!$es_super && $dsig_v) {
+        $es_super = (bool)DB::val(
+            "SELECT 1 FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id
+              WHERE us.device_sig = ? AND u.rol = 'superadmin'
+                AND us.device_sig IS NOT NULL AND us.device_sig != '' LIMIT 1",
+            [$dsig_v]
+        );
+    }
+
+    if ($es_super) {
+        $fb_admin = true; // superadmin sí lo ve (incluso en dominios custom)
     } elseif (Auth::id()) {
         // Logueado (asesor/admin empresa) → ocultar
         $fb_render = false;
     } else {
-        // Cliente sin login. Aún así verifico si viene desde dispositivo/IP/cookie interna
-        // (ej. asesor en modo incógnito o sin sesión activa pero desde su PC habitual)
-        $ip_v = ip_real();
-        $vid_v = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
-        $dsig_v = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 20);
+        // Cliente sin login. Verifico si viene desde dispositivo/IP/cookie interna de la empresa
         if ($ip_v && DB::val("SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? LIMIT 1", [EMPRESA_ID, $ip_v])) {
             $fb_render = false;
         } elseif ($vid_v && DB::val("SELECT 1 FROM radar_visitors_internos WHERE empresa_id=? AND visitor_id=? LIMIT 1", [EMPRESA_ID, $vid_v])) {
