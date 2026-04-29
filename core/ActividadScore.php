@@ -1222,12 +1222,8 @@ class ActividadScore
             // Mezcla: parte con radar, parte fuera
             $frases[] = "$cbkt de $cierres ventas con apoyo del Radar.";
         } elseif ($cierres > 0 && $cbkt === 0) {
-            // Vendió sin apoyo del Radar — pueden ser referidos o cotizaciones sin actividad
-            $v = [
-                "Tus $cierres ventas se cerraron fuera del Radar — referidos o cotizaciones sin actividad de cliente.",
-                "Ninguna de tus $cierres ventas vino del Radar — revisa si dejas oportunidades calientes sin cerrar.",
-            ];
-            $frases[] = $v[$rot % count($v)];
+            // Vendió sin apoyo del Radar — pueden ser referidos o cotizaciones que el cliente no usó
+            $frases[] = "$cierres cierre" . ($cierres > 1 ? 's' : '') . " en frío sin pasar por el Radar — (referidos o cotización no usada).";
         }
 
         // ═══ 3. CLIENTES ACTIVOS EN RADAR ═══
