@@ -1224,8 +1224,8 @@ class ActividadScore
         } elseif ($cierres > 0 && $cbkt === 0) {
             // Vendió sin apoyo del Radar — pueden ser referidos o cotizaciones que el cliente no usó
             $v = [
-                "$cierres venta" . ($cierres > 1 ? 's' : '') . " cerrada" . ($cierres > 1 ? 's' : '') . " en frío — referidos o cotización no usada.",
-                "0 de $cierres ventas con apoyo del Radar — revisa si hay oportunidades calientes sin cerrar.",
+                "0 de $cierres ventas con apoyo del Radar (referidos o cotización no usada) — revisa si hay oportunidades calientes sin cerrar.",
+                "0 de $cierres ventas con apoyo del Radar (referidos o cotización no usada).",
             ];
             $frases[] = $v[$rot % count($v)];
         }
