@@ -67,9 +67,9 @@ require_once MODULES_PATH . '/radar/Radar.php';
 $ip_login = ip_real();
 $ua_login = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
 
-// Guardar device_sig EN LA SESIÓN ACTUAL identificada por su token
-// (no por "más reciente" que puede ser de otro dispositivo del mismo usuario)
-$cur_token = $_COOKIE[SESSION_NAME] ?? '';
+// Guardar device_sig EN LA SESIÓN RECIÉN CREADA identificada por su token
+// (Auth::login retorna el token; $_COOKIE no se actualiza en el mismo request)
+$cur_token = $resultado['token'] ?? '';
 if ($device_sig_post !== '' && $cur_token !== '') {
     try {
         DB::execute(

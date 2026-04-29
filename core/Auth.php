@@ -148,7 +148,7 @@ class Auth
         self::$usuario = $usuario;
         self::$empresa = $empresa;
 
-        return ['ok' => true, 'usuario' => $usuario, 'empresa' => $empresa];
+        return ['ok' => true, 'usuario' => $usuario, 'empresa' => $empresa, 'token' => $token];
     }
 
     // ─── Logout ──────────────────────────────────────────────
