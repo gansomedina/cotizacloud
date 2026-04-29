@@ -529,6 +529,7 @@ function notif_config(int $empresa_id): array
         'cotizacion_rechazada' => true,
         'abono_registrado'     => true,
         'radar_alerta'         => true,
+        'feedback_recibido'    => true,
     ];
 
     $result = array_merge($defaults, $cfg);

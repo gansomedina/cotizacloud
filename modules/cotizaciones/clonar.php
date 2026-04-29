@@ -57,6 +57,11 @@ try {
     $slug   = slug_unico($cot['titulo'], 'cotizaciones', 'slug', $empresa_id);
     $token  = generar_token(32);
 
+    // Recalcular valida_hasta desde hoy + vigencia_dias de la empresa.
+    // No heredar la fecha original (puede estar vencida).
+    $vigencia_dias = (int)($empresa['cot_vigencia_dias'] ?? 30);
+    $valida_hasta = date('Y-m-d', strtotime("+{$vigencia_dias} days"));
+
     // Insertar cotización clonada (estado enviada = normal)
     $new_id = DB::insert(
         "INSERT INTO cotizaciones
@@ -79,7 +84,7 @@ try {
             $cot['impuesto_pct'],
             $cot['impuesto_amt'],
             $cot['total'],
-            $cot['valida_hasta'],
+            $valida_hasta,
             $cot['notas_cliente'],
             $cot['notas_internas'],
         ]
