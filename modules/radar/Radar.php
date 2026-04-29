@@ -1588,7 +1588,7 @@ class Radar
             } elseif ($vids < $ips) {
                 $red_frase = " Una se conectó desde varias redes (probablemente móvil).";
             } else {
-                $red_frase = " Cada una desde una ubicación distinta.";
+                $red_frase = " Cada una desde una red distinta.";
             }
         }
 
