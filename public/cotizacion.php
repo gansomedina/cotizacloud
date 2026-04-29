@@ -988,12 +988,23 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <div class="sbox" id="sBox"></div>
 </div>
 
-<?php if (!empty($cot['feedback_activo'])):
+<?php
+// Detección server-side: usuarios internos NO ven el widget. Solo superadmin sí (para testing).
+$fb_render = !empty($cot['feedback_activo']);
+$fb_admin  = false;
+if ($fb_render) {
+    if (Auth::es_superadmin()) {
+        $fb_admin = true; // superadmin sí lo ve para testing
+    } elseif (Auth::id()) {
+        // Cualquier otro usuario logueado (asesor/admin de empresa) NO debe verlo
+        $fb_render = false;
+    }
+}
+if ($fb_render):
     $fb_pregunta  = $cot['feedback_pregunta'] ?? '¿Qué tan satisfecho estás con la atención recibida?';
     $fb_label_com = $cot['feedback_label_comentario'] ?? 'Cuéntanos brevemente qué podemos mejorar en tu atención';
     $fb_agradec   = $cot['feedback_agradecimiento'] ?? 'Tu opinión nos ayuda a mejorar como te atendemos';
     $fb_ya = (int)DB::val("SELECT id FROM cot_feedbacks WHERE cotizacion_id = ?", [(int)$cot['id']]);
-    $fb_admin = Auth::es_superadmin();
 ?>
 <!-- FEEDBACK del cliente -->
 <style>
@@ -1046,16 +1057,10 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 </div>
 <script>
 (function(){
-  // Ocultar si el visor parece ser interno (logueado o cookie de sesión)
+  // Detección de usuarios internos ya se hizo server-side. Aquí solo manejamos UI.
   function getCookie(n){
     var m = document.cookie.match(new RegExp('(?:^|; )'+n.replace(/[$()*+?.\\^|\[\]{}]/g,'\\$&')+'=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : '';
-  }
-  var _fbAdmin = <?= $fb_admin ? 'true' : 'false' ?>;
-  if (getCookie('cza_session') && !_fbAdmin) {
-    var w = document.getElementById('fbWrap');
-    if (w) w.style.display = 'none';
-    return;
   }
 
   var stars = document.querySelectorAll('#fbStars .fb-star');
