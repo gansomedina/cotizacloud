@@ -57,14 +57,19 @@ try {
     $slug   = slug_unico($cot['titulo'], 'cotizaciones', 'slug', $empresa_id);
     $token  = generar_token(32);
 
-    // Insertar cotización clonada (estado enviada = normal)
+    // Insertar cotización clonada — hereda created_at, valida_hasta y descuentos
+    // auto de la original (mismo cliente, mismo trato). enviada_at = NOW para
+    // disparar el flujo del Radar como nueva cot.
     $new_id = DB::insert(
         "INSERT INTO cotizaciones
          (empresa_id, cliente_id, usuario_id, vendedor_id,
           numero, titulo, slug, token, estado,
           subtotal, impuesto_modo, impuesto_pct, impuesto_amt,
-          total, valida_hasta, notas_cliente, notas_internas, enviada_at)
-         VALUES (?,?,?,?,?,?,?,?,'enviada',?,?,?,?,?,?,?,?,NOW())",
+          total, valida_hasta, notas_cliente, notas_internas,
+          descuento_auto_activo, descuento_auto_pct, descuento_auto_dias,
+          descuento_auto_expira, descuento_auto_amt,
+          enviada_at, created_at)
+         VALUES (?,?,?,?,?,?,?,?,'enviada',?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?)",
         [
             $empresa_id,
             $cot['cliente_id'],
@@ -82,6 +87,12 @@ try {
             $cot['valida_hasta'],
             $cot['notas_cliente'],
             $cot['notas_internas'],
+            $cot['descuento_auto_activo'] ?? 0,
+            $cot['descuento_auto_pct'] ?? 0,
+            $cot['descuento_auto_dias'] ?? 0,
+            $cot['descuento_auto_expira'],
+            $cot['descuento_auto_amt'] ?? 0,
+            $cot['created_at'],
         ]
     );
 
