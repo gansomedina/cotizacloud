@@ -1534,15 +1534,20 @@ class Radar
     // ============================================================
     public static function explicar_bucket(array $senales, ?string $feedback_tipo = null, bool $accepted = false): string
     {
-        $DEV_NAMES = [
-            'iOS-M-Saf'=>'iPhone','iOS-M-Chr'=>'iPhone','iOS-M-FF'=>'iPhone',
-            'iOS-M-Edge'=>'iPhone','iPd-T-Saf'=>'iPad','iPd-T-Chr'=>'iPad',
-            'And-M-Chr'=>'Android','And-M-FF'=>'Android','And-M-Edge'=>'Android',
-            'And-T-Chr'=>'tablet Android','And-T-FF'=>'tablet Android',
-            'Mac-D-Saf'=>'Mac','Mac-D-Chr'=>'Mac','Mac-D-FF'=>'Mac','Mac-D-Edge'=>'Mac',
-            'Win-D-Chr'=>'PC','Win-D-FF'=>'PC','Win-D-Edge'=>'PC','Win-D-Saf'=>'PC',
-            'Lin-D-Chr'=>'PC','Lin-D-FF'=>'PC',
+        // Mapa por prefijo SO-Tipo (ignora navegador, que puede venir como ?)
+        $DEV_PREFIX = [
+            'iOS-M' => 'iPhone',
+            'iPd-T' => 'iPad',
+            'And-M' => 'Android',
+            'And-T' => 'tablet Android',
+            'Mac-D' => 'Mac',
+            'Win-D' => 'PC',
+            'Lin-D' => 'PC',
         ];
+        $traducir_dev = function(string $code) use ($DEV_PREFIX): string {
+            $prefix = substr($code, 0, 5);
+            return $DEV_PREFIX[$prefix] ?? 'dispositivo';
+        };
 
         if ($accepted) return "Esta cotización ya fue aceptada por el cliente.";
 
@@ -1558,7 +1563,7 @@ class Radar
         $raw_devs = $dbg['devices'] ?? [];
         $gap = $dbg['gap_days'] ?? null;
 
-        $devices = array_unique(array_map(fn($d) => $DEV_NAMES[$d] ?? $d, $raw_devs));
+        $devices = array_values(array_unique(array_map($traducir_dev, $raw_devs)));
 
         $has_loop = isset($sn['price_loop']);
         $has_rev = isset($sn['tot_rev']);
@@ -1574,7 +1579,8 @@ class Radar
 
         // Lead phrase — the most distinguishing feature, unique per cotización
         if ($vids >= 2 && count($devices) >= 2) {
-            $lead = "Varias personas la están evaluando desde " . implode(' y ', $devices) . ".";
+            $dev_list = count($devices) <= 2 ? implode(' y ', $devices) : implode(', ', array_slice($devices, 0, -1)) . ' y ' . end($devices);
+            $lead = "Varias personas la están evaluando desde {$dev_list}.";
         } elseif ($has_regreso || ($gap !== null && $gap >= 3)) {
             $dias = ($gap !== null && $gap >= 2) ? " después de {$gap} días" : '';
             $lead = "El cliente regresó{$dias} a revisar esta cotización.";
@@ -1588,7 +1594,8 @@ class Radar
         } elseif ($vids >= 2) {
             $lead = "Varias personas están revisando esta cotización.";
         } elseif (count($devices) >= 2) {
-            $lead = "El cliente la revisó desde " . implode(' y ', $devices) . ".";
+            $dev_list2 = count($devices) <= 2 ? implode(' y ', $devices) : implode(', ', array_slice($devices, 0, -1)) . ' y ' . end($devices);
+            $lead = "El cliente la revisó desde {$dev_list2}.";
         }
 
         // Lectura
