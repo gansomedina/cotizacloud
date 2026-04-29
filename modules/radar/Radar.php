@@ -2001,13 +2001,17 @@ class Radar
     {
         if (isset(self::$ciclo_cache[$empresa_id])) return self::$ciclo_cache[$empresa_id];
 
-        // Días entre envío de cotización y creación de la venta (cierre real)
+        // Días entre creación de cotización y su aceptación.
+        // Usamos created_at (siempre existe) en vez de enviada_at (puede ser NULL).
+        // Y accion_at (timestamp exacto de aceptación) en vez de v.created_at
+        // (que puede tener delay administrativo).
+        // Filtramos por venta real para asegurar que solo cuenta cierres efectivos.
         $rows = DB::query(
-            "SELECT DATEDIFF(v.created_at, c.enviada_at) AS dias
+            "SELECT DATEDIFF(c.accion_at, c.created_at) AS dias
              FROM ventas v
              JOIN cotizaciones c ON c.id = v.cotizacion_id
              WHERE v.empresa_id = ? AND v.estado != 'cancelada'
-               AND c.enviada_at IS NOT NULL
+               AND c.accion_at IS NOT NULL
              ORDER BY dias ASC",
             [$empresa_id]
         );
