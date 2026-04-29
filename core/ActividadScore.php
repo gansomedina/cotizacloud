@@ -944,12 +944,12 @@ class ActividadScore
               carga_activa, cot_asignadas, cot_vistas, cot_dormidas,
               cierres_bucket, cierres_sin_dto, transiciones_up, senales_ignoradas,
               radar_views, radar_benchmark, tasa_cierre, ventas_sin_pago, ventas_periodo, bench_ventas,
-              s_activacion, s_engagement, eng_pen_sin_pago, eng_pen_descuento, eng_pen_enfriamiento, eng_pen_bajo_benchmark,
+              s_activacion, s_activacion_op, tips_score, dias_lectura, s_engagement, eng_pen_sin_pago, eng_pen_descuento, eng_pen_enfriamiento, eng_pen_bajo_benchmark,
               s_seguimiento, s_radar_health, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
               momentum, percentil)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -960,7 +960,8 @@ class ActividadScore
               transiciones_up=VALUES(transiciones_up), senales_ignoradas=VALUES(senales_ignoradas),
               radar_views=VALUES(radar_views), radar_benchmark=VALUES(radar_benchmark),
               tasa_cierre=VALUES(tasa_cierre), ventas_sin_pago=VALUES(ventas_sin_pago), ventas_periodo=VALUES(ventas_periodo), bench_ventas=VALUES(bench_ventas),
-              s_activacion=VALUES(s_activacion), s_engagement=VALUES(s_engagement),
+              s_activacion=VALUES(s_activacion), s_activacion_op=VALUES(s_activacion_op), tips_score=VALUES(tips_score), dias_lectura=VALUES(dias_lectura),
+              s_engagement=VALUES(s_engagement),
               eng_pen_sin_pago=VALUES(eng_pen_sin_pago), eng_pen_descuento=VALUES(eng_pen_descuento), eng_pen_enfriamiento=VALUES(eng_pen_enfriamiento), eng_pen_bajo_benchmark=VALUES(eng_pen_bajo_benchmark),
               s_seguimiento=VALUES(s_seguimiento),
               s_radar_health=VALUES(s_radar_health),
@@ -978,7 +979,8 @@ class ActividadScore
                 $carga_activa, $cot_asignadas, $cot_vistas, $dormidas_7d,
                 $cierres_bucket, $cierres_sin_dto, $health_up, $health_down,
                 $fb_total, round($cots_calientes, 1), round($tasa_cierre, 3), $ventas_sin_pago, $ventas_totales, round($bench_ventas, 1),
-                round($s_activacion, 3), round($s_engagement, 3),
+                round($s_activacion, 3), round($s_activacion_op, 3), round($tips_score, 2), $dias_lectura,
+                round($s_engagement, 3),
                 round($eng_pen_sin_pago, 3), round($eng_pen_descuento, 3), round($eng_pen_enfriamiento, 3), round($eng_pen_bajo_benchmark, 3),
                 round($s_seguimiento, 3), round($s_radar_health, 3), round($s_conversion, 3),
                 round($total_pen, 3), round($total_bonus, 3),
