@@ -71,7 +71,7 @@ $f_fin_dt = $f_fin . ' 23:59:59';
 $usr_filter     = $es_admin ? '' : "AND (v.usuario_id = {$usuario['id']} OR v.vendedor_id = {$usuario['id']})";
 $usr_filter_c   = $es_admin ? '' : "AND (c.usuario_id = {$usuario['id']} OR c.vendedor_id = {$usuario['id']})";
 
-$tab = in_array($_GET['tab'] ?? '', ['financiero','asesores','cotizaciones','costos','recibos','proveedores'])
+$tab = in_array($_GET['tab'] ?? '', ['financiero','asesores','cotizaciones','costos','recibos','proveedores','feedback'])
     ? $_GET['tab'] : 'financiero';
 
 // Proveedores solo Business
@@ -561,6 +561,16 @@ ob_start();
     <button class="rep-tab <?= $tab==='costos'       ?'on':'' ?>" onclick="repTab('costos',this)">Costos y márgenes</button>
     <?php if ($es_business_rep): ?>
     <button class="rep-tab <?= $tab==='proveedores'  ?'on':'' ?>" onclick="repTab('proveedores',this)">Proveedores</button>
+    <?php endif; ?>
+    <?php
+      $fb_visible = false;
+      if ($es_admin) {
+          $fb_act = (int)DB::val("SELECT feedback_activo FROM empresas WHERE id=?", [EMPRESA_ID]);
+          if ($fb_act) $fb_visible = true;
+      }
+    ?>
+    <?php if ($fb_visible): ?>
+    <button class="rep-tab <?= $tab==='feedback'     ?'on':'' ?>" onclick="repTab('feedback',this)">Feedback</button>
     <?php endif; ?>
   </div>
 </div>
