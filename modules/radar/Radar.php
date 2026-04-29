@@ -1557,6 +1557,7 @@ class Radar
 
         $sess = (int)($dbg['sessions'] ?? 0);
         $vids = (int)($dbg['vids_post'] ?? 0);
+        $ips  = (int)($dbg['ips_post_guest'] ?? 0);
         $vis_max = (int)($dbg['vis_max'] ?? 0);
         $scroll = (int)($dbg['scroll_any'] ?? 0);
         $pss = (float)($dbg['pss'] ?? 0);
@@ -1577,10 +1578,24 @@ class Radar
         $lead = '';
         $f = [];
 
+        // Frase de red/ubicación cuando hay varios visitors (vids ya está dedup por device_sig)
+        $red_frase = '';
+        if ($vids >= 2 && $ips >= 1) {
+            if ($ips === 1) {
+                $red_frase = " Todas conectadas a la misma red.";
+            } elseif ($vids > $ips) {
+                $red_frase = " Algunas comparten la misma red.";
+            } elseif ($vids < $ips) {
+                $red_frase = " Una se conectó desde varias redes (probablemente móvil).";
+            } else {
+                $red_frase = " Cada una desde una ubicación distinta.";
+            }
+        }
+
         // Lead phrase — the most distinguishing feature, unique per cotización
         if ($vids >= 2 && count($devices) >= 2) {
             $dev_list = count($devices) <= 2 ? implode(' y ', $devices) : implode(', ', array_slice($devices, 0, -1)) . ' y ' . end($devices);
-            $lead = "Varias personas la están evaluando desde {$dev_list}.";
+            $lead = "Varias personas la están evaluando desde {$dev_list}." . $red_frase;
         } elseif ($has_regreso || ($gap !== null && $gap >= 3)) {
             $dias = ($gap !== null && $gap >= 2) ? " después de {$gap} días" : '';
             $lead = "El cliente regresó{$dias} a revisar esta cotización.";
@@ -1592,7 +1607,7 @@ class Radar
         } elseif ($sess >= 1 && $vis_max <= 500 && $scroll < 10) {
             $lead = "Cotización recién abierta. El cliente aún no ha revisado el contenido.";
         } elseif ($vids >= 2) {
-            $lead = "Varias personas están revisando esta cotización.";
+            $lead = "Varias personas están revisando esta cotización." . $red_frase;
         } elseif (count($devices) >= 2) {
             $dev_list2 = count($devices) <= 2 ? implode(' y ', $devices) : implode(', ', array_slice($devices, 0, -1)) . ' y ' . end($devices);
             $lead = "El cliente la revisó desde {$dev_list2}.";
