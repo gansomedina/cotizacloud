@@ -238,11 +238,14 @@ class ActividadScore
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
+        // Cierres con apoyo del Radar: bucket NOT NULL Y != 'no_abierta'.
+        // Una cot 'no_abierta' aceptada significa que el asesor cerró en vivo
+        // (sin que el cliente abriera el slug) — eso no es apoyo del Radar.
         $cierres_bucket = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND radar_bucket IS NOT NULL",
+             AND radar_bucket IS NOT NULL AND radar_bucket != 'no_abierta'",
             [$usuario_id, $empresa_id, $periodo]
         );
         $cierres_sin_dto = (int)DB::val(
@@ -644,7 +647,8 @@ class ActividadScore
         $cierres_con_radar = 0;
         $puntos_con_radar = 0.0;
         foreach ($cierres_con_bucket as $cc) {
-            if ($cc['radar_bucket'] !== null) {
+            // Excluir 'no_abierta': cierre en vivo del asesor, no apoyo del Radar
+            if ($cc['radar_bucket'] !== null && $cc['radar_bucket'] !== 'no_abierta') {
                 $cierres_con_radar++;
                 // v5: descuento penalizado en Engagement, no aquí
                 $puntos_con_radar += $base_cierre * (self::CIERRE_MULT[$cc['radar_bucket']] ?? 1.0);
