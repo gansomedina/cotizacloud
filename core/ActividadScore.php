@@ -694,10 +694,14 @@ class ActividadScore
             + $vol_trend * ($w_vol_conv / $w_conv_total)
         );
 
-        // Penalización como multiplicador (no resta) — así cada cierre incrementa
-        // proporcionalmente el score sin quedar clamped a 0 cuando estás abajo del benchmark
-        $pen_factor_conv = min($pen_conversion, 0.85);
-        $s_conversion = $componentes_conv * (1.0 - $pen_factor_conv);
+        // Piso auto-calibrado: proporcional a tu desempeño vs benchmark de la empresa
+        // 0 ventas → piso 0 (puede llegar a 0)
+        // ventas/bench = 0.5 → piso = 50% de componentes
+        // ventas ≥ bench → piso = componentes completos (penalización no aplica)
+        // Sin magic numbers — close_rate del vendedor y close_rate empresa son las únicas variables
+        $perf_ratio = min($tasa_cierre / max($bench['close_rate'], 0.01), 1.0);
+        $conv_floor = $componentes_conv * $perf_ratio;
+        $s_conversion = max($conv_floor, $componentes_conv - $pen_conversion);
         $s_conversion = max(0.0, min(1.0, $s_conversion));
 
         // ═══════════════════════════════════════════════════
