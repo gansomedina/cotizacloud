@@ -1654,6 +1654,18 @@ class Radar
             $f[] = "Se enganchó rápido con la propuesta.";
         }
 
+        // Tendencia: ¿se está enfriando o sigue activa?
+        $momentum = $senales['momentum'] ?? 'stable';
+        $cooling_price = !empty($senales['cooling_price_touched']);
+        $is_enfriandose = in_array('enfriandose', $bks, true);
+        if ($is_enfriandose) {
+            $f[] = $cooling_price
+                ? "Se está enfriando — vio el precio y dejó de moverse."
+                : "Se está enfriando — sin actividad reciente.";
+        } elseif ($momentum === 'cooling' && !$has_reciente) {
+            $f[] = "La actividad se está enfriando.";
+        }
+
         // Actividad reciente (solo si no fue lead)
         if ($has_reciente && !str_contains($lead, 'regresó')) {
             $f[] = "La actividad es reciente.";
