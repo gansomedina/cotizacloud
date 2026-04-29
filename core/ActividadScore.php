@@ -1214,8 +1214,19 @@ class ActividadScore
         } elseif ($sin_cerrar > 5 && $score < 70) {
             $frases[] = "De $vist clientes que abrieron tu cotización, $sin_cerrar no compraron.";
         }
-        if ($cbkt > 0) {
-            $v = ["$cbkt venta" . ($cbkt > 1 ? 's cerradas' : ' cerrada') . " con apoyo del Radar.", "$cbkt cierre" . ($cbkt > 1 ? 's' : '') . " asistido" . ($cbkt > 1 ? 's' : '') . " por el Radar."];
+        if ($cierres > 0 && $cbkt === $cierres) {
+            // Todas las ventas con apoyo del Radar — fortaleza
+            $v = ["Tus $cierres ventas se cerraron con apoyo del Radar.", "Las $cierres ventas vinieron asistidas por el Radar."];
+            $frases[] = $v[$rot % count($v)];
+        } elseif ($cbkt > 0 && $cbkt < $cierres) {
+            // Mezcla: parte con radar, parte fuera
+            $frases[] = "$cbkt de $cierres ventas con apoyo del Radar.";
+        } elseif ($cierres > 0 && $cbkt === 0) {
+            // Vendió sin apoyo del Radar — pueden ser referidos o cotizaciones sin actividad
+            $v = [
+                "Tus $cierres ventas se cerraron fuera del Radar — referidos o cotizaciones sin actividad de cliente.",
+                "Ninguna de tus $cierres ventas vino del Radar — revisa si dejas oportunidades calientes sin cerrar.",
+            ];
             $frases[] = $v[$rot % count($v)];
         }
 
