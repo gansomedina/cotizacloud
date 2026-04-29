@@ -106,11 +106,32 @@ $subtotal_extras = array_sum(array_column($lineas_extra, 'subtotal'));
 $total_base = $base + ($cot['impuesto_modo'] === 'suma' ? $impuesto_amt : 0) + $subtotal_extras;
 
 // ─── Cupones disponibles (para JS) ───────────────────────
-$cupones = DB::query(
-    "SELECT codigo, porcentaje AS pct_descuento, monto_fijo, descripcion, vencimiento_fecha AS fecha_vencimiento
+$cupones_raw = DB::query(
+    "SELECT codigo, porcentaje AS pct_descuento, monto_fijo, descripcion,
+            vencimiento_tipo, vencimiento_dias, vencimiento_fecha
      FROM cupones WHERE empresa_id = ? AND activo = 1",
     [EMPRESA_ID]
 );
+
+// Calcular fecha de expiración real por cupón usando la fecha de creación de la cot.
+// Esto fija el bug donde 'dias_cotizacion' nunca se validaba: el JS recibía
+// vencimiento_fecha=NULL y aceptaba el cupón siempre.
+$cot_creada_ts = strtotime($cot['created_at'] ?? 'now');
+$cupones = array_map(function($c) use ($cot_creada_ts) {
+    $exp_real = null;
+    if ($c['vencimiento_tipo'] === 'fecha_fija' && !empty($c['vencimiento_fecha'])) {
+        $exp_real = $c['vencimiento_fecha'];
+    } elseif ($c['vencimiento_tipo'] === 'dias_cotizacion' && !empty($c['vencimiento_dias'])) {
+        $exp_real = date('Y-m-d', $cot_creada_ts + ((int)$c['vencimiento_dias'] * 86400));
+    }
+    return [
+        'codigo'            => $c['codigo'],
+        'pct_descuento'     => $c['pct_descuento'],
+        'monto_fijo'        => $c['monto_fijo'],
+        'descripcion'       => $c['descripcion'],
+        'fecha_vencimiento' => $exp_real,
+    ];
+}, $cupones_raw);
 
 // ═══════════════════════════════════════════════════════════
 //  REGISTRO DE VISITA SERVER-SIDE

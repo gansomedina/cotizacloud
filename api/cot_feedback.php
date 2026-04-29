@@ -135,4 +135,35 @@ try {
     exit;
 }
 
+// Push notification al equipo de la empresa cuando se respeta el toggle
+try {
+    $ncfg_fb = notif_config(EMPRESA_ID);
+    if (!empty($ncfg_fb['feedback_recibido'])) {
+        // Cargar título de la cot y nombre del asesor para mensaje
+        $info_fb = DB::row(
+            "SELECT c.titulo, c.numero, COALESCE(u.nombre, '') AS asesor
+             FROM cotizaciones c LEFT JOIN usuarios u ON u.id = ?
+             WHERE c.id = ?",
+            [(int)$vendedor_id, $cot_id]
+        );
+        $stars_str = str_repeat('★', $stars) . str_repeat('☆', 5 - $stars);
+        $titulo_push = "Calificación {$stars_str}";
+        $cuerpo_partes = [];
+        if (!empty($info_fb['asesor'])) $cuerpo_partes[] = $info_fb['asesor'];
+        $cuerpo_partes[] = $info_fb['titulo'] ?? ('cot ' . ($info_fb['numero'] ?? ''));
+        if ($comentario_limpio) {
+            $cuerpo_partes[] = '"' . mb_substr($comentario_limpio, 0, 80) . (mb_strlen($comentario_limpio) > 80 ? '…' : '') . '"';
+        }
+        $cuerpo_push = implode(' — ', $cuerpo_partes);
+
+        PushNotification::enviar_a_empresa(
+            EMPRESA_ID,
+            'feedback_recibido',
+            $titulo_push,
+            $cuerpo_push,
+            ['cotizacion_id' => $cot_id, 'stars' => $stars, 'url' => '/reportes?tab=feedback']
+        );
+    }
+} catch (Throwable $e) { /* no bloquear */ }
+
 echo json_encode(['ok' => true]);

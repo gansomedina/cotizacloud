@@ -498,6 +498,16 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
+      <div class="field-row h">
+        <div>
+          <div class="field-lbl">Feedback del cliente</div>
+          <div class="field-sub">Aviso cuando un cliente califica la atención de una cotización</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_notif_feedback" <?= ($ncfg['feedback_recibido'] ?? true)?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
     </div>
   </div>
 
@@ -1728,6 +1738,7 @@ async function guardarEmpresa() {
             cotizacion_rechazada: document.getElementById('e_notif_rechaza').checked,
             abono_registrado:     document.getElementById('e_notif_abono').checked,
             radar_alerta:         document.getElementById('e_notif_radar').checked,
+            feedback_recibido:    document.getElementById('e_notif_feedback').checked,
         },
         cot_vigencia_dias:  parseInt(document.getElementById('e_cot_vigencia_dias').value) || 30,
         allow_precio_edit:  document.getElementById('e_allow_precio_edit').checked ? 1 : 0,
