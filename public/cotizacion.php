@@ -19,7 +19,7 @@ $cot = DB::row(
             e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado, e.cot_theme,
             e.texto_aceptar, e.texto_rechazar,
             e.slug AS emp_slug, e.ocultar_cant_pu,
-            e.feedback_activo, e.feedback_pregunta, e.feedback_label_comentario, e.feedback_agradecimiento,
+            e.feedback_activo, e.feedback_pregunta, e.feedback_subtitulo, e.feedback_label_comentario, e.feedback_agradecimiento,
             cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.email AS cli_email, cl.direccion AS cli_direccion,
             u.nombre  AS asesor_nombre
      FROM cotizaciones c
@@ -988,8 +988,40 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <div class="sbox" id="sBox"></div>
 </div>
 
-<?php if (!empty($cot['feedback_activo'])):
+<?php
+// Detección server-side: usuarios internos NO ven el widget. Solo superadmin sí (para testing).
+$fb_render = !empty($cot['feedback_activo']);
+$fb_admin  = false;
+if ($fb_render) {
+    if (Auth::es_superadmin()) {
+        $fb_admin = true; // superadmin sí lo ve para testing
+    } elseif (Auth::id()) {
+        // Logueado (asesor/admin empresa) → ocultar
+        $fb_render = false;
+    } else {
+        // Cliente sin login. Aún así verifico si viene desde dispositivo/IP/cookie interna
+        // (ej. asesor en modo incógnito o sin sesión activa pero desde su PC habitual)
+        $ip_v = ip_real();
+        $vid_v = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
+        $dsig_v = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 20);
+        if ($ip_v && DB::val("SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? LIMIT 1", [EMPRESA_ID, $ip_v])) {
+            $fb_render = false;
+        } elseif ($vid_v && DB::val("SELECT 1 FROM radar_visitors_internos WHERE empresa_id=? AND visitor_id=? LIMIT 1", [EMPRESA_ID, $vid_v])) {
+            $fb_render = false;
+        } elseif ($dsig_v && DB::val(
+            "SELECT 1 FROM user_sessions us JOIN usuarios u ON u.id=us.usuario_id
+              WHERE us.device_sig=? AND (u.empresa_id=? OR u.rol='superadmin')
+                AND us.device_sig IS NOT NULL AND us.device_sig!=''
+              LIMIT 1",
+            [$dsig_v, EMPRESA_ID]
+        )) {
+            $fb_render = false;
+        }
+    }
+}
+if ($fb_render):
     $fb_pregunta  = $cot['feedback_pregunta'] ?? '¿Qué tan satisfecho estás con la atención recibida?';
+    $fb_subtitulo = trim((string)($cot['feedback_subtitulo'] ?? ''));
     $fb_label_com = $cot['feedback_label_comentario'] ?? 'Cuéntanos brevemente qué podemos mejorar en tu atención';
     $fb_agradec   = $cot['feedback_agradecimiento'] ?? 'Tu opinión nos ayuda a mejorar como te atendemos';
     $fb_ya = (int)DB::val("SELECT id FROM cot_feedbacks WHERE cotizacion_id = ?", [(int)$cot['id']]);
@@ -998,7 +1030,8 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 <style>
 .fb-wrap{max-width:720px;margin:30px auto 8px;padding:0 16px}
 .fb-card{background:linear-gradient(135deg,#ffffff 0%,#fafbfc 100%);border:1px solid #e2e8f0;border-radius:18px;padding:36px 28px;text-align:center;box-shadow:0 1px 3px rgba(15,23,42,.04),0 1px 2px rgba(15,23,42,.02)}
-.fb-q{font:600 18px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#0f172a;margin-bottom:22px;line-height:1.4;letter-spacing:-.01em}
+.fb-q{font:600 18px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#0f172a;margin-bottom:8px;line-height:1.4;letter-spacing:-.01em}
+.fb-sub{font:400 13px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#64748b;margin-bottom:22px;line-height:1.5;max-width:480px;margin-left:auto;margin-right:auto}
 .fb-stars{display:flex;justify-content:center;gap:6px;margin-bottom:22px}
 .fb-star{font-size:42px;color:#e2e8f0;cursor:pointer;line-height:1;transition:transform .15s ease,color .15s ease;user-select:none;background:none;border:0;padding:0;-webkit-tap-highlight-color:transparent}
 .fb-star:hover{transform:scale(1.1)}
@@ -1015,7 +1048,8 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 .fb-rated-msg{font:500 14px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#64748b;padding:10px 0}
 @media (max-width:640px){
   .fb-card{padding:28px 20px;border-radius:14px}
-  .fb-q{font-size:16px;margin-bottom:18px}
+  .fb-q{font-size:16px;margin-bottom:6px}
+  .fb-sub{font-size:12px;margin-bottom:18px}
   .fb-star{font-size:36px;gap:4px}
 }
 </style>
@@ -1026,6 +1060,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <?php else: ?>
       <div id="fbForm">
         <div class="fb-q"><?= e($fb_pregunta) ?></div>
+        <?php if ($fb_subtitulo !== ''): ?>
+        <div class="fb-sub"><?= e($fb_subtitulo) ?></div>
+        <?php endif; ?>
         <div class="fb-stars" id="fbStars" role="radiogroup" aria-label="Calificación">
           <button type="button" class="fb-star" data-v="1" aria-label="1 estrella">★</button>
           <button type="button" class="fb-star" data-v="2" aria-label="2 estrellas">★</button>
@@ -1045,15 +1082,10 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 </div>
 <script>
 (function(){
-  // Ocultar si el visor parece ser interno (logueado o cookie de sesión)
+  // Detección de usuarios internos ya se hizo server-side. Aquí solo manejamos UI.
   function getCookie(n){
     var m = document.cookie.match(new RegExp('(?:^|; )'+n.replace(/[$()*+?.\\^|\[\]{}]/g,'\\$&')+'=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : '';
-  }
-  if (getCookie('cza_session')) {
-    var w = document.getElementById('fbWrap');
-    if (w) w.style.display = 'none';
-    return;
   }
 
   var stars = document.querySelectorAll('#fbStars .fb-star');

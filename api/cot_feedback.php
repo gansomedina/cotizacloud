@@ -52,8 +52,12 @@ if ($ya) {
 $ip = ip_real();
 $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
 
+// Superadmin puede calificar (para testing/demo)
+$es_superadmin_fb = Auth::es_superadmin();
+
 // Bloquear si IP o visitor_id están marcados como internos (asesores no califican)
-if ($ip) {
+// Superadmin se salta este check
+if (!$es_superadmin_fb && $ip) {
     $ip_interna = (int)DB::val(
         "SELECT 1 FROM radar_ips_internas WHERE empresa_id = ? AND ip = ? LIMIT 1",
         [EMPRESA_ID, $ip]
@@ -64,7 +68,7 @@ if ($ip) {
         exit;
     }
 }
-if ($visitor_id) {
+if (!$es_superadmin_fb && $visitor_id) {
     $vid_interno = (int)DB::val(
         "SELECT 1 FROM radar_visitors_internos WHERE empresa_id = ? AND visitor_id = ? LIMIT 1",
         [EMPRESA_ID, $visitor_id]
@@ -75,7 +79,7 @@ if ($visitor_id) {
         exit;
     }
 }
-if ($device_sig) {
+if (!$es_superadmin_fb && $device_sig) {
     $dsig_interno = (int)DB::val(
         "SELECT 1 FROM user_sessions us
           JOIN usuarios u ON u.id = us.usuario_id
