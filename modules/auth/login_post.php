@@ -67,12 +67,14 @@ require_once MODULES_PATH . '/radar/Radar.php';
 $ip_login = ip_real();
 $ua_login = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
 
-// Guardar device_sig en la sesión del usuario
-if ($device_sig_post !== '') {
+// Guardar device_sig EN LA SESIÓN ACTUAL identificada por su token
+// (no por "más reciente" que puede ser de otro dispositivo del mismo usuario)
+$cur_token = $_COOKIE[SESSION_NAME] ?? '';
+if ($device_sig_post !== '' && $cur_token !== '') {
     try {
         DB::execute(
-            "UPDATE user_sessions SET device_sig = ? WHERE usuario_id = ? ORDER BY created_at DESC LIMIT 1",
-            [$device_sig_post, (int)Auth::id()]
+            "UPDATE user_sessions SET device_sig = ? WHERE token = ? AND usuario_id = ?",
+            [$device_sig_post, $cur_token, (int)Auth::id()]
         );
     } catch (Throwable $e) {}
 }

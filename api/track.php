@@ -85,9 +85,13 @@ if ($es_usuario_interno) {
         Radar::marcar_visitor_interno($empresa_id, $visitor_id, 'internal_user', (int)Auth::id(), $ip, $ua);
     }
     Radar::aprender_ip_radar($empresa_id, $ip);
-    // Aprender device_sig en su sesión más reciente
+    // Aprender device_sig SOLO en la sesión actual del navegador (identificada por token).
+    // No usar "más reciente" porque puede ser de otro dispositivo del mismo usuario.
     if ($device_sig !== '' && Auth::id()) {
-        try { DB::execute("UPDATE user_sessions SET device_sig=COALESCE(device_sig,?) WHERE usuario_id=? ORDER BY created_at DESC LIMIT 1", [$device_sig, (int)Auth::id()]); } catch (Throwable $e) {}
+        $tok_track = $_COOKIE[SESSION_NAME] ?? '';
+        if ($tok_track !== '') {
+            try { DB::execute("UPDATE user_sessions SET device_sig=COALESCE(device_sig,?) WHERE token=? AND usuario_id=?", [$device_sig, $tok_track, (int)Auth::id()]); } catch (Throwable $e) {}
+        }
     }
     exit;
 }
@@ -118,15 +122,10 @@ if ($es_ip_interna) {
     if ($visitor_id !== '') {
         Radar::marcar_visitor_interno($empresa_id, $visitor_id, 'internal_ip', null, $ip, $ua);
     }
-    // Aprender device_sig: buscar qué usuario usa esta IP y guardar dsig en su sesión
-    if ($device_sig !== '') {
-        try {
-            $uid_by_ip = DB::val("SELECT usuario_id FROM user_sessions WHERE ip=? ORDER BY created_at DESC LIMIT 1", [$ip]);
-            if ($uid_by_ip) {
-                DB::execute("UPDATE user_sessions SET device_sig=COALESCE(device_sig,?) WHERE usuario_id=? ORDER BY created_at DESC LIMIT 1", [$device_sig, (int)$uid_by_ip]);
-            }
-        } catch (Throwable $e) {}
-    }
+    // Nota: no inferimos device_sig de visitantes anónimos cuando comparten IP con
+    // un usuario logueado — el device_sig podría ser de un cliente real visitando
+    // desde la red del asesor y contaminar el descarte. El device_sig del usuario
+    // se captura cuando él mismo navega logueado (login_post.php, layout.php).
     exit;
 }
 
