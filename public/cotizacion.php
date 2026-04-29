@@ -993,6 +993,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     $fb_label_com = $cot['feedback_label_comentario'] ?? 'Cuéntanos brevemente qué podemos mejorar en tu atención';
     $fb_agradec   = $cot['feedback_agradecimiento'] ?? 'Tu opinión nos ayuda a mejorar como te atendemos';
     $fb_ya = (int)DB::val("SELECT id FROM cot_feedbacks WHERE cotizacion_id = ?", [(int)$cot['id']]);
+    $fb_admin = Auth::es_superadmin();
 ?>
 <!-- FEEDBACK del cliente -->
 <style>
@@ -1050,7 +1051,8 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     var m = document.cookie.match(new RegExp('(?:^|; )'+n.replace(/[$()*+?.\\^|\[\]{}]/g,'\\$&')+'=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : '';
   }
-  if (getCookie('cza_session')) {
+  var _fbAdmin = <?= $fb_admin ? 'true' : 'false' ?>;
+  if (getCookie('cza_session') && !_fbAdmin) {
     var w = document.getElementById('fbWrap');
     if (w) w.style.display = 'none';
     return;
