@@ -1058,7 +1058,7 @@ if ($fb_render):
 ?>
 <!-- FEEDBACK del cliente -->
 <style>
-.fb-wrap{max-width:720px;margin:30px auto 8px;padding:0 16px}
+.fb-wrap{max-width:960px;margin:30px auto 8px;padding:0 20px}
 .fb-card{background:linear-gradient(135deg,#ffffff 0%,#fafbfc 100%);border:1px solid #e2e8f0;border-radius:18px;padding:36px 28px;text-align:center;box-shadow:0 1px 3px rgba(15,23,42,.04),0 1px 2px rgba(15,23,42,.02)}
 .fb-q{font:600 18px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#0f172a;margin-bottom:8px;line-height:1.4;letter-spacing:-.01em}
 .fb-sub{font:400 13px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#64748b;margin-bottom:22px;line-height:1.5;max-width:480px;margin-left:auto;margin-right:auto}
@@ -1077,6 +1077,7 @@ if ($fb_render):
 .fb-thanks-msg{font:600 16px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#0f172a;line-height:1.5;max-width:420px;margin:0 auto;letter-spacing:-.01em}
 .fb-rated-msg{font:500 14px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#64748b;padding:10px 0}
 @media (max-width:640px){
+  .fb-wrap{padding:0;max-width:100%}
   .fb-card{padding:28px 20px;border-radius:14px}
   .fb-q{font-size:16px;margin-bottom:6px}
   .fb-sub{font-size:12px;margin-bottom:18px}
