@@ -364,7 +364,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             $cls_si = $r_fb_tipo === 'sin_interes' ? 'fb-active fb-neg' : '';
             $hot_why = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
             $why_btn = '';
-            if (in_array($r_bucket_fb, $hot_why, true) && !empty($r['senales'])) {
+            if (in_array($r_bucket_fb, $hot_why, true) && !empty($r['senales']) && empty($r['accepted'])) {
                 $why_fb = $r_fb_tipo ?? null;
                 $why_text = htmlspecialchars(Radar::explicar_bucket($r['senales'], $why_fb, !empty($r['accepted'])));
                 $why_id = 'why-' . $cot_id_fb . '-' . substr(md5($bkt_key ?? ''), 0, 4);

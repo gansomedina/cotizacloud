@@ -775,14 +775,23 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         </div>
       </div>
       <?php
-      // Dividir diagnóstico en 3 bloques para "ver más" progresivo
-      $diag_oraciones = array_values(array_filter(preg_split('/(?<=\.)\s+/', trim($ts_diag))));
-      $diag_total = count($diag_oraciones);
-      $diag_corte1 = max(1, (int)ceil($diag_total / 3));
-      $diag_corte2 = max($diag_corte1 + 1, (int)ceil($diag_total * 2 / 3));
-      $diag_b1 = implode(' ', array_slice($diag_oraciones, 0, $diag_corte1));
-      $diag_b2 = implode(' ', array_slice($diag_oraciones, $diag_corte1, $diag_corte2 - $diag_corte1));
-      $diag_b3 = implode(' ', array_slice($diag_oraciones, $diag_corte2));
+      // Dividir diagnóstico en 4 bloques (3 expansiones reales).
+      // Cortes a media frase por chars (en espacios) para forzar lectura.
+      $diag_full = trim($ts_diag);
+      $diag_len = mb_strlen($diag_full);
+      $find_cut = function(string $t, int $target) {
+          $len = mb_strlen($t);
+          if ($target >= $len) return $len;
+          $next = mb_strpos($t, ' ', $target);
+          return $next !== false ? $next : $len;
+      };
+      $c1 = $find_cut($diag_full, (int)($diag_len * 0.25));
+      $c2 = $find_cut($diag_full, (int)($diag_len * 0.50));
+      $c3 = $find_cut($diag_full, (int)($diag_len * 0.75));
+      $diag_b1 = mb_substr($diag_full, 0, $c1);
+      $diag_b2 = trim(mb_substr($diag_full, $c1, $c2 - $c1));
+      $diag_b3 = trim(mb_substr($diag_full, $c2, $c3 - $c2));
+      $diag_b4 = trim(mb_substr($diag_full, $c3));
       ?>
       <div class="thermo-diag">
         <span><?= e($diag_b1) ?></span>
@@ -794,7 +803,8 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <span id="td-s3" style="display:none"> <?= e($diag_b3) ?></span>
         <a href="#" id="td-m2" class="td-more" style="display:none" onclick="return tdExp(2)"> ver más →</a>
         <?php endif; ?>
-        <?php if ($diag_b2 !== '' || $diag_b3 !== ''): ?>
+        <?php if ($diag_b4 !== ''): ?>
+        <span id="td-s4" style="display:none"> <?= e($diag_b4) ?></span>
         <a href="#" id="td-m3" class="td-more" style="display:none" onclick="return tdExp(3)"> ver más →</a>
         <?php endif; ?>
       </div>
@@ -1407,7 +1417,9 @@ function tdExp(n) {
         if (m2) m2.style.display = 'none';
         if (m3) m3.style.display = 'inline';
     } else if (n === 3) {
+        var s4 = document.getElementById('td-s4');
         var m3 = document.getElementById('td-m3');
+        if (s4) s4.style.display = 'inline';
         if (m3) m3.style.display = 'none';
     }
     // Trackear la expansión
