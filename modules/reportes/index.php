@@ -1656,6 +1656,215 @@ ob_start();
 <?php endif; ?>
 
 
+<!-- ─────────────────────────────────────────────────────────────
+     TAB: FEEDBACK
+     ───────────────────────────────────────────────────────────── -->
+<?php
+$fb_act_panel = (int)DB::val("SELECT feedback_activo FROM empresas WHERE id=?", [$empresa_id]);
+if ($es_admin && $fb_act_panel):
+    // Plan Free: limitar histórico a últimos 30 días (sin importar selector)
+    $plan_fb = trial_info($empresa_id);
+    $es_free_fb = $plan_fb['es_free'] && !$plan_fb['es_pagado'];
+    if ($es_free_fb) {
+        $f_ini_fb = $now->modify('-29 days')->format('Y-m-d');
+        $f_fin_fb = $now->format('Y-m-d');
+    } else {
+        $f_ini_fb = $f_ini;
+        $f_fin_fb = $f_fin;
+    }
+
+    // Resumen general
+    $fb_resumen = DB::row(
+        "SELECT COUNT(*) AS total, AVG(stars) AS promedio,
+                SUM(CASE WHEN stars=5 THEN 1 ELSE 0 END) AS s5,
+                SUM(CASE WHEN stars=4 THEN 1 ELSE 0 END) AS s4,
+                SUM(CASE WHEN stars=3 THEN 1 ELSE 0 END) AS s3,
+                SUM(CASE WHEN stars=2 THEN 1 ELSE 0 END) AS s2,
+                SUM(CASE WHEN stars=1 THEN 1 ELSE 0 END) AS s1
+           FROM cot_feedbacks
+          WHERE empresa_id = ?
+            AND DATE(created_at) BETWEEN ? AND ?",
+        [$empresa_id, $f_ini_fb, $f_fin_fb]
+    );
+
+    // Por asesor
+    $fb_por_asesor = DB::query(
+        "SELECT u.id AS uid, u.nombre AS asesor,
+                COUNT(*) AS total,
+                ROUND(AVG(f.stars), 2) AS promedio,
+                SUM(CASE WHEN f.stars=5 THEN 1 ELSE 0 END) AS s5,
+                SUM(CASE WHEN f.stars<=2 THEN 1 ELSE 0 END) AS bajos
+           FROM cot_feedbacks f
+           LEFT JOIN usuarios u ON u.id = f.vendedor_id
+          WHERE f.empresa_id = ?
+            AND DATE(f.created_at) BETWEEN ? AND ?
+            AND f.vendedor_id IS NOT NULL
+          GROUP BY u.id, u.nombre
+          ORDER BY promedio DESC, total DESC",
+        [$empresa_id, $f_ini_fb, $f_fin_fb]
+    );
+
+    // Comentarios recientes (con texto)
+    $fb_recientes = DB::query(
+        "SELECT f.stars, f.comentario, f.created_at,
+                u.nombre AS asesor,
+                c.numero AS cot_numero, c.titulo AS cot_titulo, c.id AS cot_id,
+                cl.nombre AS cliente
+           FROM cot_feedbacks f
+           LEFT JOIN usuarios u ON u.id = f.vendedor_id
+           LEFT JOIN cotizaciones c ON c.id = f.cotizacion_id
+           LEFT JOIN clientes cl ON cl.id = c.cliente_id
+          WHERE f.empresa_id = ?
+            AND DATE(f.created_at) BETWEEN ? AND ?
+          ORDER BY f.created_at DESC
+          LIMIT 50",
+        [$empresa_id, $f_ini_fb, $f_fin_fb]
+    );
+
+    $fb_total = (int)($fb_resumen['total'] ?? 0);
+    $fb_avg   = (float)($fb_resumen['promedio'] ?? 0);
+?>
+<style>
+.fbr-stars{color:#f59e0b;letter-spacing:1px;font-size:14px}
+.fbr-stars-empty{color:#e2e8f0;letter-spacing:1px;font-size:14px}
+.fbr-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px}
+.fbr-bar-row{display:flex;align-items:center;gap:10px;margin:6px 0;font:500 12px var(--body)}
+.fbr-bar-num{width:30px;text-align:right;color:var(--t3)}
+.fbr-bar-track{flex:1;height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+.fbr-bar-fill{height:100%;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:4px;transition:width .3s ease}
+.fbr-bar-cnt{width:40px;color:var(--t3);font:600 12px var(--num)}
+.fbr-com{padding:14px 16px;border-left:3px solid var(--bd);margin-bottom:10px;background:#fafafa;border-radius:0 8px 8px 0}
+.fbr-com.s5{border-left-color:#16a34a}
+.fbr-com.s4{border-left-color:#84cc16}
+.fbr-com.s3{border-left-color:#f59e0b}
+.fbr-com.s2{border-left-color:#f97316}
+.fbr-com.s1{border-left-color:#ef4444}
+.fbr-com-meta{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.fbr-com-asesor{font:600 13px var(--body);color:var(--text)}
+.fbr-com-fecha{font:400 11px var(--num);color:var(--t3)}
+.fbr-com-text{font:400 13px var(--body);color:var(--t2);line-height:1.5;margin-top:6px}
+.fbr-com-cot{font:400 11px var(--num);color:var(--t3);margin-top:6px}
+</style>
+<div class="tab-panel <?= $tab==='feedback'?'on':'' ?>" id="panel-feedback">
+
+  <?php if ($es_free_fb): ?>
+  <div style="background:#fef3c7;color:#92400e;padding:10px 14px;border-radius:8px;font:500 12px var(--body);margin-bottom:16px">
+    <strong>Plan Free:</strong> mostrando últimos 30 días. Actualiza a Business para histórico completo.
+  </div>
+  <?php endif; ?>
+
+  <?php if ($fb_total === 0): ?>
+    <div class="fbr-card" style="text-align:center;padding:40px 20px;color:var(--t3)">
+      <div style="font-size:48px;color:#e2e8f0;margin-bottom:10px">★</div>
+      <div style="font:600 16px var(--body);color:var(--t2);margin-bottom:6px">Aún no hay calificaciones</div>
+      <div style="font-size:13px">Cuando tus clientes califiquen sus cotizaciones aparecerán aquí.</div>
+    </div>
+  <?php else: ?>
+
+  <!-- Resumen general -->
+  <div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:20px" class="fbr-grid">
+    <div class="fbr-card" style="text-align:center">
+      <div style="font:700 56px var(--num);color:#f59e0b;line-height:1;letter-spacing:-2px">
+        <?= number_format($fb_avg, 1) ?>
+      </div>
+      <div class="fbr-stars" style="font-size:22px;margin-top:8px">
+        <?php
+          $full = floor($fb_avg); $half = ($fb_avg - $full) >= 0.5;
+          for ($i=0;$i<$full;$i++) echo '★';
+          if ($half) echo '<span style="opacity:.6">★</span>';
+          for ($i=$full+($half?1:0);$i<5;$i++) echo '<span style="color:#e2e8f0">★</span>';
+        ?>
+      </div>
+      <div style="font:500 12px var(--body);color:var(--t3);margin-top:8px">
+        Promedio de <?= $fb_total ?> calificaci<?= $fb_total === 1 ? 'ón' : 'ones' ?>
+      </div>
+    </div>
+
+    <div class="fbr-card">
+      <div class="sec-lbl" style="margin-bottom:12px">Distribución</div>
+      <?php for ($s=5; $s>=1; $s--):
+        $cnt = (int)($fb_resumen['s'.$s] ?? 0);
+        $pct = $fb_total > 0 ? ($cnt / $fb_total * 100) : 0;
+      ?>
+      <div class="fbr-bar-row">
+        <div class="fbr-bar-num"><?= $s ?>★</div>
+        <div class="fbr-bar-track"><div class="fbr-bar-fill" style="width:<?= number_format($pct,1) ?>%"></div></div>
+        <div class="fbr-bar-cnt"><?= $cnt ?></div>
+      </div>
+      <?php endfor; ?>
+    </div>
+  </div>
+
+  <!-- Por asesor -->
+  <?php if (!empty($fb_por_asesor)): ?>
+  <div class="fbr-card" style="margin-bottom:20px">
+    <div class="sec-lbl" style="margin-bottom:14px">Por asesor</div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border)">
+            <th style="text-align:left;padding:10px 12px;font:600 12px var(--body);color:var(--t3)">Asesor</th>
+            <th style="text-align:right;padding:10px 12px;font:600 12px var(--body);color:var(--t3)">Promedio</th>
+            <th style="text-align:right;padding:10px 12px;font:600 12px var(--body);color:var(--t3)">Total</th>
+            <th style="text-align:right;padding:10px 12px;font:600 12px var(--body);color:var(--t3)">5★</th>
+            <th style="text-align:right;padding:10px 12px;font:600 12px var(--body);color:var(--t3)">≤2★</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($fb_por_asesor as $r):
+            $prom = (float)$r['promedio']; $full = floor($prom); $half = ($prom - $full) >= 0.5;
+          ?>
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:12px;font:600 13px var(--body);color:var(--text)"><?= e($r['asesor'] ?? 'Sin asignar') ?></td>
+            <td style="padding:12px;text-align:right;font:700 14px var(--num);white-space:nowrap">
+              <span style="color:#f59e0b"><?= number_format($prom, 2) ?></span>
+              <span class="fbr-stars" style="font-size:12px;margin-left:4px">
+                <?php for($i=0;$i<$full;$i++) echo '★'; if ($half) echo '<span style="opacity:.6">★</span>'; ?><?php for($i=$full+($half?1:0);$i<5;$i++) echo '<span style="color:#e2e8f0">★</span>'; ?>
+              </span>
+            </td>
+            <td style="padding:12px;text-align:right;font:600 13px var(--num);color:var(--t2)"><?= (int)$r['total'] ?></td>
+            <td style="padding:12px;text-align:right;font:600 13px var(--num);color:#16a34a"><?= (int)$r['s5'] ?></td>
+            <td style="padding:12px;text-align:right;font:600 13px var(--num);color:<?= (int)$r['bajos'] > 0 ? '#ef4444':'var(--t3)' ?>"><?= (int)$r['bajos'] ?></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <!-- Comentarios recientes -->
+  <div class="fbr-card">
+    <div class="sec-lbl" style="margin-bottom:14px">Calificaciones recientes</div>
+    <?php foreach ($fb_recientes as $f):
+      $stars = (int)$f['stars'];
+      $com = trim((string)($f['comentario'] ?? ''));
+    ?>
+    <div class="fbr-com s<?= $stars ?>">
+      <div class="fbr-com-meta">
+        <div>
+          <span class="fbr-stars" style="font-size:15px"><?php for($i=0;$i<$stars;$i++) echo '★'; ?><span style="color:#e2e8f0"><?php for($i=$stars;$i<5;$i++) echo '★'; ?></span></span>
+          <span class="fbr-com-asesor" style="margin-left:10px"><?= e($f['asesor'] ?? '—') ?></span>
+        </div>
+        <div class="fbr-com-fecha"><?= date('d/m/Y H:i', strtotime($f['created_at'])) ?></div>
+      </div>
+      <?php if ($com !== ''): ?>
+      <div class="fbr-com-text">"<?= e($com) ?>"</div>
+      <?php endif; ?>
+      <div class="fbr-com-cot">
+        <?= e($f['cot_numero'] ?? '—') ?> ·
+        <?= e($f['cliente'] ?? 'Cliente') ?> ·
+        <?= e($f['cot_titulo'] ?? '') ?>
+      </div>
+    </div>
+    <?php endforeach; ?>
+  </div>
+
+  <?php endif; ?>
+</div>
+<?php endif; ?>
+
+
 <script>
 // ── Rango de fechas ─────────────────────────────────────────
 function toggleRango(val) {
