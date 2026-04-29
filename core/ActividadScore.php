@@ -1204,7 +1204,7 @@ class ActividadScore
             if ($cierre_arriba && $cierres >= 3) $tc .= ", por encima del {$bench_cr_pct}% de la empresa";
             elseif ($cierre_abajo && $score < 70) $tc .= " — la empresa promedia {$bench_cr_pct}%, estás {$var_neg}% abajo";
             elseif ($cierre_abajo) $tc .= ", por debajo del {$bench_cr_pct}% de la empresa";
-            $frases[] = "$tc. $cierres de $vist.";
+            $frases[] = "$tc. Cerraste $cierres de $vist cotizaciones vistas.";
         }
 
         // ═══ 2. VOLUMEN / RADAR ═══
