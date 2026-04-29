@@ -19,6 +19,7 @@ $cot = DB::row(
             e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado, e.cot_theme,
             e.texto_aceptar, e.texto_rechazar,
             e.slug AS emp_slug, e.ocultar_cant_pu,
+            e.feedback_activo, e.feedback_pregunta, e.feedback_label_comentario, e.feedback_agradecimiento,
             cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.email AS cli_email, cl.direccion AS cli_direccion,
             u.nombre  AS asesor_nombre
      FROM cotizaciones c
@@ -986,6 +987,134 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <div class="smsg" id="sMsg"></div>
   <div class="sbox" id="sBox"></div>
 </div>
+
+<?php if (!empty($cot['feedback_activo'])):
+    $fb_pregunta  = $cot['feedback_pregunta'] ?? '¿Qué tan satisfecho estás con la atención recibida?';
+    $fb_label_com = $cot['feedback_label_comentario'] ?? 'Cuéntanos brevemente qué podemos mejorar en tu atención';
+    $fb_agradec   = $cot['feedback_agradecimiento'] ?? 'Tu opinión nos ayuda a mejorar como te atendemos';
+    $fb_ya = (int)DB::val("SELECT id FROM cot_feedbacks WHERE cotizacion_id = ?", [(int)$cot['id']]);
+?>
+<!-- FEEDBACK del cliente -->
+<style>
+.fb-wrap{max-width:720px;margin:30px auto 8px;padding:0 16px}
+.fb-card{background:linear-gradient(135deg,#ffffff 0%,#fafbfc 100%);border:1px solid #e2e8f0;border-radius:18px;padding:36px 28px;text-align:center;box-shadow:0 1px 3px rgba(15,23,42,.04),0 1px 2px rgba(15,23,42,.02)}
+.fb-q{font:600 18px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#0f172a;margin-bottom:22px;line-height:1.4;letter-spacing:-.01em}
+.fb-stars{display:flex;justify-content:center;gap:6px;margin-bottom:22px}
+.fb-star{font-size:42px;color:#e2e8f0;cursor:pointer;line-height:1;transition:transform .15s ease,color .15s ease;user-select:none;background:none;border:0;padding:0;-webkit-tap-highlight-color:transparent}
+.fb-star:hover{transform:scale(1.1)}
+.fb-star.act{color:#f59e0b;text-shadow:0 1px 4px rgba(245,158,11,.35)}
+.fb-com{width:100%;max-width:480px;min-height:80px;padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;font:400 14px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#1e293b;background:#fff;resize:vertical;display:none;margin:0 auto;outline:none;transition:border-color .15s ease}
+.fb-com:focus{border-color:#94a3b8}
+.fb-send{display:none;margin:18px auto 0;padding:11px 28px;background:#0f172a;color:#fff;border:0;border-radius:10px;font:600 14px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);cursor:pointer;letter-spacing:-.01em;transition:background .15s ease,transform .1s ease}
+.fb-send:hover{background:#1e293b}
+.fb-send:active{transform:translateY(1px)}
+.fb-send:disabled{opacity:.6;cursor:wait}
+.fb-thanks{display:none;padding:12px 0}
+.fb-thanks-ico{width:48px;height:48px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:24px;color:#16a34a}
+.fb-thanks-msg{font:600 16px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#0f172a;line-height:1.5;max-width:420px;margin:0 auto;letter-spacing:-.01em}
+.fb-rated-msg{font:500 14px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#64748b;padding:10px 0}
+@media (max-width:640px){
+  .fb-card{padding:28px 20px;border-radius:14px}
+  .fb-q{font-size:16px;margin-bottom:18px}
+  .fb-star{font-size:36px;gap:4px}
+}
+</style>
+<div class="fb-wrap" id="fbWrap">
+  <div class="fb-card">
+    <?php if ($fb_ya): ?>
+      <div class="fb-rated-msg">✓ Esta cotización ya fue calificada. Gracias por tu opinión.</div>
+    <?php else: ?>
+      <div id="fbForm">
+        <div class="fb-q"><?= e($fb_pregunta) ?></div>
+        <div class="fb-stars" id="fbStars" role="radiogroup" aria-label="Calificación">
+          <button type="button" class="fb-star" data-v="1" aria-label="1 estrella">★</button>
+          <button type="button" class="fb-star" data-v="2" aria-label="2 estrellas">★</button>
+          <button type="button" class="fb-star" data-v="3" aria-label="3 estrellas">★</button>
+          <button type="button" class="fb-star" data-v="4" aria-label="4 estrellas">★</button>
+          <button type="button" class="fb-star" data-v="5" aria-label="5 estrellas">★</button>
+        </div>
+        <textarea class="fb-com" id="fbCom" placeholder="<?= e($fb_label_com) ?>" maxlength="1000"></textarea>
+        <button type="button" class="fb-send" id="fbSend">Enviar</button>
+      </div>
+      <div class="fb-thanks" id="fbThanks">
+        <div class="fb-thanks-ico">✓</div>
+        <div class="fb-thanks-msg"><?= e($fb_agradec) ?></div>
+      </div>
+    <?php endif; ?>
+  </div>
+</div>
+<script>
+(function(){
+  // Ocultar si el visor parece ser interno (logueado o cookie de sesión)
+  function getCookie(n){
+    var m = document.cookie.match(new RegExp('(?:^|; )'+n.replace(/[$()*+?.\\^|\[\]{}]/g,'\\$&')+'=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  if (getCookie('cza_session')) {
+    var w = document.getElementById('fbWrap');
+    if (w) w.style.display = 'none';
+    return;
+  }
+
+  var stars = document.querySelectorAll('#fbStars .fb-star');
+  var com = document.getElementById('fbCom');
+  var send = document.getElementById('fbSend');
+  var form = document.getElementById('fbForm');
+  var thanks = document.getElementById('fbThanks');
+  if (!stars.length || !send) return;
+  var sel = 0;
+
+  function paint(n){
+    stars.forEach(function(s){
+      s.classList.toggle('act', parseInt(s.dataset.v) <= n);
+    });
+  }
+  stars.forEach(function(s){
+    s.addEventListener('mouseenter', function(){ paint(parseInt(s.dataset.v)); });
+    s.addEventListener('click', function(){
+      sel = parseInt(s.dataset.v);
+      paint(sel);
+      com.style.display = 'block';
+      send.style.display = 'inline-block';
+    });
+  });
+  document.getElementById('fbStars').addEventListener('mouseleave', function(){ paint(sel); });
+
+  send.addEventListener('click', async function(){
+    if (!sel) return;
+    send.disabled = true;
+    try {
+      var visitorId = getCookie('cz_vid');
+      var deviceSig = getCookie('cz_dsig');
+      var r = await fetch('/api/cot-feedback', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          cotizacion_id: <?= (int)$cot['id'] ?>,
+          stars: sel,
+          comentario: com.value,
+          visitor_id: visitorId,
+          device_sig: deviceSig
+        })
+      });
+      var d = await r.json();
+      if (d.ok || d.error === 'ya_calificado') {
+        form.style.display = 'none';
+        thanks.style.display = 'block';
+      } else {
+        send.disabled = false;
+        if (d.error === 'interno') {
+          var w = document.getElementById('fbWrap');
+          if (w) w.style.display = 'none';
+        }
+      }
+    } catch(e) {
+      send.disabled = false;
+    }
+  });
+})();
+</script>
+<?php endif; ?>
 
 <!-- FOOTER -->
 <div class="footer">

@@ -84,6 +84,7 @@ class Router
             self::get('/api/safari-bridge', fn() => self::load_api('safari_bridge'));
             self::post('/api/track',        fn() => self::load_api('track'));
             self::post('/api/quote-action', fn() => self::load_api('quote_action'));
+            self::post('/api/cot-feedback', fn() => self::load_api('cot_feedback'));
             self::post('/api/push/register',   fn() => self::load_api('push_register'));
             self::post('/api/push/unregister', fn() => self::load_api('push_unregister'));
 
@@ -241,6 +242,7 @@ class Router
         self::post('/config/suscripcion/crear',             fn()   => self::app('config', 'suscripcion_crear'));
         self::post('/config/suscripcion/cancelar',          fn()   => self::app('config', 'suscripcion_cancelar'));
         self::post('/config/termometro',                   fn()   => self::app('config', 'guardar_termometro'));
+        self::post('/config/feedback',                     fn()   => self::app('config', 'guardar_feedback'));
         self::post('/config/marketing',                    fn()   => self::app('config', 'guardar_marketing'));
         self::post('/config/historial',                    fn()   => self::app('config', 'guardar_historial'));
         self::post('/config/historial/:id/eliminar',       fn($p) => self::app('config', 'eliminar_historial', $p));
