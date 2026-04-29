@@ -1084,8 +1084,8 @@ if ($fb_render):
 .fb-q{font:600 18px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#0f172a;margin-bottom:8px;line-height:1.4;letter-spacing:-.01em}
 .fb-sub{font:400 13px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#64748b;margin-bottom:22px;line-height:1.5;max-width:480px;margin-left:auto;margin-right:auto}
 .fb-stars{display:flex;justify-content:center;gap:6px;margin-bottom:22px}
-.fb-star{font-size:44px;color:#fde68a;cursor:pointer;line-height:1;transition:transform .15s ease,color .15s ease,text-shadow .15s ease;user-select:none;background:none;border:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-text-stroke:1.5px #d4a017;paint-order:stroke fill;text-shadow:0 1px 3px rgba(212,160,23,.15)}
-.fb-star:hover{transform:scale(1.15);color:#fbbf24;text-shadow:0 2px 8px rgba(245,158,11,.3)}
+.fb-star{font-size:44px;color:var(--glt);cursor:pointer;line-height:1;transition:transform .15s ease,color .15s ease,text-shadow .15s ease;user-select:none;background:none;border:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-text-stroke:1.5px var(--g);paint-order:stroke fill;text-shadow:0 1px 3px rgba(0,0,0,.08)}
+.fb-star:hover{transform:scale(1.15);color:var(--gbd);text-shadow:0 2px 8px rgba(0,0,0,.12)}
 .fb-star.act{color:#f59e0b;-webkit-text-stroke:1.5px #b45309;text-shadow:0 2px 8px rgba(245,158,11,.35)}
 .fb-com{width:100%;max-width:480px;min-height:80px;padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;font:400 14px var(--ff,'Plus Jakarta Sans',-apple-system,sans-serif);color:#1e293b;background:#fff;resize:vertical;display:none;margin:0 auto;outline:none;transition:border-color .15s ease}
 .fb-com:focus{border-color:#94a3b8}
