@@ -45,24 +45,26 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
             }
             $_SESSION['_ips_synced'] = true;
         }
-        // Autolimpieza: marcar sesiones propias como internas (1 vez por sesión)
+        // Autolimpieza: marcar sesiones propias como internas en TODAS las empresas
+        // donde el usuario está registrado como interno (no solo EMPRESA_ID actual).
+        // Esto evita "fugas" cuando el superadmin/admin entra a slugs de empresas
+        // distintas a la que está logueado actualmente.
         if (($_SESSION['_sessions_cleaned'] ?? '') !== date('Y-m-d')) {
             $my_ip  = ip_real();
             $my_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
-            if ($my_ip) {
+            if ($my_ip || $my_vid !== '') {
                 DB::execute(
-                    "UPDATE quote_sessions qs JOIN cotizaciones c ON c.id = qs.cotizacion_id
+                    "UPDATE quote_sessions qs
+                     JOIN cotizaciones c ON c.id = qs.cotizacion_id
+                     LEFT JOIN radar_ips_internas ri
+                            ON ri.empresa_id = c.empresa_id AND ri.ip = qs.ip
+                     LEFT JOIN radar_visitors_internos vi
+                            ON vi.empresa_id = c.empresa_id AND vi.visitor_id = qs.visitor_id
                      SET qs.es_interno = 1
-                     WHERE qs.ip = ? AND c.empresa_id = ? AND qs.es_interno = 0",
-                    [$my_ip, EMPRESA_ID]
-                );
-            }
-            if ($my_vid !== '') {
-                DB::execute(
-                    "UPDATE quote_sessions qs JOIN cotizaciones c ON c.id = qs.cotizacion_id
-                     SET qs.es_interno = 1
-                     WHERE qs.visitor_id = ? AND c.empresa_id = ? AND qs.es_interno = 0",
-                    [$my_vid, EMPRESA_ID]
+                     WHERE qs.es_interno = 0
+                       AND (qs.ip = ? OR qs.visitor_id = ?)
+                       AND (ri.id IS NOT NULL OR vi.id IS NOT NULL)",
+                    [$my_ip ?: '', $my_vid ?: '']
                 );
             }
             $_SESSION['_sessions_cleaned'] = date('Y-m-d');
