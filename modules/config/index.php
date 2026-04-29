@@ -2149,19 +2149,24 @@ async function eliminarHistorial(id, btn) {
 <!-- ══ TAB: TERMÓMETRO ══════════════════════════════════════ -->
 <?php if ($plan_info['es_business']): ?>
 <div class="tab-panel <?= $tab_activo==='termometro'?'on':'' ?>" id="panel-termometro">
-<div class="card" style="margin-bottom:16px">
-  <div class="tog-row">
-    <div>
-      <div class="tog-lbl">Mostrar termómetro a los asesores</div>
-      <div class="tog-sub">El score, las frases de diagnóstico y el leaderboard se muestran en el dashboard de cada asesor. Si lo desactivas, solo tú lo ves en el panel ejecutivo.</div>
+
+  <div class="sec-lbl">Visibilidad del termómetro</div>
+  <p style="font:400 13px var(--body);color:var(--t3);margin-bottom:14px;line-height:1.6">El termómetro muestra a tus asesores su score, diagnóstico y posición en el leaderboard. Si lo desactivas, solo tú podrás verlo en el panel ejecutivo.</p>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="field-row h">
+      <div>
+        <div class="field-lbl">Mostrar termómetro a los asesores</div>
+        <div class="field-sub">El score, las frases de diagnóstico y el leaderboard se muestran en el dashboard de cada asesor</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="termometro-toggle" <?= !empty($empresa['termometro_visible']) ? 'checked' : '' ?> onchange="guardarTermometro(this.checked)">
+        <div class="toggle-track"></div><div class="toggle-thumb"></div>
+      </label>
     </div>
-    <label class="tog">
-      <input type="checkbox" id="termometro-toggle" <?= !empty($empresa['termometro_visible']) ? 'checked' : '' ?> onchange="guardarTermometro(this.checked)">
-      <span class="tog-track"></span>
-      <span class="tog-thumb"></span>
-    </label>
   </div>
-</div>
+
+  <div id="termometro-saved" style="display:none;font:600 13px var(--body);color:var(--g);text-align:center;padding:8px">✓ Guardado</div>
 </div>
 <script>
 async function guardarTermometro(on) {
@@ -2171,6 +2176,8 @@ async function guardarTermometro(on) {
             headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
             body: JSON.stringify({termometro_visible: on ? 1 : 0})
         });
+        var m = document.getElementById('termometro-saved');
+        if (m) { m.style.display = 'block'; setTimeout(() => m.style.display = 'none', 1800); }
     } catch(e) {}
 }
 </script>
@@ -2180,81 +2187,79 @@ async function guardarTermometro(on) {
 <?php if ($plan_info['es_free'] || $plan_info['es_business']): ?>
 <div class="tab-panel <?= $tab_activo==='feedback'?'on':'' ?>" id="panel-feedback">
 
-  <div class="card" style="margin-bottom:16px">
-    <div class="tog-row">
+  <div class="sec-lbl">Calificación del cliente</div>
+  <p style="font:400 13px var(--body);color:var(--t3);margin-bottom:14px;line-height:1.6">Pide a tus clientes que califiquen la atención recibida directamente desde el slug público de la cotización. Una calificación por cotización. Solo se muestra a clientes (no a ti ni a tu equipo).</p>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="field-row h">
       <div>
-        <div class="tog-lbl">Pedir calificación al cliente</div>
-        <div class="tog-sub">Al final del slug público de la cotización, el cliente verá un bloque elegante con 5 estrellas y un campo opcional para comentarios. Solo se ve para clientes (no para ti ni tu equipo). Una calificación por cotización.</div>
+        <div class="field-lbl">Pedir calificación al cliente</div>
+        <div class="field-sub">Aparece como un bloque al final del slug con 5 estrellas y comentario opcional</div>
       </div>
-      <label class="tog">
+      <label class="toggle">
         <input type="checkbox" id="fb-toggle" <?= !empty($empresa['feedback_activo']) ? 'checked' : '' ?>>
-        <span class="tog-track"></span>
-        <span class="tog-thumb"></span>
+        <div class="toggle-track"></div><div class="toggle-thumb"></div>
       </label>
     </div>
   </div>
 
-  <div class="card">
-    <div class="sec-lbl" style="margin-bottom:6px">Personaliza los textos</div>
-    <p style="font-size:12px;color:var(--t3);margin:0 0 16px">Estos son los textos que verá tu cliente. Si los dejas vacíos, se usarán los textos por defecto.</p>
+  <div class="sec-lbl">Personaliza los textos</div>
+  <p style="font:400 13px var(--body);color:var(--t3);margin-bottom:14px;line-height:1.6">Estos son los textos que verá tu cliente. Si los dejas vacíos, se usarán los textos por defecto.</p>
 
-    <div style="margin-bottom:16px">
+  <div class="card" style="margin-bottom:20px">
+    <div class="field-row">
       <div class="field-lbl">Pregunta principal</div>
-      <div class="field-sub" style="margin-bottom:6px">Aparece arriba de las estrellas</div>
-      <input class="field-box" id="fb-pregunta" type="text" maxlength="255"
+      <div class="field-sub">Aparece arriba de las estrellas</div>
+      <input class="field-box" id="fb-pregunta" type="text" maxlength="255" style="margin-top:8px"
              value="<?= e($empresa['feedback_pregunta'] ?? '¿Qué tan satisfecho estás con la atención recibida?') ?>"
              placeholder="¿Qué tan satisfecho estás con la atención recibida?">
     </div>
 
-    <div style="margin-bottom:16px">
-      <div class="field-lbl">Texto secundario <span style="font-weight:400;color:var(--t3)">(opcional)</span></div>
-      <div class="field-sub" style="margin-bottom:6px">Línea más pequeña debajo de la pregunta. Útil para dar contexto antes de calificar. Déjalo vacío para no mostrarlo.</div>
-      <input class="field-box" id="fb-subtitulo" type="text" maxlength="255"
+    <div class="field-row">
+      <div class="field-lbl">Texto secundario <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--t3)">(opcional)</span></div>
+      <div class="field-sub">Línea más pequeña debajo de la pregunta. Útil para dar contexto. Déjalo vacío para no mostrarlo.</div>
+      <input class="field-box" id="fb-subtitulo" type="text" maxlength="255" style="margin-top:8px"
              value="<?= e($empresa['feedback_subtitulo'] ?? '') ?>"
              placeholder="Tu opinión es totalmente anónima y solo nos llega a nosotros">
     </div>
 
-    <div style="margin-bottom:16px">
+    <div class="field-row">
       <div class="field-lbl">Texto del campo de comentario</div>
-      <div class="field-sub" style="margin-bottom:6px">Placeholder dentro del recuadro de texto opcional</div>
-      <input class="field-box" id="fb-label" type="text" maxlength="255"
+      <div class="field-sub">Placeholder dentro del recuadro de texto opcional</div>
+      <input class="field-box" id="fb-label" type="text" maxlength="255" style="margin-top:8px"
              value="<?= e($empresa['feedback_label_comentario'] ?? 'Cuéntanos brevemente qué podemos mejorar en tu atención') ?>"
              placeholder="Cuéntanos brevemente qué podemos mejorar en tu atención">
     </div>
 
-    <div style="margin-bottom:18px">
+    <div class="field-row">
       <div class="field-lbl">Mensaje de agradecimiento</div>
-      <div class="field-sub" style="margin-bottom:6px">Aparece después de que el cliente envía la calificación</div>
-      <input class="field-box" id="fb-thanks" type="text" maxlength="255"
+      <div class="field-sub">Aparece después de que el cliente envía la calificación</div>
+      <input class="field-box" id="fb-thanks" type="text" maxlength="255" style="margin-top:8px"
              value="<?= e($empresa['feedback_agradecimiento'] ?? 'Tu opinión nos ayuda a mejorar como te atendemos') ?>"
              placeholder="Tu opinión nos ayuda a mejorar como te atendemos">
     </div>
 
-    <button class="btn-enter" onclick="guardarFeedback()" style="width:100%">
-      <i data-feather="save" style="width:16px;height:16px"></i> Guardar configuración
-    </button>
-    <div id="fb-saved" style="display:none;margin-top:10px;font-size:13px;color:var(--g);text-align:center;font-weight:600">✓ Guardado</div>
+    <div style="padding:16px;display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap">
+      <div id="fb-saved" style="display:none;font:600 13px var(--body);color:var(--g)">✓ Configuración guardada</div>
+      <button class="save-btn" onclick="guardarFeedback()" style="margin-left:auto">Guardar configuración</button>
+    </div>
   </div>
 
-  <!-- Vista previa elegante -->
-  <div class="card" style="margin-top:16px;background:linear-gradient(135deg,#f8fafc 0%,#eef2f7 100%);border:1px dashed var(--bd)">
-    <div class="sec-lbl" style="margin-bottom:14px;display:flex;align-items:center;gap:8px">
-      <i data-feather="eye" style="width:14px;height:14px;color:var(--t3)"></i>
-      Vista previa
-    </div>
-
-    <div id="fb-preview" style="background:var(--white);border:1px solid var(--bd);border-radius:14px;padding:28px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04)">
-      <div id="fb-prev-q" style="font:600 17px var(--body);color:var(--text);margin-bottom:8px">¿Qué tan satisfecho estás con la atención recibida?</div>
+  <!-- Vista previa -->
+  <div class="sec-lbl">Vista previa</div>
+  <div class="card" style="background:#f8fafc;padding:24px">
+    <div id="fb-preview" style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:28px;text-align:center">
+      <div id="fb-prev-q" style="font:600 17px var(--body);color:var(--text);margin-bottom:8px;line-height:1.4">¿Qué tan satisfecho estás con la atención recibida?</div>
       <div id="fb-prev-s" style="font:400 13px var(--body);color:var(--t3);margin-bottom:18px;line-height:1.45;display:<?= !empty($empresa['feedback_subtitulo']) ? 'block' : 'none' ?>"><?= e($empresa['feedback_subtitulo'] ?? '') ?></div>
-      <div style="display:flex;justify-content:center;gap:8px;margin-bottom:18px">
-        <span style="font-size:36px;color:#e2e8f0;cursor:default">★</span>
-        <span style="font-size:36px;color:#e2e8f0;cursor:default">★</span>
-        <span style="font-size:36px;color:#e2e8f0;cursor:default">★</span>
-        <span style="font-size:36px;color:#e2e8f0;cursor:default">★</span>
-        <span style="font-size:36px;color:#e2e8f0;cursor:default">★</span>
+      <div style="display:flex;justify-content:center;gap:6px;margin-bottom:18px">
+        <span style="font-size:36px;color:#e2e8f0">★</span>
+        <span style="font-size:36px;color:#e2e8f0">★</span>
+        <span style="font-size:36px;color:#e2e8f0">★</span>
+        <span style="font-size:36px;color:#e2e8f0">★</span>
+        <span style="font-size:36px;color:#e2e8f0">★</span>
       </div>
       <textarea readonly id="fb-prev-l"
-        style="width:100%;max-width:420px;min-height:60px;padding:10px 14px;border:1px solid var(--bd);border-radius:8px;font:400 13px var(--body);color:var(--t2);background:#fafafa;resize:none"
+        style="width:100%;max-width:420px;min-height:60px;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font:400 13px var(--body);color:var(--t2);background:var(--bg);resize:none"
         placeholder="Cuéntanos brevemente qué podemos mejorar en tu atención"></textarea>
     </div>
   </div>
@@ -2293,7 +2298,7 @@ async function guardarFeedback() {
     const d = await r.json();
     if (d.ok) {
       const m = document.getElementById('fb-saved');
-      m.style.display = 'block';
+      m.style.display = 'inline-block';
       setTimeout(() => m.style.display = 'none', 2000);
     }
   } catch(e) { console.error(e); }
