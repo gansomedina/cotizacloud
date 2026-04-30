@@ -315,28 +315,17 @@ class ActividadScore
             ) AS t",
             [$usuario_id, $periodo]
         );
-        // Grace period a nivel EMPRESA: si alguien en la empresa expandió un tip,
-        // la feature está desplegada para todos. Individualmente, contar solo
-        // días activos desde que ESE usuario vio la feature por primera vez.
+        // Tips reading score. Grace de usuario nuevo ya cubre por early return
+        // arriba (línea 140) cuando dias_en_plataforma < GRACIA_DIAS.
         $first_tip_expand = DB::val(
             "SELECT MIN(created_at) FROM actividad_log
              WHERE usuario_id=? AND tipo IN ('tip_expand_1','tip_expand_2','tip_expand_3')",
             [$usuario_id]
         );
-        $tips_deployed = (int)DB::val(
-            "SELECT 1 FROM actividad_log al
-              JOIN usuarios u ON u.id = al.usuario_id
-              WHERE al.tipo IN ('tip_expand_1','tip_expand_2','tip_expand_3')
-              AND u.empresa_id=? LIMIT 1",
-            [$empresa_id]
-        );
-        if (!$tips_deployed) {
-            $tips_score = 1.0; // Feature no desplegada en la empresa
-        } elseif (!$first_tip_expand) {
-            $tips_score = 0.0; // Feature desplegada pero este asesor nunca ha leído
+        if (!$first_tip_expand) {
+            $tips_score = 0.0; // Asesor nunca expandió — penaliza
         } else {
             // Auto-calibrado: contar solo días activos DESDE que vio la feature.
-            // Esto evita penalizar al asesor por días pasados donde la feature no existía.
             $dias_activos_feature = (int)DB::val(
                 "SELECT COUNT(DISTINCT DATE(created_at)) FROM actividad_log
                  WHERE usuario_id=? AND tipo IN ('radar_view','quote_view','client_view')
@@ -707,18 +696,12 @@ class ActividadScore
             // Grace period: si NADIE en la empresa ha clickeado ❓ (feature recién
             // desplegada), no penalizar. Una vez que cualquier asesor clickea →
             // la feature está activa para todos.
-            $why_deployed = (int)DB::val(
-                "SELECT 1 FROM actividad_log al
-                  JOIN usuarios u ON u.id = al.usuario_id
-                  WHERE al.tipo='radar_why_click' AND u.empresa_id=? LIMIT 1",
-                [$empresa_id]
-            );
-            if ($why_deployed) {
-                $pct_why = $calientes_exploradas / $cots_calientes;
-                if ($pct_why >= 0.70) $radar_why_score = 1.0;
-                elseif ($pct_why >= 0.30) $radar_why_score = 0.85;
-                else $radar_why_score = 0.70;
-            }
+            // Grace de usuario nuevo cubierto por early return arriba.
+            // Si tiene calientes, se mide directo.
+            $pct_why = $calientes_exploradas / $cots_calientes;
+            if ($pct_why >= 0.70) $radar_why_score = 1.0;
+            elseif ($pct_why >= 0.30) $radar_why_score = 0.85;
+            else $radar_why_score = 0.70;
         }
         $s_seguimiento = $s_seguimiento * $radar_why_score;
         $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
