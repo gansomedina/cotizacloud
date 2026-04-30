@@ -135,7 +135,11 @@ try {
     exit;
 }
 
-// Push notification al equipo de la empresa cuando se respeta el toggle
+// Responder al cliente inmediatamente — push se envía después
+echo json_encode(['ok' => true]);
+if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+
+// Push notification al equipo (cliente ya recibió respuesta)
 try {
     $ncfg_fb = notif_config(EMPRESA_ID);
     if (!empty($ncfg_fb['feedback_recibido'])) {
@@ -165,5 +169,3 @@ try {
         );
     }
 } catch (Throwable $e) { /* no bloquear */ }
-
-echo json_encode(['ok' => true]);
