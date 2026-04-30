@@ -693,12 +693,16 @@ class ActividadScore
                     [$usuario_id]
                 );
             }
-            // Grace period: si nunca ha clickeado ❓, no penalizar
-            $why_ever = (int)DB::val(
-                "SELECT 1 FROM actividad_log WHERE usuario_id=? AND tipo='radar_why_click' LIMIT 1",
-                [$usuario_id]
+            // Grace period: si NADIE en la empresa ha clickeado ❓ (feature recién
+            // desplegada), no penalizar. Una vez que cualquier asesor clickea →
+            // la feature está activa para todos.
+            $why_deployed = (int)DB::val(
+                "SELECT 1 FROM actividad_log al
+                  JOIN usuarios u ON u.id = al.usuario_id
+                  WHERE al.tipo='radar_why_click' AND u.empresa_id=? LIMIT 1",
+                [$empresa_id]
             );
-            if ($why_ever) {
+            if ($why_deployed) {
                 $pct_why = $calientes_exploradas / $cots_calientes;
                 if ($pct_why >= 0.70) $radar_why_score = 1.0;
                 elseif ($pct_why >= 0.30) $radar_why_score = 0.85;
@@ -1283,14 +1287,29 @@ class ActividadScore
         $why_s  = (float)($s['radar_why_score'] ?? 1);
         $dias_act_d = (int)($s['dias_activos'] ?? 0);
         if ($dias_act_d > 0) {
-            $no_lee = $tips_s < 1.0;
-            $no_explora = $why_s < 1.0;
-            if ($no_lee && $no_explora) {
-                $frases[] = "No lees los tips ni exploras las señales del Radar.";
-            } elseif ($no_lee) {
-                $frases[] = $tips_s <= 0 ? "No lees los tips." : "Estás leyendo a medias — revisa el análisis completo.";
-            } elseif ($no_explora) {
-                $frases[] = "No exploras las señales del Radar — usa el ❓ en tus cotizaciones calientes.";
+            // Estado de tips: 'ok' (1.0), 'medio' (0.5), 'no' (0.0)
+            $tip_state = $tips_s >= 1.0 ? 'ok' : ($tips_s <= 0.0 ? 'no' : 'medio');
+            // Estado de ❓: 'ok' (1.0), 'medio' (0.85), 'no' (0.70)
+            $why_state = $why_s >= 1.0 ? 'ok' : ($why_s <= 0.71 ? 'no' : 'medio');
+
+            $partes_neg = [];
+            if ($tip_state === 'no') $partes_neg[] = 'no lees los tips';
+            elseif ($tip_state === 'medio') $partes_neg[] = 'lees los tips a medias';
+            if ($why_state === 'no') $partes_neg[] = 'no exploras las señales del Radar';
+            elseif ($why_state === 'medio') $partes_neg[] = 'exploras a medias las señales del Radar';
+
+            if (!empty($partes_neg)) {
+                $first = mb_strtoupper(mb_substr($partes_neg[0], 0, 1)) . mb_substr($partes_neg[0], 1);
+                if (count($partes_neg) === 1) {
+                    // Cierre con call to action si es solo ❓
+                    if ($why_state !== 'ok') {
+                        $frases[] = $first . ' — usa el ❓ en tus cotizaciones calientes.';
+                    } else {
+                        $frases[] = $first . ' — revisa el análisis completo.';
+                    }
+                } else {
+                    $frases[] = $first . ' y ' . $partes_neg[1] . '.';
+                }
             }
         }
 
