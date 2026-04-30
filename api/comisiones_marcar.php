@@ -17,13 +17,19 @@ $accion = trim((string)($body['accion'] ?? ''));
 $file = dirname(__DIR__) . '/data/comisiones_pagadas_' . $uid . '.json';
 @mkdir(dirname($file), 0755, true);
 
-$map = [];
-if (file_exists($file)) {
-    $map = json_decode(file_get_contents($file), true);
-    if (!is_array($map)) $map = [];
+// File locking para evitar race condition en escritura concurrente
+$fh = fopen($file, 'c+');
+if (!$fh) {
+    echo json_encode(['ok'=>false,'error'=>'no se pudo abrir archivo']);
+    exit;
 }
+flock($fh, LOCK_EX);
+$raw = stream_get_contents($fh);
+$map = $raw ? (json_decode($raw, true) ?: []) : [];
 
 if ($accion === 'leer') {
+    flock($fh, LOCK_UN);
+    fclose($fh);
     echo json_encode(['ok' => true, 'pagadas' => array_keys($map)]);
     exit;
 }
@@ -52,9 +58,11 @@ if ($accion === 'pagar') {
     exit;
 }
 
-if (file_put_contents($file, json_encode($map, JSON_PRETTY_PRINT)) === false) {
-    echo json_encode(['ok'=>false,'error'=>'no se pudo guardar']);
-    exit;
-}
+ftruncate($fh, 0);
+rewind($fh);
+fwrite($fh, json_encode($map, JSON_PRETTY_PRINT));
+fflush($fh);
+flock($fh, LOCK_UN);
+fclose($fh);
 
 echo json_encode(['ok' => true, 'pagadas' => array_keys($map)]);
