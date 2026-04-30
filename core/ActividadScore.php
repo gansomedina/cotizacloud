@@ -315,14 +315,25 @@ class ActividadScore
             ) AS t",
             [$usuario_id, $periodo]
         );
-        // Si nunca ha habido un expand (feature nueva), dar crédito completo
+        // Grace period a nivel EMPRESA: si alguien en la empresa expandió un tip,
+        // la feature está desplegada para todos. Individualmente, contar solo
+        // días activos desde que ESE usuario vio la feature por primera vez.
         $first_tip_expand = DB::val(
             "SELECT MIN(created_at) FROM actividad_log
              WHERE usuario_id=? AND tipo IN ('tip_expand_1','tip_expand_2','tip_expand_3')",
             [$usuario_id]
         );
-        if (!$first_tip_expand) {
-            $tips_score = 1.0; // Feature no desplegada aún para este usuario
+        $tips_deployed = (int)DB::val(
+            "SELECT 1 FROM actividad_log al
+              JOIN usuarios u ON u.id = al.usuario_id
+              WHERE al.tipo IN ('tip_expand_1','tip_expand_2','tip_expand_3')
+              AND u.empresa_id=? LIMIT 1",
+            [$empresa_id]
+        );
+        if (!$tips_deployed) {
+            $tips_score = 1.0; // Feature no desplegada en la empresa
+        } elseif (!$first_tip_expand) {
+            $tips_score = 0.0; // Feature desplegada pero este asesor nunca ha leído
         } else {
             // Auto-calibrado: contar solo días activos DESDE que vio la feature.
             // Esto evita penalizar al asesor por días pasados donde la feature no existía.
