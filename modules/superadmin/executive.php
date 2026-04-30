@@ -495,6 +495,14 @@ $comisiones = DB::query(
      ORDER BY v.empresa_id, rx.ultimo_pago DESC",
     [$p_ini_dt, $p_fin_dt]
 );
+// ─── Comisiones marcadas como pagadas (persistencia en JSON server-side) ──
+$comi_pagadas_file = dirname(__DIR__, 2) . '/data/comisiones_pagadas_' . (int)Auth::id() . '.json';
+$comi_pagadas_map = [];
+if (file_exists($comi_pagadas_file)) {
+    $loaded = json_decode(file_get_contents($comi_pagadas_file), true);
+    if (is_array($loaded)) $comi_pagadas_map = $loaded;
+}
+
 $comi_por_empresa = [];
 foreach ($comisiones as $cm) {
     $eid = (int)$cm['empresa_id'];
@@ -1800,21 +1808,18 @@ $total_comi_rows = count($comisiones);
 </div><!-- /wrap -->
 
 <script>
-// ─── Comisiones (persistencia en localStorage) ─────────────
-const COMI_KEY = 'cz_comisiones_pagadas';
-function comiLoad() {
-    try { return JSON.parse(localStorage.getItem(COMI_KEY) || '{}') || {}; }
-    catch(e) { return {}; }
-}
-function comiSave(map) { localStorage.setItem(COMI_KEY, JSON.stringify(map)); }
+// ─── Comisiones (persistencia en JSON server-side, no localStorage) ─────
+// Las marcadas vienen ya cargadas desde PHP en window.COMI_PAGADAS
+window.COMI_PAGADAS = <?= json_encode(array_map('strval', array_keys($comi_pagadas_map))) ?>;
+function comiSet() { return new Set(window.COMI_PAGADAS); }
 function comiRefresh() {
-    const map = comiLoad();
+    const set = comiSet();
     let totalVisibles = 0;
     const countsPorEmpresa = {};
     document.querySelectorAll('.comi-row').forEach(row => {
         const id = row.dataset.comiId;
         const eid = row.dataset.empresa;
-        if (map[id]) {
+        if (set.has(id)) {
             row.style.display = 'none';
         } else {
             row.style.display = '';
@@ -1832,14 +1837,47 @@ function comiRefresh() {
         if (c) c.textContent = n;
     });
 }
-function marcarComision(id) {
+async function marcarComision(id) {
     if (!confirm('¿Marcar esta comisión como pagada? Ya no aparecerá en el listado.')) return;
-    const map = comiLoad();
-    map[id] = { t: Date.now() };
-    comiSave(map);
-    comiRefresh();
+    try {
+        const r = await fetch('/api/comisiones/marcar', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({accion:'pagar', venta_id: parseInt(id)})
+        });
+        const d = await r.json();
+        if (d.ok) {
+            window.COMI_PAGADAS = d.pagadas.map(String);
+            comiRefresh();
+        } else {
+            alert('Error al guardar: ' + (d.error || 'desconocido'));
+        }
+    } catch(e) { alert('Error de red: ' + e.message); }
 }
-document.addEventListener('DOMContentLoaded', comiRefresh);
+
+// Migración una vez: si hay datos en localStorage viejo, los importa al server
+async function migrarLocalstorageSiAplica() {
+    try {
+        const old = localStorage.getItem('cz_comisiones_pagadas');
+        if (!old) return;
+        const map = JSON.parse(old);
+        const ids = Object.keys(map || {});
+        if (ids.length === 0) { localStorage.removeItem('cz_comisiones_pagadas'); return; }
+        const r = await fetch('/api/comisiones/marcar', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({accion:'importar', ids: ids.map(Number)})
+        });
+        const d = await r.json();
+        if (d.ok) {
+            localStorage.removeItem('cz_comisiones_pagadas');
+            window.COMI_PAGADAS = d.pagadas.map(String);
+            comiRefresh();
+            console.log('Comisiones migradas: ' + ids.length);
+        }
+    } catch(e) {}
+}
+document.addEventListener('DOMContentLoaded', () => { comiRefresh(); migrarLocalstorageSiAplica(); });
 
 <?php // $emp_sorted ya definido arriba ?>
 // ─── Trend Chart ────────────────────────────────────────────
