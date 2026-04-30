@@ -131,6 +131,7 @@ class Router
         self::post('/api/push/reset-badge', fn() => self::load_api('push_reset_badge'));
         self::post('/api/radar-feedback',   fn() => self::load_api('radar_feedback'));
         self::post('/api/track-tip',        fn() => self::load_api('track_tip'));
+        self::post('/api/comisiones/marcar', fn() => self::load_api('comisiones_marcar'));
         self::post('/api/mp/webhook',       fn() => self::load_api('mp_webhook'));
         self::get('/api/mp/webhook',        fn() => self::load_api('mp_webhook'));
         // Ruta ofuscada (Imunify360 bloquea /api/mp/webhook)

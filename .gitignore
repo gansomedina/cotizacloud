@@ -33,3 +33,6 @@ migrations/*.csv
 *_backup_*
 *_estable.*
 respaldo*
+
+# Datos privados del superadmin (no commit)
+/data/comisiones_pagadas_*.json
