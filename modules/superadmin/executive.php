@@ -1538,7 +1538,7 @@ $logins_asesores = DB::query(
             GREATEST(
                 COALESCE(u.ultimo_login, '2000-01-01'),
                 COALESCE((SELECT MAX(us2.created_at) FROM user_sessions us2 WHERE us2.usuario_id = u.id), '2000-01-01'),
-                COALESCE((SELECT MAX(created_at) FROM cotizaciones WHERE usuario_id = u.id OR vendedor_id = u.id), '2000-01-01'),
+                COALESCE((SELECT MAX(created_at) FROM cotizaciones WHERE usuario_id = u.id), '2000-01-01'),
                 COALESCE((SELECT MAX(created_at) FROM recibos WHERE usuario_id = u.id), '2000-01-01'),
                 COALESCE((SELECT MAX(created_at) FROM actividad_log WHERE usuario_id = u.id), '2000-01-01')
             ) AS ultima_actividad
