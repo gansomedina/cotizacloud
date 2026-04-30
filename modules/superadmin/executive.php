@@ -378,8 +378,10 @@ $sin_abrir = DB::query(
 // ─── PERFORMANCE ASESORES ───────────────────────────────────
 $asesores = DB::query(
     "SELECT u.id, u.nombre, u.empresa_id,
-            us.score, us.nivel, us.s_activacion, us.s_engagement, us.s_seguimiento, us.s_conversion,
-            us.s_radar_health, us.cot_asignadas, us.cot_vistas, us.conversiones, us.cot_dormidas,
+            us.score, us.nivel, us.s_activacion, us.s_activacion_op, us.tips_score,
+            us.dias_lectura, us.dias_activos, us.s_engagement, us.s_seguimiento,
+            us.s_conversion, us.s_radar_health, us.radar_why_score, us.calientes_exploradas,
+            us.cot_asignadas, us.cot_vistas, us.conversiones, us.cot_dormidas,
             us.cierres_bucket, us.cierres_sin_dto, us.transiciones_up, us.senales_ignoradas,
             us.radar_views, us.radar_benchmark, us.ventas_sin_pago, us.ventas_periodo, us.bench_ventas,
             us.tasa_cierre, us.momentum, us.penalizaciones, us.bonuses
