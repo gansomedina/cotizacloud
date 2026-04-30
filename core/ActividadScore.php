@@ -316,14 +316,25 @@ class ActividadScore
             [$usuario_id, $periodo]
         );
         // Si nunca ha habido un expand (feature nueva), dar crédito completo
-        $tips_ever = (int)DB::val(
-            "SELECT 1 FROM actividad_log WHERE usuario_id=? AND tipo='tip_expand_1' LIMIT 1",
+        $first_tip_expand = DB::val(
+            "SELECT MIN(created_at) FROM actividad_log
+             WHERE usuario_id=? AND tipo IN ('tip_expand_1','tip_expand_2','tip_expand_3')",
             [$usuario_id]
         );
-        if (!$tips_ever) {
+        if (!$first_tip_expand) {
             $tips_score = 1.0; // Feature no desplegada aún para este usuario
         } else {
-            $pct_lectura = $dias_activos > 0 ? $dias_lectura / $dias_activos : 0;
+            // Auto-calibrado: contar solo días activos DESDE que vio la feature.
+            // Esto evita penalizar al asesor por días pasados donde la feature no existía.
+            $dias_activos_feature = (int)DB::val(
+                "SELECT COUNT(DISTINCT DATE(created_at)) FROM actividad_log
+                 WHERE usuario_id=? AND tipo IN ('radar_view','quote_view','client_view')
+                 AND created_at >= ?
+                 AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+                [$usuario_id, $first_tip_expand, $periodo]
+            );
+            $dias_activos_feature = max($dias_activos_feature, 1);
+            $pct_lectura = $dias_lectura / $dias_activos_feature;
             if ($pct_lectura >= 0.70) $tips_score = 1.0;
             elseif ($pct_lectura >= 0.30) $tips_score = 0.50;
             else $tips_score = 0.0;
