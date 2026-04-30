@@ -5,6 +5,32 @@
 // ============================================================
 
 defined('COTIZAAPP') or die;
+
+// ─── Tipo de cambio MXN→USD (cache 12h, fallback 17.5) ──────
+$usd_rate = (function() {
+    $cache = dirname(__DIR__, 2) . '/data/exchange_rate.json';
+    @mkdir(dirname($cache), 0755, true);
+    $data = file_exists($cache) ? json_decode(file_get_contents($cache), true) : null;
+    $now = time();
+    if (is_array($data) && !empty($data['ts']) && ($now - (int)$data['ts']) < 43200 && !empty($data['usd'])) {
+        return (float)$data['usd'];
+    }
+    // Fetch fresh — open.er-api.com es free, sin api key, fallback a Frankfurter
+    $rate = null;
+    foreach (['https://open.er-api.com/v6/latest/MXN', 'https://api.frankfurter.app/latest?from=MXN&to=USD'] as $url) {
+        $ctx = stream_context_create(['http' => ['timeout' => 3]]);
+        $body = @file_get_contents($url, false, $ctx);
+        if (!$body) continue;
+        $j = json_decode($body, true);
+        if (isset($j['rates']['USD'])) { $rate = (float)$j['rates']['USD']; break; }
+    }
+    if ($rate && $rate > 0) {
+        @file_put_contents($cache, json_encode(['ts' => $now, 'usd' => $rate]));
+        return $rate;
+    }
+    // Fallback hardcoded si todo falla (ajustar manualmente si cambia mucho)
+    return is_array($data) && !empty($data['usd']) ? (float)$data['usd'] : 0.0571;
+})();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -733,6 +759,15 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <span class="toggle-save">Ahorra 20%</span>
   </div>
 
+  <div class="pricing-toggle" style="margin-top:-32px;margin-bottom:36px">
+    <span class="toggle-label active" id="toggleMXN">MXN</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="currencyToggle">
+      <span class="toggle-slider"></span>
+    </label>
+    <span class="toggle-label" id="toggleUSD">USD</span>
+  </div>
+
   <div class="pricing-grid">
 
     <!-- FREE -->
@@ -767,15 +802,15 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-plan-desc">Cotiza sin limites. Vende con inteligencia.</div>
       </div>
       <div class="price-amount">
-        <span class="price-original monthly-price">$499</span>
-        <span class="price-original annual-price" style="display:none">$399</span>
+        <span class="price-original monthly-price" data-mxn="499">$499</span>
+        <span class="price-original annual-price" data-mxn="399" style="display:none">$399</span>
         <span class="price-currency">$</span>
-        <span class="price-value monthly-price">299</span>
-        <span class="price-value annual-price" style="display:none">239</span>
+        <span class="price-value monthly-price" data-mxn="299">299</span>
+        <span class="price-value annual-price" data-mxn="239" style="display:none">239</span>
         <span class="price-mo">/mes</span>
       </div>
-      <div class="price-period monthly-price">$3,588 MXN/año</div>
-      <div class="price-period annual-price" style="display:none">$2,868 MXN/año · <strong>Ahorras $720</strong></div>
+      <div class="price-period monthly-price"><span data-mxn="3588">$3,588</span> <span class="cur-lbl">MXN</span>/año</div>
+      <div class="price-period annual-price" style="display:none"><span data-mxn="2868">$2,868</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="720">$720</span></strong></div>
       <a href="/registro" class="price-btn price-btn-solid">Empezar 14 dias gratis</a>
       <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
@@ -798,15 +833,15 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-plan-desc">Tu equipo completo. Control total.</div>
       </div>
       <div class="price-amount">
-        <span class="price-original monthly-price">$1,299</span>
-        <span class="price-original annual-price" style="display:none">$999</span>
+        <span class="price-original monthly-price" data-mxn="1299">$1,299</span>
+        <span class="price-original annual-price" data-mxn="999" style="display:none">$999</span>
         <span class="price-currency">$</span>
-        <span class="price-value monthly-price">799</span>
-        <span class="price-value annual-price" style="display:none">639</span>
+        <span class="price-value monthly-price" data-mxn="799">799</span>
+        <span class="price-value annual-price" data-mxn="639" style="display:none">639</span>
         <span class="price-mo">/mes</span>
       </div>
-      <div class="price-period monthly-price">$9,588 MXN/año</div>
-      <div class="price-period annual-price" style="display:none">$7,668 MXN/año · <strong>Ahorras $1,920</strong></div>
+      <div class="price-period monthly-price"><span data-mxn="9588">$9,588</span> <span class="cur-lbl">MXN</span>/año</div>
+      <div class="price-period annual-price" style="display:none"><span data-mxn="7668">$7,668</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="1920">$1,920</span></strong></div>
       <a href="/registro" class="price-btn price-btn-business">Empezar 14 dias gratis</a>
       <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
@@ -816,6 +851,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Termometro de productividad</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Ranking y diagnostico por vendedor</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Archivos adjuntos en cotizaciones</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Calificaciones de clientes con feedback</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Venta cruzada en cotizaciones</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Costos avanzados por categoria</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Modulo de proveedores</div>
@@ -826,7 +862,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
   </div>
 
-  <p class="pricing-note">Precios en MXN. IVA no incluido. Pago con tarjeta, transferencia o SPEI.</p>
+  <p class="pricing-note"><span class="cur-lbl-note">Precios en MXN.</span> IVA no incluido. Pago con tarjeta, transferencia o SPEI. <span id="usdNoteWrap" style="display:none">USD es solo referencia (cobro en MXN al tipo de cambio del día).</span></p>
 </section>
 
 <!-- CTA -->
@@ -960,6 +996,49 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
   // Init
   lblMensual.classList.add('active');
+})();
+
+// ─── Toggle MXN ↔ USD ────────────────────────────────────────
+(function(){
+  var USD_RATE = <?= json_encode((float)$usd_rate) ?>;
+  var curToggle = document.getElementById('currencyToggle');
+  var lblMXN = document.getElementById('toggleMXN');
+  var lblUSD = document.getElementById('toggleUSD');
+  if (!curToggle) return;
+
+  // Guarda los valores originales en MXN al cargar
+  var nodes = document.querySelectorAll('[data-mxn]');
+  nodes.forEach(function(n){ n.dataset.mxnText = n.textContent; });
+
+  function fmtMoney(amount, currency) {
+    // Sin centavos, separador de miles con coma
+    var n = Math.round(amount);
+    return '$' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function updateCurrency() {
+    var isUSD = curToggle.checked;
+    nodes.forEach(function(n){
+      var mxn = parseFloat(n.dataset.mxn);
+      if (isNaN(mxn)) return;
+      if (isUSD) {
+        n.textContent = fmtMoney(mxn * USD_RATE, 'USD');
+      } else {
+        n.textContent = n.dataset.mxnText;
+      }
+    });
+    document.querySelectorAll('.cur-lbl').forEach(function(el){
+      el.textContent = isUSD ? 'USD' : 'MXN';
+    });
+    var note = document.getElementById('usdNoteWrap');
+    if (note) note.style.display = isUSD ? '' : 'none';
+    lblMXN.classList.toggle('active', !isUSD);
+    lblUSD.classList.toggle('active', isUSD);
+  }
+
+  curToggle.addEventListener('change', updateCurrency);
+  lblMXN.addEventListener('click', function(){ curToggle.checked=false; updateCurrency(); });
+  lblUSD.addEventListener('click', function(){ curToggle.checked=true; updateCurrency(); });
 })();
 </script>
 

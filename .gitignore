@@ -36,3 +36,4 @@ respaldo*
 
 # Datos privados del superadmin (no commit)
 /data/comisiones_pagadas_*.json
+/data/exchange_rate.json
