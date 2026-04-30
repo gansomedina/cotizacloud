@@ -52,7 +52,12 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
         if (($_SESSION['_sessions_cleaned'] ?? '') !== date('Y-m-d')) {
             $my_ip  = ip_real();
             $my_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
-            if ($my_ip || $my_vid !== '') {
+            $where_parts = [];
+            $where_args = [];
+            if ($my_ip) { $where_parts[] = 'qs.ip = ?'; $where_args[] = $my_ip; }
+            if ($my_vid !== '') { $where_parts[] = 'qs.visitor_id = ?'; $where_args[] = $my_vid; }
+            if (!empty($where_parts)) {
+                $cond = '(' . implode(' OR ', $where_parts) . ')';
                 DB::execute(
                     "UPDATE quote_sessions qs
                      JOIN cotizaciones c ON c.id = qs.cotizacion_id
@@ -62,9 +67,9 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
                             ON vi.empresa_id = c.empresa_id AND vi.visitor_id = qs.visitor_id
                      SET qs.es_interno = 1
                      WHERE qs.es_interno = 0
-                       AND (qs.ip = ? OR qs.visitor_id = ?)
+                       AND $cond
                        AND (ri.id IS NOT NULL OR vi.id IS NOT NULL)",
-                    [$my_ip ?: '', $my_vid ?: '']
+                    $where_args
                 );
             }
             $_SESSION['_sessions_cleaned'] = date('Y-m-d');
