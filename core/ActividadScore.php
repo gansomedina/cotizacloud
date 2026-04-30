@@ -1284,13 +1284,23 @@ class ActividadScore
 
         // ═══ 0. USO DE HERRAMIENTAS (tips + ❓) ═══
         $tips_s = (float)($s['tips_score'] ?? 1);
-        $why_s  = (float)($s['radar_why_score'] ?? 1);
         $dias_act_d = (int)($s['dias_activos'] ?? 0);
+        // Para ❓: usar datos REALES (calientes/exploradas) no el score (que tiene grace period)
+        // Esto permite que la frase SIEMPRE avise incluso si el score no penaliza.
+        $cal_diag = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
+        $exp_diag = (int)($s['calientes_exploradas'] ?? 0);
         if ($dias_act_d > 0) {
             // Estado de tips: 'ok' (1.0), 'medio' (0.5), 'no' (0.0)
             $tip_state = $tips_s >= 1.0 ? 'ok' : ($tips_s <= 0.0 ? 'no' : 'medio');
-            // Estado de ❓: 'ok' (1.0), 'medio' (0.85), 'no' (0.70)
-            $why_state = $why_s >= 1.0 ? 'ok' : ($why_s <= 0.71 ? 'no' : 'medio');
+            // Estado de ❓: basado en datos reales, no en score (que tiene grace period)
+            if ($cal_diag === 0) {
+                $why_state = 'ok'; // sin calientes, nada que explorar
+            } else {
+                $pct_exp = $exp_diag / $cal_diag;
+                if ($pct_exp >= 0.70) $why_state = 'ok';
+                elseif ($pct_exp >= 0.30) $why_state = 'medio';
+                else $why_state = 'no';
+            }
 
             $partes_neg = [];
             if ($tip_state === 'no') $partes_neg[] = 'no lees los tips';
