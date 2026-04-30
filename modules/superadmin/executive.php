@@ -1171,7 +1171,8 @@ $hist_total = array_sum($hist_values);
 
 </div><!-- /col izquierda -->
 
-<!-- COLUMNA DERECHA: Asesores -->
+<!-- COLUMNA DERECHA: Asesores + Feedback -->
+<div style="display:flex;flex-direction:column;gap:14px">
 <div class="sec" style="margin:0">
     <div class="sec-hdr">
         <div class="sec-title">Asesores</div>
@@ -1222,6 +1223,114 @@ $hist_total = array_sum($hist_values);
     </table>
     </div>
 </div>
+
+<?php
+// ─── Feedback de clientes (solo empresas con feature activo) ──
+$emp_fb_activas_rows = DB::query(
+    "SELECT id, slug, nombre FROM empresas
+     WHERE id IN ({$emp_ids}) AND feedback_activo = 1"
+);
+if (!empty($emp_fb_activas_rows)):
+    $fb_emp_ids_csv = implode(',', array_column($emp_fb_activas_rows, 'id'));
+    $fb_recientes = DB::query(
+        "SELECT f.stars, f.comentario, f.created_at, f.empresa_id,
+                u.nombre AS asesor,
+                c.numero AS cot_numero, c.titulo AS cot_titulo,
+                cl.nombre AS cliente
+         FROM cot_feedbacks f
+         LEFT JOIN usuarios u ON u.id = f.vendedor_id
+         LEFT JOIN cotizaciones c ON c.id = f.cotizacion_id
+         LEFT JOIN clientes cl ON cl.id = c.cliente_id
+         WHERE f.empresa_id IN ({$fb_emp_ids_csv})
+         ORDER BY f.created_at DESC
+         LIMIT 20"
+    );
+    $fb_resumen_emp = DB::query(
+        "SELECT empresa_id, COUNT(*) AS total, ROUND(AVG(stars),2) AS promedio,
+                SUM(CASE WHEN stars<=2 THEN 1 ELSE 0 END) AS bajos
+         FROM cot_feedbacks WHERE empresa_id IN ({$fb_emp_ids_csv})
+         GROUP BY empresa_id"
+    );
+    $fb_idx = []; foreach ($fb_resumen_emp as $r) $fb_idx[(int)$r['empresa_id']] = $r;
+?>
+<style>
+.fbexec-stars{color:#f59e0b;letter-spacing:1px;font-size:12px}
+.fbexec-stars-empty{color:#374151;letter-spacing:1px;font-size:12px}
+.fbexec-card{padding:8px 12px;border-radius:6px;margin-bottom:6px;background:rgba(255,255,255,.03);border-left:3px solid var(--bd)}
+.fbexec-card.s5{border-left-color:#16a34a}
+.fbexec-card.s4{border-left-color:#84cc16}
+.fbexec-card.s3{border-left-color:#f59e0b}
+.fbexec-card.s2{border-left-color:#f97316}
+.fbexec-card.s1{border-left-color:#ef4444}
+.fbexec-meta{display:flex;justify-content:space-between;gap:6px;font:500 10px 'Inter',sans-serif;color:var(--t3);margin-bottom:2px}
+.fbexec-text{font:400 11px 'Inter',sans-serif;color:var(--t2);line-height:1.4;font-style:italic}
+.fbexec-cot{font:400 9px 'Inter',sans-serif;color:var(--t3);margin-top:3px;font-family:var(--num)}
+.fbexec-resumen{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.fbexec-emp-card{flex:1;min-width:80px;background:rgba(255,255,255,.04);padding:6px 8px;border-radius:5px;text-align:center}
+.fbexec-emp-prom{font:700 16px var(--num);color:#f59e0b}
+.fbexec-emp-tot{font:500 9px 'Inter',sans-serif;color:var(--t3);margin-top:1px}
+</style>
+<div class="sec" style="margin:0">
+    <div class="sec-hdr">
+        <div class="sec-title">Feedback de clientes</div>
+        <div class="sec-count"><?= count($fb_recientes) ?> recientes</div>
+    </div>
+    <div class="tbl-card" style="padding:12px 14px">
+        <div class="fbexec-resumen">
+        <?php foreach ($emp_fb_activas_rows as $emp):
+            $eid = (int)$emp['id'];
+            $r = $fb_idx[$eid] ?? null;
+            $ec = $empresas_cfg[$eid] ?? ['short'=>'?','color'=>'#666'];
+            $total = $r ? (int)$r['total'] : 0;
+            $prom = $r ? (float)$r['promedio'] : 0;
+        ?>
+        <div class="fbexec-emp-card">
+            <span class="tag" style="background:<?= $ec['color'] ?>;font-size:8px;padding:2px 5px"><?= $ec['short'] ?></span>
+            <?php if ($total > 0): ?>
+                <div class="fbexec-emp-prom"><?= number_format($prom, 2) ?></div>
+                <div class="fbexec-emp-tot"><?= $total ?> calif</div>
+            <?php else: ?>
+                <div class="fbexec-emp-tot" style="margin-top:6px">Sin feedback</div>
+            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+        </div>
+
+        <?php if (empty($fb_recientes)): ?>
+            <div style="text-align:center;color:var(--t3);font:500 11px 'Inter',sans-serif;padding:14px 0">
+                Sin calificaciones aún
+            </div>
+        <?php else: ?>
+        <div style="max-height:340px;overflow-y:auto">
+            <?php foreach ($fb_recientes as $f):
+                $stars = (int)$f['stars'];
+                $com = trim((string)($f['comentario'] ?? ''));
+                $ec = $empresas_cfg[(int)$f['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+            ?>
+            <div class="fbexec-card s<?= $stars ?>">
+                <div class="fbexec-meta">
+                    <div style="display:flex;align-items:center;gap:5px">
+                        <span class="tag" style="background:<?= $ec['color'] ?>;font-size:8px;min-width:22px;padding:2px 4px"><?= $ec['short'] ?></span>
+                        <span class="fbexec-stars"><?php for($i=0;$i<$stars;$i++) echo '★'; ?></span><span class="fbexec-stars-empty"><?php for($i=$stars;$i<5;$i++) echo '★'; ?></span>
+                        <span style="color:var(--t2);font-weight:600;font-size:11px"><?= e($f['asesor'] ?? '—') ?></span>
+                    </div>
+                    <span><?= date('d/m H:i', strtotime($f['created_at'])) ?></span>
+                </div>
+                <?php if ($com !== ''): ?>
+                <div class="fbexec-text">"<?= e($com) ?>"</div>
+                <?php endif; ?>
+                <div class="fbexec-cot">
+                    <?= e($f['cot_numero'] ?? '—') ?> · <?= e($f['cliente'] ?? 'Cliente') ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+</div><!-- /col derecha -->
 
 </div><!-- /grid-3 -->
 
