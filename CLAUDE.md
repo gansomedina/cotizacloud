@@ -1089,18 +1089,43 @@ Eso significa que el fingerprint NO es estable. Algún componente de los 14 (`sw
 
 **Opción 3 — Rediseñar device_sig:** Quitar componentes ruidosos (maxTex, media queries variables). Requiere experimentación. Tarea futura.
 
+### Dirección definida por el usuario — DOS caminos separados
+
+#### Camino 1: INTERNOS — que no ensucien el Radar
+- **Enfoque**: Identificador robusto con PERMISO del dispositivo (son usuarios que hacen login, podemos pedir más datos)
+- **Opciones a investigar**:
+  1. **Push subscription endpoint** — ya implementado en el sistema; el subscription endpoint es ÚNICO por dispositivo+navegador, estable, no cambia. Podría usarse como device_id confiable.
+  2. **Persistent localStorage UUID** — al loguearse, generar/leer UUID de localStorage (`cz_internal_id`). Persiste entre sesiones normales. No disponible en incognito ni en dominios custom (per-origin).
+  3. **Capacitor Device ID** — `@capacitor/device` da UUID único para app nativa. No aplica para web.
+  4. **IndexedDB UUID** — más persistente que localStorage, sobrevive limpieza de cache.
+  5. **Web Crypto persistent keypair** — par de llaves en IndexedDB, firmar requests.
+- **Reto en dominios custom** (ontimecocinas.com): ninguna cookie/storage de .cotiza.cloud viaja ahí. Necesita bridge (Escudo Radar ya existe para app nativa, falta solución web).
+- **Prioridad**: ALTA — esto es lo fundamental para no contaminar el Radar
+
+#### Camino 2: CLIENTES — device_sig más ligero y estable (solo descarte)
+- **Enfoque**: Fingerprint simplificado, quitar componentes ruidosos
+- **Componentes a quitar** (candidatos ruidosos):
+  - `maxTex` (WebGL MAX_TEXTURE_SIZE) — puede devolver 0 si GPU dormido
+  - Media queries variables (prefers-reduced-motion, prefers-contrast, etc.)
+  - `hourCycle` — puede venir vacío en algunas versiones
+- **Componentes estables a mantener**: screen size (sw/sh), dpr, cores, maxTouchPoints, lang, timezone, iosM
+- **El resultado será**: menos único (más colisiones entre clientes) pero más estable (mismo hash en misma máquina siempre)
+- **Uso**: SOLO para descarte en Radar — nunca para marcar permanente
+- **Prioridad**: MEDIA — mejora la calidad del descarte pero no es urgente
+
 ### Pendiente al regresar
-1. **Confirmar Opción 1 (A+C light)** o discutir alternativas
-2. Si OK → implementar:
+1. **Investigar Camino 1** — cuál identificador robusto usar para internos
+   - Push subscription endpoint parece el más prometedor (ya existe infra)
+   - Verificar si funciona cross-domain o solo en .cotiza.cloud
+2. **Implementar A+C light para Capa 2.5 actual** — mejora inmediata:
    - Función `ua_family($ua)` en helpers
-   - Modificar `api/track.php` Capa 2.5 con descarte suave
-   - Función helper `retroactive_mark_internal($cot_id, $visitor_id, $ip)` que:
-     - UPDATE quote_sessions SET es_interno=1 WHERE cotizacion_id=? AND (visitor_id=? OR ip=?) AND created_at > NOW() - INTERVAL 5 MINUTE
-     - UPDATE cotizaciones SET visitas=GREATEST(visitas-1,0) WHERE id=?
-     - Revertir estado de 'vista' a 'enviada' si esa fue la sesión que cambió el estado
-   - Opcional: agregar device_sig al cleanup de `core/layout.php` (con UA family + TTL)
-3. **Investigar por qué device_sig cambia en misma Mac** — pegar snippet en consola Firefox normal y comparar `raw` strings entre sesiones distintas
-4. **Considerar Opción 3 (rediseño fingerprint)** como mejora futura
+   - Modificar `api/track.php` Capa 2.5 con descarte suave (sin marcar permanente)
+   - Función helper `retroactive_mark_internal($cot_id, $visitor_id, $ip)`:
+     - UPDATE quote_sessions SET es_interno=1
+     - UPDATE cotizaciones SET visitas=GREATEST(visitas-1,0)
+     - Revertir estado de 'vista' a 'enviada' si aplica
+3. **Investigar instabilidad del fingerprint** — pegar snippet en consola Firefox normal vs incognito
+4. **Rediseñar device_sig para clientes (Camino 2)** — quitar componentes ruidosos
 
 ### Snippet para investigar instabilidad device_sig
 ```js
