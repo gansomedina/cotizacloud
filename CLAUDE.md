@@ -1029,3 +1029,84 @@ Ambas aparecen en `https://www.mercadopago.com.mx/activities` con ref externa `c
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi` (esta continuación)
 - Las sesiones previas quedaron en `main` por auto-deploy cPanel
+
+## Sesión 1 mayo 2026 — Auditoría Capa 2.5 (device_sig) Escudo Radar
+
+### Contexto
+Pruebas de campo del Escudo Radar (3 capas: visitor_id, IP, device_sig). El usuario se conectó desde IP USA `68.177.3.148` y ejecutó tests para verificar si era detectado correctamente como interno tras borrar señales manualmente.
+
+### Resultado del test
+**REPROBÓ.** Sesión 758 en quote_sessions creada con `es_interno=0` y `device_sig=NULL` aunque el usuario tenía device_sig `229bb0d4` registrado en `user_sessions` desde su login de las 08:55 ese mismo día.
+
+### Causa raíz identificada
+Hay **dos sistemas de tracking en momentos distintos**:
+
+1. **`public/cotizacion.php` (PHP server-side, primero)** — crea quote_session con `es_interno=0` por default. Tiene Capas 0, 1, 2. **NO tiene Capa 2.5 (device_sig)** porque el device_sig viene del JS que aún no ha corrido. Línea 258-261 INSERT no incluye device_sig.
+
+2. **`api/track.php` (JS beacon, segundo)** — tiene Capa 2.5 (línea 99-117). Si detecta interno por device_sig, marca visitor_id e IP como internos pero **NO actualiza el quote_session ya creado**. Solo hace `exit`.
+
+3. **`core/layout.php:50-77` (limpieza retroactiva, tercero)** — cuando el asesor abre el dashboard, busca quote_sessions con su IP/visitor_id y los marca `es_interno=1`. Una vez al día por sesión PHP. **NO usa device_sig** en el cleanup.
+
+### Hallazgos críticos sobre device_sig (con datos reales de BD)
+
+#### 1. device_sig COLISIONA entre dispositivos distintos
+Query a `quote_sessions` últimos 7 días reveló colisiones reales:
+- **`17f8187d`** (iPhone iOS 18_7) lo comparten Kevin Landy (`nog@ontimecocinas.com`, id=21, empresa 14) Y Abigail Perez (`hmo@ontimecocinas.com`, id=18, empresa 12) en sus user_sessions. Dos personas físicas distintas con iPhones distintos generando el MISMO hash.
+- **`19b35160`** (Windows 10) compartido entre user_sessions de Kevin y un visitor "cliente" `95675a4c` desde la MISMA IP `189.161.14.168` → Kevin sin login.
+
+#### 2. device_sig CAMBIA en la misma máquina entre sesiones
+El superadmin (`admin@cotiza.cloud`, id=4) generó **3 device_sigs distintos en la MISMA Mac con MISMO Firefox normal en la misma semana**:
+- `229bb0d4` (USA hoy)
+- `4255de39` (MX, 8 sesiones)
+- `4d6b4aa5` (MX, 6 sesiones)
+- `0a7a8acc` (su iPhone iOS 18_7)
+
+Eso significa que el fingerprint NO es estable. Algún componente de los 14 (`sw|sh|dpr|cores|tp|maxTex|lang|tz|hc|motion|contrast|inverted|transp|iosM`) está variando entre sesiones. Sospechoso principal: `maxTex` de WebGL puede devolver 0 si el GPU está dormido o el contexto WebGL no está listo. **NO confirmado** — requiere pegar snippet en consola para ver el `raw` y comparar.
+
+#### 3. Diversidad real
+- 38 device_sigs distintos en 76 sesiones de 49 visitors distintos → ratio 1.3 visitors/dsig (aceptable para clientes)
+- Tasa de colisión cliente-vs-interno: 2/38 = ~5% en SOLO 1 semana
+
+### Datos importantes para no perder
+- **Tu superadmin**: id=4, email `admin@cotiza.cloud`
+- **TU iPhone (admin@)**: device_sig `0a7a8acc`
+- **TU Mac Firefox**: device_sigs `229bb0d4` (USA), `4255de39` y `4d6b4aa5` (MX) — INESTABLE
+- **Kevin Landy** (nog@ontimecocinas.com, id=21, empresa 14): Windows `19b35160`, iPhone `17f8187d`, IP `189.161.14.168`
+- **Abigail Perez** (hmo@ontimecocinas.com, id=18, empresa 12): iPhone `17f8187d` también
+- **IPs de los "clientes" colisionados con `17f8187d`**: `200.68.184.39`, `200.68.184.175` (Telmex móvil) — NO matchean ninguna user_session, podrían ser asesores en movilidad o clientes reales
+
+### Decisión pendiente — Opciones evaluadas
+
+**Opción 1 — A+C light (RECOMENDADA, pendiente confirmación):**
+- Capa 2.5 reformulada en `api/track.php`: solo descarta visita actual + UPDATE quote_session a es_interno=1 + revierte visitas-1 + revierte estado si aplica
+- **NUNCA marca permanente** (no toca radar_visitors_internos ni radar_ips_internas)
+- Filtro de UA family (mac/iphone/android/windows) para evitar colisiones triviales
+- TTL 90 días en lookup de user_sessions (vs 365 actual)
+- Costo: ~30 líneas
+- Beneficio: cero falsos positivos permanentes garantizados; cierra gap del INSERT
+
+**Opción 2 — Eliminar device_sig:** Quitar Capa 2.5 completa. Confiar solo en visitor_id + IP determinísticas.
+
+**Opción 3 — Rediseñar device_sig:** Quitar componentes ruidosos (maxTex, media queries variables). Requiere experimentación. Tarea futura.
+
+### Pendiente al regresar
+1. **Confirmar Opción 1 (A+C light)** o discutir alternativas
+2. Si OK → implementar:
+   - Función `ua_family($ua)` en helpers
+   - Modificar `api/track.php` Capa 2.5 con descarte suave
+   - Función helper `retroactive_mark_internal($cot_id, $visitor_id, $ip)` que:
+     - UPDATE quote_sessions SET es_interno=1 WHERE cotizacion_id=? AND (visitor_id=? OR ip=?) AND created_at > NOW() - INTERVAL 5 MINUTE
+     - UPDATE cotizaciones SET visitas=GREATEST(visitas-1,0) WHERE id=?
+     - Revertir estado de 'vista' a 'enviada' si esa fue la sesión que cambió el estado
+   - Opcional: agregar device_sig al cleanup de `core/layout.php` (con UA family + TTL)
+3. **Investigar por qué device_sig cambia en misma Mac** — pegar snippet en consola Firefox normal y comparar `raw` strings entre sesiones distintas
+4. **Considerar Opción 3 (rediseño fingerprint)** como mejora futura
+
+### Snippet para investigar instabilidad device_sig
+```js
+[Math.min(screen.width,screen.height), Math.max(screen.width,screen.height), window.devicePixelRatio||1, navigator.hardwareConcurrency||0, navigator.maxTouchPoints||0, (function(){try{var c=document.createElement('canvas');var gl=c.getContext('webgl');return gl?gl.getParameter(gl.MAX_TEXTURE_SIZE):0}catch(e){return 0}})(), navigator.language||'', Intl.DateTimeFormat().resolvedOptions().timeZone||'', Intl.DateTimeFormat().resolvedOptions().hourCycle||'', matchMedia('(prefers-reduced-motion:reduce)').matches?1:0, matchMedia('(prefers-contrast:more)').matches?1:0, matchMedia('(inverted-colors:inverted)').matches?1:0, matchMedia('(prefers-reduced-transparency:reduce)').matches?1:0, (navigator.userAgent.match(/OS (\d+)/)||[])[1]||'0'].join('|')
+```
+Pegar en consola Firefox normal y Firefox incognito en misma Mac. El componente que difiera es la causa de la inestabilidad.
+
+### Branch de trabajo
+- `claude/analyze-domain-change-hmo-AkFAi`
