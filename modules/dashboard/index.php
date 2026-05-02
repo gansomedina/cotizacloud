@@ -454,20 +454,37 @@ $mes_lbl_cap = ucfirst($mes_lbl);
 
 $trial = trial_info($empresa_id);
 
-$escudo_dispositivos = DB::query(
-    "SELECT device_sig,
-            (SELECT LEFT(us2.user_agent, 200) FROM user_sessions us2
-             WHERE us2.device_sig = us.device_sig AND us2.usuario_id = us.usuario_id
-             ORDER BY us2.created_at DESC LIMIT 1) AS ua,
-            MAX(created_at) AS ultimo
-     FROM user_sessions us
-     WHERE us.usuario_id = ? AND us.device_sig IS NOT NULL AND us.device_sig != ''
-       AND us.created_at > DATE_SUB(NOW(), INTERVAL 90 DAY)
-     GROUP BY us.device_sig
+$escudo_dispositivos_raw = DB::query(
+    "SELECT LEFT(user_agent, 200) AS ua, MAX(created_at) AS ultimo
+     FROM user_sessions
+     WHERE usuario_id = ? AND device_sig IS NOT NULL AND device_sig != ''
+       AND created_at > DATE_SUB(NOW(), INTERVAL 90 DAY)
+     GROUP BY LEFT(user_agent, 200)
      ORDER BY ultimo DESC
-     LIMIT 5",
+     LIMIT 10",
     [(int)Auth::id()]
 ) ?: [];
+$escudo_dispositivos = [];
+$escudo_seen = [];
+foreach ($escudo_dispositivos_raw as $ed) {
+    $ua = $ed['ua'] ?? '';
+    $label = 'Dispositivo';
+    if (stripos($ua, 'iPhone') !== false) $label = 'iPhone';
+    elseif (stripos($ua, 'iPad') !== false) $label = 'iPad';
+    elseif (stripos($ua, 'Android') !== false) $label = 'Android';
+    elseif (stripos($ua, 'Macintosh') !== false) $label = 'Mac';
+    elseif (stripos($ua, 'Windows') !== false) $label = 'Windows';
+    elseif (stripos($ua, 'Linux') !== false) $label = 'Linux';
+    if (stripos($ua, 'Firefox') !== false) $label .= ' · Firefox';
+    elseif (stripos($ua, 'Edg') !== false) $label .= ' �� Edge';
+    elseif (stripos($ua, 'Chrome') !== false && stripos($ua, 'Safari') !== false) $label .= ' · Chrome';
+    elseif (stripos($ua, 'Safari') !== false) $label .= ' · Safari';
+    if (isset($escudo_seen[$label])) continue;
+    $escudo_seen[$label] = true;
+    $ed['label'] = $label;
+    $escudo_dispositivos[] = $ed;
+    if (count($escudo_dispositivos) >= 5) break;
+}
 
 $page_title = 'Inicio';
 ob_start();
@@ -695,24 +712,13 @@ ob_start();
     <div style="flex:1;min-width:0">
         <div style="font:600 13px var(--body);color:var(--g);margin-bottom:6px">Escudo Radar — Activo</div>
         <?php foreach ($escudo_dispositivos as $ed):
-            $ed_ua = $ed['ua'] ?? '';
-            $ed_label = 'Dispositivo';
-            if (stripos($ed_ua, 'iPhone') !== false) $ed_label = 'iPhone';
-            elseif (stripos($ed_ua, 'iPad') !== false) $ed_label = 'iPad';
-            elseif (stripos($ed_ua, 'Android') !== false) $ed_label = 'Android';
-            elseif (stripos($ed_ua, 'Macintosh') !== false) $ed_label = 'Mac';
-            elseif (stripos($ed_ua, 'Windows') !== false) $ed_label = 'Windows';
-            elseif (stripos($ed_ua, 'Linux') !== false) $ed_label = 'Linux';
-            if (stripos($ed_ua, 'Firefox') !== false) $ed_label .= ' · Firefox';
-            elseif (stripos($ed_ua, 'Safari') !== false && stripos($ed_ua, 'Chrome') === false) $ed_label .= ' · Safari';
-            elseif (stripos($ed_ua, 'Chrome') !== false) $ed_label .= ' · Chrome';
             $ed_ago = time() - strtotime($ed['ultimo']);
             if ($ed_ago < 3600) $ed_tiempo = 'hace ' . max(1, intdiv($ed_ago, 60)) . ' min';
             elseif ($ed_ago < 86400) $ed_tiempo = 'hace ' . intdiv($ed_ago, 3600) . 'h';
-            else $ed_tiempo = 'hace ' . intdiv($ed_ago, 86400) . ' días';
+            else { $d = intdiv($ed_ago, 86400); $ed_tiempo = 'hace ' . $d . ($d === 1 ? ' día' : ' días'); }
         ?>
         <div style="font:400 12px var(--body);color:var(--t2);padding:2px 0">
-            <span style="color:var(--g)">✓</span> <?= e($ed_label) ?> <span style="color:var(--t3);font-size:11px">— <?= $ed_tiempo ?></span>
+            <span style="color:var(--g)">✓</span> <?= e($ed['label']) ?> <span style="color:var(--t3);font-size:11px">— <?= $ed_tiempo ?></span>
         </div>
         <?php endforeach; ?>
     </div>
