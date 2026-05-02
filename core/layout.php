@@ -643,7 +643,7 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
         var raw=[sw,sh,dpr,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
         var h=0;for(var i=0;i<raw.length;i++)h=((h<<5)-h)+raw.charCodeAt(i)|0;
         var dsig=Math.abs(h).toString(16).padStart(8,'0');
-        if(dsig)document.cookie='cz_dsig='+dsig+';path=/;max-age=86400;SameSite=Lax';
+        if(dsig)document.cookie='cz_dsig='+dsig+';path=/;max-age=<?= 60*60*24*3 ?>;SameSite=Lax;domain=.<?= BASE_DOMAIN ?>';
     }catch(e){}
 })();
 </script>

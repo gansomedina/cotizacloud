@@ -687,6 +687,7 @@ ob_start();
 
 <!-- ══ ESCUDO RADAR — DISPOSITIVOS ══ -->
 <?php if (!empty($escudo_dispositivos)): ?>
+<div id="escudo-tarjeta" style="display:none">
 <div style="background:var(--white);border:1px solid var(--g-border);border-radius:var(--r);padding:14px 18px;box-shadow:var(--sh);margin-bottom:16px;display:flex;align-items:flex-start;gap:14px">
     <div style="width:36px;height:36px;border-radius:50%;background:var(--g-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
@@ -716,6 +717,14 @@ ob_start();
         <?php endforeach; ?>
     </div>
 </div>
+</div>
+<script>
+(function(){
+    var t=document.getElementById('escudo-tarjeta');
+    if(!t)return;
+    try{if(localStorage.getItem('cz_escudo_device')){t.style.display='block';}}catch(e){t.style.display='block';}
+})();
+</script>
 <?php endif; ?>
 
 <!-- ══ TERMÓMETRO + LEADERBOARD ══ -->
