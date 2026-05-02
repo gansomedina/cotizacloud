@@ -735,7 +735,7 @@ ob_start();
 (function(){
     var t=document.getElementById('escudo-tarjeta');
     if(!t)return;
-    try{if(localStorage.getItem('cz_escudo_device')){t.style.display='block';}}catch(e){t.style.display='block';}
+    <?php if (Auth::es_superadmin()): ?>t.style.display='block';<?php else: ?>try{if(localStorage.getItem('cz_escudo_device')){t.style.display='block';}}catch(e){t.style.display='block';}<?php endif; ?>
 })();
 </script>
 <?php endif; ?>
