@@ -1543,7 +1543,13 @@ const TRACK_URL = '/api/track';
             } catch(e) {}
             var lang = navigator.language || '';
             var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-            var raw = [sw,sh,dpr,tp,maxTex,lang,tz].join('|');
+            var hc = Intl.DateTimeFormat().resolvedOptions().hourCycle || '';
+            var motion = window.matchMedia('(prefers-reduced-motion:reduce)').matches ? 1 : 0;
+            var contrast = window.matchMedia('(prefers-contrast:more)').matches ? 1 : 0;
+            var inverted = window.matchMedia('(inverted-colors:inverted)').matches ? 1 : 0;
+            var transp = window.matchMedia('(prefers-reduced-transparency:reduce)').matches ? 1 : 0;
+            var iosM = (navigator.userAgent.match(/OS (\d+)/) || [])[1] || '0';
+            var raw = [sw,sh,dpr,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
             var h = 0;
             for (var i = 0; i < raw.length; i++) h = ((h << 5) - h) + raw.charCodeAt(i) | 0;
             return Math.abs(h).toString(16).padStart(8, '0');
