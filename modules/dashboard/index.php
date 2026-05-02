@@ -455,11 +455,12 @@ $mes_lbl_cap = ucfirst($mes_lbl);
 $trial = trial_info($empresa_id);
 
 $escudo_dispositivos_raw = DB::query(
-    "SELECT LEFT(user_agent, 200) AS ua, MAX(created_at) AS ultimo
+    "SELECT LEFT(user_agent, 200) AS ua, MAX(created_at) AS ultimo,
+            MAX(screen_w) AS sw, MAX(screen_h) AS sh
      FROM user_sessions
      WHERE usuario_id = ? AND device_sig IS NOT NULL AND device_sig != ''
        AND created_at > DATE_SUB(NOW(), INTERVAL 90 DAY)
-     GROUP BY LEFT(user_agent, 200)
+     GROUP BY device_sig
      ORDER BY ultimo DESC
      LIMIT 10",
     [(int)Auth::id()]
@@ -468,23 +469,29 @@ $escudo_dispositivos = [];
 $escudo_seen = [];
 foreach ($escudo_dispositivos_raw as $ed) {
     $ua = $ed['ua'] ?? '';
-    $label = 'Dispositivo';
+    $label = '';
     if (stripos($ua, 'iPhone') !== false) $label = 'iPhone';
     elseif (stripos($ua, 'iPad') !== false) $label = 'iPad';
     elseif (stripos($ua, 'Android') !== false) $label = 'Android';
     elseif (stripos($ua, 'Macintosh') !== false) $label = 'Mac';
     elseif (stripos($ua, 'Windows') !== false) $label = 'Windows';
     elseif (stripos($ua, 'Linux') !== false) $label = 'Linux';
+    else $label = 'Dispositivo';
     if (stripos($ua, 'Firefox') !== false) $label .= ' · Firefox';
-    elseif (stripos($ua, 'Edg') !== false) $label .= ' �� Edge';
+    elseif (stripos($ua, 'Edg') !== false) $label .= ' · Edge';
+    elseif (stripos($ua, 'CotizaCloud') !== false) $label .= ' · App';
     elseif (stripos($ua, 'Chrome') !== false && stripos($ua, 'Safari') !== false) $label .= ' · Chrome';
     elseif (stripos($ua, 'Safari') !== false) $label .= ' · Safari';
-    if (isset($escudo_seen[$label])) continue;
-    $escudo_seen[$label] = true;
+    $sw = (int)($ed['sw'] ?? 0); $sh = (int)($ed['sh'] ?? 0);
+    if ($sw > 0 && $sh > 0) $label .= ' · ' . $sh . '×' . $sw;
+    $key = $label;
+    if (isset($escudo_seen[$key])) continue;
+    $escudo_seen[$key] = true;
     $ed['label'] = $label;
     $escudo_dispositivos[] = $ed;
     if (count($escudo_dispositivos) >= 5) break;
 }
+
 
 $page_title = 'Inicio';
 ob_start();
