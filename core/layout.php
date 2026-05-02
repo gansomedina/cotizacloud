@@ -440,6 +440,21 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             <?= e($flash['msg']) ?>
         </div>
         <?php endif; ?>
+
+        <div id="escudo-web-banner" style="display:none;margin:16px;padding:24px;background:#fff;border:2px solid var(--g-border);border-radius:var(--r);text-align:center;max-width:480px;margin-left:auto;margin-right:auto">
+            <div style="width:56px;height:56px;border-radius:50%;background:var(--g-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <h3 style="margin:0 0 8px;font-size:17px;color:var(--text)">Activa tu Escudo Radar</h3>
+            <p style="margin:0 0 16px;font-size:13px;color:var(--t2);line-height:1.5">
+                Cuando revises las cotizaciones de tus clientes, tus visitas no deben contar como interés real.<br><br>
+                Al activar el escudo, este navegador queda registrado como dispositivo de trabajo.
+                Si usas otro navegador o dispositivo, inicia sesión ahí también.
+            </p>
+            <button id="escudo-web-activar" style="background:var(--g);color:#fff;border:none;padding:10px 28px;border-radius:var(--r-sm);font:600 14px var(--body);cursor:pointer">
+                Activar Escudo
+            </button>
+        </div>
         <?php
         // Trial banner — NO mostrar en app nativa (Apple Guideline 3.1.1)
         if (EMPRESA_ID > 0 && !Auth::es_superadmin() && !$is_native_app) {
@@ -642,6 +657,21 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
     b.style.display='block';
     var a=b.querySelector('a[target]');
     if(a)a.addEventListener('click',function(){localStorage.setItem('escudo_radar_active','1');});
+})();
+</script>
+
+<script>
+(function(){
+    if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())return;
+    try{if(localStorage.getItem('cz_escudo_device'))return;}catch(e){return;}
+    var b=document.getElementById('escudo-web-banner');
+    if(!b)return;
+    b.style.display='block';
+    var btn=document.getElementById('escudo-web-activar');
+    if(btn)btn.addEventListener('click',function(){
+        try{localStorage.setItem('cz_escudo_device',Date.now().toString());}catch(e){}
+        b.style.display='none';
+    });
 })();
 </script>
 
