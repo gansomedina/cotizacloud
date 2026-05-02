@@ -477,8 +477,10 @@ foreach ($escudo_dispositivos_raw as $ed) {
     elseif (stripos($ua, 'Linux') !== false) $label = 'Linux';
     else $label = 'Dispositivo';
     if (stripos($ua, 'Firefox') !== false || stripos($ua, 'FxiOS') !== false) $label .= ' · Firefox';
-    elseif (stripos($ua, 'Edg') !== false) $label .= ' · Edge';
+    elseif (stripos($ua, 'Edg') !== false || stripos($ua, 'EdgiOS') !== false) $label .= ' · Edge';
     elseif (stripos($ua, 'CotizaCloud') !== false) $label .= ' · App';
+    elseif (stripos($ua, 'SamsungBrowser') !== false) $label .= ' · Samsung';
+    elseif (stripos($ua, 'OPR') !== false || stripos($ua, 'OPiOS') !== false) $label .= ' · Opera';
     elseif (stripos($ua, 'CriOS') !== false) $label .= ' · Chrome';
     elseif (stripos($ua, 'Chrome') !== false && stripos($ua, 'Safari') !== false) $label .= ' · Chrome';
     elseif (stripos($ua, 'Safari') !== false) $label .= ' · Safari';

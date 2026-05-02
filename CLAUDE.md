@@ -1164,6 +1164,91 @@ Con el fingerprint reducido, medir tasa de colisión en datos reales (query a qu
 | Bloquear sistema sin cookie dispositivo | Transparente en login ok, pero no ayuda en slug. Esencialmente igual que sesión corta |
 | Sesiones 1 día | Molesta asesores, app móvil, alto riesgo si login falla |
 | Link "no contar mi visita" en slug | Visible para clientes, mal diseño |
+| Mover conteo de cotizacion.php a track.php | Pierde ~1% de visitas si JS no corre. Ghost cleanup ya maneja retroactivamente |
+| A+C retroactivo por device_sig | device_sig colisiona entre dispositivos iguales → clientes pierden visitas |
+| Screen dimensions en user_sessions | Migración innecesaria, código extra riesgoso para beneficio cosmético |
+| Certificados SSL cliente (mTLS) | UX de instalación imposible para asesores no técnicos, requiere VPS con root |
+
+## Sesión 2 mayo 2026 — Implementación Escudo Radar
+
+### Diagnóstico de device_sig — Confirmado
+- **hardwareConcurrency** es el componente inestable: Firefox normal=16, incognito=8 en la misma Mac
+- Los otros 12 componentes son estables en todos los modos (Firefox normal/incognito, Safari normal/incognito)
+- **Fix aplicado:** quitar solo `hardwareConcurrency`, mantener 13 componentes
+- Verificado: Firefox normal e incógnito generan el mismo hash (`6883be39`)
+
+### Componentes del device_sig (13, estables)
+```
+sw | sh | dpr | tp | maxTex | lang | tz | hc | motion | contrast | inverted | transp | iosM
+```
+Quitado: `cores` (hardwareConcurrency) — Firefox lo spoofea en modo privado.
+
+### Datos reales de colisiones (con 14 componentes, producción)
+- 43 device_sigs distintos de 56 visitors (ratio 1.30)
+- **Solo 1 de 43 colisiona entre cliente y asesor** (`17f8187d` — Kevin + Abi iPhones)
+- Las demás colisiones son cliente-con-cliente (no afectan detección de asesores)
+- Los 7 componentes quitados NO separaban las colisiones (todos eran 0/vacío para los dispositivos colisionados)
+
+### Decisiones tomadas
+1. **device_sig es SOLO para descarte de clientes** en slugs (deduplicación dentro de la misma cotización)
+2. **device_sig NO se usa para identificar asesores** (colisiones con clientes)
+3. **El escudo de asesores se basa en cookies** (cza_session 3 días + cz_vid 730 días + bridge)
+4. **Capa 2.5 en track.php**: solo descarte suave (exit sin marcar permanente)
+
+### Cambios implementados
+
+| Cambio | Archivo(s) | Efecto |
+|---|---|---|
+| device_sig 13 componentes | cotizacion.php, login.php, layout.php | Estable entre normal e incógnito |
+| Capa 2.5 sin marcado permanente | api/track.php | Clientes ya no se contaminan por colisión |
+| Sesión 3 días browser / 30 días app | core/Auth.php, login_post.php | Re-login más frecuente → bridge refresca cookies |
+| Banner "Activar Escudo" | core/layout.php | Onboarding + fricción en incógnito (localStorage check) |
+| Tarjeta dispositivos en dashboard | modules/dashboard/index.php | Muestra dispositivos protegidos del asesor |
+| Cookie cz_dsig con domain .cotiza.cloud | core/layout.php | Viaja a subdominios para detección superadmin |
+| Detección browsers completa | modules/dashboard/index.php | CriOS, FxiOS, SamsungBrowser, OPR, EdgiOS |
+
+### Arquitectura del Escudo (estado final)
+```
+Protección de slugs (capas en cotizacion.php):
+  Capa 0: cookie cza_session (3 días browser, 30 días app)
+  Capa 1: cookie cz_vid (730 días) + radar_visitors_internos
+  Capa 2: IP en radar_ips_internas (7 días, re-aprendida cada login)
+  Capa 3: Bot por IP prefix
+
+Descarte en track.php (JS, retroactivo):
+  Capa 2.5: device_sig → exit sin marcar permanente
+  Ghost cleanup: sesiones sin eventos → borrar + decrementar visitas
+
+Limpieza diaria (layout.php):
+  Retroactiva por IP/visitor_id al abrir dashboard
+
+Educación (layout.php):
+  Banner "Activar Escudo" → localStorage check → fricción en incógnito
+
+Información (dashboard):
+  Tarjeta "Escudo Radar — Activo" con lista de dispositivos
+```
+
+### Cookies del sistema
+| Cookie | Duración | Domain | Propósito |
+|---|---|---|---|
+| `cza_session` | 3d browser / 30d app | `.cotiza.cloud` | Autenticación |
+| `cz_vid` | 730 días | `.cotiza.cloud` + bridge en custom | Identificar interno (Capa 1) |
+| `cz_dsig` | 3 días | `.cotiza.cloud` | device_sig para PHP (superadmin detection, feedback) |
+
+### Limitaciones conocidas y aceptadas
+- Dos Macs/iPhones del mismo modelo con mismo browser → misma entrada en tarjeta (UA no distingue modelos)
+- Incógnito + otra red + sin login previo → contamina (gap ~10%, límite web)
+- Transición de 3 días: device_sigs viejos (14 componentes) no matchean nuevos (13) hasta re-login
+- Ghost sessions en cotizaciones de poco tráfico → 1 visita extra hasta que otro visitor active el cleanup
+
+### Pendiente para próxima sesión
+1. **Mergear a main** — revisar errores finales y deploy
+2. **Ejecutar migración en servidor** — (ninguna migración nueva necesaria para los cambios actuales)
+3. **Monitorear datos reales** — verificar estabilidad del device_sig de 13 componentes en producción
+4. **Leyenda en slug** (opcional) — "🛡️ Escudo activo" cuando asesor es detectado como interno
+5. **Explorar "staff-view"** (opcional) — botón en dashboard que refresca cookie antes de abrir slug
+6. **Certificado SSL cliente** — descartado por UX pero documentado como opción futura si el gap de 10% molesta
 
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi`

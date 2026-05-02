@@ -665,6 +665,7 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
 <script>
 (function(){
     if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())return;
+    <?php if (Auth::es_superadmin()): ?>return;<?php endif; ?>
     try{if(localStorage.getItem('cz_escudo_device'))return;}catch(e){return;}
     var b=document.getElementById('escudo-web-banner');
     if(!b)return;
