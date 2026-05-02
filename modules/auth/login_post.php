@@ -52,6 +52,8 @@ if (!$resultado['ok']) {
 // Login exitoso — registrar las 3 señales internas: visitor_id + IP + device_sig
 $visitor_id_post = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_POST['visitor_id'] ?? '')), 0, 64);
 $device_sig_post = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_POST['device_sig'] ?? '')), 0, 20);
+$screen_w_post = max(0, min(9999, (int)($_POST['screen_w'] ?? 0)));
+$screen_h_post = max(0, min(9999, (int)($_POST['screen_h'] ?? 0)));
 $emp = $resultado['empresa'];
 $es_super = ($resultado['usuario']['rol'] ?? '') === 'superadmin';
 
@@ -71,13 +73,19 @@ $ua_login = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
 // Guardar device_sig EN LA SESIÓN RECIÉN CREADA identificada por su token
 // (Auth::login retorna el token; $_COOKIE no se actualiza en el mismo request)
 $cur_token = $resultado['token'] ?? '';
-if ($device_sig_post !== '' && $cur_token !== '') {
-    try {
-        DB::execute(
-            "UPDATE user_sessions SET device_sig = ? WHERE token = ? AND usuario_id = ?",
-            [$device_sig_post, $cur_token, (int)Auth::id()]
-        );
-    } catch (Throwable $e) {}
+if ($cur_token !== '') {
+    $dsig_sets = [];
+    $dsig_args = [];
+    if ($device_sig_post !== '') { $dsig_sets[] = 'device_sig = ?'; $dsig_args[] = $device_sig_post; }
+    if ($screen_w_post > 0)     { $dsig_sets[] = 'screen_w = ?';   $dsig_args[] = $screen_w_post; }
+    if ($screen_h_post > 0)     { $dsig_sets[] = 'screen_h = ?';   $dsig_args[] = $screen_h_post; }
+    if (!empty($dsig_sets)) {
+        $dsig_args[] = $cur_token;
+        $dsig_args[] = (int)Auth::id();
+        try {
+            DB::execute("UPDATE user_sessions SET " . implode(', ', $dsig_sets) . " WHERE token = ? AND usuario_id = ?", $dsig_args);
+        } catch (Throwable $e) {}
+    }
 }
 
 // Registrar las 3 señales: visitor_id + IP + (device_sig ya guardado arriba)

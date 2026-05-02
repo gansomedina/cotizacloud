@@ -204,6 +204,8 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
             <?= csrf_field() ?>
             <input type="hidden" id="vid_field" name="visitor_id" value="">
             <input type="hidden" id="dsig_field" name="device_sig" value="">
+            <input type="hidden" id="screen_w_field" name="screen_w" value="">
+            <input type="hidden" id="screen_h_field" name="screen_h" value="">
 
             <div class="field">
                 <label class="lbl" for="empresa_slug">Tu empresa</label>
@@ -328,6 +330,10 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
     }
     var df = document.getElementById('dsig_field');
     if (df) df.value = getDeviceSig();
+    var swf = document.getElementById('screen_w_field');
+    var shf = document.getElementById('screen_h_field');
+    if (swf) swf.value = Math.min(screen.width, screen.height);
+    if (shf) shf.value = Math.max(screen.width, screen.height);
 
     // Recordar último slug de empresa usado
     var sk = 'cz_empresa_slug';
