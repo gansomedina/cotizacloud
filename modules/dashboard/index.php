@@ -455,8 +455,7 @@ $mes_lbl_cap = ucfirst($mes_lbl);
 $trial = trial_info($empresa_id);
 
 $escudo_dispositivos_raw = DB::query(
-    "SELECT LEFT(user_agent, 200) AS ua, MAX(created_at) AS ultimo,
-            MAX(screen_w) AS sw, MAX(screen_h) AS sh
+    "SELECT LEFT(user_agent, 200) AS ua, MAX(created_at) AS ultimo
      FROM user_sessions
      WHERE usuario_id = ? AND device_sig IS NOT NULL AND device_sig != ''
        AND created_at > DATE_SUB(NOW(), INTERVAL 90 DAY)
@@ -482,8 +481,6 @@ foreach ($escudo_dispositivos_raw as $ed) {
     elseif (stripos($ua, 'CotizaCloud') !== false) $label .= ' · App';
     elseif (stripos($ua, 'Chrome') !== false && stripos($ua, 'Safari') !== false) $label .= ' · Chrome';
     elseif (stripos($ua, 'Safari') !== false) $label .= ' · Safari';
-    $sw = (int)($ed['sw'] ?? 0); $sh = (int)($ed['sh'] ?? 0);
-    if ($sw > 0 && $sh > 0) $label .= ' · ' . $sh . '×' . $sw;
     $key = $label;
     if (isset($escudo_seen[$key])) continue;
     $escudo_seen[$key] = true;
