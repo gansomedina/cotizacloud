@@ -67,7 +67,7 @@ class Auth
     }
 
     // ─── Login (centralizado: recibe slug de empresa) ───────
-    public static function login(string $empresa_slug, string $email, string $password): array
+    public static function login(string $empresa_slug, string $email, string $password, bool $is_app = false): array
     {
         // Buscar empresa por slug
         $empresa = DB::row(
@@ -105,9 +105,7 @@ class Auth
             return ['ok' => false, 'error' => 'Usuario o contraseña incorrectos'];
         }
 
-        // Duración fija: 5 días. Re-login semanal mejora seguridad y
-        // refresca la cookie del Escudo Radar + aprendizaje de IP.
-        $duracion = 60 * 60 * 24 * 5;
+        $duracion = $is_app ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 3;
 
         // Crear sesión en DB
         $token  = generar_token(32);

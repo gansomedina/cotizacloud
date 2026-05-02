@@ -31,7 +31,8 @@ if (empty($usuario_str) || empty($password)) {
     redirect('/login?error=credenciales&empresa=' . urlencode($empresa_slug));
 }
 
-$resultado = Auth::login($empresa_slug, $usuario_str, $password);
+$is_app_login = !empty($_POST['is_app']);
+$resultado = Auth::login($empresa_slug, $usuario_str, $password, $is_app_login);
 
 if (!$resultado['ok']) {
     rate_hit('login'); // Registrar intento fallido
