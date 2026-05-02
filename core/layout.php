@@ -625,25 +625,9 @@ function toggleMoreDrawer(){
 // Twemoji: convierte emojis Unicode a imágenes SVG para iOS WKWebView
 if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'.svg',base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});}
 
-// Device signature: poner en cookie para que PHP la lea en la siguiente carga
-(function(){
-    try {
-        var sw=Math.min(screen.width,screen.height),sh=Math.max(screen.width,screen.height);
-        var dpr=window.devicePixelRatio||1,tp=navigator.maxTouchPoints||0;
-        var maxTex=0;try{var c=document.createElement('canvas'),gl=c.getContext('webgl');if(gl)maxTex=gl.getParameter(gl.MAX_TEXTURE_SIZE)||0;}catch(e){}
-        var lang=navigator.language||'',tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
-        var hc=Intl.DateTimeFormat().resolvedOptions().hourCycle||'';
-        var motion=matchMedia('(prefers-reduced-motion:reduce)').matches?1:0;
-        var contrast=matchMedia('(prefers-contrast:more)').matches?1:0;
-        var inverted=matchMedia('(inverted-colors:inverted)').matches?1:0;
-        var transp=matchMedia('(prefers-reduced-transparency:reduce)').matches?1:0;
-        var iosM=(navigator.userAgent.match(/OS (\d+)/)||[])[1]||'0';
-        var raw=[sw,sh,dpr,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
-        var h=0;for(var i=0;i<raw.length;i++)h=((h<<5)-h)+raw.charCodeAt(i)|0;
-        var dsig=Math.abs(h).toString(16).padStart(8,'0');
-        if(dsig)document.cookie='cz_dsig='+dsig+';path=/;max-age=<?= 60*60*24*90 ?>;SameSite=Lax;domain=.<?= BASE_DOMAIN ?>';
-    }catch(e){}
-})();
+// Device signature cookie removida — no se usa server-side.
+// El device_sig se calcula en cotizacion.php (slug) y login.php (login)
+// y se envía via JS a track.php / login_post.php donde sí se almacena.
 </script>
 
 <?php // Escudo Radar token se genera arriba, antes del banner ?>
