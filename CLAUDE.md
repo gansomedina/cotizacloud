@@ -1113,25 +1113,57 @@ Eso significa que el fingerprint NO es estable. Algún componente de los 14 (`sw
 - **Uso**: SOLO para descarte en Radar — nunca para marcar permanente
 - **Prioridad**: MEDIA — mejora la calidad del descarte pero no es urgente
 
-### Pendiente al regresar
-1. **Investigar Camino 1** — cuál identificador robusto usar para internos
-   - Push subscription endpoint parece el más prometedor (ya existe infra)
-   - Verificar si funciona cross-domain o solo en .cotiza.cloud
-2. **Implementar A+C light para Capa 2.5 actual** — mejora inmediata:
-   - Función `ua_family($ua)` en helpers
-   - Modificar `api/track.php` Capa 2.5 con descarte suave (sin marcar permanente)
-   - Función helper `retroactive_mark_internal($cot_id, $visitor_id, $ip)`:
-     - UPDATE quote_sessions SET es_interno=1
-     - UPDATE cotizaciones SET visitas=GREATEST(visitas-1,0)
-     - Revertir estado de 'vista' a 'enviada' si aplica
-3. **Investigar instabilidad del fingerprint** — pegar snippet en consola Firefox normal vs incognito
-4. **Rediseñar device_sig para clientes (Camino 2)** — quitar componentes ruidosos
+### Conclusión de la investigación (2 mayo 2026)
 
-### Snippet para investigar instabilidad device_sig
+Se evaluaron TODAS las alternativas para identificar internos cross-domain:
+- **Push subscription**: per-origin, no cruza subdominios ni dominios custom
+- **WebAuthn/Passkeys**: per-origin, requiere biometría, impractico en PC
+- **localStorage/IndexedDB**: per-origin, muere al borrar datos del sitio
+- **Cookie HMAC firmada (cz_device)**: duplica cz_vid, mismas debilidades
+- **Extensión de navegador**: rechazada por el usuario
+- **IP+UA contra user_sessions**: genérico en móvil (todos los iPhones mismo UA), sirve solo como descarte
+- **A+C retroactivo**: depende de device_sig que es inestable
+
+**Realidad:** no existe API web que dé identificación cross-domain. Es restricción fundamental del navegador.
+
+**Las capas actuales (cookie sesión + cz_vid + IP) cubren el 90%+ de casos reales.** El gap restante (~10%) ocurre cuando TODAS las señales fallan (sin cookie + IP desconocida + device_sig diferente).
+
+### Decisión: arreglar device_sig PRIMERO, luego cambio arquitectónico
+
+**Paso 1 — Diagnosticar device_sig (BLOQUEANTE):**
+Correr el snippet en consola Firefox normal vs Firefox incognito en la misma Mac. Comparar los 14 componentes. Identificar cuál cambia.
+
+**Snippet:**
 ```js
 [Math.min(screen.width,screen.height), Math.max(screen.width,screen.height), window.devicePixelRatio||1, navigator.hardwareConcurrency||0, navigator.maxTouchPoints||0, (function(){try{var c=document.createElement('canvas');var gl=c.getContext('webgl');return gl?gl.getParameter(gl.MAX_TEXTURE_SIZE):0}catch(e){return 0}})(), navigator.language||'', Intl.DateTimeFormat().resolvedOptions().timeZone||'', Intl.DateTimeFormat().resolvedOptions().hourCycle||'', matchMedia('(prefers-reduced-motion:reduce)').matches?1:0, matchMedia('(prefers-contrast:more)').matches?1:0, matchMedia('(inverted-colors:inverted)').matches?1:0, matchMedia('(prefers-reduced-transparency:reduce)').matches?1:0, (navigator.userAgent.match(/OS (\d+)/)||[])[1]||'0'].join('|')
 ```
-Pegar en consola Firefox normal y Firefox incognito en misma Mac. El componente que difiera es la causa de la inestabilidad.
+
+**Paso 2 — Arreglar device_sig:**
+Quitar componentes inestables. Verificar estabilidad entre sesiones y modos.
+
+**Paso 3 — Verificar colisiones:**
+Con el fingerprint reducido, medir tasa de colisión en datos reales (query a quote_sessions vs user_sessions).
+
+**Paso 4 — Cambio arquitectónico: mover conteo de cotizacion.php a track.php:**
+- `cotizacion.php` solo crea quote_session, NO incrementa visitas, NO cambia estado, NO recalcula Radar
+- `track.php` ejecuta TODAS las capas (0, 1, 2, 2.5) y solo si confirma cliente → cuenta visita, cambia estado, recalcula Radar
+- Esto convierte las 4 capas de track.php (hoy inútiles porque cotizacion.php ya contó) en capas preventivas reales
+- La Capa 2.5 (device_sig) pasa de ser descarte desperdiciado a última línea de defensa
+
+**Por qué este orden:** sin device_sig confiable, el paso 4 no agrega valor real (track.php solo tendría las mismas capas que cotizacion.php).
+
+### Opciones descartadas con razón documentada
+| Opción | Por qué se descartó |
+|---|---|
+| Push subscription como device ID | Per-origin, no cruza subdominios ni custom domains |
+| WebAuthn / Face ID | Impractico en PC, mayoría no usa app |
+| Extensión de navegador | Rechazada por el usuario |
+| Cookie HMAC firmada (cz_device) | Duplica cz_vid con mismas debilidades. Contradicción auto-validante vs revocable |
+| Token HMAC en localStorage | Per-origin, marginal (solo cubre "borró cookies pero no datos del sitio") |
+| IP+UA como capa preventiva | Genérico en móvil (falsos positivos), solo sirve como descarte |
+| Bloquear sistema sin cookie dispositivo | Transparente en login ok, pero no ayuda en slug. Esencialmente igual que sesión corta |
+| Sesiones 1 día | Molesta asesores, app móvil, alto riesgo si login falla |
+| Link "no contar mi visita" en slug | Visible para clientes, mal diseño |
 
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi`
