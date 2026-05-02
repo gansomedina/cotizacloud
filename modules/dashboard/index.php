@@ -454,6 +454,21 @@ $mes_lbl_cap = ucfirst($mes_lbl);
 
 $trial = trial_info($empresa_id);
 
+$escudo_dispositivos = DB::query(
+    "SELECT device_sig,
+            (SELECT LEFT(us2.user_agent, 200) FROM user_sessions us2
+             WHERE us2.device_sig = us.device_sig AND us2.usuario_id = us.usuario_id
+             ORDER BY us2.created_at DESC LIMIT 1) AS ua,
+            MAX(created_at) AS ultimo
+     FROM user_sessions us
+     WHERE us.usuario_id = ? AND us.device_sig IS NOT NULL AND us.device_sig != ''
+       AND us.created_at > DATE_SUB(NOW(), INTERVAL 90 DAY)
+     GROUP BY us.device_sig
+     ORDER BY ultimo DESC
+     LIMIT 5",
+    [(int)Auth::id()]
+) ?: [];
+
 $page_title = 'Inicio';
 ob_start();
 ?>
@@ -669,6 +684,39 @@ ob_start();
     </select>
   </form>
 </div>
+
+<!-- ══ ESCUDO RADAR — DISPOSITIVOS ══ -->
+<?php if (!empty($escudo_dispositivos)): ?>
+<div style="background:var(--white);border:1px solid var(--g-border);border-radius:var(--r);padding:14px 18px;box-shadow:var(--sh);margin-bottom:16px;display:flex;align-items:flex-start;gap:14px">
+    <div style="width:36px;height:36px;border-radius:50%;background:var(--g-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+    </div>
+    <div style="flex:1;min-width:0">
+        <div style="font:600 13px var(--body);color:var(--g);margin-bottom:6px">Escudo Radar — Activo</div>
+        <?php foreach ($escudo_dispositivos as $ed):
+            $ed_ua = $ed['ua'] ?? '';
+            $ed_label = 'Dispositivo';
+            if (stripos($ed_ua, 'iPhone') !== false) $ed_label = 'iPhone';
+            elseif (stripos($ed_ua, 'iPad') !== false) $ed_label = 'iPad';
+            elseif (stripos($ed_ua, 'Android') !== false) $ed_label = 'Android';
+            elseif (stripos($ed_ua, 'Macintosh') !== false) $ed_label = 'Mac';
+            elseif (stripos($ed_ua, 'Windows') !== false) $ed_label = 'Windows';
+            elseif (stripos($ed_ua, 'Linux') !== false) $ed_label = 'Linux';
+            if (stripos($ed_ua, 'Firefox') !== false) $ed_label .= ' · Firefox';
+            elseif (stripos($ed_ua, 'Safari') !== false && stripos($ed_ua, 'Chrome') === false) $ed_label .= ' · Safari';
+            elseif (stripos($ed_ua, 'Chrome') !== false) $ed_label .= ' · Chrome';
+            $ed_ago = time() - strtotime($ed['ultimo']);
+            if ($ed_ago < 3600) $ed_tiempo = 'hace ' . max(1, intdiv($ed_ago, 60)) . ' min';
+            elseif ($ed_ago < 86400) $ed_tiempo = 'hace ' . intdiv($ed_ago, 3600) . 'h';
+            else $ed_tiempo = 'hace ' . intdiv($ed_ago, 86400) . ' días';
+        ?>
+        <div style="font:400 12px var(--body);color:var(--t2);padding:2px 0">
+            <span style="color:var(--g)">✓</span> <?= e($ed_label) ?> <span style="color:var(--t3);font-size:11px">— <?= $ed_tiempo ?></span>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- ══ TERMÓMETRO + LEADERBOARD ══ -->
 <?php if (!empty($empresa['termometro_visible'])):
