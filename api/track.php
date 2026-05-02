@@ -96,8 +96,11 @@ if ($es_usuario_interno) {
     exit;
 }
 
-// CAPA 2.5 — Device signature interno (cubre dominios custom donde la cookie no viaja)
-// El device_sig se registró al loguearse. Mismo hash en cualquier dominio.
+// CAPA 2.5 — Device signature interno (descarte por sesión, no permanente)
+// Si el device_sig matchea con un asesor, descartamos este evento.
+// NO marcamos visitor_id como interno (riesgo de colisión en dispositivos iguales).
+// NO aprendemos IP desde device_sig solo (mismo riesgo).
+// La sesión sin eventos será limpiada por el ghost cleanup (~2 min).
 if ($device_sig !== '' && ($rcfg['excluir_internos'] ?? true)) {
     $dsig_usuario = DB::val(
         "SELECT u.id FROM user_sessions us
@@ -108,10 +111,6 @@ if ($device_sig !== '' && ($rcfg['excluir_internos'] ?? true)) {
         [$device_sig, $empresa_id]
     );
     if ($dsig_usuario) {
-        if ($visitor_id !== '') {
-            Radar::marcar_visitor_interno($empresa_id, $visitor_id, 'internal_device', (int)$dsig_usuario, $ip, $ua);
-        }
-        Radar::aprender_ip_radar($empresa_id, $ip, (int)$dsig_usuario);
         exit;
     }
 }

@@ -1029,3 +1029,141 @@ Ambas aparecen en `https://www.mercadopago.com.mx/activities` con ref externa `c
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi` (esta continuación)
 - Las sesiones previas quedaron en `main` por auto-deploy cPanel
+
+## Sesión 1 mayo 2026 — Auditoría Capa 2.5 (device_sig) Escudo Radar
+
+### Contexto
+Pruebas de campo del Escudo Radar (3 capas: visitor_id, IP, device_sig). El usuario se conectó desde IP USA `68.177.3.148` y ejecutó tests para verificar si era detectado correctamente como interno tras borrar señales manualmente.
+
+### Resultado del test
+**REPROBÓ.** Sesión 758 en quote_sessions creada con `es_interno=0` y `device_sig=NULL` aunque el usuario tenía device_sig `229bb0d4` registrado en `user_sessions` desde su login de las 08:55 ese mismo día.
+
+### Causa raíz identificada
+Hay **dos sistemas de tracking en momentos distintos**:
+
+1. **`public/cotizacion.php` (PHP server-side, primero)** — crea quote_session con `es_interno=0` por default. Tiene Capas 0, 1, 2. **NO tiene Capa 2.5 (device_sig)** porque el device_sig viene del JS que aún no ha corrido. Línea 258-261 INSERT no incluye device_sig.
+
+2. **`api/track.php` (JS beacon, segundo)** — tiene Capa 2.5 (línea 99-117). Si detecta interno por device_sig, marca visitor_id e IP como internos pero **NO actualiza el quote_session ya creado**. Solo hace `exit`.
+
+3. **`core/layout.php:50-77` (limpieza retroactiva, tercero)** — cuando el asesor abre el dashboard, busca quote_sessions con su IP/visitor_id y los marca `es_interno=1`. Una vez al día por sesión PHP. **NO usa device_sig** en el cleanup.
+
+### Hallazgos críticos sobre device_sig (con datos reales de BD)
+
+#### 1. device_sig COLISIONA entre dispositivos distintos
+Query a `quote_sessions` últimos 7 días reveló colisiones reales:
+- **`17f8187d`** (iPhone iOS 18_7) lo comparten Kevin Landy (`nog@ontimecocinas.com`, id=21, empresa 14) Y Abigail Perez (`hmo@ontimecocinas.com`, id=18, empresa 12) en sus user_sessions. Dos personas físicas distintas con iPhones distintos generando el MISMO hash.
+- **`19b35160`** (Windows 10) compartido entre user_sessions de Kevin y un visitor "cliente" `95675a4c` desde la MISMA IP `189.161.14.168` → Kevin sin login.
+
+#### 2. device_sig CAMBIA en la misma máquina entre sesiones
+El superadmin (`admin@cotiza.cloud`, id=4) generó **3 device_sigs distintos en la MISMA Mac con MISMO Firefox normal en la misma semana**:
+- `229bb0d4` (USA hoy)
+- `4255de39` (MX, 8 sesiones)
+- `4d6b4aa5` (MX, 6 sesiones)
+- `0a7a8acc` (su iPhone iOS 18_7)
+
+Eso significa que el fingerprint NO es estable. Algún componente de los 14 (`sw|sh|dpr|cores|tp|maxTex|lang|tz|hc|motion|contrast|inverted|transp|iosM`) está variando entre sesiones. Sospechoso principal: `maxTex` de WebGL puede devolver 0 si el GPU está dormido o el contexto WebGL no está listo. **NO confirmado** — requiere pegar snippet en consola para ver el `raw` y comparar.
+
+#### 3. Diversidad real
+- 38 device_sigs distintos en 76 sesiones de 49 visitors distintos → ratio 1.3 visitors/dsig (aceptable para clientes)
+- Tasa de colisión cliente-vs-interno: 2/38 = ~5% en SOLO 1 semana
+
+### Datos importantes para no perder
+- **Tu superadmin**: id=4, email `admin@cotiza.cloud`
+- **TU iPhone (admin@)**: device_sig `0a7a8acc`
+- **TU Mac Firefox**: device_sigs `229bb0d4` (USA), `4255de39` y `4d6b4aa5` (MX) — INESTABLE
+- **Kevin Landy** (nog@ontimecocinas.com, id=21, empresa 14): Windows `19b35160`, iPhone `17f8187d`, IP `189.161.14.168`
+- **Abigail Perez** (hmo@ontimecocinas.com, id=18, empresa 12): iPhone `17f8187d` también
+- **IPs de los "clientes" colisionados con `17f8187d`**: `200.68.184.39`, `200.68.184.175` (Telmex móvil) — NO matchean ninguna user_session, podrían ser asesores en movilidad o clientes reales
+
+### Decisión pendiente — Opciones evaluadas
+
+**Opción 1 — A+C light (RECOMENDADA, pendiente confirmación):**
+- Capa 2.5 reformulada en `api/track.php`: solo descarta visita actual + UPDATE quote_session a es_interno=1 + revierte visitas-1 + revierte estado si aplica
+- **NUNCA marca permanente** (no toca radar_visitors_internos ni radar_ips_internas)
+- Filtro de UA family (mac/iphone/android/windows) para evitar colisiones triviales
+- TTL 90 días en lookup de user_sessions (vs 365 actual)
+- Costo: ~30 líneas
+- Beneficio: cero falsos positivos permanentes garantizados; cierra gap del INSERT
+
+**Opción 2 — Eliminar device_sig:** Quitar Capa 2.5 completa. Confiar solo en visitor_id + IP determinísticas.
+
+**Opción 3 — Rediseñar device_sig:** Quitar componentes ruidosos (maxTex, media queries variables). Requiere experimentación. Tarea futura.
+
+### Dirección definida por el usuario — DOS caminos separados
+
+#### Camino 1: INTERNOS — que no ensucien el Radar
+- **Enfoque**: Identificador robusto con PERMISO del dispositivo (son usuarios que hacen login, podemos pedir más datos)
+- **Opciones a investigar**:
+  1. **Push subscription endpoint** — ya implementado en el sistema; el subscription endpoint es ÚNICO por dispositivo+navegador, estable, no cambia. Podría usarse como device_id confiable.
+  2. **Persistent localStorage UUID** — al loguearse, generar/leer UUID de localStorage (`cz_internal_id`). Persiste entre sesiones normales. No disponible en incognito ni en dominios custom (per-origin).
+  3. **Capacitor Device ID** — `@capacitor/device` da UUID único para app nativa. No aplica para web.
+  4. **IndexedDB UUID** — más persistente que localStorage, sobrevive limpieza de cache.
+  5. **Web Crypto persistent keypair** — par de llaves en IndexedDB, firmar requests.
+- **Reto en dominios custom** (ontimecocinas.com): ninguna cookie/storage de .cotiza.cloud viaja ahí. Necesita bridge (Escudo Radar ya existe para app nativa, falta solución web).
+- **Prioridad**: ALTA — esto es lo fundamental para no contaminar el Radar
+
+#### Camino 2: CLIENTES — device_sig más ligero y estable (solo descarte)
+- **Enfoque**: Fingerprint simplificado, quitar componentes ruidosos
+- **Componentes a quitar** (candidatos ruidosos):
+  - `maxTex` (WebGL MAX_TEXTURE_SIZE) — puede devolver 0 si GPU dormido
+  - Media queries variables (prefers-reduced-motion, prefers-contrast, etc.)
+  - `hourCycle` — puede venir vacío en algunas versiones
+- **Componentes estables a mantener**: screen size (sw/sh), dpr, cores, maxTouchPoints, lang, timezone, iosM
+- **El resultado será**: menos único (más colisiones entre clientes) pero más estable (mismo hash en misma máquina siempre)
+- **Uso**: SOLO para descarte en Radar — nunca para marcar permanente
+- **Prioridad**: MEDIA — mejora la calidad del descarte pero no es urgente
+
+### Conclusión de la investigación (2 mayo 2026)
+
+Se evaluaron TODAS las alternativas para identificar internos cross-domain:
+- **Push subscription**: per-origin, no cruza subdominios ni dominios custom
+- **WebAuthn/Passkeys**: per-origin, requiere biometría, impractico en PC
+- **localStorage/IndexedDB**: per-origin, muere al borrar datos del sitio
+- **Cookie HMAC firmada (cz_device)**: duplica cz_vid, mismas debilidades
+- **Extensión de navegador**: rechazada por el usuario
+- **IP+UA contra user_sessions**: genérico en móvil (todos los iPhones mismo UA), sirve solo como descarte
+- **A+C retroactivo**: depende de device_sig que es inestable
+
+**Realidad:** no existe API web que dé identificación cross-domain. Es restricción fundamental del navegador.
+
+**Las capas actuales (cookie sesión + cz_vid + IP) cubren el 90%+ de casos reales.** El gap restante (~10%) ocurre cuando TODAS las señales fallan (sin cookie + IP desconocida + device_sig diferente).
+
+### Decisión: arreglar device_sig PRIMERO, luego cambio arquitectónico
+
+**Paso 1 — Diagnosticar device_sig (BLOQUEANTE):**
+Correr el snippet en consola Firefox normal vs Firefox incognito en la misma Mac. Comparar los 14 componentes. Identificar cuál cambia.
+
+**Snippet:**
+```js
+[Math.min(screen.width,screen.height), Math.max(screen.width,screen.height), window.devicePixelRatio||1, navigator.hardwareConcurrency||0, navigator.maxTouchPoints||0, (function(){try{var c=document.createElement('canvas');var gl=c.getContext('webgl');return gl?gl.getParameter(gl.MAX_TEXTURE_SIZE):0}catch(e){return 0}})(), navigator.language||'', Intl.DateTimeFormat().resolvedOptions().timeZone||'', Intl.DateTimeFormat().resolvedOptions().hourCycle||'', matchMedia('(prefers-reduced-motion:reduce)').matches?1:0, matchMedia('(prefers-contrast:more)').matches?1:0, matchMedia('(inverted-colors:inverted)').matches?1:0, matchMedia('(prefers-reduced-transparency:reduce)').matches?1:0, (navigator.userAgent.match(/OS (\d+)/)||[])[1]||'0'].join('|')
+```
+
+**Paso 2 — Arreglar device_sig:**
+Quitar componentes inestables. Verificar estabilidad entre sesiones y modos.
+
+**Paso 3 — Verificar colisiones:**
+Con el fingerprint reducido, medir tasa de colisión en datos reales (query a quote_sessions vs user_sessions).
+
+**Paso 4 — Cambio arquitectónico: mover conteo de cotizacion.php a track.php:**
+- `cotizacion.php` solo crea quote_session, NO incrementa visitas, NO cambia estado, NO recalcula Radar
+- `track.php` ejecuta TODAS las capas (0, 1, 2, 2.5) y solo si confirma cliente → cuenta visita, cambia estado, recalcula Radar
+- Esto convierte las 4 capas de track.php (hoy inútiles porque cotizacion.php ya contó) en capas preventivas reales
+- La Capa 2.5 (device_sig) pasa de ser descarte desperdiciado a última línea de defensa
+
+**Por qué este orden:** sin device_sig confiable, el paso 4 no agrega valor real (track.php solo tendría las mismas capas que cotizacion.php).
+
+### Opciones descartadas con razón documentada
+| Opción | Por qué se descartó |
+|---|---|
+| Push subscription como device ID | Per-origin, no cruza subdominios ni custom domains |
+| WebAuthn / Face ID | Impractico en PC, mayoría no usa app |
+| Extensión de navegador | Rechazada por el usuario |
+| Cookie HMAC firmada (cz_device) | Duplica cz_vid con mismas debilidades. Contradicción auto-validante vs revocable |
+| Token HMAC en localStorage | Per-origin, marginal (solo cubre "borró cookies pero no datos del sitio") |
+| IP+UA como capa preventiva | Genérico en móvil (falsos positivos), solo sirve como descarte |
+| Bloquear sistema sin cookie dispositivo | Transparente en login ok, pero no ayuda en slug. Esencialmente igual que sesión corta |
+| Sesiones 1 día | Molesta asesores, app móvil, alto riesgo si login falla |
+| Link "no contar mi visita" en slug | Visible para clientes, mal diseño |
+
+### Branch de trabajo
+- `claude/analyze-domain-change-hmo-AkFAi`

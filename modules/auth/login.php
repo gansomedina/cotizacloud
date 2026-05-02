@@ -309,7 +309,6 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
             var sw = Math.min(screen.width, screen.height);
             var sh = Math.max(screen.width, screen.height);
             var dpr = window.devicePixelRatio || 1;
-            var cores = navigator.hardwareConcurrency || 0;
             var tp = navigator.maxTouchPoints || 0;
             var maxTex = 0;
             try { var c = document.createElement('canvas'), gl = c.getContext('webgl'); if (gl) maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0; } catch(e) {}
@@ -321,7 +320,7 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
             var inverted = window.matchMedia('(inverted-colors:inverted)').matches ? 1 : 0;
             var transp = window.matchMedia('(prefers-reduced-transparency:reduce)').matches ? 1 : 0;
             var iosM = (navigator.userAgent.match(/OS (\d+)/) || [])[1] || '0';
-            var raw = [sw,sh,dpr,cores,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
+            var raw = [sw,sh,dpr,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
             var h = 0;
             for (var i = 0; i < raw.length; i++) h = ((h << 5) - h) + raw.charCodeAt(i) | 0;
             return Math.abs(h).toString(16).padStart(8, '0');
