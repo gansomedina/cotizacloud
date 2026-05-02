@@ -455,11 +455,15 @@ $mes_lbl_cap = ucfirst($mes_lbl);
 $trial = trial_info($empresa_id);
 
 $escudo_dispositivos = DB::query(
-    "SELECT device_sig, LEFT(user_agent, 200) AS ua, MAX(created_at) AS ultimo
-     FROM user_sessions
-     WHERE usuario_id = ? AND device_sig IS NOT NULL AND device_sig != ''
-       AND created_at > DATE_SUB(NOW(), INTERVAL 90 DAY)
-     GROUP BY device_sig, LEFT(user_agent, 200)
+    "SELECT device_sig,
+            (SELECT LEFT(us2.user_agent, 200) FROM user_sessions us2
+             WHERE us2.device_sig = us.device_sig AND us2.usuario_id = us.usuario_id
+             ORDER BY us2.created_at DESC LIMIT 1) AS ua,
+            MAX(created_at) AS ultimo
+     FROM user_sessions us
+     WHERE us.usuario_id = ? AND us.device_sig IS NOT NULL AND us.device_sig != ''
+       AND us.created_at > DATE_SUB(NOW(), INTERVAL 90 DAY)
+     GROUP BY us.device_sig
      ORDER BY ultimo DESC
      LIMIT 5",
     [(int)Auth::id()]
