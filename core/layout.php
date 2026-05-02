@@ -626,6 +626,8 @@ function toggleMoreDrawer(){
 if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'.svg',base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});}
 
 // Device signature: poner en cookie para que PHP la lea en la siguiente carga
+// Usado por: layout.php (aprende dsig en user_sessions), cotizacion.php (detecta superadmin),
+// cot_feedback.php (identifica internos).
 (function(){
     try {
         var sw=Math.min(screen.width,screen.height),sh=Math.max(screen.width,screen.height);
@@ -641,7 +643,7 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
         var raw=[sw,sh,dpr,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
         var h=0;for(var i=0;i<raw.length;i++)h=((h<<5)-h)+raw.charCodeAt(i)|0;
         var dsig=Math.abs(h).toString(16).padStart(8,'0');
-        if(dsig)document.cookie='cz_dsig='+dsig+';path=/;max-age=<?= 60*60*24*90 ?>;SameSite=Lax;domain=.<?= BASE_DOMAIN ?>';
+        if(dsig)document.cookie='cz_dsig='+dsig+';path=/;max-age=86400;SameSite=Lax';
     }catch(e){}
 })();
 </script>
