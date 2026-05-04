@@ -848,37 +848,12 @@ $comp_by_ip = DB::query(
     [$empresa_id, $empresa_id, $empresa_id]
 );
 
-// ── 3. Alerta por Device Signature (descarte) ──
-// Excluir device_sigs de empleados del sistema
-try { $comp_by_device = DB::query(
-    "SELECT qs.device_sig,
-            COUNT(DISTINCT c.cliente_id) AS clientes_distintos,
-            COUNT(DISTINCT qs.cotizacion_id) AS cots_vistas,
-            COUNT(DISTINCT qs.visitor_id) AS visitors_distintos,
-            MAX(qs.created_at) AS ultima_visita
-     FROM quote_sessions qs
-     JOIN cotizaciones c ON c.id = qs.cotizacion_id
-     WHERE c.empresa_id = ?
-       AND qs.es_interno = 0
-       AND qs.device_sig IS NOT NULL AND qs.device_sig != ''
-       AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
-       AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
-       AND qs.device_sig NOT IN (
-           SELECT DISTINCT us.device_sig FROM user_sessions us
-           JOIN usuarios u ON u.id = us.usuario_id
-           WHERE (u.empresa_id = ? OR u.rol = 'superadmin')
-             AND us.device_sig IS NOT NULL AND us.device_sig != ''
-             AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
-       )
-     GROUP BY qs.device_sig
-     HAVING clientes_distintos > 1
-       {$reviewed_filter_device}
-     ORDER BY clientes_distintos DESC, ultima_visita DESC
-     LIMIT 10",
-    [$empresa_id, $empresa_id]
-); } catch (Throwable $e) { $comp_by_device = []; }
+// ── 3. Alerta por Device Signature — DESACTIVADA ──
+// Genera falsos positivos en iPhones: mismo modelo+iOS+idioma+timezone = mismo hash.
+// Los casos reales ya se cubren por visitor_id (alta confianza) e IP (media confianza).
+$comp_by_device = [];
 
-$total_comp = count($comp_by_user ?: []) + count($comp_by_ip ?: []) + count($comp_by_device ?: []);
+$total_comp = count($comp_by_user ?: []) + count($comp_by_ip ?: []);
 if ($total_comp): ?>
 <div id="comp-alert" style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:var(--r);padding:14px 18px;margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById('comp-body').style.display=document.getElementById('comp-body').style.display==='none'?'block':'none'">
