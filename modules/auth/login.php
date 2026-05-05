@@ -321,14 +321,13 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
             var transp = window.matchMedia('(prefers-reduced-transparency:reduce)').matches ? 1 : 0;
             var iosM = (navigator.userAgent.match(/OS (\d+)/) || [])[1] || '0';
             return [sw,sh,dpr,tp,maxTex,lang,tz.split('/').pop()||tz,hc,motion,contrast,inverted,transp,iosM].join('|');
-        } catch(e) { console.error('[DeviceSig] Error:', e.message); return ''; }
+        } catch(e) { alert('DSig error: ' + e.message); return ''; }
     }
     var df = document.getElementById('dsig_field');
     if (df) {
         var dsigVal = getDeviceSig();
         df.value = dsigVal;
-        if (!dsigVal) console.warn('[DeviceSig] VACÍO en page load');
-        else console.log('[DeviceSig] OK:', dsigVal.substring(0, 30) + '...');
+        if (!dsigVal) alert('DSig: vacío');
     }
 
     // Recordar último slug de empresa usado
