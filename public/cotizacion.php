@@ -1019,7 +1019,7 @@ if ($fb_render) {
     // y si pertenece a un superadmin, igual renderizamos para testing.
     $ip_v = ip_real();
     $vid_v = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
-    $dsig_v = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', urldecode((string)($_COOKIE['cz_dsig'] ?? ''))), 0, 120);
+    $dsig_v = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 120);
 
     // ¿Es superadmin (por sesión o por IP/visitor/device registrado)?
     $es_super = Auth::es_superadmin();
