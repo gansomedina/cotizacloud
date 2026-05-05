@@ -51,7 +51,7 @@ if (!$resultado['ok']) {
 
 // Login exitoso — registrar las 3 señales internas: visitor_id + IP + device_sig
 $visitor_id_post = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_POST['visitor_id'] ?? '')), 0, 64);
-$device_sig_post = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_POST['device_sig'] ?? '')), 0, 20);
+$device_sig_post = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', (string)($_POST['device_sig'] ?? '')), 0, 120);
 $emp = $resultado['empresa'];
 $es_super = ($resultado['usuario']['rol'] ?? '') === 'superadmin';
 

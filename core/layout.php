@@ -23,7 +23,7 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
         // Aplicar SOLO a la sesión actual (identificada por su token), no a la más
         // reciente del usuario — eso causaba que un dispositivo sobrescribiera el
         // device_sig de otro dispositivo del mismo usuario.
-        $dsig_cookie = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 20);
+        $dsig_cookie = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', urldecode((string)($_COOKIE['cz_dsig'] ?? ''))), 0, 120);
         $cur_tok_layout = $_COOKIE[SESSION_NAME] ?? '';
         if ($dsig_cookie !== '' && $cur_tok_layout !== '') {
             try {
@@ -640,10 +640,8 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
         var inverted=matchMedia('(inverted-colors:inverted)').matches?1:0;
         var transp=matchMedia('(prefers-reduced-transparency:reduce)').matches?1:0;
         var iosM=(navigator.userAgent.match(/OS (\d+)/)||[])[1]||'0';
-        var raw=[sw,sh,dpr,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
-        var h=0;for(var i=0;i<raw.length;i++)h=((h<<5)-h)+raw.charCodeAt(i)|0;
-        var dsig=Math.abs(h).toString(16).padStart(8,'0');
-        if(dsig)document.cookie='cz_dsig='+dsig+';path=/;max-age=<?= 60*60*24*3 ?>;SameSite=Lax;domain=.<?= BASE_DOMAIN ?>';
+        var dsig=[sw,sh,dpr,tp,maxTex,lang,tz.split('/').pop()||tz,hc,motion,contrast,inverted,transp,iosM].join('|');
+        if(dsig)document.cookie='cz_dsig='+encodeURIComponent(dsig)+';path=/;max-age=<?= 60*60*24*3 ?>;SameSite=Lax;domain=.<?= BASE_DOMAIN ?>';
     }catch(e){}
 })();
 </script>

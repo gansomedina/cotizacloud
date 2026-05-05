@@ -15,7 +15,7 @@ $cot_id     = (int)($body['cotizacion_id'] ?? 0);
 $stars      = (int)($body['stars'] ?? 0);
 $comentario = trim((string)($body['comentario'] ?? ''));
 $visitor_id = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($body['visitor_id'] ?? '')), 0, 64);
-$device_sig = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($body['device_sig'] ?? '')), 0, 20);
+$device_sig = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', (string)($body['device_sig'] ?? '')), 0, 120);
 
 if (!$cot_id || $stars < 1 || $stars > 5) {
     http_response_code(400);
