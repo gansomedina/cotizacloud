@@ -320,10 +320,7 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
             var inverted = window.matchMedia('(inverted-colors:inverted)').matches ? 1 : 0;
             var transp = window.matchMedia('(prefers-reduced-transparency:reduce)').matches ? 1 : 0;
             var iosM = (navigator.userAgent.match(/OS (\d+)/) || [])[1] || '0';
-            var raw = [sw,sh,dpr,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
-            var h = 0;
-            for (var i = 0; i < raw.length; i++) h = ((h << 5) - h) + raw.charCodeAt(i) | 0;
-            return Math.abs(h).toString(16).padStart(8, '0');
+            return [sw,sh,dpr,tp,maxTex,lang,tz.split('/').pop()||tz,hc,motion,contrast,inverted,transp,iosM].join('|');
         } catch(e) { return ''; }
     }
     var df = document.getElementById('dsig_field');

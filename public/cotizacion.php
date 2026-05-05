@@ -1019,7 +1019,7 @@ if ($fb_render) {
     // y si pertenece a un superadmin, igual renderizamos para testing.
     $ip_v = ip_real();
     $vid_v = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
-    $dsig_v = substr(preg_replace('/[^a-fA-F0-9]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 20);
+    $dsig_v = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', urldecode((string)($_COOKIE['cz_dsig'] ?? ''))), 0, 120);
 
     // ¿Es superadmin (por sesión o por IP/visitor/device registrado)?
     $es_super = Auth::es_superadmin();
@@ -1169,7 +1169,7 @@ if ($fb_render):
     send.disabled = true;
     try {
       var visitorId = getCookie('cz_vid');
-      var deviceSig = getCookie('cz_dsig');
+      var deviceSig = decodeURIComponent(getCookie('cz_dsig') || '');
       var r = await fetch('/api/cot-feedback', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -1549,10 +1549,7 @@ const TRACK_URL = '/api/track';
             var inverted = window.matchMedia('(inverted-colors:inverted)').matches ? 1 : 0;
             var transp = window.matchMedia('(prefers-reduced-transparency:reduce)').matches ? 1 : 0;
             var iosM = (navigator.userAgent.match(/OS (\d+)/) || [])[1] || '0';
-            var raw = [sw,sh,dpr,tp,maxTex,lang,tz,hc,motion,contrast,inverted,transp,iosM].join('|');
-            var h = 0;
-            for (var i = 0; i < raw.length; i++) h = ((h << 5) - h) + raw.charCodeAt(i) | 0;
-            return Math.abs(h).toString(16).padStart(8, '0');
+            return [sw,sh,dpr,tp,maxTex,lang,tz.split('/').pop()||tz,hc,motion,contrast,inverted,transp,iosM].join('|');
         } catch(e) { return ''; }
     }
 

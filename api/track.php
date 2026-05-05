@@ -19,7 +19,7 @@ if (empty($data) || empty($data['cotizacion_id'])) exit;
 $cot_id     = (int)$data['cotizacion_id'];
 $tipo       = preg_replace('/[^a-z0-9_]/', '', strtolower((string)($data['tipo'] ?? '')));
 $visitor_id = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($data['visitor_id'] ?? '')), 0, 64);
-$device_sig = substr(preg_replace('/[^a-fA-F0-9]/',    '', (string)($data['device_sig'] ?? '')), 0, 20);
+$device_sig = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', (string)($data['device_sig'] ?? '')), 0, 120);
 $session_id = substr(preg_replace('/[^a-zA-Z0-9\-]/',  '', (string)($data['session_id'] ?? '')), 0, 36);
 $page_id    = substr(preg_replace('/[^a-zA-Z0-9\-]/',  '', (string)($data['page_id']    ?? '')), 0, 36);
 $max_scroll = min(100, max(0, (int)($data['max_scroll'] ?? 0)));
