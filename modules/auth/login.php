@@ -333,6 +333,7 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
         slugField.value = lsGet(sk) || '';
     }
     document.getElementById('login-form').addEventListener('submit', function() {
+        try { var df2 = document.getElementById('dsig_field'); if (df2 && !df2.value) df2.value = getDeviceSig(); } catch(e) {}
         if (slugField.value) lsSet(sk, slugField.value.trim().toLowerCase());
         var btn = document.getElementById('btn-submit');
         btn.disabled = true;
