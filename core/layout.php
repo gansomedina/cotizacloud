@@ -23,7 +23,7 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
         // Aplicar SOLO a la sesión actual (identificada por su token), no a la más
         // reciente del usuario — eso causaba que un dispositivo sobrescribiera el
         // device_sig de otro dispositivo del mismo usuario.
-        $dsig_cookie = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', urldecode((string)($_COOKIE['cz_dsig'] ?? ''))), 0, 120);
+        $dsig_cookie = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 120);
         $cur_tok_layout = $_COOKIE[SESSION_NAME] ?? '';
         if ($dsig_cookie !== '' && $cur_tok_layout !== '') {
             try {
