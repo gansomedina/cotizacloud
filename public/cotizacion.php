@@ -1169,7 +1169,7 @@ if ($fb_render):
     send.disabled = true;
     try {
       var visitorId = getCookie('cz_vid');
-      var deviceSig = decodeURIComponent(getCookie('cz_dsig') || '');
+      var deviceSig = getCookie('cz_dsig') || '';
       var r = await fetch('/api/cot-feedback', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
