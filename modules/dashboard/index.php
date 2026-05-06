@@ -946,6 +946,19 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
       <div class="lb-name">
         <?= e($es['nombre']) ?>
         <div class="lb-diag"><?= e($es_diag) ?></div>
+        <?php if (Auth::es_superadmin() && $es['nivel'] !== 'nuevo'):
+          $lb_act = min(100, round((float)($es['s_activacion'] ?? 0) * 100));
+          $lb_eng = min(100, round((float)($es['s_engagement'] ?? 0) * 100));
+          $lb_seg = min(100, round((float)($es['s_seguimiento'] ?? 0) * 100));
+          $lb_hlt = min(100, round((float)($es['s_radar_health'] ?? 0) * 100));
+          $lb_con = min(100, round((float)($es['s_conversion'] ?? 0) * 100));
+        ?>
+        <div class="thermo-bars" style="margin-top:4px;max-width:220px">
+          <?php foreach ([['A',$lb_act],['E',$lb_eng],['S',$lb_seg],['P',$lb_hlt],['C',$lb_con]] as [$l,$v]): ?>
+          <div style="flex:1"><div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $v ?>%;background:<?= $v >= 60 ? '#16a34a' : ($v >= 30 ? '#d97706' : '#dc2626') ?>"></div></div><div class="thermo-bar-lbl"><?= $l ?></div></div>
+          <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
       </div>
       <?php if ($es['nivel'] !== 'nuevo'): ?>
       <div class="lb-stats">
