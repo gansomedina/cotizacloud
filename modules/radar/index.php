@@ -772,9 +772,17 @@ function render_comp_row($cv, $empresa_id, $tipo) {
         $conf_color = '#dc2626';
         $conf_desc = 'Mismo dispositivo (' . $dev_str . ') vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes, aunque las cookies cambiaron.';
     } else {
-        $conf_label = 'Media';
-        $conf_color = '#d97706';
-        $conf_desc = 'Misma IP vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes. Puede ser la misma persona o diferentes personas en la misma red (ej. Telcel rota IPs).';
+        $span_h = (int)($cv['span_horas'] ?? 0);
+        $span_dias = round($span_h / 24);
+        if ($span_h <= 168) {
+            $conf_label = 'Media';
+            $conf_color = '#d97706';
+            $conf_desc = 'Misma IP vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes en ' . ($span_dias ?: '<1') . ' día' . ($span_dias != 1 ? 's' : '') . '.';
+        } else {
+            $conf_label = 'Baja';
+            $conf_color = '#6b7280';
+            $conf_desc = 'Misma IP vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes, pero con ' . $span_dias . ' días de diferencia. Probablemente IP de carrier móvil rotada.';
+        }
     }
     $visitas_total = (int)($cv['cots_vistas'] ?? 0);
 
@@ -855,7 +863,8 @@ $comp_by_ip = DB::query(
             COUNT(DISTINCT c.cliente_id) AS clientes_distintos,
             COUNT(DISTINCT qs.cotizacion_id) AS cots_vistas,
             COUNT(DISTINCT qs.visitor_id) AS visitors_distintos,
-            MAX(qs.created_at) AS ultima_visita
+            MAX(qs.created_at) AS ultima_visita,
+            TIMESTAMPDIFF(HOUR, MIN(qs.created_at), MAX(qs.created_at)) AS span_horas
      FROM quote_sessions qs
      JOIN cotizaciones c ON c.id = qs.cotizacion_id
      WHERE c.empresa_id = ?
