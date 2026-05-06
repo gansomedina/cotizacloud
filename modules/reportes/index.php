@@ -937,6 +937,9 @@ ob_start();
         }
         $e = $lc['estado'];
         if ($e === 'convertida') $e = 'aceptada';
+        if (in_array($e, ['enviada','vista']) && !empty($lc['valida_hasta']) && $lc['valida_hasta'] < date('Y-m-d H:i:s')) {
+            $e = 'vencida';
+        }
         if (isset($est_counts[$e])) $est_counts[$e]++;
     }
     $est_info = [
@@ -990,7 +993,10 @@ ob_start();
             <td style="font-size:12px;color:var(--t3)"><?= e($lc['asesor_nombre']) ?></td>
             <?php endif; ?>
             <td class="tbl-num"><?= rp((float)$lc['total']) ?></td>
-            <td><?= estado_badge($lc['estado']) ?></td>
+            <td><?= estado_badge(
+                (in_array($lc['estado'], ['enviada','vista']) && !empty($lc['valida_hasta']) && $lc['valida_hasta'] < date('Y-m-d H:i:s'))
+                ? 'vencida' : $lc['estado']
+            ) ?></td>
             <td class="tbl-num"><?= (int)$lc['visitas'] ?></td>
             <td style="font:400 12px var(--num);color:var(--t3);white-space:nowrap">
               <?= date('d/m/Y', strtotime($lc['created_at'])) ?>
