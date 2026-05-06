@@ -587,27 +587,31 @@ class ActividadScore
         //  Feedback del Radar: tarea (dar) + examen (calidad)
         // ═══════════════════════════════════════════════════
 
-        // Cotizaciones en buckets calientes del vendedor
+        // Cotizaciones que FUERON calientes en el período (bucket_transitions)
+        // Incluye las que se enfriaron o aceptaron — el asesor debía dar feedback
         $hot_buckets_sql = "('probable_cierre','onfire','inminente','validando_precio','prediccion_alta')";
         $cots_calientes = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
-             AND radar_bucket IN $hot_buckets_sql
-             AND estado IN ('enviada','vista')",
-            [$usuario_id, $empresa_id]
+            "SELECT COUNT(DISTINCT bt.cotizacion_id)
+             FROM bucket_transitions bt
+             JOIN cotizaciones c ON c.id = bt.cotizacion_id
+             WHERE COALESCE(c.vendedor_id, c.usuario_id) = ? AND c.empresa_id = ?
+               AND bt.bucket_nuevo IN $hot_buckets_sql
+               AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+               AND c.suspendida = 0",
+            [$usuario_id, $empresa_id, $periodo]
         );
 
-        // Feedback dado por el vendedor — solo cuenta si:
-        // 1. La cotización sigue activa (enviada/vista), o
-        // 2. El feedback se dio ANTES de que se aceptara
+        // Feedback dado — incluye cotizaciones que ya perdieron bucket o fueron aceptadas
         $fb_data = DB::query(
             "SELECT rf.cotizacion_id, rf.tipo, c.estado,
                     c.ultima_vista_at, rf.created_at AS fb_at, c.aceptada_at
              FROM radar_feedback rf
              JOIN cotizaciones c ON c.id = rf.cotizacion_id
              WHERE rf.usuario_id=? AND rf.empresa_id=?
-             AND c.radar_bucket IN $hot_buckets_sql
-             AND (c.estado IN ('enviada','vista')
-                  OR (c.aceptada_at IS NOT NULL AND rf.created_at < c.aceptada_at))",
+             AND EXISTS (
+                SELECT 1 FROM bucket_transitions bt
+                WHERE bt.cotizacion_id = c.id AND bt.bucket_nuevo IN $hot_buckets_sql
+             )",
             [$usuario_id, $empresa_id]
         );
 
@@ -678,10 +682,14 @@ class ActividadScore
         $radar_why_score = 1.0;
         if ($cots_calientes > 0) {
             $calientes_ids = DB::query(
-                "SELECT id FROM cotizaciones WHERE $cw $no_susp
-                 AND radar_bucket IN $hot_buckets_sql
-                 AND estado IN ('enviada','vista')",
-                [$usuario_id, $empresa_id]
+                "SELECT DISTINCT bt.cotizacion_id AS id
+                 FROM bucket_transitions bt
+                 JOIN cotizaciones c ON c.id = bt.cotizacion_id
+                 WHERE COALESCE(c.vendedor_id, c.usuario_id) = ? AND c.empresa_id = ?
+                   AND bt.bucket_nuevo IN $hot_buckets_sql
+                   AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                   AND c.suspendida = 0",
+                [$usuario_id, $empresa_id, $periodo]
             );
             if (!empty($calientes_ids)) {
                 $ids_list = implode(',', array_map(fn($r) => (int)$r['id'], $calientes_ids));
