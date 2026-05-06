@@ -320,7 +320,7 @@ $por_vencer = DB::query(
 $sin_abrir_list = DB::query(
     "SELECT c.id, c.titulo, c.numero, c.enviada_at, c.total, c.valida_hasta,
             cl.nombre AS cliente_nombre,
-            DATEDIFF(CURDATE(), DATE(c.enviada_at)) AS dias_sin_abrir
+            DATEDIFF(CURDATE(), DATE(COALESCE(c.enviada_at, c.created_at))) AS dias_sin_abrir
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
      WHERE c.empresa_id=? AND c.estado='enviada' AND c.suspendida = 0
