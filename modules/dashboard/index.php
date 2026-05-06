@@ -254,8 +254,7 @@ $sin_abrir = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones c
      WHERE c.empresa_id=? AND estado='enviada' AND c.suspendida = 0
        AND vista_at IS NULL AND c.created_at BETWEEN ? AND ?
-       AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-       AND (c.valida_hasta IS NULL OR c.valida_hasta >= NOW()) $c_where",
+       AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where",
     [$empresa_id, $desde, $hasta]
 );
 
@@ -319,15 +318,14 @@ $por_vencer = DB::query(
 
 // Sin abrir (enviadas, estado 'enviada', sin vista_at)
 $sin_abrir_list = DB::query(
-    "SELECT c.id, c.titulo, c.numero, c.enviada_at, c.total,
+    "SELECT c.id, c.titulo, c.numero, c.enviada_at, c.total, c.valida_hasta,
             cl.nombre AS cliente_nombre,
             DATEDIFF(CURDATE(), DATE(c.enviada_at)) AS dias_sin_abrir
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
      WHERE c.empresa_id=? AND c.estado='enviada' AND c.suspendida = 0
        AND c.vista_at IS NULL AND c.enviada_at IS NOT NULL
-       AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-       AND (c.valida_hasta IS NULL OR c.valida_hasta >= NOW()) $c_where
+       AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where
      ORDER BY c.enviada_at ASC LIMIT 6",
     [$empresa_id]
 );
@@ -1264,7 +1262,7 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
     <a href="/cotizaciones/<?= (int)$sa['id'] ?>" class="alert-row">
       <div class="alert-info">
         <div class="alert-name"><?= e($sa['cliente_nombre'] ?? '—') ?></div>
-        <div class="alert-meta"><?= e(mb_substr($sa['titulo'],0,45)) ?> · <?= e($sa['numero']) ?></div>
+        <div class="alert-meta"><?= e(mb_substr($sa['titulo'],0,45)) ?> · <?= e($sa['numero']) ?><?php if (!empty($sa['valida_hasta']) && $sa['valida_hasta'] < date('Y-m-d H:i:s')): ?> <span style="background:#fef3c7;color:#92400e;font:700 8px var(--body);padding:1px 5px;border-radius:3px">VENCIDA</span><?php endif; ?></div>
       </div>
       <div class="alert-r">
         <div class="alert-monto"><?= fmt_dash((float)$sa['total']) ?></div>
