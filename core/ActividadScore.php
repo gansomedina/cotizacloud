@@ -211,23 +211,27 @@ class ActividadScore
         // Dormidas: solo las NO suspendidas. Si se suspendió antes de 14d/21d,
         // ya no escala la penalización. El penalty de 7d se limpia solo al salir
         // de la ventana de 30 días.
-        // Dormidas: sin límite de ventana — penalizan mientras sigan sin abrir
+        // Dormidas: vistas por el cliente pero sin progreso en el radar
+        // (sin bucket, o bucket estancado sin movimiento en 7/14/21 días)
         $dormidas_7d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
-             AND estado='enviada' AND visitas=0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)",
+             AND estado IN ('enviada','vista') AND visitas > 0
+             AND (radar_bucket IS NULL
+                  OR radar_updated_at < DATE_SUB(NOW(), INTERVAL 7 DAY))",
             [$usuario_id, $empresa_id]
         );
         $dormidas_14d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
-             AND estado='enviada' AND visitas=0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)",
+             AND estado IN ('enviada','vista') AND visitas > 0
+             AND (radar_bucket IS NULL
+                  OR radar_updated_at < DATE_SUB(NOW(), INTERVAL 14 DAY))",
             [$usuario_id, $empresa_id]
         );
         $dormidas_21d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
-             AND estado='enviada' AND visitas=0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 21 DAY)",
+             AND estado IN ('enviada','vista') AND visitas > 0
+             AND (radar_bucket IS NULL
+                  OR radar_updated_at < DATE_SUB(NOW(), INTERVAL 21 DAY))",
             [$usuario_id, $empresa_id]
         );
         $cierres_total = (int)DB::val(
