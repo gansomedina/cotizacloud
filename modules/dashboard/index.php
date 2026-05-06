@@ -214,18 +214,23 @@ $ventas_sin_pago = DB::query(
 
 $funnel = DB::row(
     "SELECT
-        COUNT(*) AS total,
+        COUNT(DISTINCT c.id) AS total,
         SUM(estado NOT IN ('borrador') AND suspendida = 0) AS enviadas,
         SUM(estado IN ('vista','aceptada','rechazada','vencida','convertida') AND suspendida = 0) AS abiertas,
-        SUM(estado IN ('aceptada','convertida')) AS cerradas,
         SUM(estado = 'rechazada') AS rechazadas,
         SUM(suspendida = 1) AS suspendidas
      FROM cotizaciones c
      WHERE c.empresa_id = ? AND c.created_at BETWEEN ? AND ? $c_where",
     [$empresa_id, $desde, $hasta]
 );
+$funnel['cerradas'] = (int)DB::val(
+    "SELECT COUNT(*) FROM cotizaciones c
+     WHERE c.empresa_id = ? AND estado IN ('aceptada','convertida') AND COALESCE(suspendida,0)=0
+       AND aceptada_at BETWEEN ? AND ? $c_where",
+    [$empresa_id, $desde, $hasta]
+);
 
-// Tasa de cierre = cerradas / enviadas (no sobre total con borradores)
+// Tasa de cierre = cerradas (por aceptada_at) / enviadas (por created_at)
 $base_conversion = max(1, (int)$funnel['enviadas']);
 $tasa_cierre = $funnel['enviadas'] > 0
     ? round(($funnel['cerradas'] / $funnel['enviadas']) * 100, 1)
@@ -249,7 +254,8 @@ $sin_abrir = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones c
      WHERE c.empresa_id=? AND estado='enviada' AND c.suspendida = 0
        AND vista_at IS NULL AND c.created_at BETWEEN ? AND ?
-       AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where",
+       AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       AND (c.valida_hasta IS NULL OR c.valida_hasta >= NOW()) $c_where",
     [$empresa_id, $desde, $hasta]
 );
 
@@ -320,7 +326,8 @@ $sin_abrir_list = DB::query(
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
      WHERE c.empresa_id=? AND c.estado='enviada' AND c.suspendida = 0
        AND c.vista_at IS NULL AND c.enviada_at IS NOT NULL
-       AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where
+       AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+       AND (c.valida_hasta IS NULL OR c.valida_hasta >= NOW()) $c_where
      ORDER BY c.enviada_at ASC LIMIT 6",
     [$empresa_id]
 );

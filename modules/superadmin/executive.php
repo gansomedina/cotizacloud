@@ -192,12 +192,13 @@ foreach ($rows as $r) $ve_ant[(int)$r['empresa_id']] = $r;
 $ce = [];
 foreach ($empresas_cfg as $_eid => $_ec) $ce[$_eid] = ['total' => 0, 'aceptadas' => 0];
 $rows = DB::query(
-    "SELECT empresa_id, COUNT(*) AS total
+    "SELECT empresa_id, COUNT(DISTINCT id) AS total
      FROM cotizaciones WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
        AND estado != 'borrador'
-       AND created_at BETWEEN ? AND ?
+       AND (created_at BETWEEN ? AND ?
+            OR (estado IN ('aceptada','convertida') AND aceptada_at BETWEEN ? AND ?))
      GROUP BY empresa_id",
-    [$p_ini_dt, $p_fin_dt]
+    [$p_ini_dt, $p_fin_dt, $p_ini_dt, $p_fin_dt]
 );
 foreach ($rows ?: [] as $r) $ce[(int)$r['empresa_id']]['total'] = (int)$r['total'];
 $rows_ace = DB::query(
