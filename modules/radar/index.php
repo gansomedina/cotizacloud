@@ -734,6 +734,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
                 SUBSTRING_INDEX(GROUP_CONCAT(c.titulo ORDER BY qs.created_at DESC SEPARATOR '|||'), '|||', 1) AS cotizacion,
                 MAX(qs.created_at) AS ultima_vista,
                 COUNT(DISTINCT c.id) AS num_cots,
+                SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT qs.ip ORDER BY qs.created_at DESC SEPARATOR ', '), ', ', 3) AS ips,
                 SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT SUBSTRING(qs.user_agent, 1, 120) SEPARATOR '|||'), '|||', 5) AS ua_list
          FROM quote_sessions qs
          JOIN cotizaciones c ON c.id = qs.cotizacion_id
@@ -798,7 +799,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
             <div style="display:flex;align-items:center;gap:8px">
                 <span style="font:700 12px var(--body);color:#991b1b"><?= $dev_str ?></span>
                 <span style="background:<?= $conf_color ?>;color:#fff;padding:1px 7px;border-radius:4px;font:700 9px var(--body);letter-spacing:.03em"><?= $conf_label ?></span>
-                <span style="font:500 11px var(--num);color:#7f1d1d"><?= (int)$cv['clientes_distintos'] ?> clientes · <?= $visitas_total ?> cots</span>
+                <span style="font:500 11px var(--num);color:#7f1d1d"><?= (int)$cv['clientes_distintos'] ?> clientes · <?= $visitas_total ?> cots<?php if ($tipo === 'ip'): ?> · IP: <?= e($cv['ip']) ?><?php endif; ?></span>
             </div>
             <button onclick="compAction('review','<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Ya revisé, limpiar">✓ Revisado</button>
         </div>
@@ -813,7 +814,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
         <?php foreach ($cv_detail as $det): ?>
         <div style="display:flex;justify-content:space-between;padding:3px 0;font:400 12px var(--body);color:#7f1d1d;border-bottom:1px solid rgba(252,165,165,.3)">
             <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e(mb_substr($det['cotizacion'],0,40)) ?><?= (int)($det['num_cots'] ?? 1) > 1 ? ' <span style="opacity:.6">(+'.(($det['num_cots'])-1).' cots)</span>' : '' ?></span>
-            <span style="font-family:var(--num);flex-shrink:0;margin-left:8px"><?= date('d/m H:i', strtotime($det['ultima_vista'])) ?></span>
+            <span style="font-family:var(--num);flex-shrink:0;margin-left:8px"><?php if (!empty($det['ips'])): ?><span style="opacity:.5;margin-right:6px"><?= e($det['ips']) ?></span><?php endif; ?><?= date('d/m H:i', strtotime($det['ultima_vista'])) ?></span>
         </div>
         <?php endforeach; ?>
     </div>

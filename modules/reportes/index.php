@@ -129,12 +129,17 @@ $margen_pct   = $ingresos > 0 ? round($utilidad_bruta / $ingresos * 100, 1) : 0;
 $kfc = DB::row(
     "SELECT
         SUM(estado NOT IN ('borrador') AND suspendida = 0)            AS total,
-        SUM(CASE WHEN estado='aceptada' OR estado='convertida' THEN 1 ELSE 0 END) AS aceptadas,
         SUM(CASE WHEN estado='rechazada' THEN 1 ELSE 0 END)          AS rechazadas,
         SUM(CASE WHEN estado IN ('enviada','vista') AND suspendida = 0 THEN 1 ELSE 0 END) AS activas,
         COALESCE(SUM(CASE WHEN estado NOT IN ('borrador') AND suspendida = 0 THEN total ELSE 0 END), 0) AS monto_total
      FROM cotizaciones c
      WHERE empresa_id=? AND created_at BETWEEN ? AND ? $usr_filter_c",
+    [$empresa_id, $f_ini_dt, $f_fin_dt]
+);
+$kfc['aceptadas'] = (int)DB::val(
+    "SELECT COUNT(*) FROM cotizaciones c
+     WHERE empresa_id=? AND estado IN ('aceptada','convertida') AND COALESCE(suspendida,0)=0
+       AND aceptada_at BETWEEN ? AND ? $usr_filter_c",
     [$empresa_id, $f_ini_dt, $f_fin_dt]
 );
 $tasa_conv = ($kfc['total'] ?? 0) > 0
@@ -190,7 +195,7 @@ if ($es_admin) {
                 COALESCE(sv.ingresos, 0)    AS ingresos,
                 COALESCE(sv.costos, 0)      AS costos,
                 COALESCE(sc.num_cots, 0)    AS num_cots,
-                COALESCE(sc.aceptadas, 0)   AS aceptadas
+                COALESCE(sa.aceptadas, 0)   AS aceptadas
          FROM usuarios u
          LEFT JOIN (
              SELECT COALESCE(v.vendedor_id, v.usuario_id) AS vid,
@@ -209,15 +214,23 @@ if ($es_admin) {
          ) sv ON sv.vid = u.id
          LEFT JOIN (
              SELECT COALESCE(c.vendedor_id, c.usuario_id) AS vid,
-                    COUNT(*)              AS num_cots,
-                    SUM(CASE WHEN c.estado IN ('aceptada','convertida') THEN 1 ELSE 0 END) AS aceptadas
+                    COUNT(*)              AS num_cots
              FROM cotizaciones c
              WHERE c.empresa_id=? AND c.created_at BETWEEN ? AND ?
              GROUP BY vid
          ) sc ON sc.vid = u.id
+         LEFT JOIN (
+             SELECT COALESCE(c.vendedor_id, c.usuario_id) AS vid,
+                    COUNT(*) AS aceptadas
+             FROM cotizaciones c
+             WHERE c.empresa_id=? AND estado IN ('aceptada','convertida')
+               AND aceptada_at BETWEEN ? AND ?
+             GROUP BY vid
+         ) sa ON sa.vid = u.id
          WHERE u.empresa_id=? AND u.activo=1
          ORDER BY ingresos DESC",
         [$empresa_id, $empresa_id, $f_ini_dt, $f_fin_dt,
+         $empresa_id, $f_ini_dt, $f_fin_dt,
          $empresa_id, $f_ini_dt, $f_fin_dt,
          $empresa_id]
     );
