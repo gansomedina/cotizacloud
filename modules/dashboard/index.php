@@ -318,15 +318,15 @@ $por_vencer = DB::query(
 
 // Sin abrir (enviadas, estado 'enviada', sin vista_at)
 $sin_abrir_list = DB::query(
-    "SELECT c.id, c.titulo, c.numero, c.enviada_at, c.total, c.valida_hasta,
+    "SELECT c.id, c.titulo, c.numero, c.created_at, c.total, c.valida_hasta,
             cl.nombre AS cliente_nombre,
-            DATEDIFF(CURDATE(), DATE(COALESCE(c.enviada_at, c.created_at))) AS dias_sin_abrir
+            DATEDIFF(CURDATE(), DATE(c.created_at)) AS dias_sin_abrir
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
      WHERE c.empresa_id=? AND c.estado='enviada' AND c.suspendida = 0
-       AND c.vista_at IS NULL AND c.enviada_at IS NOT NULL
+       AND c.vista_at IS NULL
        AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where
-     ORDER BY c.enviada_at ASC LIMIT 6",
+     ORDER BY c.created_at ASC LIMIT 6",
     [$empresa_id]
 );
 
