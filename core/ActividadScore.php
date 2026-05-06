@@ -211,27 +211,28 @@ class ActividadScore
         // Dormidas: solo las NO suspendidas. Si se suspendió antes de 14d/21d,
         // ya no escala la penalización. El penalty de 7d se limpia solo al salir
         // de la ventana de 30 días.
-        // Dormidas: vistas por el cliente pero sin progreso en el radar
-        // (sin bucket, o bucket estancado sin movimiento en 7/14/21 días)
+        // Dormidas: vistas por el cliente pero sin actividad reciente
+        // Usa ultima_vista_at (última vez que el cliente abrió) para medir inactividad
+        // Límite 60 días para no penalizar cotizaciones antiguas olvidadas
         $dormidas_7d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado IN ('enviada','vista') AND visitas > 0
-             AND (radar_bucket IS NULL
-                  OR radar_updated_at < DATE_SUB(NOW(), INTERVAL 7 DAY))",
+             AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
+             AND COALESCE(ultima_vista_at, created_at) < DATE_SUB(NOW(), INTERVAL 7 DAY)",
             [$usuario_id, $empresa_id]
         );
         $dormidas_14d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado IN ('enviada','vista') AND visitas > 0
-             AND (radar_bucket IS NULL
-                  OR radar_updated_at < DATE_SUB(NOW(), INTERVAL 14 DAY))",
+             AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
+             AND COALESCE(ultima_vista_at, created_at) < DATE_SUB(NOW(), INTERVAL 14 DAY)",
             [$usuario_id, $empresa_id]
         );
         $dormidas_21d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado IN ('enviada','vista') AND visitas > 0
-             AND (radar_bucket IS NULL
-                  OR radar_updated_at < DATE_SUB(NOW(), INTERVAL 21 DAY))",
+             AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
+             AND COALESCE(ultima_vista_at, created_at) < DATE_SUB(NOW(), INTERVAL 21 DAY)",
             [$usuario_id, $empresa_id]
         );
         $cierres_total = (int)DB::val(
@@ -460,11 +461,12 @@ class ActividadScore
         $asignadas_validas = max($cot_asignadas, 1);
         $tasa_apertura = $cot_vistas / $asignadas_validas;
 
-        // No abiertas en 5+ días — sin límite de ventana, penaliza mientras existan
+        // No abiertas en 5+ días, máximo 60 días de antigüedad
         $no_abiertas_5d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado='enviada' AND visitas=0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)",
+             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)
+             AND created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)",
             [$usuario_id, $empresa_id]
         );
 
