@@ -776,6 +776,22 @@ function render_comp_row($cv, $empresa_id, $tipo) {
         $conf_desc = 'Misma IP vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes. Puede ser la misma persona o diferentes personas en la misma red (ej. Telcel rota IPs).';
     }
     $visitas_total = (int)($cv['cots_vistas'] ?? 0);
+
+    // Cruzar device_sigs de estas quote_sessions contra user_sessions de asesores
+    $asesor_match = DB::query(
+        "SELECT DISTINCT u.nombre, u.email
+         FROM quote_sessions qs
+         JOIN cotizaciones c ON c.id = qs.cotizacion_id
+         JOIN user_sessions us ON us.device_sig = qs.device_sig
+           AND us.empresa_id = c.empresa_id
+           AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+         JOIN usuarios u ON u.id = us.usuario_id
+         WHERE {$where_main} = ? AND c.empresa_id = ?
+           AND qs.device_sig IS NOT NULL AND qs.device_sig != ''
+           AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
+         LIMIT 3",
+        [$param_val, $empresa_id]
+    );
     ?>
     <div class="comp-row" data-comp-key="<?= $safe_key ?>" style="background:#fee2e2;border-radius:8px;padding:10px 14px;margin-bottom:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
@@ -787,6 +803,13 @@ function render_comp_row($cv, $empresa_id, $tipo) {
             <button onclick="compAction('review','<?= $dismiss_tipo ?>','<?= e($dismiss_val) ?>',this)" style="background:none;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;font:500 10px var(--body);color:#991b1b;cursor:pointer" title="Ya revisé, limpiar">✓ Revisado</button>
         </div>
         <div style="font:400 11px var(--body);color:#991b1b;opacity:.75;margin-bottom:6px"><?= $conf_desc ?></div>
+        <?php if ($asesor_match): ?>
+        <?php foreach ($asesor_match as $am): ?>
+        <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:5px 10px;margin-bottom:6px;font:600 11px var(--body);color:#92400e">
+            ⚡ Posible asesor: device_sig coincide con <?= e($am['nombre']) ?> (<?= e($am['email']) ?>)
+        </div>
+        <?php endforeach; ?>
+        <?php endif; ?>
         <?php foreach ($cv_detail as $det): ?>
         <div style="display:flex;justify-content:space-between;padding:3px 0;font:400 12px var(--body);color:#7f1d1d;border-bottom:1px solid rgba(252,165,165,.3)">
             <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e(mb_substr($det['cotizacion'],0,40)) ?><?= (int)($det['num_cots'] ?? 1) > 1 ? ' <span style="opacity:.6">(+'.(($det['num_cots'])-1).' cots)</span>' : '' ?></span>
