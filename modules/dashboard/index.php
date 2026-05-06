@@ -986,7 +986,8 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
       <div style="display:none;padding:6px 0;font:400 11px var(--num);color:var(--t2);line-height:1.7">
         <div class="dbg-row"><span class="dbg-lbl">Activación (8%)</span><span class="dbg-val"><?= round(($es['s_activacion'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  operativa</span><span class="dbg-val"><?= round(($es['s_activacion_op'] ?? 0) * 100, 1) ?>%</span></div>
-        <div class="dbg-row"><span class="dbg-lbl">  tips <?= (int)($es['dias_lectura'] ?? 0) ?>/<?= (int)($es['dias_activos'] ?? 0) ?>d</span><span class="dbg-val"><?= round(($es['tips_score'] ?? 1) * 100) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  pen dormidas</span><span class="dbg-val dbg-neg"><?= ($es['pen_dormidas'] ?? 0) > 0 ? '-'.round(($es['pen_dormidas'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  tips <?= (int)($es['dias_lectura'] ?? 0) ?>/<?= (int)($es['dias_activos_feature'] ?? $es['dias_activos'] ?? 0) ?>d</span><span class="dbg-val"><?= round(($es['tips_score'] ?? 1) * 100) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Engagement (17%)</span><span class="dbg-val"><?= round(($es['s_engagement'] ?? 0) * 100, 1) ?>%</span></div>
         <?php
         $dbg_seg_val = round(($es['s_seguimiento'] ?? 0) * 100, 1);
