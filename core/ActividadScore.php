@@ -460,13 +460,12 @@ class ActividadScore
         $asignadas_validas = max($cot_asignadas, 1);
         $tasa_apertura = $cot_vistas / $asignadas_validas;
 
-        // No abiertas en 5+ días, dentro de la ventana del período
+        // No abiertas en 5+ días — sin ventana, penaliza mientras siga sin abrir
         $no_abiertas_5d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
              AND estado='enviada' AND visitas=0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $empresa_id, $periodo]
+             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)",
+            [$usuario_id, $empresa_id]
         );
 
         // Penalización por no abiertas: usa 1/close_rate (fuerte, auto-ajustable)
