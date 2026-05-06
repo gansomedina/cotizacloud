@@ -29,7 +29,7 @@ $empresa = Auth::empresa();
 DB::beginTransaction();
 try {
     DB::execute(
-        "UPDATE cotizaciones SET estado='enviada', enviada_at=NOW() WHERE id=?",
+        "UPDATE cotizaciones SET estado='enviada', enviada_at=COALESCE(enviada_at, NOW()) WHERE id=?",
         [$cot_id]
     );
     DB::execute(
