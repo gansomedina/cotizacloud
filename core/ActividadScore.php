@@ -240,14 +240,19 @@ class ActividadScore
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
-        // Cierres con apoyo del Radar: bucket NOT NULL Y != 'no_abierta'.
-        // Una cot 'no_abierta' aceptada significa que el asesor cerró en vivo
-        // (sin que el cliente abriera el slug) — eso no es apoyo del Radar.
+        // Cierres con apoyo del Radar: cotización tuvo algún bucket real en su historial.
+        // Checa bucket_transitions porque radar_bucket se borra al aceptar.
+        // Excluye 'no_abierta' — cierre en vivo sin que el cliente usara el slug.
         $cierres_bucket = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
-             AND estado IN ('aceptada','convertida','aceptada_cliente')
-             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND radar_bucket IS NOT NULL AND radar_bucket != 'no_abierta'",
+            "SELECT COUNT(*) FROM cotizaciones c WHERE $cw $no_import
+             AND c.estado IN ('aceptada','convertida','aceptada_cliente')
+             AND c.accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND EXISTS (
+                SELECT 1 FROM bucket_transitions bt
+                WHERE bt.cotizacion_id = c.id
+                  AND bt.bucket_nuevo IS NOT NULL
+                  AND bt.bucket_nuevo != 'no_abierta'
+             )",
             [$usuario_id, $empresa_id, $periodo]
         );
         $cierres_sin_dto = (int)DB::val(
@@ -431,8 +436,14 @@ class ActividadScore
         $health_down = (int)round($health_down_pts);
 
         // Puntos de cierre ponderados por bucket y descuento
+        // Usa último bucket real de bucket_transitions (radar_bucket se borra al aceptar)
         $cierres_con_bucket = DB::query(
-            "SELECT c.radar_bucket,
+            "SELECT COALESCE(
+                        (SELECT bt.bucket_nuevo FROM bucket_transitions bt
+                         WHERE bt.cotizacion_id = c.id AND bt.bucket_nuevo IS NOT NULL AND bt.bucket_nuevo != 'no_abierta'
+                         ORDER BY bt.created_at DESC LIMIT 1),
+                        c.radar_bucket
+                    ) AS radar_bucket,
                     COALESCE(c.cupon_pct, 0) AS cupon_pct,
                     COALESCE(c.descuento_auto_pct, 0) AS dto_auto_pct
              FROM cotizaciones c
@@ -1328,7 +1339,12 @@ class ActividadScore
             $frases[] = "$tc. Cerraste $cierres de $vist cotizaciones vistas.";
         }
 
-        // ═══ 2. VOLUMEN / RADAR ═══
+        // ═══ 2. SIN ABRIR / DORMIDAS (prioridad alta, no deben cortarse) ═══
+        if ($sin_abrir > 0) $frases[] = "$sin_abrir cotización" . ($sin_abrir > 1 ? 'es' : '') . " sin abrir.";
+        if ($nab > 0) $frases[] = "⚠️ $nab cotización" . ($nab > 1 ? 'es' : '') . " sin abrir en más de 5 días — penaliza tu score.";
+        if ($dorm > 0) $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " donde el cliente no regresa en 7+ días.";
+
+        // ═══ 3. VOLUMEN / RADAR ═══
         if ($pocos_cierres && $score < 80) {
             $v = ["Solo $cierres venta" . ($cierres > 1 ? 's' : '') . " de $vist cotizaciones abiertas — el volumen de cierre necesita subir.", "$sin_cerrar clientes vieron tu propuesta y no compraron."];
             $frases[] = $v[$rot % count($v)];
@@ -1371,11 +1387,6 @@ class ActividadScore
         } elseif ($h_up > $h_down && $h_up >= 3) {
             $frases[] = "$h_up clientes con actividad en aumento en el Radar.";
         }
-
-        // ═══ 5. SIN ABRIR / DORMIDAS ═══
-        if ($sin_abrir > 0) $frases[] = "$sin_abrir cotización" . ($sin_abrir > 1 ? 'es' : '') . " sin abrir.";
-        if ($nab > 0) $frases[] = "⚠️ $nab cotización" . ($nab > 1 ? 'es' : '') . " sin abrir en más de 5 días — penaliza tu score.";
-        if ($dorm > 0) $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " donde el cliente no regresa en 7+ días.";
 
         // ═══ 6. HISTÓRICO ═══
         if ($cierre_hist_abajo && $score < 70) $frases[] = "Tu cierre está por debajo del promedio anual de la empresa.";
