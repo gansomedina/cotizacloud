@@ -330,7 +330,8 @@ class ActividadScore
             [$usuario_id]
         );
         if (!$first_tip_expand) {
-            $tips_score = 0.0; // Asesor nunca expandió — penaliza
+            $tips_score = 0.0;
+            $dias_activos_feature = 0;
         } else {
             // Auto-calibrado: contar solo días activos DESDE que vio la feature.
             $dias_activos_feature = (int)DB::val(
