@@ -992,12 +992,13 @@ class ActividadScore
               carga_activa, cot_asignadas, cot_vistas, cot_dormidas,
               cierres_bucket, cierres_sin_dto, transiciones_up, senales_ignoradas,
               radar_views, radar_benchmark, tasa_cierre, ventas_sin_pago, ventas_periodo, bench_ventas,
+              no_abiertas_5d, pen_no_abiertas,
               s_activacion, s_activacion_op, tips_score, dias_lectura, radar_why_score, calientes_exploradas, s_engagement, eng_pen_sin_pago, eng_pen_descuento, eng_pen_enfriamiento, eng_pen_bajo_benchmark,
               s_seguimiento, s_radar_health, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
               momentum, percentil)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -1008,6 +1009,7 @@ class ActividadScore
               transiciones_up=VALUES(transiciones_up), senales_ignoradas=VALUES(senales_ignoradas),
               radar_views=VALUES(radar_views), radar_benchmark=VALUES(radar_benchmark),
               tasa_cierre=VALUES(tasa_cierre), ventas_sin_pago=VALUES(ventas_sin_pago), ventas_periodo=VALUES(ventas_periodo), bench_ventas=VALUES(bench_ventas),
+              no_abiertas_5d=VALUES(no_abiertas_5d), pen_no_abiertas=VALUES(pen_no_abiertas),
               s_activacion=VALUES(s_activacion), s_activacion_op=VALUES(s_activacion_op), tips_score=VALUES(tips_score), dias_lectura=VALUES(dias_lectura),
               radar_why_score=VALUES(radar_why_score), calientes_exploradas=VALUES(calientes_exploradas),
               s_engagement=VALUES(s_engagement),
@@ -1028,6 +1030,7 @@ class ActividadScore
                 $carga_activa, $cot_asignadas, $cot_vistas, $dormidas_7d,
                 $cierres_bucket, $cierres_sin_dto, $health_up, $health_down,
                 $fb_total, round($cots_calientes, 1), round($tasa_cierre, 3), $ventas_sin_pago, $ventas_totales, round($bench_ventas, 1),
+                $no_abiertas_5d, round($pen_no_abiertas, 3),
                 round($s_activacion, 3), round($s_activacion_op, 3), round($tips_score, 2), $dias_lectura,
                 round($radar_why_score, 2), $calientes_exploradas,
                 round($s_engagement, 3),
