@@ -631,7 +631,7 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
 (function(){
     try {
         var sw=Math.min(screen.width,screen.height),sh=Math.max(screen.width,screen.height);
-        var dpr=window.devicePixelRatio||1,tp=navigator.maxTouchPoints||0;
+        var dpr=Math.round((window.devicePixelRatio||1)*100)/100,tp=navigator.maxTouchPoints||0;
         var maxTex=0;try{var c=document.createElement('canvas'),gl=c.getContext('webgl');if(gl)maxTex=gl.getParameter(gl.MAX_TEXTURE_SIZE)||0;}catch(e){}
         var lang=navigator.language||'',tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
         var hc=Intl.DateTimeFormat().resolvedOptions().hourCycle||'';
