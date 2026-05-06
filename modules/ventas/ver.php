@@ -321,6 +321,7 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
 /* ── PRINT ── */
 .print-only{display:none}
 .recibo-print-only{display:none}
+.edocuenta-print-only{display:none}
 .modal-overlay{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);align-items:flex-end;justify-content:center}
 .modal-overlay.open{display:flex}
 @media print{
@@ -335,6 +336,9 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
   body.modo-recibo .venta-print-only,
   body.modo-recibo .print-only:not(#recibo-print-tpl){display:none!important}
   body.modo-recibo #recibo-print-tpl{display:block!important}
+  body.modo-edocuenta .venta-print-only,
+  body.modo-edocuenta .print-only:not(#edocuenta-print){display:none!important}
+  body.modo-edocuenta #edocuenta-print{display:block!important}
   body{background:#fff;margin:0;padding:0}
   #main{margin-left:0!important;height:auto!important;overflow:visible!important}
   #content{padding:0!important;overflow:visible!important}
@@ -412,6 +416,45 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
     .fac-footer-l,.fac-footer-r{font:400 8.5pt var(--body);color:#444;line-height:1.5}
     .fac-footer-r{text-align:right}
     .fac-nota{font:400 8pt var(--body);color:#555;margin-top:4pt}
+    /* ── Estado de cuenta ── */
+    .edc{font:400 10pt var(--body);color:#222}
+    .edc-header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10pt;border-bottom:2pt solid #222;margin-bottom:14pt}
+    .edc-emp{font:800 17pt var(--body);letter-spacing:-.02em}
+    .edc-emp-sub{font:400 9pt var(--body);color:#555;margin-top:2pt;line-height:1.5}
+    .edc-tipo{font:300 20pt var(--body);text-align:right;color:#222}
+    .edc-folio{font:400 9pt var(--num);color:#555;text-align:right;margin-top:2pt}
+    .edc-info{display:flex;gap:0;border:1pt solid #ccc;border-radius:3pt;margin-bottom:16pt}
+    .edc-info-cell{flex:1;padding:7pt 10pt;border-right:1pt solid #ccc}
+    .edc-info-cell:last-child{border-right:none}
+    .edc-info-lbl{font:700 7pt var(--body);letter-spacing:.07em;text-transform:uppercase;color:#555;margin-bottom:2pt}
+    .edc-info-val{font:600 10pt var(--body)}
+    .edc-section{margin-bottom:14pt}
+    .edc-section-title{font:700 9pt var(--body);letter-spacing:.06em;text-transform:uppercase;color:#555;padding-bottom:4pt;border-bottom:1pt solid #ccc;margin-bottom:6pt}
+    .edc-tbl{width:100%;border-collapse:collapse}
+    .edc-tbl th{font:700 8pt var(--body);letter-spacing:.06em;text-transform:uppercase;padding:4pt 6pt;text-align:left;border-bottom:1.5pt solid #222}
+    .edc-tbl th.r{text-align:right}
+    .edc-tbl td{padding:5pt 6pt;border-bottom:.5pt solid #ddd;font:400 10pt var(--body);vertical-align:top}
+    .edc-tbl td.r{text-align:right;font-family:var(--num)}
+    .edc-tbl td.name{font-weight:600}
+    .edc-tbl tr.subtotal-row td{border-top:1pt solid #999;border-bottom:none;font-weight:700;padding-top:6pt}
+    .edc-tbl tr.extra-row td{color:#92400e}
+    .edc-tbl tr.pago-row td{color:#166534}
+    .edc-tbl tr.pago-row td.r{color:#166534}
+    .edc-resumen{width:260pt;margin-left:auto;margin-top:16pt;border:1.5pt solid #222;border-radius:4pt;overflow:hidden}
+    .edc-res-row{display:flex;justify-content:space-between;padding:6pt 10pt;border-bottom:.5pt solid #ddd}
+    .edc-res-row:last-child{border-bottom:none}
+    .edc-res-row.total{background:#f8fafc;border-bottom:1pt solid #ccc}
+    .edc-res-row.total .edc-res-lbl,.edc-res-row.total .edc-res-val{font-weight:800;font-size:12pt}
+    .edc-res-row.pendiente{background:#fef2f2}
+    .edc-res-row.pendiente .edc-res-val{color:#dc2626;font-weight:800;font-size:12pt}
+    .edc-res-row.pagado-row{background:#f0fdf4}
+    .edc-res-row.pagado-row .edc-res-val{color:#166534;font-weight:700}
+    .edc-res-lbl{font:500 9pt var(--body);color:#333}
+    .edc-res-val{font:600 10pt var(--num)}
+    .edc-footer{display:flex;justify-content:space-between;margin-top:14pt;padding-top:6pt;border-top:1pt solid #ccc}
+    .edc-footer-l,.edc-footer-r{font:400 8pt var(--body);color:#555;line-height:1.5}
+    .edc-footer-r{text-align:right}
+    .edc-nota{font:400 8pt var(--body);color:#777;margin-top:4pt;text-align:center}
   }
 }
 </style>
@@ -705,6 +748,7 @@ function closeRec(){
     <?= ico('check',14,'#fff') ?> Guardar cambios
   </button>
   <a href="<?= e($url_vta) ?>?print=1" target="_blank" class="action-btn">🖨️ Imprimir / PDF</a>
+  <button class="action-btn" onclick="imprimirEdoCuenta()">📋 Estado de cuenta</button>
 
   <!-- HISTORIAL DE ACTIVIDAD -->
   <?php if (!empty($venta_log)): ?>
@@ -853,6 +897,158 @@ function closeRec(){
 
 </div>
 </div><!-- /print-only -->
+
+<!-- ══ ESTADO DE CUENTA (print-only) ══ -->
+<?php
+$lineas_principales = array_filter($lineas, fn($l) => empty($l['es_extra']));
+$lineas_extras      = array_filter($lineas, fn($l) => !empty($l['es_extra']));
+$subtotal_principales = array_sum(array_map(fn($l) => (float)$l['subtotal'], $lineas_principales));
+$subtotal_extras      = array_sum(array_map(fn($l) => (float)$l['subtotal'], $lineas_extras));
+$total_pagos_edc      = array_sum(array_map(fn($r) => (float)$r['monto'], $abonos));
+$moneda_edc           = $empresa['moneda'] ?? 'MXN';
+?>
+<div id="edocuenta-print" class="edocuenta-print-only">
+<div class="edc">
+
+  <div class="edc-header">
+    <div>
+      <div class="edc-emp"><?= e($empresa['nombre']) ?></div>
+      <div class="edc-emp-sub">
+        <?= e($empresa['ciudad'] ?? '') ?>
+        <?php if ($empresa['telefono']): ?> · <?= e($empresa['telefono']) ?><?php endif; ?>
+        <?php if ($empresa['email']): ?><br><?= e($empresa['email']) ?><?php endif; ?>
+      </div>
+    </div>
+    <div>
+      <div class="edc-tipo">Estado de cuenta</div>
+      <div class="edc-folio"><?= e($venta['numero']) ?></div>
+    </div>
+  </div>
+
+  <div class="edc-info">
+    <div class="edc-info-cell"><div class="edc-info-lbl">Proyecto</div><div class="edc-info-val"><?= e($venta['titulo']) ?></div></div>
+    <div class="edc-info-cell"><div class="edc-info-lbl">Cliente</div><div class="edc-info-val"><?= e($venta['cliente_nombre'] ?? '—') ?></div></div>
+    <div class="edc-info-cell"><div class="edc-info-lbl">Fecha contratación</div><div class="edc-info-val"><?= date('d M Y', strtotime($venta['created_at'])) ?></div></div>
+    <div class="edc-info-cell"><div class="edc-info-lbl">Fecha corte</div><div class="edc-info-val"><?= date('d M Y') ?></div></div>
+  </div>
+
+  <!-- Artículos principales -->
+  <?php if ($lineas_principales): ?>
+  <div class="edc-section">
+    <div class="edc-section-title">Conceptos contratados</div>
+    <table class="edc-tbl">
+      <thead><tr><th>#</th><th>Concepto</th><th class="r">Importe</th></tr></thead>
+      <tbody>
+      <?php $n = 0; foreach ($lineas_principales as $l): $n++; ?>
+      <tr>
+        <td><?= $n ?></td>
+        <td class="name"><?= e($l['titulo']) ?></td>
+        <td class="r"><?= format_money((float)$l['subtotal'], $moneda_edc) ?></td>
+      </tr>
+      <?php endforeach; ?>
+      <tr class="subtotal-row">
+        <td colspan="2" style="text-align:right">Subtotal</td>
+        <td class="r"><?= format_money($subtotal_principales, $moneda_edc) ?></td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+  <?php endif; ?>
+
+  <!-- Extras -->
+  <?php if ($lineas_extras): ?>
+  <div class="edc-section">
+    <div class="edc-section-title">Extras</div>
+    <table class="edc-tbl">
+      <thead><tr><th>#</th><th>Concepto</th><th class="r">Importe</th></tr></thead>
+      <tbody>
+      <?php $n = 0; foreach ($lineas_extras as $l): $n++; ?>
+      <tr class="extra-row">
+        <td><?= $n ?></td>
+        <td class="name"><?= e($l['titulo']) ?></td>
+        <td class="r">+ <?= format_money((float)$l['subtotal'], $moneda_edc) ?></td>
+      </tr>
+      <?php endforeach; ?>
+      <tr class="subtotal-row">
+        <td colspan="2" style="text-align:right">Subtotal extras</td>
+        <td class="r">+ <?= format_money($subtotal_extras, $moneda_edc) ?></td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+  <?php endif; ?>
+
+  <!-- Descuentos e impuestos -->
+  <?php if ($cupon_amt > 0 || $desc_auto_amt > 0 || $desc_manual_amt > 0 || ($impuesto_modo !== 'ninguno' && $impuesto_amt > 0)): ?>
+  <div class="edc-section">
+    <div class="edc-section-title">Ajustes</div>
+    <table class="edc-tbl">
+      <tbody>
+      <?php if ($cupon_amt > 0): ?>
+      <tr><td colspan="2">Cupón<?= $cupon_codigo ? ' (' . e($cupon_codigo) . ')' : '' ?></td><td class="r" style="color:#c05">- <?= format_money($cupon_amt, $moneda_edc) ?></td></tr>
+      <?php endif; ?>
+      <?php if ($desc_auto_amt > 0): ?>
+      <tr><td colspan="2">Descuento<?= $desc_auto_pct > 0 ? ' (' . $desc_auto_pct . '%)' : '' ?></td><td class="r" style="color:#c05">- <?= format_money($desc_auto_amt, $moneda_edc) ?></td></tr>
+      <?php endif; ?>
+      <?php if ($desc_manual_amt > 0): ?>
+      <tr><td colspan="2">Descuento manual</td><td class="r" style="color:#c05">- <?= format_money($desc_manual_amt, $moneda_edc) ?></td></tr>
+      <?php endif; ?>
+      <?php if ($impuesto_modo !== 'ninguno' && $impuesto_amt > 0): ?>
+      <tr><td colspan="2"><?= e($impuesto_nombre) ?><?= $impuesto_pct > 0 ? ' (' . $impuesto_pct . '%)' : '' ?></td><td class="r">+ <?= format_money($impuesto_amt, $moneda_edc) ?></td></tr>
+      <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+  <?php endif; ?>
+
+  <!-- Pagos realizados -->
+  <?php if (!empty($abonos)): ?>
+  <div class="edc-section">
+    <div class="edc-section-title">Pagos realizados</div>
+    <table class="edc-tbl">
+      <thead><tr><th>Fecha</th><th>Concepto</th><th>Folio</th><th class="r">Monto</th></tr></thead>
+      <tbody>
+      <?php foreach ($abonos as $r): ?>
+      <tr class="pago-row">
+        <td><?= date('d M Y', strtotime($r['fecha'] ?? $r['created_at'])) ?></td>
+        <td><?= e($r['concepto'] ?? 'Pago') ?></td>
+        <td><?= e($r['numero']) ?></td>
+        <td class="r">- <?= format_money(abs((float)$r['monto']), $moneda_edc) ?></td>
+      </tr>
+      <?php endforeach; ?>
+      <tr class="subtotal-row">
+        <td colspan="3" style="text-align:right">Total pagado</td>
+        <td class="r" style="color:#166534">- <?= format_money($total_pagos_edc, $moneda_edc) ?></td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+  <?php endif; ?>
+
+  <!-- Resumen -->
+  <div class="edc-resumen">
+    <div class="edc-res-row total">
+      <span class="edc-res-lbl">Total contratado</span>
+      <span class="edc-res-val"><?= format_money($total, $moneda_edc) ?></span>
+    </div>
+    <div class="edc-res-row pagado-row">
+      <span class="edc-res-lbl">Total pagado</span>
+      <span class="edc-res-val"><?= format_money($pagado, $moneda_edc) ?></span>
+    </div>
+    <div class="edc-res-row pendiente">
+      <span class="edc-res-lbl">Saldo pendiente</span>
+      <span class="edc-res-val"><?= format_money($saldo, $moneda_edc) ?></span>
+    </div>
+  </div>
+
+  <div class="edc-footer">
+    <div class="edc-footer-l"><?= e($empresa['nombre']) ?> · <?= e($empresa['ciudad'] ?? '') ?><?php if ($empresa['telefono']): ?><br><?= e($empresa['telefono']) ?><?php endif; ?></div>
+    <div class="edc-footer-r">Generado: <?= date('d/m/Y H:i') ?><br><?= e($venta['numero']) ?></div>
+  </div>
+  <div class="edc-nota">Estado de cuenta al <?= date('d \d\e M Y') ?>. No es una factura fiscal.</div>
+
+</div>
+</div><!-- /edocuenta-print -->
 
 <!-- MODAL RECIBO en pantalla -->
 
@@ -1589,6 +1785,12 @@ function imprimirRecibo(d){
   document.body.classList.add('modo-recibo');
   window.print();
   document.body.classList.remove('modo-recibo');
+}
+
+function imprimirEdoCuenta(){
+  document.body.classList.add('modo-edocuenta');
+  window.print();
+  document.body.classList.remove('modo-edocuenta');
 }
 
 // ── Init ──
