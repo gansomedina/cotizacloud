@@ -324,9 +324,9 @@ $sin_abrir_list = DB::query(
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
      WHERE c.empresa_id=? AND c.estado='enviada' AND c.suspendida = 0
-       AND c.vista_at IS NULL AND c.enviada_at IS NOT NULL
+       AND c.vista_at IS NULL
        AND c.created_at <= DATE_SUB(NOW(), INTERVAL 24 HOUR) $c_where
-     ORDER BY c.enviada_at ASC LIMIT 6",
+     ORDER BY COALESCE(c.enviada_at, c.created_at) ASC LIMIT 6",
     [$empresa_id]
 );
 
