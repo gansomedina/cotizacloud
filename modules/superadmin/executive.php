@@ -190,15 +190,16 @@ foreach ($rows as $r) $ve_ant[(int)$r['empresa_id']] = $r;
 
 // Tasa cierre por empresa (excluir borradores, contar aceptadas por aceptada_at)
 $ce = [];
+foreach ($empresas_cfg as $_eid => $_ec) $ce[$_eid] = ['total' => 0, 'aceptadas' => 0];
 $rows = DB::query(
-    "SELECT empresa_id, COUNT(*) AS total,
-            0 AS aceptadas
+    "SELECT empresa_id, COUNT(*) AS total
      FROM cotizaciones WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
        AND estado != 'borrador'
        AND created_at BETWEEN ? AND ?
      GROUP BY empresa_id",
     [$p_ini_dt, $p_fin_dt]
 );
+foreach ($rows ?: [] as $r) $ce[(int)$r['empresa_id']]['total'] = (int)$r['total'];
 $rows_ace = DB::query(
     "SELECT empresa_id, COUNT(*) AS aceptadas
      FROM cotizaciones WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
@@ -207,10 +208,7 @@ $rows_ace = DB::query(
      GROUP BY empresa_id",
     [$p_ini_dt, $p_fin_dt]
 );
-$ace_map = [];
-foreach ($rows_ace ?: [] as $ra) $ace_map[(int)$ra['empresa_id']] = (int)$ra['aceptadas'];
-foreach ($rows ?: [] as &$r) $r['aceptadas'] = $ace_map[(int)$r['empresa_id']] ?? 0;
-unset($r);
+foreach ($rows_ace ?: [] as $ra) $ce[(int)$ra['empresa_id']]['aceptadas'] = (int)$ra['aceptadas'];
 
 // Ticket promedio por empresa
 $ticket_global = (float)$kpi_mes['num'] > 0 ? (float)$kpi_mes['ventas'] / (float)$kpi_mes['num'] : 0;
@@ -282,26 +280,46 @@ $meses_12 = [];
 for ($i = 11; $i >= 0; $i--) $meses_12[] = date('Y-m', strtotime("-$i months"));
 
 // Tasa cierre mensual por empresa (para gráfica)
-$tasa_mensual = DB::query(
-    "SELECT DATE_FORMAT(created_at,'%Y-%m') AS mes, empresa_id,
-            COUNT(*) AS total,
-            SUM(CASE WHEN estado IN ('aceptada','convertida') THEN 1 ELSE 0 END) AS aceptadas
+$tasa_mensual_total = DB::query(
+    "SELECT DATE_FORMAT(created_at,'%Y-%m') AS mes, empresa_id, COUNT(*) AS total
      FROM cotizaciones
      WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0 AND estado != 'borrador'
        AND created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-     GROUP BY mes, empresa_id ORDER BY mes ASC"
+     GROUP BY mes, empresa_id"
+);
+$tasa_mensual_ace = DB::query(
+    "SELECT DATE_FORMAT(aceptada_at,'%Y-%m') AS mes, empresa_id, COUNT(*) AS aceptadas
+     FROM cotizaciones
+     WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
+       AND estado IN ('aceptada','convertida') AND aceptada_at IS NOT NULL
+       AND aceptada_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+     GROUP BY mes, empresa_id"
 );
 $tasa_trend = [];
+$tasa_totals = [];
+$tasa_aces = [];
 foreach ($empresas_cfg as $eid => $ec) {
     $tasa_trend[$eid] = [];
-    foreach ($meses_12 as $m) $tasa_trend[$eid][$m] = 0;
+    $tasa_totals[$eid] = [];
+    $tasa_aces[$eid] = [];
+    foreach ($meses_12 as $m) { $tasa_trend[$eid][$m] = 0; $tasa_totals[$eid][$m] = 0; $tasa_aces[$eid][$m] = 0; }
 }
-foreach ($tasa_mensual as $tm) {
+foreach ($tasa_mensual_total ?: [] as $tm) {
     $eid = (int)$tm['empresa_id'];
-    $t = (int)$tm['total'] > 0 ? round((int)$tm['aceptadas'] / (int)$tm['total'] * 100, 1) : 0;
-    if (isset($tasa_trend[$eid][$tm['mes']])) $tasa_trend[$eid][$tm['mes']] = $t;
+    if (isset($tasa_totals[$eid][$tm['mes']])) $tasa_totals[$eid][$tm['mes']] = (int)$tm['total'];
 }
-foreach ($rows as $r) $ce[(int)$r['empresa_id']] = $r;
+foreach ($tasa_mensual_ace ?: [] as $ta) {
+    $eid = (int)$ta['empresa_id'];
+    if (isset($tasa_aces[$eid][$ta['mes']])) $tasa_aces[$eid][$ta['mes']] = (int)$ta['aceptadas'];
+}
+foreach ($empresas_cfg as $eid => $ec) {
+    foreach ($meses_12 as $m) {
+        $tot = $tasa_totals[$eid][$m];
+        $ace = $tasa_aces[$eid][$m];
+        $tasa_trend[$eid][$m] = $tot > 0 ? round($ace / $tot * 100, 1) : 0;
+    }
+}
+// $ce ya poblado arriba con total + aceptadas por empresa
 
 // ─── TENDENCIAS 12 MESES ────────────────────────────────────
 $tendencias = DB::query(
@@ -390,6 +408,7 @@ $sin_abrir = DB::query(
      WHERE c.empresa_id IN ({$emp_ids})
        AND c.estado = 'enviada'
        AND COALESCE(c.suspendida, 0) = 0
+       AND (c.valida_hasta IS NULL OR c.valida_hasta >= NOW())
      ORDER BY c.created_at ASC LIMIT 30"
 );
 
