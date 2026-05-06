@@ -468,37 +468,23 @@ class ActividadScore
             [$usuario_id, $empresa_id]
         );
 
-        // Penalización por no abiertas: usa 1/close_rate (fuerte, auto-ajustable)
+        // Penalización por no abiertas: 1+ sin abrir en 5d → operativa muere
         $close_rate_safe = max($bench['close_rate'], 0.01);
-        $pen_no_abiertas = min(($no_abiertas_5d / $asignadas_validas) * (1.0 / $close_rate_safe), 1.0);
+        $pen_no_abiertas = $no_abiertas_5d > 0 ? 1.0 : 0.0;
 
-        // Penalización escalonada por dormidas (7d, 14d, 21d)
-        // Pesos relativos a TTC: dormida 7d con TTC=5d es grave, con TTC=30d es normal
-        $pen_dormidas = 0.0;
-        $dormidas_solo_7  = $dormidas_7d - $dormidas_14d;
-        $dormidas_solo_14 = $dormidas_14d - $dormidas_21d;
-        $dormidas_solo_21 = $dormidas_21d;
-        if ($asignadas_validas > 0) {
-            $ttc = $bench['time_to_close'];
-            $w_d7  = 7.0  / $ttc;  // TTC=7: 1.0, TTC=14: 0.5, TTC=30: 0.23
-            $w_d14 = 14.0 / $ttc;  // TTC=7: 2.0, TTC=14: 1.0, TTC=30: 0.47
-            $w_d21 = 21.0 / $ttc;  // TTC=7: 3.0, TTC=14: 1.5, TTC=30: 0.70
-            $pen_dormidas = (
-                $dormidas_solo_7  * $w_d7 +
-                $dormidas_solo_14 * $w_d14 +
-                $dormidas_solo_21 * $w_d21
-            ) / $asignadas_validas;
+        // Dormidas: ratio directo contra vistas, resta de operativa (puede ir negativo)
+        $cot_vistas_safe_d = max($cot_vistas, 1);
+        $pen_dormidas = $dormidas_7d / $cot_vistas_safe_d;
+
+        // Activación = operativa (50%) + tips (50%)
+        // Operativa: 50 puntos base, no_abiertas la mata, dormidas restan encima
+        if ($no_abiertas_5d > 0) {
+            $s_activacion_op = 0.0 - $pen_dormidas; // negativo posible
+        } else {
+            $s_activacion_op = $tasa_apertura - $pen_dormidas;
         }
-        $pen_dormidas = min($pen_dormidas, 1.0);
-
-        // v5: ratio directo, sin sigmoid, sin piso fijo
-        // Dormidas ponderadas por (1 - apertura): si todo se abre, dormidas no pesan.
-        // Si apertura es baja (0.50), dormidas pesan 0.50 — compounding real.
-        // Activación se divide en 2 mitades:
-        // Operativa (50%): apertura, no abiertas, dormidas — lo de siempre
-        // Tips (50%): lectura del diagnóstico — 3 tiers (100%/50%/0%)
-        $s_activacion_op = $tasa_apertura - $pen_no_abiertas - $pen_dormidas * (1.0 - $tasa_apertura);
-        $s_activacion_op = max(0.0, min(1.0, $s_activacion_op));
+        // NO clamp a 0 — permite negativo para arrastrar score
+        $s_activacion_op = min(1.0, $s_activacion_op);
         $s_activacion = ($s_activacion_op * 0.5) + ($tips_score * 0.5);
 
         // Tasa de cierre (se calcula antes de engagement/seguimiento)
@@ -977,7 +963,7 @@ class ActividadScore
         else $nivel = 'bajo';
 
         // Total penalizaciones y bonuses (para display)
-        $total_pen = $pen_no_abiertas + $pen_dormidas * (1.0 - $tasa_apertura) + $eng_pen_sin_pago + $eng_pen_descuento + $eng_pen_enfriamiento + $eng_pen_bajo_benchmark + $pen_conversion;
+        $total_pen = $pen_no_abiertas + $pen_dormidas + $eng_pen_sin_pago + $eng_pen_descuento + $eng_pen_enfriamiento + $eng_pen_bajo_benchmark + $pen_conversion;
         $total_bonus = ($cierre_quality > 0 ? $cierre_quality * $close_rate_safe : 0);
 
         // ═══════════════════════════════════════════════════
@@ -1388,7 +1374,8 @@ class ActividadScore
 
         // ═══ 5. SIN ABRIR / DORMIDAS ═══
         if ($sin_abrir > 0) $frases[] = "$sin_abrir cotización" . ($sin_abrir > 1 ? 'es' : '') . " sin abrir.";
-        if ($dorm > 0) $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " lleva" . ($dorm > 1 ? 'n' : '') . " más de 7 días sin abrirse.";
+        if ($nab > 0) $frases[] = "⚠️ $nab cotización" . ($nab > 1 ? 'es' : '') . " sin abrir en más de 5 días — penaliza tu score.";
+        if ($dorm > 0) $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " donde el cliente no regresa en 7+ días.";
 
         // ═══ 6. HISTÓRICO ═══
         if ($cierre_hist_abajo && $score < 70) $frases[] = "Tu cierre está por debajo del promedio anual de la empresa.";
