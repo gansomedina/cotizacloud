@@ -211,26 +211,24 @@ class ActividadScore
         // Dormidas: solo las NO suspendidas. Si se suspendió antes de 14d/21d,
         // ya no escala la penalización. El penalty de 7d se limpia solo al salir
         // de la ventana de 30 días.
+        // Dormidas: sin límite de ventana — penalizan mientras sigan sin abrir
         $dormidas_7d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado='enviada' AND visitas=0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $empresa_id, $periodo]
+             AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)",
+            [$usuario_id, $empresa_id]
         );
         $dormidas_14d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado='enviada' AND visitas=0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $empresa_id, $periodo]
+             AND created_at < DATE_SUB(NOW(), INTERVAL 14 DAY)",
+            [$usuario_id, $empresa_id]
         );
         $dormidas_21d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado='enviada' AND visitas=0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 21 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $empresa_id, $periodo]
+             AND created_at < DATE_SUB(NOW(), INTERVAL 21 DAY)",
+            [$usuario_id, $empresa_id]
         );
         $cierres_total = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
@@ -458,13 +456,12 @@ class ActividadScore
         $asignadas_validas = max($cot_asignadas, 1);
         $tasa_apertura = $cot_vistas / $asignadas_validas;
 
-        // No abiertas en 5+ días (excluir suspendidas, ya filtrado por $no_susp)
+        // No abiertas en 5+ días — sin límite de ventana, penaliza mientras existan
         $no_abiertas_5d = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado='enviada' AND visitas=0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$usuario_id, $empresa_id, $periodo]
+             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)",
+            [$usuario_id, $empresa_id]
         );
 
         // Penalización por no abiertas: usa 1/close_rate (fuerte, auto-ajustable)
