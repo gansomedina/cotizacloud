@@ -611,8 +611,9 @@ class ActividadScore
              AND EXISTS (
                 SELECT 1 FROM bucket_transitions bt
                 WHERE bt.cotizacion_id = c.id AND bt.bucket_nuevo IN $hot_buckets_sql
+                  AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              )",
-            [$usuario_id, $empresa_id]
+            [$usuario_id, $empresa_id, $periodo]
         );
 
         $fb_total = count($fb_data);
