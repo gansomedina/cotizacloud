@@ -188,17 +188,29 @@ $rows = DB::query(
 );
 foreach ($rows as $r) $ve_ant[(int)$r['empresa_id']] = $r;
 
-// Tasa cierre por empresa (excluir borradores, contar aceptadas+convertidas)
+// Tasa cierre por empresa (excluir borradores, contar aceptadas por aceptada_at)
 $ce = [];
 $rows = DB::query(
     "SELECT empresa_id, COUNT(*) AS total,
-            SUM(CASE WHEN estado IN ('aceptada','convertida') THEN 1 ELSE 0 END) AS aceptadas
+            0 AS aceptadas
      FROM cotizaciones WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
        AND estado != 'borrador'
        AND created_at BETWEEN ? AND ?
      GROUP BY empresa_id",
     [$p_ini_dt, $p_fin_dt]
 );
+$rows_ace = DB::query(
+    "SELECT empresa_id, COUNT(*) AS aceptadas
+     FROM cotizaciones WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
+       AND estado IN ('aceptada','convertida')
+       AND aceptada_at BETWEEN ? AND ?
+     GROUP BY empresa_id",
+    [$p_ini_dt, $p_fin_dt]
+);
+$ace_map = [];
+foreach ($rows_ace ?: [] as $ra) $ace_map[(int)$ra['empresa_id']] = (int)$ra['aceptadas'];
+foreach ($rows ?: [] as &$r) $r['aceptadas'] = $ace_map[(int)$r['empresa_id']] ?? 0;
+unset($r);
 
 // Ticket promedio por empresa
 $ticket_global = (float)$kpi_mes['num'] > 0 ? (float)$kpi_mes['ventas'] / (float)$kpi_mes['num'] : 0;
@@ -208,10 +220,16 @@ $funnel = DB::row(
     "SELECT COUNT(*) AS total,
             SUM(CASE WHEN estado != 'borrador' THEN 1 ELSE 0 END) AS enviadas,
             SUM(CASE WHEN estado IN ('vista','aceptada','convertida','rechazada') THEN 1 ELSE 0 END) AS vistas,
-            SUM(CASE WHEN estado IN ('aceptada','convertida') THEN 1 ELSE 0 END) AS aceptadas,
             SUM(CASE WHEN estado = 'rechazada' THEN 1 ELSE 0 END) AS rechazadas
      FROM cotizaciones WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
        AND created_at BETWEEN ? AND ?",
+    [$p_ini_dt, $p_fin_dt]
+);
+$funnel['aceptadas'] = (int)DB::val(
+    "SELECT COUNT(*) FROM cotizaciones
+     WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
+       AND estado IN ('aceptada','convertida')
+       AND aceptada_at BETWEEN ? AND ?",
     [$p_ini_dt, $p_fin_dt]
 );
 

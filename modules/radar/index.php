@@ -842,6 +842,7 @@ $comp_by_ip = DB::query(
        AND qs.ip NOT IN (SELECT DISTINCT us.ip FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id WHERE (u.empresa_id = ? OR u.rol = 'superadmin') AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY))
      GROUP BY qs.ip
      HAVING clientes_distintos > 1
+       AND TIMESTAMPDIFF(HOUR, MIN(qs.created_at), MAX(qs.created_at)) <= 72
        {$reviewed_filter_ip}
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
