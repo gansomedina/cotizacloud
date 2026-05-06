@@ -403,13 +403,13 @@ foreach ($sin_cobrar as $sc) $total_sin_cobrar_cero += (float)$sc['total'];
 $sin_abrir = DB::query(
     "SELECT c.empresa_id, c.titulo, c.numero, c.total, c.created_at,
             cl.nombre AS cliente_nombre,
-            DATEDIFF(NOW(), c.created_at) AS dias
+            DATEDIFF(NOW(), c.created_at) AS dias,
+            CASE WHEN c.valida_hasta IS NOT NULL AND c.valida_hasta < NOW() THEN 1 ELSE 0 END AS vencida
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
      WHERE c.empresa_id IN ({$emp_ids})
        AND c.estado = 'enviada'
        AND COALESCE(c.suspendida, 0) = 0
-       AND (c.valida_hasta IS NULL OR c.valida_hasta >= NOW())
      ORDER BY c.created_at ASC LIMIT 30"
 );
 
@@ -1167,7 +1167,7 @@ $hist_total = array_sum($hist_values);
     <tr>
         <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
         <td>
-            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sa['titulo'],0,30)) ?></div>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_substr($sa['titulo'],0,30)) ?><?php if ($sa['vencida']): ?> <span style="background:#fef3c7;color:#92400e;font:700 8px var(--body);padding:1px 5px;border-radius:3px;margin-left:4px">VENCIDA</span><?php endif; ?></div>
             <div style="font-size:10px;color:var(--t3)"><?= e($sa['numero']) ?></div>
         </td>
         <td class="r mono" style="font-weight:600"><?= xf((float)$sa['total']) ?></td>
