@@ -1533,7 +1533,7 @@ const TRACK_URL = '/api/track';
         try {
             var sw = Math.min(screen.width, screen.height);
             var sh = Math.max(screen.width, screen.height);
-            var dpr = window.devicePixelRatio || 1;
+            var dpr = Math.round((window.devicePixelRatio || 1) * 100) / 100;
             var tp = navigator.maxTouchPoints || 0;
             var maxTex = 0;
             try {

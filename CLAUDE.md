@@ -1243,12 +1243,63 @@ Información (dashboard):
 - Ghost sessions en cotizaciones de poco tráfico → 1 visita extra hasta que otro visitor active el cleanup
 
 ### Pendiente para próxima sesión
-1. **Mergear a main** — revisar errores finales y deploy
-2. **Ejecutar migración en servidor** — (ninguna migración nueva necesaria para los cambios actuales)
-3. **Monitorear datos reales** — verificar estabilidad del device_sig de 13 componentes en producción
-4. **Leyenda en slug** (opcional) — "🛡️ Escudo activo" cuando asesor es detectado como interno
-5. **Explorar "staff-view"** (opcional) — botón en dashboard que refresca cookie antes de abrir slug
-6. **Certificado SSL cliente** — descartado por UX pero documentado como opción futura si el gap de 10% molesta
+1. **Monitorear raw device_sig** — verificar estabilidad con datos reales de clientes
+2. **Cortar 5 componentes muertos** — cuando haya suficientes datos confirmando `||0|0|0|0|` para todos, recortar a 8 componentes. SQL para limpiar BD: `UPDATE ... SET device_sig = CONCAT(SUBSTRING_INDEX(device_sig,'|',7),'|',SUBSTRING_INDEX(device_sig,'|',-1))`
+3. **Chrome iOS iosM=26** — Chrome reporta versión diferente en el UA. Considerar ignorar iosM para matching parcial, o extraer la versión real de otro lado.
+4. **NULL en quote_sessions (~14%)** — clientes que cierran antes de que JS cargue. Aceptable para descarte. Monitorear si baja.
+5. **Leyenda en slug** (opcional) — "🛡️ Escudo activo" cuando asesor es detectado como interno
+6. **Staff-view** (opcional) — botón en dashboard que refresca cookie antes de abrir slug
+
+### Sesión 5 mayo 2026 — device_sig raw legible
+
+#### Cambio principal
+Hash opaco (`6883be39`, 8 chars) → raw legible (`1120|1792|2|0|8192|es-MX|Hermosillo||0|0|0|0|0`, ~45 chars).
+Mismos 13 componentes. Timezone acortado (solo ciudad: Hermosillo en vez de America/Hermosillo).
+
+#### Migración ejecutada
+```sql
+ALTER TABLE user_sessions MODIFY COLUMN device_sig VARCHAR(120) NULL;
+ALTER TABLE quote_sessions MODIFY COLUMN device_sig VARCHAR(120) NULL;
+ALTER TABLE quote_events MODIFY COLUMN device_sig VARCHAR(120) NULL;
+ALTER TABLE cot_feedbacks MODIFY COLUMN device_sig VARCHAR(120) NULL;
+```
+
+#### Archivos modificados
+| Archivo | Cambio |
+|---|---|
+| `public/cotizacion.php` | getDeviceSig() retorna raw, sanitización ampliada, quitar double-decoding feedback |
+| `modules/auth/login.php` | getDeviceSig() raw + script INLINE para evitar NULL en iPhone |
+| `core/layout.php` | cookie cz_dsig con encodeURIComponent + raw |
+| `modules/auth/login_post.php` | Sanitización ampliada a 120 chars |
+| `api/track.php` | Sanitización ampliada |
+| `api/cot_feedback.php` | Sanitización ampliada |
+| `modules/radar/index.php` | Competencia: desactivar alerta por device_sig + filtrar es_interno=0 |
+| `modules/superadmin/executive.php` | Competencia: filtrar es_interno=0 |
+
+#### Bugs corregidos
+1. **device_sig NULL en iPhone al login** — JS al final de la página no corría antes del form submit (auto-fill iOS). Fix: script inline justo después del hidden field.
+2. **Double-decoding cookie cz_dsig** — getCookie() ya decodifica, llamar decodeURIComponent de nuevo era redundante. Fix: quitar el decode extra.
+3. **Alertas falsas de competencia** — queries no filtraban `es_interno=0`. Sesiones de asesores aparecían como competencia. Fix: agregar filtro a 5 queries.
+4. **Competencia por device_sig desactivada** — iPhones del mismo modelo colisionan → falsos positivos. Las alertas por visitor_id e IP ya cubren competencia real.
+
+#### Datos reales capturados (5 mayo 2026)
+```
+Super Admin (iMac):     1440|2560|2|0|8192|en-US|Hermosillo||0|0|0|0|0
+Israel (Windows):       900|1600|1.2|0|16384|es-MX|Hermosillo||0|0|0|0|0
+Kevin (Windows):        1080|1920|1|0|16384|es-US|Hermosillo||0|0|0|0|0
+Kevin (iPhone):         402|874|3|5|16384|es-MX|Hermosillo||0|0|0|0|18
+Manuel (Windows):       1080|1920|1|0|8192|es-ES|Hermosillo||0|0|0|0|0
+Cliente iPhone es-419:  390|844|3|5|16384|es-419|Hermosillo||0|0|0|0|18
+Cliente Android bajo:   412|915|2.625|5|4096|es-419|Hermosillo||0|0|0|0|0
+Cliente Samsung S23:    384|832|2.8125|5|8192|es-US|Hermosillo||0|0|0|0|0
+```
+
+#### Confirmaciones
+- **lang diferencia clientes**: es-419 vs es-MX vs es-US separan clientes con mismo dispositivo ✅
+- **maxTex varía en Android**: 4096 / 8192 / 16384 por tier de GPU ✅
+- **dpr varía en Android**: 1, 1.2, 2.625, 2.8125 por modelo ✅
+- **5 componentes siempre 0**: hc, motion, contrast, inverted, transp = 0 en 100% de sesiones ✅
+- **iosM=26 en Chrome iOS**: Chrome reporta versión diferente al UA real — gap conocido
 
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi`
