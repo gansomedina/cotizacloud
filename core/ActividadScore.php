@@ -1373,7 +1373,8 @@ class ActividadScore
         }
 
         // ═══ 5. SIN ABRIR / DORMIDAS ═══
-        if ($nab > 0) $frases[] = "$nab cotización" . ($nab > 1 ? 'es' : '') . " sin abrir en 5+ días.";
+        if ($sin_abrir > 0) $frases[] = "$sin_abrir cotización" . ($sin_abrir > 1 ? 'es' : '') . " sin abrir.";
+        if ($nab > 0) $frases[] = "⚠️ $nab cotización" . ($nab > 1 ? 'es' : '') . " sin abrir en más de 5 días — penaliza tu score.";
         if ($dorm > 0) $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " donde el cliente no regresa en 7+ días.";
 
         // ═══ 6. HISTÓRICO ═══
