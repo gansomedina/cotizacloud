@@ -120,7 +120,7 @@ function radar_badge(?string $bucket, ?int $score, int $vistas = 0): string {
     [$ico,$color,$bg] = $map[$bucket] ?? [ico('gray',10),'#64748b','#f1f5f9'];
     $lbl = ucwords(str_replace('_',' ',$bucket));
     $eye = $vistas > 0 ? ' '.ico('eye',10,$color).' '.$vistas : '';
-    return "<span style=\"display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:12px;font:700 10px var(--body);background:{$bg};color:{$color};white-space:nowrap\">{$ico} {$lbl}{$eye}</span>";
+    return "<span title=\"Radar: {$lbl}\" style=\"display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:12px;font:700 10px var(--body);background:{$bg};color:{$color};white-space:nowrap\">{$ico} {$lbl}{$eye}</span>";
 }
 
 function st_badge(string $e, bool $suspendida = false): string {
@@ -391,7 +391,13 @@ foreach ($chips as $k => $lbl):
         if ($tiene_desc) $parts[] = '⏱ -' . format_money((float)$c['descuento_auto_amt'], $empresa['moneda']);
         if ($cupon_validos > 0) $parts[] = '✅×' . $cupon_validos;
         if ($cupon_invalidos > 0) $parts[] = '❌×' . $cupon_invalidos;
-        $cupon_html = '<span style="font:500 11px var(--num);color:#7c3aed;background:#ede9fe;padding:2px 7px;border-radius:5px">' . implode(' ', $parts) . '</span>';
+        $title_parts = [];
+        if ($tiene_cupon) $title_parts[] = 'Cupón: ' . $c['cupon_codigo'];
+        if ($tiene_desc) $title_parts[] = 'Descuento automático con temporizador';
+        if ($cupon_validos > 0) $title_parts[] = $cupon_validos . ' cupón válido';
+        if ($cupon_invalidos > 0) $title_parts[] = $cupon_invalidos . ' cupón inválido';
+        $cupon_title = implode(' · ', $title_parts);
+        $cupon_html = '<span title="' . e($cupon_title) . '" style="font:500 11px var(--num);color:#7c3aed;background:#ede9fe;padding:2px 7px;border-radius:5px">' . implode(' ', $parts) . '</span>';
     }
     $radar  = radar_badge($c['radar_bucket'], (int)($c['radar_score'] ?? 0), $vistas);
     $ed_url = '/cotizaciones/'.(int)$c['id'];
@@ -418,7 +424,7 @@ foreach ($chips as $k => $lbl):
           <?php if ($c['radar_bucket']): ?>
             <?= $radar ?>
           <?php elseif ($vistas > 0): ?>
-            <span class="cot-vistas"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
+            <span class="cot-vistas" title="<?= $vistas ?> vista<?= $vistas != 1 ? 's' : '' ?> del cliente"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
           <?php endif ?>
           <?= $cupon_html ?>
         </div>
@@ -480,7 +486,7 @@ foreach ($chips as $k => $lbl):
         <?php if ($c['radar_bucket']): ?>
           <?= $radar ?>
         <?php elseif ($vistas > 0): ?>
-          <span class="cot-vistas-badge"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
+          <span class="cot-vistas-badge" title="<?= $vistas ?> vista<?= $vistas != 1 ? 's' : '' ?> del cliente"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
         <?php endif ?>
         <?= $cupon_html ?>
       </div>
@@ -496,7 +502,7 @@ foreach ($chips as $k => $lbl):
     <div class="desk-actions" onclick="event.stopPropagation()">
       <a href="<?= $ed_url ?>" class="act-btn"><?= ico('edit',12) ?> Editar</a>
       <a href="<?= e($url) ?>" target="_blank" class="act-btn"><?= ico('link',12) ?> Ver</a>
-      <button class="act-btn" onclick="copyLink('<?= e($url) ?>')"><?= ico('copy',12) ?></button>
+      <button class="act-btn" onclick="copyLink('<?= e($url) ?>')" title="Copiar URL"><?= ico('copy',12) ?></button>
       <button class="act-btn" onclick="clonarCot(<?= (int)$c['id'] ?>)" title="Clonar">&#x2398;</button>
       <?php if ($puedeS): ?>
       <button class="act-btn <?= $esSusp ? '' : 'danger' ?>" onclick="suspenderCot(<?= (int)$c['id'] ?>,this)" title="<?= $esSusp ? 'Reactivar' : 'Suspender' ?>">
@@ -504,7 +510,7 @@ foreach ($chips as $k => $lbl):
       </button>
       <?php endif ?>
       <?php if ($puedeX): ?>
-      <button class="act-btn danger" onclick="eliminarCot(<?= (int)$c['id'] ?>,this)">✕</button>
+      <button class="act-btn danger" onclick="eliminarCot(<?= (int)$c['id'] ?>,this)" title="Eliminar">✕</button>
       <?php endif ?>
     </div>
 
