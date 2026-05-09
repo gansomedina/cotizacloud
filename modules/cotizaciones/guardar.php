@@ -94,7 +94,13 @@ if (!empty($body['descuento_auto_activo']) && Auth::puede('aplicar_descuentos'))
     $desc_auto_activo = 1;
     $desc_auto_pct    = max(0, min(100, (float)($body['descuento_auto_pct'] ?? 0)));
     $dias = max(1, (int)($body['descuento_auto_dias'] ?? 3));
-    $desc_auto_expira = date('Y-m-d H:i:s', strtotime("+{$dias} days"));
+    // Conservar fecha original si el descuento ya estaba activo
+    $expira_actual = $cot['descuento_auto_expira'] ?? null;
+    if ($expira_actual && !empty($cot['descuento_auto_activo'])) {
+        $desc_auto_expira = $expira_actual;
+    } else {
+        $desc_auto_expira = date('Y-m-d H:i:s', strtotime("+{$dias} days"));
+    }
 }
 
 // ─── Recalcular totales ──────────────────────────────────
