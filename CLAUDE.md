@@ -1301,5 +1301,76 @@ Cliente Samsung S23:    384|832|2.8125|5|8192|es-US|Hermosillo||0|0|0|0|0
 - **5 componentes siempre 0**: hc, motion, contrast, inverted, transp = 0 en 100% de sesiones ✅
 - **iosM=26 en Chrome iOS**: Chrome reporta versión diferente al UA real — gap conocido
 
+## Sesión 10 mayo 2026
+
+### Completado
+
+#### Radar — Alertas de competencia
+1. **IP visible en alertas** — cabecera muestra IP, detalle muestra IPs por cliente
+2. **Matching device_sig de asesores** — banner amarillo "Posible asesor: device_sig coincide con [nombre]"
+3. **Confianza media/baja por proximidad** — IP ≤7 días = Media (amarillo), 7-30 días = Baja (gris)
+
+#### Dashboard ejecutivo
+4. **Tasa de cierre corregida** — usa `aceptada_at` en executive, dashboard y reportes
+5. **Sin abrir muestra etiqueta VENCIDA** — en vez de ocultar cotizaciones vencidas
+6. **Días sin abrir usa `created_at`** — `enviada_at` se reseteaba al editar
+7. **`enviar.php` no resetea `enviada_at`** — `COALESCE(enviada_at, NOW())`
+
+#### Reportes
+8. **Vencidas calculadas en resumen y tabla**
+9. **Tasa por asesor usa `aceptada_at`**
+
+#### Ventas
+10. **Estado de cuenta imprimible** — botón con desglose: conceptos, extras, ajustes, pagos, resumen
+11. **Descuento automático no se resetea al editar** — conserva fecha de expiración original
+
+#### Termómetro v6 — Activación refactorizada
+12. **No abiertas 5d mata operativa** — 1+ → operativa = 0
+13. **Dormidas = ratio directo** — `dormidas_7d / cot_vistas`, puede ir negativo
+14. **Dormidas redefinidas** — vistas pero cliente no regresa en 7+ días (no duplica no_abiertas)
+15. **no_abiertas sin ventana** — penaliza mientras siga sin abrir
+16. **dormidas con ventana 15 días** — misma ventana que cot_asignadas
+17. **Frases corregidas** — alerta temprana + ⚠️ penalización + dormidas
+
+#### Termómetro — cierres y Seguimiento
+18. **cierres_bucket usa bucket_transitions** — ya no depende de radar_bucket actual
+19. **Calidad de cierre usa último bucket real de bucket_transitions**
+20. **Seguimiento mide calientes históricas** — si el asesor no da feedback y se enfría, ya no se escapa
+21. **Feedback usa mismo período que calientes (15d)**
+
+#### Termómetro — Debug
+22. **no_abiertas_5d, pen_no_abiertas, pen_dormidas, dias_activos_feature** persistidos
+23. **Penalizaciones ponderadas** — impacto real por peso de dimensión
+
+#### Leaderboard
+24. **Barras A/E/S/P/C por asesor** — solo visible para superadmin
+
+### Migraciones
+```sql
+ALTER TABLE usuario_score
+  ADD COLUMN no_abiertas_5d INT UNSIGNED NOT NULL DEFAULT 0 AFTER cot_dormidas,
+  ADD COLUMN pen_no_abiertas DECIMAL(5,3) NOT NULL DEFAULT 0 AFTER no_abiertas_5d,
+  ADD COLUMN pen_dormidas DECIMAL(5,3) NOT NULL DEFAULT 0 AFTER pen_no_abiertas,
+  ADD COLUMN dias_activos_feature INT UNSIGNED NOT NULL DEFAULT 0 AFTER pen_dormidas;
+```
+
+### Fórmula Activación v6
+```
+if (no_abiertas_5d > 0):
+    operativa = 0 - pen_dormidas
+else:
+    operativa = tasa_apertura - pen_dormidas
+
+pen_dormidas = dormidas_7d / cot_vistas (ratio directo)
+s_activacion = operativa × 50% + tips × 50% (permite negativo)
+```
+
+### Pendientes próxima sesión
+1. **Revisar Engagement, Radar Health, Conversión** a fondo (solo Activación y Seguimiento revisados)
+2. **Verificar calidad de feedback en cotizaciones aceptadas** con bucket perdido
+3. **Auditoría de seguridad** — CSRF, auth en quote_action.php, .gitignore, security headers
+4. **Suscripciones MercadoPago** — whitelist IPs, probar pago, configurar cron
+5. **Device_sig**: `motion` tiene uso real (2 clientes). Solo `hc`, `contrast`, `inverted`, `transp` confirmados muertos.
+
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi`
