@@ -493,7 +493,7 @@ class Radar
             $vigencia_ts = ($cot_meta_early && $cot_meta_early['valida_hasta'])
                 ? strtotime($cot_meta_early['valida_hasta'])
                 : $created_early + 30 * 86400;
-            $no_abierta_age_ok = ($age_h_early >= 24 && $now <= $vigencia_ts);
+            $no_abierta_age_ok = ($age_h_early >= 24);
             if (!$accepted_early && $no_abierta_age_ok && !$has_js) {
                 return [
                     'score'=>0,'fit_pct'=>0.0,'priority_pct'=>0.0,
