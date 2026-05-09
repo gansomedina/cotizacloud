@@ -334,6 +334,40 @@ $sin_abrir_list = DB::query(
 //  BLOQUE 4: RADAR BUCKETS
 // ═══════════════════════════════════════════════════════
 
+// Limpiar sesiones fantasma (visitas sin interacción real, >2 min de antigüedad)
+try {
+    $ghost_sessions = DB::query(
+        "SELECT qs.id, qs.cotizacion_id
+         FROM quote_sessions qs
+         JOIN cotizaciones c ON c.id = qs.cotizacion_id
+         WHERE c.empresa_id = ?
+           AND COALESCE(qs.scroll_max, 0) = 0
+           AND COALESCE(qs.visible_ms, 0) = 0
+           AND qs.created_at < DATE_SUB(NOW(), INTERVAL 2 MINUTE)
+           AND NOT EXISTS (SELECT 1 FROM quote_events qe WHERE qe.cotizacion_id = qs.cotizacion_id AND qe.ip = qs.ip)
+         LIMIT 50",
+        [$empresa_id]
+    );
+    if ($ghost_sessions) {
+        $ghost_by_cot = [];
+        foreach ($ghost_sessions as $gs) $ghost_by_cot[(int)$gs['cotizacion_id']][] = (int)$gs['id'];
+        foreach ($ghost_by_cot as $gc_id => $gc_ids) {
+            $ph = implode(',', array_fill(0, count($gc_ids), '?'));
+            DB::execute("DELETE FROM quote_sessions WHERE id IN ($ph)", $gc_ids);
+            DB::execute(
+                "UPDATE cotizaciones SET visitas = CASE WHEN visitas >= ? THEN visitas - ? ELSE 0 END WHERE id = ?",
+                [count($gc_ids), count($gc_ids), $gc_id]
+            );
+        }
+        // Revertir estado a 'enviada' si visitas quedó en 0 y estado era 'vista'
+        DB::execute(
+            "UPDATE cotizaciones SET estado = 'enviada', vista_at = NULL, ultima_vista_at = NULL
+             WHERE empresa_id = ? AND estado = 'vista' AND visitas = 0",
+            [$empresa_id]
+        );
+    }
+} catch (Throwable $e) {}
+
 // Recalcular radar si datos tienen >5 min de antigüedad
 $_radar_ult = DB::val("SELECT MAX(radar_updated_at) FROM cotizaciones WHERE empresa_id=?", [$empresa_id]);
 if (!$_radar_ult || $_radar_ult < date('Y-m-d H:i:s', time()-300)) {
