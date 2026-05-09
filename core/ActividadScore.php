@@ -1413,9 +1413,9 @@ class ActividadScore
 
         // ═══ BONUS TICKET ALTO ═══
         $b_ticket = (int)($s['bonus_ticket'] ?? 0);
-        if ($b_ticket > 0) {
+        if ($b_ticket >= 5) {
             $b_ventas = (int)($s['bonus_ticket_ventas'] ?? 0);
-            $tier_txt = $b_ticket >= 8 ? 'al triple' : ($b_ticket >= 5 ? 'al doble' : '1.5x arriba');
+            $tier_txt = $b_ticket >= 8 ? 'al triple' : 'al doble';
             if ($b_ventas === 1) {
                 $frases[] = "1 venta $tier_txt del ticket promedio — buen cierre.";
             } else {
