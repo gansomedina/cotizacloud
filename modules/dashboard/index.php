@@ -756,7 +756,7 @@ ob_start();
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
     </div>
     <div style="flex:1;min-width:0">
-        <div style="font:600 13px var(--body);color:var(--g);margin-bottom:6px">Escudo Radar — Activo <span onclick="var p=document.getElementById('escudo-info');p.style.display=p.style.display==='none'?'block':'none'" style="cursor:pointer;font:500 11px var(--body);color:var(--t3);border:1px solid var(--border);border-radius:4px;padding:1px 6px;margin-left:4px">?</span></div>
+        <div style="font:600 13px var(--body);color:var(--g);margin-bottom:6px">Escudo Radar — Activo <span onclick="var p=document.getElementById('escudo-info');p.style.display=p.style.display==='none'?'block':'none'" style="cursor:pointer;font:500 11px var(--body);color:var(--t3);border-bottom:1px dashed var(--t3);margin-left:6px">¿qué es esto?</span></div>
         <div id="escudo-info" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;margin-bottom:8px;font:400 12px var(--body);color:var(--t2);line-height:1.5">
             El sistema contabiliza las visitas de tus clientes a las cotizaciones. El Escudo evita que tus propias visitas se cuenten como si fueras un cliente. Los dispositivos de esta lista están protegidos — sus visitas no contaminan las métricas del Radar.
             <div style="margin-top:8px;padding:8px 10px;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;font:600 12px var(--body);color:#92400e">
