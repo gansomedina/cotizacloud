@@ -1046,6 +1046,7 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <div class="dbg-row"><span class="dbg-lbl">Conversión (35%)</span><span class="dbg-val"><?= round(($es['s_conversion'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Penalizaciones</span><span class="dbg-val dbg-neg"><?= ($es['penalizaciones'] ?? 0) > 0 ? '-'.round(($es['penalizaciones'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Bonuses</span><span class="dbg-val"><?= round(($es['bonuses'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Bonus ticket</span><span class="dbg-val"><?= (int)($es['bonus_ticket'] ?? 0) > 0 ? '+'.($es['bonus_ticket']).' pts ('.(int)($es['bonus_ticket_ventas'] ?? 0).' venta'.((int)($es['bonus_ticket_ventas'] ?? 0) != 1 ? 's' : '').')' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Proporcional (×<?= round(($es['w_proporcional'] ?? 0.9) * 100) ?>%)</span><span class="dbg-val"><?= round(($es['tasa_gestion'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Momentum (×<?= round(($es['w_momentum'] ?? 0.1) * 100) ?>%)</span><span class="dbg-val"><?= number_format($es['momentum'] ?? 1, 2) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Percentil (×<?= round(($es['w_percentil'] ?? 0) * 100) ?>%)</span><span class="dbg-val"><?= round(($es['percentil'] ?? 0) * 100) ?>%</span></div>

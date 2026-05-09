@@ -977,6 +977,37 @@ class ActividadScore
         $score = (int)round($final * 100);
         $score = max(0, min(100, $score));
 
+        // ═══════════════════════════════════════════════════
+        //  BONUS TICKET ALTO
+        //  Premia ventas por encima del ticket promedio histórico
+        //  1.5x → +2, 2x → +5, 3x → +8, tope 15
+        // ═══════════════════════════════════════════════════
+        $bonus_ticket = 0;
+        $bonus_ticket_ventas = 0;
+        $ticket_prom = $bench['ticket_promedio'];
+        if ($ticket_prom > 0) {
+            $ventas_periodo_montos = DB::query(
+                "SELECT total FROM ventas
+                 WHERE COALESCE(vendedor_id, usuario_id) = ? AND empresa_id = ?
+                   AND estado != 'cancelada' AND total > 0
+                   AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+                [$usuario_id, $empresa_id, $periodo]
+            );
+            foreach ($ventas_periodo_montos as $vpm) {
+                $mult = (float)$vpm['total'] / $ticket_prom;
+                $pts = 0;
+                if ($mult >= 3.0) $pts = 8;
+                elseif ($mult >= 2.0) $pts = 5;
+                elseif ($mult >= 1.5) $pts = 2;
+                if ($pts > 0) {
+                    $bonus_ticket += $pts;
+                    $bonus_ticket_ventas++;
+                }
+            }
+            $bonus_ticket = min($bonus_ticket, 15);
+        }
+        $score = min($score + $bonus_ticket, 100);
+
         // Nivel
         if ($score >= 86) $nivel = 'top';
         elseif ($score >= 61) $nivel = 'activo';
@@ -1004,8 +1035,8 @@ class ActividadScore
               s_seguimiento, s_radar_health, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
-              momentum, percentil)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+              momentum, percentil, bonus_ticket, bonus_ticket_ventas, ticket_promedio)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -1030,6 +1061,7 @@ class ActividadScore
               ema_conversion=VALUES(ema_conversion),
               ema_activacion=VALUES(ema_activacion), ema_seguimiento=VALUES(ema_seguimiento),
               momentum=VALUES(momentum), percentil=VALUES(percentil),
+              bonus_ticket=VALUES(bonus_ticket), bonus_ticket_ventas=VALUES(bonus_ticket_ventas), ticket_promedio=VALUES(ticket_promedio),
               updated_at=NOW()",
             [
                 $usuario_id, $empresa_id, $score, $nivel,
@@ -1050,6 +1082,7 @@ class ActividadScore
                 round($ema_act, 3), round($ema_conv, 3),
                 round($ema_act, 3), round($ema_seg, 3),
                 round($momentum, 2), round($percentil, 2),
+                $bonus_ticket, $bonus_ticket_ventas, round($ticket_prom, 2),
             ]
         );
 
@@ -1095,6 +1128,9 @@ class ActividadScore
             's_conversion'      => round($s_conversion, 3),
             'penalizaciones'    => round($total_pen, 3),
             'bonuses'           => round($total_bonus, 3),
+            'bonus_ticket'      => $bonus_ticket,
+            'bonus_ticket_ventas' => $bonus_ticket_ventas,
+            'ticket_promedio'   => round($ticket_prom, 2),
             'tasa_gestion'      => round($proporcional, 3),
             'momentum'          => round($momentum, 2),
             'percentil'         => round($percentil, 2),
@@ -1375,7 +1411,18 @@ class ActividadScore
             $frases[] = "$cierres cierre" . ($cierres > 1 ? 's' : '') . " en frío sin pasar por el Radar — (referidos o cotización no usada).";
         }
 
-        // ═══ 3. CLIENTES ACTIVOS EN RADAR ═══
+        // ═══ BONUS TICKET ALTO ═══
+        $b_ticket = (int)($s['bonus_ticket'] ?? 0);
+        if ($b_ticket > 0) {
+            $b_ventas = (int)($s['bonus_ticket_ventas'] ?? 0);
+            if ($b_ventas === 1) {
+                $frases[] = "1 venta por encima del ticket promedio de la empresa — buen cierre.";
+            } else {
+                $frases[] = "$b_ventas ventas por encima del ticket promedio de la empresa.";
+            }
+        }
+
+        // ═══ 4. CLIENTES ACTIVOS EN RADAR ═══
         if ($ign > 0) {
             if ($score >= 75) {
                 $v = ["El Radar tiene $ign cliente" . ($ign > 1 ? 's' : '') . " con actividad reciente pendiente" . ($ign > 1 ? 's' : '') . " de tu atención.", "$ign cliente" . ($ign > 1 ? 's' : '') . " con actividad en el Radar. Revísalos."];
@@ -1524,11 +1571,18 @@ class ActividadScore
         );
         $apertura = $emp_asig >= 5 ? $emp_vistas / max($emp_asig, 1) : 0.70;
 
+        // Ticket promedio histórico de la empresa (todas las ventas, incluyendo actuales)
+        $ticket_promedio = (float)(DB::val(
+            "SELECT AVG(total) FROM ventas WHERE empresa_id=? AND estado != 'cancelada' AND total > 0",
+            [$empresa_id]
+        ) ?? 0);
+
         self::$_bench[$empresa_id] = [
-            'close_rate'    => max((float)$close_rate, 0.03),
-            'time_to_close' => max((float)($avg_ttc ?? 14), 3),
-            'radar_weekly'  => max((float)($avg_radar ?? 2.0), 0.5),
-            'apertura'      => max((float)$apertura, 0.30),
+            'close_rate'      => max((float)$close_rate, 0.03),
+            'time_to_close'   => max((float)($avg_ttc ?? 14), 3),
+            'radar_weekly'    => max((float)($avg_radar ?? 2.0), 0.5),
+            'apertura'        => max((float)$apertura, 0.30),
+            'ticket_promedio' => $ticket_promedio,
         ];
         return self::$_bench[$empresa_id];
     }
