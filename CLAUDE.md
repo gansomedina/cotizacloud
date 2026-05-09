@@ -1372,5 +1372,32 @@ s_activacion = operativa × 50% + tips × 50% (permite negativo)
 4. **Suscripciones MercadoPago** — whitelist IPs, probar pago, configurar cron
 5. **Device_sig**: `motion` tiene uso real (2 clientes). Solo `hc`, `contrast`, `inverted`, `transp` confirmados muertos.
 
+## Sesión 10 mayo 2026 (continuación pm)
+
+### Completado
+1. **Bonus ticket alto** — 1.5x→+2 (silencioso), 2x→+5, 3x→+8. Tope 15. Score máx 100.
+2. **Ticket promedio = AVG histórico** incluyendo ventas actuales (se auto-infla)
+3. **cierres_bucket y calidad usan bucket_transitions** — radar_bucket se pierde al aceptar
+4. **Seguimiento mide calientes históricas 15d** con feedback mismo período
+5. **Ghost cleanup en dashboard** — revierte estado a enviada si visitas=0
+6. **Badge no_abierta en vencidas**
+7. **Tooltips en lista cotizaciones**
+8. **Escudo "¿qué es esto?"**
+9. **Descuento automático no se resetea al editar**
+
+### Migraciones
+```sql
+ALTER TABLE usuario_score
+  ADD COLUMN bonus_ticket INT UNSIGNED NOT NULL DEFAULT 0 AFTER percentil,
+  ADD COLUMN bonus_ticket_ventas INT UNSIGNED NOT NULL DEFAULT 0 AFTER bonus_ticket,
+  ADD COLUMN ticket_promedio DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER bonus_ticket_ventas;
+```
+
+### Pendientes próxima sesión
+1. **Conversión 45.8% con 29% cierre** — revisar por qué no sube más estando arriba del benchmark
+2. **Revisar Engagement, Radar Health** a fondo
+3. **Auditoría seguridad** — CSRF, quote_action.php, .gitignore, headers
+4. **Suscripciones MercadoPago** — whitelist IPs, probar pago, cron
+
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi`
