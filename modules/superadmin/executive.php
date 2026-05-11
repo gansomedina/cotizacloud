@@ -1701,8 +1701,9 @@ foreach ($empresas_cfg as $eid => $ecfg) {
            AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
            AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
          GROUP BY qs.visitor_id
-         HAVING COUNT(DISTINCT c.cliente_id) > 1",
-        [$eid, $eid]
+         HAVING COUNT(DISTINCT c.cliente_id) > 1
+           AND MAX(qs.created_at) > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'user' AND valor = qs.visitor_id), '2000-01-01')",
+        [$eid, $eid, $eid]
     ) ? DB::val(
         "SELECT COUNT(*) FROM (
             SELECT qs.visitor_id
@@ -1716,8 +1717,9 @@ foreach ($empresas_cfg as $eid => $ecfg) {
               AND qs.visitor_id NOT IN (SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id = ?)
             GROUP BY qs.visitor_id
             HAVING COUNT(DISTINCT c.cliente_id) > 1
+              AND MAX(qs.created_at) > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'user' AND valor = qs.visitor_id), '2000-01-01')
         ) sub",
-        [$eid, $eid]
+        [$eid, $eid, $eid]
     ) : 0;
     $comp_ip_cnt = (int)(DB::val(
         "SELECT COUNT(*) FROM (
@@ -1732,6 +1734,7 @@ foreach ($empresas_cfg as $eid => $ecfg) {
               AND qs.ip NOT IN (SELECT DISTINCT us.ip FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id WHERE (u.empresa_id = ? OR u.rol = 'superadmin') AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY))
             GROUP BY qs.ip
             HAVING COUNT(DISTINCT c.cliente_id) > 1
+              AND TIMESTAMPDIFF(HOUR, MIN(qs.created_at), MAX(qs.created_at)) <= 720
               AND MAX(qs.created_at) > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')
         ) sub",
         [$eid, $eid, $eid, $eid]
