@@ -9,7 +9,7 @@ ob_start(); // Captura output accidental (warnings, notices) antes del JSON
 header('Content-Type: application/json; charset=utf-8');
 csrf_check();
 
-if (!Auth::es_admin()) json_error('Solo administradores', 403);
+if (!Auth::es_admin() && !Auth::puede('eliminar_items_venta') && !Auth::puede('editar_cotizaciones')) json_error('Sin permisos para editar', 403);
 
 $empresa_id = EMPRESA_ID;
 $venta_id   = (int)($id ?? 0);
