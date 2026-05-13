@@ -234,10 +234,14 @@ class ActividadScore
              AND COALESCE(ultima_vista_at, created_at) < DATE_SUB(NOW(), INTERVAL 21 DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
+        $pago_ok = "AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = id AND v.pagado > 0 AND v.estado != 'cancelada')";
+        $pago_ok_c = "AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = c.id AND v.pagado > 0 AND v.estado != 'cancelada')";
+
         $cierres_total = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
              AND estado IN ('aceptada','convertida','aceptada_cliente')
-             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             $pago_ok",
             [$usuario_id, $empresa_id, $periodo]
         );
         // Cierres con apoyo del Radar: cotización tuvo algún bucket real en su historial.
@@ -247,6 +251,7 @@ class ActividadScore
             "SELECT COUNT(*) FROM cotizaciones c WHERE $cw $no_import
              AND c.estado IN ('aceptada','convertida','aceptada_cliente')
              AND c.accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             $pago_ok_c
              AND EXISTS (
                 SELECT 1 FROM bucket_transitions bt
                 WHERE bt.cotizacion_id = c.id
@@ -260,7 +265,8 @@ class ActividadScore
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND cupon_pct = 0
-             AND descuento_auto_pct = 0",
+             AND descuento_auto_pct = 0
+             $pago_ok",
             [$usuario_id, $empresa_id, $periodo]
         );
         $carga_activa = (int)DB::val(
@@ -354,7 +360,8 @@ class ActividadScore
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND accion_at IS NOT NULL AND total > 0 $no_import",
+             AND accion_at IS NOT NULL AND total > 0 $no_import
+             $pago_ok",
             [$usuario_id, $empresa_id, $periodo]
         ) : null;
 
@@ -451,6 +458,7 @@ class ActividadScore
              WHERE COALESCE(c.vendedor_id, c.usuario_id)=? AND c.empresa_id=?
              AND c.estado IN ('aceptada','convertida','aceptada_cliente')
              AND c.accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             $pago_ok_c
              $no_import",
             [$usuario_id, $empresa_id, $periodo]
         );
@@ -803,7 +811,8 @@ class ActividadScore
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND total > 0 $no_import",
+             AND total > 0 $no_import
+             $pago_ok",
             [$usuario_id, $empresa_id, $periodo]
         );
         $total_semanas = max(round($periodo / 7), 1);
@@ -1206,7 +1215,7 @@ class ActividadScore
     {
         $periodo = self::PERIODO;
         $total = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0 AND suspendida=0 AND estado != 'borrador' AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)", [$empresa_id, $periodo]);
-        $cerr = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado IN ('aceptada','convertida') AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND total > 0", [$empresa_id, $periodo]);
+        $cerr = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado IN ('aceptada','convertida') AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND total > 0 AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = id AND v.pagado > 0 AND v.estado != 'cancelada')", [$empresa_id, $periodo]);
 
         $mes_actual = (int)date('n');
         $anio_actual = (int)date('Y');
@@ -1523,7 +1532,8 @@ class ActividadScore
             "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0
              AND suspendida = 0
              AND estado IN ('aceptada','convertida','aceptada_cliente')
-             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = id AND v.pagado > 0 AND v.estado != 'cancelada')",
             [$empresa_id, $periodo]
         );
         $close_rate = $emp_vistas >= 5 ? $emp_cierres / $emp_vistas : 0.15;
@@ -1534,7 +1544,8 @@ class ActividadScore
              WHERE empresa_id=? AND total > 0
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND accion_at IS NOT NULL",
+             AND accion_at IS NOT NULL
+             AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = id AND v.pagado > 0 AND v.estado != 'cancelada')",
             [$empresa_id, $periodo]
         );
 
