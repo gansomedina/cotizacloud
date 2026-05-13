@@ -9,7 +9,7 @@ ob_start(); // Captura output accidental (warnings, notices) antes del JSON
 header('Content-Type: application/json; charset=utf-8');
 csrf_check();
 
-if (!Auth::es_admin()) json_error('Solo administradores', 403);
+if (!Auth::es_admin() && !Auth::puede('eliminar_items_venta') && !Auth::puede('editar_cotizaciones')) json_error('Sin permisos para editar', 403);
 
 $empresa_id = EMPRESA_ID;
 $venta_id   = (int)($id ?? 0);
@@ -24,6 +24,9 @@ if ($venta['estado'] === 'cancelada') json_error('Venta cancelada', 422);
 $lineas_new       = $body['lineas'] ?? [];
 $desc_auto_amt    = round(max(0, (float)($body['descuento_auto_amt'] ?? 0)), 2);
 $desc_auto_pct    = round(max(0, (float)($body['descuento_auto_pct'] ?? 0)), 2);
+if (($desc_auto_amt > 0 || $desc_auto_pct > 0) && !Auth::es_admin() && !Auth::puede('aplicar_descuentos')) {
+    json_error('Sin permiso para aplicar descuentos', 403);
+}
 $nuevo_cliente_id = isset($body['cliente_id']) && $body['cliente_id'] ? (int)$body['cliente_id'] : null;
 
 if (empty($lineas_new)) json_error('Debe haber al menos un artículo');
