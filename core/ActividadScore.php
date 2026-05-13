@@ -530,7 +530,7 @@ class ActividadScore
         $ventas_totales = (int)DB::val(
             "SELECT COUNT(*) FROM ventas
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND estado != 'cancelada'
+             AND estado != 'cancelada' AND pagado > 0
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
@@ -551,7 +551,7 @@ class ActividadScore
         $ventas_con_descuento = (int)DB::val(
             "SELECT COUNT(*) FROM ventas
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND estado != 'cancelada'
+             AND estado != 'cancelada' AND pagado > 0
              AND (descuento_auto_amt > 0 OR cupon_monto > 0)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
@@ -569,14 +569,14 @@ class ActividadScore
         // Si vendes menos de lo que vendía la empresa por vendedor, penaliza
         $eng_pen_bajo_benchmark = 0.0;
         $ventas_emp_prev = (int)DB::val(
-            "SELECT COUNT(*) FROM ventas WHERE empresa_id=? AND estado != 'cancelada'
+            "SELECT COUNT(*) FROM ventas WHERE empresa_id=? AND estado != 'cancelada' AND pagado > 0
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND created_at < DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$empresa_id, $periodo * 2, $periodo]
         );
         $sellers_prev = (int)DB::val(
             "SELECT COUNT(DISTINCT COALESCE(vendedor_id, usuario_id)) FROM ventas
-             WHERE empresa_id=? AND estado != 'cancelada'
+             WHERE empresa_id=? AND estado != 'cancelada' AND pagado > 0
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND created_at < DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$empresa_id, $periodo * 2, $periodo]
@@ -998,7 +998,7 @@ class ActividadScore
             $ventas_periodo_montos = DB::query(
                 "SELECT total FROM ventas
                  WHERE COALESCE(vendedor_id, usuario_id) = ? AND empresa_id = ?
-                   AND estado != 'cancelada' AND total > 0
+                   AND estado != 'cancelada' AND total > 0 AND pagado > 0
                    AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
                 [$usuario_id, $empresa_id, $periodo]
             );
@@ -1254,7 +1254,7 @@ class ActividadScore
 
         // Monto del mes actual de toda la empresa
         $monto_mes_actual = (float)DB::val(
-            "SELECT COALESCE(SUM(total), 0) FROM ventas WHERE empresa_id=? AND estado != 'cancelada' AND YEAR(created_at)=? AND MONTH(created_at)=?",
+            "SELECT COALESCE(SUM(total), 0) FROM ventas WHERE empresa_id=? AND estado != 'cancelada' AND pagado > 0 AND YEAR(created_at)=? AND MONTH(created_at)=?",
             [$empresa_id, $anio_actual, $mes_actual]
         );
         $dia_mes = (int)date('j');
@@ -1585,7 +1585,7 @@ class ActividadScore
 
         // Ticket promedio histórico de la empresa (todas las ventas, incluyendo actuales)
         $ticket_promedio = (float)(DB::val(
-            "SELECT AVG(total) FROM ventas WHERE empresa_id=? AND estado != 'cancelada' AND total > 0",
+            "SELECT AVG(total) FROM ventas WHERE empresa_id=? AND estado != 'cancelada' AND total > 0 AND pagado > 0",
             [$empresa_id]
         ) ?? 0);
 
