@@ -288,7 +288,6 @@ $aceptadas = DB::query(
      LEFT JOIN clientes cl ON cl.id = c.cliente_id
      WHERE c.empresa_id=? AND c.estado IN ('aceptada','convertida')
        AND c.aceptada_at >= DATE_SUB(NOW(), INTERVAL 14 DAY) $c_where
-       AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = c.id AND v.pagado > 0 AND v.estado != 'cancelada')
      ORDER BY c.aceptada_at DESC LIMIT 6",
     [$empresa_id]
 );
