@@ -196,7 +196,8 @@ $rows = DB::query(
      FROM cotizaciones WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
        AND estado != 'borrador'
        AND (created_at BETWEEN ? AND ?
-            OR (estado IN ('aceptada','convertida') AND aceptada_at BETWEEN ? AND ?))
+            OR (estado IN ('aceptada','convertida') AND aceptada_at BETWEEN ? AND ?
+                AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = cotizaciones.id AND v.pagado > 0 AND v.estado != 'cancelada')))
      GROUP BY empresa_id",
     [$p_ini_dt, $p_fin_dt, $p_ini_dt, $p_fin_dt]
 );
@@ -206,6 +207,7 @@ $rows_ace = DB::query(
      FROM cotizaciones WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
        AND estado IN ('aceptada','convertida')
        AND aceptada_at BETWEEN ? AND ?
+       AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = cotizaciones.id AND v.pagado > 0 AND v.estado != 'cancelada')
      GROUP BY empresa_id",
     [$p_ini_dt, $p_fin_dt]
 );
@@ -228,7 +230,8 @@ $funnel['aceptadas'] = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones
      WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
        AND estado IN ('aceptada','convertida')
-       AND aceptada_at BETWEEN ? AND ?",
+       AND aceptada_at BETWEEN ? AND ?
+       AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = cotizaciones.id AND v.pagado > 0 AND v.estado != 'cancelada')",
     [$p_ini_dt, $p_fin_dt]
 );
 
@@ -294,6 +297,7 @@ $tasa_mensual_ace = DB::query(
      WHERE empresa_id IN ({$emp_ids}) AND COALESCE(suspendida,0)=0
        AND estado IN ('aceptada','convertida') AND aceptada_at IS NOT NULL
        AND aceptada_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+       AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = cotizaciones.id AND v.pagado > 0 AND v.estado != 'cancelada')
      GROUP BY mes, empresa_id"
 );
 $tasa_trend = [];

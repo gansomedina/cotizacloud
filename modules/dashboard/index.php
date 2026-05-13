@@ -226,7 +226,8 @@ $funnel = DB::row(
 $funnel['cerradas'] = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones c
      WHERE c.empresa_id = ? AND estado IN ('aceptada','convertida') AND COALESCE(suspendida,0)=0
-       AND aceptada_at BETWEEN ? AND ? $c_where",
+       AND aceptada_at BETWEEN ? AND ? $c_where
+       AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = c.id AND v.pagado > 0 AND v.estado != 'cancelada')",
     [$empresa_id, $desde, $hasta]
 );
 
@@ -245,7 +246,8 @@ $tiempo_cierre = (float)(DB::val(
     "SELECT AVG(DATEDIFF(aceptada_at, created_at))
      FROM cotizaciones c
      WHERE c.empresa_id=? AND estado IN ('aceptada','convertida')
-       AND aceptada_at IS NOT NULL AND c.created_at BETWEEN ? AND ? $c_where",
+       AND aceptada_at IS NOT NULL AND c.created_at BETWEEN ? AND ? $c_where
+       AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = c.id AND v.pagado > 0 AND v.estado != 'cancelada')",
     [$empresa_id, $desde, $hasta]
 ) ?? 0);
 
@@ -438,7 +440,7 @@ $act_cots = DB::row(
     "SELECT
         SUM(estado NOT IN ('borrador') AND suspendida = 0) AS total,
         COALESCE(SUM(CASE WHEN estado NOT IN ('borrador') AND suspendida = 0 THEN total ELSE 0 END), 0) AS monto_total,
-        SUM(estado IN ('aceptada','convertida')) AS cerradas,
+        SUM(estado IN ('aceptada','convertida') AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = c.id AND v.pagado > 0 AND v.estado != 'cancelada')) AS cerradas,
         SUM(estado = 'rechazada') AS rechazadas,
         SUM(estado IN ('enviada','vista') AND suspendida = 0) AS pendientes
      FROM cotizaciones c

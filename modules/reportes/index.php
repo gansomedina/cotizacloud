@@ -139,7 +139,8 @@ $kfc = DB::row(
 $kfc['aceptadas'] = (int)DB::val(
     "SELECT COUNT(*) FROM cotizaciones c
      WHERE empresa_id=? AND estado IN ('aceptada','convertida') AND COALESCE(suspendida,0)=0
-       AND aceptada_at BETWEEN ? AND ? $usr_filter_c",
+       AND aceptada_at BETWEEN ? AND ? $usr_filter_c
+       AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = c.id AND v.pagado > 0 AND v.estado != 'cancelada')",
     [$empresa_id, $f_ini_dt, $f_fin_dt]
 );
 $tasa_conv = ($kfc['total'] ?? 0) > 0
@@ -225,6 +226,7 @@ if ($es_admin) {
              FROM cotizaciones c
              WHERE c.empresa_id=? AND estado IN ('aceptada','convertida')
                AND aceptada_at BETWEEN ? AND ?
+               AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = c.id AND v.pagado > 0 AND v.estado != 'cancelada')
              GROUP BY vid
          ) sa ON sa.vid = u.id
          WHERE u.empresa_id=? AND u.activo=1
