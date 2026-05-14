@@ -315,7 +315,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
     echo "</span>";
     echo "</div>";
     if (!$items) { echo "<div class='rbk-em'>Sin registros.</div></div>"; return; }
-    $items = array_slice($items,0,12);
+    // Sin límite — mostrar todas las cotizaciones del bucket
     echo "<div class='rdrs'><table class='rdrt'><thead><tr>";
     echo "<th>Título / Cliente</th>";
     if ($motivo) echo "<th style='width:100px'>Motivo</th>";
