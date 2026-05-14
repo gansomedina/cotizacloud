@@ -1421,3 +1421,83 @@ ALTER TABLE usuario_score
 
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi`
+
+## Módulo Inmuebles — Diseño (pendiente implementación)
+
+### Concepto
+Agregar giro `inmuebles` a CotizaCloud. Misma plataforma, diferente catálogo y slug. Todo el core (Radar, Escudo, Termómetro, ventas, pagos, reportes) no se toca.
+
+### Tabla propiedades
+```sql
+CREATE TABLE propiedades (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    empresa_id INT UNSIGNED NOT NULL,
+    tipo_operacion ENUM('venta','renta','renta_temporal') NOT NULL DEFAULT 'venta',
+    tipo_propiedad ENUM('casa','departamento','terreno','local_comercial','oficina','bodega') NOT NULL DEFAULT 'casa',
+    titulo VARCHAR(255) NOT NULL,
+    direccion VARCHAR(500),
+    precio DECIMAL(14,2) NOT NULL DEFAULT 0,
+    m2_terreno DECIMAL(8,2),
+    m2_construccion DECIMAL(8,2),
+    recamaras TINYINT UNSIGNED,
+    banos DECIMAL(3,1),
+    estacionamientos TINYINT UNSIGNED,
+    pisos TINYINT UNSIGNED,
+    descripcion TEXT,
+    amenidades JSON,
+    fotos JSON,
+    estado_propiedad ENUM('disponible','apartada','vendida','rentada') DEFAULT 'disponible',
+    lat DECIMAL(10,7),
+    lng DECIMAL(10,7),
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,
+    KEY idx_empresa (empresa_id)
+);
+
+ALTER TABLE empresas ADD COLUMN giro ENUM('servicios','inmuebles') NOT NULL DEFAULT 'servicios';
+```
+
+### Archivos a modificar (17 puntos en 9 archivos + 1 template nuevo)
+
+Queries que cambian de tabla según giro (12 puntos):
+1. config/index.php:45 — Lista catálogo
+2. config/index.php:682-731 — HTML tab Catálogo
+3. config/index.php:1855 — JS fetch guardar/eliminar
+4. config/articulo.php:20,37,46 — CRUD backend
+5. cotizaciones/nueva.php:54 — Autocomplete crear
+6. cotizaciones/nueva.php:641-831 — Sheet catálogo + JS
+7. cotizaciones/ver.php:70 — Autocomplete editar
+8. cotizaciones/ver.php:653-817 — JS catálogo
+9. cotizaciones/guardar.php:117 — Validar precio
+10. ventas/ver.php:49 — Autocomplete ventas
+11. ventas/acciones.php:85 — Buscar artículo por ID
+12. cotizaciones/clonar.php:47 — No cambia (usa cotizacion_lineas)
+
+Textos hardcodeados (5 puntos):
+13. public/cotizacion.php:749 — "Artículos incluidos" → "Propiedad"
+14. cotizaciones/nueva.php:415 — "Artículos" → "Propiedad"
+15. cotizaciones/nueva.php:641 — "Catálogo" → "Propiedades"
+16. config/index.php:335 — Tab "Catálogo" → "Propiedades"
+17. landing.php:469,543 — "articulos" → "propiedades"
+
+Template nuevo:
+- public/cotizacion_inmueble.php — galería fotos + mapa + características + botón "Me interesa"/"Apartar"
+
+### Errores a evitar
+1. articulo_id en cotizacion_lineas sin FK — el giro indica a qué tabla pertenece
+2. guardar.php:117 valida precio contra articulos — checar giro
+3. Autocomplete envía articulo_id — reusar como ID genérico del catálogo
+4. Slug de inmuebles es template completamente diferente, no un if/else
+5. cantidad en cotizacion_lineas siempre = 1 para propiedades
+6. Necesita config/propiedad.php para CRUD o detectar giro en articulo.php
+7. Landing dice "artículos" — texto genérico o por giro
+
+### Lo que NO cambia
+- core/Auth.php, Router.php, layout.php
+- Radar, Escudo, device_sig, tracking
+- Termómetro, ActividadScore
+- Dashboard, ejecutivo, reportes
+- Ventas, abonos, recibos
+- Push notifications, Suscripciones MercadoPago
