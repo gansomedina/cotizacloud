@@ -1394,10 +1394,30 @@ ALTER TABLE usuario_score
 ```
 
 ### Pendientes próxima sesión
-1. **Conversión 45.8% con 29% cierre** — revisar por qué no sube más estando arriba del benchmark
-2. **Revisar Engagement, Radar Health** a fondo
-3. **Auditoría seguridad** — CSRF, quote_action.php, .gitignore, headers
-4. **Suscripciones MercadoPago** — whitelist IPs, probar pago, cron
+1. **Security headers** — probar `Header set X-Content-Type-Options "nosniff"` en .htaccess primero para verificar que LiteSpeed soporta mod_headers. Si funciona, agregar HSTS, X-Frame-Options, Referrer-Policy
+2. **CSRF en endpoints de config** — 15 endpoints sin csrf_check (articulo.php, cupon.php, usuario.php, etc.). Verificar que el frontend mande el token antes de agregar
+3. **.gitignore** — agregar *.sql, *.csv, *.pem, *_backup*
+4. **Contraseña mínima** — cambiar de 6 a 12 chars en registro_post.php
+5. **Benchmark close_rate** — analizar si usar histórico (14%) vs ventana 15 días (23%). Decisión de impacto, pensar con calma
+6. **Conversión 45.8% con 29% cierre** — revisar por qué no sube más estando arriba del benchmark
+7. **Termómetro: venta cuenta con pagado>0** — ya implementado, verificar que los scores sean correctos con datos reales
+8. **Variantes de giro** — diseño de módulo inmuebles/seguros con tabla catálogo por giro. Implementar cuando haya demanda validada
+9. **Suscripciones MercadoPago** — whitelist IPs, probar pago, configurar cron
+
+### Completado sesión 14 mayo 2026
+1. **Bonus ticket alto** — 1.5x→+2(silencioso), 2x→+5, 3x→+8. Tope 15. Score máx 100
+2. **Venta cuenta solo con pagado>0** — 16+ queries corregidos en ActividadScore, dashboard, ejecutivo y reportes
+3. **Bug $pago_ok** — `id` resolvía a `ventas.id`, corregido a `cotizaciones.id`
+4. **Aceptadas recientemente** — sin filtro de pago (es alerta informativa)
+5. **Permiso guardar ventas** — permite asesor con eliminar_items o editar_cotizaciones
+6. **Permiso descuento en guardar.php** — valida aplicar_descuentos si monto > 0
+7. **Competencia ejecutivo** — respeta reviewed_at + proximidad 720h
+8. **Frase bonus ticket** — solo 2x y 3x, 1.5x silencioso
+9. **Ejecutivo SELECT** — agregar bonus_ticket, bonus_ticket_ventas, no_abiertas_5d
+10. **Ghost cleanup en dashboard** — limpia sesiones fantasma, revierte estado
+11. **Badge no_abierta en vencidas** — sin importar vigencia
+12. **Tooltips lista cotizaciones** — badges, vistas, cupones, botones
+13. **Escudo "¿qué es esto?"** — explicación + alerta dispositivos
 
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi`
