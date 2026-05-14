@@ -9,6 +9,7 @@ defined('COTIZAAPP') or die;
 header('Content-Type: application/json; charset=utf-8');
 
 Auth::requerir_admin();
+csrf_check();
 
 $empresa_id = EMPRESA_ID;
 $plan = trial_info($empresa_id);

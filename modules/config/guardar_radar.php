@@ -6,6 +6,7 @@
 
 defined('COTIZAAPP') or die;
 Auth::requerir_admin();
+csrf_check();
 require_once MODULES_PATH . '/radar/Radar.php';
 
 header('Content-Type: application/json');
