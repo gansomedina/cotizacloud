@@ -5,6 +5,7 @@
 // ============================================================
 
 defined('COTIZAAPP') or die;
+csrf_check();
 
 header('Content-Type: application/json; charset=utf-8');
 

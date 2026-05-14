@@ -7,6 +7,7 @@
 // ============================================================
 defined('COTIZAAPP') or die;
 Auth::requerir_admin();
+csrf_check();
 header('Content-Type: application/json');
 
 $eid      = EMPRESA_ID;

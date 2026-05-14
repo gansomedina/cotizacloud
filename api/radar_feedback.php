@@ -13,6 +13,7 @@ if (!Auth::logueado()) {
     echo json_encode(['ok' => false, 'error' => 'No autenticado']);
     exit;
 }
+csrf_check();
 
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 $cot_id = (int)($body['cotizacion_id'] ?? 0);
