@@ -244,11 +244,14 @@ foreach ($raw as $c) {
     if ($c['raw_vista_at'] && $last_ts >= time()-48*3600) $activos48[] = $row;
 
     // Probable cierre es cross-bucket: la cotización aparece AQUÍ y en su bucket origen
-    if (in_array('probable_cierre', $all_buckets, true) && $pc_source) {
-        $row['reason'] = $pc_source; // bucket que la activó
+    // prediccion_alta también se agrupa aquí — es probable cierre por estadística
+    $es_probable = in_array('probable_cierre', $all_buckets, true) && $pc_source;
+    $es_prediccion = $bucket === 'prediccion_alta';
+    if ($es_probable || $es_prediccion) {
+        $row['reason'] = $es_probable ? $pc_source : 'prediccion_alta';
         $buckets['probable_cierre'][] = $row;
         // También asignar al bucket origen (sin duplicar en probable_cierre)
-        $origin_bucket = $pc_source;
+        $origin_bucket = $es_probable ? $pc_source : 'prediccion_alta';
         if ($origin_bucket && isset($buckets[$origin_bucket])) {
             $buckets[$origin_bucket][] = $row;
         }
