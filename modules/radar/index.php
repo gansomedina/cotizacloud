@@ -1003,8 +1003,8 @@ async function compAction(accion, tipo, valor, btn) {
 <!-- ===== TAB: ALTA PRIORIDAD ===== -->
 <div class="tab-panel on" id="tab-urgentes">
 <?php
-render_bkt('🎯 Probable cierre',
-    'Cross-bucket: confirma intención real con 2+ categorías de señal + lectura real (≥15s) + foco en precio',
+render_bkt('🎯 Resumen — Probable cierre',
+    'Aquí están todas tus cotizaciones calientes ordenadas por prioridad. Son las que requieren tu atención inmediata. Para ver el detalle de cada señal, revisa los buckets individuales más abajo.',
     $buckets['probable_cierre'],$sort,$dir,false,true,'probable_cierre');
 
 render_bkt('🔥😱 ON FIRE',
