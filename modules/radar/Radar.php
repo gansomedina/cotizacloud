@@ -440,6 +440,9 @@ class Radar
                 if (!$ip_has_events) continue;
             }
 
+            // ── Filtro de visita mínima: <2 segundos no es lectura real ──
+            if ($vis > 0 && $vis < 2000 && $scroll === 0) continue;
+
             // Construir mapas vid→dsig e ip→dsig (después de filtros, antes de dedup)
             if ($dsig !== '') {
                 if ($vid !== '') $vid_dsig[$vid] = $dsig;
@@ -531,6 +534,8 @@ class Radar
                     foreach ($ev_rows as $ev) { if (($ev['ip'] ?? '') === $ip2) { $ip2_has_ev = true; break; } }
                     if (!$ip2_has_ev) continue;
                 }
+                // Filtro visita mínima (paridad con loop principal)
+                if ($vi2 > 0 && $vi2 < 2000 && $sc2 === 0) continue;
                 $ips_post_guest[$ip2] = true;
                 if ($vid2 !== '') $vids_post_guest[$vid2] = true;
             }
