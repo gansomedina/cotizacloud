@@ -466,7 +466,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <div class="flow-step">
       <div class="flow-step-num">1</div>
       <div class="flow-step-title">Genera la cotizacion</div>
-      <div class="flow-step-desc">Con tu marca, tus articulos y tus condiciones. Profesional desde el primer contacto.</div>
+      <div class="flow-step-desc">Con tu marca, tus productos y tus condiciones. Profesional desde el primer contacto.</div>
     </div>
     <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
     <div class="flow-step">
@@ -607,6 +607,16 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="aud-card-ico">&#128187;</div>
       <div class="aud-card-title">Freelancers y Consultores</div>
       <div class="aud-card-desc">Diseno, marketing, TI. Deja de perseguir clientes — llama cuando estan listos.</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-ico">&#127968;</div>
+      <div class="aud-card-title">Inmobiliarias y Agentes</div>
+      <div class="aud-card-desc">¿Tu cliente vio la propuesta o la ignoró? Deja de perseguir a quien solo pregunta y enfócate en quien tiene interés real. Descubre qué propiedad de tu catálogo genera más interés y cuál no.</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-ico">&#128737;</div>
+      <div class="aud-card-title">Agentes de Seguros y Servicios Financieros</div>
+      <div class="aud-card-desc">¿Mandas cotizaciones de pólizas y no sabes si las revisaron? Deja de llamar a ciegas. Si tu cliente la leyó una vez, dale seguimiento. Si regresó a verla — ¡SEGUIMIENTO YA!</div>
     </div>
   </div>
 </section>

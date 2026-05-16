@@ -400,7 +400,7 @@ class Radar
         $last_by_vid   = [];
         $session_ts    = [];
         $vid_dsig      = [];  // vid → dsig (para descarte)
-        $vid_ip        = [];  // vid → ip (para regla dsig + ip)
+        $vid_ips       = [];  // vid → [ip => true, ...] (todas las IPs por visitor)
         $ip_dsig       = [];  // ip → [dsig => true, ...] (para descarte, array por IP)
         $sessions = $views24 = $views7d = $views48 = 0;
         $guest_sessions = $guest_24h = $guest_48h = $guest_7d = 0;
@@ -444,12 +444,12 @@ class Radar
             // ── Filtro de visita mínima: <2 segundos no es lectura real ──
             if ($vis > 0 && $vis < 2000 && $scroll === 0) continue;
 
-            // Construir mapas vid→dsig, vid→ip e ip→dsig (después de filtros, antes de dedup)
+            // Construir mapas vid→dsig, vid→ips e ip→dsig (después de filtros, antes de dedup)
             if ($dsig !== '') {
                 if ($vid !== '') $vid_dsig[$vid] = $dsig;
                 $ip_dsig[$ip][$dsig] = true;
             }
-            if ($vid !== '') $vid_ip[$vid] = $ip;
+            if ($vid !== '') $vid_ips[$vid][$ip] = true;
 
             // Deduplicar: visitor_id primero (misma persona), IP como fallback
             if ($vid !== '' && isset($last_by_vid[$vid]) && ($ts - $last_by_vid[$vid]) < $dedupe) {
@@ -559,39 +559,44 @@ class Radar
         // Si no hay datos de device_sig, no cambia nada.
         if (!empty($vid_dsig) || !empty($ip_dsig)) {
 
-            // Validar vids: agrupar por dsig SOLO si comparten IP
-            // visitor_ids diferentes + IPs diferentes = personas diferentes (aunque mismo dsig)
-            // visitor_ids diferentes + misma IP + mismo dsig = probablemente 1 persona en 2 navegadores
-            $g = [];
-            foreach ($vids_post_guest as $vid => $_) {
-                $dsig_v = $vid_dsig[$vid] ?? null;
-                $ip_v   = $vid_ip[$vid] ?? null;
-                if ($dsig_v && $ip_v) {
-                    $g[$dsig_v . '|' . $ip_v] = true;
-                } else {
-                    $g[$vid] = true;
+            // Validar vids: agrupar por dsig SOLO si comparten al menos 1 IP
+            // Usa union-find: si 2 vids tienen mismo dsig Y comparten IP → misma persona
+            $vid_list = array_keys($vids_post_guest);
+            $vid_group = [];
+            foreach ($vid_list as $v) $vid_group[$v] = $v;
+            for ($i = 0; $i < count($vid_list); $i++) {
+                for ($j = $i + 1; $j < count($vid_list); $j++) {
+                    $va = $vid_list[$i]; $vb = $vid_list[$j];
+                    $da = $vid_dsig[$va] ?? null; $db = $vid_dsig[$vb] ?? null;
+                    if (!$da || !$db || $da !== $db) continue;
+                    $ips_a = $vid_ips[$va] ?? [];
+                    $ips_b = $vid_ips[$vb] ?? [];
+                    if (array_intersect_key($ips_a, $ips_b)) {
+                        $root_b = $vid_group[$vb];
+                        foreach ($vid_group as $k => $val) {
+                            if ($val === $root_b) $vid_group[$k] = $vid_group[$va];
+                        }
+                    }
                 }
             }
-            $vids_post_guest_count = count($g);
+            $vids_post_guest_count = count(array_unique($vid_group));
 
-            // Validar IPs: expandir por dsig+vid para contar personas reales
-            // Misma persona WiFi→datos: mismo dsig + mismo vid → 1 persona
-            // 2 personas mismo modelo iPhone: mismo dsig + diferentes vids → 2 personas
-            $ip_vid = [];
-            foreach ($last_by_ip as $ip_addr => $_) {
-                foreach ($vid_ip as $v => $v_ip) {
-                    if ($v_ip === $ip_addr) { $ip_vid[$ip_addr][] = $v; break; }
-                }
-            }
-            $validate_ips = function(array $ips) use ($ip_dsig, $ip_vid, $intern_dsig): int {
+            // Validar IPs: usar mismo clustering por dsig + IP compartida
+            // Agrupa IPs que pertenecen a la misma persona (mismo dsig + vid con IP en común)
+            $validate_ips = function(array $ips) use ($ip_dsig, $vid_ips, $vid_dsig, $intern_dsig): int {
+                // Agrupar IPs por dsig, pero separar si vids diferentes sin IP en común
                 $g = [];
                 foreach ($ips as $ip => $_) {
                     if (isset($ip_dsig[$ip])) {
                         foreach ($ip_dsig[$ip] as $dsig => $_2) {
                             if (isset($intern_dsig[$dsig])) continue;
-                            $vid_for_ip = $ip_vid[$ip][0] ?? null;
-                            if ($vid_for_ip) {
-                                $g[$dsig . '|' . $vid_for_ip] = true;
+                            // Buscar qué vid usó esta IP
+                            $vid_found = null;
+                            foreach ($vid_ips as $v => $v_ips) {
+                                if (isset($v_ips[$ip])) { $vid_found = $v; break; }
+                            }
+                            if ($vid_found) {
+                                $g[$dsig . '|' . $vid_found] = true;
                             } else {
                                 $g[$dsig] = true;
                             }
@@ -600,7 +605,28 @@ class Radar
                         $g[$ip] = true;
                     }
                 }
-                return count($g);
+                // Fusionar grupos que comparten dsig + IP en común
+                // (misma lógica de union-find que vids)
+                $keys = array_keys($g);
+                $merged = [];
+                foreach ($keys as $k) {
+                    $parts = explode('|', $k, 2);
+                    if (count($parts) < 2) { $merged[$k] = true; continue; }
+                    $dsig_k = $parts[0]; $vid_k = $parts[1];
+                    $found_merge = false;
+                    foreach ($merged as $mk => $_) {
+                        $mp = explode('|', $mk, 2);
+                        if (count($mp) < 2) continue;
+                        if ($mp[0] !== $dsig_k) continue;
+                        $ips_k  = $vid_ips[$vid_k] ?? [];
+                        $ips_mk = $vid_ips[$mp[1]] ?? [];
+                        if (array_intersect_key($ips_k, $ips_mk)) {
+                            $found_merge = true; break;
+                        }
+                    }
+                    if (!$found_merge) $merged[$k] = true;
+                }
+                return count($merged);
             };
 
             $ips_post_guest_count = $validate_ips($ips_post_guest);
