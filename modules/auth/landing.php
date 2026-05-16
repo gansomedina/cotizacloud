@@ -131,7 +131,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 /* AUDIENCE / PARA QUIEN */
 .audience{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.audience-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.audience-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .aud-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:28px 22px;text-align:center;transition:all .25s;position:relative;overflow:hidden}
 .aud-card:hover{border-color:var(--g-border);box-shadow:var(--sh-lg);transform:translateY(-3px)}
 .aud-card-ico{font-size:36px;margin-bottom:14px;line-height:1}
