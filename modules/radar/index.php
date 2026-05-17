@@ -828,7 +828,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
             if ($det_ua) {
                 $det_ua_l = strtolower($det_ua);
                 $det_os = str_contains($det_ua_l,'iphone') ? 'iPhone' : (str_contains($det_ua_l,'android') ? 'Android' : (str_contains($det_ua_l,'macintosh') ? 'Mac' : (str_contains($det_ua_l,'windows') ? 'Windows' : '')));
-                $det_nav = str_contains($det_ua_l,'edg/') ? 'Edge' : (str_contains($det_ua_l,'firefox') ? 'Firefox' : ((str_contains($det_ua_l,'chrome') && !str_contains($det_ua_l,'edg/')) ? 'Chrome' : ((str_contains($det_ua_l,'safari') && !str_contains($det_ua_l,'chrome')) ? 'Safari' : '')));
+                $det_nav = str_contains($det_ua_l,'edg/') ? 'Edge' : (str_contains($det_ua_l,'firefox') ? 'Firefox' : (str_contains($det_ua_l,'samsungbrowser') ? 'Samsung' : (str_contains($det_ua_l,'opr/') ? 'Opera' : ((str_contains($det_ua_l,'chrome') && !str_contains($det_ua_l,'edg/')) ? 'Chrome' : ((str_contains($det_ua_l,'safari') && !str_contains($det_ua_l,'chrome')) ? 'Safari' : ($det_os === 'Android' ? 'Chrome' : ''))))));
                 $det_dev = $det_os . ($det_nav ? ' · ' . $det_nav : '');
             }
         ?>
