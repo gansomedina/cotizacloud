@@ -131,7 +131,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 /* AUDIENCE / PARA QUIEN */
 .audience{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.audience-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.audience-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .aud-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:28px 22px;text-align:center;transition:all .25s;position:relative;overflow:hidden}
 .aud-card:hover{border-color:var(--g-border);box-shadow:var(--sh-lg);transform:translateY(-3px)}
 .aud-card-ico{font-size:36px;margin-bottom:14px;line-height:1}
@@ -495,6 +495,45 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   </div>
 </section>
 
+<!-- PARA QUIEN ES -->
+<section class="audience">
+  <span class="section-label">Para quien es</span>
+  <div class="section-title">Si cotizas para vender, esto es para ti</div>
+  <p class="section-sub">Profesionales que mandan cotizaciones y quieren saber ¿que pasa despues?</p>
+
+  <div class="audience-grid">
+    <div class="aud-card">
+      <div class="aud-card-ico">&#128208;</div>
+      <div class="aud-card-title">Arquitectos y Despachos</div>
+      <div class="aud-card-desc">Cotizaciones de alto valor donde el seguimiento define si cierras o no.</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-ico">&#127959;</div>
+      <div class="aud-card-title">Constructoras</div>
+      <div class="aud-card-desc">Multiples cotizaciones activas. Sabe cuales van en serio sin llamar a todos.</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-ico">&#128736;</div>
+      <div class="aud-card-title">Fabricantes y Talleres</div>
+      <div class="aud-card-desc">Muebles, herreria, carpinteria. Productos a la medida con imagen profesional.</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-ico">&#128187;</div>
+      <div class="aud-card-title">Freelancers y Consultores</div>
+      <div class="aud-card-desc">Diseno, marketing, TI. Deja de perseguir clientes — llama cuando estan listos.</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-ico">&#127968;</div>
+      <div class="aud-card-title">Inmobiliarias y Agentes</div>
+      <div class="aud-card-desc">¿Tu cliente vio la propuesta o la ignoró? Deja de perseguir a quien solo pregunta y enfócate en quien tiene interés real. Descubre qué propiedad de tu catálogo genera más interés y cuál no.</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-card-ico">&#128737;</div>
+      <div class="aud-card-title">Agentes de Seguros y Servicios Financieros</div>
+      <div class="aud-card-desc">¿Mandas cotizaciones de pólizas y no sabes si las revisaron? Deja de llamar a ciegas. Si tu cliente la leyó una vez, dale seguimiento. Si regresó a verla — ¡SEGUIMIENTO YA!</div>
+    </div>
+  </div>
+</section>
 
 <!-- COSTOS — Seccion dedicada, segundo gancho -->
 <section class="predictive">
@@ -582,44 +621,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 
 <!-- AUDIENCE -->
-<section class="audience">
-  <span class="section-label">Para quien es</span>
-  <div class="section-title">Si cotizas para vender, esto es para ti</div>
-  <p class="section-sub">Profesionales que mandan cotizaciones y quieren saber ¿que pasa despues?</p>
-
-  <div class="audience-grid">
-    <div class="aud-card">
-      <div class="aud-card-ico">&#128208;</div>
-      <div class="aud-card-title">Arquitectos y Despachos</div>
-      <div class="aud-card-desc">Cotizaciones de alto valor donde el seguimiento define si cierras o no.</div>
-    </div>
-    <div class="aud-card">
-      <div class="aud-card-ico">&#127959;</div>
-      <div class="aud-card-title">Constructoras</div>
-      <div class="aud-card-desc">Multiples cotizaciones activas. Sabe cuales van en serio sin llamar a todos.</div>
-    </div>
-    <div class="aud-card">
-      <div class="aud-card-ico">&#128736;</div>
-      <div class="aud-card-title">Fabricantes y Talleres</div>
-      <div class="aud-card-desc">Muebles, herreria, carpinteria. Productos a la medida con imagen profesional.</div>
-    </div>
-    <div class="aud-card">
-      <div class="aud-card-ico">&#128187;</div>
-      <div class="aud-card-title">Freelancers y Consultores</div>
-      <div class="aud-card-desc">Diseno, marketing, TI. Deja de perseguir clientes — llama cuando estan listos.</div>
-    </div>
-    <div class="aud-card">
-      <div class="aud-card-ico">&#127968;</div>
-      <div class="aud-card-title">Inmobiliarias y Agentes</div>
-      <div class="aud-card-desc">¿Tu cliente vio la propuesta o la ignoró? Deja de perseguir a quien solo pregunta y enfócate en quien tiene interés real. Descubre qué propiedad de tu catálogo genera más interés y cuál no.</div>
-    </div>
-    <div class="aud-card">
-      <div class="aud-card-ico">&#128737;</div>
-      <div class="aud-card-title">Agentes de Seguros y Servicios Financieros</div>
-      <div class="aud-card-desc">¿Mandas cotizaciones de pólizas y no sabes si las revisaron? Deja de llamar a ciegas. Si tu cliente la leyó una vez, dale seguimiento. Si regresó a verla — ¡SEGUIMIENTO YA!</div>
-    </div>
-  </div>
-</section>
 
 
 <!-- ACCELERATORS - Sales psychology tools -->
