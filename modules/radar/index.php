@@ -879,7 +879,6 @@ $comp_by_ip = DB::query(
      GROUP BY qs.ip
      HAVING clientes_distintos > 1
        AND TIMESTAMPDIFF(HOUR, MIN(qs.created_at), MAX(qs.created_at)) <= 720
-       AND COUNT(DISTINCT CASE WHEN qs.device_sig IS NOT NULL AND qs.device_sig != '' THEN qs.device_sig END) <= 1
        {$reviewed_filter_ip}
      ORDER BY clientes_distintos DESC, ultima_visita DESC
      LIMIT 10",
