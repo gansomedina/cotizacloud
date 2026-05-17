@@ -822,9 +822,18 @@ function render_comp_row($cv, $empresa_id, $tipo) {
         </div>
         <?php endforeach; ?>
         <?php endif; ?>
-        <?php foreach ($cv_detail as $det): ?>
+        <?php foreach ($cv_detail as $det):
+            $det_ua = explode('|||', $det['ua_list'] ?? '')[0] ?? '';
+            $det_dev = '';
+            if ($det_ua) {
+                $det_ua_l = strtolower($det_ua);
+                $det_os = str_contains($det_ua_l,'iphone') ? 'iPhone' : (str_contains($det_ua_l,'android') ? 'Android' : (str_contains($det_ua_l,'macintosh') ? 'Mac' : (str_contains($det_ua_l,'windows') ? 'Windows' : '')));
+                $det_nav = str_contains($det_ua_l,'edg/') ? 'Edge' : (str_contains($det_ua_l,'firefox') ? 'Firefox' : ((str_contains($det_ua_l,'chrome') && !str_contains($det_ua_l,'edg/')) ? 'Chrome' : ((str_contains($det_ua_l,'safari') && !str_contains($det_ua_l,'chrome')) ? 'Safari' : '')));
+                $det_dev = $det_os . ($det_nav ? ' · ' . $det_nav : '');
+            }
+        ?>
         <div style="display:flex;justify-content:space-between;padding:3px 0;font:400 12px var(--body);color:#7f1d1d;border-bottom:1px solid rgba(252,165,165,.3)">
-            <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e(mb_substr($det['cotizacion'],0,40)) ?><?= (int)($det['num_cots'] ?? 1) > 1 ? ' <span style="opacity:.6">(+'.(($det['num_cots'])-1).' cots)</span>' : '' ?></span>
+            <span><b><?= e($det['cliente'] ?? 'Sin cliente') ?></b> — <?= e(mb_substr($det['cotizacion'],0,40)) ?><?= (int)($det['num_cots'] ?? 1) > 1 ? ' <span style="opacity:.6">(+'.(($det['num_cots'])-1).' cots)</span>' : '' ?><?php if ($det_dev): ?> <span style="opacity:.5;font-size:11px">(<?= e($det_dev) ?>)</span><?php endif; ?></span>
             <span style="font-family:var(--num);flex-shrink:0;margin-left:8px"><?php if (!empty($det['ips'])): ?><span style="opacity:.5;margin-right:6px"><?= e($det['ips']) ?></span><?php endif; ?><?= date('d/m H:i', strtotime($det['ultima_vista'])) ?></span>
         </div>
         <?php endforeach; ?>
