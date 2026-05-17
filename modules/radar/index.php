@@ -738,7 +738,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
                 MAX(qs.created_at) AS ultima_vista,
                 COUNT(DISTINCT c.id) AS num_cots,
                 SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT qs.ip ORDER BY qs.created_at DESC SEPARATOR ', '), ', ', 3) AS ips,
-                SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT SUBSTRING(qs.user_agent, 1, 120) SEPARATOR '|||'), '|||', 5) AS ua_list
+                SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT qs.user_agent SEPARATOR '|||'), '|||', 5) AS ua_list
          FROM quote_sessions qs
          JOIN cotizaciones c ON c.id = qs.cotizacion_id
          LEFT JOIN clientes cl ON cl.id = c.cliente_id
@@ -828,7 +828,7 @@ function render_comp_row($cv, $empresa_id, $tipo) {
             if ($det_ua) {
                 $det_ua_l = strtolower($det_ua);
                 $det_os = str_contains($det_ua_l,'iphone') ? 'iPhone' : (str_contains($det_ua_l,'android') ? 'Android' : (str_contains($det_ua_l,'macintosh') ? 'Mac' : (str_contains($det_ua_l,'windows') ? 'Windows' : '')));
-                $det_nav = str_contains($det_ua_l,'edg/') ? 'Edge' : (str_contains($det_ua_l,'firefox') ? 'Firefox' : (str_contains($det_ua_l,'samsungbrowser') ? 'Samsung' : (str_contains($det_ua_l,'opr/') ? 'Opera' : ((str_contains($det_ua_l,'chrome') && !str_contains($det_ua_l,'edg/')) ? 'Chrome' : ((str_contains($det_ua_l,'safari') && !str_contains($det_ua_l,'chrome')) ? 'Safari' : ($det_os === 'Android' ? 'Chrome' : ''))))));
+                $det_nav = str_contains($det_ua_l,'fb_iab') || str_contains($det_ua_l,'fbav') ? 'Facebook' : (str_contains($det_ua_l,'instagram') ? 'Instagram' : (str_contains($det_ua_l,'edg/') ? 'Edge' : (str_contains($det_ua_l,'firefox') ? 'Firefox' : (str_contains($det_ua_l,'samsungbrowser') ? 'Samsung' : (str_contains($det_ua_l,'opr/') ? 'Opera' : ((str_contains($det_ua_l,'chrome') && !str_contains($det_ua_l,'edg/')) ? 'Chrome' : ((str_contains($det_ua_l,'safari') && !str_contains($det_ua_l,'chrome')) ? 'Safari' : ($det_os === 'Android' ? 'Chrome' : ''))))))));
                 $det_dev = $det_os . ($det_nav ? ' · ' . $det_nav : '');
             }
         ?>
