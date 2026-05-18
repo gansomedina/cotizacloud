@@ -159,6 +159,7 @@ if (!empty($_GET['_sv'])) {
 
 // Leer visitor_id desde cookie (key 'cz_vid' — mismo que usa el JS)
 // Si no existe, generar uno en PHP para que la primera sesión no sea NULL
+$tenia_cookie = !empty($_COOKIE['cz_vid']);
 $visitor_id_cookie = substr(
     preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')),
     0, 64
@@ -210,12 +211,13 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         }
 
         // ── CAPA 2: IP interna conocida ───────────────────────────────
-        // Asesor sin login desde la oficina, o home office con IP aprendida antes
+        // Solo bloquea si NO tiene cookie (posible asesor incógnito).
+        // Si tiene cookie → es otra persona en la misma IP → dejar pasar.
         $es_ip_interna = (bool)DB::val(
             "SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? AND aprendida_ts >= ? LIMIT 1",
             [(int)$cot['empresa_id'], $ip, time() - 7 * 86400]
         );
-        if ($es_ip_interna) {
+        if ($es_ip_interna && !$tenia_cookie) {
             goto skip_tracking;
         }
 
