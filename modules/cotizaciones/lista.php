@@ -399,7 +399,8 @@ foreach ($chips as $k => $lbl):
         $cupon_title = implode(' · ', $title_parts);
         $cupon_html = '<span title="' . e($cupon_title) . '" style="font:500 11px var(--num);color:#7c3aed;background:#ede9fe;padding:2px 7px;border-radius:5px">' . implode(' ', $parts) . '</span>';
     }
-    $radar  = radar_badge($c['radar_bucket'], (int)($c['radar_score'] ?? 0), $vistas);
+    $estado_activo = in_array($c['estado'], ['enviada','vista']);
+    $radar  = $estado_activo ? radar_badge($c['radar_bucket'], (int)($c['radar_score'] ?? 0), $vistas) : '';
     $ed_url = '/cotizaciones/'.(int)$c['id'];
   ?>
   <div class="cot-row" id="row-<?= (int)$c['id'] ?>" onclick="toggleCot(<?= (int)$c['id'] ?>,event)">
