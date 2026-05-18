@@ -216,10 +216,6 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
             [(int)$cot['empresa_id'], $ip, time() - 7 * 86400]
         );
         if ($es_ip_interna) {
-            // Aprovechar para aprender el visitor_id de este navegador
-            if ($visitor_id_cookie !== '') {
-                Radar::marcar_visitor_interno((int)$cot['empresa_id'], $visitor_id_cookie, 'internal_ip', null, $ip, $ua);
-            }
             goto skip_tracking;
         }
 
