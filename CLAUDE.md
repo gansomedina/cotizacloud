@@ -1419,6 +1419,113 @@ ALTER TABLE usuario_score
 12. **Tooltips lista cotizaciones** — badges, vistas, cupones, botones
 13. **Escudo "¿qué es esto?"** — explicación + alerta dispositivos
 
+### Completado sesión 17 mayo 2026
+
+#### Seguridad
+1. **CSRF en 11 endpoints** — articulo, cupon, usuario, costos_modo, marketing, radar, categoria, nuevo_gasto, proveedores crear/toggle, radar_feedback
+2. **Security headers** — X-Content-Type-Options, X-Frame-Options, Referrer-Policy, HSTS (sin includeSubDomains). En .htaccess de public_html (no en repo)
+
+#### Radar
+3. **Filtro visita mínima 2 segundos** — sesiones <2s con scroll=0 no cuentan para el Radar (ambos loops)
+4. **Todos los buckets calientes se agrupan en probable_cierre** — onfire, inminente, validando_precio, prediccion_alta, lectura_comprometida, multi_persona, alto_importe
+5. **Sin límite de 12 items por sección** — probable_cierre muestra todas
+6. **Texto probable_cierre** — "Resumen — Probable cierre" con descripción clara para asesores
+7. **Competencia: modelo + navegador por cliente** — Android muestra modelo del UA (SM-S916B, CPH2205), iPhone muestra resolución (390×844), detecta Facebook/Instagram. UA sin truncar.
+8. **Competencia por IP: descarta si device_sigs diferentes** — REVERTIDO, competidores pueden tener múltiples dispositivos en la misma red
+9. **Device_sig no anula visitor_ids diferentes con IPs diferentes** — 2 personas con iPhones iguales ahora cuentan como 2. Agrupa solo si comparten IP (mismo teléfono 2 navegadores) o sin cookies.
+10. **Union-find con IP compartida** — guarda TODAS las IPs por visitor_id. Si 2 vids con mismo dsig comparten al menos 1 IP → misma persona. Resuelve caso WhatsApp→Safari (nueva cookie, misma IP).
+
+#### Landing
+11. **Inmobiliarias y Agentes** — nueva tarjeta en "Para quién es"
+12. **Agentes de Seguros y Servicios Financieros** — nueva tarjeta
+13. **Grid 3 columnas** — 6 tarjetas equilibradas
+14. **Sección movida después de los 5 pasos** — antes de Rentabilidad
+15. **Paso 1 "productos"** — en vez de "artículos"
+
+#### Descuento
+16. **Descuento automático no se resetea al editar** — conserva fecha expiración original
+
+### Pendientes próxima sesión
+
+#### Módulo Inmuebles — Implementación
+Diseño definido: tabla `propiedades` como EXTENSIÓN de `articulos` (no tabla separada).
+
+**Tabla propiedades (extensión):**
+```sql
+CREATE TABLE propiedades (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    articulo_id INT UNSIGNED NOT NULL,
+    tipo_operacion ENUM('venta','renta','renta_temporal') NOT NULL DEFAULT 'venta',
+    tipo_propiedad ENUM('casa','departamento','terreno','local_comercial','oficina','bodega') NOT NULL DEFAULT 'casa',
+    m2_terreno DECIMAL(8,2),
+    m2_construccion DECIMAL(8,2),
+    recamaras TINYINT UNSIGNED,
+    banos DECIMAL(3,1),
+    fotos JSON,
+    FOREIGN KEY (articulo_id) REFERENCES articulos(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_articulo (articulo_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE empresas ADD COLUMN giro ENUM('servicios','inmuebles') NOT NULL DEFAULT 'servicios';
+```
+
+**Mapeo de campos articulos para inmuebles:**
+- `titulo` → nombre de la propiedad ("Casa 3 rec, Fuente de Piedra")
+- `descripcion` → dirección + descripción completa (TEXT, cabe todo)
+- `precio` → precio de la propiedad
+- `sku` → referencia interna o vacío
+
+**Archivos nuevos a crear (0 riesgo):**
+| Archivo | Función |
+|---------|---------|
+| `modules/config/propiedad.php` | CRUD: INSERT/UPDATE en articulos + propiedades en transacción |
+| `modules/config/_catalogo_inmuebles.php` | UI partial: sheet con campos de propiedad + upload fotos |
+| `public/cotizacion_inmueble.php` | Template slug: galería fotos + datos propiedad + botón apartar |
+
+**Archivos existentes con cambio mínimo (1-3 líneas):**
+| Archivo | Línea | Cambio |
+|---------|-------|--------|
+| `config/index.php` | tab catálogo | 3 líneas: if giro include partial |
+| `public/cotizacion.php` | ~35 | 3 líneas: if giro require template inmueble |
+| `cotizaciones/nueva.php` | 54 | WHERE: OR descripcion LIKE (buscar por dirección) |
+| `cotizaciones/ver.php` | 70 | Mismo cambio autocomplete |
+| `ventas/ver.php` | 49 | Mismo cambio autocomplete |
+| `core/Router.php` | rutas | Rutas para propiedad CRUD |
+| `public/cotizacion.php` | SELECT | Agregar e.giro al JOIN con empresas |
+
+**Fotos de propiedades:**
+- Reusar `upload_archivo($file, $empresa_id, 'propiedades')` de Helpers.php
+- Guarda en `/assets/uploads/{empresa_id}/propiedades/randomhex.jpg`
+- Se sirve por la ruta `/assets/` existente en index.php
+- Campo `fotos JSON` en propiedades = array de nombres de archivo
+
+**Errores a evitar:**
+1. INSERT en articulos + propiedades SIEMPRE en transacción
+2. Forzar selección del catálogo para inmuebles (no items manuales) — slug necesita articulo_id para JOIN con propiedades
+3. Forzar cantidad=1 para inmuebles
+4. Ocultar botón "Agregar extra" para inmuebles
+5. 1 propiedad por cotización — bloquear agregar más items
+6. Fotos huérfanas si se cancela sin guardar (no crítico)
+7. El slug de inmuebles usa LEFT JOIN por si articulo_id es NULL
+8. Autocomplete busca por descripcion (dirección) en vez de sku para inmuebles
+
+**Lo que NO cambia (verificado con agentes):**
+- cotizacion_lineas — universal, no cambia
+- quote_action.php — aceptar/rechazar funciona igual
+- Radar, Escudo, Termómetro, ActividadScore — no se enteran del giro
+- Ventas, pagos, abonos, recibos — no se enteran
+- Dashboard, ejecutivo, reportes — no se enteran
+- Push notifications — no se enteran
+
+#### Otros pendientes
+1. **Benchmark close_rate** — analizar si usar histórico (14%) vs ventana 15 días (23%)
+2. **Conversión 45.8% con 29% cierre** — revisar por qué no sube más
+3. **Suscripciones MercadoPago** — whitelist IPs, probar pago, configurar cron
+4. **Reactivación de cotizaciones** — `reactivada_at` para no penalizar días acumulados (pendiente, requiere análisis)
+5. **.gitignore** — agregar *.sql, *.csv, *.pem, *_backup*
+6. **error_log en repo** — agregarlos a .gitignore para que cPanel no bloquee deploy
+7. **Contraseña mínima** — cambiar de 6 a 12 chars en registro_post.php
+
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi`
 

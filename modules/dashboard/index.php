@@ -343,6 +343,7 @@ try {
          FROM quote_sessions qs
          JOIN cotizaciones c ON c.id = qs.cotizacion_id
          WHERE c.empresa_id = ?
+           AND c.estado NOT IN ('aceptada','convertida','aceptada_cliente')
            AND COALESCE(qs.scroll_max, 0) = 0
            AND COALESCE(qs.visible_ms, 0) = 0
            AND qs.created_at < DATE_SUB(NOW(), INTERVAL 2 MINUTE)
