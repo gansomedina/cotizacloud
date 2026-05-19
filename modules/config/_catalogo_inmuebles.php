@@ -171,24 +171,23 @@ $tipo_prop_labels = ['casa'=>'Casa','departamento'=>'Depto','terreno'=>'Terreno'
       <textarea class="sh-input" id="shPropDesc" style="min-height:80px;resize:none" oninput="autoResize(this)" placeholder="Dirección completa, características, amenidades…"></textarea>
     </div>
 
-    <div style="padding:8px 16px 12px">
-      <button class="sh-btn-save" id="btnGuardarDatos" onclick="guardarDatos()" style="width:100%">Guardar datos</button>
-      <div id="shPropDatosOk" style="display:none;text-align:center;padding:6px 0;font:600 12px var(--body);color:var(--g)">✓ Datos guardados</div>
+    <div style="padding:4px 0 8px;text-align:right">
+      <button id="btnGuardarDatos" onclick="guardarDatos()" style="padding:7px 20px;background:none;border:1.5px solid var(--g);border-radius:var(--r-sm);font:600 12px var(--body);color:var(--g);cursor:pointer">Guardar datos</button>
+      <span id="shPropDatosOk" style="display:none;font:600 12px var(--body);color:var(--g);margin-left:8px">✓ Guardado</span>
     </div>
 
-    <!-- ── SECCIÓN 2: FOTOS ── -->
-    <div style="border-top:2px solid var(--border);margin:0 -16px;padding:16px 16px 0">
-      <div class="sh-lbl" style="margin-bottom:10px">Fotos <span style="color:var(--t3);font-weight:400">(máx 10)</span></div>
-      <div id="shPropFotosList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
-      <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r-sm);cursor:pointer;font:500 13px var(--body);color:var(--t2)">
-        + Agregar fotos
-        <input type="file" id="shPropFotoInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none" onchange="agregarFotosProp(this)">
-      </label>
-      <div id="shPropFotoStatus" style="display:none;font:500 12px var(--body);color:var(--t3);margin-top:6px"></div>
-      <div class="sh-note">JPG, PNG, WebP — máximo <?= MAX_UPLOAD_MB ?>MB por foto</div>
-      <div style="padding:12px 0 8px">
-        <button class="sh-btn-save" id="btnGuardarFotos" onclick="guardarFotos()" disabled style="width:100%;opacity:.5;cursor:not-allowed">Guardar fotos</button>
+    <div class="sh-field" style="border-bottom:none">
+      <div class="sh-lbl">Fotos <span style="color:var(--t3);font-weight:400">(máx 10)</span></div>
+      <div id="shPropFotosList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r-sm);cursor:pointer;font:500 12px var(--body);color:var(--t2)">
+          + Agregar fotos
+          <input type="file" id="shPropFotoInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none" onchange="agregarFotosProp(this)">
+        </label>
+        <button id="btnGuardarFotos" onclick="guardarFotos()" disabled style="padding:7px 16px;background:none;border:1.5px solid var(--border);border-radius:var(--r-sm);font:600 12px var(--body);color:var(--t3);cursor:not-allowed">Subir fotos</button>
+        <span id="shPropFotoStatus" style="display:none;font:500 11px var(--body);color:var(--t3)"></span>
       </div>
+      <div class="sh-note" style="margin-top:6px">JPG, PNG, WebP — máx <?= MAX_UPLOAD_MB ?>MB</div>
     </div>
   </div>
   <div class="sh-footer">
@@ -208,14 +207,13 @@ function _actualizarBtnFotos() {
     var tiene_pendientes = _propFotosPendientes.length > 0;
     var habilitar = tiene_id && tiene_pendientes;
     btn.disabled = !habilitar;
-    btn.style.opacity = habilitar ? '1' : '.5';
     btn.style.cursor = habilitar ? 'pointer' : 'not-allowed';
-    if (tiene_id && !tiene_pendientes && _propFotos.length > 0) {
-        btn.textContent = 'Fotos guardadas';
-    } else if (!tiene_id && tiene_pendientes) {
-        btn.textContent = 'Guarda los datos primero';
+    btn.style.borderColor = habilitar ? 'var(--g)' : 'var(--border)';
+    btn.style.color = habilitar ? 'var(--g)' : 'var(--t3)';
+    if (!tiene_id && tiene_pendientes) {
+        btn.textContent = 'Guarda datos primero';
     } else {
-        btn.textContent = tiene_pendientes ? 'Guardar fotos (' + _propFotosPendientes.length + ')' : 'Guardar fotos';
+        btn.textContent = tiene_pendientes ? 'Subir ' + _propFotosPendientes.length + ' foto' + (_propFotosPendientes.length>1?'s':'') : 'Subir fotos';
     }
 }
 
