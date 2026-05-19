@@ -148,7 +148,7 @@ $ref = $_SERVER['HTTP_REFERER'] ?? '';
 if (!empty($_GET['_sv'])) {
     $sync_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', $_GET['_sv']), 0, 64);
     if ($sync_vid) {
-        setcookie('cz_vid', $sync_vid, time() + 730 * 86400, '/', '', true, false);
+        setcookie('cz_vid', $sync_vid, time() + 730 * 86400, '/', '.' . BASE_DOMAIN, true, false);
         $_COOKIE['cz_vid'] = $sync_vid;
         $clean_url = preg_replace('/[?&]_sv=[^&]*/', '', $_SERVER['REQUEST_URI']);
         $clean_url = rtrim($clean_url, '?&');
@@ -171,7 +171,7 @@ if ($visitor_id_cookie === '') {
         random_int(0,0x0fff)|0x4000, random_int(0,0x3fff)|0x8000,
         random_int(0,0xffff), random_int(0,0xffff), random_int(0,0xffff)
     );
-    setcookie('cz_vid', $visitor_id_cookie, time() + 730 * 86400, '/', '', !DEBUG, false);
+    setcookie('cz_vid', $visitor_id_cookie, time() + 730 * 86400, '/', '.' . BASE_DOMAIN, !DEBUG, false);
 }
 
 require_once MODULES_PATH . '/radar/Radar.php';

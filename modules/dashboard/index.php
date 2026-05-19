@@ -362,12 +362,11 @@ try {
                 [count($gc_ids), count($gc_ids), $gc_id]
             );
         }
-        // Revertir estado a 'enviada' si visitas quedó en 0 y estado era 'vista'
-        DB::execute(
-            "UPDATE cotizaciones SET estado = 'enviada', vista_at = NULL, ultima_vista_at = NULL
-             WHERE empresa_id = ? AND estado = 'vista' AND visitas = 0",
-            [$empresa_id]
-        );
+        // NO revertir estado a 'enviada' — si la cotización llegó a 'vista'
+        // es porque alguien la abrió. El ghost cleanup puede borrar sesiones
+        // fantasma (JS no reportó scroll/tiempo) pero el estado es irreversible.
+        // Caso real: cliente abre desde WhatsApp, JS no carga, ghost cleanup
+        // borra la sesión y revertía el estado → asesor ve "sin abrir" erróneo.
     }
 } catch (Throwable $e) {}
 
