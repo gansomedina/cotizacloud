@@ -532,8 +532,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
                 <a href="<?= htmlspecialchars($escudo_url) ?>" target="_blank" style="background:#1a5c38;color:#fff;border-radius:8px;padding:8px 14px;font:700 12px -apple-system,sans-serif;text-decoration:none">Activar</a>
             </div>
         </div>
-        <?php if (isset($content)) echo $content; ?>
         <?php skip_escudo: ?>
+        <?php if (isset($content)) echo $content; ?>
     </main>
 </div>
 
