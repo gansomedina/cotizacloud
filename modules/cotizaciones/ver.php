@@ -67,11 +67,24 @@ $visitas = DB::query(
 );
 
 // ─── Catálogo, clientes, cupones ─────────────────────────
-$articulos = DB::query(
-    "SELECT id, sku, titulo, descripcion, precio FROM articulos
-     WHERE empresa_id = ? AND activo = 1 ORDER BY orden ASC, titulo ASC",
-    [$empresa_id]
-);
+$es_inmuebles = ($empresa['giro'] ?? 'servicios') === 'inmuebles';
+if ($es_inmuebles) {
+    $articulos = DB::query(
+        "SELECT a.id, a.sku, a.titulo, a.descripcion, a.precio,
+                p.tipo_operacion, p.tipo_propiedad, p.m2_terreno, p.m2_construccion,
+                p.recamaras, p.banos
+         FROM articulos a
+         LEFT JOIN propiedades p ON p.articulo_id = a.id
+         WHERE a.empresa_id = ? AND a.activo = 1 ORDER BY a.id DESC",
+        [$empresa_id]
+    );
+} else {
+    $articulos = DB::query(
+        "SELECT id, sku, titulo, descripcion, precio FROM articulos
+         WHERE empresa_id = ? AND activo = 1 ORDER BY orden ASC, titulo ASC",
+        [$empresa_id]
+    );
+}
 
 $clientes = DB::query(
     "SELECT id, nombre, telefono, email FROM clientes
@@ -113,11 +126,20 @@ $es_suspendida = !empty($cot['suspendida']);
 $puede_suspender = in_array($cot['estado'], ['borrador', 'enviada', 'vista', 'rechazada']) || $es_suspendida;
 
 // JSON para JS
-$articulos_js = json_encode(array_map(fn($a) => [
-    'id' => (int)$a['id'], 'sku' => $a['sku'] ?? '',
-    'titulo' => $a['titulo'], 'descripcion' => $a['descripcion'] ?? '',
-    'precio' => (float)$a['precio'],
-], $articulos));
+$articulos_js = json_encode(array_map(function($a) use ($es_inmuebles) {
+    $r = ['id'=>(int)$a['id'],'sku'=>$a['sku']??'','titulo'=>$a['titulo'],'descripcion'=>$a['descripcion']??'','precio'=>(float)$a['precio']];
+    if ($es_inmuebles) {
+        $d=[];
+        if(!empty($a['m2_terreno']))$d[]=number_format($a['m2_terreno'],0).'m² ter';
+        if(!empty($a['m2_construccion']))$d[]=number_format($a['m2_construccion'],0).'m² con';
+        if(!empty($a['recamaras']))$d[]=$a['recamaras'].' rec';
+        if(!empty($a['banos']))$d[]=number_format($a['banos'],1).' baños';
+        $r['specs']=implode(' · ',$d);
+        $tipo_labels=['venta'=>'Venta','renta'=>'Renta','renta_temporal'=>'Renta temp.'];
+        $r['tipo_op']=$tipo_labels[$a['tipo_operacion']??'venta']??'';
+    }
+    return $r;
+}, $articulos));
 
 $clientes_js = json_encode(array_map(fn($c) => [
     'id' => (int)$c['id'], 'nombre' => $c['nombre'],
@@ -362,15 +384,15 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             </div>
         </div>
 
-        <div class="slabel">Artículos</div>
+        <div class="slabel"><?= $es_inmuebles ? 'Propiedad' : 'Artículos' ?></div>
         <div class="items-list" id="items-list"></div>
 
         <?php if ($es_editable): ?>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="add-item-btn" style="flex:2" onclick="abrirCatalogo(false)">
-            <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar artículo
+            <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> <?= $es_inmuebles ? 'Cambiar propiedad' : 'Agregar artículo' ?>
         </button>
-        <?php if ($plan_cot['es_business']): ?>
+        <?php if ($plan_cot['es_business'] && !$es_inmuebles): ?>
         <button class="add-item-btn" style="flex:1;border-color:#d97706;color:#d97706" onclick="abrirCatalogo(true)">
             <svg width="16" height="16" viewBox="0 0 16 16" style="vertical-align:middle"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Agregar extra
         </button>
@@ -619,17 +641,19 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 <dialog id="catalogDialog" class="dlg-sheet">
     <div class="sh-handle"></div>
     <div class="sh-header">
-        <span class="sh-title">Agregar artículo</span>
+        <span class="sh-title"><?= $es_inmuebles ? 'Seleccionar propiedad' : 'Agregar artículo' ?></span>
         <button class="sh-close" onclick="catalogDialog.close()"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </div>
     <div class="sh-search">
         <div class="sh-search-wrap">
-            <input type="text" placeholder="Buscar en catálogo..." id="catalog-search" oninput="filtrarCatalogo(this.value)">
+            <input type="text" placeholder="<?= $es_inmuebles ? 'Buscar propiedad...' : 'Buscar en catálogo...' ?>" id="catalog-search" oninput="filtrarCatalogo(this.value)">
         </div>
     </div>
+    <?php if (!$es_inmuebles): ?>
     <button onclick="agregarItemVacio()" style="margin:0 16px 10px;width:calc(100% - 32px);padding:12px 14px;border-radius:var(--r-sm);border:1.5px dashed var(--border2);background:transparent;display:flex;align-items:center;gap:8px;font:600 14px var(--body);color:var(--t2);cursor:pointer;">
         <span>+</span> Ítem libre
     </button>
+    <?php endif; ?>
     <div class="sh-list" id="catalog-list"></div>
 </dialog>
 
@@ -651,6 +675,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 <script src="/assets/js/feather.min.js"></script>
 <script>
 const ARTICULOS   = <?= $articulos_js ?>;
+const ES_INMUEBLES = <?= $es_inmuebles ? 'true' : 'false' ?>;
 const CLIENTES    = <?= $clientes_js ?>;
 const LINEAS_INIT = <?= $lineas_js ?>;
 const EMPRESA_CFG = <?= $empresa_js ?>;
@@ -737,14 +762,24 @@ function setText(id,val){const el=document.getElementById(id);if(el)el.textConte
 function renderCatalogList(filtro){
     const q=filtro.toLowerCase();
     const el=document.getElementById('catalog-list');
-    const lista=ARTICULOS.filter(a=>!q||a.titulo.toLowerCase().includes(q)||(a.sku&&a.sku.toLowerCase().includes(q)));
+    const lista=ARTICULOS.filter(a=>!q||a.titulo.toLowerCase().includes(q)||(a.sku&&a.sku.toLowerCase().includes(q))||(a.descripcion&&a.descripcion.toLowerCase().includes(q)));
     if(!lista.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t3);font-size:13px">Sin resultados</div>';return;}
-    el.innerHTML=lista.map(a=>`<div class="sh-item" onclick="agregarDesde(${a.id})"><div style="flex:1"><div class="sh-item-title">${esc(a.titulo)}</div>${a.sku?`<div class="sh-item-sku">${esc(a.sku)}</div>`:''}</div><div class="sh-item-price">${fmt(a.precio)}</div></div>`).join('');
+    el.innerHTML=lista.map(a=>`<div class="sh-item" onclick="agregarDesde(${a.id})"><div style="flex:1"><div class="sh-item-title">${esc(a.titulo)}</div>${ES_INMUEBLES&&a.tipo_op?`<div class="sh-item-sku">${esc(a.tipo_op)}${a.specs?' · '+esc(a.specs):''}</div>`:''}<\/div><div class="sh-item-price">${fmt(a.precio)}</div></div>`).join('');
 }
 function filtrarCatalogo(v){renderCatalogList(v);}
 let _agregandoExtra = false;
 function abrirCatalogo(esExtra){ _agregandoExtra = esExtra; catalogDialog.showModal(); }
-function agregarDesde(id){const a=ARTICULOS.find(x=>x.id===id);if(!a)return;const pre=_agregandoExtra?'EXTRA: ':'';agregarItem(pre+a.titulo,a.sku||'',a.descripcion||'',a.precio,id,true,_agregandoExtra);catalogDialog.close();_agregandoExtra=false;}
+function agregarDesde(id){
+    const a=ARTICULOS.find(x=>x.id===id);if(!a)return;
+    if(ES_INMUEBLES&&!_agregandoExtra){
+        document.querySelectorAll('#items-list .item-card[data-es-extra="0"]').forEach(c=>c.remove());
+        const tit=document.getElementById('cot-titulo');
+        if(tit&&(!tit.value.trim()||tit.dataset.autoFilled)){tit.value=a.titulo;tit.dataset.autoFilled='1';}
+    }
+    const pre=_agregandoExtra?'EXTRA: ':'';
+    agregarItem(pre+a.titulo,a.sku||'',a.descripcion||'',a.precio,id,true,_agregandoExtra);
+    catalogDialog.close();_agregandoExtra=false;
+}
 function agregarItemVacio(){const pre=_agregandoExtra?'EXTRA: ':'';agregarItem(pre,'','',0,null,true,_agregandoExtra);catalogDialog.close();_agregandoExtra=false;}
 
 function renderClientList(filtro){

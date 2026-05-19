@@ -51,13 +51,27 @@ if ($trial['agotado']) {
 }
 
 // Cargar catálogo de artículos activos
-$articulos = DB::query(
-    "SELECT id, sku, titulo, descripcion, precio
-     FROM articulos
-     WHERE empresa_id = ? AND activo = 1
-     ORDER BY orden ASC, titulo ASC",
-    [$empresa_id]
-);
+$es_inmuebles = ($empresa['giro'] ?? 'servicios') === 'inmuebles';
+if ($es_inmuebles) {
+    $articulos = DB::query(
+        "SELECT a.id, a.sku, a.titulo, a.descripcion, a.precio,
+                p.tipo_operacion, p.tipo_propiedad, p.m2_terreno, p.m2_construccion,
+                p.recamaras, p.banos
+         FROM articulos a
+         LEFT JOIN propiedades p ON p.articulo_id = a.id
+         WHERE a.empresa_id = ? AND a.activo = 1
+         ORDER BY a.id DESC",
+        [$empresa_id]
+    );
+} else {
+    $articulos = DB::query(
+        "SELECT id, sku, titulo, descripcion, precio
+         FROM articulos
+         WHERE empresa_id = ? AND activo = 1
+         ORDER BY orden ASC, titulo ASC",
+        [$empresa_id]
+    );
+}
 
 // Cargar clientes
 $clientes = DB::query(
@@ -94,13 +108,26 @@ if ($puede_asignar) {
 }
 
 // JSON para JS
-$articulos_js = json_encode(array_map(fn($a) => [
-    'id'          => (int)$a['id'],
-    'sku'         => $a['sku'] ?? '',
-    'titulo'      => $a['titulo'],
-    'descripcion' => $a['descripcion'] ?? '',
-    'precio'      => (float)$a['precio'],
-], $articulos), JSON_HEX_TAG | JSON_HEX_APOS);
+$articulos_js = json_encode(array_map(function($a) use ($es_inmuebles) {
+    $r = [
+        'id'          => (int)$a['id'],
+        'sku'         => $a['sku'] ?? '',
+        'titulo'      => $a['titulo'],
+        'descripcion' => $a['descripcion'] ?? '',
+        'precio'      => (float)$a['precio'],
+    ];
+    if ($es_inmuebles) {
+        $detalles = [];
+        if (!empty($a['m2_terreno']))      $detalles[] = number_format($a['m2_terreno'],0) . 'm² ter';
+        if (!empty($a['m2_construccion'])) $detalles[] = number_format($a['m2_construccion'],0) . 'm² con';
+        if (!empty($a['recamaras']))       $detalles[] = $a['recamaras'] . ' rec';
+        if (!empty($a['banos']))           $detalles[] = number_format($a['banos'],1) . ' baños';
+        $r['specs'] = implode(' · ', $detalles);
+        $tipo_labels = ['venta'=>'Venta','renta'=>'Renta','renta_temporal'=>'Renta temp.'];
+        $r['tipo_op'] = $tipo_labels[$a['tipo_operacion'] ?? 'venta'] ?? '';
+    }
+    return $r;
+}, $articulos), JSON_HEX_TAG | JSON_HEX_APOS);
 
 $clientes_js = json_encode(array_map(fn($c) => [
     'id'       => (int)$c['id'],
@@ -397,8 +424,8 @@ $page_title = 'Nueva cotización';
         <div class="card">
             <div class="field">
                 <div class="field-lbl">Título <span style="color:var(--danger)">*</span></div>
-                <input type="text" id="cot-titulo" placeholder="Titulo del Proyecto"
-                       oninput="actualizarEstado()">
+                <input type="text" id="cot-titulo" placeholder="<?= $es_inmuebles ? 'Se auto-completa al seleccionar propiedad' : 'Titulo del Proyecto' ?>"
+                       oninput="actualizarEstado()"><?php if ($es_inmuebles): ?><div style="font:400 11px var(--body);color:var(--t3);padding:4px 0 0">Se completa automáticamente con el nombre de la propiedad</div><?php endif; ?>
             </div>
             <div style="display:flex">
                 <div class="field" style="flex:1;border-bottom:none;border-right:1px solid var(--border)">
@@ -412,14 +439,14 @@ $page_title = 'Nueva cotización';
             </div>
         </div>
 
-        <div class="slabel">Artículos</div>
+        <div class="slabel"><?= $es_inmuebles ? 'Propiedad' : 'Artículos' ?></div>
         <div class="items-list" id="items-list"></div>
 
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px" id="add-items-wrap">
         <button class="add-item-btn" style="flex:2;margin-top:0" onclick="abrirCatalogo(false)">
-            <span style="font-size:18px">+</span> Agregar artículo
+            <span style="font-size:18px">+</span> <?= $es_inmuebles ? 'Seleccionar propiedad' : 'Agregar artículo' ?>
         </button>
-        <?php if ($trial['es_business']): ?>
+        <?php if ($trial['es_business'] && !$es_inmuebles): ?>
         <button class="add-item-btn" style="flex:1;margin-top:0;border-color:#d97706;color:#d97706" onclick="abrirCatalogo(true)">
             <span style="font-size:18px">+</span> Agregar extra
         </button>
@@ -643,22 +670,24 @@ $page_title = 'Nueva cotización';
 <div class="bottom-sheet" id="catalogSheet">
     <div class="sh-handle"></div>
     <div class="sh-header">
-        <span class="sh-title">Agregar artículo</span>
+        <span class="sh-title"><?= $es_inmuebles ? 'Seleccionar propiedad' : 'Agregar artículo' ?></span>
         <button class="sh-close" onclick="closeSheet('catalogSheet','catalogOverlay')">✕</button>
     </div>
     <div class="sh-search">
         <div class="sh-search-wrap">
             <i data-feather="search" style="width:15px;height:15px;color:var(--t3);flex-shrink:0"></i>
-            <input type="text" placeholder="Buscar en catálogo..." id="catalog-search"
+            <input type="text" placeholder="<?= $es_inmuebles ? 'Buscar propiedad...' : 'Buscar en catálogo...' ?>" id="catalog-search"
                    oninput="filtrarCatalogo(this.value)">
         </div>
     </div>
+    <?php if (!$es_inmuebles): ?>
     <button style="margin:0 16px 10px;width:calc(100% - 32px);padding:12px 14px;border-radius:var(--r-sm);border:1.5px dashed var(--border2);background:transparent;display:flex;align-items:center;gap:8px;font:600 14px var(--body);color:var(--t2);cursor:pointer;flex-shrink:0;transition:all .15s;"
             onmouseover="this.style.borderColor='var(--g)';this.style.color='var(--g)'"
             onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--t2)'"
             onclick="agregarItemVacio()">
         <span style="font-size:18px">+</span> Ítem libre (sin catálogo)
     </button>
+    <?php endif; ?>
     <div class="sh-list" id="catalog-list"></div>
 </div>
 
@@ -709,6 +738,7 @@ $page_title = 'Nueva cotización';
 const ARTICULOS   = <?= $articulos_js ?>;
 const CLIENTES    = <?= $clientes_js ?>;
 const EMPRESA_CFG = <?= $empresa_js ?>;
+const ES_INMUEBLES = <?= $es_inmuebles ? 'true' : 'false' ?>;
 const CSRF_TOKEN  = '<?= csrf_token() ?>';
 const URL_PUB_BASE = '<?= e(Router::url_publica('/c/')) ?>';
 const PUEDE_PRECIOS    = <?= $puede_editar_precios ? 'true' : 'false' ?>;
@@ -775,7 +805,8 @@ function renderCatalogList(filtro) {
     const q    = filtro.toLowerCase();
     const list = ARTICULOS.filter(a =>
         !q || a.titulo.toLowerCase().includes(q) ||
-              (a.sku && a.sku.toLowerCase().includes(q))
+              (a.sku && a.sku.toLowerCase().includes(q)) ||
+              (a.descripcion && a.descripcion.toLowerCase().includes(q))
     );
     const el = document.getElementById('catalog-list');
     if (!list.length) {
@@ -786,7 +817,8 @@ function renderCatalogList(filtro) {
         <div class="sh-item" onclick="agregarDesde(${a.id})">
             <div style="flex:1;">
                 <div class="sh-item-title">${esc(a.titulo)}</div>
-                ${a.sku ? `<div class="sh-item-sku">${esc(a.sku)}</div>` : ''}
+                ${ES_INMUEBLES && a.tipo_op ? `<div class="sh-item-sku">${esc(a.tipo_op)}${a.specs ? ' · ' + esc(a.specs) : ''}</div>` : ''}
+                ${!ES_INMUEBLES && a.sku ? `<div class="sh-item-sku">${esc(a.sku)}</div>` : ''}
                 ${a.descripcion ? `<div class="sh-item-desc">${esc(strip(a.descripcion))}</div>` : ''}
             </div>
             <div class="sh-item-price">${fmt(a.precio)}</div>
@@ -802,6 +834,19 @@ function abrirCatalogo(esExtra){ _agregandoExtra = esExtra; openSheet('catalogSh
 function agregarDesde(id) {
     const a = ARTICULOS.find(x => x.id === id);
     if (!a) return;
+    if (ES_INMUEBLES && !_agregandoExtra) {
+        // 1 propiedad por cotización
+        const existentes = document.querySelectorAll('#items-list .item-card[data-es-extra="0"]');
+        if (existentes.length > 0) {
+            existentes.forEach(c => c.remove());
+        }
+        // Auto-fill título de la cotización
+        const tit = document.getElementById('cot-titulo');
+        if (tit && (!tit.value.trim() || tit.dataset.autoFilled)) {
+            tit.value = a.titulo;
+            tit.dataset.autoFilled = '1';
+        }
+    }
     const pre = _agregandoExtra ? 'EXTRA: ' : '';
     agregarItem(pre + a.titulo, a.sku || '', a.descripcion || '', a.precio, id, _agregandoExtra);
     closeSheet('catalogSheet', 'catalogOverlay');
@@ -855,10 +900,10 @@ function agregarItem(titulo, sku, desc, precio, articulo_id, esExtra=false) {
                 <div class="item-field-lbl">Descripción (opcional)</div>
                 <textarea data-campo="descripcion" oninput="autoResize(this)">${esc(desc)}</textarea>
             </div>
-            <div class="item-nums">
+            <div class="item-nums" ${ES_INMUEBLES && !esExtra ? 'style="display:none"' : ''}>
                 <div class="item-field">
                     <div class="item-field-lbl">Cantidad</div>
-                    <input type="number" data-campo="cantidad" value="1" min="0" step="any" oninput="calcItemTotal(this)">
+                    <input type="number" data-campo="cantidad" value="1" min="0" step="any" oninput="calcItemTotal(this)" ${ES_INMUEBLES ? 'readonly' : ''}>
                 </div>
                 <div class="item-field">
                     <div class="item-field-lbl">Precio unit.</div>

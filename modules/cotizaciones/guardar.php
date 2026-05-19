@@ -120,6 +120,10 @@ foreach ($items as $i => $item) {
         if ($art_precio !== null) $precio = (float)$art_precio;
     }
 
+    if (($empresa['giro'] ?? 'servicios') === 'inmuebles' && !($item['es_extra'] ?? 0)) {
+        $cant = 1;
+    }
+
     $sub_linea = $cant * $precio;
     $subtotal += $sub_linea;
 
