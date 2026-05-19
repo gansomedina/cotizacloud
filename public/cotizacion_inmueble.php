@@ -260,7 +260,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       <span class="prop-badge" style="background:var(--bg);color:var(--t2)"><?= e($tipo_prop) ?></span>
     </div>
     <div class="prop-title"><?= e($cot['titulo']) ?></div>
-    <?php if ($lineas[0]['descripcion'] ?? ''): ?>
+    <?php if (!empty($lineas) && ($lineas[0]['descripcion'] ?? '')): ?>
     <div class="prop-address"><?= nl2br(e($lineas[0]['descripcion'])) ?></div>
     <?php endif; ?>
   </div>

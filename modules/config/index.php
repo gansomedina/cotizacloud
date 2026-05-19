@@ -40,14 +40,17 @@ $empresa = DB::row("SELECT * FROM empresas WHERE id=?", [$empresa_id]);
 // ─── Marketing config ──────────────────────────────────────
 $mkt = DB::row("SELECT * FROM marketing_config WHERE empresa_id=?", [$empresa_id]) ?: [];
 
-// ─── Catálogo ────────────────────────────────────────────────
+// ─── Catálogo (solo para giro servicios — inmuebles usa su propio partial) ──
 $q_cat = trim($_GET['q_cat'] ?? '');
-$articulos = DB::query(
-    "SELECT * FROM articulos WHERE empresa_id=? AND activo = 1
-     " . ($q_cat ? "AND (titulo LIKE ? OR sku LIKE ?)" : "") . "
-     ORDER BY orden ASC, titulo ASC",
-    $q_cat ? [$empresa_id, "%$q_cat%", "%$q_cat%"] : [$empresa_id]
-);
+$articulos = [];
+if (($empresa['giro'] ?? 'servicios') !== 'inmuebles') {
+    $articulos = DB::query(
+        "SELECT * FROM articulos WHERE empresa_id=? AND activo = 1
+         " . ($q_cat ? "AND (titulo LIKE ? OR sku LIKE ?)" : "") . "
+         ORDER BY orden ASC, titulo ASC",
+        $q_cat ? [$empresa_id, "%$q_cat%", "%$q_cat%"] : [$empresa_id]
+    );
+}
 
 // ─── Clientes ────────────────────────────────────────────────
 $q_cli = trim($_GET['q_cli'] ?? '');
