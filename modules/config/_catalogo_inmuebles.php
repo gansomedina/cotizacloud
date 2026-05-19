@@ -170,13 +170,14 @@ $tipo_prop_labels = ['casa'=>'Casa','departamento'=>'Depto','terreno'=>'Terreno'
       <textarea class="sh-input" id="shPropDesc" style="min-height:80px;resize:none" oninput="autoResize(this)" placeholder="Dirección completa, características, amenidades…"></textarea>
     </div>
 
-    <div class="sh-field" id="shPropFotosWrap" style="border-bottom:none;display:none">
+    <div class="sh-field" id="shPropFotosWrap" style="border-bottom:none">
       <div class="sh-lbl">Fotos <span style="color:var(--t3);font-weight:400">(máx 10)</span></div>
       <div id="shPropFotosList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
       <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r-sm);cursor:pointer;font:500 13px var(--body);color:var(--t2)">
         + Agregar foto
-        <input type="file" id="shPropFotoInput" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="subirFotoProp(this)">
+        <input type="file" id="shPropFotoInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none" onchange="subirFotosProp(this)">
       </label>
+      <div id="shPropFotoStatus" style="display:none;font:500 12px var(--body);color:var(--t3);margin-top:6px"></div>
       <div class="sh-note">JPG, PNG, WebP — máximo <?= MAX_UPLOAD_MB ?>MB por foto</div>
     </div>
   </div>
@@ -188,6 +189,7 @@ $tipo_prop_labels = ['casa'=>'Casa','departamento'=>'Depto','terreno'=>'Terreno'
 
 <script>
 var _propFotos = [];
+var _propSaving = false;
 
 function nuevaPropiedad() {
     document.getElementById('shPropId').value = '';
@@ -202,7 +204,6 @@ function nuevaPropiedad() {
     document.getElementById('shPropBanos').value = '';
     document.getElementById('shPropDesc').value = '';
     _propFotos = [];
-    document.getElementById('shPropFotosWrap').style.display = 'none';
     renderFotos();
     openSheet('shProp');
 }
@@ -219,7 +220,6 @@ function editarPropiedad(id, data) {
     document.getElementById('shPropBanos').value = data.banos || '';
     document.getElementById('shPropDesc').value = data.descripcion || '';
     _propFotos = (data.fotos || []).slice();
-    document.getElementById('shPropFotosWrap').style.display = '';
     renderFotos();
     openSheet('shProp');
 }
@@ -235,31 +235,84 @@ function renderFotos() {
         c.appendChild(d);
     });
 }
-async function subirFotoProp(input) {
+function fotoStatus(msg) {
+    var el = document.getElementById('shPropFotoStatus');
+    if (msg) { el.textContent = msg; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+}
+async function asegurarIdPropiedad() {
     var id = document.getElementById('shPropId').value;
-    if (!id) { alert('Guarda la propiedad primero para agregar fotos.'); input.value=''; return; }
-    var file = input.files[0];
-    if (!file) return;
+    if (id) return id;
+    var titulo = document.getElementById('shPropTitulo').value.trim();
+    if (!titulo) {
+        document.getElementById('shPropTitulo').value = 'Nueva propiedad';
+        titulo = 'Nueva propiedad';
+    }
+    var payload = {
+        titulo:          titulo,
+        descripcion:     document.getElementById('shPropDesc').value.trim(),
+        precio:          parseFloat(document.getElementById('shPropPrecio').value) || 0,
+        tipo_operacion:  document.getElementById('shPropOp').value,
+        tipo_propiedad:  document.getElementById('shPropTipo').value,
+        m2_terreno:      parseFloat(document.getElementById('shPropM2T').value) || null,
+        m2_construccion: parseFloat(document.getElementById('shPropM2C').value) || null,
+        recamaras:       parseInt(document.getElementById('shPropRec').value) || null,
+        banos:           parseFloat(document.getElementById('shPropBanos').value) || null,
+    };
+    var r = await fetch('/config/propiedad', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+        body: JSON.stringify(payload)
+    });
+    var d = await r.json();
+    if (d.ok && d.id) {
+        document.getElementById('shPropId').value = d.id;
+        return d.id;
+    }
+    throw new Error(d.error || 'Error al crear propiedad');
+}
+async function subirFotosProp(input) {
+    var files = Array.from(input.files);
     input.value = '';
-    var fd = new FormData();
-    fd.append('foto', file);
+    if (!files.length) return;
+    var id;
     try {
-        var r = await fetch('/config/propiedad/' + id + '/foto', {
-            method: 'POST',
-            headers: { 'X-CSRF-Token': CSRF_TOKEN },
-            body: fd
-        });
-        var d = await r.json();
-        if (d.ok) {
-            _propFotos = d.fotos;
-            renderFotos();
-        } else alert(d.error || 'Error al subir foto.');
-    } catch(e) { alert('Error de conexión.'); }
+        fotoStatus('Preparando...');
+        id = await asegurarIdPropiedad();
+    } catch(e) {
+        fotoStatus('');
+        alert(e.message || 'Error al guardar propiedad.');
+        return;
+    }
+    for (var i = 0; i < files.length; i++) {
+        if (_propFotos.length >= 10) { fotoStatus('Máximo 10 fotos'); break; }
+        fotoStatus('Subiendo foto ' + (i+1) + ' de ' + files.length + '...');
+        var fd = new FormData();
+        fd.append('foto', files[i]);
+        try {
+            var r = await fetch('/config/propiedad/' + id + '/foto', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': CSRF_TOKEN },
+                body: fd
+            });
+            var d = await r.json();
+            if (d.ok) {
+                _propFotos = d.fotos;
+                renderFotos();
+            } else {
+                fotoStatus('Error: ' + (d.error || 'fallo al subir'));
+                return;
+            }
+        } catch(e) {
+            fotoStatus('Error de conexión');
+            return;
+        }
+    }
+    fotoStatus('');
 }
 async function eliminarFotoProp(idx) {
     var id = document.getElementById('shPropId').value;
     if (!id) return;
-    if (!confirm('¿Eliminar esta foto?')) return;
     try {
         var r = await fetch('/config/propiedad/' + id + '/foto/eliminar', {
             method: 'POST',
@@ -274,9 +327,13 @@ async function eliminarFotoProp(idx) {
     } catch(e) { alert('Error de conexión.'); }
 }
 async function guardarPropiedad() {
+    if (_propSaving) return;
+    _propSaving = true;
+    var btn = document.querySelector('#shProp .sh-btn-save');
+    btn.textContent = 'Guardando...';
     var id     = document.getElementById('shPropId').value;
     var titulo = document.getElementById('shPropTitulo').value.trim();
-    if (!titulo) { alert('El nombre es obligatorio.'); return; }
+    if (!titulo) { alert('El nombre es obligatorio.'); _propSaving=false; btn.textContent='Guardar propiedad'; return; }
 
     var payload = {
         titulo:          titulo,
@@ -298,18 +355,9 @@ async function guardarPropiedad() {
             body: JSON.stringify(payload)
         });
         var d = await r.json();
-        if (d.ok) {
-            if (!id && d.id) {
-                document.getElementById('shPropId').value = d.id;
-                document.getElementById('shPropFotosWrap').style.display = '';
-                document.getElementById('shPropTit').textContent = 'Editar propiedad';
-                flashOk('Propiedad guardada — ahora puedes agregar fotos');
-            } else {
-                closeSheet('shProp'); location.reload();
-            }
-        }
-        else alert(d.error || 'Error.');
-    } catch(e) { alert('Error de conexión.'); }
+        if (d.ok) { closeSheet('shProp'); location.reload(); }
+        else { alert(d.error || 'Error.'); _propSaving=false; btn.textContent='Guardar propiedad'; }
+    } catch(e) { alert('Error de conexión.'); _propSaving=false; btn.textContent='Guardar propiedad'; }
 }
 async function eliminarPropiedad(id, btn) {
     if (!confirm('¿Eliminar esta propiedad del catálogo?')) return;
