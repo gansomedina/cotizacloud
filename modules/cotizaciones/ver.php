@@ -764,7 +764,7 @@ function renderCatalogList(filtro){
     const el=document.getElementById('catalog-list');
     const lista=ARTICULOS.filter(a=>!q||a.titulo.toLowerCase().includes(q)||(a.sku&&a.sku.toLowerCase().includes(q))||(a.descripcion&&a.descripcion.toLowerCase().includes(q)));
     if(!lista.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t3);font-size:13px">Sin resultados</div>';return;}
-    el.innerHTML=lista.map(a=>`<div class="sh-item" onclick="agregarDesde(${a.id})"><div style="flex:1"><div class="sh-item-title">${esc(a.titulo)}</div>${ES_INMUEBLES&&a.tipo_op?`<div class="sh-item-sku">${esc(a.tipo_op)}${a.specs?' · '+esc(a.specs):''}</div>`:''}<\/div><div class="sh-item-price">${fmt(a.precio)}</div></div>`).join('');
+    el.innerHTML=lista.map(a=>`<div class="sh-item" onclick="agregarDesde(${a.id})"><div style="flex:1"><div class="sh-item-title">${esc(a.titulo)}</div>${ES_INMUEBLES&&a.tipo_op?`<div class="sh-item-sku">${esc(a.tipo_op)}${a.specs?' · '+esc(a.specs):''}</div>`:''}${!ES_INMUEBLES&&a.sku?`<div class="sh-item-sku">${esc(a.sku)}</div>`:''}</div><div class="sh-item-price">${fmt(a.precio)}</div></div>`).join('');
 }
 function filtrarCatalogo(v){renderCatalogList(v);}
 let _agregandoExtra = false;
