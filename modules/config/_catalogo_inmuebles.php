@@ -102,7 +102,7 @@ $tipo_prop_labels = ['casa'=>'Casa','departamento'=>'Depto','terreno'=>'Terreno'
 
 <!-- ══ SHEET: PROPIEDAD ══════════════════════════════════════ -->
 <div class="sh-overlay" id="ov-shProp" onclick="closeSheet('shProp')"></div>
-<div class="bottom-sheet" id="shProp">
+<div class="bottom-sheet" id="shProp" style="max-height:95vh">
   <div class="sh-handle"></div>
   <div class="sh-header">
     <div class="sh-title" id="shPropTit">Propiedad</div>
@@ -111,6 +111,7 @@ $tipo_prop_labels = ['casa'=>'Casa','departamento'=>'Depto','terreno'=>'Terreno'
   <div class="sh-body">
     <input type="hidden" id="shPropId" value="">
 
+    <!-- ── SECCIÓN 1: DATOS ── -->
     <div class="sh-field">
       <div class="sh-lbl">Nombre de la propiedad <span style="color:var(--danger)">*</span></div>
       <input class="sh-input" type="text" id="shPropTitulo" placeholder="Casa 3 rec, Col. Fuente de Piedra" maxlength="255">
@@ -170,26 +171,53 @@ $tipo_prop_labels = ['casa'=>'Casa','departamento'=>'Depto','terreno'=>'Terreno'
       <textarea class="sh-input" id="shPropDesc" style="min-height:80px;resize:none" oninput="autoResize(this)" placeholder="Dirección completa, características, amenidades…"></textarea>
     </div>
 
-    <div class="sh-field" id="shPropFotosWrap" style="border-bottom:none">
-      <div class="sh-lbl">Fotos <span style="color:var(--t3);font-weight:400">(máx 10)</span></div>
+    <div style="padding:8px 16px 12px">
+      <button class="sh-btn-save" id="btnGuardarDatos" onclick="guardarDatos()" style="width:100%">Guardar datos</button>
+      <div id="shPropDatosOk" style="display:none;text-align:center;padding:6px 0;font:600 12px var(--body);color:var(--g)">✓ Datos guardados</div>
+    </div>
+
+    <!-- ── SECCIÓN 2: FOTOS ── -->
+    <div style="border-top:2px solid var(--border);margin:0 -16px;padding:16px 16px 0">
+      <div class="sh-lbl" style="margin-bottom:10px">Fotos <span style="color:var(--t3);font-weight:400">(máx 10)</span></div>
       <div id="shPropFotosList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
       <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r-sm);cursor:pointer;font:500 13px var(--body);color:var(--t2)">
-        + Agregar foto
-        <input type="file" id="shPropFotoInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none" onchange="subirFotosProp(this)">
+        + Agregar fotos
+        <input type="file" id="shPropFotoInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none" onchange="agregarFotosProp(this)">
       </label>
       <div id="shPropFotoStatus" style="display:none;font:500 12px var(--body);color:var(--t3);margin-top:6px"></div>
       <div class="sh-note">JPG, PNG, WebP — máximo <?= MAX_UPLOAD_MB ?>MB por foto</div>
+      <div style="padding:12px 0 8px">
+        <button class="sh-btn-save" id="btnGuardarFotos" onclick="guardarFotos()" disabled style="width:100%;opacity:.5;cursor:not-allowed">Guardar fotos</button>
+      </div>
     </div>
   </div>
   <div class="sh-footer">
-    <button class="sh-btn-cancel" onclick="closeSheet('shProp')">Cancelar</button>
-    <button class="sh-btn-save" onclick="guardarPropiedad()">Guardar propiedad</button>
+    <button class="sh-btn-cancel" onclick="cerrarProp()">Cancelar</button>
+    <button class="sh-btn-save" id="btnGuardarProp" onclick="guardarPropiedad()">Guardar propiedad</button>
   </div>
 </div>
 
 <script>
 var _propFotos = [];
-var _propSaving = false;
+var _propFotosPendientes = [];
+var _propDatosGuardados = false;
+
+function _actualizarBtnFotos() {
+    var btn = document.getElementById('btnGuardarFotos');
+    var tiene_id = !!document.getElementById('shPropId').value;
+    var tiene_pendientes = _propFotosPendientes.length > 0;
+    var habilitar = tiene_id && tiene_pendientes;
+    btn.disabled = !habilitar;
+    btn.style.opacity = habilitar ? '1' : '.5';
+    btn.style.cursor = habilitar ? 'pointer' : 'not-allowed';
+    if (tiene_id && !tiene_pendientes && _propFotos.length > 0) {
+        btn.textContent = 'Fotos guardadas';
+    } else if (!tiene_id && tiene_pendientes) {
+        btn.textContent = 'Guarda los datos primero';
+    } else {
+        btn.textContent = tiene_pendientes ? 'Guardar fotos (' + _propFotosPendientes.length + ')' : 'Guardar fotos';
+    }
+}
 
 function nuevaPropiedad() {
     document.getElementById('shPropId').value = '';
@@ -204,7 +232,12 @@ function nuevaPropiedad() {
     document.getElementById('shPropBanos').value = '';
     document.getElementById('shPropDesc').value = '';
     _propFotos = [];
+    _propFotosPendientes = [];
+    _propDatosGuardados = false;
+    document.getElementById('shPropDatosOk').style.display = 'none';
+    document.getElementById('btnGuardarDatos').textContent = 'Guardar datos';
     renderFotos();
+    _actualizarBtnFotos();
     openSheet('shProp');
 }
 function editarPropiedad(id, data) {
@@ -220,9 +253,15 @@ function editarPropiedad(id, data) {
     document.getElementById('shPropBanos').value = data.banos || '';
     document.getElementById('shPropDesc').value = data.descripcion || '';
     _propFotos = (data.fotos || []).slice();
+    _propFotosPendientes = [];
+    _propDatosGuardados = true;
+    document.getElementById('shPropDatosOk').style.display = '';
+    document.getElementById('btnGuardarDatos').textContent = 'Actualizar datos';
     renderFotos();
+    _actualizarBtnFotos();
     openSheet('shProp');
 }
+
 function renderFotos() {
     var c = document.getElementById('shPropFotosList');
     c.innerHTML = '';
@@ -234,82 +273,33 @@ function renderFotos() {
             + '<button onclick="eliminarFotoProp(' + i + ')" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>';
         c.appendChild(d);
     });
-}
-function fotoStatus(msg) {
-    var el = document.getElementById('shPropFotoStatus');
-    if (msg) { el.textContent = msg; el.style.display = ''; }
-    else { el.style.display = 'none'; }
-}
-async function asegurarIdPropiedad() {
-    var id = document.getElementById('shPropId').value;
-    if (id) return id;
-    var titulo = document.getElementById('shPropTitulo').value.trim();
-    if (!titulo) {
-        document.getElementById('shPropTitulo').value = 'Nueva propiedad';
-        titulo = 'Nueva propiedad';
-    }
-    var payload = {
-        titulo:          titulo,
-        descripcion:     document.getElementById('shPropDesc').value.trim(),
-        precio:          parseFloat(document.getElementById('shPropPrecio').value) || 0,
-        tipo_operacion:  document.getElementById('shPropOp').value,
-        tipo_propiedad:  document.getElementById('shPropTipo').value,
-        m2_terreno:      parseFloat(document.getElementById('shPropM2T').value) || null,
-        m2_construccion: parseFloat(document.getElementById('shPropM2C').value) || null,
-        recamaras:       parseInt(document.getElementById('shPropRec').value) || null,
-        banos:           parseFloat(document.getElementById('shPropBanos').value) || null,
-    };
-    var r = await fetch('/config/propiedad', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
-        body: JSON.stringify(payload)
+    _propFotosPendientes.forEach(function(f, i) {
+        var d = document.createElement('div');
+        d.style.cssText = 'position:relative;width:72px;height:54px;border-radius:6px;overflow:hidden;border:2px dashed var(--g-border)';
+        d.innerHTML = '<img src="' + URL.createObjectURL(f) + '" style="width:100%;height:100%;object-fit:cover;opacity:.7">'
+            + '<button onclick="quitarPendiente(' + i + ')" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>';
+        c.appendChild(d);
     });
-    var d = await r.json();
-    if (d.ok && d.id) {
-        document.getElementById('shPropId').value = d.id;
-        return d.id;
-    }
-    throw new Error(d.error || 'Error al crear propiedad');
 }
-async function subirFotosProp(input) {
+
+function agregarFotosProp(input) {
     var files = Array.from(input.files);
     input.value = '';
-    if (!files.length) return;
-    var id;
-    try {
-        fotoStatus('Preparando...');
-        id = await asegurarIdPropiedad();
-    } catch(e) {
-        fotoStatus('');
-        alert(e.message || 'Error al guardar propiedad.');
-        return;
-    }
-    for (var i = 0; i < files.length; i++) {
-        if (_propFotos.length >= 10) { fotoStatus('Máximo 10 fotos'); break; }
-        fotoStatus('Subiendo foto ' + (i+1) + ' de ' + files.length + '...');
-        var fd = new FormData();
-        fd.append('foto', files[i]);
-        try {
-            var r = await fetch('/config/propiedad/' + id + '/foto', {
-                method: 'POST',
-                headers: { 'X-CSRF-Token': CSRF_TOKEN },
-                body: fd
-            });
-            var d = await r.json();
-            if (d.ok) {
-                _propFotos = d.fotos;
-                renderFotos();
-            } else {
-                fotoStatus('Error: ' + (d.error || 'fallo al subir'));
-                return;
-            }
-        } catch(e) {
-            fotoStatus('Error de conexión');
-            return;
+    files.forEach(function(f) {
+        if ((_propFotos.length + _propFotosPendientes.length) < 10) {
+            _propFotosPendientes.push(f);
         }
-    }
-    fotoStatus('');
+    });
+    renderFotos();
+    _actualizarBtnFotos();
 }
+
+function quitarPendiente(idx) {
+    _propFotosPendientes.splice(idx, 1);
+    renderFotos();
+    _actualizarBtnFotos();
+}
+
 async function eliminarFotoProp(idx) {
     var id = document.getElementById('shPropId').value;
     if (!id) return;
@@ -320,21 +310,23 @@ async function eliminarFotoProp(idx) {
             body: JSON.stringify({ index: idx })
         });
         var d = await r.json();
-        if (d.ok) {
-            _propFotos = d.fotos;
-            renderFotos();
-        } else alert(d.error || 'Error.');
+        if (d.ok) { _propFotos = d.fotos; renderFotos(); _actualizarBtnFotos(); }
+        else alert(d.error || 'Error.');
     } catch(e) { alert('Error de conexión.'); }
 }
-async function guardarPropiedad() {
-    if (_propSaving) return;
-    _propSaving = true;
-    var btn = document.querySelector('#shProp .sh-btn-save');
-    btn.textContent = 'Guardando...';
-    var id     = document.getElementById('shPropId').value;
-    var titulo = document.getElementById('shPropTitulo').value.trim();
-    if (!titulo) { alert('El nombre es obligatorio.'); _propSaving=false; btn.textContent='Guardar propiedad'; return; }
 
+function fotoStatus(msg) {
+    var el = document.getElementById('shPropFotoStatus');
+    if (msg) { el.textContent = msg; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+}
+
+async function guardarDatos() {
+    var btn = document.getElementById('btnGuardarDatos');
+    var id = document.getElementById('shPropId').value;
+    var titulo = document.getElementById('shPropTitulo').value.trim();
+    if (!titulo) { alert('El nombre es obligatorio.'); return; }
+    btn.disabled = true; btn.textContent = 'Guardando...';
     var payload = {
         titulo:          titulo,
         descripcion:     document.getElementById('shPropDesc').value.trim(),
@@ -346,19 +338,99 @@ async function guardarPropiedad() {
         recamaras:       parseInt(document.getElementById('shPropRec').value) || null,
         banos:           parseFloat(document.getElementById('shPropBanos').value) || null,
     };
-
     var url = id ? '/config/propiedad/' + id : '/config/propiedad';
     try {
-        var r = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify(payload)
-        });
+        var r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN}, body:JSON.stringify(payload) });
         var d = await r.json();
-        if (d.ok) { closeSheet('shProp'); location.reload(); }
-        else { alert(d.error || 'Error.'); _propSaving=false; btn.textContent='Guardar propiedad'; }
-    } catch(e) { alert('Error de conexión.'); _propSaving=false; btn.textContent='Guardar propiedad'; }
+        if (d.ok) {
+            if (d.id) document.getElementById('shPropId').value = d.id;
+            _propDatosGuardados = true;
+            document.getElementById('shPropDatosOk').style.display = '';
+            btn.textContent = 'Actualizar datos';
+            btn.disabled = false;
+            _actualizarBtnFotos();
+            if (_propFotosPendientes.length === 0) {
+                closeSheet('shProp'); location.reload();
+            }
+        } else { alert(d.error || 'Error.'); btn.textContent = id ? 'Actualizar datos' : 'Guardar datos'; btn.disabled = false; }
+    } catch(e) { alert('Error de conexión.'); btn.textContent = id ? 'Actualizar datos' : 'Guardar datos'; btn.disabled = false; }
 }
+
+async function guardarFotos() {
+    var id = document.getElementById('shPropId').value;
+    if (!id || !_propFotosPendientes.length) return;
+    var btn = document.getElementById('btnGuardarFotos');
+    btn.disabled = true;
+    var total = _propFotosPendientes.length;
+    for (var i = 0; i < total; i++) {
+        fotoStatus('Subiendo foto ' + (i+1) + ' de ' + total + '...');
+        btn.textContent = 'Subiendo ' + (i+1) + '/' + total + '...';
+        var fd = new FormData();
+        fd.append('foto', _propFotosPendientes[i]);
+        try {
+            var r = await fetch('/config/propiedad/' + id + '/foto', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': CSRF_TOKEN },
+                body: fd
+            });
+            var d = await r.json();
+            if (d.ok) { _propFotos = d.fotos; }
+            else { fotoStatus('Error: ' + (d.error || 'fallo')); btn.disabled = false; _actualizarBtnFotos(); return; }
+        } catch(e) { fotoStatus('Error de conexión'); btn.disabled = false; _actualizarBtnFotos(); return; }
+    }
+    _propFotosPendientes = [];
+    fotoStatus('');
+    renderFotos();
+    closeSheet('shProp');
+    location.reload();
+}
+
+function cerrarProp() { closeSheet('shProp'); if (_propDatosGuardados) location.reload(); }
+
+async function guardarPropiedad() {
+    var btn = document.getElementById('btnGuardarProp');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    if (!_propDatosGuardados) {
+        var titulo = document.getElementById('shPropTitulo').value.trim();
+        if (!titulo) { alert('El nombre es obligatorio.'); btn.disabled=false; btn.textContent='Guardar propiedad'; return; }
+        var id = document.getElementById('shPropId').value;
+        var payload = {
+            titulo:          titulo,
+            descripcion:     document.getElementById('shPropDesc').value.trim(),
+            precio:          parseFloat(document.getElementById('shPropPrecio').value) || 0,
+            tipo_operacion:  document.getElementById('shPropOp').value,
+            tipo_propiedad:  document.getElementById('shPropTipo').value,
+            m2_terreno:      parseFloat(document.getElementById('shPropM2T').value) || null,
+            m2_construccion: parseFloat(document.getElementById('shPropM2C').value) || null,
+            recamaras:       parseInt(document.getElementById('shPropRec').value) || null,
+            banos:           parseFloat(document.getElementById('shPropBanos').value) || null,
+        };
+        try {
+            var r = await fetch(id ? '/config/propiedad/'+id : '/config/propiedad', { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN}, body:JSON.stringify(payload) });
+            var d = await r.json();
+            if (!d.ok) { alert(d.error||'Error.'); btn.disabled=false; btn.textContent='Guardar propiedad'; return; }
+            if (d.id) document.getElementById('shPropId').value = d.id;
+            _propDatosGuardados = true;
+        } catch(e) { alert('Error de conexión.'); btn.disabled=false; btn.textContent='Guardar propiedad'; return; }
+    }
+    if (_propFotosPendientes.length > 0) {
+        var pid = document.getElementById('shPropId').value;
+        for (var i = 0; i < _propFotosPendientes.length; i++) {
+            btn.textContent = 'Subiendo foto ' + (i+1) + '/' + _propFotosPendientes.length + '...';
+            var fd = new FormData();
+            fd.append('foto', _propFotosPendientes[i]);
+            try {
+                var r = await fetch('/config/propiedad/' + pid + '/foto', { method:'POST', headers:{'X-CSRF-Token':CSRF_TOKEN}, body:fd });
+                var d = await r.json();
+                if (!d.ok) { alert(d.error||'Error al subir foto.'); btn.disabled=false; btn.textContent='Guardar propiedad'; return; }
+                _propFotos = d.fotos;
+            } catch(e) { alert('Error de conexión.'); btn.disabled=false; btn.textContent='Guardar propiedad'; return; }
+        }
+        _propFotosPendientes = [];
+    }
+    closeSheet('shProp'); location.reload();
+}
+
 async function eliminarPropiedad(id, btn) {
     if (!confirm('¿Eliminar esta propiedad del catálogo?')) return;
     try {
