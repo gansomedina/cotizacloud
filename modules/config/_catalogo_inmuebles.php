@@ -308,7 +308,7 @@ async function eliminarFotoProp(idx) {
             body: JSON.stringify({ index: idx })
         });
         var d = await r.json();
-        if (d.ok) { _propFotos = d.fotos; renderFotos(); _actualizarBtnFotos(); }
+        if (d.ok) { _propFotos = (d.data&&d.data.fotos)||d.fotos||[]; renderFotos(); _actualizarBtnFotos(); }
         else alert(d.error || 'Error.');
     } catch(e) { alert('Error de conexión.'); }
 }
@@ -341,7 +341,8 @@ async function guardarDatos() {
         var r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN}, body:JSON.stringify(payload) });
         var d = await r.json();
         if (d.ok) {
-            if (d.id) document.getElementById('shPropId').value = d.id;
+            var newId = (d.data && d.data.id) || d.id;
+            if (newId) document.getElementById('shPropId').value = newId;
             _propDatosGuardados = true;
             document.getElementById('shPropDatosOk').style.display = '';
             btn.textContent = 'Actualizar datos';
@@ -372,7 +373,7 @@ async function guardarFotos() {
                 body: fd
             });
             var d = await r.json();
-            if (d.ok) { _propFotos = d.fotos; }
+            if (d.ok) { _propFotos = (d.data&&d.data.fotos)||d.fotos||[]; }
             else { fotoStatus('Error: ' + (d.error || 'fallo')); btn.disabled = false; _actualizarBtnFotos(); return; }
         } catch(e) { fotoStatus('Error de conexión'); btn.disabled = false; _actualizarBtnFotos(); return; }
     }
@@ -407,7 +408,8 @@ async function guardarPropiedad() {
             var r = await fetch(id ? '/config/propiedad/'+id : '/config/propiedad', { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN}, body:JSON.stringify(payload) });
             var d = await r.json();
             if (!d.ok) { alert(d.error||'Error.'); btn.disabled=false; btn.textContent='Guardar propiedad'; return; }
-            if (d.id) document.getElementById('shPropId').value = d.id;
+            var nid = (d.data && d.data.id) || d.id;
+            if (nid) document.getElementById('shPropId').value = nid;
             _propDatosGuardados = true;
         } catch(e) { alert('Error de conexión.'); btn.disabled=false; btn.textContent='Guardar propiedad'; return; }
     }
@@ -421,7 +423,7 @@ async function guardarPropiedad() {
                 var r = await fetch('/config/propiedad/' + pid + '/foto', { method:'POST', headers:{'X-CSRF-Token':CSRF_TOKEN}, body:fd });
                 var d = await r.json();
                 if (!d.ok) { alert(d.error||'Error al subir foto.'); btn.disabled=false; btn.textContent='Guardar propiedad'; return; }
-                _propFotos = d.fotos;
+                _propFotos = (d.data&&d.data.fotos)||d.fotos||[];
             } catch(e) { alert('Error de conexión.'); btn.disabled=false; btn.textContent='Guardar propiedad'; return; }
         }
         _propFotosPendientes = [];
