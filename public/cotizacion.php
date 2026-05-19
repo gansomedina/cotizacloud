@@ -18,7 +18,7 @@ $cot = DB::row(
             e.impuesto_modo, e.impuesto_pct, e.impuesto_nombre AS impuesto_label,
             e.cot_terminos AS terminos, e.cot_footer, e.cot_encabezado, e.cot_theme,
             e.texto_aceptar, e.texto_rechazar,
-            e.slug AS emp_slug, e.ocultar_cant_pu, e.giro,
+            e.slug AS emp_slug, e.ocultar_cant_pu,
             e.feedback_activo, e.feedback_pregunta, e.feedback_subtitulo, e.feedback_label_comentario, e.feedback_agradecimiento,
             cl.nombre AS cliente_nombre, cl.telefono AS cli_tel, cl.email AS cli_email, cl.direccion AS cli_direccion,
             u.nombre  AS asesor_nombre
@@ -323,7 +323,8 @@ $badge_map = [
 [$badge_bg, $badge_color, $badge_lbl] = $badge_map[$estado] ?? ['#f1f5f9','#475569',ucfirst($estado)];
 
 // ── Giro inmuebles: template alternativo ──
-if (($cot['giro'] ?? 'servicios') === 'inmuebles') {
+$empresa_giro = DB::val("SELECT giro FROM empresas WHERE id = ?", [EMPRESA_ID]) ?: 'servicios';
+if ($empresa_giro === 'inmuebles') {
     require __DIR__ . '/cotizacion_inmueble.php';
     exit;
 }
