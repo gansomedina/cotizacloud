@@ -338,8 +338,8 @@ function es_bot(?string $ua = null): bool
         'bot','crawl','spider','slurp','scraper','scanner',
         'googlebot','bingbot','yandex','baidu','duckduck',
         'ahrefsbot','semrushbot','mj12bot','dotbot','rogerbot',
-        // Redes sociales (previews)
-        'facebookexternalhit','whatsapp','telegram','twitterbot',
+        // Redes sociales (previews — solo los bots reales, NO in-app browsers)
+        'facebookexternalhit','telegram','twitterbot',
         'linkedinbot','slackbot','discordbot','skype','iframely',
         'opengraph','embedly','prerender',
         // Herramientas de desarrollo y testing
@@ -357,6 +357,11 @@ function es_bot(?string $ua = null): bool
     foreach ($bots as $b) {
         if (str_contains($ua, $b)) return true;
     }
+
+    // WhatsApp preview bot: "WhatsApp/2.23.20.0" (sin Mozilla, sin AppleWebKit)
+    // WhatsApp in-app browser: "Mozilla/5.0 ... AppleWebKit ... WhatsApp/2.x"
+    // Solo bloquear el preview bot, no el in-app browser
+    if (str_contains($ua, 'whatsapp') && !str_contains($ua, 'mozilla')) return true;
 
     return false;
 }
