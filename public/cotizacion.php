@@ -322,6 +322,19 @@ $badge_map = [
 ];
 [$badge_bg, $badge_color, $badge_lbl] = $badge_map[$estado] ?? ['#f1f5f9','#475569',ucfirst($estado)];
 
+// ── Theme colors (compartido con template inmuebles) ──
+$themes = [
+    'verde'   => ['g'=>'#1a6b3c','glt'=>'#edf7f2','gbd'=>'#b6ddc7'],
+    'azul'    => ['g'=>'#1d4ed8','glt'=>'#eff6ff','gbd'=>'#bfdbfe'],
+    'rojo'    => ['g'=>'#b91c1c','glt'=>'#fef2f2','gbd'=>'#fecaca'],
+    'naranja' => ['g'=>'#e8a317','glt'=>'#fffdf5','gbd'=>'#fde68a'],
+    'dorado'  => ['g'=>'#92400e','glt'=>'#fffbeb','gbd'=>'#fde68a'],
+    'morado'  => ['g'=>'#6d28d9','glt'=>'#f5f3ff','gbd'=>'#c4b5fd'],
+    'oscuro'  => ['g'=>'#1e293b','glt'=>'#f1f5f9','gbd'=>'#cbd5e1'],
+];
+$th = $themes[$cot['cot_theme'] ?? 'verde'] ?? $themes['verde'];
+$ocultar_cp = !empty($cot['ocultar_cant_pu']);
+
 // ── Giro inmuebles: template alternativo ──
 $empresa_giro = DB::val("SELECT giro FROM empresas WHERE id = ?", [EMPRESA_ID]) ?: 'servicios';
 if ($empresa_giro === 'inmuebles') {
@@ -337,19 +350,7 @@ if ($empresa_giro === 'inmuebles') {
 <title>Cotización · <?= e($cot['emp_nombre']) ?></title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-<?php
-$themes = [
-    'verde'   => ['g'=>'#1a6b3c','glt'=>'#edf7f2','gbd'=>'#b6ddc7'],
-    'azul'    => ['g'=>'#1d4ed8','glt'=>'#eff6ff','gbd'=>'#bfdbfe'],
-    'rojo'    => ['g'=>'#b91c1c','glt'=>'#fef2f2','gbd'=>'#fecaca'],
-    'naranja' => ['g'=>'#e8a317','glt'=>'#fffdf5','gbd'=>'#fde68a'],
-    'dorado'  => ['g'=>'#92400e','glt'=>'#fffbeb','gbd'=>'#fde68a'],
-    'morado'  => ['g'=>'#6d28d9','glt'=>'#f5f3ff','gbd'=>'#c4b5fd'],
-    'oscuro'  => ['g'=>'#1e293b','glt'=>'#f1f5f9','gbd'=>'#cbd5e1'],
-];
-$th = $themes[$cot['cot_theme'] ?? 'verde'] ?? $themes['verde'];
-$ocultar_cp = !empty($cot['ocultar_cant_pu']);
-?>
+<?php // $th y $ocultar_cp definidos arriba (antes del giro check) ?>
 :root{--g:<?=$th['g']?>;--glt:<?=$th['glt']?>;--gbd:<?=$th['gbd']?>;--text:#111;--t2:#444;--t3:#888;--bd:#d8d8d8;--bg:#f7f7f5;--white:#fff;--amb:#92400e;--red:#b91c1c;--r:6px}
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:17px;-webkit-text-size-adjust:100%}

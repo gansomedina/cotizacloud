@@ -69,21 +69,25 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
 /* Property card */
 .prop-card{background:var(--white);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-top:16px}
-.prop-top{padding:20px 22px 16px}
-.prop-badges{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-.prop-badge{padding:4px 12px;border-radius:99px;font:600 12px 'Plus Jakarta Sans',sans-serif;letter-spacing:.02em}
-.prop-title{font:800 24px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.025em;line-height:1.2;margin-bottom:6px}
-.prop-address{font-size:15px;color:var(--t2);line-height:1.5}
-.prop-price-bar{padding:16px 22px;background:var(--glt);border-top:1px solid var(--gbd);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.prop-price{font:800 28px 'Plus Jakarta Sans',sans-serif;color:var(--g);letter-spacing:-.02em}
-.prop-price-label{font:500 14px 'Plus Jakarta Sans',sans-serif;color:var(--t3)}
+.prop-top{padding:24px 22px 20px}
+.prop-badges{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.prop-badge{padding:5px 14px;border-radius:99px;font:600 12px 'Plus Jakarta Sans',sans-serif;letter-spacing:.02em}
+.prop-title{font:800 26px 'Plus Jakarta Sans',sans-serif;letter-spacing:-.025em;line-height:1.2;margin-bottom:8px}
+.prop-address{font-size:15px;color:var(--t2);line-height:1.6}
 
 /* Specs grid */
-.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-top:16px}
-.spec{background:var(--white);border:1px solid var(--bd);border-radius:12px;padding:16px 12px;text-align:center}
-.spec-ico{font-size:24px;margin-bottom:4px;line-height:1}
-.spec-val{font:700 18px 'Plus Jakarta Sans',sans-serif;color:var(--text);margin-bottom:1px}
+.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-top:20px}
+.spec{background:var(--white);border:1px solid var(--bd);border-radius:14px;padding:18px 12px;text-align:center;transition:border-color .15s}
+.spec:hover{border-color:var(--gbd)}
+.spec-ico{font-size:26px;margin-bottom:6px;line-height:1}
+.spec-val{font:700 18px 'Plus Jakarta Sans',sans-serif;color:var(--text);margin-bottom:2px}
 .spec-lbl{font:500 11px 'Plus Jakarta Sans',sans-serif;color:var(--t3)}
+
+/* Price section — separated to force scroll */
+.prop-price-section{background:var(--glt);border:1.5px solid var(--gbd);border-radius:var(--r);padding:28px 24px;margin-top:24px;text-align:center}
+.prop-price-lbl{font:600 11px 'Plus Jakarta Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--g);opacity:.7;margin-bottom:6px}
+.prop-price-amount{font:800 36px 'Plus Jakarta Sans',sans-serif;color:var(--g);letter-spacing:-.02em;margin-bottom:4px}
+.prop-price-curr{font:500 14px 'Plus Jakarta Sans',sans-serif;color:var(--t3)}
 
 /* Description */
 .desc-block{background:var(--white);border:1px solid var(--bd);border-radius:var(--r);padding:20px 22px;margin-top:16px;font-size:16px;color:var(--t2);line-height:1.7}
@@ -216,7 +220,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 </div>
 <?php endif; ?>
 
-<!-- PROPERTY CARD -->
+<!-- PROPERTY INFO -->
 <div class="prop-card">
   <div class="prop-top">
     <div class="prop-badges">
@@ -227,10 +231,6 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <?php if ($lineas[0]['descripcion'] ?? ''): ?>
     <div class="prop-address"><?= nl2br(e($lineas[0]['descripcion'])) ?></div>
     <?php endif; ?>
-  </div>
-  <div class="prop-price-bar" id="totalsScreen">
-    <span class="prop-price"><?= fmt_pub((float)$cot['total']) ?></span>
-    <span class="prop-price-label"><?= e($cot['moneda'] ?? 'MXN') ?></span>
   </div>
 </div>
 
@@ -266,12 +266,19 @@ if ($encabezado_raw !== ''):
         e_html($encabezado_raw)
     );
 ?>
-<div class="desc-block" style="margin-top:16px">
+<div class="desc-block" style="margin-top:20px">
   <?= nl2br($encabezado) ?>
 </div>
 <?php endif; ?>
 
-<!-- INFO PILLS -->
+<!-- PRECIO — separado para forzar scroll y activar Radar -->
+<div class="prop-price-section" id="totalsScreen">
+  <div class="prop-price-lbl">Precio</div>
+  <div class="prop-price-amount"><?= fmt_pub((float)$cot['total']) ?></div>
+  <div class="prop-price-curr"><?= e($cot['moneda'] ?? 'MXN') ?> · <?= e($tipo_op) ?></div>
+</div>
+
+<!-- INFO -->
 <div class="info-pills">
   <div class="info-pill">
     <span class="info-pill-lbl">Cotización</span>
