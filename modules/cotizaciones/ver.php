@@ -837,8 +837,8 @@ function agregarItem(titulo, sku, desc, precio, articulo_id, editable=true, esEx
             <div class="item-field"><div class="item-field-lbl">Nombre</div><input type="text" data-campo="titulo" value="${esc(titulo)}" ${!editable?'readonly':''} oninput="updateItemPreview(this)"></div>
             <div class="item-field"><div class="item-field-lbl">SKU</div><input type="text" data-campo="sku" value="${esc(sku)}" ${!editable?'readonly':''}></div>
             <div class="item-field"><div class="item-field-lbl">Descripción</div><textarea data-campo="descripcion" oninput="autoResize(this)" ${!editable?'readonly':''}>${esc(desc)}</textarea></div>
-            <div class="item-nums">
-                ${PUEDE_VER_CANT ? `<div class="item-field"><div class="item-field-lbl">Cantidad</div><input type="number" data-campo="cantidad" value="1" min="0" step="any" ${!editable?'readonly':''} oninput="calcItemTotal(this)"></div>` : `<input type="hidden" data-campo="cantidad" value="1">`}
+            <div class="item-nums" ${ES_INMUEBLES&&!esExtra?'style="display:none"':''}>
+                ${PUEDE_VER_CANT ? `<div class="item-field"><div class="item-field-lbl">Cantidad</div><input type="number" data-campo="cantidad" value="1" min="0" step="any" ${!editable||ES_INMUEBLES?'readonly':''} oninput="calcItemTotal(this)"></div>` : `<input type="hidden" data-campo="cantidad" value="1">`}
                 ${PUEDE_VER_CANT ? `<div class="item-field"><div class="item-field-lbl">Precio unit.</div><input type="number" data-campo="precio" value="${precio}" min="0" step="any" ${ro} oninput="calcItemTotal(this)"></div>` : `<input type="hidden" data-campo="precio" value="${precio}">`}
                 <div class="item-field item-total"><div class="item-field-lbl">Total</div><input type="text" data-campo="total" value="${amt}" readonly></div>
             </div>
