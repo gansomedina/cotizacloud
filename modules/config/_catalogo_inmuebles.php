@@ -380,8 +380,10 @@ async function guardarFotos() {
     _propFotosPendientes = [];
     fotoStatus('');
     renderFotos();
-    closeSheet('shProp');
-    location.reload();
+    _actualizarBtnFotos();
+    btn.textContent = 'Fotos subidas';
+    btn.style.borderColor = 'var(--g)';
+    btn.style.color = 'var(--g)';
 }
 
 function cerrarProp() { closeSheet('shProp'); if (_propDatosGuardados) location.reload(); }
