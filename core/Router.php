@@ -237,6 +237,8 @@ class Router
         self::post('/config/propiedad',                   fn()   => self::app('config', 'propiedad'));
         self::post('/config/propiedad/:id',               fn($p) => self::app('config', 'propiedad', $p));
         self::post('/config/propiedad/:id/eliminar',      fn($p) => self::app_extra('config', 'propiedad', $p, ['accion'=>'eliminar']));
+        self::post('/config/propiedad/:id/foto',           fn($p) => self::app('config', 'propiedad_foto', $p));
+        self::post('/config/propiedad/:id/foto/eliminar',  fn($p) => self::app_extra('config', 'propiedad_foto', $p, ['accion'=>'eliminar']));
         self::post('/config/cupon',                       fn()   => self::app('config', 'cupon'));
         self::post('/config/cupon/:id',                   fn($p) => self::app('config', 'cupon', $p));
         self::post('/config/cupon/:id/eliminar',          fn($p) => self::app_extra('config', 'cupon', $p, ['accion'=>'eliminar']));
