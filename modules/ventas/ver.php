@@ -544,11 +544,12 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
   </div>
 
   <!-- ARTÍCULOS -->
-  <div class="sec-lbl">Artículos</div>
+  <?php $es_inmuebles_vta = ($empresa['giro'] ?? 'servicios') === 'inmuebles'; ?>
+  <div class="sec-lbl"><?= $es_inmuebles_vta ? 'Propiedad' : 'Artículos' ?></div>
   <div class="card" id="lineas-card">
     <div class="item-hdr">
       <span>Descripción</span>
-      <?php if (Auth::es_admin() || Auth::puede('ver_cantidades')): ?>
+      <?php if ((Auth::es_admin() || Auth::puede('ver_cantidades')) && !$es_inmuebles_vta): ?>
       <span style="text-align:right">Cant.</span>
       <span style="text-align:right">P. Unit.</span>
       <?php endif; ?>
@@ -1285,6 +1286,7 @@ const URL_VTA    = '<?= e($url_vta) ?>';
 const CSRF_TOKEN = '<?= csrf_token() ?>';
 const ES_ADMIN   = <?= $puede_admin ? 'true' : 'false' ?>;
 const PUEDE_VER_CANT = <?= (Auth::es_admin() || Auth::puede('ver_cantidades')) ? 'true' : 'false' ?>;
+const ES_INMUEBLES = <?= ($empresa['giro'] ?? 'servicios') === 'inmuebles' ? 'true' : 'false' ?>;
 const PUEDE_EXTRAS   = <?= $puede_extras ? 'true' : 'false' ?>;
 const PUEDE_ELIM_ITEMS = <?= (Auth::es_admin() || Auth::puede('eliminar_items_venta')) ? 'true' : 'false' ?>;
 const MONEDA     = '<?= e($empresa['moneda']) ?>';
@@ -1366,7 +1368,7 @@ function renderLineas(){
         </div>
         ${sku}${desc}
         <div class="item-nums-row">
-          ${PUEDE_VER_CANT && !esExtra ? `<div class="item-num-cell">
+          ${PUEDE_VER_CANT && !esExtra && !ES_INMUEBLES ? `<div class="item-num-cell">
             <span class="item-num-lbl">Cant.</span><span class="item-num-val">${cant}</span>
           </div><div class="item-num-cell">
             <span class="item-num-lbl">P. Unit.</span><span class="item-num-val">${pu}</span>
@@ -1376,7 +1378,7 @@ function renderLineas(){
           </div>
         </div>
       </div>
-      ${PUEDE_VER_CANT && !esExtra ? `<div class="item-cell">${cant}</div><div class="item-cell">${pu}</div>` : ''}
+      ${PUEDE_VER_CANT && !esExtra && !ES_INMUEBLES ? `<div class="item-cell">${cant}</div><div class="item-cell">${pu}</div>` : ''}
       <div class="item-total">${tot}</div>
     </div>`;
   }
