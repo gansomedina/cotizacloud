@@ -1515,7 +1515,10 @@ const TRACK_URL = '/api/track';
         return m ? decodeURIComponent(m[1]) : '';
     }
     function setCookie(n, v, sec) {
-        document.cookie = n + '=' + encodeURIComponent(v) + '; path=/; max-age=' + sec + '; SameSite=Lax';
+        var d = location.hostname;
+        var dom = '';
+        if (d === 'cotiza.cloud' || d.endsWith('.cotiza.cloud')) dom = '; domain=.cotiza.cloud';
+        document.cookie = n + '=' + encodeURIComponent(v) + '; path=/; max-age=' + sec + '; SameSite=Lax' + dom;
     }
     function lsGet(k)  { try { return localStorage.getItem(k)  || ''; } catch(e) { return ''; } }
     function lsSet(k,v){ try { localStorage.setItem(k, v);             } catch(e) {} }
