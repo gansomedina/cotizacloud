@@ -210,11 +210,16 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
             goto skip_tracking;
         }
 
-        // ── CAPA 2: IP interna — DESACTIVADA ─────────────────────
-        // Causaba falsos positivos: clientes sin cookie desde IPs de Telmex
-        // que coincidían con IPs rotativas del asesor. Con 20+ IPs internas
-        // en la lista, bloqueaba clientes reales (caso Calvario 18).
-        // Capa 0 (sesión) y Capa 1 (cookie) cubren al asesor.
+        // ── CAPA 2: IP interna conocida ───────────────────────────────
+        // Solo bloquea si NO tiene cookie (posible asesor incógnito).
+        // Si tiene cookie → es otra persona en la misma IP → dejar pasar.
+        $es_ip_interna = (bool)DB::val(
+            "SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? AND aprendida_ts >= ? LIMIT 1",
+            [(int)$cot['empresa_id'], $ip, time() - 7 * 86400]
+        );
+        if ($es_ip_interna && !$tenia_cookie) {
+            goto skip_tracking;
+        }
 
         // ── CAPA 3: Bot por IP prefix ─────────────────────────────────
         foreach (Radar::BOT_IP as $prefix) {
