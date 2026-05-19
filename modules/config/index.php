@@ -332,7 +332,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 <div class="cfg-tabs-wrap">
   <div class="cfg-tabs">
     <a class="cfg-tab <?= $tab_activo==='empresa'   ?'on':'' ?>" href="/config?tab=empresa">Empresa</a>
-    <a class="cfg-tab <?= $tab_activo==='catalogo'  ?'on':'' ?>" href="/config?tab=catalogo">Catálogo</a>
+    <a class="cfg-tab <?= $tab_activo==='catalogo'  ?'on':'' ?>" href="/config?tab=catalogo"><?= ($empresa['giro'] ?? 'servicios') === 'inmuebles' ? 'Propiedades' : 'Catálogo' ?></a>
     <a class="cfg-tab <?= $tab_activo==='clientes'  ?'on':'' ?>" href="/config?tab=clientes">Clientes</a>
     <a class="cfg-tab <?= $tab_activo==='cupones'   ?'on':'' ?>" href="/config?tab=cupones">Cupones</a>
     <?php $plan_info = trial_info(EMPRESA_ID); if ($plan_info['es_business']): ?>
@@ -679,6 +679,9 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 
 
 <!-- ══ TAB: CATÁLOGO ═════════════════════════════════════════ -->
+<?php if (($empresa['giro'] ?? 'servicios') === 'inmuebles'): ?>
+<?php include __DIR__ . '/_catalogo_inmuebles.php'; ?>
+<?php else: ?>
 <div class="tab-panel <?= $tab_activo==='catalogo'?'on':'' ?>" id="panel-catalogo">
 
   <div class="search-bar">
@@ -729,6 +732,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   <button class="add-row-btn" onclick="nuevoArticulo()">+ Nuevo artículo</button>
 
 </div><!-- /panel-catalogo -->
+<?php endif; ?>
 
 
 <!-- ══ TAB: CLIENTES ═════════════════════════════════════════ -->
