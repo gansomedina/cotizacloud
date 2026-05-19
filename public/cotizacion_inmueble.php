@@ -79,10 +79,11 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 .prop-price-label{font:500 14px 'Plus Jakarta Sans',sans-serif;color:var(--t3)}
 
 /* Specs grid */
-.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;background:var(--bd);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-top:16px}
-.spec{background:var(--white);padding:16px;text-align:center}
-.spec-val{font:700 20px 'Plus Jakarta Sans',sans-serif;color:var(--text);margin-bottom:2px}
-.spec-lbl{font:500 11px 'Plus Jakarta Sans',sans-serif;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-top:16px}
+.spec{background:var(--white);border:1px solid var(--bd);border-radius:12px;padding:16px 12px;text-align:center}
+.spec-ico{font-size:24px;margin-bottom:4px;line-height:1}
+.spec-val{font:700 18px 'Plus Jakarta Sans',sans-serif;color:var(--text);margin-bottom:1px}
+.spec-lbl{font:500 11px 'Plus Jakarta Sans',sans-serif;color:var(--t3)}
 
 /* Description */
 .desc-block{background:var(--white);border:1px solid var(--bd);border-radius:var(--r);padding:20px 22px;margin-top:16px;font-size:16px;color:var(--t2);line-height:1.7}
@@ -227,7 +228,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <div class="prop-address"><?= nl2br(e($lineas[0]['descripcion'])) ?></div>
     <?php endif; ?>
   </div>
-  <div class="prop-price-bar">
+  <div class="prop-price-bar" id="totalsScreen">
     <span class="prop-price"><?= fmt_pub((float)$cot['total']) ?></span>
     <span class="prop-price-label"><?= e($cot['moneda'] ?? 'MXN') ?></span>
   </div>
@@ -237,16 +238,17 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 <?php
 $specs = [];
 if ($propiedad) {
-    if ($propiedad['m2_terreno'])      $specs[] = ['val'=>number_format($propiedad['m2_terreno'],0).' m²', 'lbl'=>'Terreno'];
-    if ($propiedad['m2_construccion']) $specs[] = ['val'=>number_format($propiedad['m2_construccion'],0).' m²', 'lbl'=>'Construcción'];
-    if ($propiedad['recamaras'])       $specs[] = ['val'=>$propiedad['recamaras'], 'lbl'=>'Recámaras'];
-    if ($propiedad['banos'])           $specs[] = ['val'=>number_format($propiedad['banos'],1), 'lbl'=>'Baños'];
+    if ($propiedad['m2_terreno'])      $specs[] = ['ico'=>'📐', 'val'=>number_format($propiedad['m2_terreno'],0).' m²', 'lbl'=>'Terreno'];
+    if ($propiedad['m2_construccion']) $specs[] = ['ico'=>'🏗', 'val'=>number_format($propiedad['m2_construccion'],0).' m²', 'lbl'=>'Construcción'];
+    if ($propiedad['recamaras'])       $specs[] = ['ico'=>'🛏', 'val'=>$propiedad['recamaras'], 'lbl'=>'Recámaras'];
+    if ($propiedad['banos'])           $specs[] = ['ico'=>'🚿', 'val'=>number_format($propiedad['banos'],1), 'lbl'=>'Baños'];
 }
 ?>
 <?php if ($specs): ?>
-<div class="specs">
+<div class="specs" id="itemsBlock">
   <?php foreach ($specs as $s): ?>
   <div class="spec">
+    <div class="spec-ico"><?= $s['ico'] ?></div>
     <div class="spec-val"><?= e($s['val']) ?></div>
     <div class="spec-lbl"><?= e($s['lbl']) ?></div>
   </div>
@@ -591,13 +593,28 @@ $vid_js      = htmlspecialchars($visitor_id_cookie ?? '', ENT_QUOTES);
         if(beacon&&navigator.sendBeacon){navigator.sendBeacon(url,JSON.stringify(d));}
         else{fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d),keepalive:true}).catch(function(){});}
     }
-    window.addEventListener('scroll',function(){updateMaxScroll();},{passive:true});
+
+    function inView(el,thr){if(!el)return false;thr=typeof thr==='number'?thr:0.5;var r=el.getBoundingClientRect();var vh=window.innerHeight||document.documentElement.clientHeight;var h=Math.max(r.height,1);var px=Math.max(0,Math.min(r.bottom,vh)-Math.max(r.top,0));return(px/h)>=thr;}
+    var totalsEl=document.getElementById('totalsScreen');
+    var itemsEl=document.getElementById('itemsBlock');
+    var totalsOnce=false,totalsCanRev=false,lastRevAt=0,COOLDOWN_MS=6000;
+    function checkTotals(){if(!totalsEl)return;var iv=inView(totalsEl,0.45);if(iv&&!totalsOnce){totalsOnce=true;totalsCanRev=false;sendEvent('section_view_totals',false);return;}if(!iv&&totalsOnce){totalsCanRev=true;}if(iv&&totalsOnce&&totalsCanRev){var now=Date.now();if((now-lastRevAt)>=COOLDOWN_MS){lastRevAt=now;totalsCanRev=false;sendEvent('section_revisit_totals',false);}}}
+    var loopState='idle',loopSent=false;
+    function checkPriceLoop(){if(!totalsEl||!itemsEl)return;var tiv=inView(totalsEl,0.45);var iiv=inView(itemsEl,0.25);if(tiv&&loopState==='idle'){loopState='saw_totals';}else if(iiv&&loopState==='saw_totals'){loopState='saw_items_after_totals';}else if(tiv&&loopState==='saw_items_after_totals'){if(!loopSent){loopSent=true;sendEvent('quote_price_review_loop',false);}loopState='saw_totals';}}
+    var sentMilestones={};
+    function checkScrollMilestones(){[50,90].forEach(function(m){if(!sentMilestones[m]&&maxScroll>=m){sentMilestones[m]=true;sendEvent('quote_scroll',false);}});}
+
+    window.addEventListener('scroll',function(){updateMaxScroll();checkScrollMilestones();checkTotals();checkPriceLoop();},{passive:true});
+    window.addEventListener('resize',function(){checkTotals();checkPriceLoop();});
+    document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){checkTotals();checkPriceLoop();}});
     function sendClose(){if(closeSent)return;closeSent=true;updateMaxScroll();if(visibleStart){visibleAccum+=Date.now()-visibleStart;visibleStart=0;}sendEvent('quote_close',true);}
     window.addEventListener('beforeunload',sendClose);
     window.addEventListener('pagehide',sendClose);
     window.czTrack=function(tipo){sendEvent(tipo,false);};
     updateMaxScroll();
     sendEvent('quote_open',false);
+    checkTotals();
+    checkPriceLoop();
 })();
 </script>
 
