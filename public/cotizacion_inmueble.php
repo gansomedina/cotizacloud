@@ -200,6 +200,38 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 <div class="body" id="mainBody">
 <div class="wrap">
 
+<!-- INFO COTIZACIÓN — arriba para forzar scroll al precio -->
+<?php
+  $vts = $cot['valida_hasta'] ? strtotime($cot['valida_hasta']) : 0;
+  $vd  = $vts ? ($vts - strtotime('today')) / 86400 : 999;
+?>
+<div class="info-pills" style="margin-top:20px">
+  <div class="info-pill">
+    <span class="info-pill-lbl">Cotización</span>
+    <span class="info-pill-val"><?= e($cot['numero']) ?></span>
+  </div>
+  <div class="info-pill">
+    <span class="info-pill-lbl">Asesor</span>
+    <span class="info-pill-val"><?= e($cot['asesor_nombre'] ?? '—') ?></span>
+  </div>
+  <?php if ($cot['cliente_nombre']): ?>
+  <div class="info-pill">
+    <span class="info-pill-lbl">Cliente</span>
+    <span class="info-pill-val"><?= e($cot['cliente_nombre']) ?></span>
+  </div>
+  <?php endif; ?>
+  <div class="info-pill">
+    <span class="info-pill-lbl">Fecha</span>
+    <span class="info-pill-val"><?= date('d/m/Y', strtotime($cot['created_at'])) ?></span>
+  </div>
+  <?php if ($vts): ?>
+  <div class="info-pill" <?php if ($vd < 0): ?>style="border-color:#fca5a5;background:#fff5f5"<?php elseif ($vd <= 3): ?>style="border-color:#fcd34d;background:#fffbeb"<?php endif; ?>>
+    <span class="info-pill-lbl"><?= $vd < 0 ? 'Venció' : 'Vencimiento' ?></span>
+    <span class="info-pill-val" <?php if ($vd<0): ?>style="color:#c53030"<?php elseif ($vd<=3): ?>style="color:#92400e"<?php endif; ?>><?= date('d/m/Y', $vts) ?></span>
+  </div>
+  <?php endif; ?>
+</div>
+
 <!-- GALLERY -->
 <?php if (!empty($fotos)): ?>
 <div class="gallery">
@@ -278,37 +310,6 @@ if ($encabezado_raw !== ''):
   <div class="prop-price-curr"><?= e($cot['moneda'] ?? 'MXN') ?> · <?= e($tipo_op) ?></div>
 </div>
 
-<!-- INFO -->
-<div class="info-pills">
-  <div class="info-pill">
-    <span class="info-pill-lbl">Cotización</span>
-    <span class="info-pill-val"><?= e($cot['numero']) ?></span>
-  </div>
-  <div class="info-pill">
-    <span class="info-pill-lbl">Asesor</span>
-    <span class="info-pill-val"><?= e($cot['asesor_nombre'] ?? '—') ?></span>
-  </div>
-  <?php if ($cot['cliente_nombre']): ?>
-  <div class="info-pill">
-    <span class="info-pill-lbl">Cliente</span>
-    <span class="info-pill-val"><?= e($cot['cliente_nombre']) ?></span>
-  </div>
-  <?php endif; ?>
-  <div class="info-pill">
-    <span class="info-pill-lbl">Fecha</span>
-    <span class="info-pill-val"><?= date('d/m/Y', strtotime($cot['created_at'])) ?></span>
-  </div>
-  <?php
-    $vts = $cot['valida_hasta'] ? strtotime($cot['valida_hasta']) : 0;
-    $vd  = $vts ? ($vts - strtotime('today')) / 86400 : 999;
-  ?>
-  <?php if ($vts): ?>
-  <div class="info-pill" <?php if ($vd < 0): ?>style="border-color:#fca5a5;background:#fff5f5"<?php elseif ($vd <= 3): ?>style="border-color:#fcd34d;background:#fffbeb"<?php endif; ?>>
-    <span class="info-pill-lbl"><?= $vd < 0 ? 'Venció' : 'Vencimiento' ?></span>
-    <span class="info-pill-val" <?php if ($vd<0): ?>style="color:#c53030"<?php elseif ($vd<=3): ?>style="color:#92400e"<?php endif; ?>><?= date('d/m/Y', $vts) ?></span>
-  </div>
-  <?php endif; ?>
-</div>
 
 <!-- TOTALS -->
 <?php if ($desc_auto_amt > 0 || $cupon_monto_guardado > 0 || $cot['impuesto_modo'] !== 'ninguno' || !empty($lineas_extra)): ?>

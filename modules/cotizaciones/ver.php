@@ -764,7 +764,7 @@ function renderCatalogList(filtro){
     const el=document.getElementById('catalog-list');
     const lista=ARTICULOS.filter(a=>!q||a.titulo.toLowerCase().includes(q)||(a.sku&&a.sku.toLowerCase().includes(q))||(a.descripcion&&a.descripcion.toLowerCase().includes(q)));
     if(!lista.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t3);font-size:13px">Sin resultados</div>';return;}
-    el.innerHTML=lista.map(a=>`<div class="sh-item" onclick="agregarDesde(${a.id})"><div style="flex:1"><div class="sh-item-title">${esc(a.titulo)}</div>${ES_INMUEBLES&&a.tipo_op?`<div class="sh-item-sku">${esc(a.tipo_op)}${a.specs?' · '+esc(a.specs):''}</div>`:''}<\/div><div class="sh-item-price">${fmt(a.precio)}</div></div>`).join('');
+    el.innerHTML=lista.map(a=>`<div class="sh-item" onclick="agregarDesde(${a.id})"><div style="flex:1"><div class="sh-item-title">${esc(a.titulo)}</div>${ES_INMUEBLES&&a.tipo_op?`<div class="sh-item-sku">${esc(a.tipo_op)}${a.specs?' · '+esc(a.specs):''}</div>`:''}${!ES_INMUEBLES&&a.sku?`<div class="sh-item-sku">${esc(a.sku)}</div>`:''}</div><div class="sh-item-price">${fmt(a.precio)}</div></div>`).join('');
 }
 function filtrarCatalogo(v){renderCatalogList(v);}
 let _agregandoExtra = false;
@@ -837,8 +837,8 @@ function agregarItem(titulo, sku, desc, precio, articulo_id, editable=true, esEx
             <div class="item-field"><div class="item-field-lbl">Nombre</div><input type="text" data-campo="titulo" value="${esc(titulo)}" ${!editable?'readonly':''} oninput="updateItemPreview(this)"></div>
             <div class="item-field"><div class="item-field-lbl">SKU</div><input type="text" data-campo="sku" value="${esc(sku)}" ${!editable?'readonly':''}></div>
             <div class="item-field"><div class="item-field-lbl">Descripción</div><textarea data-campo="descripcion" oninput="autoResize(this)" ${!editable?'readonly':''}>${esc(desc)}</textarea></div>
-            <div class="item-nums">
-                ${PUEDE_VER_CANT ? `<div class="item-field"><div class="item-field-lbl">Cantidad</div><input type="number" data-campo="cantidad" value="1" min="0" step="any" ${!editable?'readonly':''} oninput="calcItemTotal(this)"></div>` : `<input type="hidden" data-campo="cantidad" value="1">`}
+            <div class="item-nums" ${ES_INMUEBLES&&!esExtra?'style="display:none"':''}>
+                ${PUEDE_VER_CANT ? `<div class="item-field"><div class="item-field-lbl">Cantidad</div><input type="number" data-campo="cantidad" value="1" min="0" step="any" ${!editable||ES_INMUEBLES?'readonly':''} oninput="calcItemTotal(this)"></div>` : `<input type="hidden" data-campo="cantidad" value="1">`}
                 ${PUEDE_VER_CANT ? `<div class="item-field"><div class="item-field-lbl">Precio unit.</div><input type="number" data-campo="precio" value="${precio}" min="0" step="any" ${ro} oninput="calcItemTotal(this)"></div>` : `<input type="hidden" data-campo="precio" value="${precio}">`}
                 <div class="item-field item-total"><div class="item-field-lbl">Total</div><input type="text" data-campo="total" value="${amt}" readonly></div>
             </div>
