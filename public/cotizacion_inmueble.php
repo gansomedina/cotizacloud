@@ -93,11 +93,10 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 .desc-block{background:var(--white);border:1px solid var(--bd);border-radius:var(--r);padding:20px 22px;margin-top:16px;font-size:16px;color:var(--t2);line-height:1.7}
 
 /* Info pills */
-.info-pills{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:16px}
-.info-pill{padding:12px 14px;background:var(--white);border:1px solid var(--bd);border-radius:10px;text-align:center}
-.info-pill-lbl{font:600 9px 'Plus Jakarta Sans',sans-serif;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
-.info-pill-val{font:600 13px 'Plus Jakarta Sans',sans-serif;color:var(--text)}
-@media(max-width:480px){.info-pills{grid-template-columns:repeat(2,1fr)}.info-pill{padding:10px 10px}}
+.info-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;justify-content:center}
+.info-pill{padding:10px 16px;background:var(--white);border:1px solid var(--bd);border-radius:10px;display:flex;flex-direction:column;white-space:nowrap}
+.info-pill-lbl{font:600 10px 'Plus Jakarta Sans',sans-serif;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.info-pill-val{font:600 14px 'Plus Jakarta Sans',sans-serif;color:var(--text)}
 
 /* Totals */
 .tots{background:var(--white);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-top:16px}
