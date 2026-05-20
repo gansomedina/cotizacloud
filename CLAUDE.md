@@ -1792,5 +1792,48 @@ El termómetro comparaba la tasa de cierre del vendedor contra el benchmark de l
 - **Bonus por volumen de ventas** — idea evaluada, no implementada. Premiar número de ventas pagadas por encima del histórico (complementa `bonus_ticket` = ticket alto). Para después.
 - Recalcular el leaderboard completo de cada empresa para que `bonus_cierre` se calcule a todos (la columna nace en 0).
 
-## Pendiente — Evitar que el superadmin contamine cotizaciones al ver
-El superadmin (uid 4, admin@cotiza.cloud) revisa cotizaciones de TODAS las empresas; al abrir un slug su visita puede contar como cliente e inflar el Radar. Retomar: blindarlo en las 3 capas del Escudo, incluyendo dominios custom donde `cza_session` no viaja.
+## Sesión 20 mayo 2026 (cont.) — Escudo: superadmin en dominios custom
+
+### Problema
+El superadmin (uid 4, admin@cotiza.cloud) revisa cotizaciones de TODAS las
+empresas. En dominios custom (`*.ontimecocinas.com`) su visita contaba como
+cliente e inflaba el Radar. Confirmado con log: `[EscudoDbg] CLIENTE
+host=obregon.ontimecocinas.com uid=null` — pasó las 4 capas.
+
+### Causa raíz (dos partes, ambas confirmadas con logs temporales)
+1. **El bridge no le ponía `cza_session`** — `safari_bridge.php` excluía al
+   superadmin del bloque que pone la cookie de sesión (`if (!$es_super ...)`).
+2. **`Auth` rechazaba la sesión del super** — `cargar_usuario_por_token()`
+   exigía `s.empresa_id = empresa_del_host`. La sesión del super es de la
+   empresa a la que se logueó (no del host custom que visita) → no matcheaba
+   → `Auth::id()` = null → Capa 0 ciega.
+
+### Fix (2 commits)
+1. `8f43e06` — `safari_bridge.php`: el bloque `cza_session` ahora resuelve la
+   sesión por `usuario_id` (sin filtro de empresa) e incluye al superadmin.
+   El asesor no cambia (su sesión siempre es de su empresa = la del dominio).
+2. `583ff55` — `Auth.php` `cargar_usuario_por_token()`: el WHERE pasa de
+   `s.empresa_id = ?` a `(s.empresa_id = ? OR u.rol = 'superadmin')`. La
+   sesión del super carga en cualquier dominio de empresa.
+
+`login_post.php` NO se tocó — la cadena de redirect del super ya incluía
+todos los dominios custom.
+
+### Verificado con datos reales
+- `CAPA0-interno uid=4 super=1` confirmado en hermosillo y obregón.
+- Asesor no se rompió: `CAPA0-interno uid=18` (Abigail) en su propio dominio.
+- Commits de diagnóstico (logs temporales, ya removidos en `d2c8bd1`):
+  `70fbb87` EscudoDbg, `644a464` BridgeDbg.
+
+### Aprendizajes
+- `skip_tracking` es silencioso — no deja rastro de qué capa actuó. Para
+  diagnosticar el Escudo hace falta log temporal (pendiente de CLAUDE.md:
+  tabla `escudo_log` de auditoría).
+- Las sesiones del superadmin tienen `empresa_id` = la empresa con que se
+  logueó (12, 14, 11...), no una fija. El super se loguea a distintas empresas.
+- Capa 1 (cz_vid) no es confiable para el super en dominios custom — el cz_vid
+  se desvía (huérfano). Capa 0 (`cza_session`) es la sólida.
+
+### Limpieza pendiente
+Las pruebas dejaron sesiones falsas del super en cot 3973 y 3974 — marcar
+`es_interno=1` con el SQL ya entregado (filtro IP `187.245.114.71`).
