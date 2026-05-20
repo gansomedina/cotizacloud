@@ -50,26 +50,33 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
         // Esto evita "fugas" cuando el superadmin/admin entra a slugs de empresas
         // distintas a la que está logueado actualmente.
         if (($_SESSION['_sessions_cleaned'] ?? '') !== date('Y-m-d')) {
-            $my_ip  = ip_real();
+            // Recolectar TODOS los visitor_ids del asesor (no solo el actual)
+            // para limpiar sesiones de TODOS sus dispositivos.
+            // NO usar IPs — Telmex rota IPs entre clientes y asesores → falsos positivos.
+            // visitor_id es único por dispositivo+navegador, no genera colisiones.
+            $todos_vids = [];
+
+            $vids_user = DB::query(
+                "SELECT DISTINCT visitor_id FROM radar_visitors_internos WHERE usuario_id = ?",
+                [Auth::id()]
+            );
+            foreach ($vids_user as $r) if (!empty($r['visitor_id'])) $todos_vids[] = $r['visitor_id'];
+
+            // Agregar visitor_id del request actual (por si es nuevo)
             $my_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
-            $where_parts = [];
-            $where_args = [];
-            if ($my_ip) { $where_parts[] = 'qs.ip = ?'; $where_args[] = $my_ip; }
-            if ($my_vid !== '') { $where_parts[] = 'qs.visitor_id = ?'; $where_args[] = $my_vid; }
-            if (!empty($where_parts)) {
-                $cond = '(' . implode(' OR ', $where_parts) . ')';
+            if ($my_vid !== '' && !in_array($my_vid, $todos_vids)) $todos_vids[] = $my_vid;
+
+            if (!empty($todos_vids)) {
+                $ph = implode(',', array_fill(0, count($todos_vids), '?'));
                 DB::execute(
                     "UPDATE quote_sessions qs
                      JOIN cotizaciones c ON c.id = qs.cotizacion_id
-                     LEFT JOIN radar_ips_internas ri
-                            ON ri.empresa_id = c.empresa_id AND ri.ip = qs.ip
-                     LEFT JOIN radar_visitors_internos vi
+                     JOIN radar_visitors_internos vi
                             ON vi.empresa_id = c.empresa_id AND vi.visitor_id = qs.visitor_id
                      SET qs.es_interno = 1
                      WHERE qs.es_interno = 0
-                       AND $cond
-                       AND (ri.id IS NOT NULL OR vi.id IS NOT NULL)",
-                    $where_args
+                       AND qs.visitor_id IN ($ph)",
+                    $todos_vids
                 );
             }
             $_SESSION['_sessions_cleaned'] = date('Y-m-d');
