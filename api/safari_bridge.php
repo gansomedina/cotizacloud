@@ -91,6 +91,30 @@ if ($es_super) {
     Radar::aprender_ip_radar($eid, $ip);
 }
 
+// ── Establecer sesión (cza_session) en este dominio ──────────
+// Permite que Capa 0 funcione en dominios custom donde la cookie
+// de sesión de .cotiza.cloud no llega. El token NUNCA viaja en la
+// URL — se resuelve server-side a partir de uid+eid (ya verificados
+// por HMAC). Solo para asesores de UNA empresa (no superadmin global).
+if (!$es_super && $uid > 0 && $eid > 0) {
+    $sess = DB::row(
+        "SELECT token, expires_at FROM user_sessions
+         WHERE usuario_id = ? AND empresa_id = ? AND expires_at > NOW()
+         ORDER BY created_at DESC LIMIT 1",
+        [$uid, $eid]
+    );
+    if ($sess && !empty($sess['token'])) {
+        setcookie(SESSION_NAME, $sess['token'], [
+            'expires'  => strtotime($sess['expires_at']),
+            'path'     => '/',
+            'domain'   => $cookie_domain,
+            'secure'   => true,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+}
+
 // ── Si hay siguiente dominio en la cadena, redirigir ─────────
 $next = $_GET['next'] ?? '';
 if ($next !== '' && str_starts_with($next, 'https://')) {

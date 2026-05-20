@@ -143,18 +143,6 @@ $ip  = ip_real();
 $ua  = $_SERVER['HTTP_USER_AGENT'] ?? '';
 $ref = $_SERVER['HTTP_REFERER'] ?? '';
 
-// ── DIAGNÓSTICO TEMPORAL — Escudo Radar (quitar después de confirmar) ──
-error_log(sprintf(
-    '[ESCUDO-DIAG] cot=%d slug=%s ip=%s sec_purpose=%s purpose=%s ref=%s ua=%s',
-    (int)($cot['id'] ?? 0),
-    $slug,
-    $ip,
-    $_SERVER['HTTP_SEC_PURPOSE'] ?? '-',
-    $_SERVER['HTTP_PURPOSE'] ?? '-',
-    $ref !== '' ? $ref : '-',
-    substr($ua, 0, 90)
-));
-
 // ── SYNC CROSS-DOMAIN: recibir visitor_id desde login redirect chain ──
 // Si llega _sv, guardar como cookie cz_vid en este dominio custom
 if (!empty($_GET['_sv'])) {
