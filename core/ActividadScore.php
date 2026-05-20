@@ -398,11 +398,16 @@ class ActividadScore
                 $ord_new = $temp_order[$temp_new];
                 if ($ord_ant === $ord_new) continue;
 
-                $es_aceptada = in_array($t['estado'], ['aceptada', 'convertida', 'aceptada_cliente']);
-                if ($es_aceptada) continue;
-
                 $is_up = $ord_new > $ord_ant;
                 $is_down = $ord_new < $ord_ant;
+
+                // Cotización aceptada: contar solo las transiciones UP (mérito real
+                // del asesor que la calentó hasta cerrarla). El DOWN post-cierre NO
+                // es enfriamiento — la cotización se vendió, no se enfrió. Antes se
+                // saltaban TODAS sus transiciones, borrando los UP buenos → vender
+                // bajaba el score (pen_enfriamiento subía al perder los up).
+                $es_aceptada = in_array($t['estado'], ['aceptada', 'convertida', 'aceptada_cliente']);
+                if ($es_aceptada && $is_down) continue;
 
                 // Engagement: solo transiciones entre buckets reales (sin NULL)
                 if ($t['bucket_anterior'] !== null && $t['bucket_nuevo'] !== null) {
