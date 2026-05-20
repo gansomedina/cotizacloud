@@ -94,14 +94,15 @@ if ($es_super) {
 // ── Establecer sesión (cza_session) en este dominio ──────────
 // Permite que Capa 0 funcione en dominios custom donde la cookie
 // de sesión de .cotiza.cloud no llega. El token NUNCA viaja en la
-// URL — se resuelve server-side a partir de uid+eid (ya verificados
-// por HMAC). Solo para asesores de UNA empresa (no superadmin global).
-if (!$es_super && $uid > 0 && $eid > 0) {
+// URL — se resuelve server-side a partir del uid (ya verificado
+// por HMAC). Incluye al superadmin: revisa cotizaciones de todas
+// las empresas y en dominio custom Capa 0 quedaba ciega.
+if ($uid > 0) {
     $sess = DB::row(
         "SELECT token, expires_at FROM user_sessions
-         WHERE usuario_id = ? AND empresa_id = ? AND expires_at > NOW()
+         WHERE usuario_id = ? AND expires_at > NOW()
          ORDER BY created_at DESC LIMIT 1",
-        [$uid, $eid]
+        [$uid]
     );
     if ($sess && !empty($sess['token'])) {
         setcookie(SESSION_NAME, $sess['token'], [
