@@ -1681,3 +1681,15 @@ Kevin reporta que al abrir el Radar desde su computadora (logueado), sus visitas
 
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi`
+
+### Propuesta del usuario — escudo_log (tabla de auditoría)
+**Concepto:** Mantener `skip_tracking` como está, pero ANTES del skip, insertar en una tabla `escudo_log` con todos los datos de la visita bloqueada (capa, visitor_id, IP, UA, device_sig, cotización, empresa, usuario si aplica).
+
+**Ventajas:**
+- Cero riesgo al comportamiento actual (quote_sessions, Radar, Dashboard intactos)
+- Trazabilidad completa: qué capa bloqueó qué visita
+- Permite auditar falsos positivos retroactivamente
+- Base para decisiones futuras (eliminar skip_tracking si los datos confirman que es safe)
+- Implementación mínima: 1 tabla + 1 INSERT antes de cada `goto skip_tracking`
+
+**Estado:** Pendiente aprobación del usuario para implementar.
