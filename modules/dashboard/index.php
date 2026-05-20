@@ -357,17 +357,9 @@ try {
         foreach ($ghost_by_cot as $gc_id => $gc_ids) {
             $ph = implode(',', array_fill(0, count($gc_ids), '?'));
             DB::execute("DELETE FROM quote_sessions WHERE id IN ($ph)", $gc_ids);
-            // Resync visitas y ultima_vista_at desde las sesiones reales de cliente
-            // (es_interno=0). No basta con decrementar: ultima_vista_at podía
-            // apuntar a la sesión borrada y quedaba con fecha sucia.
             DB::execute(
-                "UPDATE cotizaciones c SET
-                   c.visitas = (SELECT COUNT(*) FROM quote_sessions qs
-                                WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0),
-                   c.ultima_vista_at = (SELECT MAX(qs.created_at) FROM quote_sessions qs
-                                        WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0)
-                 WHERE c.id = ?",
-                [$gc_id]
+                "UPDATE cotizaciones SET visitas = CASE WHEN visitas >= ? THEN visitas - ? ELSE 0 END WHERE id = ?",
+                [count($gc_ids), count($gc_ids), $gc_id]
             );
         }
         // NO revertir estado a 'enviada' — si la cotización llegó a 'vista'
