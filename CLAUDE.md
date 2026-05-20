@@ -1758,3 +1758,11 @@ El bridge corre solo al login. La cookie cza_session del custom dura 3 días (ig
 2. Si sí → implementar fix final: quitar IP del cleanup + recalc ultima_vista_at
 3. Verificar que inmuebles y giro servicios no se afectaron por los cambios al Escudo
 4. Cleanup manual de Calvario 18 (SQL que ya se dio)
+
+#### Pendiente: Kevin score baja cuando vende
+Kevin reporta que vende y su score del termómetro baja en vez de subir. Investigar:
+- ¿Las ventas de Kevin tienen pagado>0? (venta solo cuenta con pago real)
+- ¿El benchmark se auto-infla y penaliza? (bench_ventas vs ventas_periodo)
+- ¿Las visitas fantasma inflaron métricas que ahora se "corrigen" y bajan el score?
+- ¿pen_sin_pago lo penaliza? (ventas con pagado=0 por más de 5 días)
+- Revisar su desglose en el debug panel del leaderboard (solo superadmin)
