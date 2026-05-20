@@ -1608,3 +1608,88 @@ Template nuevo:
 - Dashboard, ejecutivo, reportes
 - Ventas, abonos, recibos
 - Push notifications, Suscripciones MercadoPago
+
+## Sesión 19 mayo 2026
+
+### Módulo Inmuebles — Completado
+1. **Migración** — `add_inmuebles.sql`: tabla propiedades + giro en empresas
+2. **CRUD** — `propiedad.php` + `propiedad_foto.php`: transaccional con fotos (máx 10)
+3. **Catálogo UI** — `_catalogo_inmuebles.php`: sheet con datos + fotos, UX dos secciones (Guardar datos / Subir fotos / Guardar propiedad)
+4. **Slug público** — `cotizacion_inmueble.php`: galería fotos, specs con emojis (📐🏗🛏🚿), precio separado abajo para forzar scroll, tracking Radar completo (checkTotals/checkPriceLoop)
+5. **Integración cotizaciones** — nueva.php y ver.php: catálogo con propiedades JOIN, auto-fill título, 1 propiedad por cotización, cantidad=1, ocultar cant/precio
+6. **guardar.php** — fuerza cantidad=1 para inmuebles
+7. **ventas/ver.php** — oculta cant/precio para inmuebles, label "Propiedad"
+8. **config/index.php** — tab "Propiedades" para inmuebles, query condicional
+
+### Bugs corregidos
+1. **goto skip_escudo** — saltaba el `echo $content` para apple-review (pantalla blanca total)
+2. **ghost cleanup** — ya no revierte estado vista→enviada (irreversible ahora)
+3. **Cookie cz_vid sin dominio** — cotizacion.php ponía cookie solo en subdominio, no viajaba al dashboard. Fix: PHP y JS ahora usan `.cotiza.cloud`
+4. **SKU en ver.php** — la lista del catálogo perdía el SKU para servicios al agregar inmuebles
+5. **$lineas[0] vacío** — protección en slug inmueble
+6. **query innecesaria** — config/index.php no carga artículos cuando giro=inmuebles
+7. **Theme colors** — `$th` se define antes del giro check, slug inmueble respeta colores
+
+### Investigación Calvario 18 — Escudo Radar
+**Caso:** Cotización 3948 marcada "sin abrir" pero cliente confirmó que la abrió.
+
+**Hallazgos:**
+- Kevin (usuario 21, asesor) abrió la cotización desde su iPhone a las 12:26 SIN estar logueado en Safari
+- Su visitor_id `69b65229` era nuevo (no estaba en radar_visitors_internos)
+- La IP `200.68.163.65` no estaba en internas a esa hora
+- Las 3 capas fallaron → contó como cliente
+- Cuando Kevin se logueó desde Safari iPhone a las 16:34, layout.php cleanup marcó retroactivamente esa sesión como interna (por IP match)
+- El historial se "limpió" visualmente (UI filtra es_interno=1)
+
+**Causa raíz confirmada:** Cookie `cz_vid` en `cotizacion.php` se ponía sin dominio `.cotiza.cloud` — generaba visitor_ids huérfanos que no se asociaban al login. **Corregido** en PHP (línea 151, 174) y JS (setCookie en slug).
+
+**Timezone:** La BD muestra hora del servidor (UTC-4), no Hermosillo (UTC-7). Diferencia de 3 horas. Esto causó confusión en el análisis.
+
+### Problema pendiente — Limpieza retroactiva incompleta
+**Estado actual** de layout.php cleanup (líneas 52-78):
+- Solo usa IP y visitor_id del request ACTUAL
+- NO usa todos los visitor_ids conocidos del usuario en radar_visitors_internos
+- Resultado: si Kevin entra al dashboard desde Windows, sus sesiones huérfanas de iPhone NO se limpian (IP diferente, visitor diferente)
+
+**Fix pendiente:** Agregar todos los visitor_ids de `radar_visitors_internos WHERE usuario_id = ?` al cleanup. SIN usar IPs históricas (rotación Telmex = falsos positivos). Los visitor_ids son safe porque son UUID únicos confirmados por login.
+
+### Problema reportado — Kevin Radar inflado
+Kevin reporta que al abrir el Radar desde su computadora (logueado), sus visitas a cotizaciones se marcan como cliente. Capa 0 debería atraparlo. **Pendiente investigar.**
+
+### Diseño pendiente — Eliminar skip_tracking
+**Consenso:** El `goto skip_tracking` en cotizacion.php descarta visitas internas sin registrarlas. Esto causa:
+- Pérdida de trazabilidad (no sabemos qué capa actuó)
+- Eventos huérfanos en quote_events (JS sigue mandando pero no hay sesión base)
+- Imposibilidad de auditar errores del sistema
+- MarketingPixels::capi_view se manda para internos que no fueron detectados
+
+**Propuesta acordada:** Reemplazar skip_tracking por INSERT con `es_interno=1` + `capa_motivo`. Saltar solo efectos externos (visitas++, estado, Radar recalc, CAPI pixel). Agregar filtros `WHERE es_interno=0` en queries downstream.
+
+### Diseño pendiente — Giro Seguros
+**Concepto:** PDF por línea de cotización (no por cotización). Cada opción de seguro es un item con su propio PDF embebido en el slug. Cliente compara y elige.
+**Requiere:** campo `archivo` en cotizacion_lineas, upload en nueva.php, embed `<iframe>` en slug.
+
+### Diseño pendiente — Ventas no modifiquen cotización original
+**Problema:** ventas/guardar.php hace DELETE + INSERT en cotizacion_lineas. Destruye la cotización original.
+**Opción evaluada:** cotizacion_lineas ya tiene columna `venta_id` (existe pero no se usa). Copiar líneas al crear venta y operar sobre las copias. Requiere cambios en ~7 archivos + migración de datos existentes.
+
+### Notas técnicas
+- `json_ok()` wraps data en `d.data`, no `d.id` directo — JS debe leer `(d.data && d.data.id) || d.id`
+- WhatsApp in-app browser: NO existe en iOS (Safari siempre). En Android sí pero UA no contiene "WhatsApp". El `'whatsapp'` en es_bot() solo bloquea el preview bot (correcto).
+- device_sig: solo para descarte, colisiona entre dispositivos iguales, muta en misma máquina
+- localStorage device_id: NO es mejor que cookie — peor para cross-subdomain. Descartado.
+
+### Branch de trabajo
+- `claude/analyze-domain-change-hmo-AkFAi`
+
+### Propuesta del usuario — escudo_log (tabla de auditoría)
+**Concepto:** Mantener `skip_tracking` como está, pero ANTES del skip, insertar en una tabla `escudo_log` con todos los datos de la visita bloqueada (capa, visitor_id, IP, UA, device_sig, cotización, empresa, usuario si aplica).
+
+**Ventajas:**
+- Cero riesgo al comportamiento actual (quote_sessions, Radar, Dashboard intactos)
+- Trazabilidad completa: qué capa bloqueó qué visita
+- Permite auditar falsos positivos retroactivamente
+- Base para decisiones futuras (eliminar skip_tracking si los datos confirman que es safe)
+- Implementación mínima: 1 tabla + 1 INSERT antes de cada `goto skip_tracking`
+
+**Estado:** Pendiente aprobación del usuario para implementar.
