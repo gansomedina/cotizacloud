@@ -1726,3 +1726,35 @@ El bridge corre solo al login. La cookie cza_session del custom dura 3 días (ig
 2. **Evaluar es_interno=1 + capa_motivo** — reemplazar skip_tracking por INSERT con es_interno=1 y motivo, para trazabilidad. Auditoría hecha: 5 queries downstream necesitan WHERE es_interno=0 (Radar.php ×2, dashboard ×2, ActividadScore ×1).
 3. **Limpiar datos sucios históricos** — sesiones de asesores ya contadas como cliente (es_interno=0) que inflaron cotizaciones. Ya tenemos el visitor_id de Kevin (ad66df34, df00eaa3) — se pueden marcar retroactivamente. Falta definir el alcance y el script.
 4. **App Capacitor** — login_post.php salta el bridge si is_native_app. Los que se loguean por la app no reciben cza_session en el custom. Caso aparte, pendiente.
+
+### Continuación sesión 20 mayo — limpieza retroactiva
+
+#### Bugs identificados en layout.php cleanup (líneas 52-95)
+1. **IP false positive** — la rama `qs.ip = my_ip` + `ri.id IS NOT NULL` puede marcar sesiones de clientes reales que comparten IP con el asesor (rotación Telmex). Se debe quitar — usar SOLO visitor_ids.
+2. **No recalcula `ultima_vista_at`** — al marcar una sesión es_interno=1, la cotización mantiene la hora de la sesión del asesor. Debe recalcular `ultima_vista_at = MAX(created_at WHERE es_interno=0)` de las cotizaciones afectadas. SIN tocar `visitas` (el usuario decidió no resincronizar ese contador).
+
+#### Fix pendiente (aprobado, falta implementar)
+- Quitar rama `qs.ip = my_ip` del WHERE (solo visitor_ids)
+- Después del UPDATE, recalcular SOLO `ultima_vista_at` de cotizaciones afectadas
+- VERIFICAR PRIMERO: correr `SELECT * FROM radar_visitors_internos WHERE visitor_id = 'ad66df34-...'` — si ya aparece (Capa 0 lo registró), es seguro quitar la IP
+
+#### Verificar impacto en inmuebles y servicios
+- Confirmar que los cambios al Escudo (bridge cza_session, cleanup retroactivo) no afectan el módulo inmuebles (cotizacion_inmueble.php)
+- El tracking en cotizacion.php corre ANTES del giro redirect — los cambios al Escudo aplican igual a inmuebles (mismo cotizacion.php)
+- Servicios financieros: giro pendiente, no implementado aún — no afectado
+
+#### Estado del commit e325f09 (visitor_ids en cleanup)
+- Cambio de visitor_ids ya está en la branch — agrega todos los visitor_ids conocidos del asesor al cleanup
+- PENDIENTE: quitar la rama IP y agregar el recalc de ultima_vista_at
+- El usuario quiere UN SOLO cambio limpio final
+
+#### Resumen de lo que queda deployado y funcionando
+1. **Bridge cza_session** (commit f163355) — confirmado: Kevin abrió slug 3975, cero sesiones nuevas ✓
+2. **Visitor_ids en cleanup** (commit e325f09) — cleanup usa todos los vids del asesor, no solo el actual
+3. **Cookie domain .cotiza.cloud** en cotizacion.php (PHP + JS) — cookies del slug viajan entre subdominios
+
+#### Pendientes para mañana
+1. SQL: `SELECT * FROM radar_visitors_internos WHERE visitor_id = 'ad66df34-e960-412d-afca-ea339109f215'` — verificar si Capa 0 lo registró
+2. Si sí → implementar fix final: quitar IP del cleanup + recalc ultima_vista_at
+3. Verificar que inmuebles y giro servicios no se afectaron por los cambios al Escudo
+4. Cleanup manual de Calvario 18 (SQL que ya se dio)
