@@ -50,12 +50,41 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
         // Esto evita "fugas" cuando el superadmin/admin entra a slugs de empresas
         // distintas a la que está logueado actualmente.
         if (($_SESSION['_sessions_cleaned'] ?? '') !== date('Y-m-d')) {
+            // Recolectar TODAS las IPs y visitor_ids del asesor (no solo el actual)
+            // para limpiar sesiones de TODOS sus dispositivos en una sola pasada.
+            $todas_ips = [];
+            $todos_vids = [];
+
+            $ips_user = DB::query(
+                "SELECT DISTINCT ip FROM radar_ips_internas WHERE usuario_id = ?",
+                [Auth::id()]
+            );
+            foreach ($ips_user as $r) if (!empty($r['ip'])) $todas_ips[] = $r['ip'];
+
+            $vids_user = DB::query(
+                "SELECT DISTINCT visitor_id FROM radar_visitors_internos WHERE usuario_id = ?",
+                [Auth::id()]
+            );
+            foreach ($vids_user as $r) if (!empty($r['visitor_id'])) $todos_vids[] = $r['visitor_id'];
+
+            // Agregar también IP y visitor_id del request actual (por si es nuevo)
             $my_ip  = ip_real();
             $my_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
+            if ($my_ip && !in_array($my_ip, $todas_ips)) $todas_ips[] = $my_ip;
+            if ($my_vid !== '' && !in_array($my_vid, $todos_vids)) $todos_vids[] = $my_vid;
+
             $where_parts = [];
             $where_args = [];
-            if ($my_ip) { $where_parts[] = 'qs.ip = ?'; $where_args[] = $my_ip; }
-            if ($my_vid !== '') { $where_parts[] = 'qs.visitor_id = ?'; $where_args[] = $my_vid; }
+            if (!empty($todas_ips)) {
+                $ph = implode(',', array_fill(0, count($todas_ips), '?'));
+                $where_parts[] = "qs.ip IN ($ph)";
+                foreach ($todas_ips as $ip) $where_args[] = $ip;
+            }
+            if (!empty($todos_vids)) {
+                $ph = implode(',', array_fill(0, count($todos_vids), '?'));
+                $where_parts[] = "qs.visitor_id IN ($ph)";
+                foreach ($todos_vids as $v) $where_args[] = $v;
+            }
             if (!empty($where_parts)) {
                 $cond = '(' . implode(' OR ', $where_parts) . ')';
                 DB::execute(
