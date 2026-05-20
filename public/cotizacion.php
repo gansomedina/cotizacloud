@@ -183,13 +183,6 @@ require_once MODULES_PATH . '/radar/Radar.php';
 $es_superadmin = Auth::id() !== null && (Auth::usuario()['rol'] ?? '') === 'superadmin';
 $es_usuario_interno = (Auth::id() !== null && (int)(Auth::empresa()['id'] ?? 0) === (int)$cot['empresa_id']) || $es_superadmin;
 
-// [TEMP DEBUG Escudo] — quitar tras diagnosticar
-$_escudo_dbg = sprintf('host=%s cot=%d uid=%s super=%d vid=%s cookie=%d',
-    $_SERVER['HTTP_HOST'] ?? '', (int)$cot['id'], Auth::id() ?? 'null',
-    $es_superadmin ? 1 : 0,
-    $visitor_id_cookie !== '' ? substr($visitor_id_cookie, 0, 8) : '-',
-    $tenia_cookie ? 1 : 0);
-
 if ($es_usuario_interno) {
     // Aprender IP de este acceso como interna
     Radar::aprender_ip_radar((int)$cot['empresa_id'], $ip);
@@ -205,7 +198,6 @@ if ($es_usuario_interno) {
         );
     }
     // No registrar visita ni eventos — salir
-    error_log("[EscudoDbg] CAPA0-interno $_escudo_dbg");
     goto skip_tracking;
 }
 
@@ -215,7 +207,6 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         // ── CAPA 1: visitor_id ya conocido como interno ───────────────
         // El asesor abrió esto antes logueado — su UUID ya está en la lista negra
         if ($visitor_id_cookie !== '' && Radar::es_visitor_interno((int)$cot['empresa_id'], $visitor_id_cookie)) {
-            error_log("[EscudoDbg] CAPA1-visitor $_escudo_dbg");
             goto skip_tracking;
         }
 
@@ -227,17 +218,15 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
             [(int)$cot['empresa_id'], $ip, time() - 7 * 86400]
         );
         if ($es_ip_interna && !$tenia_cookie) {
-            error_log("[EscudoDbg] CAPA2-ip $_escudo_dbg");
             goto skip_tracking;
         }
 
         // ── CAPA 3: Bot por IP prefix ─────────────────────────────────
         foreach (Radar::BOT_IP as $prefix) {
-            if (str_starts_with($ip, $prefix)) { error_log("[EscudoDbg] CAPA3-bot $_escudo_dbg"); goto skip_tracking; }
+            if (str_starts_with($ip, $prefix)) goto skip_tracking;
         }
 
         // ── Pasa todos los filtros → cliente real ─────────────────────
-        error_log("[EscudoDbg] CLIENTE $_escudo_dbg");
         // Deduplicación: visitor_id primero (misma persona sin importar IP),
         // luego IP como fallback (cuando no hay cookie)
         $rcfg = Radar::config((int)$cot['empresa_id']);
