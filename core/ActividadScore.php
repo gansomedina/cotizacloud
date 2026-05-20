@@ -837,6 +837,16 @@ class ActividadScore
             $s_conversion = max(0.0, min(1.0, $s_conversion));
         }
 
+        // [TEMP DEBUG Conversión] — quitar tras diagnosticar el 100%
+        error_log(sprintf(
+            "[ConvDbg] uid=%d cr=%.4f crh=%.4f sig=%.4f qual=%.4f ttc=%.4f vol=%.4f | wcr=%.3f wq=%.3f wt=%.3f wv=%.3f tot=%.3f | comp=%.4f pratio=%.4f floor=%.4f pen=%.4f => s_conv=%.4f",
+            $usuario_id, $tasa_cierre, $bench['close_rate_hist'],
+            self::sigmoid($tasa_cierre, $bench['close_rate_hist'], 2.0 / max($bench['close_rate_hist'], 0.01)),
+            $cierre_quality, $ttc_score, $vol_trend,
+            $w_cr_conv, $w_qual_conv, $w_ttc_conv, $w_vol_conv, $w_conv_total,
+            $componentes_conv, $perf_ratio, $conv_floor, $pen_conversion, $s_conversion
+        ));
+
         // ═══════════════════════════════════════════════════
         //  DIMENSIÓN 5: RADAR HEALTH (15%)
         //  Balance de temperatura del pipeline (up vs down)
