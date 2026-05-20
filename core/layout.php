@@ -61,6 +61,21 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
             if ($my_vid !== '') { $where_parts[] = 'qs.visitor_id = ?'; $where_args[] = $my_vid; }
             if (!empty($where_parts)) {
                 $cond = '(' . implode(' OR ', $where_parts) . ')';
+                // 1. Capturar las cotizaciones que se van a afectar (antes del UPDATE)
+                $afectadas = DB::query(
+                    "SELECT DISTINCT qs.cotizacion_id
+                     FROM quote_sessions qs
+                     JOIN cotizaciones c ON c.id = qs.cotizacion_id
+                     LEFT JOIN radar_ips_internas ri
+                            ON ri.empresa_id = c.empresa_id AND ri.ip = qs.ip
+                     LEFT JOIN radar_visitors_internos vi
+                            ON vi.empresa_id = c.empresa_id AND vi.visitor_id = qs.visitor_id
+                     WHERE qs.es_interno = 0
+                       AND $cond
+                       AND (ri.id IS NOT NULL OR vi.id IS NOT NULL)",
+                    $where_args
+                );
+                // 2. Marcar las sesiones como internas
                 DB::execute(
                     "UPDATE quote_sessions qs
                      JOIN cotizaciones c ON c.id = qs.cotizacion_id
@@ -74,6 +89,20 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
                        AND (ri.id IS NOT NULL OR vi.id IS NOT NULL)",
                     $where_args
                 );
+                // 3. Resync de contadores en las cotizaciones afectadas — la sesión
+                // marcada interna ya no cuenta como cliente: recalcular visitas y
+                // ultima_vista_at desde las sesiones reales (es_interno=0).
+                foreach ($afectadas as $af) {
+                    DB::execute(
+                        "UPDATE cotizaciones c SET
+                           c.visitas = (SELECT COUNT(*) FROM quote_sessions qs
+                                        WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0),
+                           c.ultima_vista_at = (SELECT MAX(qs.created_at) FROM quote_sessions qs
+                                                WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0)
+                         WHERE c.id = ?",
+                        [(int)$af['cotizacion_id']]
+                    );
+                }
             }
             $_SESSION['_sessions_cleaned'] = date('Y-m-d');
         }
