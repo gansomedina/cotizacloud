@@ -1766,3 +1766,31 @@ Kevin reporta que vende y su score del termómetro baja en vez de subir. Investi
 - ¿Las visitas fantasma inflaron métricas que ahora se "corrigen" y bajan el score?
 - ¿pen_sin_pago lo penaliza? (ventas con pagado=0 por más de 5 días)
 - Revisar su desglose en el debug panel del leaderboard (solo superadmin)
+
+## Sesión 20 mayo 2026 (cont.) — Termómetro: benchmark histórico + bonus por cierre
+
+### Problema raíz (resuelve "Kevin score baja cuando vende")
+El termómetro comparaba la tasa de cierre del vendedor contra el benchmark de la empresa **de la misma ventana de 15 días**. En empresas de 1 vendedor (la mayoría — micro-negocios) el benchmark **ES el propio vendedor** → `sigmoid(x, x) = 0.50` siempre. El sistema era ciego a la mejora. Kevin pasó de 8.6% a 47% de cierre y el score no lo reflejaba.
+
+### Completado
+1. **Benchmark histórico para Conversión** — nuevo `close_rate_hist` en `_benchmarks()`: tasa de cierre de la empresa sobre TODO lo anterior a la ventana de 15 días (`created_at < NOW()-periodo`). Referencia estable: el desempeño actual no contamina su propio benchmark. Con `emp_vistas_hist < 5` cae al `close_rate` actual. Lo usan el sigmoid de Conversión, `perf_ratio` y `pen_volumen_sin_cierre`. `close_rate`/`close_rate_safe` NO se tocaron (blast radius contenido a Conversión).
+2. **Bug de consistencia corregido** — el bloque CONSISTENCIA SEMANAL: `total_semanas = round(15/7) = 2`, pero una ventana de 15 días abarca **3 semanas ISO**. Cerrar en las 3 daba `consistencia = 1.5` → `reduction` NEGATIVA → la "penalización" se volvía un multiplicador ~1.34 que **inflaba** Conversión (topaba en 100%). Fix: `consistencia = min(..., 1.0)`. Inflaba a todo vendedor que cerrara en 3 semanas ISO — al corregir, los scores bajan a su valor real.
+3. **Bonus por cierre sobre histórico** — premia al que sobresale: `ratio = tasa_cierre / close_rate_hist`. Un solo tier, no acumulable: **≥2.5× → +4**, **≥4× → +8**. Requiere ≥4 cierres pagados. Empresa sin histórico no aplica. Columna `bonus_cierre` + línea en panel debug + frase en el diagnóstico.
+4. **Frases de bonus siempre visibles** — `bonus_ticket` y `bonus_cierre` se generaban antes del `array_slice` que recorta a `max_frases` y se cortaban. Movidas DESPUÉS del corte.
+
+### Verificado con datos reales
+- **Kevin** (Nogales, 1 vendedor, uid 21): histórico 8.6%, actual 47% → 5.5× → +8. Score 79.
+- **Abigail** (Hermosillo, uid 18): histórico 11.9%, actual 35% → 2.9× → +4. Score 79.
+
+### Migración
+`migrations/add_bonus_cierre.sql` — `ALTER TABLE usuario_score ADD COLUMN bonus_cierre INT UNSIGNED NOT NULL DEFAULT 0 AFTER ticket_promedio;` (correr ANTES de desplegar).
+
+### Commits (branch claude/analyze-domain-change-hmo-AkFAi)
+`2c93fdf` histórico · `a541bdd` fix consistencia · `267749b` bonus · `c1b6fed` umbral 2.5× · `243440c` frase · `1623969` frases tras el corte.
+
+### Pendiente termómetro
+- **Bonus por volumen de ventas** — idea evaluada, no implementada. Premiar número de ventas pagadas por encima del histórico (complementa `bonus_ticket` = ticket alto). Para después.
+- Recalcular el leaderboard completo de cada empresa para que `bonus_cierre` se calcule a todos (la columna nace en 0).
+
+## Pendiente — Evitar que el superadmin contamine cotizaciones al ver
+El superadmin (uid 4, admin@cotiza.cloud) revisa cotizaciones de TODAS las empresas; al abrir un slug su visita puede contar como cliente e inflar el Radar. Retomar: blindarlo en las 3 capas del Escudo, incluyendo dominios custom donde `cza_session` no viaja.
