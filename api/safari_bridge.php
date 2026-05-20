@@ -104,9 +104,6 @@ if ($uid > 0) {
          ORDER BY created_at DESC LIMIT 1",
         [$uid]
     );
-    error_log(sprintf('[BridgeDbg] host=%s uid=%d eid=%d super=%d sess=%s token=%s',
-        $host, $uid, $eid, $es_super ? 1 : 0,
-        $sess ? 'SI' : 'NO', $sess ? substr($sess['token'], 0, 12) : '-'));
     if ($sess && !empty($sess['token'])) {
         setcookie(SESSION_NAME, $sess['token'], [
             'expires'  => strtotime($sess['expires_at']),
