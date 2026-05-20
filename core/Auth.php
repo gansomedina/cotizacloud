@@ -179,7 +179,7 @@ class Auth
              FROM user_sessions s
              JOIN usuarios u ON u.id = s.usuario_id
              WHERE s.token = ?
-               AND s.empresa_id = ?
+               AND (s.empresa_id = ? OR u.rol = 'superadmin')
                AND s.expires_at > NOW()
                AND u.activo = 1",
             [$token, $empresa_id]
