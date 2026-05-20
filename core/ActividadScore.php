@@ -1025,6 +1025,21 @@ class ActividadScore
         }
         $score = min($score + $bonus_ticket, 100);
 
+        // ═══════════════════════════════════════════════════
+        //  BONUS POR CIERRE SOBRE HISTÓRICO
+        //  Premia al vendedor que sobresale: tasa de cierre del
+        //  periodo muy por encima de su histórico. Un solo tier
+        //  (el más alto alcanzado), nunca acumulable. Requiere
+        //  volumen real de cierres para no premiar un mes flaco.
+        // ═══════════════════════════════════════════════════
+        $bonus_cierre = 0;
+        if ($cierres_total >= 4 && $bench['close_rate_hist'] > 0) {
+            $ratio_cierre = $tasa_cierre / $bench['close_rate_hist'];
+            if ($ratio_cierre >= 4.0)     $bonus_cierre = 8;
+            elseif ($ratio_cierre >= 3.0) $bonus_cierre = 4;
+        }
+        $score = min($score + $bonus_cierre, 100);
+
         // Nivel
         if ($score >= 86) $nivel = 'top';
         elseif ($score >= 61) $nivel = 'activo';
@@ -1052,8 +1067,8 @@ class ActividadScore
               s_seguimiento, s_radar_health, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
-              momentum, percentil, bonus_ticket, bonus_ticket_ventas, ticket_promedio)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+              momentum, percentil, bonus_ticket, bonus_ticket_ventas, ticket_promedio, bonus_cierre)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -1078,7 +1093,7 @@ class ActividadScore
               ema_conversion=VALUES(ema_conversion),
               ema_activacion=VALUES(ema_activacion), ema_seguimiento=VALUES(ema_seguimiento),
               momentum=VALUES(momentum), percentil=VALUES(percentil),
-              bonus_ticket=VALUES(bonus_ticket), bonus_ticket_ventas=VALUES(bonus_ticket_ventas), ticket_promedio=VALUES(ticket_promedio),
+              bonus_ticket=VALUES(bonus_ticket), bonus_ticket_ventas=VALUES(bonus_ticket_ventas), ticket_promedio=VALUES(ticket_promedio), bonus_cierre=VALUES(bonus_cierre),
               updated_at=NOW()",
             [
                 $usuario_id, $empresa_id, $score, $nivel,
@@ -1099,7 +1114,7 @@ class ActividadScore
                 round($ema_act, 3), round($ema_conv, 3),
                 round($ema_act, 3), round($ema_seg, 3),
                 round($momentum, 2), round($percentil, 2),
-                $bonus_ticket, $bonus_ticket_ventas, round($ticket_prom, 2),
+                $bonus_ticket, $bonus_ticket_ventas, round($ticket_prom, 2), $bonus_cierre,
             ]
         );
 
@@ -1147,6 +1162,7 @@ class ActividadScore
             'bonuses'           => round($total_bonus, 3),
             'bonus_ticket'      => $bonus_ticket,
             'bonus_ticket_ventas' => $bonus_ticket_ventas,
+            'bonus_cierre'      => $bonus_cierre,
             'ticket_promedio'   => round($ticket_prom, 2),
             'tasa_gestion'      => round($proporcional, 3),
             'momentum'          => round($momentum, 2),
