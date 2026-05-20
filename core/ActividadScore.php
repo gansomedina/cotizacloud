@@ -1456,6 +1456,14 @@ class ActividadScore
             }
         }
 
+        // ═══ BONUS POR CIERRE SOBRE HISTÓRICO ═══
+        $b_cierre = (int)($s['bonus_cierre'] ?? 0);
+        if ($b_cierre >= 8) {
+            $frases[] = "Tu tasa de cierre va muy por encima de tu histórico — mes excepcional.";
+        } elseif ($b_cierre >= 4) {
+            $frases[] = "Cerraste claramente por arriba de tu histórico — gran mes.";
+        }
+
         // ═══ 4. CLIENTES ACTIVOS EN RADAR ═══
         if ($ign > 0) {
             if ($score >= 75) {
