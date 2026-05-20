@@ -50,30 +50,60 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
         // Esto evita "fugas" cuando el superadmin/admin entra a slugs de empresas
         // distintas a la que está logueado actualmente.
         if (($_SESSION['_sessions_cleaned'] ?? '') !== date('Y-m-d')) {
-            // Limpiar sesiones con IP/visitor del request ACTUAL (no históricos).
-            // Histórico de IPs causa falsos positivos por rotación Telmex.
-            // Histórico de visitors es safe pero solo cubre devices ya logueados.
-            $my_ip  = ip_real();
+            // Limpieza retroactiva SOLO por visitor_id — los visitor_id son UUIDs
+            // únicos, no rotan. NO se usa IP: la rotación de Telmex causaba que
+            // sesiones de clientes reales (en una IP que fue del asesor) se
+            // marcaran internas. El INNER JOIN con radar_visitors_internos
+            // garantiza que el visitor esté registrado interno para esa empresa.
             $my_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
-            $where_parts = [];
-            $where_args = [];
-            if ($my_ip) { $where_parts[] = 'qs.ip = ?'; $where_args[] = $my_ip; }
-            if ($my_vid !== '') { $where_parts[] = 'qs.visitor_id = ?'; $where_args[] = $my_vid; }
-            if (!empty($where_parts)) {
-                $cond = '(' . implode(' OR ', $where_parts) . ')';
+
+            // Todos los visitor_ids conocidos del usuario (de logins y Capa 0)
+            $vid_list = [];
+            foreach (DB::query(
+                "SELECT DISTINCT visitor_id FROM radar_visitors_internos WHERE usuario_id = ?",
+                [Auth::id()]
+            ) as $vr) {
+                if (!empty($vr['visitor_id'])) $vid_list[] = $vr['visitor_id'];
+            }
+            if ($my_vid !== '' && !in_array($my_vid, $vid_list, true)) $vid_list[] = $my_vid;
+
+            if (!empty($vid_list)) {
+                $ph_vid = implode(',', array_fill(0, count($vid_list), '?'));
+
+                // 1. Capturar cotizaciones afectadas ANTES del UPDATE
+                $afectadas = DB::query(
+                    "SELECT DISTINCT qs.cotizacion_id
+                     FROM quote_sessions qs
+                     JOIN cotizaciones c ON c.id = qs.cotizacion_id
+                     JOIN radar_visitors_internos vi
+                            ON vi.empresa_id = c.empresa_id AND vi.visitor_id = qs.visitor_id
+                     WHERE qs.es_interno = 0 AND qs.visitor_id IN ($ph_vid)",
+                    $vid_list
+                );
+
+                // 2. Marcar las sesiones del asesor como internas
                 DB::execute(
                     "UPDATE quote_sessions qs
                      JOIN cotizaciones c ON c.id = qs.cotizacion_id
-                     LEFT JOIN radar_ips_internas ri
-                            ON ri.empresa_id = c.empresa_id AND ri.ip = qs.ip
-                     LEFT JOIN radar_visitors_internos vi
+                     JOIN radar_visitors_internos vi
                             ON vi.empresa_id = c.empresa_id AND vi.visitor_id = qs.visitor_id
                      SET qs.es_interno = 1
-                     WHERE qs.es_interno = 0
-                       AND $cond
-                       AND (ri.id IS NOT NULL OR vi.id IS NOT NULL)",
-                    $where_args
+                     WHERE qs.es_interno = 0 AND qs.visitor_id IN ($ph_vid)",
+                    $vid_list
                 );
+
+                // 3. Recalcular ultima_vista_at de las afectadas — la sesión recién
+                // marcada interna ya no cuenta: la cotización no debe seguir
+                // mostrando la hora de visita del asesor. NO se toca visitas.
+                foreach ($afectadas as $af) {
+                    DB::execute(
+                        "UPDATE cotizaciones c SET
+                           c.ultima_vista_at = (SELECT MAX(qs.created_at) FROM quote_sessions qs
+                                                WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0)
+                         WHERE c.id = ?",
+                        [(int)$af['cotizacion_id']]
+                    );
+                }
             }
             $_SESSION['_sessions_cleaned'] = date('Y-m-d');
         }

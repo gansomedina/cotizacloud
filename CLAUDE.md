@@ -1693,3 +1693,76 @@ Kevin reporta que al abrir el Radar desde su computadora (logueado), sus visitas
 - Implementación mínima: 1 tabla + 1 INSERT antes de cada `goto skip_tracking`
 
 **Estado:** Pendiente aprobación del usuario para implementar.
+
+## Sesión 20 mayo 2026 — Escudo Radar: dominio custom
+
+### Causa raíz encontrada (caso Nogales/Kevin)
+Las 3 sucursales OnTime usan dominio custom: `hermosillo/obregon/nogales.ontimecocinas.com`.
+En el dominio custom, las cookies de `.cotiza.cloud` NO viajan:
+- Capa 0 (cza_session) ciega
+- Capa 1 (cz_vid) huérfana — el cz_vid del custom es distinto al del login, nunca se registra
+- Capa 2 (IP) neutralizada por el fix `&& !$tenia_cookie` del 18 mayo
+
+El botón "Ver" del editor (ver.php línea 276) abre el slug público. El asesor previsualizando su propia cotización contaba como visita de cliente.
+
+### Fix implementado (commit f163355)
+`safari_bridge.php` ahora pone `cza_session` en el dominio custom (no solo cz_vid).
+El token se resuelve server-side desde uid+eid (verificados por HMAC), nunca viaja en URL.
+Con eso Capa 0 funciona en el dominio custom — certeza, no heurística.
+
+**Confirmado funcionando:** Kevin abrió slug 3975 desde su Windows → cero sesiones nuevas → Capa 0 lo atrapó.
+
+### Por qué cza_session y no cz_vid
+- cz_vid + Capa 1 = heurística de lista; el valor se desvía → falla
+- cza_session + Capa 0 = validación en vivo contra user_sessions → certeza
+- cza_session no necesita listas, ni marcar visitor_ids, ni IPs (evita la reacción en cadena de Telmex)
+
+### Decisión: refresh del bridge
+El bridge corre solo al login. La cookie cza_session del custom dura 3 días (igual que la sesión) — sincronizadas, expiran juntas. El bridge del login es suficiente EN TEORÍA.
+**Decisión:** dejar el bridge del login (opción B), monitorear las 3 sucursales. Si el bridge falla seguido (Imunify360, red), agregar refresh con redirect 1 vez al día desde el dashboard (opción A). NO usar iframe — third-party cookies bloqueadas.
+
+### Pendientes de esta investigación
+1. **Sesión anulada deja fecha/hora sucia** — el ghost cleanup borra la sesión y decrementa visitas, pero NO revierte `ultima_vista_at`. La cotización queda marcando la hora de visita del asesor en vez del cliente real. Caso confirmado: Acacia vieja 3964 con ultima_vista_at de Kevin.
+2. **Evaluar es_interno=1 + capa_motivo** — reemplazar skip_tracking por INSERT con es_interno=1 y motivo, para trazabilidad. Auditoría hecha: 5 queries downstream necesitan WHERE es_interno=0 (Radar.php ×2, dashboard ×2, ActividadScore ×1).
+3. **Limpiar datos sucios históricos** — sesiones de asesores ya contadas como cliente (es_interno=0) que inflaron cotizaciones. Ya tenemos el visitor_id de Kevin (ad66df34, df00eaa3) — se pueden marcar retroactivamente. Falta definir el alcance y el script.
+4. **App Capacitor** — login_post.php salta el bridge si is_native_app. Los que se loguean por la app no reciben cza_session en el custom. Caso aparte, pendiente.
+
+### Continuación sesión 20 mayo — limpieza retroactiva
+
+#### Bugs identificados en layout.php cleanup (líneas 52-95)
+1. **IP false positive** — la rama `qs.ip = my_ip` + `ri.id IS NOT NULL` puede marcar sesiones de clientes reales que comparten IP con el asesor (rotación Telmex). Se debe quitar — usar SOLO visitor_ids.
+2. **No recalcula `ultima_vista_at`** — al marcar una sesión es_interno=1, la cotización mantiene la hora de la sesión del asesor. Debe recalcular `ultima_vista_at = MAX(created_at WHERE es_interno=0)` de las cotizaciones afectadas. SIN tocar `visitas` (el usuario decidió no resincronizar ese contador).
+
+#### Fix pendiente (aprobado, falta implementar)
+- Quitar rama `qs.ip = my_ip` del WHERE (solo visitor_ids)
+- Después del UPDATE, recalcular SOLO `ultima_vista_at` de cotizaciones afectadas
+- VERIFICAR PRIMERO: correr `SELECT * FROM radar_visitors_internos WHERE visitor_id = 'ad66df34-...'` — si ya aparece (Capa 0 lo registró), es seguro quitar la IP
+
+#### Verificar impacto en inmuebles y servicios
+- Confirmar que los cambios al Escudo (bridge cza_session, cleanup retroactivo) no afectan el módulo inmuebles (cotizacion_inmueble.php)
+- El tracking en cotizacion.php corre ANTES del giro redirect — los cambios al Escudo aplican igual a inmuebles (mismo cotizacion.php)
+- Servicios financieros: giro pendiente, no implementado aún — no afectado
+
+#### Estado del commit e325f09 (visitor_ids en cleanup)
+- Cambio de visitor_ids ya está en la branch — agrega todos los visitor_ids conocidos del asesor al cleanup
+- PENDIENTE: quitar la rama IP y agregar el recalc de ultima_vista_at
+- El usuario quiere UN SOLO cambio limpio final
+
+#### Resumen de lo que queda deployado y funcionando
+1. **Bridge cza_session** (commit f163355) — confirmado: Kevin abrió slug 3975, cero sesiones nuevas ✓
+2. **Visitor_ids en cleanup** (commit e325f09) — cleanup usa todos los vids del asesor, no solo el actual
+3. **Cookie domain .cotiza.cloud** en cotizacion.php (PHP + JS) — cookies del slug viajan entre subdominios
+
+#### Pendientes para mañana
+1. SQL: `SELECT * FROM radar_visitors_internos WHERE visitor_id = 'ad66df34-e960-412d-afca-ea339109f215'` — verificar si Capa 0 lo registró
+2. Si sí → implementar fix final: quitar IP del cleanup + recalc ultima_vista_at
+3. Verificar que inmuebles y giro servicios no se afectaron por los cambios al Escudo
+4. Cleanup manual de Calvario 18 (SQL que ya se dio)
+
+#### Pendiente: Kevin score baja cuando vende
+Kevin reporta que vende y su score del termómetro baja en vez de subir. Investigar:
+- ¿Las ventas de Kevin tienen pagado>0? (venta solo cuenta con pago real)
+- ¿El benchmark se auto-infla y penaliza? (bench_ventas vs ventas_periodo)
+- ¿Las visitas fantasma inflaron métricas que ahora se "corrigen" y bajan el score?
+- ¿pen_sin_pago lo penaliza? (ventas con pagado=0 por más de 5 días)
+- Revisar su desglose en el debug panel del leaderboard (solo superadmin)
