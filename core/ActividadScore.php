@@ -1040,6 +1040,14 @@ class ActividadScore
         }
         $score = min($score + $bonus_cierre, 100);
 
+        // [TEMP DEBUG bonus cierre] — quitar tras diagnosticar
+        error_log(sprintf(
+            "[BonoDbg] uid=%d periodo=%d cierres=%d tasa_cierre=%.4f crh=%.4f ratio=%.3f => bonus=%d",
+            $usuario_id, $periodo, $cierres_total, $tasa_cierre, $bench['close_rate_hist'],
+            $bench['close_rate_hist'] > 0 ? $tasa_cierre / $bench['close_rate_hist'] : 0,
+            $bonus_cierre
+        ));
+
         // Nivel
         if ($score >= 86) $nivel = 'top';
         elseif ($score >= 61) $nivel = 'activo';
