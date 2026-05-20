@@ -1036,17 +1036,9 @@ class ActividadScore
         if ($cierres_total >= 4 && $bench['close_rate_hist'] > 0) {
             $ratio_cierre = $tasa_cierre / $bench['close_rate_hist'];
             if ($ratio_cierre >= 4.0)     $bonus_cierre = 8;
-            elseif ($ratio_cierre >= 3.0) $bonus_cierre = 4;
+            elseif ($ratio_cierre >= 2.5) $bonus_cierre = 4;
         }
         $score = min($score + $bonus_cierre, 100);
-
-        // [TEMP DEBUG bonus cierre] — quitar tras diagnosticar
-        error_log(sprintf(
-            "[BonoDbg] uid=%d periodo=%d cierres=%d tasa_cierre=%.4f crh=%.4f ratio=%.3f => bonus=%d",
-            $usuario_id, $periodo, $cierres_total, $tasa_cierre, $bench['close_rate_hist'],
-            $bench['close_rate_hist'] > 0 ? $tasa_cierre / $bench['close_rate_hist'] : 0,
-            $bonus_cierre
-        ));
 
         // Nivel
         if ($score >= 86) $nivel = 'top';
