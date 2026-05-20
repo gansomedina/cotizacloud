@@ -50,15 +50,31 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
         // Esto evita "fugas" cuando el superadmin/admin entra a slugs de empresas
         // distintas a la que está logueado actualmente.
         if (($_SESSION['_sessions_cleaned'] ?? '') !== date('Y-m-d')) {
-            // Limpiar sesiones con IP/visitor del request ACTUAL (no históricos).
-            // Histórico de IPs causa falsos positivos por rotación Telmex.
-            // Histórico de visitors es safe pero solo cubre devices ya logueados.
+            // Limpiar sesiones con IP del request ACTUAL + TODOS los visitor_ids
+            // conocidos del asesor. Las IPs históricas NO se usan (rotación Telmex
+            // = falsos positivos). Los visitor_id sí: son UUIDs únicos, no rotan,
+            // y el JOIN con radar_visitors_internos verifica que sean del asesor.
             $my_ip  = ip_real();
             $my_vid = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
+
+            // Todos los visitor_ids conocidos del usuario (de logins previos)
+            $vid_list = [];
+            foreach (DB::query(
+                "SELECT DISTINCT visitor_id FROM radar_visitors_internos WHERE usuario_id = ?",
+                [Auth::id()]
+            ) as $vr) {
+                if (!empty($vr['visitor_id'])) $vid_list[] = $vr['visitor_id'];
+            }
+            if ($my_vid !== '' && !in_array($my_vid, $vid_list, true)) $vid_list[] = $my_vid;
+
             $where_parts = [];
             $where_args = [];
             if ($my_ip) { $where_parts[] = 'qs.ip = ?'; $where_args[] = $my_ip; }
-            if ($my_vid !== '') { $where_parts[] = 'qs.visitor_id = ?'; $where_args[] = $my_vid; }
+            if (!empty($vid_list)) {
+                $ph_vid = implode(',', array_fill(0, count($vid_list), '?'));
+                $where_parts[] = "qs.visitor_id IN ($ph_vid)";
+                foreach ($vid_list as $v) $where_args[] = $v;
+            }
             if (!empty($where_parts)) {
                 $cond = '(' . implode(' OR ', $where_parts) . ')';
                 DB::execute(
