@@ -765,8 +765,8 @@ class ActividadScore
 
         // Volumen sin resultado: déficit vs benchmark de la empresa
         $pen_volumen_sin_cierre = 0.0;
-        if ($tasa_cierre < $bench['close_rate'] && $cot_vistas >= 3) {
-            $deficit = 1.0 - ($tasa_cierre / max($bench['close_rate'], 0.01));
+        if ($tasa_cierre < $bench['close_rate_hist'] && $cot_vistas >= 3) {
+            $deficit = 1.0 - ($tasa_cierre / max($bench['close_rate_hist'], 0.01));
             $pen_volumen_sin_cierre = $deficit * ($cot_vistas / $asignadas_validas);
         }
 
@@ -788,7 +788,7 @@ class ActividadScore
 
         // Componentes de conversión (close_rate + calidad + velocidad + tendencia)
         $componentes_conv = (
-            self::sigmoid($tasa_cierre, $bench['close_rate'], 2.0 / max($bench['close_rate'], 0.01))
+            self::sigmoid($tasa_cierre, $bench['close_rate_hist'], 2.0 / max($bench['close_rate_hist'], 0.01))
                 * ($w_cr_conv / $w_conv_total)
             + $cierre_quality * ($w_qual_conv / $w_conv_total)
             + $ttc_score * ($w_ttc_conv / $w_conv_total)
@@ -800,7 +800,7 @@ class ActividadScore
         // ventas/bench = 0.5 → piso = 50% de componentes
         // ventas ≥ bench → piso = componentes completos (penalización no aplica)
         // Sin magic numbers — close_rate del vendedor y close_rate empresa son las únicas variables
-        $perf_ratio = min($tasa_cierre / max($bench['close_rate'], 0.01), 1.0);
+        $perf_ratio = min($tasa_cierre / max($bench['close_rate_hist'], 0.01), 1.0);
         $conv_floor = $componentes_conv * $perf_ratio;
         $s_conversion = max($conv_floor, $componentes_conv - $pen_conversion);
         $s_conversion = max(0.0, min(1.0, $s_conversion));
@@ -1543,6 +1543,31 @@ class ActividadScore
         );
         $close_rate = $emp_vistas >= 5 ? $emp_cierres / $emp_vistas : 0.15;
 
+        // Tasa de cierre HISTÓRICA — todo lo anterior a la ventana actual.
+        // Referencia estable para Conversión: el desempeño actual no contamina
+        // su propio benchmark. Crítico en empresas de 1 vendedor, donde el
+        // benchmark de la ventana actual ES el propio vendedor.
+        $emp_vistas_hist = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0
+             AND suspendida = 0 AND estado != 'borrador'
+             AND (visitas > 0 OR estado IN ('aceptada','convertida','aceptada_cliente'))
+             AND created_at < DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$empresa_id, $periodo]
+        );
+        $emp_cierres_hist = (int)DB::val(
+            "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0
+             AND suspendida = 0
+             AND estado IN ('aceptada','convertida','aceptada_cliente')
+             AND accion_at < DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = cotizaciones.id AND v.pagado > 0 AND v.estado != 'cancelada')",
+            [$empresa_id, $periodo]
+        );
+        // Con historial suficiente → usa el histórico. Sin historial (empresa
+        // nueva) → cae al close_rate de la ventana actual (comportamiento previo).
+        $close_rate_hist = $emp_vistas_hist >= 5
+            ? $emp_cierres_hist / $emp_vistas_hist
+            : $close_rate;
+
         // Tiempo promedio de cierre (días)
         $avg_ttc = DB::val(
             "SELECT AVG(DATEDIFF(accion_at, created_at)) FROM cotizaciones
@@ -1596,6 +1621,7 @@ class ActividadScore
 
         self::$_bench[$empresa_id] = [
             'close_rate'      => max((float)$close_rate, 0.03),
+            'close_rate_hist' => max((float)$close_rate_hist, 0.03),
             'time_to_close'   => max((float)($avg_ttc ?? 14), 3),
             'radar_weekly'    => max((float)($avg_radar ?? 2.0), 0.5),
             'apertura'        => max((float)$apertura, 0.30),
