@@ -1837,3 +1837,43 @@ todos los dominios custom.
 ### Limpieza pendiente
 Las pruebas dejaron sesiones falsas del super en cot 3973 y 3974 — marcar
 `es_interno=1` con el SQL ya entregado (filtro IP `187.245.114.71`).
+
+## Giro Seguros — plan aprobado (implementar)
+
+### Concepto
+giro `seguros`. Cada línea de la cotización = una opción de póliza con su
+propio PDF. El cliente compara los PDF en el slug. Opción A: slug
+informativo — sin botón aceptar, el asesor cierra la venta manual.
+Catálogo = igual a servicios (sin extensión tipo inmuebles).
+
+### Decisiones de diseño
+- Slug: opciones con PDF arriba, **"resumen de precios" abajo** (cada
+  póliza con su precio, SIN total sumado — sumar N seguros está mal). El
+  Radar apunta `totalsEl` al resumen → conserva señal "validando_precio".
+- PDF embebido con **PDF.js** (Mozilla, auto-hospedado en `/assets/pdfjs/`)
+  — render inline a `<canvas>`, alta resolución 2x, lazy por página. NO
+  iframe (falla en móvil), NO botón de descarga (perdería el rastro del
+  Radar — el JS solo corre dentro del slug).
+
+### Migración — `add_seguros.sql`
+```sql
+ALTER TABLE empresas MODIFY giro ENUM('servicios','inmuebles','seguros') NOT NULL DEFAULT 'servicios';
+ALTER TABLE cotizacion_lineas ADD COLUMN archivo VARCHAR(255) NULL AFTER es_extra;
+```
+
+### Plan por fases
+- **FASE 1 — Editor:** `subir_pdf_poliza.php` (NUEVO endpoint upload) +
+  ruta en `Router.php` + `cotizaciones/ver.php`/`nueva.php` (botón "Subir
+  PDF" por línea + campo oculto `archivo`) + `cotizaciones/guardar.php`
+  (`archivo` al INSERT de líneas).
+- **FASE 2 — Slug:** `cotizacion.php` (if giro=seguros → require) +
+  `cotizacion_seguros.php` (NUEVO — opciones+PDF.js, resumen de precios,
+  copiar tracking JS de `cotizacion_inmueble.php`).
+- **FASE 3 — Venta:** `ventas/guardar.php` + `ventas/ver.php` (`archivo`).
+- **FASE 4 — Clonar:** `cotizaciones/clonar.php` (`archivo` al copiar).
+
+### Riesgo clave
+`cotizacion_lineas` se hace DELETE+INSERT en `guardar.php`,
+`ventas/guardar.php` y `clonar.php` — el `archivo` viaja como campo oculto
+por línea y se re-escribe en cada guardado. Si el JS lo pierde, el PDF
+queda huérfano.
