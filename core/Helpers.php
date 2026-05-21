@@ -529,6 +529,17 @@ function snapshot_cotizacion(int $cot_id): void
     );
 }
 
+// Devuelve el snapshot decodificado de una cotización cerrada (con
+// 'lineas' y 'descuento_auto_amt'), o null si no aplica o no es válido.
+function snapshot_leer(array $cot): ?array
+{
+    if (!in_array($cot['estado'] ?? '', ['aceptada', 'convertida'], true)) return null;
+    if (empty($cot['lineas_snapshot'])) return null;
+    $d = json_decode($cot['lineas_snapshot'], true);
+    if (!is_array($d) || !isset($d['lineas']) || !is_array($d['lineas'])) return null;
+    return $d;
+}
+
 // ─── Configuración de notificaciones de la empresa ──────────
 function notif_config(int $empresa_id): array
 {

@@ -67,13 +67,7 @@ if (!empty($cot['suspendida'])) {
 // Cotización cerrada con snapshot: renderizar el original congelado.
 // Las líneas vivas pueden haber sido modificadas al editar la venta
 // (cotización y venta comparten cotizacion_lineas).
-$snapshot_cot = null;
-if (in_array($cot['estado'], ['aceptada','convertida'], true) && !empty($cot['lineas_snapshot'])) {
-    $decoded = json_decode($cot['lineas_snapshot'], true);
-    if (is_array($decoded) && isset($decoded['lineas']) && is_array($decoded['lineas'])) {
-        $snapshot_cot = $decoded;
-    }
-}
+$snapshot_cot = snapshot_leer($cot);
 if ($snapshot_cot !== null) {
     $todas_lineas = $snapshot_cot['lineas'];
     $cot['descuento_auto_amt'] = $snapshot_cot['descuento_auto_amt'] ?? $cot['descuento_auto_amt'];
