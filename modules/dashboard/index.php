@@ -884,7 +884,7 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         </div>
         <div style="flex:1">
           <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts_hlt ?>%;background:<?= $ts_hlt >= 60 ? '#16a34a' : ($ts_hlt >= 30 ? '#d97706' : '#dc2626') ?>"></div></div>
-          <div class="thermo-bar-lbl">Pipeline</div>
+          <div class="thermo-bar-lbl">Radar</div>
         </div>
         <div style="flex:1">
           <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts_con ?>%;background:<?= $ts_con >= 60 ? '#16a34a' : ($ts_con >= 30 ? '#d97706' : '#dc2626') ?>"></div></div>
@@ -948,10 +948,10 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <b>¿Qué mide este ranking?</b>
         <p>Algoritmo APC v5.1 — 15 días rolling, 100% auto-ajustable:</p>
         <ul>
-          <li><b>Activación (8%)</b> — ¿Las cotizaciones llegan al cliente? Penaliza no abiertas (×1/tasa cierre) y dormidas (escalado por tiempo promedio de cierre de la empresa).</li>
+          <li><b>Activación (13%)</b> — ¿Las cotizaciones llegan al cliente? Penaliza no abiertas (×1/tasa cierre) y dormidas (escalado por tiempo promedio de cierre de la empresa).</li>
           <li><b>Engagement (17%)</b> — Capa de penalizaciones: ventas sin cobrar (×1/tasa cierre, fuerte), descuentos (×tasa cierre, suave), ventas por debajo del promedio de la empresa.</li>
           <li><b>Seguimiento (25%)</b> — ¿Das feedback a las señales calientes del Radar? Se evalúa el esfuerzo (dar feedback) y el resultado (¿acertaste?). Con más feedbacks, la calidad pesa más que el esfuerzo.</li>
-          <li><b>Radar Health (15%)</b> — ¿Tu pipeline mejora o empeora? Cuenta transiciones de temperatura de tus cotizaciones: frío→caliente suma, caliente→frío resta.</li>
+          <li><b>Radar Health (10%)</b> — ¿Cuidas a los clientes con interés? Cuando una cotización se pone caliente, el cliente la está viendo con interés. Mide cuántas de esas se te mueren — el cliente desaparece del Radar sin que cierres. Entre menos sueltas, más alto.</li>
           <li><b>Conversión (35%)</b> — ¿Cierras ventas? Tasa de cierre vs empresa, calidad (cerrar ventas difíciles vale más), tendencia de volumen (ventas actuales vs período anterior), consistencia semanal.</li>
         </ul>
         <p><b>Auto-ajuste:</b> Todas las penalizaciones escalan con la tasa de cierre de la empresa. Sin valores fijos — cada empresa tiene su propia escala.</p>
@@ -1026,7 +1026,7 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
     <div style="border-top:1px dashed var(--border);padding:2px 14px 2px 52px">
       <span onclick="var p=this.nextElementSibling;p.style.display=p.style.display==='none'?'block':'none'" style="font:600 10px var(--body);color:var(--t3);cursor:pointer;letter-spacing:.05em;text-transform:uppercase;opacity:.6">▶ debug</span>
       <div style="display:none;padding:6px 0;font:400 11px var(--num);color:var(--t2);line-height:1.7">
-        <div class="dbg-row"><span class="dbg-lbl">Activación (8%)</span><span class="dbg-val"><?= round(($es['s_activacion'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Activación (13%)</span><span class="dbg-val"><?= round(($es['s_activacion'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  operativa</span><span class="dbg-val"><?= round(($es['s_activacion_op'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen dormidas</span><span class="dbg-val dbg-neg"><?= ($es['pen_dormidas'] ?? 0) > 0 ? '-'.round(($es['pen_dormidas'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  tips <?= (int)($es['dias_lectura'] ?? 0) ?>/<?= (int)($es['dias_activos_feature'] ?? $es['dias_activos'] ?? 0) ?>d</span><span class="dbg-val"><?= round(($es['tips_score'] ?? 1) * 100) ?>%</span></div>
@@ -1042,8 +1042,9 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <div class="dbg-row"><span class="dbg-lbl">  pen bajo benchmark</span><span class="dbg-val dbg-neg"><?php $epbb = $es['eng_pen_bajo_benchmark'] ?? 0; if ($epbb > 0) { echo '-'.round($epbb * 100, 1).'% ('.($es['ventas_periodo'] ?? '?').' vs '.($es['bench_ventas'] ?? '?').')'; } else echo '—'; ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Seguimiento (25%)</span><span class="dbg-val"><?= round(($es['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  ❓ exploradas <?= $dbg_why_exp ?>/<?= $dbg_cal_tot ?></span><span class="dbg-val"><?= $dbg_why_s < 1 ? '×'.round($dbg_why_s * 100).'%' : '—' ?></span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Radar Health (15%)</span><span class="dbg-val"><?= round(($es['s_radar_health'] ?? 0) * 100, 1) ?>%</span></div>
-        <div class="dbg-row"><span class="dbg-lbl">  pipeline ↑ / ↓</span><span class="dbg-val"><?= (int)($es['health_up'] ?? $es['transiciones_up'] ?? 0) ?> / <?= (int)($es['health_down'] ?? $es['senales_ignoradas'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Radar Health (10%)</span><span class="dbg-val"><?= round(($es['s_radar_health'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  calientes / muertas</span><span class="dbg-val"><?= (int)($es['health_up'] ?? $es['transiciones_up'] ?? 0) ?> / <?= (int)($es['health_down'] ?? $es['senales_ignoradas'] ?? 0) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  tasa muerte caliente</span><span class="dbg-val dbg-neg"><?php $rhc=(int)($es['health_up']??$es['transiciones_up']??0);$rhm=(int)($es['health_down']??$es['senales_ignoradas']??0);echo $rhc>0?round($rhm/$rhc*100,1).'%':'—';?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Conversión (35%)</span><span class="dbg-val"><?= round(($es['s_conversion'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Penalizaciones</span><span class="dbg-val dbg-neg"><?= ($es['penalizaciones'] ?? 0) > 0 ? '-'.round(($es['penalizaciones'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Bonuses</span><span class="dbg-val"><?= round(($es['bonuses'] ?? 0) * 100, 1) ?>%</span></div>

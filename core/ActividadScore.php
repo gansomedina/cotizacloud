@@ -4,10 +4,10 @@
 //  APC: Algoritmo de Productividad Comercial (Auto-ajustable)
 //
 //  5 DIMENSIONES:
-//    Activación    (8%)  — ¿las cotizaciones llegan al cliente?
-//    Engagement   (17%)  — penalizaciones: sin pago, descuentos, enfriamiento, bajo benchmark
+//    Activación   (13%)  — ¿las cotizaciones llegan al cliente?
+//    Engagement   (17%)  — penalizaciones: sin pago, descuentos, bajo benchmark
 //    Seguimiento  (25%)  — feedback del Radar: tarea (dar) + examen (calidad)
-//    Radar Health (15%)  — balance de temperatura del pipeline (up vs down)
+//    Radar Health (10%)  — clientes con interés que se dejan morir
 //    Conversión   (35%)  — close_rate + calidad + tendencia + consistencia
 //
 //  AUTO-AJUSTE:
@@ -354,81 +354,11 @@ class ActividadScore
             else $tips_score = 0.0;
         }
 
-        // Transiciones consolidadas (1 query para Engagement + Radar Health)
+        // Transiciones up/down: variables legacy. El loop de balance se eliminó —
+        // Radar Health ahora mide muerte de calientes (ver Dimensión 5).
+        // Se dejan en 0: eng_pen_enfriamiento quedó fuera del score.
         $transiciones_up = 0;
         $transiciones_down = 0;
-        $health_up_pts = 0.0;
-        $health_down_pts = 0.0;
-        $health_null_a_caliente = 0;
-        $health_caidas_caliente = 0;
-        try {
-            $all_trans = DB::query(
-                "SELECT bt.bucket_anterior, bt.bucket_nuevo, c.estado
-                 FROM bucket_transitions bt
-                 JOIN cotizaciones c ON c.id = bt.cotizacion_id
-                 WHERE bt.vendedor_id=? AND bt.empresa_id=?
-                 AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                 AND c.suspendida = 0",
-                [$usuario_id, $empresa_id, $periodo]
-            );
-            $temp_order = ['ninguno' => -1, 'frio' => 0, 'tibio' => 1, 'caliente' => 2];
-            foreach ($all_trans as $t) {
-                $temp_ant = self::BUCKET_TEMP[$t['bucket_anterior']] ?? ($t['bucket_anterior'] === null ? 'ninguno' : null);
-                $temp_new = self::BUCKET_TEMP[$t['bucket_nuevo']] ?? ($t['bucket_nuevo'] === null ? 'ninguno' : null);
-                if ($temp_ant === null || $temp_new === null) continue;
-                $ord_ant = $temp_order[$temp_ant];
-                $ord_new = $temp_order[$temp_new];
-                if ($ord_ant === $ord_new) continue;
-
-                $is_up = $ord_new > $ord_ant;
-                $is_down = $ord_new < $ord_ant;
-
-                // Cotización aceptada: contar solo las transiciones UP (mérito real
-                // del asesor que la calentó hasta cerrarla). El DOWN post-cierre NO
-                // es enfriamiento — la cotización se vendió, no se enfrió. Antes se
-                // saltaban TODAS sus transiciones, borrando los UP buenos → vender
-                // bajaba el score (pen_enfriamiento subía al perder los up).
-                $es_aceptada = in_array($t['estado'], ['aceptada', 'convertida', 'aceptada_cliente']);
-                if ($es_aceptada && $is_down) continue;
-
-                // Engagement: solo transiciones entre buckets reales (sin NULL)
-                if ($t['bucket_anterior'] !== null && $t['bucket_nuevo'] !== null) {
-                    if ($is_up) $transiciones_up++;
-                    elseif ($is_down) $transiciones_down++;
-                }
-
-                // Radar Health: con pesos por tipo de movimiento
-                if ($is_up) {
-                    if ($temp_ant === 'ninguno' && $temp_new === 'caliente') {
-                        $health_null_a_caliente++;
-                    } elseif ($temp_ant === 'ninguno' && $temp_new === 'tibio') {
-                        $health_up_pts += 0.5;
-                    } elseif ($temp_ant === 'ninguno' && $temp_new === 'frio') {
-                        $health_down_pts += 0.5;
-                    } else {
-                        $health_up_pts += 1.0;
-                    }
-                } elseif ($is_down) {
-                    if ($temp_new === 'ninguno' && $temp_ant === 'frio') {
-                        $health_down_pts += 0.5;
-                    } elseif ($temp_new === 'ninguno' && $temp_ant === 'caliente') {
-                        $health_caidas_caliente++;
-                        $health_down_pts += 1.0;
-                    } else {
-                        if ($temp_ant === 'caliente') $health_caidas_caliente++;
-                        $health_down_pts += 1.0;
-                    }
-                }
-            }
-        } catch (\Throwable $e) { /* tabla aún no migrada */ }
-
-        // Multiplicador auto-ajustable para entradas calientes
-        $health_mult = $health_null_a_caliente > 0
-            ? max(1.0, $health_caidas_caliente / $health_null_a_caliente)
-            : 1.0;
-        $health_up_pts += $health_null_a_caliente * $health_mult;
-        $health_up = (int)round($health_up_pts);
-        $health_down = (int)round($health_down_pts);
 
         // Puntos de cierre ponderados por bucket y descuento
         // Usa último bucket real de bucket_transitions (radar_bucket se borra al aceptar)
@@ -460,7 +390,7 @@ class ActividadScore
         }
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 1: ACTIVACIÓN (8%)
+        //  DIMENSIÓN 1: ACTIVACIÓN (13%)
         //  "¿Envías y llegan?"
         // ═══════════════════════════════════════════════════
 
@@ -510,7 +440,7 @@ class ActividadScore
 
         // ═══════════════════════════════════════════════════
         //  DIMENSIÓN 2: ENGAGEMENT (17%)
-        //  Penalizaciones: sin pago, descuentos, enfriamiento, bajo benchmark
+        //  Penalizaciones: sin pago, descuentos, bajo benchmark
         // ═══════════════════════════════════════════════════
 
         // Ventas totales del vendedor en el período (no canceladas)
@@ -545,12 +475,9 @@ class ActividadScore
         );
         $eng_pen_descuento = ($ventas_con_descuento / $ventas_totales_safe) * $close_rate_safe;
 
-        // pen_enfriamiento: transiciones down / total × close_rate (suave)
-        // Enfriamiento natural no es culpa directa del vendedor
-        $trans_total = $transiciones_up + $transiciones_down;
-        $eng_pen_enfriamiento = $trans_total > 0
-            ? ($transiciones_down / $trans_total) * $close_rate_safe
-            : 0.0;
+        // pen_enfriamiento: legacy — fuera del score. El enfriamiento del pipeline
+        // ya no se penaliza (se rehízo en Radar Health). Se deja en 0.
+        $eng_pen_enfriamiento = 0.0;
 
         // pen_bajo_benchmark: ventas del vendedor vs promedio empresa período anterior
         // Si vendes menos de lo que vendía la empresa por vendedor, penaliza
@@ -825,25 +752,51 @@ class ActividadScore
         }
 
         // ═══════════════════════════════════════════════════
-        //  DIMENSIÓN 5: RADAR HEALTH (15%)
-        //  Balance de temperatura del pipeline (up vs down)
+        //  DIMENSIÓN 5: RADAR HEALTH (10%)
+        //  Salud del radar: ¿cuántos clientes con interés dejas morir?
+        //  Caliente = el cliente ve la cotización con interés.
+        //  Murió = perdió el bucket por completo, sin cerrar → la soltaste.
+        //  s = 1 − muertas/calientes. Mide acción del vendedor, no temporada.
         // ═══════════════════════════════════════════════════
 
-        // health_up_pts y health_down_pts ya calculados con pesos en el bloque de transiciones
-        $health_total = $health_up_pts + $health_down_pts;
-        $s_radar_health = $health_total > 0
-            ? $health_up_pts / $health_total
+        $cal_buckets = "'re_enganche_caliente','lectura_comprometida','multi_persona',"
+                     . "'alto_importe','decision_activa','prediccion_alta',"
+                     . "'validando_precio','inminente','onfire','probable_cierre'";
+
+        $rh = DB::row(
+            "SELECT
+                COUNT(DISTINCT bt.cotizacion_id) AS calientes,
+                COUNT(DISTINCT CASE WHEN c.estado NOT IN ('aceptada','convertida','aceptada_cliente')
+                                     AND c.radar_bucket IS NULL
+                                    THEN bt.cotizacion_id END) AS muertas
+             FROM bucket_transitions bt
+             JOIN cotizaciones c ON c.id = bt.cotizacion_id
+             WHERE COALESCE(c.vendedor_id, c.usuario_id) = ? AND c.empresa_id = ?
+               AND c.suspendida = 0
+               AND bt.bucket_nuevo IN ($cal_buckets)
+               AND bt.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
+        );
+        $rh_calientes = (int)($rh['calientes'] ?? 0);
+        $rh_muertas   = (int)($rh['muertas'] ?? 0);
+        // Sin calientes en el período → neutro (nada que evaluar)
+        $s_radar_health = $rh_calientes > 0
+            ? 1.0 - ($rh_muertas / $rh_calientes)
             : 0.50;
+        $s_radar_health = max(0.0, min(1.0, $s_radar_health));
+        // Persistencia/debug (reusa columnas legacy transiciones_up/senales_ignoradas)
+        $health_up   = $rh_calientes;
+        $health_down = $rh_muertas;
 
         // ═══════════════════════════════════════════════════
         //  SCORE PROPORCIONAL — v5
-        //  Pesos: Act 8%, Eng 17%, Seg 25%, Health 15%, Conv 35%
+        //  Pesos: Act 13%, Eng 17%, Seg 25%, Health 10%, Conv 35%
         // ═══════════════════════════════════════════════════
 
-        $w_act  = 0.08;
+        $w_act  = 0.13;
         $w_eng  = 0.17;
         $w_seg  = 0.25;
-        $w_hlt  = 0.15;
+        $w_hlt  = 0.10;
         $w_conv = 0.35;
 
         $proporcional = $s_activacion * $w_act
@@ -1440,17 +1393,14 @@ class ActividadScore
             $frases[] = $v[$rot % count($v)];
         }
 
-        // ═══ 4. PIPELINE ═══
-        if ($h_down > $h_up && $h_down > 2) {
-            if ($score >= 75) {
-                $frases[] = "$h_down clientes bajando de actividad, $h_up regresaron. Revisa el Radar.";
-            } elseif ($score >= 70) {
-                $frases[] = "$h_down clientes bajando de actividad contra $h_up que regresaron. Revisa el Radar para identificar a los que aún tienen movimiento.";
-            } else {
-                $frases[] = "$h_down clientes bajando de actividad, $h_up regresaron. Revisa el Radar.";
+        // ═══ 4. RADAR HEALTH — clientes con interés que se dejaron morir ═══
+        if ($h_up > 0) {
+            $tasa_muerte = $h_down / $h_up;
+            if ($tasa_muerte >= 0.50 && $h_down >= 3) {
+                $frases[] = "Dejaste caer del Radar a $h_down de $h_up clientes que tenían interés. Atiéndelos antes de perderlos.";
+            } elseif ($tasa_muerte <= 0.30 && $h_up >= 5) {
+                $frases[] = "Cuidas bien tu Radar: solo $h_down de $h_up clientes con interés se te cayeron.";
             }
-        } elseif ($h_up > $h_down && $h_up >= 3) {
-            $frases[] = "$h_up clientes con actividad en aumento en el Radar.";
         }
 
         // ═══ 6. HISTÓRICO ═══
