@@ -490,7 +490,9 @@ class Radar
             $cot_meta_early = DB::row("SELECT created_at, estado, valida_hasta FROM cotizaciones WHERE id=?", [$cotizacion_id]);
             $created_early  = $cot_meta_early ? strtotime($cot_meta_early['created_at']) : $now;
             $age_h_early    = ($now - $created_early) / 3600.0;
-            $accepted_early = ($cot_meta_early['estado'] ?? '') === 'aceptada';
+            // 'vista'/'aceptada' = el cliente YA la abrió → nunca marcar no_abierta.
+            // Las sesiones pueden borrarse por ghost cleanup, pero el estado no miente.
+            $ya_abierta     = in_array($cot_meta_early['estado'] ?? '', ['vista','aceptada','convertida','aceptada_cliente'], true);
             $has_js = ($es['opens'] > 0 || $es['closes'] > 0 || $es['tot_views'] > 0 ||
                        $es['tot_rev'] > 0 || $es['loops'] > 0 || $es['coupons'] > 0 ||
                        $es['scroll_any'] > 0 || $es['vis_max'] > 0 || $es['uniq_v'] > 0);
@@ -499,7 +501,7 @@ class Radar
                 ? strtotime($cot_meta_early['valida_hasta'])
                 : $created_early + 30 * 86400;
             $no_abierta_age_ok = ($age_h_early >= 24);
-            if (!$accepted_early && $no_abierta_age_ok && !$has_js) {
+            if (!$ya_abierta && $no_abierta_age_ok && !$has_js) {
                 return [
                     'score'=>0,'fit_pct'=>0.0,'priority_pct'=>0.0,
                     'bucket'=>'no_abierta','buckets'=>['no_abierta'],
