@@ -8,7 +8,7 @@
 //    Engagement   (17%)  — penalizaciones: sin pago, descuentos, enfriamiento, bajo benchmark
 //    Seguimiento  (25%)  — feedback del Radar: tarea (dar) + examen (calidad)
 //    Radar Health (15%)  — balance de temperatura del pipeline (up vs down)
-//    Conversión   (35%)  — close_rate + calidad + velocidad + consistencia
+//    Conversión   (35%)  — close_rate + calidad + tendencia + consistencia
 //
 //  AUTO-AJUSTE:
 //    - Benchmarks por empresa: close_rate, TTC, radar_weekly, apertura
@@ -352,24 +352,6 @@ class ActividadScore
             if ($pct_lectura >= 0.70) $tips_score = 1.0;
             elseif ($pct_lectura >= 0.30) $tips_score = 0.50;
             else $tips_score = 0.0;
-        }
-
-        // Velocidad de cierre — tiempo promedio vs benchmark empresa
-        $avg_ttc_vendedor = $cierres_total > 0 ? DB::val(
-            "SELECT AVG(DATEDIFF(accion_at, created_at)) FROM cotizaciones
-             WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND estado IN ('aceptada','convertida','aceptada_cliente')
-             AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND accion_at IS NOT NULL AND total > 0 $no_import
-             $pago_ok",
-            [$usuario_id, $empresa_id, $periodo]
-        ) : null;
-
-        $ttc_score = 0.5; // neutro por defecto
-        if ($cierres_total > 0 && $avg_ttc_vendedor !== null && (float)$avg_ttc_vendedor > 0) {
-            // ratio > 1 = cierra más rápido que el promedio empresa
-            $ratio_ttc = $bench['time_to_close'] / (float)$avg_ttc_vendedor;
-            $ttc_score = self::sigmoid($ratio_ttc, 1.0, 3.0);
         }
 
         // Transiciones consolidadas (1 query para Engagement + Radar Health)
@@ -734,7 +716,7 @@ class ActividadScore
 
         // ═══════════════════════════════════════════════════
         //  DIMENSIÓN 4: CONVERSIÓN (35%)
-        //  Close rate + calidad + velocidad + tendencia volumen
+        //  Close rate + calidad + tendencia volumen
         // ═══════════════════════════════════════════════════
 
         // Tasa de cierre ya calculada arriba (antes de seguimiento)
@@ -781,19 +763,19 @@ class ActividadScore
             : 0.50; // sin historial → neutro
 
         // Sub-pesos auto-ajustables con sqrt para comprimir rango:
-        // Peso de cada componente crece con la confiabilidad de sus datos
-        $w_cr_conv   = sqrt(max($cot_vistas, 1));            // close_rate: más vistas → más confiable
+        // Peso de cada componente crece con la confiabilidad de sus datos.
+        // close_rate absorbe el peso que tenía velocidad — cerrar rápido ya no
+        // se mide aparte: lo importante es cerrar, no la velocidad.
+        $w_cr_conv   = sqrt(max($cot_vistas, 1)) + (sqrt(max($cierres_total, 0) + 1) - 1); // close_rate: vistas + peso heredado de velocidad
         $w_qual_conv = sqrt(max($cierres_total, 0) + 1) - 1; // quality: necesita cierres
-        $w_ttc_conv  = sqrt(max($cierres_total, 0) + 1) - 1; // velocidad: necesita cierres
         $w_vol_conv  = sqrt(max($bench_ventas, 0));           // tendencia: más historial → más peso
-        $w_conv_total = max($w_cr_conv + $w_qual_conv + $w_ttc_conv + $w_vol_conv, 1);
+        $w_conv_total = max($w_cr_conv + $w_qual_conv + $w_vol_conv, 1);
 
-        // Componentes de conversión (close_rate + calidad + velocidad + tendencia)
+        // Componentes de conversión (close_rate + calidad + tendencia)
         $componentes_conv = (
             self::sigmoid($tasa_cierre, $bench['close_rate_hist'], 2.0 / max($bench['close_rate_hist'], 0.01))
                 * ($w_cr_conv / $w_conv_total)
             + $cierre_quality * ($w_qual_conv / $w_conv_total)
-            + $ttc_score * ($w_ttc_conv / $w_conv_total)
             + $vol_trend * ($w_vol_conv / $w_conv_total)
         );
 
