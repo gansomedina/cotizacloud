@@ -590,6 +590,7 @@ $vid_js      = htmlspecialchars($visitor_id_cookie ?? '', ENT_QUOTES);
 ?>
 <script>
 (function(){
+    <?php if (!empty($es_preview)): ?>return; /* preview del asesor — no rastrear */<?php endif; ?>
     var COT=<?=$cot_id_js?>,EID=<?=$eid_js?>,VID='<?=$vid_js?>';
     var visibleStart=Date.now(),visibleAccum=0,maxScroll=0,closeSent=false;
     function updateMaxScroll(){var h=document.documentElement;var s=Math.round((h.scrollTop/(h.scrollHeight-h.clientHeight||1))*100);if(s>maxScroll)maxScroll=s;}
