@@ -592,7 +592,9 @@ class ActividadScore
             $eng_pen_bajo_benchmark = (1.0 - $ventas_totales / $bench_ventas) * $close_rate_safe;
         }
 
-        $s_engagement = 1.0 - $eng_pen_sin_pago - $eng_pen_descuento - $eng_pen_enfriamiento - $eng_pen_bajo_benchmark;
+        // pen_enfriamiento NO resta aquí — el enfriamiento del pipeline ya
+        // se mide en Radar Health; restarlo también sería doble castigo.
+        $s_engagement = 1.0 - $eng_pen_sin_pago - $eng_pen_descuento - $eng_pen_bajo_benchmark;
         $s_engagement = max(0.0, min(1.0, $s_engagement));
 
         // ═══════════════════════════════════════════════════
@@ -1048,7 +1050,7 @@ class ActividadScore
 
         // Total penalizaciones ponderadas (impacto real en score) y bonuses
         $total_pen = ($pen_no_abiertas + $pen_dormidas) * $w_act
-                   + ($eng_pen_sin_pago + $eng_pen_descuento + $eng_pen_enfriamiento + $eng_pen_bajo_benchmark) * $w_eng
+                   + ($eng_pen_sin_pago + $eng_pen_descuento + $eng_pen_bajo_benchmark) * $w_eng
                    + $pen_conversion * $w_conv;
         $total_bonus = ($cierre_quality > 0 ? $cierre_quality * $close_rate_safe : 0);
 
