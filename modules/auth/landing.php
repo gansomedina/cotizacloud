@@ -681,7 +681,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
           <div class="apc-dim-pct" style="color:#f59e0b">45%</div>
           <div class="apc-dim-info">
             <div class="apc-dim-name">Conversion</div>
-            <div class="apc-dim-sub">¿Cierra ventas? Lo que mas pesa. Calidad del cierre, velocidad y consistencia semanal.</div>
+            <div class="apc-dim-sub">¿Cierra ventas? Lo que mas pesa. Tasa de cierre, calidad del cierre y consistencia semanal.</div>
           </div>
         </div>
       </div>
