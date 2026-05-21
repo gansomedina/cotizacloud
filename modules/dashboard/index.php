@@ -884,7 +884,7 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         </div>
         <div style="flex:1">
           <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts_hlt ?>%;background:<?= $ts_hlt >= 60 ? '#16a34a' : ($ts_hlt >= 30 ? '#d97706' : '#dc2626') ?>"></div></div>
-          <div class="thermo-bar-lbl">Radar</div>
+          <div class="thermo-bar-lbl">Radar Health</div>
         </div>
         <div style="flex:1">
           <div class="thermo-bar"><div class="thermo-bar-fill" style="width:<?= $ts_con ?>%;background:<?= $ts_con >= 60 ? '#16a34a' : ($ts_con >= 30 ? '#d97706' : '#dc2626') ?>"></div></div>
