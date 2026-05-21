@@ -949,7 +949,7 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <p>Algoritmo APC v5.1 — 15 días rolling, 100% auto-ajustable:</p>
         <ul>
           <li><b>Activación (8%)</b> — ¿Las cotizaciones llegan al cliente? Penaliza no abiertas (×1/tasa cierre) y dormidas (escalado por tiempo promedio de cierre de la empresa).</li>
-          <li><b>Engagement (17%)</b> — Capa de penalizaciones: ventas sin cobrar (×1/tasa cierre, fuerte), descuentos y enfriamiento del pipeline (×tasa cierre, suave), ventas por debajo del promedio de la empresa.</li>
+          <li><b>Engagement (17%)</b> — Capa de penalizaciones: ventas sin cobrar (×1/tasa cierre, fuerte), descuentos (×tasa cierre, suave), ventas por debajo del promedio de la empresa.</li>
           <li><b>Seguimiento (25%)</b> — ¿Das feedback a las señales calientes del Radar? Se evalúa el esfuerzo (dar feedback) y el resultado (¿acertaste?). Con más feedbacks, la calidad pesa más que el esfuerzo.</li>
           <li><b>Radar Health (15%)</b> — ¿Tu pipeline mejora o empeora? Cuenta transiciones de temperatura de tus cotizaciones: frío→caliente suma, caliente→frío resta.</li>
           <li><b>Conversión (35%)</b> — ¿Cierras ventas? Tasa de cierre vs empresa, calidad (cerrar ventas difíciles vale más), velocidad vs promedio, tendencia de volumen (ventas actuales vs período anterior), consistencia semanal.</li>
@@ -1039,7 +1039,6 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         ?>
         <div class="dbg-row"><span class="dbg-lbl">  pen sin pago</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_sin_pago'] ?? 0) > 0 ? '-'.round(($es['eng_pen_sin_pago'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen descuento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_descuento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_descuento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
-        <div class="dbg-row"><span class="dbg-lbl">  pen enfriamiento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_enfriamiento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_enfriamiento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen bajo benchmark</span><span class="dbg-val dbg-neg"><?php $epbb = $es['eng_pen_bajo_benchmark'] ?? 0; if ($epbb > 0) { echo '-'.round($epbb * 100, 1).'% ('.($es['ventas_periodo'] ?? '?').' vs '.($es['bench_ventas'] ?? '?').')'; } else echo '—'; ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Seguimiento (25%)</span><span class="dbg-val"><?= round(($es['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  ❓ exploradas <?= $dbg_why_exp ?>/<?= $dbg_cal_tot ?></span><span class="dbg-val"><?= $dbg_why_s < 1 ? '×'.round($dbg_why_s * 100).'%' : '—' ?></span></div>
