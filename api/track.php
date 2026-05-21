@@ -249,6 +249,7 @@ switch ($tipo) {
                     );
                 }
                 DB::execute("INSERT INTO cotizacion_log (cotizacion_id, usuario_id, accion, detalle) VALUES (?,NULL,'aceptada_cliente','Aceptada desde vista pública')", [$cot_id]);
+                snapshot_cotizacion($cot_id);
                 DB::commit();
             } catch (Throwable $ex) { DB::rollback(); }
         }

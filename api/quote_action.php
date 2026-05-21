@@ -130,6 +130,10 @@ if ($accion === 'aceptar') {
             DB::execute("UPDATE cotizaciones SET descuento_auto_amt=? WHERE id=?", [$desc_auto_srv, $cot_id]);
         }
 
+        // Congelar el original (líneas + descuento) antes de que la venta
+        // pueda modificar cotizacion_lineas.
+        snapshot_cotizacion($cot_id);
+
         // 3. Crear venta automáticamente — mismo momento que la aceptación
         // Si ya existe una venta para esta cotización no duplicar
         $venta_existente = DB::val("SELECT id FROM ventas WHERE cotizacion_id=? LIMIT 1", [$cot_id]);

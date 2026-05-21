@@ -501,6 +501,34 @@ function upload_archivo(array $file, int $empresa_id, string $sub = 'adjuntos'):
     ];
 }
 
+// ─── Snapshot de cotización al cerrarse ─────────────────────
+// Congela las líneas y el descuento de una cotización cuando se acepta o
+// convierte. El slug de la cotización cerrada renderiza este snapshot, así
+// editar la venta (que comparte cotizacion_lineas) no altera el original.
+// Idempotente: si ya existe snapshot, no lo sobreescribe.
+function snapshot_cotizacion(int $cot_id): void
+{
+    $row = DB::row(
+        "SELECT lineas_snapshot, descuento_auto_amt FROM cotizaciones WHERE id = ?",
+        [$cot_id]
+    );
+    if (!$row) return;
+    if ($row['lineas_snapshot'] !== null && $row['lineas_snapshot'] !== '') return;
+
+    $lineas = DB::query(
+        "SELECT * FROM cotizacion_lineas WHERE cotizacion_id = ? ORDER BY orden ASC",
+        [$cot_id]
+    );
+    $snap = [
+        'lineas'             => $lineas,
+        'descuento_auto_amt' => (float)($row['descuento_auto_amt'] ?? 0),
+    ];
+    DB::execute(
+        "UPDATE cotizaciones SET lineas_snapshot = ? WHERE id = ?",
+        [json_encode($snap, JSON_UNESCAPED_UNICODE), $cot_id]
+    );
+}
+
 // ─── Configuración de notificaciones de la empresa ──────────
 function notif_config(int $empresa_id): array
 {

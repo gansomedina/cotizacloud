@@ -80,6 +80,9 @@ try {
         [$cot_id, Auth::id(), 'Venta: ' . $numero_vta, ip_real()]
     );
 
+    // Congelar el original antes de que la venta pueda modificar las líneas.
+    snapshot_cotizacion($cot_id);
+
     DB::commit();
 } catch (Exception $e) {
     DB::rollback();
