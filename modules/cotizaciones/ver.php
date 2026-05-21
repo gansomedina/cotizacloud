@@ -38,10 +38,18 @@ if (!Auth::puede('ver_todas_cots') && (int)$cot['usuario_id'] !== (int)Auth::id(
 ActividadScore::registrar(Auth::id(), EMPRESA_ID, 'quote_view', $cot_id);
 
 // ─── Líneas ──────────────────────────────────────────────
-$lineas = DB::query(
-    "SELECT * FROM cotizacion_lineas WHERE cotizacion_id = ? ORDER BY orden ASC",
-    [$cot_id]
-);
+// Cotización cerrada: mostrar el snapshot del original (read-only),
+// no las líneas vivas que la venta pudo haber modificado.
+$snapshot_cot = snapshot_leer($cot);
+if ($snapshot_cot !== null) {
+    $lineas = $snapshot_cot['lineas'];
+    $cot['descuento_auto_amt'] = $snapshot_cot['descuento_auto_amt'] ?? $cot['descuento_auto_amt'];
+} else {
+    $lineas = DB::query(
+        "SELECT * FROM cotizacion_lineas WHERE cotizacion_id = ? ORDER BY orden ASC",
+        [$cot_id]
+    );
+}
 
 // ─── Log / historial ─────────────────────────────────────
 $log = DB::query(
