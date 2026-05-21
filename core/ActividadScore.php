@@ -1398,7 +1398,7 @@ class ActividadScore
             $tasa_muerte = $h_down / $h_up;
             if ($tasa_muerte >= 0.50 && $h_down >= 3) {
                 $frases[] = "Dejaste caer del Radar a $h_down de $h_up clientes que tenían interés. Atiéndelos antes de perderlos.";
-            } elseif ($tasa_muerte <= 0.30 && $h_up >= 5) {
+            } elseif ($tasa_muerte <= 0.35 && $h_up >= 5) {
                 $frases[] = "Cuidas bien tu Radar: solo $h_down de $h_up clientes con interés se te cayeron.";
             }
         }

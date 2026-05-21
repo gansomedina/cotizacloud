@@ -321,7 +321,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     <?php endif; ?>
     <?php if ($cot['radar_bucket']): ?>
         <span style="background:var(--purple-bg);color:var(--purple);padding:2px 8px;border-radius:5px;font:600 11px var(--body);">
-            <?= e($cot['radar_bucket']) ?>
+            <?= e(ucwords(str_replace('_', ' ', $cot['radar_bucket']))) ?>
         </span>
     <?php endif; ?>
     <?php if (!$es_editable): ?>
