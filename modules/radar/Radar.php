@@ -348,15 +348,14 @@ class Radar
         }
 
         // ── B. Internos ──────────────────────────────────────
+        // IP eliminada como señal de interno: las IPs de carrier rotan y
+        // descartaban clientes reales. El asesor se filtra por visitor_id
+        // y device_sig.
         $intern_v = [];
-        $intern_ip = [];
         $intern_dsig = [];
         if ($cfg['excluir_internos'] ?? true) {
             foreach (DB::query("SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id=?", [$empresa_id]) as $r) {
                 $intern_v[$r['visitor_id']] = true;
-            }
-            foreach (DB::query("SELECT ip FROM radar_ips_internas WHERE empresa_id=? AND aprendida_ts >= ?", [$empresa_id, time() - 7 * 86400]) as $r) {
-                $intern_ip[$r['ip']] = true;
             }
             try {
                 foreach (DB::query(
@@ -373,7 +372,7 @@ class Radar
         }
 
         // ── C. Agregar eventos JS (misma lógica que event_stats_by_quote) ──
-        $es = self::_agregar_eventos($ev_rows, $intern_v, $intern_ip, $intern_dsig, $cfg);
+        $es = self::_agregar_eventos($ev_rows, $intern_v, $intern_dsig, $cfg);
 
         // ── D. Cargar sesiones históricas (mismo lookback que eventos: 150d) ──
         try {
@@ -421,7 +420,6 @@ class Radar
             if ($ip === '') continue;
             if (($cfg['filtrar_bots'] ?? true) && (self::bot_ip($ip) || self::bot_ua($ua))) continue;
             if (($cfg['excluir_internos'] ?? true) && (
-                isset($intern_ip[$ip]) ||
                 ($vid !== '' && isset($intern_v[$vid])) ||
                 ($dsig !== '' && isset($intern_dsig[$dsig]))
             )) continue;
@@ -526,7 +524,6 @@ class Radar
                 $dsig2 = trim((string)($s['device_sig'] ?? ''));
                 if (($cfg['filtrar_bots'] ?? true) && (self::bot_ip($ip2) || self::bot_ua($ua2))) continue;
                 if (($cfg['excluir_internos'] ?? true) && (
-                    isset($intern_ip[$ip2]) ||
                     ($vid2 !== '' && isset($intern_v[$vid2])) ||
                     ($dsig2 !== '' && isset($intern_dsig[$dsig2]))
                 )) continue;
@@ -657,7 +654,7 @@ class Radar
             $s_vid = trim((string)($s['visitor_id'] ?? ''));
             $s_ip = trim((string)($s['ip'] ?? ''));
             if ($s_ip === '') continue;
-            if (($cfg['excluir_internos'] ?? true) && (isset($intern_ip[$s_ip]) || ($s_vid !== '' && isset($intern_v[$s_vid])))) continue;
+            if (($cfg['excluir_internos'] ?? true) && ($s_vid !== '' && isset($intern_v[$s_vid]))) continue;
             $dev = self::parse_device($s_ua);
             if (!in_array($dev, $devices, true)) $devices[] = $dev;
         }
@@ -1185,7 +1182,7 @@ class Radar
     //  AGREGACIÓN DE EVENTOS JS
     //  Portado del bloque event_stats_by_quote del radar original
     // ============================================================
-    private static function _agregar_eventos(array $rows, array $intern_v, array $intern_ip, array $intern_dsig, array $cfg): array
+    private static function _agregar_eventos(array $rows, array $intern_v, array $intern_dsig, array $cfg): array
     {
         $s = [
             'opens'=>0,'closes'=>0,'coupons'=>0,'tot_views'=>0,'tot_rev'=>0,
@@ -1198,9 +1195,6 @@ class Radar
         foreach ($rows as $r) {
             $vid = trim((string)($r['visitor_id'] ?? ''));
             if ($vid !== '' && isset($intern_v[$vid])) continue;
-
-            $ev_ip = trim((string)($r['ip'] ?? ''));
-            if ($ev_ip !== '' && ($cfg['excluir_internos'] ?? true) && isset($intern_ip[$ev_ip])) continue;
 
             $ev_dsig = trim((string)($r['device_sig'] ?? ''));
             if ($ev_dsig !== '' && ($cfg['excluir_internos'] ?? true) && isset($intern_dsig[$ev_dsig])) continue;

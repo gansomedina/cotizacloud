@@ -70,9 +70,6 @@ $es_usuario_interno = (Auth::id() !== null && (int)(Auth::empresa()['id'] ?? 0) 
 $es_visitor_interno = ($visitor_id !== '' && ($rcfg['excluir_internos'] ?? true))
     ? Radar::es_visitor_interno($empresa_id, $visitor_id)
     : false;
-$es_ip_interna = ($rcfg['excluir_internos'] ?? true)
-    ? (bool)DB::val("SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? AND aprendida_ts >= ? LIMIT 1", [$empresa_id, $ip, time() - 7 * 86400])
-    : false;
 
 // CAPA 1 — visitor_id ya conocido como interno (consulta más barata, primera)
 // Si el UUID del navegador ya está marcado como interno → descartar inmediatamente
@@ -103,18 +100,9 @@ if ($es_usuario_interno) {
 // ghost cleanup la borraba → visita real perdida.
 // Las capas 1, 2 y 3 cubren detección de internos sin ese riesgo.
 
-// CAPA 3 — IP interna (aunque no esté logueado — home office, revisar cotiz sin login)
-// Aprender visitor_id + device_sig para futuras visitas
-if ($es_ip_interna) {
-    if ($visitor_id !== '') {
-        Radar::marcar_visitor_interno($empresa_id, $visitor_id, 'internal_ip', null, $ip, $ua);
-    }
-    // Nota: no inferimos device_sig de visitantes anónimos cuando comparten IP con
-    // un usuario logueado — el device_sig podría ser de un cliente real visitando
-    // desde la red del asesor y contaminar el descarte. El device_sig del usuario
-    // se captura cuando él mismo navega logueado (login_post.php, layout.php).
-    exit;
-}
+// CAPA 3 (IP interna) eliminada: las IPs de carrier rotan — una IP que fue
+// del asesor pasa a un cliente real, descartando su visita y marcándolo
+// interno 365 días. El asesor se detecta por Capa 1 (cz_vid) y Capa 2 (sesión).
 
 // ── Pasa todos los filtros → evento de un cliente real ───────────
 
