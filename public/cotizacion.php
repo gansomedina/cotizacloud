@@ -1474,9 +1474,11 @@ const TRACK_URL = '/api/track';
     if (!quoteId) return;
 
     // ── Identidad persistente ─────────────────────────────────────
-    // visitor_id: localStorage PRIMARY → cookie FALLBACK → nuevo UUID
-    // Mismo key que en el login ('cz_visitor_id' / 'cz_vid') para que
-    // al loguearse en el mismo navegador se crucen automáticamente.
+    // visitor_id: cookie PRIMARY → localStorage FALLBACK → nuevo UUID
+    // La cookie va primero porque el bridge planta el cz_vid registrado
+    // en la cookie del dominio custom (no toca localStorage). Si fuera al
+    // revés, un localStorage huérfano viejo pisaría la cookie buena del
+    // bridge y Capa 1 fallaría para el asesor.
     function uuidv4() {
         if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -1501,7 +1503,7 @@ const TRACK_URL = '/api/track';
 
     function getVisitorId() {
         var lk = 'cz_visitor_id', ck = 'cz_vid';
-        var id = lsGet(lk) || getCookie(ck) || uuidv4();
+        var id = getCookie(ck) || lsGet(lk) || uuidv4();
         lsSet(lk, id);
         setCookie(ck, id, 60*60*24*730); // 2 años
         return id;
