@@ -217,6 +217,11 @@ class Radar
         '51.161.','51.222.','142.44.','148.113.',           // Hetzner
     ];
 
+    // device_sig NO identifica asesores: colisiona entre teléfonos del
+    // mismo modelo y descartaba clientes reales. Solo se usa para dedup
+    // de clientes dentro de una cotización. Flipear a true para reactivar.
+    const DSIG_INTERNO_ASESOR = false;
+
     // ============================================================
     //  HELPERS INTERNOS
     // ============================================================
@@ -348,27 +353,30 @@ class Radar
         }
 
         // ── B. Internos ──────────────────────────────────────
-        // IP eliminada como señal de interno: las IPs de carrier rotan y
-        // descartaban clientes reales. El asesor se filtra por visitor_id
-        // y device_sig.
+        // El asesor se filtra por visitor_id (cz_vid). Ni la IP ni el
+        // device_sig se usan como señal de interno: la IP rota y el
+        // device_sig colisiona entre teléfonos iguales — ambos descartaban
+        // clientes reales.
         $intern_v = [];
         $intern_dsig = [];
         if ($cfg['excluir_internos'] ?? true) {
             foreach (DB::query("SELECT visitor_id FROM radar_visitors_internos WHERE empresa_id=?", [$empresa_id]) as $r) {
                 $intern_v[$r['visitor_id']] = true;
             }
-            try {
-                foreach (DB::query(
-                    "SELECT DISTINCT us.device_sig FROM user_sessions us
-                     JOIN usuarios u ON u.id = us.usuario_id
-                     WHERE (u.empresa_id = ? OR u.rol = 'superadmin')
-                       AND us.device_sig IS NOT NULL AND us.device_sig != ''
-                       AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)",
-                    [$empresa_id]
-                ) as $r) {
-                    $intern_dsig[$r['device_sig']] = true;
-                }
-            } catch (Throwable $e) {}
+            if (self::DSIG_INTERNO_ASESOR) {
+                try {
+                    foreach (DB::query(
+                        "SELECT DISTINCT us.device_sig FROM user_sessions us
+                         JOIN usuarios u ON u.id = us.usuario_id
+                         WHERE (u.empresa_id = ? OR u.rol = 'superadmin')
+                           AND us.device_sig IS NOT NULL AND us.device_sig != ''
+                           AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)",
+                        [$empresa_id]
+                    ) as $r) {
+                        $intern_dsig[$r['device_sig']] = true;
+                    }
+                } catch (Throwable $e) {}
+            }
         }
 
         // ── C. Agregar eventos JS (misma lógica que event_stats_by_quote) ──
