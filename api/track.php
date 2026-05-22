@@ -3,7 +3,7 @@
 //  CotizaApp — api/track.php
 //  POST /api/track  (sin login requerido — llamado por sendBeacon)
 //  Portado fielmente de ontime-quote-events.php (mu-plugin WP)
-//  3 capas de filtro de internos: usuario_logueado > visitor_id > IP
+//  Filtro de internos: visitor_id (cz_vid) > usuario_logueado (sesión)
 // ============================================================
 
 defined('COTIZAAPP') or die;
@@ -51,7 +51,7 @@ $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
 // ================================================================
 //  FILTROS DE CALIDAD — Portado fielmente de ontime-quote-events.php
-//  Orden: bot_ip → bot_ua → visitor_interno → usuario_logueado → ip_interna
+//  Orden: bot_ip → bot_ua → visitor_interno → usuario_logueado
 // ================================================================
 
 // ── Anti-bot por IP prefix ───────────────────────────────────────
