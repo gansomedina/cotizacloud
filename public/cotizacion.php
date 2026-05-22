@@ -185,13 +185,6 @@ if ($visitor_id_cookie === '') {
 
 require_once MODULES_PATH . '/radar/Radar.php';
 
-// ── Preview del asesor: botón "Ver" del editor ───────────────────────
-// El link lleva ?preview — quien lo abre es el asesor viendo su propia
-// cotización (interno por definición). No depende de cookies, así que
-// funciona también en dominios custom. No cuenta como visita.
-$es_preview = isset($_GET['preview']);
-if ($es_preview) goto skip_tracking;
-
 // ── CAPA 0: Usuario logueado de esta empresa o superadmin ────────────
 // Es la verificación más importante y debe ser la primera.
 // Certeza absoluta: conocemos usuario_id, IP, UA y visitor_id.
@@ -1512,7 +1505,6 @@ function mostrarExito(ico, tit, msg, box){
 // ================================================================
 const TRACK_URL = '/api/track';
 (function() {
-    <?php if (!empty($es_preview)): ?>return; /* preview del asesor — no rastrear */<?php endif; ?>
     var quoteId = typeof COT_ID !== 'undefined' ? COT_ID : 0;
     if (!quoteId) return;
 

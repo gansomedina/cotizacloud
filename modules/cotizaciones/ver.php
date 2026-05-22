@@ -192,8 +192,6 @@ $cot_js = json_encode([
 ]);
 
 $url_publica = Router::url_publica('/c/' . $cot['slug']);
-// Preview del asesor: el botón "Ver" marca el link para no contar la visita
-$url_preview = $url_publica . (strpos($url_publica, '?') === false ? '?' : '&') . 'preview=1';
 
 $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 ?>
@@ -283,7 +281,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <button class="accion-btn accion-btn-primary" onclick="guardarCotizacion()" id="btn-guardar">Guardar</button>
             <?php endif; ?>
             <button class="accion-btn topbar-secondary" onclick="navigator.clipboard.writeText('<?= e($url_publica) ?>');this.textContent='✓';setTimeout(()=>this.textContent='Copiar',2000)">Copiar</button>
-            <a href="<?= e($url_preview) ?>" target="_blank" class="accion-btn topbar-secondary">Ver</a>
+            <a href="<?= e($url_publica) ?>" target="_blank" class="accion-btn topbar-secondary">Ver</a>
             <?php if ($puede_suspender): ?>
                 <button class="accion-btn topbar-secondary" style="color:<?= $es_suspendida ? 'var(--g)' : '#d97706' ?>;border-color:<?= $es_suspendida ? 'var(--g)' : '#d97706' ?>" onclick="suspenderCotizacion()">
                     <?= $es_suspendida ? '▶ Reactivar' : '⏸ Suspender' ?>
