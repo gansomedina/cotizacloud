@@ -96,24 +96,12 @@ if ($es_usuario_interno) {
     exit;
 }
 
-// CAPA 2.5 — Device signature interno (descarte por sesión, no permanente)
-// Si el device_sig matchea con un asesor, descartamos este evento.
-// NO marcamos visitor_id como interno (riesgo de colisión en dispositivos iguales).
-// NO aprendemos IP desde device_sig solo (mismo riesgo).
-// La sesión sin eventos será limpiada por el ghost cleanup (~2 min).
-if ($device_sig !== '' && ($rcfg['excluir_internos'] ?? true)) {
-    $dsig_usuario = DB::val(
-        "SELECT u.id FROM user_sessions us
-         JOIN usuarios u ON u.id = us.usuario_id
-         WHERE us.device_sig = ? AND (u.empresa_id = ? OR u.rol = 'superadmin')
-           AND us.device_sig IS NOT NULL AND us.device_sig != ''
-         LIMIT 1",
-        [$device_sig, $empresa_id]
-    );
-    if ($dsig_usuario) {
-        exit;
-    }
-}
+// Capa 2.5 eliminada: device_sig NO debe usarse para identificar asesores.
+// Colisiona entre dispositivos iguales (iPhones del mismo modelo = mismo dsig).
+// Causaba que eventos de clientes reales se descartaran silenciosamente
+// cuando su device_sig coincidía con un asesor → sesión sin eventos →
+// ghost cleanup la borraba → visita real perdida.
+// Las capas 1, 2 y 3 cubren detección de internos sin ese riesgo.
 
 // CAPA 3 — IP interna (aunque no esté logueado — home office, revisar cotiz sin login)
 // Aprender visitor_id + device_sig para futuras visitas
