@@ -52,16 +52,9 @@ if ($ya) {
 $ip = ip_real();
 $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
 
-// Superadmin puede calificar (para testing/demo) — incluso desde dominios custom
-// donde la cookie de sesión no viaja: detectamos por IP/visitor/device_sig
+// Superadmin puede calificar (para testing/demo). Detección por cza_session
+// (Auth) y cz_vid. No se usa IP (rota) ni device_sig (colisiona).
 $es_superadmin_fb = Auth::es_superadmin();
-if (!$es_superadmin_fb && $ip) {
-    $es_superadmin_fb = (bool)DB::val(
-        "SELECT 1 FROM radar_ips_internas ri JOIN usuarios u ON u.id = ri.usuario_id
-          WHERE ri.ip = ? AND u.rol = 'superadmin' LIMIT 1",
-        [$ip]
-    );
-}
 if (!$es_superadmin_fb && $visitor_id) {
     $es_superadmin_fb = (bool)DB::val(
         "SELECT 1 FROM radar_visitors_internos rv JOIN usuarios u ON u.id = rv.usuario_id
@@ -69,49 +62,15 @@ if (!$es_superadmin_fb && $visitor_id) {
         [$visitor_id]
     );
 }
-if (!$es_superadmin_fb && $device_sig) {
-    $es_superadmin_fb = (bool)DB::val(
-        "SELECT 1 FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id
-          WHERE us.device_sig = ? AND u.rol = 'superadmin'
-            AND us.device_sig IS NOT NULL AND us.device_sig != '' LIMIT 1",
-        [$device_sig]
-    );
-}
 
-// Bloquear si IP o visitor_id están marcados como internos (asesores no califican)
-// Superadmin se salta este check
-if (!$es_superadmin_fb && $ip) {
-    $ip_interna = (int)DB::val(
-        "SELECT 1 FROM radar_ips_internas WHERE empresa_id = ? AND ip = ? LIMIT 1",
-        [EMPRESA_ID, $ip]
-    );
-    if ($ip_interna) {
-        http_response_code(403);
-        echo json_encode(['ok'=>false,'error'=>'interno']);
-        exit;
-    }
-}
+// Bloquear si el visitor_id está marcado como interno (asesores no califican).
+// Superadmin se salta este check.
 if (!$es_superadmin_fb && $visitor_id) {
     $vid_interno = (int)DB::val(
         "SELECT 1 FROM radar_visitors_internos WHERE empresa_id = ? AND visitor_id = ? LIMIT 1",
         [EMPRESA_ID, $visitor_id]
     );
     if ($vid_interno) {
-        http_response_code(403);
-        echo json_encode(['ok'=>false,'error'=>'interno']);
-        exit;
-    }
-}
-if (!$es_superadmin_fb && $device_sig) {
-    $dsig_interno = (int)DB::val(
-        "SELECT 1 FROM user_sessions us
-          JOIN usuarios u ON u.id = us.usuario_id
-          WHERE us.device_sig = ? AND (u.empresa_id = ? OR u.rol = 'superadmin')
-            AND us.device_sig IS NOT NULL AND us.device_sig != ''
-          LIMIT 1",
-        [$device_sig, EMPRESA_ID]
-    );
-    if ($dsig_interno) {
         http_response_code(403);
         echo json_encode(['ok'=>false,'error'=>'interno']);
         exit;

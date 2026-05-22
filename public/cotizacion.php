@@ -1022,23 +1022,13 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 $fb_render = !empty($cot['feedback_activo']);
 $fb_admin  = false;
 if ($fb_render) {
-    // Auth solo funciona en *.cotiza.cloud — en dominios custom la cookie no llega.
-    // Por eso detectamos al usuario por IP/visitor/device contra los registros internos,
-    // y si pertenece a un superadmin, igual renderizamos para testing.
-    $ip_v = ip_real();
+    // Detección por cza_session (Auth) y cz_vid. El bridge pone cza_session
+    // en dominios custom, así que Auth funciona también ahí. No se usa IP
+    // (rota) ni device_sig (colisiona entre teléfonos del mismo modelo).
     $vid_v = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')), 0, 64);
-    $dsig_v = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', (string)($_COOKIE['cz_dsig'] ?? '')), 0, 120);
 
-    // ¿Es superadmin (por sesión o por IP/visitor/device registrado)?
+    // ¿Es superadmin (por sesión o por cz_vid registrado)?
     $es_super = Auth::es_superadmin();
-    if (!$es_super && $ip_v) {
-        $es_super = (bool)DB::val(
-            "SELECT 1 FROM radar_ips_internas ri
-              JOIN usuarios u ON u.id = ri.usuario_id
-              WHERE ri.ip = ? AND u.rol = 'superadmin' LIMIT 1",
-            [$ip_v]
-        );
-    }
     if (!$es_super && $vid_v) {
         $es_super = (bool)DB::val(
             "SELECT 1 FROM radar_visitors_internos rv
@@ -1047,33 +1037,15 @@ if ($fb_render) {
             [$vid_v]
         );
     }
-    if (!$es_super && $dsig_v) {
-        $es_super = (bool)DB::val(
-            "SELECT 1 FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id
-              WHERE us.device_sig = ? AND u.rol = 'superadmin'
-                AND us.device_sig IS NOT NULL AND us.device_sig != '' LIMIT 1",
-            [$dsig_v]
-        );
-    }
 
     if ($es_super) {
-        $fb_admin = true; // superadmin sí lo ve (incluso en dominios custom)
+        $fb_admin = true; // superadmin sí lo ve (para testing)
     } elseif (Auth::id()) {
         // Logueado (asesor/admin empresa) → ocultar
         $fb_render = false;
     } else {
-        // Cliente sin login. Verifico si viene desde dispositivo/IP/cookie interna de la empresa
-        if ($ip_v && DB::val("SELECT 1 FROM radar_ips_internas WHERE empresa_id=? AND ip=? LIMIT 1", [EMPRESA_ID, $ip_v])) {
-            $fb_render = false;
-        } elseif ($vid_v && DB::val("SELECT 1 FROM radar_visitors_internos WHERE empresa_id=? AND visitor_id=? LIMIT 1", [EMPRESA_ID, $vid_v])) {
-            $fb_render = false;
-        } elseif ($dsig_v && DB::val(
-            "SELECT 1 FROM user_sessions us JOIN usuarios u ON u.id=us.usuario_id
-              WHERE us.device_sig=? AND (u.empresa_id=? OR u.rol='superadmin')
-                AND us.device_sig IS NOT NULL AND us.device_sig!=''
-              LIMIT 1",
-            [$dsig_v, EMPRESA_ID]
-        )) {
+        // Cliente sin login. Ocultar solo si su cz_vid está registrado interno.
+        if ($vid_v && DB::val("SELECT 1 FROM radar_visitors_internos WHERE empresa_id=? AND visitor_id=? LIMIT 1", [EMPRESA_ID, $vid_v])) {
             $fb_render = false;
         }
     }
