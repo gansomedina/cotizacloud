@@ -1877,3 +1877,82 @@ ALTER TABLE cotizacion_lineas ADD COLUMN archivo VARCHAR(255) NULL AFTER es_extr
 `ventas/guardar.php` y `clonar.php` — el `archivo` viaja como campo oculto
 por línea y se re-escribe en cada guardado. Si el JS lo pierde, el PDF
 queda huérfano.
+
+## Sesión 22 mayo 2026 (noche) — Capa "cuarentena" Escudo (pendiente revisar mañana)
+
+### Contexto / problema raíz
+El problema cuando los buckets se contaminan: una visita de asesor no
+detectada por las 3 capas entra al Radar, sube de bucket, dispara push,
+infla métricas. La contaminación es el costo real — más caro que perder
+una visita aislada.
+
+### Idea del usuario (22 mayo noche, antes de dormir)
+> "Ocupariamos no contar la visita pero acumularlas, y si un login con
+> visitor concuerda con el visitor de esta de ip en un futuro hacer una
+> limpieza"
+
+Triple objetivo:
+1. **No contar la visita** ahora (Radar ciego, NO entra al bucket — esto
+   es lo importante: evitar contaminar buckets)
+2. **Acumular** la sospecha (auditoría / poder recuperar después)
+3. **Limpiar** retroactivamente cuando un login confirme el visitor_id
+
+### Trigger propuesto
+IP+desktop sospechosa = IP con ≥N logins/internos en ≤3 días + device_sig
+desktop (`tp=0` no touch AND `iosM=0` no iOS).
+
+### Opciones evaluadas (sin decisión aún)
+
+**A — Cuarentena ligera (recomendada por Claude):**
+- INSERT quote_session con `es_interno=1` + `motivo='ip_desktop_sospecha'`
+  + `pending_review=1`
+- Radar nunca la ve → bucket NO se contamina ✓
+- Si llega login con ese vid → `marcar_visitor_interno` + cleanup
+  layout.php → `pending_review=0` (auditoría cerrada)
+- Si nunca llega login → queda como sospecha no confirmada
+- Costo falso positivo: 1 visita perdida por evento. Sin rollback.
+- Aligned con la lógica actual del Escudo, sin riesgos nuevos.
+
+**B — Contar y revertir (más preciso, más complejo):**
+- INSERT con `es_interno=0` + `pending_review=1`
+- Cuenta visita → Radar reacciona (bucket SÍ se contamina temporalmente)
+- Si llega login con ese vid → rollback: marcar es_interno=1, decrementar
+  visitas, recalcular ultima_vista_at, revertir estado vista→enviada
+- Si nunca llega → sigue como cliente real
+- Ventana sucia: Radar pudo enviar push, subir bucket, disparar
+  notificaciones en el intermedio
+- Rollback de Radar (visitas+estado+push) no trivial
+
+### Por qué A va alineado con el objetivo del usuario
+El objetivo central es "no contaminar buckets". Opción A garantiza que la
+visita sospechosa NUNCA entra al Radar — bucket queda limpio desde el
+primer instante. Opción B permite contaminación temporal.
+
+### Preguntas abiertas para mañana
+1. ¿"Acumular" es solo para auditoría o también para recuperar visitas
+   perdidas si era cliente real?
+2. ¿Asumimos el costo de perder visitas reales (A) o nos blindamos contra
+   eso (B)?
+3. ¿Horizonte de tiempo para la sospecha? (ej. después de 7 días sin
+   login, ¿se descarta automáticamente?)
+4. ¿Umbral N de logins/internos en ≤3 días? (3? 5? 10?)
+5. ¿Necesitamos columna `pending_review` nueva o reusamos `capa_motivo`?
+6. ¿Definición "desktop" suficiente con `tp=0 AND iosM=0` o agregar otros
+   filtros (sw>=1024)?
+
+### Restricciones del usuario (NO romper)
+- "OLVIDA EL TOKEN — la Ver requiere login → Capa 0 ya lo cubre.
+  REGISTRADO EN MEMORIA, no proponer de nuevo."
+- "antes de tocar codigo debemos estar de acuerdo"
+- "NUNCA ASUMAS SIN VERIFICAR, NO INVENTES TEORIAS, SIEMPRE LEE EL CODIGO
+  ANTES DE CUALQUIER COSA"
+
+### Próximo paso al retomar
+1. Usuario decide Opción A vs B (o variante)
+2. Definir parámetros (umbral N, horizonte, definición desktop)
+3. Diseñar la query de detección y el INSERT modificado
+4. Revisar antes de tocar código
+
+### Pendiente físico para mañana
+- UPDATE manual para `c6202e48-…` (cot 3805 Acacia Abigail) — usuario
+  dijo "Ahorita lo haré"
