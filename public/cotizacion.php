@@ -188,6 +188,12 @@ $visitor_id_cookie = substr(
     preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')),
     0, 64
 );
+
+// Leer device_sig de cookie (set por layout.php cuando hay sesión) — para escudo_log
+$dsig_cookie = substr(
+    preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', (string)($_COOKIE['cz_dsig'] ?? '')),
+    0, 120
+);
 if ($visitor_id_cookie === '') {
     // Generar UUID v4 en PHP — el JS lo leerá de la cookie y lo reutilizará
     $visitor_id_cookie = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
@@ -228,6 +234,7 @@ if ($es_usuario_interno) {
             $ua
         );
     }
+    escudo_log_decision('capa_0_logueado', (int)$cot['id'], (int)$cot['empresa_id'], $visitor_id_cookie ?: null, $ip, $ua, $dsig_cookie ?: null);
     // No registrar visita ni eventos — salir
     goto skip_tracking;
 }
@@ -238,6 +245,7 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         // ── CAPA 1: visitor_id ya conocido como interno ───────────────
         // El asesor abrió esto antes logueado — su UUID ya está en la lista negra
         if ($visitor_id_cookie !== '' && Radar::es_visitor_interno((int)$cot['empresa_id'], $visitor_id_cookie)) {
+            escudo_log_decision('capa_1_vid_interno', (int)$cot['id'], (int)$cot['empresa_id'], $visitor_id_cookie, $ip, $ua, $dsig_cookie ?: null);
             goto skip_tracking;
         }
 
@@ -248,7 +256,10 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
 
         // ── CAPA 3: Bot por IP prefix ─────────────────────────────────
         foreach (Radar::BOT_IP as $prefix) {
-            if (str_starts_with($ip, $prefix)) goto skip_tracking;
+            if (str_starts_with($ip, $prefix)) {
+                escudo_log_decision('capa_3_bot', (int)$cot['id'], (int)$cot['empresa_id'], $visitor_id_cookie ?: null, $ip, $ua, $dsig_cookie ?: null);
+                goto skip_tracking;
+            }
         }
 
         // ── Pasa todos los filtros → cliente real ─────────────────────
@@ -283,6 +294,7 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
                  VALUES (?,?,?,?,1)",
                 [$cot['id'], $ip, substr($ua,0,300), $visitor_id_cookie ?: null]
             );
+            escudo_log_decision('cliente_real', (int)$cot['id'], (int)$cot['empresa_id'], $visitor_id_cookie ?: null, $ip, $ua, $dsig_cookie ?: null);
 
             // Actualizar estado a "vista" si era "enviada"
             if ($cot['estado'] === 'enviada') {

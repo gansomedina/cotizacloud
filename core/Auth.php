@@ -7,6 +7,18 @@
 
 defined('COTIZAAPP') or die;
 
+// SESSION_VERSION — bumpear esta constante en config.php cuando se deployan
+// cambios que requieran invalidar TODAS las sesiones activas (ej. cambios al
+// Escudo, formato de cookies, lógica de auth). Las sesiones creadas antes de
+// esta fecha quedan invalidadas automáticamente al cargar Auth::init().
+// Por defecto: fecha en el pasado lejano → check inerte si no se define.
+defined('SESSION_VERSION') or define('SESSION_VERSION', '2000-01-01');
+
+// SESSION_BROWSER_SECONDS — duración de sesión browser (14 días)
+// SESSION_APP_SECONDS — duración de sesión app nativa (30 días, sin cambio)
+defined('SESSION_BROWSER_SECONDS') or define('SESSION_BROWSER_SECONDS', 60 * 60 * 24 * 14);
+defined('SESSION_APP_SECONDS')     or define('SESSION_APP_SECONDS',     60 * 60 * 24 * 30);
+
 class Auth
 {
     private static $usuario  = null;
@@ -16,10 +28,10 @@ class Auth
     public static function init(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
-            // Cookie de sesión PHP dura 30 días (máximo) — el token real valida la expiración
+            // Cookie de sesión PHP — el token real en BD valida la expiración
             session_name(SESSION_NAME);
             session_set_cookie_params([
-                'lifetime' => 60 * 60 * 24 * 30,
+                'lifetime' => SESSION_BROWSER_SECONDS,
                 'path'     => '/',
                 'domain'   => '.' . BASE_DOMAIN,
                 'secure'   => !DEBUG,
@@ -105,7 +117,7 @@ class Auth
             return ['ok' => false, 'error' => 'Usuario o contraseña incorrectos'];
         }
 
-        $duracion = $is_app ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 3;
+        $duracion = $is_app ? SESSION_APP_SECONDS : SESSION_BROWSER_SECONDS;
 
         // Crear sesión en DB
         $token  = generar_token(32);
@@ -175,7 +187,7 @@ class Auth
     private static function cargar_usuario_por_token(string $token, int $empresa_id): void
     {
         $sesion = DB::row(
-            "SELECT s.*, u.*
+            "SELECT s.*, s.created_at AS session_created_at, u.*
              FROM user_sessions s
              JOIN usuarios u ON u.id = s.usuario_id
              WHERE s.token = ?
@@ -185,9 +197,13 @@ class Auth
             [$token, $empresa_id]
         );
 
-        if ($sesion) {
-            self::$usuario = $sesion;
-        }
+        if (!$sesion) return;
+
+        // SESSION_VERSION: rechazar sesiones creadas antes del version-bump
+        if (!self::session_version_valida($sesion)) return;
+
+        self::$usuario = $sesion;
+        self::refrescar_actividad($token);
     }
 
     // ─── Cargar usuario + empresa desde token (dominio raíz) ──
@@ -195,6 +211,7 @@ class Auth
     {
         $sesion = DB::row(
             "SELECT s.usuario_id, s.empresa_id, s.expires_at,
+                    s.created_at AS session_created_at,
                     u.id, u.nombre, u.email, u.usuario, u.rol, u.activo,
                     u.puede_editar_precios, u.puede_aplicar_descuentos,
                     u.puede_ver_todas_cots, u.puede_ver_todas_ventas,
@@ -214,6 +231,10 @@ class Auth
             [$token]
         );
 
+        if ($sesion && !self::session_version_valida($sesion)) {
+            $sesion = null;
+        }
+
         if ($sesion) {
             $empresa_id = (int) $sesion['empresa_id'];
             self::$empresa = DB::row(
@@ -232,7 +253,57 @@ class Auth
                 define('EMPRESA_ID',   0);
                 define('EMPRESA_SLUG', '_system');
             }
+
+            // Activity refresh — extender expiración si user está logueado
+            if (self::$usuario !== null) {
+                self::refrescar_actividad($token);
+            }
         }
+    }
+
+    // ─── SESSION_VERSION: validar que la sesión no es anterior al bump ────
+    private static function session_version_valida(array $sesion): bool
+    {
+        $version_ts = strtotime(SESSION_VERSION);
+        $sesion_ts  = strtotime((string)($sesion['session_created_at'] ?? '2000-01-01'));
+        if (!$version_ts || !$sesion_ts) return true; // No bloquear si parseo falla
+        return $sesion_ts >= $version_ts;
+    }
+
+    // ─── Activity refresh: extender sesión en cada request autenticado ────
+    // GREATEST evita acortar sesiones de app nativa (que son más largas).
+    // Cookie se refresca con dominio dinámico (subdominio vs custom domain).
+    private static function refrescar_actividad(string $token): void
+    {
+        try {
+            DB::execute(
+                "UPDATE user_sessions
+                 SET expires_at = GREATEST(expires_at, DATE_ADD(NOW(), INTERVAL ? SECOND))
+                 WHERE token = ?",
+                [SESSION_BROWSER_SECONDS, $token]
+            );
+        } catch (Throwable $e) {
+            // Silencioso — no bloquear request por error de refresh
+        }
+
+        // Refrescar cookie solo si headers no enviados
+        if (headers_sent()) return;
+
+        // Dominio dinámico — host-only en custom, .cotiza.cloud en subdominio
+        $host_cur = strtolower($_SERVER['HTTP_HOST'] ?? '');
+        $host_cur = preg_replace('/:\d+$/', '', $host_cur);
+        $cookie_domain = (str_ends_with($host_cur, '.' . BASE_DOMAIN) || $host_cur === BASE_DOMAIN)
+            ? '.' . BASE_DOMAIN
+            : '';
+
+        setcookie(SESSION_NAME, $token, [
+            'expires'  => time() + SESSION_BROWSER_SECONDS,
+            'path'     => '/',
+            'domain'   => $cookie_domain,
+            'secure'   => !DEBUG,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
     }
 
     // ─── Getters ─────────────────────────────────────────────

@@ -91,6 +91,26 @@ if ($es_super) {
     Radar::aprender_ip_radar($eid, $ip);
 }
 
+// ── Capturar vid legacy del custom domain ────────────────────
+// Si el navegador ya tenía un vid en este custom domain (de visitas anónimas
+// previas al login en este mismo dominio), registrarlo TAMBIÉN como interno.
+// Esto permite que el cleanup retroactivo de layout.php limpie las
+// quote_sessions que se hicieron antes de loguearse — sin esto el vid
+// queda huérfano y las visitas anteriores al login permanecen como cliente.
+$existing_vid = substr(
+    preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')),
+    0, 64
+);
+if ($existing_vid !== '' && $existing_vid !== $vid) {
+    if ($es_super && !empty($todas)) {
+        foreach ($todas as $te) {
+            Radar::marcar_visitor_interno((int)$te['id'], $existing_vid, 'safari_bridge_legacy', $uid, $ip, $ua);
+        }
+    } else if ($eid > 0) {
+        Radar::marcar_visitor_interno($eid, $existing_vid, 'safari_bridge_legacy', $uid, $ip, $ua);
+    }
+}
+
 // ── Establecer sesión (cza_session) en este dominio ──────────
 // Permite que Capa 0 funcione en dominios custom donde la cookie
 // de sesión de .cotiza.cloud no llega. El token NUNCA viaja en la
