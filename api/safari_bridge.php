@@ -101,14 +101,12 @@ $existing_vid = substr(
     preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_COOKIE['cz_vid'] ?? '')),
     0, 64
 );
-if ($existing_vid !== '' && $existing_vid !== $vid) {
-    if ($es_super && !empty($todas)) {
-        foreach ($todas as $te) {
-            Radar::marcar_visitor_interno((int)$te['id'], $existing_vid, 'safari_bridge_legacy', $uid, $ip, $ua);
-        }
-    } else if ($eid > 0) {
-        Radar::marcar_visitor_interno($eid, $existing_vid, 'safari_bridge_legacy', $uid, $ip, $ua);
-    }
+// Solo registrar el vid legacy en la empresa de ESTE custom domain ($eid).
+// El vid viene del navegador en este dominio específico → solo aplica aquí.
+// Antes registraba en TODAS las empresas para superadmin — incorrecto,
+// bloat de la lista interna y false-positives en otras empresas.
+if ($existing_vid !== '' && $existing_vid !== $vid && $eid > 0) {
+    Radar::marcar_visitor_interno($eid, $existing_vid, 'safari_bridge_legacy', $uid, $ip, $ua);
 }
 
 // ── Establecer sesión (cza_session) en este dominio ──────────

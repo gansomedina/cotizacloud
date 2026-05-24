@@ -2099,3 +2099,79 @@ Si son >20 por semana, justifica el costo UX.
 | App nativa iOS/Android | Sin bloqueo (token APNs/FCM ya identifica) |
 | Safari iPhone sin PWA | Sin bloqueo, ve CTA "Descarga la app" |
 | Chrome Android | TBD (decisión pendiente) |
+
+## Auditoría 24 mayo 2026 — pendientes no aplicados
+
+Auditoría de los commits del día por 3 agentes paralelos. Los **críticos**
+se arreglaron en commit `3f913e3`. Estos quedan pendientes (medio/bajo):
+
+### Pendientes técnicos (no urgentes)
+
+1. **Cron purga `escudo_log`** — sin límite la tabla crece sin tope.
+   Plan: cron diario que borre rows > 30 días. Sin esto, ~10k inserts/día
+   en empresa media → 3.6M rows/año.
+
+2. **Bridge legacy vid en shared computer** — si la PC de Manuel la usa
+   también un cliente esporádico (cliente entra al slug → genera vid X →
+   Manuel se loguea después → bridge registra X como interno del Manuel).
+   Visitas legítimas posteriores de ese cliente desde su propio teléfono
+   con el mismo cookie quedan descartadas. Caso edge en agencias.
+   Mitigación posible: TTL más corto para source='safari_bridge_legacy'
+   (cambiar en `Radar::es_visitor_interno`).
+
+3. **track.php log injection** — `error_log("... ip={$ip}")` usa el IP
+   sin sanitizar. Si `ip_real()` confía en X-Forwarded-For (verificar),
+   un cliente puede meter `\n[FAKE LOG LINE]` y forjar entradas. Riesgo:
+   confusión en diagnóstico. Verificar `ip_real()` antes de dar por
+   seguro, o usar `escapeshellarg`/sanitización en el log message.
+
+4. **cz_dsig sin flag Secure** — `core/layout.php:677` setea cookie sin
+   `; Secure`. No es secreto pero ahora vive 14d (4.6× más que antes) —
+   más oportunidades de leak en MITM con HTTP downgrade. Agregar `;Secure`.
+
+5. **cz_dsig setCookie con valores "todo-zero"** —
+   `public/cotizacion.php:1584` solo valida `if (deviceSig)`. Si getDeviceSig
+   devuelve `0|0|1|0|0|||||0|0|0|0|0` (valores degradados sin info útil),
+   la cadena es truthy y se persiste como cookie 14d → user_sessions queda
+   con dsig genérico que colisiona con cualquier dispositivo similar.
+   Fix: validar que al menos sw>0 o maxTex>0 antes de persistir.
+
+6. **`$cot['visitas_reales']` código muerto** — `modules/cotizaciones/ver.php:90`
+   calcula el conteo limpio pero ningún template lo usa. COUNT(*) extra
+   en cada carga sin beneficio. Eliminar O empezar a usarlo en el UI del
+   contador de visitas (decisión de producto pendiente).
+
+7. **escudo_log no marca superadmin** — cada visita del super a CUALQUIER
+   empresa genera row con `empresa_id` de la cot visitada, sin distinguir
+   de asesor real. Agregar columna `usuario_id` y `es_super` al esquema,
+   o sufijar decision a `capa_0_logueado:super`.
+
+8. **escudo_log sin índice por visitor_id** — uso típico "qué vid pasó por
+   todas mis cots esta semana" hace full scan. Agregar
+   `KEY idx_vid_time (visitor_id, created_at)`.
+
+9. **escudo_log no captura recargas ni filtros tempranos** —
+   `cotizacion.php` solo loguea cuando `!$session_existe` (INSERT nueva).
+   Recargas (heartbeat), bots filtrados por UA, estados no publicables
+   NO se loguean. Si se usa el log para auditar "cuántas visitas reciben
+   mis cots", subestima fuerte. Considerar log también en esos paths.
+
+10. **PHP `$_SESSION` cookie name colisiona con cza_session** (preexistente)
+    `core/Auth.php:32` llama `session_name(SESSION_NAME)` — la cookie PHP
+    nativa para `$_SESSION` comparte nombre con la cookie del token de Auth.
+    Ahora con activity refresh re-seteando la cookie en cada request, el
+    riesgo de override es mayor. Renombrar la PHP session a `PHPSESSID`
+    diferente de `SESSION_NAME`.
+
+11. **`SESSION_LIFETIME` no existe en código pero `impersonar.php` la usa**
+    Verificar que esté en `config.php` del server o el flujo de impersonar
+    superadmin queda silencioso roto (cookie con expires=time()+null=time()
+    → expira inmediato).
+
+### Hallazgos preexistentes detectados (no de hoy)
+
+- `cargar_usuario_desde_token_completo` SELECT incluye `u.password_hash` —
+  cualquier `print_r(Auth::usuario())` lo filtra. bcrypt es difícil de
+  romper pero idealmente excluir del SELECT.
+- Cleanup retroactivo en `layout.php` puede ser pesado en primera carga
+  del día si hay muchos vids registrados (no async, bloquea render).

@@ -202,8 +202,16 @@ class Auth
         // SESSION_VERSION: rechazar sesiones creadas antes del version-bump
         if (!self::session_version_valida($sesion)) return;
 
+        // Capturar expires_at para que refrescar_actividad respete sesiones
+        // largas de app nativa (30d) sin acortarlas a 14d (browser default).
+        $current_expires = $sesion['expires_at'] ?? null;
+
+        // Evitar filtrar el token de sesión via Auth::usuario()['token']
+        // (preexistente: SELECT s.*, u.* dejaba token en el array).
+        unset($sesion['token']);
+
         self::$usuario = $sesion;
-        self::refrescar_actividad($token);
+        self::refrescar_actividad($token, $current_expires);
     }
 
     // ─── Cargar usuario + empresa desde token (dominio raíz) ──
@@ -256,30 +264,61 @@ class Auth
 
             // Activity refresh — extender expiración si user está logueado
             if (self::$usuario !== null) {
-                self::refrescar_actividad($token);
+                self::refrescar_actividad($token, $sesion['expires_at'] ?? null);
             }
         }
     }
 
     // ─── SESSION_VERSION: validar que la sesión no es anterior al bump ────
+    // Fail-CLOSED: si SESSION_VERSION es inválida o fecha de sesión no parsea,
+    // rechazar la sesión y alertar via error_log. Mejor forzar re-login que
+    // dejar pasar silenciosamente algo que el deployer pensaba que invalidaría.
     private static function session_version_valida(array $sesion): bool
     {
         $version_ts = strtotime(SESSION_VERSION);
-        $sesion_ts  = strtotime((string)($sesion['session_created_at'] ?? '2000-01-01'));
-        if (!$version_ts || !$sesion_ts) return true; // No bloquear si parseo falla
+        if ($version_ts === false) {
+            error_log('[Auth] SESSION_VERSION inválida: ' . SESSION_VERSION . ' — fail-closed (rechazando sesión)');
+            return false;
+        }
+
+        // Si el array no trae el alias (query antigua sin él), pasar para
+        // no romper retro-compatibilidad. El check solo aplica si tenemos dato.
+        if (!array_key_exists('session_created_at', $sesion) || $sesion['session_created_at'] === null) {
+            return true;
+        }
+
+        $sesion_ts = strtotime((string)$sesion['session_created_at']);
+        if ($sesion_ts === false) {
+            // Fecha de sesión malformada — rechazar defensivamente
+            return false;
+        }
         return $sesion_ts >= $version_ts;
     }
 
     // ─── Activity refresh: extender sesión en cada request autenticado ────
-    // GREATEST evita acortar sesiones de app nativa (que son más largas).
-    // Cookie se refresca con dominio dinámico (subdominio vs custom domain).
-    private static function refrescar_actividad(string $token): void
+    // Throttle: solo refresca si queda < mitad del lifetime para no saturar la BD.
+    // GREATEST en UPDATE y MAX en cookie preservan sesiones de app nativa (30d).
+    // UPDATE filtra por expires_at > NOW() para NO revivir sesiones expiradas
+    // por logout o por cron de limpieza (race condition).
+    private static function refrescar_actividad(string $token, ?string $current_expires = null): void
     {
+        // THROTTLE: si la sesión tiene > 7 días por delante, no refrescar.
+        // Asesores activos: 1 refresh por semana en vez de uno por request.
+        if ($current_expires !== null) {
+            $current_ts = strtotime($current_expires);
+            $half_duration = (int)(SESSION_BROWSER_SECONDS / 2);
+            if ($current_ts !== false && ($current_ts - time()) > $half_duration) {
+                return;
+            }
+        }
+
         try {
+            // WHERE expires_at > NOW(): no revivir sesiones que ya estaban
+            // expiradas (logout, cron limpieza). Race condition cerrada.
             DB::execute(
                 "UPDATE user_sessions
                  SET expires_at = GREATEST(expires_at, DATE_ADD(NOW(), INTERVAL ? SECOND))
-                 WHERE token = ?",
+                 WHERE token = ? AND expires_at > NOW()",
                 [SESSION_BROWSER_SECONDS, $token]
             );
         } catch (Throwable $e) {
@@ -296,8 +335,19 @@ class Auth
             ? '.' . BASE_DOMAIN
             : '';
 
+        // Cookie expires: MAX(now + 14d, expires_at de sesión actual). Esto
+        // preserva las cookies de app nativa que fueron seteadas a 30d sin
+        // acortarlas al refrescarse desde browser default de 14d.
+        $cookie_expires = time() + SESSION_BROWSER_SECONDS;
+        if ($current_expires !== null) {
+            $current_ts = strtotime($current_expires);
+            if ($current_ts !== false && $current_ts > $cookie_expires) {
+                $cookie_expires = $current_ts;
+            }
+        }
+
         setcookie(SESSION_NAME, $token, [
-            'expires'  => time() + SESSION_BROWSER_SECONDS,
+            'expires'  => $cookie_expires,
             'path'     => '/',
             'domain'   => $cookie_domain,
             'secure'   => !DEBUG,

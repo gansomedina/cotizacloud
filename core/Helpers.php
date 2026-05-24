@@ -683,6 +683,8 @@ function escudo_log_decision(
             if (is_string($parsed)) $referer_host = $parsed;
         }
 
+        // mb_substr para no cortar emoji o caracteres multibyte a la mitad
+        // (causaba "Incorrect string value" en utf8mb4 silenciado por try/catch)
         DB::execute(
             "INSERT INTO escudo_log
                 (cotizacion_id, empresa_id, decision, visitor_id, ip, user_agent, device_sig, cookies_presentes, referer_host)
@@ -690,13 +692,13 @@ function escudo_log_decision(
             [
                 $cotizacion_id,
                 $empresa_id,
-                substr($decision, 0, 40),
+                mb_substr($decision, 0, 40, 'UTF-8'),
                 $vid ?: null,
-                substr($ip, 0, 45),
-                substr($ua, 0, 300),
+                mb_substr($ip, 0, 45, 'UTF-8'),
+                mb_substr($ua, 0, 300, 'UTF-8'),
                 $dsig ?: null,
-                substr(implode(',', $cookies), 0, 100),
-                substr($referer_host, 0, 255),
+                mb_substr(implode(',', $cookies), 0, 100, 'UTF-8'),
+                mb_substr($referer_host, 0, 255, 'UTF-8'),
             ]
         );
     } catch (Throwable $e) {

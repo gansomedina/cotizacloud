@@ -63,9 +63,13 @@ $log = DB::query(
 );
 
 // ─── Visitas del cliente (sesiones radar) ────────────────
-// Filtra ghost sessions: scroll=0 AND visible_ms<2s sin events asociados.
-// Estas son fetches automáticos (WhatsApp link preview, prefetch, bots con UA spoofed)
-// que el sistema registró pero no representan interacción humana real.
+// Filtra ghost sessions: scroll=0 AND visible_ms<2s.
+// Heurística: scroll mínimo o tiempo visible mínimo indican interacción
+// humana real. Sin alguno, son fetches automáticos (WhatsApp link preview,
+// prefetch del browser, bots con UA spoofed).
+// NOTA: clientes que abren, leen el título 1s y cierran sin scroll quedan
+// fuera de este historial (trade-off aceptable — visitas sin engagement
+// no son útiles para el asesor de todas formas).
 $visitas = DB::query(
     "SELECT s.created_at, s.ip, s.user_agent, s.es_interno,
             COALESCE(s.visible_ms, 0) AS visible_ms,
