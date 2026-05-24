@@ -7,6 +7,18 @@
 
 defined('COTIZAAPP') or die;
 
+// SESSION_VERSION — bumpear esta constante en config.php cuando se deployan
+// cambios que requieran invalidar TODAS las sesiones activas (ej. cambios al
+// Escudo, formato de cookies, lógica de auth). Las sesiones creadas antes de
+// esta fecha quedan invalidadas automáticamente al cargar Auth::init().
+// Por defecto: fecha en el pasado lejano → check inerte si no se define.
+defined('SESSION_VERSION') or define('SESSION_VERSION', '2000-01-01');
+
+// SESSION_BROWSER_SECONDS — duración de sesión browser (14 días)
+// SESSION_APP_SECONDS — duración de sesión app nativa (30 días, sin cambio)
+defined('SESSION_BROWSER_SECONDS') or define('SESSION_BROWSER_SECONDS', 60 * 60 * 24 * 14);
+defined('SESSION_APP_SECONDS')     or define('SESSION_APP_SECONDS',     60 * 60 * 24 * 30);
+
 class Auth
 {
     private static $usuario  = null;
