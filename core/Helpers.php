@@ -656,3 +656,50 @@ function url_publica(string $path = ''): string
 {
     return 'https://' . dominio_publico() . '/' . ltrim($path, '/');
 }
+
+// ─── escudo_log_decision ────────────────────────────────────
+// Registra en la tabla escudo_log qué capa atrapó (o no) cada visita
+// a un slug. Útil para diagnóstico cuando aparecen leaks inesperados.
+// Silencioso: nunca bloquea el flujo principal por error de log.
+function escudo_log_decision(
+    string $decision,
+    int $cotizacion_id,
+    int $empresa_id,
+    ?string $vid,
+    string $ip,
+    string $ua,
+    ?string $dsig = null
+): void {
+    try {
+        $cookies = [];
+        if (defined('SESSION_NAME') && !empty($_COOKIE[SESSION_NAME])) $cookies[] = 'cza_session';
+        if (!empty($_COOKIE['cz_vid']))  $cookies[] = 'cz_vid';
+        if (!empty($_COOKIE['cz_dsig'])) $cookies[] = 'cz_dsig';
+
+        $referer_host = '';
+        $referer = $_SERVER['HTTP_REFERER'] ?? '';
+        if ($referer !== '') {
+            $parsed = parse_url($referer, PHP_URL_HOST);
+            if (is_string($parsed)) $referer_host = $parsed;
+        }
+
+        DB::execute(
+            "INSERT INTO escudo_log
+                (cotizacion_id, empresa_id, decision, visitor_id, ip, user_agent, device_sig, cookies_presentes, referer_host)
+             VALUES (?,?,?,?,?,?,?,?,?)",
+            [
+                $cotizacion_id,
+                $empresa_id,
+                substr($decision, 0, 40),
+                $vid ?: null,
+                substr($ip, 0, 45),
+                substr($ua, 0, 300),
+                $dsig ?: null,
+                substr(implode(',', $cookies), 0, 100),
+                substr($referer_host, 0, 255),
+            ]
+        );
+    } catch (Throwable $e) {
+        // Silencioso — el log no debe bloquear el flujo del Escudo
+    }
+}
