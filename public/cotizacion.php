@@ -1529,7 +1529,10 @@ const TRACK_URL = '/api/track';
         var d = location.hostname;
         var dom = '';
         if (d === 'cotiza.cloud' || d.endsWith('.cotiza.cloud')) dom = '; domain=.cotiza.cloud';
-        document.cookie = n + '=' + encodeURIComponent(v) + '; path=/; max-age=' + sec + '; SameSite=Lax' + dom;
+        // Secure condicional: en HTTPS protege el atributo; en HTTP local el browser rechazaría.
+        // Sin esto, JS reescribe la cookie en cada page load y borra el Secure que puso PHP.
+        var secureFlag = location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = n + '=' + encodeURIComponent(v) + '; path=/; max-age=' + sec + '; SameSite=Lax' + dom + secureFlag;
     }
     function lsGet(k)  { try { return localStorage.getItem(k)  || ''; } catch(e) { return ''; } }
     function lsSet(k,v){ try { localStorage.setItem(k, v);             } catch(e) {} }
@@ -1581,7 +1584,13 @@ const TRACK_URL = '/api/track';
     // Persistir dsig en cookie del dominio actual (incluye custom domain).
     // layout.php solo la setea en .cotiza.cloud — esto la propaga también a
     // custom domains para que PHP de cotizacion.php la lea en próximos refresh.
-    if (deviceSig) setCookie('cz_dsig', deviceSig, 60 * 60 * 24 * 14);
+    // Validar útil antes de persistir: sw>0 && maxTex>0 evita guardar
+    // fingerprints degradados (0|0|1|0|0|||||0|0|0|0|0) que colisionan
+    // con cualquier dispositivo similar sin WebGL.
+    if (deviceSig) {
+        var _dp = deviceSig.split('|');
+        if (_dp[0] > 0 && _dp[4] > 0) setCookie('cz_dsig', deviceSig, 60 * 60 * 24 * 14);
+    }
 
     // ── Métricas de tiempo ────────────────────────────────────────
     var openStartedAt = Date.now();

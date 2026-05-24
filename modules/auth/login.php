@@ -291,7 +291,10 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
         // domain=.cotiza.cloud para que la cookie sea visible en empresa.cotiza.cloud
         var d = location.hostname, dom = '';
         if (d === 'cotiza.cloud' || d.endsWith('.cotiza.cloud')) dom = '; domain=.cotiza.cloud';
-        document.cookie = n + '=' + encodeURIComponent(v) + '; path=/' + dom + '; max-age=' + sec + '; SameSite=Lax';
+        // Secure condicional: en HTTPS protege el atributo; en HTTP local el browser rechazaría.
+        // Sin esto, JS reescribe la cookie en cada page load y borra el Secure que puso PHP.
+        var secureFlag = location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = n + '=' + encodeURIComponent(v) + '; path=/' + dom + '; max-age=' + sec + '; SameSite=Lax' + secureFlag;
     }
     function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch(e) { return ''; } }
     function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }

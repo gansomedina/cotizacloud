@@ -674,7 +674,12 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
         var transp=matchMedia('(prefers-reduced-transparency:reduce)').matches?1:0;
         var iosM=(navigator.userAgent.match(/OS (\d+)/)||[])[1]||'0';
         var dsig=[sw,sh,dpr,tp,maxTex,lang,tz.split('/').pop()||tz,hc,motion,contrast,inverted,transp,iosM].join('|');
-        if(dsig)document.cookie='cz_dsig='+encodeURIComponent(dsig)+';path=/;max-age=<?= 60*60*24*14 ?>;SameSite=Lax;domain=.<?= BASE_DOMAIN ?>';
+        // Validar útil antes de persistir: sw>0 && maxTex>0 evita fingerprints
+        // degradados (0|0|1|0|0|||||0|0|0|0|0) que colisionan con cualquier dispositivo similar.
+        // Secure condicional: en HTTPS protege el atributo; en HTTP local el browser rechazaría.
+        var _u=sw>0&&maxTex>0;
+        var _sec=location.protocol==='https:'?';Secure':'';
+        if(dsig&&_u)document.cookie='cz_dsig='+encodeURIComponent(dsig)+';path=/;max-age=<?= 60*60*24*14 ?>;SameSite=Lax;domain=.<?= BASE_DOMAIN ?>'+_sec;
     }catch(e){}
 })();
 </script>
