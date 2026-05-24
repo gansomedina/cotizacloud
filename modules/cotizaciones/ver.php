@@ -63,16 +63,31 @@ $log = DB::query(
 );
 
 // ─── Visitas del cliente (sesiones radar) ────────────────
+// Filtra ghost sessions: scroll=0 AND visible_ms<2s sin events asociados.
+// Estas son fetches automáticos (WhatsApp link preview, prefetch, bots con UA spoofed)
+// que el sistema registró pero no representan interacción humana real.
 $visitas = DB::query(
     "SELECT s.created_at, s.ip, s.user_agent, s.es_interno,
             COALESCE(s.visible_ms, 0) AS visible_ms,
             COALESCE(s.scroll_max, 0) AS scroll_max
      FROM quote_sessions s
      WHERE s.cotizacion_id = ? AND s.es_interno = 0
+       AND (s.scroll_max > 0 OR s.visible_ms >= 2000)
      ORDER BY s.created_at DESC
      LIMIT 10",
     [$cot_id]
 );
+
+// Contador dinámico de visitas reales (excluye ghosts del display)
+// El campo cotizaciones.visitas mantiene el conteo histórico bruto;
+// aquí calculamos el conteo "limpio" que el asesor debe ver.
+$visitas_reales = (int)DB::val(
+    "SELECT COUNT(*) FROM quote_sessions
+     WHERE cotizacion_id = ? AND es_interno = 0
+       AND (scroll_max > 0 OR visible_ms >= 2000)",
+    [$cot_id]
+);
+$cot['visitas_reales'] = $visitas_reales;
 
 // ─── Catálogo, clientes, cupones ─────────────────────────
 $es_inmuebles = ($empresa['giro'] ?? 'servicios') === 'inmuebles';

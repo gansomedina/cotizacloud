@@ -141,6 +141,7 @@ if (!$sess) {
             [$cot_id, $ip, substr($ua,0,300), $visitor_id ?: null, $device_sig ?: null, $session_id ?: null, $page_id ?: null, $max_scroll, $visible_ms]
         );
     } catch (Throwable $e) {
+        error_log("[track.php] quote_sessions INSERT con device_sig falló: " . $e->getMessage() . " — cot={$cot_id} vid={$visitor_id} ip={$ip}");
         $sess_id = DB::insert(
             "INSERT INTO quote_sessions (cotizacion_id, ip, user_agent, visitor_id, session_id, page_id, activa, scroll_max, visible_ms)
              VALUES (?,?,?,?,?,?,1,?,?)",
@@ -160,6 +161,7 @@ if (!$sess) {
             [$visitor_id ?: null, $device_sig ?: null, $max_scroll, $visible_ms, $sess_id]
         );
     } catch (Throwable $e) {
+        error_log("[track.php] quote_sessions UPDATE con device_sig falló: " . $e->getMessage() . " — sess_id={$sess_id} vid={$visitor_id}");
         DB::execute(
             "UPDATE quote_sessions SET updated_at=NOW(),
                 visitor_id=COALESCE(?, visitor_id),
@@ -179,13 +181,17 @@ try {
         [$cot_id, $session_id ?: null, $visitor_id ?: null, $device_sig ?: null, $page_id ?: null, $tipo, $max_scroll, $visible_ms, $open_ms, substr($ua,0,255), $ip, $ts_now]
     );
 } catch (Throwable $e) {
+    error_log("[track.php] quote_events INSERT con device_sig falló: " . $e->getMessage() . " — cot={$cot_id} vid={$visitor_id} ip={$ip}");
     try {
         DB::execute(
             "INSERT INTO quote_events (cotizacion_id, session_id, visitor_id, page_id, tipo, max_scroll, visible_ms, open_ms, ua, ip, ts_unix)
              VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             [$cot_id, $session_id ?: null, $visitor_id ?: null, $page_id ?: null, $tipo, $max_scroll, $visible_ms, $open_ms, substr($ua,0,255), $ip, $ts_now]
         );
-    } catch (Throwable $e2) { exit; }
+    } catch (Throwable $e2) {
+        error_log("[track.php] quote_events INSERT fallback también falló: " . $e2->getMessage() . " — cot={$cot_id} vid={$visitor_id} ip={$ip}");
+        exit;
+    }
 }
 
 // Marcar como vista — solo cambio de estado, NO incrementar visitas
