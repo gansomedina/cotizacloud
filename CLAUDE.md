@@ -1956,3 +1956,146 @@ primer instante. Opción B permite contaminación temporal.
 ### Pendiente físico para mañana
 - UPDATE manual para `c6202e48-…` (cot 3805 Acacia Abigail) — usuario
   dijo "Ahorita lo haré"
+
+## Sesión 23-24 mayo 2026 — Cierre del día (Manuel leak)
+
+### Commits del día (branch `claude/analyze-domain-change-hmo-AkFAi`)
+| Commit | Cambio |
+|---|---|
+| `17de9df` | Fix dominio cookie cz_vid (subdomain vs custom) — previene leak por bucle infinito |
+| `95ae9f3` | Filtro UI ghosts en historial visitas + error_log en track.php |
+| `5707374` | Constantes SESSION_VERSION + SESSION_*_SECONDS |
+| `454fc34` | Sesión browser 14d (era 3d) + activity refresh + SESSION_VERSION check |
+| `29d1d7b` | Tabla escudo_log + auditoría en cotizacion.php 4 puntos de decisión |
+| `147dbe0` | Bridge captura vid legacy del custom domain (cierra Caso 1) |
+| `a27e886` | Alinear cz_dsig a 14d + propagarla a custom domain via JS |
+
+### Verificado en producción
+- Sesión 1b6ff (Manuel) extendida de 3d a 14d ✓
+- escudo_log capturando capa_0_logueado con cookies completas ✓
+- No nuevos leaks post-deploy (Monitor en 2 viejos, ahora limpiados manualmente)
+
+### Migración pendiente en server (si no se corrió)
+```sql
+-- migrations/add_escudo_log.sql
+```
+
+### SESSION_VERSION
+Constante en config.php para forzar re-login global cuando se bumpee:
+```php
+define('SESSION_VERSION', '2026-05-24'); // bumpea fecha al deployar cambios al Escudo
+```
+Default `2000-01-01` deja el check inerte si no se sobrescribe.
+
+## PENDIENTE — Gate obligatorio de Push Subscription (desktop)
+
+### Concepto
+Hacer OBLIGATORIO que asesores en desktop activen notificaciones del navegador.
+Sin notificaciones activas → no acceden a dashboard, radar, cotizaciones, etc.
+Objetivo: forzar adopción de push como mecanismo adicional de identidad +
+canal de notificación de leaks.
+
+### Diseño aprobado por el usuario
+- **Solo desktop**: mobile y app nativa NO se bloquean (ya tienen identity)
+- **iOS Safari sin PWA**: NO bloquear (físico imposible) — mostrar CTA "Descarga la app"
+- **Bypass para superadmin**: para evitar lockout si push se rompe
+
+### Decisiones pendientes ANTES de implementar
+1. **¿Android móvil también se bloquea?** (push funciona pero UX en pantalla chica es peor)
+2. **¿Frontend-only Fase 1 o backend de una?** (JS overlay vs server-side route gating)
+3. **¿Qué constituye "subscription registrada"?** (ANY active en dispositivos_push, o per-device-fingerprint match)
+
+### Stack propuesto
+| Archivo | Función |
+|---|---|
+| `assets/js/escudo-gate.js` (NUEVO) | Lógica del gate: detectar capability, permission state, mostrar overlay |
+| `assets/css/escudo-gate.css` (NUEVO) | Estilos del overlay full-screen |
+| `core/layout.php` | Incluir el JS + HTML overlay (solo si user logueado) |
+| (opcional Fase 2) `api/push/check-status.php` | Verificar subscription server-side, rechazar requests |
+
+### Estados del overlay (UI)
+| Estado | Mostrar |
+|---|---|
+| `permission='default'` | Pre-prompt modal: "Activa el Escudo Radar — sin esto las visitas a tus cotizaciones cuentan como cliente. [Activar]" → al click llama `requestPermission()` |
+| `permission='granted'` sin subscription | Auto-suscribir silencioso → POST a `/api/push/register` |
+| `permission='denied'` | **CRÍTICO**: instrucciones por browser con screenshots. Browser NO permite re-pedir prompt programáticamente. Solo manual desde settings → click candado URL → notificaciones → permitir |
+| `granted` + subscription activa | Desbloquear, mostrar dashboard normal |
+
+### Detección plataforma (JS)
+```javascript
+function debeAplicarGate() {
+    // App nativa → ya tiene APNs/FCM, no aplicar
+    if (window.Capacitor?.isNativePlatform?.()) return false;
+
+    // Browser sin soporte → no aplicar
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+
+    // iOS Safari sin PWA → physico imposible, no aplicar
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    var isStandalone = window.navigator.standalone === true;
+    if (isIOS && !isStandalone) return false;
+
+    // Mobile Android: opcional (decisión pendiente)
+    // var isMobile = /Android|...
+
+    return true; // desktop con capability → aplicar gate
+}
+```
+
+### Limitación arquitectónica importante (NO ignorar)
+**Service workers son per-ORIGIN.** Push subscription en `cotiza.cloud` NO sirve
+en custom domain como `obregon.ontimecocinas.com`. Para empresas con custom
+domain, el push como **identity en slugs** sigue sin cubrir.
+
+El gate forzaría la activación en `cotiza.cloud` (dashboard) — eso genera
+subscription en esa origin. Pero las visitas leak en slugs custom domain
+NO se identifican por push subscription.
+
+**El gate sigue valiendo** para:
+- Garantizar que asesor recibe push notifications (canal de notificación)
+- Reducir leaks en SUBDOMAIN slugs (donde sí funciona como identity)
+- No resuelve leaks en CUSTOM DOMAIN slugs (los más comunes para OnTime)
+
+Para extender a custom domain: requeriría registro de SW separado en cada
+dominio custom, prompt de permission EN CADA dominio, almacenamiento de
+subscriptions por dominio. **Bastante más complejo** — descartado por ahora.
+
+### Comportamiento si `permission='denied'`
+Browser NO permite re-prompt programático. Estrategia:
+
+1. **Detección**: `Notification.permission === 'denied'` al cargar
+2. **UI mostrada**: pantalla con instrucciones específicas por browser:
+   - Chrome: "Click el candado 🔒 en la URL → Notificaciones → Permitir → Recargar"
+   - Firefox: "Click el escudo en la URL → Permisos → Notificaciones → Permitir → Recargar"
+   - Safari macOS: "Preferencias del Safari → Sitios web → Notificaciones → Permitir"
+3. **Botón "Ya lo hice → recargar"**: recarga la página, el gate re-evalúa
+4. **Pre-prompt strategy**: ANTES de llamar `requestPermission()` por primera
+   vez, mostrar nuestro modal explicando el beneficio. Reduce tasa de denial
+   del ~70% a <10%.
+
+### Tradeoffs honestos
+**Pros:**
+- Garantiza canal de notificación a todos los asesores
+- Posible identidad adicional para slugs subdomain
+- Disciplina: asesor "burro" no puede usar el sistema sin protegerse
+
+**Cons:**
+- UX hostil para asesores nuevos (primera pantalla bloqueante)
+- Bounce rate alto en signup
+- Soporte: tickets de "no me deja entrar" cuando alguien dice denied
+- NO resuelve leaks en custom domain (donde más leaks ocurren)
+- iOS Safari users quedan sin solución (a menos que descarguen app)
+
+### Antes de implementar
+Esperar 2 semanas para validar con `escudo_log` cuántos leaks aparecen
+post-fix de hoy. Si son <5 por semana, el gate puede no valer la pena.
+Si son >20 por semana, justifica el costo UX.
+
+### Tabla cobertura final
+| Plataforma | Estado |
+|---|---|
+| Desktop Chrome/Firefox/Edge | Bloqueado hasta activar |
+| Safari macOS | Bloqueado hasta activar |
+| App nativa iOS/Android | Sin bloqueo (token APNs/FCM ya identifica) |
+| Safari iPhone sin PWA | Sin bloqueo, ve CTA "Descarga la app" |
+| Chrome Android | TBD (decisión pendiente) |
