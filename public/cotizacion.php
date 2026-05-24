@@ -1578,6 +1578,11 @@ const TRACK_URL = '/api/track';
     var deviceSig  = getDeviceSig();
     var pageId     = uuidv4(); // Nuevo por cada carga de página
 
+    // Persistir dsig en cookie del dominio actual (incluye custom domain).
+    // layout.php solo la setea en .cotiza.cloud — esto la propaga también a
+    // custom domains para que PHP de cotizacion.php la lea en próximos refresh.
+    if (deviceSig) setCookie('cz_dsig', deviceSig, 60 * 60 * 24 * 14);
+
     // ── Métricas de tiempo ────────────────────────────────────────
     var openStartedAt = Date.now();
     var visibleStart  = document.visibilityState === 'visible' ? Date.now() : 0;
