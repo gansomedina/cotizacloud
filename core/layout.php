@@ -92,14 +92,20 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
                     $vid_list
                 );
 
-                // 3. Recalcular ultima_vista_at de las afectadas — la sesión recién
-                // marcada interna ya no cuenta: la cotización no debe seguir
-                // mostrando la hora de visita del asesor. NO se toca visitas.
+                // 3. Recalcular ultima_vista_at y visitas de las afectadas.
+                // La sesión recién marcada interna ya no cuenta: la cotización
+                // no debe seguir mostrando la hora ni el conteo del asesor.
+                // visitas se recalcula desde quote_sessions (source of truth)
+                // en vez de restar — así es siempre exacto sin importar cuántas
+                // sesiones del asesor había. "Sin abrir" usa estado/vista_at,
+                // no visitas — no hay riesgo de alarma falsa.
                 foreach ($afectadas as $af) {
                     DB::execute(
                         "UPDATE cotizaciones c SET
                            c.ultima_vista_at = (SELECT MAX(qs.created_at) FROM quote_sessions qs
-                                                WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0)
+                                                WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0),
+                           c.visitas = (SELECT COUNT(*) FROM quote_sessions qs2
+                                        WHERE qs2.cotizacion_id = c.id AND qs2.es_interno = 0)
                          WHERE c.id = ?",
                         [(int)$af['cotizacion_id']]
                     );

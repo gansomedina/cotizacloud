@@ -2175,3 +2175,66 @@ se arreglaron en commit `3f913e3`. Estos quedan pendientes (medio/bajo):
   romper pero idealmente excluir del SELECT.
 - Cleanup retroactivo en `layout.php` puede ser pesado en primera carga
   del día si hay muchos vids registrados (no async, bloquea render).
+
+## Sesión 24 mayo (cierre noche) — Cookies SaaS
+
+### Completado (commit d041bbe)
+1. **JS setCookie con `Secure` condicional por protocolo** en 3 archivos:
+   `login.php:294`, `cotizacion.php:1532`, `layout.php:677`.
+   - Causa raíz: `document.cookie` re-escribía la cookie en cada page load
+     SIN Secure, borrando el atributo que PHP había puesto. Por eso
+     `cz_vid` y `cz_dsig` aparecían sin Secure aunque PHP las pusiera con
+     `secure=true`. `cza_session` (solo set por PHP) sí lo mantenía.
+   - Secure condicional via `location.protocol === 'https:'` para no
+     romper dev local (HTTP rechazaría cookie con Secure).
+2. **Validar dsig útil antes de persistir** (audit item 5):
+   `cotizacion.php:1584` y `layout.php:677` ahora chequean `sw>0 && maxTex>0`
+   antes de guardar. Evita que fingerprints degradados como
+   `0|0|1|0|0|||||0|0|0|0|0` se copien a `user_sessions.device_sig` y
+   colisionen con cualquier dispositivo sin WebGL.
+
+### Cookie `cz_vid` duplicada (.cotiza.cloud + host-only) — NO ACCIÓN
+
+Empresas SaaS con asesores que se loguearon antes del 19 mayo tienen DOS
+cookies `cz_vid` en su browser:
+- `.cotiza.cloud` (con Secure ahora) — la legítima del código actual
+- `granitodepot.cotiza.cloud` (host-only, sin Secure) — cadáver del fix
+  del 19 mayo cuando `cotizacion.php` ponía cookies con dominio vacío
+
+**Decisión: NO limpiar.** Auditoría exhaustiva (22 escenarios) confirma:
+- Ambas tienen el MISMO valor (JS reusa via getCookie)
+- Ambas están en `radar_visitors_internos` → Capa 1 funciona con cualquiera
+- PHP `$_COOKIE` colapsa duplicados → siempre devuelve algo válido
+- El vid es UUID opaca, leakearla por MITM no compromete nada
+- TTL natural: ~2 años — se purga sola
+- Cualquier usuario que limpie cookies del browser la borra gratis
+
+Razón de no limpiar: cleanup JS para borrar la host-only es bajo riesgo
+pero NO cero (Browser buggy podría borrar las dos → vid nuevo no
+registrado → Capa 1 falla temporal). Beneficio es cosmético (Cookie
+header limpio, debug claro). Ratio costo/beneficio negativo.
+
+### Monitorear
+- 2 semanas en `escudo_log`: si aparecen `cliente_real` con vids que
+  deberían ser internos en empresas SaaS, reabrir el tema con datos
+- Nuevos asesores post-19 mayo nunca tienen la duplicada — la población
+  afectada decae naturalmente
+
+### Pendientes que SIGUEN abiertos (no de hoy)
+Los 11 items del audit del 24 mayo siguen sin aplicar (cron purga
+escudo_log, bridge legacy shared computer, track.php log injection,
+escudo_log marker superadmin, etc.). Aplicar cuando los datos justifiquen.
+
+### Estado de commits del día
+- `95ae9f3` filtro ghosts UI + log track
+- `5707374` constantes SESSION_VERSION
+- `454fc34` sesión 14d + activity refresh
+- `29d1d7b` escudo_log + auditoría
+- `147dbe0` bridge legacy vid
+- `a27e886` cz_dsig 14d + propagación
+- `0b4c3cc` docs cierre Manuel
+- `3f913e3` audit fixes (5 críticos)
+- `1bbda01` docs audit pendientes
+- `d041bbe` Secure + dsig útil
+
+Todos en origin/claude/analyze-domain-change-hmo-AkFAi. Sin pendientes.
