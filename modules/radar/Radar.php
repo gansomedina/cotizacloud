@@ -433,18 +433,36 @@ class Radar
             )) continue;
 
             // ── Filtro behavioral: sesión fantasma de bot de preview ──
-            // Si scroll=0, visible=0, sesión tiene >2 min de vida,
-            // y no hay eventos JS desde esa IP → es un bot que hizo fetch
-            // pero no ejecutó JavaScript (WhatsApp, Teams, iMessage, etc.)
+            // Si scroll=0, visible=0, sesión tiene >2 min de vida, descartar
+            // a menos que el MISMO visitor_id (o IP si no hay vid) tenga
+            // al menos 1 evento JS con engagement real (scroll>0 o visible>=2s).
+            //
+            // Antes el filtro miraba solo "ip tiene eventos" sin chequear
+            // engagement. Los previews modernos (iMessage, Teams, headless
+            // de oficina) ejecutan JS por <100ms y mandan quote_open +
+            // quote_close con scroll=0 y visible=0. Esos eventos pasaban
+            // el filtro viejo y contaminaban $sessions.
+            //
+            // Match por visitor_id (UUID estable) — no por IP, que rota en
+            // Telcel/Telmex y comparte oficinas/NAT. Caso real: cliente que
+            // cambia de WiFi a 4G mantiene su vid; preview que comparte IP
+            // con cliente real no comparte vid.
             $scroll = (int)($s['scroll_max'] ?? 0);
             $vis    = (int)($s['visible_ms'] ?? 0);
             if (($cfg['filtrar_bots'] ?? true) && $scroll === 0 && $vis === 0 && ($now - $ts) > 120) {
-                // Verificar si hay al menos 1 evento JS desde esta IP
-                $ip_has_events = false;
+                $vid_has_real_engagement = false;
                 foreach ($ev_rows as $ev) {
-                    if (($ev['ip'] ?? '') === $ip) { $ip_has_events = true; break; }
+                    $match = ($vid !== '' && ($ev['visitor_id'] ?? '') === $vid)
+                          || ($vid === '' && ($ev['ip'] ?? '') === $ip);
+                    if (!$match) continue;
+                    $ev_scroll = (int)($ev['max_scroll'] ?? 0);
+                    $ev_vis    = (int)($ev['visible_ms']  ?? 0);
+                    if ($ev_scroll > 0 || $ev_vis >= 2000) {
+                        $vid_has_real_engagement = true;
+                        break;
+                    }
                 }
-                if (!$ip_has_events) continue;
+                if (!$vid_has_real_engagement) continue;
             }
 
             // ── Filtro de visita mínima: <2 segundos no es lectura real ──
