@@ -335,8 +335,8 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     <?php endif; ?>
     <span style="color:var(--t3)">·</span>
     <span><?= fecha_humana($cot['created_at']) ?></span>
-    <?php if ($cot['ultima_vista_at']): ?>
-        <span style="color:var(--t3)">· Vista <?= tiempo_relativo($cot['ultima_vista_at']) ?></span>
+    <?php if ($cot['vista_at']): ?>
+        <span style="color:var(--t3)">· Vista <?= tiempo_relativo($cot['vista_at']) ?></span>
     <?php endif; ?>
     <?php if ($cot['radar_bucket']): ?>
         <span style="background:var(--purple-bg);color:var(--purple);padding:2px 8px;border-radius:5px;font:600 11px var(--body);">
