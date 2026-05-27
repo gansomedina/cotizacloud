@@ -710,6 +710,9 @@ ob_start();
       · Ciclo venta: <b><?= $ciclo_venta['dias'] ?>d</b><?= $ciclo_venta['auto'] ? '' : ' <span style="opacity:.6">(estimado)</span>' ?>
       · Modo: <b><?= ucfirst($config['sensibilidad'] ?? 'medio') ?></b>
     </p>
+    <p style="font-weight:400;font-size:11px;color:var(--t3);margin-top:6px;opacity:.85;max-width:780px;line-height:1.5">
+      <strong>Nota:</strong> Las visitas se cuentan cuando el cliente interactúa con la cotización al menos 2 segundos viéndola. Las aperturas más breves se filtran automáticamente para no inflar el contador con visitas sin lectura o accidentales.
+    </p>
   </div>
   <?php if ($debug_mode): ?><span style="padding:4px 10px;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;font-weight:700;font-size:11px;color:#92400e">DEBUG ON</span><?php endif; ?>
 </div>

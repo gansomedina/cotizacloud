@@ -606,6 +606,9 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 </div>
                 <?php endforeach; ?>
             <?php endif; ?>
+            <div style="margin-top:12px;padding:8px 10px;background:var(--bg);border-radius:6px;font:400 11px var(--body);color:var(--t3);line-height:1.5">
+                <strong>Nota:</strong> Las visitas se cuentan cuando el cliente interactúa con la cotización al menos 2 segundos viéndola. Las aperturas más breves se filtran automáticamente para no inflar el contador con visitas sin lectura o accidentales.
+            </div>
         </div>
 
         <!-- Log interno -->
