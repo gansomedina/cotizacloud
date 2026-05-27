@@ -594,7 +594,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <?php foreach ($visitas as $v):
                     $ua_short = preg_match('/iPhone|iPad/i', $v['user_agent']) ? 'iPhone'
                               : (preg_match('/Android/i', $v['user_agent']) ? 'Android' : 'Desktop');
-                    $dur = $v['visible_ms'] > 0 ? round($v['visible_ms'] / 1000) . 's' : '—';
+                    $dur = $v['visible_ms'] >= 2000 ? round($v['visible_ms'] / 1000) . 's' : 'breve';
                 ?>
                 <div class="visit-row">
                     <div class="visit-dot" style="background:var(--g)"></div>
