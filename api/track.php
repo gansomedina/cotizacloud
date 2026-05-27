@@ -245,33 +245,51 @@ switch ($tipo) {
         break;
 }
 
-// ── Limpieza de sesiones fantasma (bots de preview) ────────────────
-// Bots de link-preview (WhatsApp, iMessage, Teams) hacen fetch server-side
-// pero NO ejecutan JS. Resultado: sesión con scroll=0, visible_ms=0, sin eventos.
-// Al recibir un evento JS real, limpiar esas sesiones huérfanas y ajustar visitas.
+// ── Limpieza de sesiones fantasma ───────────────────────────────────
+// Detecta previews modernos (WhatsApp/iMessage/Android Chrome) que
+// ejecutan JS por <100ms y dejan sesiones con engagement mínimo.
+//
+// Distinguimos 3 tipos por los valores de quote_sessions:
+//   - visible_ms IS NULL  → cliente con adblocker (track.php nunca tocó
+//     la sesión). MANTENER: server-side ya registró visita legítima.
+//   - visible_ms < 200 AND scroll_max = 0 → preview moderno con JS
+//     limitado que actualizó la sesión con engagement mínimo. BORRAR.
+//   - scroll_max > 0 OR visible_ms >= 200 → cliente real. MANTENER.
+//
+// Verificamos contra la sesión misma (no contra eventos por vid) porque
+// un mismo visitor_id puede tener múltiples quote_sessions (cliente
+// abre la cot varias veces fuera de la ventana de dedupe 30min). Eventos
+// con engagement de OTRA sesión no deben bloquear el cleanup de esta.
+//
+// Después del DELETE, recalcular visitas/vista_at/ultima_vista_at desde
+// quote_sessions reales para que el header del editor coincida con el
+// historial visible.
 try {
     $ghosts = DB::query(
-        "SELECT qs.id
-         FROM quote_sessions qs
-         LEFT JOIN quote_events qe ON qe.cotizacion_id = qs.cotizacion_id AND qe.ip = qs.ip
-         WHERE qs.cotizacion_id = ?
-           AND COALESCE(qs.scroll_max, 0) = 0
-           AND COALESCE(qs.visible_ms, 0) = 0
-           AND qs.created_at < DATE_SUB(NOW(), INTERVAL 2 MINUTE)
-           AND qe.id IS NULL",
+        "SELECT id FROM quote_sessions
+         WHERE cotizacion_id = ?
+           AND scroll_max = 0
+           AND visible_ms IS NOT NULL
+           AND visible_ms < 200
+           AND created_at < DATE_SUB(NOW(), INTERVAL 2 MINUTE)",
         [$cot_id]
     );
     if ($ghosts) {
         $ghost_ids = array_column($ghosts, 'id');
         $placeholders = implode(',', array_fill(0, count($ghost_ids), '?'));
         DB::execute("DELETE FROM quote_sessions WHERE id IN ($placeholders)", $ghost_ids);
-        // Ajustar contador de visitas (CAST evita underflow en BIGINT UNSIGNED)
+
         DB::execute(
-            "UPDATE cotizaciones SET visitas = CASE WHEN visitas >= ? THEN visitas - ? ELSE 0 END WHERE id = ?",
-            [count($ghost_ids), count($ghost_ids), $cot_id]
+            "UPDATE cotizaciones c SET
+                c.visitas         = (SELECT COUNT(*)           FROM quote_sessions qs WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0),
+                c.vista_at        = (SELECT MIN(qs.created_at) FROM quote_sessions qs WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0),
+                c.ultima_vista_at = (SELECT MAX(qs.created_at) FROM quote_sessions qs WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0)
+             WHERE c.id = ?",
+            [$cot_id]
         );
     }
 } catch (Throwable $e) {}
+
 
 // Recalcular Radar
 if (in_array($cot['estado'], ['enviada','vista'], true)) {
