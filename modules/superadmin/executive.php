@@ -1640,14 +1640,11 @@ $logins_asesores = DB::query(
 $fugas = DB::query(
     "SELECT qs.id, qs.cotizacion_id, qs.ip, qs.visitor_id, qs.created_at, qs.es_interno,
             c.empresa_id, c.titulo,
-            CASE WHEN ri.id IS NOT NULL THEN 'IP' ELSE '' END AS match_ip,
-            CASE WHEN vi.id IS NOT NULL THEN 'VID' ELSE '' END AS match_vid
+            'VID' AS match_vid
      FROM quote_sessions qs
      JOIN cotizaciones c ON c.id = qs.cotizacion_id
-     LEFT JOIN radar_ips_internas ri ON ri.empresa_id = c.empresa_id AND ri.ip = qs.ip
-     LEFT JOIN radar_visitors_internos vi ON vi.empresa_id = c.empresa_id AND vi.visitor_id = qs.visitor_id
+     JOIN radar_visitors_internos vi ON vi.empresa_id = c.empresa_id AND vi.visitor_id = qs.visitor_id
      WHERE c.empresa_id IN ({$emp_ids})
-       AND (ri.id IS NOT NULL OR vi.id IS NOT NULL)
        AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
      ORDER BY qs.es_interno ASC, qs.created_at DESC LIMIT 20"
 );
@@ -1670,7 +1667,7 @@ $fugas_limpias = array_filter($fugas, fn($f) => (int)$f['es_interno']);
     <tbody>
     <?php foreach ($fugas as $fg):
         $ec = $empresas_cfg[(int)$fg['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
-        $matched = trim($fg['match_ip'] . ($fg['match_ip'] && $fg['match_vid'] ? '+' : '') . $fg['match_vid']);
+        $matched = $fg['match_vid'];
         $limpia = (int)$fg['es_interno'];
     ?>
     <tr style="<?= $limpia ? 'opacity:.5' : '' ?>">
