@@ -202,6 +202,21 @@ if ($cot['estado'] === 'enviada' && $tipo === 'quote_open') {
     $cot['estado'] = 'vista';
 }
 
+// Update ultima_vista_at en cualquier evento con engagement real, indep.
+// del cambio de estado. Antes solo se actualizaba cuando estado='enviada';
+// si la cot ya estaba en 'vista' y el cliente volvía a scrollear u otro
+// evento real, ultima_vista_at quedaba desactualizado.
+// Throttle 1 min para no spamear UPDATEs con cada quote_scroll/section_view.
+if (in_array($cot['estado'], ['enviada','vista'], true)
+    && ($max_scroll > 0 || $visible_ms >= 200)) {
+    DB::execute(
+        "UPDATE cotizaciones SET ultima_vista_at = NOW()
+         WHERE id = ?
+           AND (ultima_vista_at IS NULL OR ultima_vista_at < DATE_SUB(NOW(), INTERVAL 1 MINUTE))",
+        [$cot_id]
+    );
+}
+
 // Acciones especiales
 switch ($tipo) {
     case 'accept_confirm':
