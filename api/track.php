@@ -245,20 +245,37 @@ switch ($tipo) {
         break;
 }
 
-// ── Limpieza de sesiones fantasma (bots de preview) ────────────────
-// Bots de link-preview (WhatsApp, iMessage, Teams) hacen fetch server-side
-// pero NO ejecutan JS. Resultado: sesión con scroll=0, visible_ms=0, sin eventos.
-// Al recibir un evento JS real, limpiar esas sesiones huérfanas y ajustar visitas.
+// ── Limpieza de sesiones fantasma ───────────────────────────────────
+// Distingue 3 tipos de sesiones sin engagement:
+//   1. Sin eventos JS  → cliente con adblocker (/api/track bloqueado).
+//      MANTENER: la visita es legítima, server-side la registró.
+//   2. Con eventos pero TODOS vacíos (scroll=0 y visible<200ms) →
+//      preview moderno de WhatsApp/iMessage/Android Chrome que ejecuta
+//      JS por <100ms y dispara quote_open + quote_close sin engagement.
+//      BORRAR: no fue lectura humana.
+//   3. Con al menos 1 evento con engagement real → cliente real.
+//      MANTENER.
+// Match por visitor_id (UUID estable) no por IP (rota en Telcel/Telmex).
 try {
     $ghosts = DB::query(
         "SELECT qs.id
          FROM quote_sessions qs
-         LEFT JOIN quote_events qe ON qe.cotizacion_id = qs.cotizacion_id AND qe.ip = qs.ip
          WHERE qs.cotizacion_id = ?
            AND COALESCE(qs.scroll_max, 0) = 0
-           AND COALESCE(qs.visible_ms, 0) = 0
+           AND COALESCE(qs.visible_ms, 0) < 200
            AND qs.created_at < DATE_SUB(NOW(), INTERVAL 2 MINUTE)
-           AND qe.id IS NULL",
+           AND qs.visitor_id IS NOT NULL
+           AND EXISTS (
+               SELECT 1 FROM quote_events qe
+               WHERE qe.cotizacion_id = qs.cotizacion_id
+                 AND qe.visitor_id = qs.visitor_id
+           )
+           AND NOT EXISTS (
+               SELECT 1 FROM quote_events qe2
+               WHERE qe2.cotizacion_id = qs.cotizacion_id
+                 AND qe2.visitor_id = qs.visitor_id
+                 AND (qe2.max_scroll > 0 OR qe2.visible_ms >= 200)
+           )",
         [$cot_id]
     );
     if ($ghosts) {
