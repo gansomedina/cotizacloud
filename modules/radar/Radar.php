@@ -466,7 +466,16 @@ class Radar
             }
 
             // ── Filtro de visita mínima: <2 segundos no es lectura real ──
-            if ($vis > 0 && $vis < 2000 && $scroll === 0) continue;
+            // Validado con datos (60d): rango scroll 20-34 con visible<200ms tiene
+            // 0 aceptadas y 9 activas — zona muerta del scroll restaurado por el
+            // browser (Chrome Android restaura posición de scroll de cargas previas;
+            // el JS lo lee como si fuera scroll del usuario y manda scroll>0 con
+            // visible bajo). El umbral scroll<35 + visible<200 captura ghost-restore
+            // sin tocar engagement legítimo (rango 35+ tiene aceptadas reales).
+            // $js_tocado distingue NULL (adblocker, mantener) de 0 (JS ejecutó pero
+            // cero engagement, descartar).
+            $js_tocado = $s['visible_ms'] !== null;
+            if (($cfg['filtrar_bots'] ?? true) && $js_tocado && $vis < 200 && $scroll < 35) continue;
 
             // Construir mapas vid→dsig, vid→ips e ip→dsig (después de filtros, antes de dedup)
             if ($dsig !== '') {
