@@ -2423,3 +2423,95 @@ Si las 8 pruebas pasan en 2 semanas:
   detecta restore
 - Evaluar si subir el umbral de visible a `<300` (más permisivo) o bajar
   a `<150` (más estricto) según datos reales
+
+## Sesión 28 mayo 2026 — Banner de privacidad + Aviso
+
+### Completado (Fase 1: banner informativo único, sin geolocalización)
+1. **Aviso de Privacidad reescrito** (`public/privacidad.php`):
+   - Sección 1 — Rol CotizaCloud (encargado/procesador) vs empresa emisora (responsable)
+   - Sección 2 — **Base legal del tratamiento**: relación precontractual + interés legítimo + consentimiento tácito (art. 8 LFPDPPP)
+   - Sección 3 — Datos auto-declarados por el cliente, no verificados por ninguna parte
+   - Sección 6 — CotizaCloud no vende datos personales
+   - Sección 10 — Tabla de cookies (cza_session, cz_vid, cz_dsig, cz_acuse_priv) con TTL y propósito
+   - Sección 11 — Terceros activados por cada empresa (no por CotizaCloud)
+   - Sección 9 — Derechos ARCO
+   - "Fecha de vigencia" → "Última actualización" (no era fecha de expiración)
+2. **Banner informativo** al final del slug de cotización (`public/cotizacion.php` y `public/cotizacion_inmueble.php`):
+   - Caja con marco + fondo sutil (#f7f5f0), border-radius 8px, 12px
+   - Solo en pantalla — oculto en print (vive dentro de `.footer`)
+   - Link absoluto `https://cotiza.cloud/privacidad` (para funcionar desde dominios custom)
+   - Texto: *"Esta cotización fue solicitada por usted. Usted acepta el uso de cookies y tecnologías de medición. Puede solicitar la cancelación de esta cotización o de sus datos en cualquier momento. Más información y Aviso de Privacidad."*
+3. **NO se aplicó** en venta.php, recibo.php ni landing.php (decisión del usuario)
+
+### Pendiente — Fase 2: Geolocalización por IP y comportamiento por país
+
+#### Concepto
+Detectar el país del visitante por IP y servir banner / pixels diferentes según el marco legal de su jurisdicción. Actualmente el banner es único y los pixels se cargan si la empresa los configura — sin importar el país del cliente final.
+
+#### Diseño aprobado (de esta sesión, NO implementado)
+
+**Detección de país:**
+- Header `CF-IPCountry` si pasa por Cloudflare (gratuito)
+- Fallback: MaxMind GeoLite2 (gratuito, requiere DB local actualizada mensualmente)
+- Helper nuevo: `core/Geo.php` → `Geo::pais()` cacheado por request
+- Default seguro si no se puede detectar: tratar como Europa (opt-in)
+
+**Comportamiento por zona:**
+| Zona | Países | Banner | Pixels marketing | Cookies analíticas propias |
+|------|--------|--------|------------------|----------------------------|
+| LATAM permisivo | MX, CO, PE | Informativo (actual) | Permitidos | Permitidas |
+| LATAM estricto | BR, CL, AR, UY | Opt-in (Aceptar/Rechazar) | Bloqueados hasta consent | Bloqueadas hasta consent |
+| USA/CA | US, CA | Footer link "Do Not Sell" | Permitidos con opt-out | Permitidas |
+| Europa/UK | EU, UK, EEA | Opt-in granular (categorías) | Bloqueados hasta consent | Bloqueadas hasta consent |
+| Resto del mundo | * | Opt-in (default seguro) | Bloqueados hasta consent | Bloqueadas hasta consent |
+
+**Argumento legal del "cliente solicitó":**
+- Refuerza el caso para LATAM permisivo (relación precontractual + interés legítimo + consentimiento tácito por la solicitud activa de la cotización)
+- NO elimina la obligación de opt-in en BR/AR/CL/EU (esos marcos exigen opt-in incluso con relación precontractual para cookies no esenciales)
+
+#### Implementación técnica pendiente
+
+**Archivos nuevos:**
+| Archivo | Función |
+|---|---|
+| `core/Geo.php` | `Geo::pais()` — lee CF-IPCountry, fallback MaxMind, cachea por request |
+| `core/Consent.php` | `Consent::tiene($categoria)` — lee cookie `cz_consent`, decide si cargar pixel/cookie |
+| `assets/js/cookies-banner.js` | Banner interactivo opt-in para países estrictos. Renderiza modal/sticky con Aceptar/Rechazar/Preferencias |
+| `assets/css/cookies-banner.css` | Estilos del banner opt-in |
+| `api/consent_save.php` | POST para guardar elección del usuario (cookie + opcional log) |
+
+**Archivos a modificar:**
+| Archivo | Cambio |
+|---|---|
+| `core/MarketingPixels.php` | Gate al inicio de `scripts_base()`: si `Geo::pais()` ∈ estricto y `!Consent::tiene('marketing')` → return '' |
+| `public/cotizacion.php` | If país=estricto → no imprimir `.fnotice` actual; cargar `cookies-banner.js` interactivo |
+| `public/cotizacion_inmueble.php` | Mismo cambio |
+| `public/privacidad.php` | Agregar sección "Gestión de preferencias" con botón "Cambiar mis preferencias" |
+| `core/Router.php` | Ruta para `/api/consent/save` |
+
+**Cookies del consentimiento:**
+| Cookie | TTL | Contenido |
+|---|---|---|
+| `cz_acuse_priv` | 365 días | "1" si el usuario ya vio el banner (banners informativos) |
+| `cz_consent` | 365 días | JSON con categorías aceptadas: `{essential:1, functional:1, analytics:0, marketing:0}` |
+
+#### Por qué no hacerlo ahora (Fase 1 es suficiente)
+
+1. **México permite banner informativo** con relación precontractual + auto-declaración del cliente — base legal sólida actual
+2. **Países estrictos (BR/AR/CL) tienen tráfico marginal** para un SaaS mexicano hoy
+3. **Los pixels son opt-in por empresa** — si una empresa no los configura, no hay tracking de terceros
+4. **Implementar opt-in granular en Fase 1** triplica complejidad y reduce conversión sin beneficio inmediato
+
+#### Decisiones pendientes para Fase 2
+
+1. **¿MaxMind GeoLite2 o solo Cloudflare?** Cloudflare ya da `CF-IPCountry` gratis si el dominio pasa por su CDN. MaxMind requiere mantener una BD ~70MB actualizada mensualmente. Definir cuándo se activa CF en cotiza.cloud (actualmente no usa CF).
+2. **¿Cómo detectar región exacta dentro de USA (California)?** CCPA aplica solo a California. CF-IPCountry no distingue estado. Habría que usar MaxMind para CA específico.
+3. **¿Cómo gestionar transición?** Cuando un usuario que vio el banner informativo (MX) viaja a BR, ¿qué pasa? Soluciones: re-mostrar banner si el país de IP cambia, o tratarlo como sticky por país.
+4. **¿Botón "Gestionar cookies" permanente?** En el footer del slug, link discreto para que el cliente pueda cambiar preferencias después del primer consent.
+5. **¿Bloquear MetaCAPI server-side también?** El pixel cliente se bloquea con `Geo::pais()`, pero `MarketingPixels::capi_view()` corre en background. Debe respetar el mismo gate.
+
+#### Riesgo conocido a documentar
+
+- **MaxMind y `CF-IPCountry` no son 100% precisos** — VPN, proxies y carriers móviles pueden reportar país equivocado (~2-5% de error). En caso de duda, default seguro = tratar como Europa
+- **El gate de pixels rompe el retargeting** para empresas que opera con clientes en BR/AR/CL. Documentar en config de Marketing para que la empresa lo sepa
+- **Server-side CAPI sigue siendo "tracking"** — el gate debe aplicar también ahí, no solo al pixel cliente
