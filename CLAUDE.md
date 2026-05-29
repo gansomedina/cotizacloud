@@ -2582,3 +2582,86 @@ if ($dnt) { goto skip_tracking; } // misma rama que internos
 2. **¿1B y 1C esperan Fase 2?** Sí — dependen de geolocalización
 3. **¿Matomo como módulo de marketing tiene demanda real?** Pendiente validar con clientes Business actuales
 4. **¿Matomo para analytics interna de CotizaCloud (cuántos signups, churn, etc.)?** Sí podría valer la pena, hoy no tenemos analytics propia del producto
+
+## Sesión 28 mayo (cont.) — Análisis técnico Matomo / Plausible / Fathom
+
+### Patrones universales (los 3 hacen lo mismo)
+
+| Técnica | Plausible | Fathom | Matomo |
+|---|---|---|---|
+| **Salt rotativo diario** | hash(IP+UA+domain+salt_24h) global | SHA256(IP+UA+host+salt_diario) | config_id(IP+UA+plugins+lang+seed_diario) TTL 30min |
+| **Anonimización IP** | Hash completo, no almacena raw | SHA256 + EU isolation | Borrar 2 octetos default (configurable) |
+| **localStorage para auto-exclusión** | localStorage flag | `fathom.blockTrackingForMe()` | Cookie `matomo_ignore` |
+| **DoNotTrack** | NO (descartado expreso) | Opt-in (atributo) | SÍ por default (deprecated en v5) |
+
+### Bot/preview detection — gap identificado en CotizaCloud
+
+**Lista canonical (monperrus/crawler-user-agents):**
+- WhatsApp (`WhatsApp/`), Telegram (`TelegramBot`), Slack (`Slackbot-LinkExpanding`)
+- Discord (`Discordbot/`), Facebook (`facebookexternalhit/` + `Facebot`)
+- Twitter (`Twitterbot/`), LinkedIn (`LinkedInBot/`), Skype (`SkypeUriPreview`)
+- Pinterest (`Pinterest/`), Snapchat (`Snapchat`), Yahoo (`Yahoo Link Preview`)
+- Google preview (`Google-PageRenderer`), Applebot
+
+**iMessage caveat:** usa `facebookexternalhit + Twitterbot` PERO con IP del usuario real. Solo filtrar por UA, no IP.
+
+**Matomo DeviceDetector `bots.yml`:** 600+ patrones UA, código libre, mantenido por comunidad. Importable a `Radar::es_bot()`.
+
+**Datacenter IPs (Plausible filtra ~32k):** [FireHOL ipsets](https://iplists.firehol.org/), actualización mensual, ~5MB.
+
+### Scroll restoration — solución de raíz (vs parche actual)
+
+El filtro `scroll<35 && vis<200` del commit `3cbdeb0` es un parche al síntoma. La solución de causa raíz que usa la industria (Mixpanel, Amplitude, Heap):
+
+```js
+// 1) Deshabilitar restore automático del browser ANTES de cualquier scroll handler
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+// 2) Solo contar scroll si hubo interacción real
+if (navigator.userActivation?.hasBeenActive) {
+  // contar scroll
+}
+
+// 3) Detectar BFCache restore
+const nav = performance.getEntriesByType('navigation')[0];
+const isBackForward = nav?.type === 'back_forward';
+```
+
+### Lo que ya hacemos bien (validado por la industria)
+
+| Técnica nuestra | Lo confirma |
+|---|---|
+| `cz_vid` 730d como auto-exclusión | Fathom localStorage + Plausible localStorage flag |
+| `sendBeacon` en visibilitychange | GA4 / Matomo / Plausible estándar |
+| Page Visibility API para `visible_ms` | Todos usan |
+| Filter scroll<35 + vis<200 | Más agresivo que GA4 (10s), apropiado por bucket integrity |
+| Throttle 1min ultima_vista_at | Estándar Mixpanel/Amplitude 15-30s, nuestro es más laxo |
+
+### Lo que NO necesitamos hacer
+
+- **DNT**: Plausible lo descartó expreso ("not used, abused by adtech, phased out"). Fathom opt-in solamente. No urgente para LATAM.
+- **Reemplazar device_sig**: Matomo/Plausible son buenos para EU pero NO distinguen asesor vs cliente (caso B2B único nuestro)
+- **Instalar Matomo/Plausible**: el Radar es lógica de negocio, no analytics genérico
+
+### Prioridad sugerida de adopciones
+
+| # | Cambio | Esfuerzo | Resuelve |
+|---|---|---|---|
+| 1 | `history.scrollRestoration='manual'` + `userActivation` gate | 1 hora | Causa raíz del scroll restore (PRUEBA-GHOST-FILTRO-V1) |
+| 2 | Lista de preview bots en `es_bot()` | 30 min | Ghost sessions de WhatsApp/iMessage/Slack |
+| 3 | Importar bots.yml de Matomo | 2 horas | Ampliar 10 → 600+ patrones |
+| 4 | Datacenter IP filter (FireHOL) | 4 horas + cron mensual | Bots cloud (AWS/Azure/GCP) |
+| 5 | Salt rotativo diario para EU | Fase 2 (Geo) | GDPR sin opt-in EU |
+| 6 | Anonimización IP para EU | Fase 2 (Geo) | GDPR compliance |
+
+### Sources de la investigación
+
+- [Plausible Data Policy](https://plausible.io/data-policy)
+- [Plausible Bot Traffic Filtering](https://plausible.io/docs/bot-traffic-filtering)
+- [Fathom Cookieless Analytics](https://usefathom.com/why-fathom-analytics/cookieless-analytics)
+- [Matomo config_id FAQ](https://matomo.org/faq/general/how-is-the-visitor-config_id-processed/)
+- [Matomo bots.yml](https://github.com/matomo-org/device-detector/blob/master/regexes/bots.yml)
+- [crawler-user-agents](https://github.com/monperrus/crawler-user-agents)
+- [FireHOL ipsets](https://iplists.firehol.org/)
+- [MDN scrollRestoration](https://developer.mozilla.org/en-US/docs/Web/API/History/scrollRestoration)
+- [MDN userActivation](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/userActivation)
