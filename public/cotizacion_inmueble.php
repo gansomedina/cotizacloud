@@ -130,6 +130,8 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 .flogo{width:80px;height:80px;border-radius:14px;background:var(--g);color:#fff;font:700 22px 'Plus Jakarta Sans',sans-serif;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px}
 .fname2{font:700 15px 'Plus Jakarta Sans',sans-serif;margin-bottom:2px}
 .fsub{font-size:13px;color:var(--t3);margin-bottom:14px}
+.fnotice{font-size:11px;color:var(--t3);line-height:1.6;max-width:560px;margin:18px auto 0;padding-top:14px;border-top:1px solid var(--bd);opacity:.85}
+.fnotice a{color:var(--g);text-decoration:underline}
 
 /* Success screen */
 .succ{display:none;padding:60px 20px 40px;text-align:center;max-width:480px;margin:0 auto}
@@ -484,6 +486,9 @@ if ($encabezado_raw !== ''):
     <?php if (!empty($cot['emp_ciudad'])): ?>
     <div class="fsub"><?= e($cot['emp_ciudad']) ?></div>
     <?php endif; ?>
+    <div class="fnotice">
+      Esta cotización fue solicitada por usted. Usted acepta el uso de cookies y tecnologías de medición. Puede solicitar la cancelación de esta cotización o de sus datos en cualquier momento. <a href="/privacidad" target="_blank" rel="noopener">Más información y Aviso de Privacidad</a>.
+    </div>
   </div>
 </div>
 

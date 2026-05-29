@@ -2238,3 +2238,188 @@ escudo_log marker superadmin, etc.). Aplicar cuando los datos justifiquen.
 - `d041bbe` Secure + dsig útil
 
 Todos en origin/claude/analyze-domain-change-hmo-AkFAi. Sin pendientes.
+
+## Sesión 27 mayo 2026 — Ghost cleanup + scroll restoration fix
+
+### Problema central resuelto
+El JS del tracker dispara `quote_open` al cargar y lee el scroll del browser
+con `updateMaxScroll()`. Cuando Chrome Android restaura la posición de scroll
+(porque el cliente ya había abierto el slug antes), el JS reporta ese scroll
+restaurado como si fuera engagement del usuario. Las quote_sessions quedan
+con `scroll_max=30-31` y `visible_ms<200` (cliente cerró rápido sin leer).
+El filtro existente del Radar (`if vis>0 && vis<2000 && scroll===0`) NO las
+atrapaba porque scroll>0. Inflaban buckets `multi_persona`, `re_enganche`,
+`probable_cierre`.
+
+### Commits aplicados (todos deployados)
+- `eeee7d8` ghost cleanup mejorado (verifica eventos del vid con engagement)
+- `8de8eb6` header ver.php usa ultima_vista_at (revertido después)
+- `324f0b9` ghost cleanup definitivo + recalc vista_at/ultima_vista_at
+- `a0a3248` ultima_vista_at se actualiza con cada evento engagement (throttle 1min)
+- `b3e17f4` nota explicativa en historial + radar
+- `[breve]` display "breve" en lugar de "0s"/"—"
+- `3cbdeb0` filtro Radar scroll<35 + visible<200 (validado con datos)
+
+### SQL retroactivo ya ejecutado
+- 251 sesiones ghost borradas
+- 150 cotizaciones con visitas/vista_at/ultima_vista_at recalculadas
+- Cot 4029 corregida específicamente
+
+### Validación con datos (60 días)
+Rango scroll + visible<200 (de 102 sesiones sospechosas):
+| Rango scroll | Aceptadas | Activas |
+|--------------|-----------|---------|
+| <20          | 2         | 9       |
+| 20-34        | **0**     | 9       | ← zona muerta confirmada
+| 35-49        | 2         | 6       |
+| 50+          | 14        | 49      |
+
+Threshold `scroll<35 && vis<200` validado: descarta 18 sesiones de la zona
+muerta sin tocar engagement legítimo. 0 cotizaciones pierden TODO su
+engagement con este filtro.
+
+### Plan de pruebas — 2 semanas (10 de junio 2026)
+
+**Nombre del plan**: `PRUEBA-GHOST-FILTRO-V1`
+
+#### TEST 1 — `cuenta-ghost-filtrados`
+SQL que mide cuántas sesiones nuevas caerían en el filtro de ghost-restore
+en los últimos 14 días:
+```sql
+SELECT COUNT(*) AS ghosts_filtrados_14d,
+       COUNT(DISTINCT cotizacion_id) AS cots_afectadas
+FROM quote_sessions
+WHERE es_interno = 0
+  AND visible_ms IS NOT NULL
+  AND visible_ms < 200
+  AND scroll_max < 35
+  AND created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY);
+```
+**Criterio éxito**: número estable entre 10-30 sesiones/14d (ratio similar
+al histórico de 102 en 60d ≈ 24/14d). Si sube a >50 → algo cambió en el
+comportamiento de tracker o browsers.
+
+#### TEST 2 — `falsos-positivos-aceptadas`
+Verifica que ninguna cot aceptada se quedó sin engagement por el filtro:
+```sql
+SELECT COUNT(DISTINCT c.id) AS cots_aceptadas_sin_engagement
+FROM cotizaciones c
+WHERE c.estado IN ('aceptada','convertida','aceptada_cliente')
+  AND c.aceptada_at >= DATE_SUB(NOW(), INTERVAL 14 DAY)
+  AND EXISTS (SELECT 1 FROM quote_sessions qs WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0)
+  AND NOT EXISTS (
+    SELECT 1 FROM quote_sessions qs
+    WHERE qs.cotizacion_id = c.id AND qs.es_interno = 0
+      AND NOT (qs.visible_ms IS NOT NULL AND qs.visible_ms < 200 AND qs.scroll_max < 35)
+  );
+```
+**Criterio éxito**: 0 cotizaciones. Si >0 → el filtro descartó clientes
+reales que aceptaron. Ajustar threshold o revertir.
+
+#### TEST 3 — `distribución-buckets-pre-post`
+Comparar distribución de buckets del Radar antes vs después:
+```sql
+SELECT radar_bucket, COUNT(*) AS cots
+FROM cotizaciones
+WHERE estado IN ('enviada','vista')
+  AND radar_bucket IS NOT NULL
+GROUP BY radar_bucket
+ORDER BY cots DESC;
+```
+**Antes del fix (snapshot del 27 mayo)**:
+- probable_cierre: 79
+- enfriandose: 25
+- hesitacion: 11
+- no_abierta: 7
+- re_enganche_caliente: 4
+- prediccion_alta: 3
+- lectura_comprometida: 3
+
+**Criterio éxito**: las cots NUEVAS distribuyen similar, pero
+`multi_persona`, `re_enganche` y `probable_cierre` deberían bajar
+ligeramente para empresas con tráfico móvil alto. Si `no_abierta` sube
+desproporcionadamente → el filtro está descartando clientes reales.
+
+#### TEST 4 — `ghost-actuales-cot-3997`
+Revisar la cot 3997 específicamente (la que originó el debug):
+```sql
+SELECT id, estado, visitas, vista_at, ultima_vista_at, radar_bucket, radar_score
+FROM cotizaciones WHERE id = 3997;
+
+SELECT COUNT(*) AS sesiones_restantes,
+       SUM(CASE WHEN visible_ms < 200 AND scroll_max < 35 THEN 1 ELSE 0 END) AS ghosts_que_pasaron
+FROM quote_sessions WHERE cotizacion_id = 3997 AND es_interno = 0;
+```
+**Criterio éxito**: el bucket de cot 3997 (si pasa por evento) debe quedar
+en un estado más honesto (no inflado por las 4 visitas raras).
+
+#### TEST 5 — `monitor-filtrado-executive`
+Abrir el panel del superadmin executive y revisar el "Monitor de filtrado":
+- Debería seguir mostrando 0 fugas activas (commit 58c8465)
+- Si aparecen nuevas fugas, son visitor_ids registrados como internos
+  pasando como cliente_real → caso aparte del scroll restore
+
+#### TEST 6 — `historial-cot-con-breve`
+Abrir el editor de varias cot con tráfico reciente y verificar:
+- Las visitas con engagement real muestran "Xs" (segundos)
+- Las breves muestran "breve" (no "0s" ni "—")
+- La nota explicativa aparece al pie del historial
+- El header "Vista hace X" coincide con la primera visita visible del historial
+
+#### TEST 7 — `auditoria-eventos-restore`
+Verificar si Chrome sigue mandando quote_open con scroll>0 visible bajo:
+```sql
+SELECT COUNT(*) AS eventos_con_restore_aparente,
+       MIN(visible_ms) AS min_visible,
+       MAX(max_scroll) AS max_scroll_restore
+FROM quote_events
+WHERE tipo = 'quote_open'
+  AND max_scroll > 0
+  AND visible_ms < 200
+  AND ts_unix >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 14 DAY));
+```
+**Esperado**: número significativo (el JS sigue leyendo scroll restaurado;
+el filtro del Radar los descarta pero los eventos siguen llegando). Sirve
+para confirmar que el patrón es real y se mantiene.
+
+#### TEST 8 — `comportamiento-termometro`
+Revisar el score APC de los vendedores: ¿cambió alguna métrica clave?
+```sql
+SELECT usuario_id, score, cot_asignadas, cot_vistas, ventas_periodo
+FROM usuario_score
+WHERE periodo_fin >= DATE_SUB(NOW(), INTERVAL 14 DAY)
+ORDER BY score DESC;
+```
+**Criterio éxito**: scores estables. El filtro del Radar no afecta
+ActividadScore directamente (usa visitas+estado), pero indirectamente
+via Radar bucket. Si scores bajan dramáticamente, investigar.
+
+### Plan de acción si las pruebas FALLAN
+
+- **TEST 1 falla** (>50 ghosts/14d): los browsers cambiaron comportamiento.
+  No revertir, ajustar threshold del filtro.
+- **TEST 2 falla** (>0 aceptadas sin engagement): threshold demasiado
+  agresivo. Bajar a `scroll < 30 && visible < 150` y revalidar.
+- **TEST 3 falla** (no_abierta sube): el filtro descarta visitas reales.
+  Revisar casos específicos.
+- **TEST 4 falla** (bucket sigue inflado): el filtro no se aplica.
+  Verificar deploy.
+- **TEST 5 falla**: caso independiente del fix actual.
+- **TEST 6 falla**: bug cosmético separado.
+- **TEST 7 = 0**: significa que Chrome cambió de comportamiento (raro pero
+  bueno).
+- **TEST 8 falla**: investigar cambio en métricas, no revertir aún.
+
+### Comando rápido para correr TODAS las pruebas
+
+Guardar en `tools/pruebas_ghost_filtro_v1.sql` (pendiente crear):
+ejecutar los 7 SQLs en orden y comparar contra los criterios.
+
+### Pendiente cuando se valide
+
+Si las 8 pruebas pasan en 2 semanas:
+- Documentar el fix como exitoso
+- Considerar aplicar el mismo principio al filtro de bots IP que tampoco
+  detecta restore
+- Evaluar si subir el umbral de visible a `<300` (más permisivo) o bajar
+  a `<150` (más estricto) según datos reales
