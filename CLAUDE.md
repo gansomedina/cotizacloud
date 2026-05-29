@@ -2423,3 +2423,327 @@ Si las 8 pruebas pasan en 2 semanas:
   detecta restore
 - Evaluar si subir el umbral de visible a `<300` (más permisivo) o bajar
   a `<150` (más estricto) según datos reales
+
+## Sesión 28 mayo 2026 — Banner de privacidad + Aviso
+
+### Completado (Fase 1: banner informativo único, sin geolocalización)
+1. **Aviso de Privacidad reescrito** (`public/privacidad.php`):
+   - Sección 1 — Rol CotizaCloud (encargado/procesador) vs empresa emisora (responsable)
+   - Sección 2 — **Base legal del tratamiento**: relación precontractual + interés legítimo + consentimiento tácito (art. 8 LFPDPPP)
+   - Sección 3 — Datos auto-declarados por el cliente, no verificados por ninguna parte
+   - Sección 6 — CotizaCloud no vende datos personales
+   - Sección 10 — Tabla de cookies (cza_session, cz_vid, cz_dsig, cz_acuse_priv) con TTL y propósito
+   - Sección 11 — Terceros activados por cada empresa (no por CotizaCloud)
+   - Sección 9 — Derechos ARCO
+   - "Fecha de vigencia" → "Última actualización" (no era fecha de expiración)
+2. **Banner informativo** al final del slug de cotización (`public/cotizacion.php` y `public/cotizacion_inmueble.php`):
+   - Caja con marco + fondo sutil (#f7f5f0), border-radius 8px, 12px
+   - Solo en pantalla — oculto en print (vive dentro de `.footer`)
+   - Link absoluto `https://cotiza.cloud/privacidad` (para funcionar desde dominios custom)
+   - Texto: *"Esta cotización fue solicitada por usted. Usted acepta el uso de cookies y tecnologías de medición. Puede solicitar la cancelación de esta cotización o de sus datos en cualquier momento. Más información y Aviso de Privacidad."*
+3. **NO se aplicó** en venta.php, recibo.php ni landing.php (decisión del usuario)
+
+### Pendiente — Fase 2: Geolocalización por IP y comportamiento por país
+
+#### Concepto
+Detectar el país del visitante por IP y servir banner / pixels diferentes según el marco legal de su jurisdicción. Actualmente el banner es único y los pixels se cargan si la empresa los configura — sin importar el país del cliente final.
+
+#### Diseño aprobado (de esta sesión, NO implementado)
+
+**Detección de país:**
+- Header `CF-IPCountry` si pasa por Cloudflare (gratuito)
+- Fallback: MaxMind GeoLite2 (gratuito, requiere DB local actualizada mensualmente)
+- Helper nuevo: `core/Geo.php` → `Geo::pais()` cacheado por request
+- Default seguro si no se puede detectar: tratar como Europa (opt-in)
+
+**Comportamiento por zona:**
+| Zona | Países | Banner | Pixels marketing | Cookies analíticas propias |
+|------|--------|--------|------------------|----------------------------|
+| LATAM permisivo | MX, CO, PE | Informativo (actual) | Permitidos | Permitidas |
+| LATAM estricto | BR, CL, AR, UY | Opt-in (Aceptar/Rechazar) | Bloqueados hasta consent | Bloqueadas hasta consent |
+| USA/CA | US, CA | Footer link "Do Not Sell" | Permitidos con opt-out | Permitidas |
+| Europa/UK | EU, UK, EEA | Opt-in granular (categorías) | Bloqueados hasta consent | Bloqueadas hasta consent |
+| Resto del mundo | * | Opt-in (default seguro) | Bloqueados hasta consent | Bloqueadas hasta consent |
+
+**Argumento legal del "cliente solicitó":**
+- Refuerza el caso para LATAM permisivo (relación precontractual + interés legítimo + consentimiento tácito por la solicitud activa de la cotización)
+- NO elimina la obligación de opt-in en BR/AR/CL/EU (esos marcos exigen opt-in incluso con relación precontractual para cookies no esenciales)
+
+#### Implementación técnica pendiente
+
+**Archivos nuevos:**
+| Archivo | Función |
+|---|---|
+| `core/Geo.php` | `Geo::pais()` — lee CF-IPCountry, fallback MaxMind, cachea por request |
+| `core/Consent.php` | `Consent::tiene($categoria)` — lee cookie `cz_consent`, decide si cargar pixel/cookie |
+| `assets/js/cookies-banner.js` | Banner interactivo opt-in para países estrictos. Renderiza modal/sticky con Aceptar/Rechazar/Preferencias |
+| `assets/css/cookies-banner.css` | Estilos del banner opt-in |
+| `api/consent_save.php` | POST para guardar elección del usuario (cookie + opcional log) |
+
+**Archivos a modificar:**
+| Archivo | Cambio |
+|---|---|
+| `core/MarketingPixels.php` | Gate al inicio de `scripts_base()`: si `Geo::pais()` ∈ estricto y `!Consent::tiene('marketing')` → return '' |
+| `public/cotizacion.php` | If país=estricto → no imprimir `.fnotice` actual; cargar `cookies-banner.js` interactivo |
+| `public/cotizacion_inmueble.php` | Mismo cambio |
+| `public/privacidad.php` | Agregar sección "Gestión de preferencias" con botón "Cambiar mis preferencias" |
+| `core/Router.php` | Ruta para `/api/consent/save` |
+
+**Cookies del consentimiento:**
+| Cookie | TTL | Contenido |
+|---|---|---|
+| `cz_acuse_priv` | 365 días | "1" si el usuario ya vio el banner (banners informativos) |
+| `cz_consent` | 365 días | JSON con categorías aceptadas: `{essential:1, functional:1, analytics:0, marketing:0}` |
+
+#### Por qué no hacerlo ahora (Fase 1 es suficiente)
+
+1. **México permite banner informativo** con relación precontractual + auto-declaración del cliente — base legal sólida actual
+2. **Países estrictos (BR/AR/CL) tienen tráfico marginal** para un SaaS mexicano hoy
+3. **Los pixels son opt-in por empresa** — si una empresa no los configura, no hay tracking de terceros
+4. **Implementar opt-in granular en Fase 1** triplica complejidad y reduce conversión sin beneficio inmediato
+
+#### Decisiones pendientes para Fase 2
+
+1. **¿MaxMind GeoLite2 o solo Cloudflare?** Cloudflare ya da `CF-IPCountry` gratis si el dominio pasa por su CDN. MaxMind requiere mantener una BD ~70MB actualizada mensualmente. Definir cuándo se activa CF en cotiza.cloud (actualmente no usa CF).
+2. **¿Cómo detectar región exacta dentro de USA (California)?** CCPA aplica solo a California. CF-IPCountry no distingue estado. Habría que usar MaxMind para CA específico.
+3. **¿Cómo gestionar transición?** Cuando un usuario que vio el banner informativo (MX) viaja a BR, ¿qué pasa? Soluciones: re-mostrar banner si el país de IP cambia, o tratarlo como sticky por país.
+4. **¿Botón "Gestionar cookies" permanente?** En el footer del slug, link discreto para que el cliente pueda cambiar preferencias después del primer consent.
+5. **¿Bloquear MetaCAPI server-side también?** El pixel cliente se bloquea con `Geo::pais()`, pero `MarketingPixels::capi_view()` corre en background. Debe respetar el mismo gate.
+
+#### Riesgo conocido a documentar
+
+- **MaxMind y `CF-IPCountry` no son 100% precisos** — VPN, proxies y carriers móviles pueden reportar país equivocado (~2-5% de error). En caso de duda, default seguro = tratar como Europa
+- **El gate de pixels rompe el retargeting** para empresas que opera con clientes en BR/AR/CL. Documentar en config de Marketing para que la empresa lo sepa
+- **Server-side CAPI sigue siendo "tracking"** — el gate debe aplicar también ahí, no solo al pixel cliente
+
+### Pendiente — Lecciones de Matomo (analytics privacy-first)
+
+#### Contexto
+Matomo (antes Piwik) es analytics open-source self-hosted (PHP+MySQL, mismo stack que CotizaCloud). NO reemplaza el Radar (lógica de negocio única), pero ofrece técnicas privacy-first que podemos adoptar sin instalar Matomo, además de la opción de integrarlo como módulo de marketing.
+
+#### Opción 1 — Adoptar 3 técnicas de Matomo sin instalar nada (ALTA prioridad, bajo esfuerzo)
+
+**1A. Respeto de header `DNT:1` (DoNotTrack)**
+- Si el browser envía `DNT:1` en el request, no contar visita ni recalcular Radar
+- Buena práctica legal en EU/UK y refuerza el caso de "interés legítimo"
+- Implementación: ~5 líneas en `public/cotizacion.php` antes del `INSERT quote_session`
+```php
+$dnt = ($_SERVER['HTTP_DNT'] ?? '') === '1';
+if ($dnt) { goto skip_tracking; } // misma rama que internos
+```
+- Riesgo: ~5-10% de usuarios EU tienen DNT activo. Perderíamos visibilidad del Radar para ellos. Trade-off aceptable por cumplimiento.
+- Auditar: agregar `dnt` como `capa_motivo` en `escudo_log` para medir impacto
+
+**1B. Anonimización de IP (último octeto)**
+- Borrar último octeto antes de almacenar: `200.68.184.39` → `200.68.184.0`
+- Cumple GDPR/LGPD para clientes EU
+- PROBLEMA: rompe varias features actuales:
+  - Cleanup retroactivo por IP en `layout.php` (Capa 2 del Escudo)
+  - Detección de competencia por IP exacta en Radar
+  - Aprendizaje de IPs internas
+- Solución: anonimizar SOLO si `Geo::pais()` es EU/UK. Mantener IP completa en LATAM/USA.
+- Requiere Fase 2 (Geo) completada antes
+- Implementación: helper `Geo::ip_anonima()` que aplica máscara según país
+
+**1C. Fingerprint efímero (TTL 1 hora) para zonas estrictas**
+- En EU/UK sin opt-in, usar hash de fingerprint con expiry 1h en vez de cookie persistente
+- Suficiente para deduplicar visitas dentro de una sesión
+- No identifica al visitante a largo plazo (≠ tracking)
+- Implementación: si `Geo::pais()` ∈ EU y `!Consent::tiene('analytics')`:
+  - Generar `session_temp_id = hash(IP + UA + fecha_hora_truncada_1h)`
+  - Almacenar en `quote_sessions` SIN cookie cz_vid
+  - Radar light: contar visitas únicas pero sin tracking persistente
+
+#### Opción 2 — Integrar Matomo como módulo de marketing (BAJA prioridad, alto esfuerzo)
+
+**Concepto:** ofrecer a empresas plan Business un dashboard de analytics privacy-first basado en Matomo self-hosted, alternativa a Meta/GA4/TikTok.
+
+**Pros:**
+- Empresas en sectores sensibles (legal, salud, seguros) pueden cumplir privacy laws sin renunciar a métricas
+- Datos quedan en nuestros servidores — no van a Google/Meta
+- Diferenciación clara vs competencia
+
+**Contras:**
+- Matomo requiere su propio MySQL/instalación (PHP 8+)
+- ~70MB de dependencias, requiere mantenimiento
+- Hay que integrar SSO con CotizaCloud
+- Conflicto potencial: Matomo también usa cookies (`_pk_*`) — tenemos que armonizar con `cz_*`
+
+**Si se implementa:**
+- Instalar en `/marketing/` o subdominio `analytics.cotiza.cloud`
+- Cada empresa Business obtiene su `idsite` en Matomo
+- Inyectar tag Matomo en slugs públicos junto con (o reemplazando) los pixels actuales
+- Tab nuevo en Configuración > Marketing: "Analytics privacy-first (incluido en Business)"
+- Posible bonus: usar Matomo para nuestra propia analítica interna de CotizaCloud (cuántas empresas activas, conversión de signup, etc.)
+
+#### Decisiones pendientes
+
+1. **¿Implementar 1A (DNT) antes de Fase 2 (Geo)?** Sí — es trivial y no rompe nada
+2. **¿1B y 1C esperan Fase 2?** Sí — dependen de geolocalización
+3. **¿Matomo como módulo de marketing tiene demanda real?** Pendiente validar con clientes Business actuales
+4. **¿Matomo para analytics interna de CotizaCloud (cuántos signups, churn, etc.)?** Sí podría valer la pena, hoy no tenemos analytics propia del producto
+
+## Sesión 28 mayo (cont.) — Análisis técnico Matomo / Plausible / Fathom
+
+### Patrones universales (los 3 hacen lo mismo)
+
+| Técnica | Plausible | Fathom | Matomo |
+|---|---|---|---|
+| **Salt rotativo diario** | hash(IP+UA+domain+salt_24h) global | SHA256(IP+UA+host+salt_diario) | config_id(IP+UA+plugins+lang+seed_diario) TTL 30min |
+| **Anonimización IP** | Hash completo, no almacena raw | SHA256 + EU isolation | Borrar 2 octetos default (configurable) |
+| **localStorage para auto-exclusión** | localStorage flag | `fathom.blockTrackingForMe()` | Cookie `matomo_ignore` |
+| **DoNotTrack** | NO (descartado expreso) | Opt-in (atributo) | SÍ por default (deprecated en v5) |
+
+### Bot/preview detection — gap identificado en CotizaCloud
+
+**Lista canonical (monperrus/crawler-user-agents):**
+- WhatsApp (`WhatsApp/`), Telegram (`TelegramBot`), Slack (`Slackbot-LinkExpanding`)
+- Discord (`Discordbot/`), Facebook (`facebookexternalhit/` + `Facebot`)
+- Twitter (`Twitterbot/`), LinkedIn (`LinkedInBot/`), Skype (`SkypeUriPreview`)
+- Pinterest (`Pinterest/`), Snapchat (`Snapchat`), Yahoo (`Yahoo Link Preview`)
+- Google preview (`Google-PageRenderer`), Applebot
+
+**iMessage caveat:** usa `facebookexternalhit + Twitterbot` PERO con IP del usuario real. Solo filtrar por UA, no IP.
+
+**Matomo DeviceDetector `bots.yml`:** 600+ patrones UA, código libre, mantenido por comunidad. Importable a `Radar::es_bot()`.
+
+**Datacenter IPs (Plausible filtra ~32k):** [FireHOL ipsets](https://iplists.firehol.org/), actualización mensual, ~5MB.
+
+### Scroll restoration — solución de raíz (vs parche actual)
+
+El filtro `scroll<35 && vis<200` del commit `3cbdeb0` es un parche al síntoma. La solución de causa raíz que usa la industria (Mixpanel, Amplitude, Heap):
+
+```js
+// 1) Deshabilitar restore automático del browser ANTES de cualquier scroll handler
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+// 2) Solo contar scroll si hubo interacción real
+if (navigator.userActivation?.hasBeenActive) {
+  // contar scroll
+}
+
+// 3) Detectar BFCache restore
+const nav = performance.getEntriesByType('navigation')[0];
+const isBackForward = nav?.type === 'back_forward';
+```
+
+### Lo que ya hacemos bien (validado por la industria)
+
+| Técnica nuestra | Lo confirma |
+|---|---|
+| `cz_vid` 730d como auto-exclusión | Fathom localStorage + Plausible localStorage flag |
+| `sendBeacon` en visibilitychange | GA4 / Matomo / Plausible estándar |
+| Page Visibility API para `visible_ms` | Todos usan |
+| Filter scroll<35 + vis<200 | Más agresivo que GA4 (10s), apropiado por bucket integrity |
+| Throttle 1min ultima_vista_at | Estándar Mixpanel/Amplitude 15-30s, nuestro es más laxo |
+
+### Lo que NO necesitamos hacer
+
+- **DNT**: Plausible lo descartó expreso ("not used, abused by adtech, phased out"). Fathom opt-in solamente. No urgente para LATAM.
+- **Reemplazar device_sig**: Matomo/Plausible son buenos para EU pero NO distinguen asesor vs cliente (caso B2B único nuestro)
+- **Instalar Matomo/Plausible**: el Radar es lógica de negocio, no analytics genérico
+
+### Prioridad sugerida de adopciones
+
+| # | Cambio | Esfuerzo | Resuelve |
+|---|---|---|---|
+| 1 | `history.scrollRestoration='manual'` + `userActivation` gate | 1 hora | Causa raíz del scroll restore (PRUEBA-GHOST-FILTRO-V1) |
+| 2 | Lista de preview bots en `es_bot()` | 30 min | Ghost sessions de WhatsApp/iMessage/Slack |
+| 3 | Importar bots.yml de Matomo | 2 horas | Ampliar 10 → 600+ patrones |
+| 4 | Datacenter IP filter (FireHOL) | 4 horas + cron mensual | Bots cloud (AWS/Azure/GCP) |
+| 5 | Salt rotativo diario para EU | Fase 2 (Geo) | GDPR sin opt-in EU |
+| 6 | Anonimización IP para EU | Fase 2 (Geo) | GDPR compliance |
+
+### Sources de la investigación
+
+- [Plausible Data Policy](https://plausible.io/data-policy)
+- [Plausible Bot Traffic Filtering](https://plausible.io/docs/bot-traffic-filtering)
+- [Fathom Cookieless Analytics](https://usefathom.com/why-fathom-analytics/cookieless-analytics)
+- [Matomo config_id FAQ](https://matomo.org/faq/general/how-is-the-visitor-config_id-processed/)
+- [Matomo bots.yml](https://github.com/matomo-org/device-detector/blob/master/regexes/bots.yml)
+- [crawler-user-agents](https://github.com/monperrus/crawler-user-agents)
+- [FireHOL ipsets](https://iplists.firehol.org/)
+- [MDN scrollRestoration](https://developer.mozilla.org/en-US/docs/Web/API/History/scrollRestoration)
+- [MDN userActivation](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/userActivation)
+
+## Sesión 28 mayo (cont.) — Bug iCloud Private Relay filtrado como bot
+
+### Reporte original
+Cot 4038 "Rodano #4413" (Obregón, empresa 13) aparecía "sin abrir" en
+dashboard pero el cliente había mencionado precios y detalles concretos
+en el chat. visitas=0, vista_at=NULL, estado=enviada.
+
+### Datos reales (escudo_log)
+8 hits del cliente entre 28 y 29 mayo desde un iPhone iOS 18.7 Safari
+con IPs `104.28.85.30` y `104.28.85.31`. Todos marcados `capa_3_bot`.
+
+### Causa raíz confirmada
+`modules/radar/Radar.php:214` tenía `'104.28.',` en `BOT_IP` etiquetado
+como "Cloudflare". Apple iCloud Private Relay sale por Cloudflare
+usando exactamente ese rango. CIDR oficial publicado por Apple:
+`104.28.85.28/30` (cubre .28, .29, .30, .31).
+
+Verificación:
+- Apple CSV: https://mask-api.icloud.com/egress-ip-ranges.csv
+- ipinfo.io para esas IPs: flag `Relay: Detected`
+- WHOIS: AS13335 Cloudflare
+- Cloudflare blog: "Cloudflare functions as a second relay in the iCloud
+  Private Relay system"
+
+### Magnitud del bug (30 días)
+
+| Métrica | Valor |
+|---|---|
+| Hits filtrados por 104.28. | 10 |
+| iPhone Safari real | 10 (100%) |
+| Bots reales | 0 (0%) |
+| Cotizaciones afectadas | 4 |
+| Empresas afectadas | 3 |
+
+100% falsos positivos. El prefijo no filtraba nada útil — solo bloqueaba
+clientes legítimos con Private Relay (iCloud+).
+
+### Hipótesis alternativas refutadas en auditoría
+
+| H | Hipótesis | Resultado |
+|---|---|---|
+| 1 | Bug bot_ua matchea Safari iPhone | Refutada — ningún patrón coincide |
+| 2 | bot_ip 104.28. demasiado amplio | CONFIRMADA — causa raíz |
+| 3 | Orden de capas erróneo | Refutada — orden 0→1→3 correcto |
+| 4 | Cookies cz_vid/cz_dsig irrelevantes | Confirmada — IP filtra antes |
+| 5 | skip_tracking bloquea todo | Confirmada — ni quote_session ni vista_at |
+| 6 | Adblocker/JS bloqueado | Refutada — el problema es server-side |
+| 7 | WhatsApp/iMessage preview | Refutada — hits con cookies reales |
+| 8 | Reverse proxy de Cloudflare | Neutral — ip_real() lee CF-Connecting-IP OK |
+| 9 | ip_real() mal implementada | Refutada — código correcto |
+
+### Fix aplicado
+Quitar `'104.28.',` de `Radar.php:214`. Comentario explicativo en el
+código para futuro. Los bots reales se filtran antes por `es_bot()`
+(UA) en `cotizacion.php:243`.
+
+### Decisión: NO recuperar cotizaciones afectadas manualmente
+Riesgo: ghost cleanup en `track.php` (commit 324f0b9) recalcula
+`vista_at = MIN(quote_sessions.created_at)`. Un UPDATE manual de
+`vista_at` con fecha del escudo_log sería sobreescrito si el cliente
+vuelve a abrir y el cleanup corre. Optamos por dejar que el sistema
+natural cuente las próximas visitas correctamente.
+
+Las 4 cotizaciones afectadas conocidas:
+- 3752 (Yulissa, emp 12) — ya estaba como `vista`, solo perdió 1 visita
+- 3821 (Monarca, emp 14) — ya estaba `aceptada`
+- 4016 (Arbol de Siris, emp 12) — `aceptada` pero visitas=0 (caso raro)
+- 4038 (Rodano, emp 13) — `enviada`, el reporte original
+
+Si en 3 días el asesor sigue viendo "sin abrir" en 4038, evaluar
+opción 3 (INSERT quote_sessions sintéticas con datos del escudo_log).
+
+### Plan B futuro
+Si el patrón de bots reales en 104.28. aparece en próximos 60 días,
+implementar lista CIDR dinámica con cron mensual:
+```bash
+curl https://mask-api.icloud.com/egress-ip-ranges.csv > apple-relay.csv
+# Parser PHP que excluye solo esos CIDR específicos y mantiene
+# 104.28.x.x bloqueado para el resto
+```
+Por ahora innecesario — los datos dicen 0 abuso.
