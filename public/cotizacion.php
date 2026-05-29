@@ -530,7 +530,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 .fname2{font:700 15px 'Plus Jakarta Sans',sans-serif;margin-bottom:2px}
 .fsub{font-size:13px;color:var(--t3);margin-bottom:14px}
 .fdisc{font-size:12px;color:var(--t3);line-height:1.65;max-width:480px;margin:0 auto}
-.fnotice{font-size:11px;color:var(--t3);line-height:1.6;max-width:560px;margin:18px auto 0;padding-top:14px;border-top:1px solid var(--bd);opacity:.85}
+.fnotice{font-size:12px;color:var(--t3);line-height:1.65;background:#f7f5f0;border:1px solid var(--bd);border-radius:8px;padding:14px 18px;margin:22px auto 0;max-width:560px;text-align:left}
 .fnotice a{color:var(--g);text-decoration:underline}
 
 /* Pantalla de éxito */
@@ -1233,7 +1233,7 @@ if ($fb_render):
     <div class="fdisc">Cotización generada en cotiza.cloud</div>
     <?php endif; ?>
     <div class="fnotice">
-      Esta cotización fue solicitada por usted. Usted acepta el uso de cookies y tecnologías de medición. Puede solicitar la cancelación de esta cotización o de sus datos en cualquier momento. <a href="/privacidad" target="_blank" rel="noopener">Más información y Aviso de Privacidad</a>.
+      Esta cotización fue solicitada por usted. Usted acepta el uso de cookies y tecnologías de medición. Puede solicitar la cancelación de esta cotización o de sus datos en cualquier momento. <a href="https://cotiza.cloud/privacidad" target="_blank" rel="noopener">Más información y Aviso de Privacidad</a>.
     </div>
   </div>
 </div>

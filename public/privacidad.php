@@ -24,7 +24,7 @@
 <div class="container">
 
 <h1>Aviso de Privacidad</h1>
-<p class="date">Fecha de vigencia: 29 de mayo de 2026</p>
+<p class="date">Última actualización: 28 de mayo de 2026</p>
 
 <p>CotizaCloud ("nosotros", "la plataforma") se compromete a proteger la privacidad de quienes interactúan con el servicio. Este aviso describe quién trata los datos, cómo se utilizan y los derechos de los titulares.</p>
 
@@ -32,10 +32,19 @@
 <p>CotizaCloud opera como una <strong>plataforma tecnológica (encargado del tratamiento)</strong>. Las empresas que utilizan CotizaCloud para enviar cotizaciones, ventas o recibos son las <strong>responsables del tratamiento</strong> de los datos de sus clientes finales.</p>
 <p>Si recibió una cotización generada con CotizaCloud y tiene preguntas sobre cómo la empresa emisora trata sus datos, debe comunicarse directamente con esa empresa. CotizaCloud no decide qué datos solicita cada empresa ni cómo los utiliza fuera de la plataforma.</p>
 
-<h2>2. Datos auto-declarados por el cliente</h2>
+<h2>2. Base legal del tratamiento</h2>
+<p>El tratamiento de los datos personales en esta plataforma se sustenta en los siguientes fundamentos, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (México) y normativa equivalente en países de Latinoamérica:</p>
+<ul>
+    <li><strong>Relación precontractual:</strong> la cotización se genera porque el cliente solicitó información, un presupuesto o una propuesta comercial a la empresa emisora. Los datos son necesarios para responder a esa solicitud y son proporcionados de manera voluntaria por el propio cliente.</li>
+    <li><strong>Interés legítimo:</strong> tanto CotizaCloud como la empresa emisora tienen interés legítimo en operar la plataforma, prevenir usos fraudulentos, medir la efectividad de las cotizaciones enviadas y mejorar el servicio.</li>
+    <li><strong>Consentimiento tácito:</strong> al continuar revisando, aceptando, rechazando o descargando la cotización, el cliente otorga consentimiento al uso de las cookies y tecnologías de medición descritas en este aviso, conforme al artículo 8 de la LFPDPPP.</li>
+</ul>
+<p>El cliente puede revocar su consentimiento y ejercer sus derechos ARCO en cualquier momento (ver sección de Derechos).</p>
+
+<h2>3. Datos auto-declarados por el cliente</h2>
 <p>Los datos personales que aparecen en una cotización (nombre, correo, teléfono, dirección, etc.) son <strong>proporcionados por el propio cliente al solicitarla</strong>. Ni CotizaCloud ni la empresa emisora verifican la veracidad de la información declarada. El cliente es responsable de la exactitud de los datos que proporciona.</p>
 
-<h2>3. Datos que recopilamos</h2>
+<h2>4. Datos que recopilamos</h2>
 <ul>
     <li><strong>Datos de cuenta (usuarios de la plataforma):</strong> nombre, correo electrónico y contraseña al registrarse.</li>
     <li><strong>Datos de la empresa:</strong> nombre, logo, configuraciones fiscales y catálogo.</li>
@@ -45,7 +54,7 @@
     <li><strong>Notificaciones push:</strong> tokens de dispositivo para enviar notificaciones a la app móvil y a navegadores compatibles.</li>
 </ul>
 
-<h2>4. Uso de la información</h2>
+<h2>5. Uso de la información</h2>
 <ul>
     <li>Proveer y mantener el servicio de cotizaciones, ventas y cobros.</li>
     <li>Enviar notificaciones relevantes (cotizaciones aceptadas, pagos registrados, actividad del radar, tickets de soporte).</li>
@@ -53,17 +62,17 @@
     <li>Comunicarnos sobre la cuenta o cambios en el servicio.</li>
 </ul>
 
-<h2>5. CotizaCloud no vende datos personales</h2>
+<h2>6. CotizaCloud no vende datos personales</h2>
 <p><strong>CotizaCloud no vende, alquila ni comercializa datos personales con terceros.</strong> La única compartición ocurre cuando es necesario para proveer el servicio (por ejemplo, enviar notificaciones push a través de Apple Push Notification Service o Google FCM, o procesar pagos mediante MercadoPago) o cuando la ley lo requiera.</p>
 <p>El uso que cada empresa emisora hace de los datos de sus propios clientes finales se rige por la política de privacidad de esa empresa, no por la de CotizaCloud.</p>
 
-<h2>6. Seguridad</h2>
+<h2>7. Seguridad</h2>
 <p>Protegemos la información con medidas estándar de la industria: cifrado de contraseñas, conexiones HTTPS, acceso restringido a los datos y monitoreo de accesos a la infraestructura.</p>
 
-<h2>7. Retención de datos</h2>
+<h2>8. Retención de datos</h2>
 <p>Conservamos la información mientras la cuenta esté activa. Si se elimina la cuenta, los datos asociados se eliminan de los servidores en un plazo de 30 días, salvo obligación legal de retención.</p>
 
-<h2>8. Derechos del titular (ARCO)</h2>
+<h2>9. Derechos del titular (ARCO)</h2>
 <p>El titular de los datos tiene derecho a:</p>
 <ul>
     <li><strong>Acceso:</strong> conocer qué datos se tratan.</li>
@@ -74,7 +83,7 @@
 </ul>
 <p>Para ejercer estos derechos respecto de datos tratados por <strong>CotizaCloud</strong> (cuenta de usuario), contáctenos vía la sección de <a href="/ayuda">Ayuda y Soporte</a>. Para datos tratados por la <strong>empresa emisora</strong> de una cotización, comuníquese directamente con dicha empresa.</p>
 
-<h2>9. Cookies</h2>
+<h2>10. Cookies</h2>
 <p>Utilizamos las siguientes cookies propias para el funcionamiento de la plataforma y de los slugs públicos (cotizaciones, ventas, recibos):</p>
 <table>
     <thead>
@@ -88,7 +97,7 @@
     </tbody>
 </table>
 
-<h2>10. Tecnologías de medición de terceros</h2>
+<h2>11. Tecnologías de medición de terceros</h2>
 <p>Cada empresa emisora puede, a su criterio, activar tecnologías de medición de terceros (pixels, etiquetas, eventos) en las cotizaciones y ventas que envía. <strong>CotizaCloud no las activa por su cuenta</strong>; cada empresa configura las suyas.</p>
 <p>Cuando una empresa las configura, estas tecnologías pueden setear sus propias cookies y enviar información (URL visitada, IP, identificadores propios) a las plataformas correspondientes. Las plataformas más comunes son:</p>
 <ul>
@@ -98,10 +107,10 @@
 </ul>
 <p>Para más información sobre las tecnologías concretas activadas en una cotización específica, contacte directamente a la empresa emisora.</p>
 
-<h2>11. Cambios a este aviso</h2>
+<h2>12. Cambios a este aviso</h2>
 <p>Podemos actualizar este aviso ocasionalmente. Los cambios se publican en esta página con la fecha de actualización.</p>
 
-<h2>12. Contacto</h2>
+<h2>13. Contacto</h2>
 <p>Para preguntas sobre este aviso de privacidad, contáctenos a través de la sección de <a href="/ayuda">Ayuda y Soporte</a> dentro de la plataforma.</p>
 
 </div>
