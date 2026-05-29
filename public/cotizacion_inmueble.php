@@ -487,7 +487,7 @@ if ($encabezado_raw !== ''):
     <div class="fsub"><?= e($cot['emp_ciudad']) ?></div>
     <?php endif; ?>
     <div class="fnotice">
-      Esta cotización fue solicitada por usted. Usted acepta el uso de cookies y tecnologías de medición. Puede solicitar la cancelación de esta cotización o de sus datos en cualquier momento. <a href="/privacidad" target="_blank" rel="noopener">Más información y Aviso de Privacidad</a>.
+      Esta cotización fue solicitada por usted. Usted acepta el uso de cookies y tecnologías de medición. Puede solicitar la cancelación de esta cotización o de sus datos en cualquier momento. <a href="https://cotiza.cloud/privacidad" target="_blank" rel="noopener">Más información y Aviso de Privacidad</a>.
     </div>
   </div>
 </div>
