@@ -2747,3 +2747,120 @@ curl https://mask-api.icloud.com/egress-ip-ranges.csv > apple-relay.csv
 # 104.28.x.x bloqueado para el resto
 ```
 Por ahora innecesario — los datos dicen 0 abuso.
+
+## Debate arquitectónico Escudo/Radar — filtro de bots (28 mayo 2026)
+
+### Contexto
+A raíz del bug iCloud (104.28), se evaluó cambiar la arquitectura del
+filtro de bots. El sistema vende un Radar confiable; no queremos parches
+ni huecos. Se hizo investigación profunda (Matomo/Plausible/Fathom) +
+3 rondas de auditoría con agentes.
+
+### Datos clave de producción (30 días)
+```sql
+-- sesiones cliente con vs sin engagement
+con_engagement  (scroll>0 OR visible_ms>=2000): 586 sesiones, 219 cots
+sin_engagement  (scroll=0 AND visible_ms<2000):  15 sesiones, 15 cots
+```
+Los "sin engagement" son 2.5% — y son justo los previews/glances que NO
+queremos contar. La industria (Plausible/Fathom) filtra por engagement,
+no por listas de IP: un bot no scrollea ni permanece; un humano sí.
+
+### Lo que YA hace bien el sistema (verificado en código)
+- `Radar::score()` Radar.php:432 filtra `bot_ip()`/`bot_ua()` incondicional
+- `Radar::score()` Radar.php:438-469 filtro behavioral: descarta scroll=0
+  vis=0 >2min salvo que el visitor tenga algún evento con engagement real
+- Ghost cleanup (dashboard + track.php): borra scroll=0/vis=0
+- `ver.php`:78-79 historial solo muestra scroll>0 OR visible>=2000
+- O sea: el Radar (buckets) NO depende de estado='vista', opera sobre
+  quote_sessions filtrando engagement. Los bots que carguen no entran a
+  buckets calientes — eso ya funciona.
+
+### Las 3 cosas que se disparan en la CARGA (cotizacion.php), a ciegas
+Sin saber si hay engagement (el JS aún no corre):
+- estado enviada→vista + vista_at (línea 300-306) — IRREVERSIBLE
+- visitas++ (línea 309-312)
+- CAPI ViewContent a Meta (línea 320)
+- Radar recalc (línea 316)
+Por eso existe el filtro BOT_IP: para que un bot no dispare esto antes de
+que el engagement pueda demostrar nada. El filtro es la causa de los
+falsos positivos (iCloud, Meta).
+
+### Propuesta RADICAL evaluada (mover todo a engagement) — RECHAZADA
+Mover estado+visitas+CAPI de la carga a track.php, disparados solo con
+engagement (scroll>0 OR visible>=2000), con columna `contada` atómica.
+**Error fatal encontrado:** elimina el registro confiable server-side y
+hace TODO dependiente de que los eventos lleguen a track.php.
+- `quote_scroll` se manda por fetch+keepalive (confiable, línea 1759)
+- `quote_close` se manda por sendBeacon (línea 1794) → **se cae en Safari
+  móvil (drop conocido)**
+- Lector sin scroll (cotización corta) solo califica en quote_close →
+  beacon perdido → "sin abrir" = **el bug de Rodano otra vez, por otra
+  causa**. Cambia falso negativo por IP por falso negativo por beacon.
+  Malo para un Radar confiable.
+
+Errores de implementación que además tendría (verificados):
+1. CRÍTICO: doble conteo por concurrencia (quote_scroll + section_view
+   casi simultáneos cruzan umbral juntos → visitas+2, CAPI x2). Sin
+   atomicidad hoy. Requiere columna `contada` + UPDATE WHERE contada=0.
+2. CRÍTICO: estado solo cambia con tipo='quote_open' (track.php:200), que
+   nunca califica (llega scroll=0/vis=0). Habría que cambiar el trigger.
+3. ALTO: track.php:42 solo carga id,empresa_id,estado — el CAPI necesita
+   numero,total,moneda. Y usar $cot['empresa_id'] no EMPRESA_ID.
+4. MEDIO: doble fuente de verdad de visitas (track++ vs ghost recalc).
+5. MEDIO: race placeholder vs ghost cleanup.
+
+### Propuesta CUARENTENA del usuario — parcialmente correcta
+Idea: contar la visita en cuarentena al cargar, sacarla de cuarentena
+cuando llega engagement, revertir si nunca llega.
+- ACIERTO: preserva la señal confiable de carga (no la bota como el
+  rewrite). Es el modelo de 2 niveles (provisional → confirmado).
+- PROBLEMA: el "revert sin engagement" YA se construyó y se quitó a
+  propósito (CLAUDE.md sesión 19 mayo): cliente WhatsApp sin JS →
+  revert → "sin abrir" erróneo. La cuarentena re-introduce esa tensión.
+- El propio usuario dudó: "es demasiado código, mejor de raíz".
+
+### Tabla comparativa
+| Enfoque | Preserva confiabilidad carga | Hueco que introduce |
+|---|---|---|
+| Rewrite radical (todo engagement) | NO | beacon perdido → lector real "sin abrir" |
+| Cuarentena con revert | SÍ | revert sin engagement → WhatsApp sin JS "sin abrir" |
+| Mínimo quirúrgico | SÍ | bot marca vista (falso positivo, ~4/mes) |
+
+### RECOMENDACIÓN DEL EXPERTO: Mínimo quirúrgico
+El bug agudo (iCloud) ya está arreglado. El resto es mejora; regla:
+menor cambio que elimina la causa sin introducir hueco peor.
+1. Quitar filtro BOT_IP de cotizacion.php y track.php. Conservar
+   `es_bot($ua)`. → mata clase de falso positivo por IP, cero listas.
+2. Mover SOLO el CAPI a track.php gateado por engagement (corrigiendo
+   EMPRESA_ID + SELECT con numero/total/moneda). → Meta recibe humanos.
+3. Dejar conteo y estado en la carga como están (confiables server-side).
+4. El Radar ya ignora sesiones sin engagement (línea 438).
+
+Residuo: bot con UA limpio + IP datacenter + que conozca el slug marcaría
+'vista'. Es falso POSITIVO (~4/mes), menos dañino que falso negativo
+(Rodano). Monitor escudo_log lo detecta si crece.
+
+Por qué es lo correcto: no añade dependencia de beacons (no rompe
+confiabilidad), no re-introduce el revert (no trae bug de WhatsApp),
+elimina la causa real (listas de IP). Acepta el error más pequeño y
+menos dañino.
+
+### PENDIENTE: decisión del usuario
+- ¿Ir con el mínimo quirúrgico (quitar BOT_IP + mover CAPI a engagement)?
+- ¿O medir primero cuántos "UA limpio + datacenter IP" hay para confirmar
+  que el residuo es ~4/mes?
+- Monitor superadmin (query bloqueadas+legitimas / bloqueadas con
+  engagement en otra cot) sigue pendiente de crear — caza el próximo
+  falso positivo en 24h.
+
+### Query del monitor (validada, da las IPs falso-positivo)
+```sql
+SELECT el.ip, COUNT(DISTINCT el.cotizacion_id) AS cots_bloqueadas,
+  (SELECT COUNT(*) FROM quote_sessions qs WHERE qs.ip=el.ip
+     AND qs.es_interno=0 AND (qs.scroll_max>0 OR qs.visible_ms>=2000)
+     AND qs.created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)) AS hits_engagement_real
+FROM escudo_log el
+WHERE el.decision='capa_3_bot' AND el.created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+GROUP BY el.ip HAVING hits_engagement_real > 0 ORDER BY hits_engagement_real DESC;
+```
