@@ -211,7 +211,10 @@ class Radar
         '66.249.',                                          // Google
         '40.77.','52.167.','157.55.','207.46.',             // Microsoft/Bing
         '31.13.','66.220.','173.252.','69.171.','57.141.', // Facebook/Meta
-        '104.28.',                                          // Cloudflare
+        // 104.28. REMOVIDO 28-may-2026 — Apple iCloud Private Relay sale
+        // por Cloudflare en ese rango (CIDR oficial 104.28.85.28/30).
+        // Auditoría 30d: 10/10 hits eran iPhone Safari reales, 0 bots.
+        // Los bots reales se filtran antes por es_bot() (UA).
         '154.12.','185.191.','85.208.',                     // Yandex
         '54.39.','15.235.','167.114.',                      // OVH
         '51.161.','51.222.','142.44.','148.113.',           // Hetzner

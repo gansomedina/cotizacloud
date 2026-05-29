@@ -2665,3 +2665,85 @@ const isBackForward = nav?.type === 'back_forward';
 - [FireHOL ipsets](https://iplists.firehol.org/)
 - [MDN scrollRestoration](https://developer.mozilla.org/en-US/docs/Web/API/History/scrollRestoration)
 - [MDN userActivation](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/userActivation)
+
+## Sesión 28 mayo (cont.) — Bug iCloud Private Relay filtrado como bot
+
+### Reporte original
+Cot 4038 "Rodano #4413" (Obregón, empresa 13) aparecía "sin abrir" en
+dashboard pero el cliente había mencionado precios y detalles concretos
+en el chat. visitas=0, vista_at=NULL, estado=enviada.
+
+### Datos reales (escudo_log)
+8 hits del cliente entre 28 y 29 mayo desde un iPhone iOS 18.7 Safari
+con IPs `104.28.85.30` y `104.28.85.31`. Todos marcados `capa_3_bot`.
+
+### Causa raíz confirmada
+`modules/radar/Radar.php:214` tenía `'104.28.',` en `BOT_IP` etiquetado
+como "Cloudflare". Apple iCloud Private Relay sale por Cloudflare
+usando exactamente ese rango. CIDR oficial publicado por Apple:
+`104.28.85.28/30` (cubre .28, .29, .30, .31).
+
+Verificación:
+- Apple CSV: https://mask-api.icloud.com/egress-ip-ranges.csv
+- ipinfo.io para esas IPs: flag `Relay: Detected`
+- WHOIS: AS13335 Cloudflare
+- Cloudflare blog: "Cloudflare functions as a second relay in the iCloud
+  Private Relay system"
+
+### Magnitud del bug (30 días)
+
+| Métrica | Valor |
+|---|---|
+| Hits filtrados por 104.28. | 10 |
+| iPhone Safari real | 10 (100%) |
+| Bots reales | 0 (0%) |
+| Cotizaciones afectadas | 4 |
+| Empresas afectadas | 3 |
+
+100% falsos positivos. El prefijo no filtraba nada útil — solo bloqueaba
+clientes legítimos con Private Relay (iCloud+).
+
+### Hipótesis alternativas refutadas en auditoría
+
+| H | Hipótesis | Resultado |
+|---|---|---|
+| 1 | Bug bot_ua matchea Safari iPhone | Refutada — ningún patrón coincide |
+| 2 | bot_ip 104.28. demasiado amplio | CONFIRMADA — causa raíz |
+| 3 | Orden de capas erróneo | Refutada — orden 0→1→3 correcto |
+| 4 | Cookies cz_vid/cz_dsig irrelevantes | Confirmada — IP filtra antes |
+| 5 | skip_tracking bloquea todo | Confirmada — ni quote_session ni vista_at |
+| 6 | Adblocker/JS bloqueado | Refutada — el problema es server-side |
+| 7 | WhatsApp/iMessage preview | Refutada — hits con cookies reales |
+| 8 | Reverse proxy de Cloudflare | Neutral — ip_real() lee CF-Connecting-IP OK |
+| 9 | ip_real() mal implementada | Refutada — código correcto |
+
+### Fix aplicado
+Quitar `'104.28.',` de `Radar.php:214`. Comentario explicativo en el
+código para futuro. Los bots reales se filtran antes por `es_bot()`
+(UA) en `cotizacion.php:243`.
+
+### Decisión: NO recuperar cotizaciones afectadas manualmente
+Riesgo: ghost cleanup en `track.php` (commit 324f0b9) recalcula
+`vista_at = MIN(quote_sessions.created_at)`. Un UPDATE manual de
+`vista_at` con fecha del escudo_log sería sobreescrito si el cliente
+vuelve a abrir y el cleanup corre. Optamos por dejar que el sistema
+natural cuente las próximas visitas correctamente.
+
+Las 4 cotizaciones afectadas conocidas:
+- 3752 (Yulissa, emp 12) — ya estaba como `vista`, solo perdió 1 visita
+- 3821 (Monarca, emp 14) — ya estaba `aceptada`
+- 4016 (Arbol de Siris, emp 12) — `aceptada` pero visitas=0 (caso raro)
+- 4038 (Rodano, emp 13) — `enviada`, el reporte original
+
+Si en 3 días el asesor sigue viendo "sin abrir" en 4038, evaluar
+opción 3 (INSERT quote_sessions sintéticas con datos del escudo_log).
+
+### Plan B futuro
+Si el patrón de bots reales en 104.28. aparece en próximos 60 días,
+implementar lista CIDR dinámica con cron mensual:
+```bash
+curl https://mask-api.icloud.com/egress-ip-ranges.csv > apple-relay.csv
+# Parser PHP que excluye solo esos CIDR específicos y mantiene
+# 104.28.x.x bloqueado para el resto
+```
+Por ahora innecesario — los datos dicen 0 abuso.
