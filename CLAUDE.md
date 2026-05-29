@@ -2515,3 +2515,70 @@ Detectar el país del visitante por IP y servir banner / pixels diferentes segú
 - **MaxMind y `CF-IPCountry` no son 100% precisos** — VPN, proxies y carriers móviles pueden reportar país equivocado (~2-5% de error). En caso de duda, default seguro = tratar como Europa
 - **El gate de pixels rompe el retargeting** para empresas que opera con clientes en BR/AR/CL. Documentar en config de Marketing para que la empresa lo sepa
 - **Server-side CAPI sigue siendo "tracking"** — el gate debe aplicar también ahí, no solo al pixel cliente
+
+### Pendiente — Lecciones de Matomo (analytics privacy-first)
+
+#### Contexto
+Matomo (antes Piwik) es analytics open-source self-hosted (PHP+MySQL, mismo stack que CotizaCloud). NO reemplaza el Radar (lógica de negocio única), pero ofrece técnicas privacy-first que podemos adoptar sin instalar Matomo, además de la opción de integrarlo como módulo de marketing.
+
+#### Opción 1 — Adoptar 3 técnicas de Matomo sin instalar nada (ALTA prioridad, bajo esfuerzo)
+
+**1A. Respeto de header `DNT:1` (DoNotTrack)**
+- Si el browser envía `DNT:1` en el request, no contar visita ni recalcular Radar
+- Buena práctica legal en EU/UK y refuerza el caso de "interés legítimo"
+- Implementación: ~5 líneas en `public/cotizacion.php` antes del `INSERT quote_session`
+```php
+$dnt = ($_SERVER['HTTP_DNT'] ?? '') === '1';
+if ($dnt) { goto skip_tracking; } // misma rama que internos
+```
+- Riesgo: ~5-10% de usuarios EU tienen DNT activo. Perderíamos visibilidad del Radar para ellos. Trade-off aceptable por cumplimiento.
+- Auditar: agregar `dnt` como `capa_motivo` en `escudo_log` para medir impacto
+
+**1B. Anonimización de IP (último octeto)**
+- Borrar último octeto antes de almacenar: `200.68.184.39` → `200.68.184.0`
+- Cumple GDPR/LGPD para clientes EU
+- PROBLEMA: rompe varias features actuales:
+  - Cleanup retroactivo por IP en `layout.php` (Capa 2 del Escudo)
+  - Detección de competencia por IP exacta en Radar
+  - Aprendizaje de IPs internas
+- Solución: anonimizar SOLO si `Geo::pais()` es EU/UK. Mantener IP completa en LATAM/USA.
+- Requiere Fase 2 (Geo) completada antes
+- Implementación: helper `Geo::ip_anonima()` que aplica máscara según país
+
+**1C. Fingerprint efímero (TTL 1 hora) para zonas estrictas**
+- En EU/UK sin opt-in, usar hash de fingerprint con expiry 1h en vez de cookie persistente
+- Suficiente para deduplicar visitas dentro de una sesión
+- No identifica al visitante a largo plazo (≠ tracking)
+- Implementación: si `Geo::pais()` ∈ EU y `!Consent::tiene('analytics')`:
+  - Generar `session_temp_id = hash(IP + UA + fecha_hora_truncada_1h)`
+  - Almacenar en `quote_sessions` SIN cookie cz_vid
+  - Radar light: contar visitas únicas pero sin tracking persistente
+
+#### Opción 2 — Integrar Matomo como módulo de marketing (BAJA prioridad, alto esfuerzo)
+
+**Concepto:** ofrecer a empresas plan Business un dashboard de analytics privacy-first basado en Matomo self-hosted, alternativa a Meta/GA4/TikTok.
+
+**Pros:**
+- Empresas en sectores sensibles (legal, salud, seguros) pueden cumplir privacy laws sin renunciar a métricas
+- Datos quedan en nuestros servidores — no van a Google/Meta
+- Diferenciación clara vs competencia
+
+**Contras:**
+- Matomo requiere su propio MySQL/instalación (PHP 8+)
+- ~70MB de dependencias, requiere mantenimiento
+- Hay que integrar SSO con CotizaCloud
+- Conflicto potencial: Matomo también usa cookies (`_pk_*`) — tenemos que armonizar con `cz_*`
+
+**Si se implementa:**
+- Instalar en `/marketing/` o subdominio `analytics.cotiza.cloud`
+- Cada empresa Business obtiene su `idsite` en Matomo
+- Inyectar tag Matomo en slugs públicos junto con (o reemplazando) los pixels actuales
+- Tab nuevo en Configuración > Marketing: "Analytics privacy-first (incluido en Business)"
+- Posible bonus: usar Matomo para nuestra propia analítica interna de CotizaCloud (cuántas empresas activas, conversión de signup, etc.)
+
+#### Decisiones pendientes
+
+1. **¿Implementar 1A (DNT) antes de Fase 2 (Geo)?** Sí — es trivial y no rompe nada
+2. **¿1B y 1C esperan Fase 2?** Sí — dependen de geolocalización
+3. **¿Matomo como módulo de marketing tiene demanda real?** Pendiente validar con clientes Business actuales
+4. **¿Matomo para analytics interna de CotizaCloud (cuántos signups, churn, etc.)?** Sí podría valer la pena, hoy no tenemos analytics propia del producto
