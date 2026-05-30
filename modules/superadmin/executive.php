@@ -1854,6 +1854,107 @@ $total_comi_rows = count($comisiones);
     <?php endif; ?>
 </div>
 
+<!-- Monitor de bots (datacenter) — tras desactivar BOT_IP el 29-may-2026 -->
+<?php
+// Rangos de datacenter/proxy que ANTES bloqueaba BOT_IP. Ahora entran y se
+// clasifican por engagement: con engagement = humano tras proxy (iCloud,
+// Messenger); sin engagement en varias cots = posible bot → re-agregar CIDR.
+$bot_like = "( qs.ip LIKE '66.249.%' OR qs.ip LIKE '40.77.%' OR qs.ip LIKE '52.167.%' OR qs.ip LIKE '157.55.%' OR qs.ip LIKE '207.46.%'"
+          . " OR qs.ip LIKE '31.13.%' OR qs.ip LIKE '66.220.%' OR qs.ip LIKE '173.252.%' OR qs.ip LIKE '69.171.%' OR qs.ip LIKE '57.141.%'"
+          . " OR qs.ip LIKE '154.12.%' OR qs.ip LIKE '185.191.%' OR qs.ip LIKE '85.208.%'"
+          . " OR qs.ip LIKE '54.39.%' OR qs.ip LIKE '15.235.%' OR qs.ip LIKE '167.114.%'"
+          . " OR qs.ip LIKE '51.161.%' OR qs.ip LIKE '51.222.%' OR qs.ip LIKE '142.44.%' OR qs.ip LIKE '148.113.%'"
+          . " OR qs.ip LIKE '104.28.%' OR qs.ip LIKE '172.224.%' OR qs.ip LIKE '172.225.%' )";
+
+$bot_rows = DB::query(
+    "SELECT qs.ip,
+            COUNT(*) AS sesiones,
+            COUNT(DISTINCT qs.cotizacion_id) AS cots,
+            SUM(CASE WHEN qs.scroll_max > 0 OR qs.visible_ms >= 2000 THEN 1 ELSE 0 END) AS con_engagement,
+            SUM(CASE WHEN COALESCE(qs.scroll_max,0) = 0 AND COALESCE(qs.visible_ms,0) = 0 THEN 1 ELSE 0 END) AS sin_engagement,
+            MAX(qs.created_at) AS ultima
+     FROM quote_sessions qs
+     JOIN cotizaciones c ON c.id = qs.cotizacion_id
+     WHERE c.empresa_id IN ({$emp_ids})
+       AND qs.es_interno = 0
+       AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+       AND {$bot_like}
+     GROUP BY qs.ip
+     ORDER BY sin_engagement DESC, sesiones DESC
+     LIMIT 30"
+);
+
+$prov_label = function(string $ip): string {
+    if (str_starts_with($ip,'66.249.')) return 'Google';
+    if (preg_match('/^(40\.77|52\.167|157\.55|207\.46)\./',$ip)) return 'Microsoft';
+    if (preg_match('/^(31\.13|66\.220|173\.252|69\.171|57\.141)\./',$ip)) return 'Meta';
+    if (preg_match('/^(154\.12|185\.191|85\.208)\./',$ip)) return 'Yandex';
+    if (preg_match('/^(54\.39|15\.235|167\.114)\./',$ip)) return 'OVH';
+    if (preg_match('/^(51\.161|51\.222|142\.44|148\.113)\./',$ip)) return 'Hetzner';
+    if (str_starts_with($ip,'104.28.') || str_starts_with($ip,'172.224.') || str_starts_with($ip,'172.225.')) return 'Cloudflare/iCloud';
+    return 'datacenter';
+};
+
+// Sospechosos: cero engagement Y aparecen en 2+ cotizaciones
+$bot_sospechosos = array_filter($bot_rows, fn($r) => (int)$r['con_engagement'] === 0 && (int)$r['cots'] >= 2);
+?>
+<div class="sec" style="margin-top:28px">
+    <div class="sec-hdr">
+        <div class="sec-title">Monitor de bots (datacenter) <?php
+            if (!$bot_rows) echo '<span style="color:var(--g)">✓ Sin tráfico de datacenter</span>';
+            elseif ($bot_sospechosos) echo '<span style="color:var(--r)">⚠ ' . count($bot_sospechosos) . ' posible(s) bot</span>';
+            else echo '<span style="color:var(--g)">✓ ' . count($bot_rows) . ' IP(s), todas humanas (proxy)</span>';
+        ?></div>
+        <div class="sec-count">últimos 30 días · BOT_IP desactivado</div>
+    </div>
+    <?php if ($bot_rows): ?>
+    <div class="tbl-card">
+    <table>
+    <thead><tr>
+        <th>Proveedor</th><th>IP</th>
+        <th class="r">Sesiones</th><th class="r">Cots</th>
+        <th class="r">Con engagement</th><th class="r">Sin engagement</th>
+        <th>Veredicto</th><th class="r">Última</th>
+    </tr></thead>
+    <tbody>
+    <?php foreach ($bot_rows as $br):
+        $con = (int)$br['con_engagement'];
+        $sin = (int)$br['sin_engagement'];
+        $cots = (int)$br['cots'];
+        $es_bot = ($con === 0 && $cots >= 2);
+        $es_humano = ($con > 0);
+    ?>
+    <tr style="<?= $es_bot ? 'background:rgba(239,68,68,.06)' : '' ?>">
+        <td style="font:600 12px 'Inter',sans-serif"><?= e($prov_label($br['ip'])) ?></td>
+        <td class="mono" style="font-size:11px;color:var(--t2)"><?= e($br['ip']) ?></td>
+        <td class="r mono" style="font-size:12px"><?= (int)$br['sesiones'] ?></td>
+        <td class="r mono" style="font-size:12px"><?= $cots ?></td>
+        <td class="r mono" style="font-size:12px;color:var(--g);font-weight:700"><?= $con ?></td>
+        <td class="r mono" style="font-size:12px;color:<?= $sin > 0 ? 'var(--r)' : 'var(--t3)' ?>"><?= $sin ?></td>
+        <td><?php if ($es_bot): ?>
+            <span style="font:700 10px 'Inter',sans-serif;color:var(--r);background:rgba(239,68,68,.15);padding:2px 8px;border-radius:4px">Revisar — posible bot</span>
+        <?php elseif ($es_humano): ?>
+            <span style="font:700 10px 'Inter',sans-serif;color:var(--g);background:rgba(34,197,94,.15);padding:2px 8px;border-radius:4px">Humano (proxy)</span>
+        <?php else: ?>
+            <span style="font:700 10px 'Inter',sans-serif;color:var(--t2);background:rgba(100,116,139,.12);padding:2px 8px;border-radius:4px">Aislado</span>
+        <?php endif; ?></td>
+        <td class="r mono" style="font-size:11px;color:var(--t2)"><?= date('d/m H:i', strtotime($br['ultima'])) ?></td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    <div style="font:400 11px 'Inter',sans-serif;color:var(--t3);margin-top:8px;line-height:1.6">
+        Tras desactivar el filtro de IP (récord histórico: 14 bloqueos, 0 bots, 14 humanos),
+        el tráfico de datacenter/proxy entra y se clasifica por engagement.
+        <strong style="color:var(--g)">Con engagement = humano</strong> tras proxy (iCloud Private Relay, Messenger).
+        <strong style="color:var(--r)">Sin engagement en 2+ cotizaciones = posible bot</strong> → re-agregar solo ese CIDR específico en <code>Radar::BOT_IP</code>.
+    </div>
+    <?php else: ?>
+    <div class="tbl-card" style="padding:24px;text-align:center;color:var(--g);font:600 14px 'Inter',sans-serif">✓ Sin tráfico de datacenter en 30 días</div>
+    <?php endif; ?>
+</div>
+
 </div><!-- /wrap -->
 
 <script>
