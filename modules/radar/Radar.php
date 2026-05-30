@@ -207,18 +207,29 @@ class Radar
         'pingdom','uptimerobot','newrelic','datadog',
         'selenium','puppeteer','playwright','phantomjs',
     ];
-    const BOT_IP = [
-        '66.249.',                                          // Google
-        '40.77.','52.167.','157.55.','207.46.',             // Microsoft/Bing
-        '31.13.','66.220.','173.252.','69.171.','57.141.', // Facebook/Meta
-        // 104.28. REMOVIDO 28-may-2026 — Apple iCloud Private Relay sale
-        // por Cloudflare en ese rango (CIDR oficial 104.28.85.28/30).
-        // Auditoría 30d: 10/10 hits eran iPhone Safari reales, 0 bots.
-        // Los bots reales se filtran antes por es_bot() (UA).
-        '154.12.','185.191.','85.208.',                     // Yandex
-        '54.39.','15.235.','167.114.',                      // OVH
-        '51.161.','51.222.','142.44.','148.113.',           // Hetzner
-    ];
+    // ─── Prefijos de IP de bots — DESACTIVADO 29-may-2026 ───
+    // Récord histórico completo del filtro (escudo_log, 25-29 may):
+    // 14 visitas bloqueadas, 0 con UA de bot, 14 humanos reales (100%
+    // falsos positivos: iCloud Private Relay + proxy de Meta). El filtro
+    // por IP nunca atrapó un bot que es_bot() (UA) no hubiera parado antes.
+    // Solo bloqueaba clientes detrás de proxies de privacidad → "sin abrir"
+    // erróneo (caso Rodano, cot 4038).
+    //
+    // La detección de bots queda en dos capas que SÍ funcionan:
+    //   1. es_bot()/bot_ua() — User-Agent (los bots se autoidentifican)
+    //   2. filtro behavioral (score() líneas 455/481) — sin engagement = descarte
+    //
+    // Observabilidad: escudo_log guarda IP/UA de cada visita; quote_sessions
+    // guarda scroll/visible. Un bot real aparecería como datacenter-IP con
+    // sin_engagement alto en muchas cots → re-agregar SOLO ese CIDR específico
+    // (/24 o /32), NUNCA un prefijo de octeto amplio (causa de este bug).
+    //
+    // Prefijos viejos conservados como referencia para el monitor / re-add:
+    //   '66.249.' Google · '40.77.','52.167.','157.55.','207.46.' Microsoft
+    //   '31.13.','66.220.','173.252.','69.171.','57.141.' Meta
+    //   '104.28.' Cloudflare/iCloud · '154.12.','185.191.','85.208.' Yandex
+    //   '54.39.','15.235.','167.114.' OVH · '51.161.','51.222.','142.44.','148.113.' Hetzner
+    const BOT_IP = [];
 
     // device_sig NO identifica asesores: colisiona entre teléfonos del
     // mismo modelo y descartaba clientes reales. Solo se usa para dedup

@@ -2872,3 +2872,78 @@ FROM escudo_log el
 WHERE el.decision='capa_3_bot' AND el.created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
 GROUP BY el.ip HAVING hits_engagement_real > 0 ORDER BY hits_engagement_real DESC;
 ```
+
+## Sesión 29 mayo 2026 — BOT_IP desactivado (decisión final con datos)
+
+### Decisión: `const BOT_IP = []` (Radar.php:210)
+Tras toda la tarde analizando los falsos positivos del filtro de IP, la
+decisión se cerró con el RÉCORD HISTÓRICO COMPLETO, no con teoría.
+
+### Récord histórico (escudo_log, toda su vida 25-29 may)
+| Métrica | Valor |
+|---|---|
+| Total bloqueado por BOT_IP | 14 |
+| IPs distintas | 8 |
+| **Bots reales (UA de bot)** | **0** |
+| **Humanos (UA browser)** | **14 (100%)** |
+
+El filtro de IP, en todo su historial registrado, atrapó **0 bots y
+bloqueó 14 clientes reales** (iCloud Private Relay + proxy de Meta).
+Cada bot real lo paró `es_bot()` (UA) antes de llegar al filtro de IP.
+
+### Por qué se hizo (no "menos malo" — estrictamente mejor)
+- Mantener BOT_IP = conservar filtro con récord de 0 aciertos / 14 errores
+- A futuro: cada proxy nuevo (WARP, VPNs, próximo rango Apple) repetía el bug
+- 40% del tráfico va por Messenger → IP residencial, NO afectado (verificado:
+  55 sesiones Messenger, 100% residencial, 0 IP-Meta)
+- El bot preview de Facebook (`facebookexternalhit`) lo para el UA, no la IP
+
+### Qué se CONSERVA (la protección real)
+1. `es_bot()`/`bot_ua()` — User-Agent (bots se autoidentifican)
+2. Filtro behavioral del Radar (score() líneas 455/481) — sin engagement = descarte
+3. `cleanup_bot_views.php` — usa su propia lista, no se afecta
+
+### Errores evaluados (reales en código, empíricamente nulos)
+- Bot UA-spoofed de datacenter marcaría 'vista' irreversible + CAPI en la carga.
+  Datos: 0 en todo el historial. Si ocurriera, lo detecta el monitor.
+- `_agregar_eventos` (Radar.php:1241) filtra solo bot_ua, nunca bot_ip — sin
+  cambio con A (los eventos JS ya vienen de browsers que ejecutaron JS).
+
+### Opción B (BOT_IP2 para competencia) — DESCARTADA
+Duplicar la lista solo para alertas de competencia. Descartada porque:
+- Competencia falsa por datacenter = 0-1 en 180 días (empíricamente nula)
+- Agrega código nuevo (array_filter → riesgo TypeError si query devuelve false)
+  en una página viva → MENOS estable. Para un SaaS, A (menos código) es más estable.
+- El ruido real de competencia es CGNAT Telmex (200.68.x residencial), que
+  BOT_IP2 no toca. Pendiente aparte.
+
+### Observabilidad y reversibilidad (clave de la decisión)
+- escudo_log guarda IP/UA/cookies de cada visita; quote_sessions guarda
+  scroll/visible. Con A tenemos MÁS info que con el skip (que descartaba sin rastro).
+- Señal confiable = engagement (scroll/visible), NO la IP.
+- Monitor semanal (correr en superadmin): sesiones de rangos datacenter con
+  sin_engagement alto en muchas cots = bot → re-agregar SOLO ese CIDR (/24 o /32).
+- Verificado en vivo post-fix 104.28: las 2 IPs de Rodano (104.28.85.30/31)
+  = 5 sesiones, 5 con engagement, 0 sin → humano confirmado, no bot.
+- Prefijos viejos conservados como comentario en Radar.php para referencia.
+
+### Monitor (correr semanal)
+```sql
+SELECT ip, COUNT(*) AS sesiones, COUNT(DISTINCT cotizacion_id) AS cots,
+  SUM(CASE WHEN scroll_max>0 OR visible_ms>=2000 THEN 1 ELSE 0 END) AS con_engagement,
+  SUM(CASE WHEN COALESCE(scroll_max,0)=0 AND COALESCE(visible_ms,0)=0 THEN 1 ELSE 0 END) AS sin_engagement
+FROM quote_sessions
+WHERE es_interno = 0 AND created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+  AND ( ip LIKE '66.249.%' OR ip LIKE '40.77.%' OR ip LIKE '52.167.%' OR ip LIKE '157.55.%' OR ip LIKE '207.46.%'
+     OR ip LIKE '31.13.%' OR ip LIKE '66.220.%' OR ip LIKE '173.252.%' OR ip LIKE '69.171.%' OR ip LIKE '57.141.%'
+     OR ip LIKE '154.12.%' OR ip LIKE '185.191.%' OR ip LIKE '85.208.%'
+     OR ip LIKE '54.39.%' OR ip LIKE '15.235.%' OR ip LIKE '167.114.%'
+     OR ip LIKE '51.161.%' OR ip LIKE '51.222.%' OR ip LIKE '142.44.%' OR ip LIKE '148.113.%'
+     OR ip LIKE '104.28.%' )
+GROUP BY ip ORDER BY sesiones DESC;
+```
+
+### Pendientes derivados (no bloqueantes)
+1. Monitor de competencia: ruido CGNAT Telmex (200.68.x) ya existe hoy,
+   independiente de BOT_IP. Merece su propio análisis.
+2. Considerar mover el monitor de datacenter-IP a un panel de superadmin.
