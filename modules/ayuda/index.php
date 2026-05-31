@@ -563,7 +563,7 @@ if (!$is_native_app_ayuda): ?>
     </div>
   </div>
 
-  <div class="ay-warn"><b>⏰ Ojo con las cotizaciones que el cliente NO abre.</b> Si una cotización cumple <b>5 días sin que el cliente la abra</b>, te castiga muy fuerte tu puntaje (tumba casi toda la parte de "envío" a cero), y con una sola que tengas así ya te pega. <b>Qué hacer:</b> si a los 2 o 3 días el cliente todavía no la ha abierto, háblale, reenvíale el link y asegúrate de que entre. No dejes que una cotización llegue a los 5 días sin abrir.</div>
+  <div class="ay-warn"><b>⏰ Ojo con las cotizaciones que el cliente NO abre.</b> Si una cotización cumple <b>5 días sin que el cliente la abra</b>, te castiga muy fuerte tu puntaje (tumba casi toda la parte de "envío" a cero), y con una sola que tengas así ya te pega. <b>Qué hacer:</b> si a los 2 o 3 días el cliente todavía no la ha abierto, háblale, reenvíale el link y asegúrate de que entre. No dejes que una cotización llegue a los 5 días sin abrir.<br><br><b>💡 Truco:</b> si de plano el cliente no responde, en el menú de <b>Cotizaciones</b> puedes <b>suspender</b> esa cotización. Una cotización suspendida ya no te penaliza (es como si no existiera para el termómetro), y de paso obligas al cliente a pedírtela de nuevo si le interesa.</div>
 
   <div class="ay-card">
     <h3>🌡️ Los consejos (tips) que te salen cada día — LÉELOS COMPLETOS</h3>
@@ -573,6 +573,17 @@ if (!$is_native_app_ayuda): ?>
       <li>El sistema nota cuando los lees — leerlos también te suma puntos.</li>
     </ul>
     <p style="margin-top:8px">No los ignores. Son la guía que el sistema arma especialmente para ti según cómo estuviste trabajando.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>🏆 Premios para los que venden bien</h3>
+    <p>El termómetro no solo te cuida de errores: también te <b>premia con puntos extra</b> cuando vendes en grande. Un buen vendedor se nota:</p>
+    <ul>
+      <li><b>Ventas grandes (ticket alto)</b> — Si cierras una venta por arriba del <b>doble</b> de tu venta promedio, ganas puntos extra. Si es el <b>triple</b> o más, ganas todavía más.</li>
+      <li><b>Buena racha de cierre</b> — Si estás cerrando <b>mucho más seguido</b> que lo normal de la empresa, ganas un bono por tu racha.</li>
+      <li><b>Vender más que el promedio</b> — Si vendes más que el promedio del equipo del periodo pasado, tu puntaje sube. Si vendes menos, baja. Siempre busca superar tu propio ritmo.</li>
+    </ul>
+    <p style="margin-top:8px"><b>En pocas palabras: cierra, cierra grande, y cierra seguido.</b></p>
   </div>
 
   <div class="ay-card">
@@ -587,7 +598,7 @@ if (!$is_native_app_ayuda): ?>
     </ul>
   </div>
 
-  <div class="ay-tip">¿Vendes pero tu número no sube? Casi siempre es por una de dos cosas: <b>(1)</b> no anotaste el pago de tus ventas, o <b>(2)</b> no le diste 👍/👎 a tus clientes en el Radar. Revisa esas dos primero.</div>
+  <div class="ay-tip">¿Vendes pero tu número no sube? Casi siempre es por una de dos cosas: <b>(1)</b> no anotaste el pago de tus ventas, o <b>(2)</b> no le diste 👍/👎 a tus clientes en el Radar. Revisa esas dos primero.<br><br><b>Nota:</b> las ventas con <b>descuento</b> dan menos puntos que las que vendes a precio completo. Usa los descuentos con medida.</div>
 
   <div class="ay-warn">El termómetro mira los últimos 15 días. Si esta semana dejaste de dar seguimiento, baja — aunque el mes pasado hayas vendido mucho. Lo importante es mantener el ritmo todos los días.</div>
 </div>
