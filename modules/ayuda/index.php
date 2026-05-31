@@ -563,6 +563,8 @@ if (!$is_native_app_ayuda): ?>
     </div>
   </div>
 
+  <div class="ay-warn"><b>⏰ Ojo con las cotizaciones que el cliente NO abre.</b> Si una cotización cumple <b>5 días sin que el cliente la abra</b>, te castiga muy fuerte tu puntaje (tumba casi toda la parte de "envío" a cero), y con una sola que tengas así ya te pega. <b>Qué hacer:</b> si a los 2 o 3 días el cliente todavía no la ha abierto, háblale, reenvíale el link y asegúrate de que entre. No dejes que una cotización llegue a los 5 días sin abrir.</div>
+
   <div class="ay-card">
     <h3>🌡️ Los consejos (tips) que te salen cada día — LÉELOS COMPLETOS</h3>
     <p>Cada día, tu termómetro te muestra unos <b>consejos cortos</b> sobre cómo vas trabajando: qué estás haciendo bien y qué te está faltando. <b>Léelos completos, hasta el final.</b> Por dos razones:</p>
@@ -576,6 +578,7 @@ if (!$is_native_app_ayuda): ?>
   <div class="ay-card">
     <h3>⚠️ Lo que te BAJA el puntaje</h3>
     <ul>
+      <li><b>Dejar cotizaciones 5+ días sin que el cliente las abra (esta castiga MUCHO).</b></li>
       <li>No dar seguimiento: dejar que tus clientes interesados se "enfríen" sin llamarles.</li>
       <li>No marcar las manitas 👍 / 👎 en el Radar.</li>
       <li>Vender pero no anotar el pago.</li>
