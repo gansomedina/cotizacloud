@@ -131,9 +131,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
 /* Table */
 .sa-table-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow-x:auto}
 .sa-table{width:100%;border-collapse:collapse;min-width:800px}
-.sa-table th{text-align:left;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;padding:12px 11px;border-bottom:2px solid var(--border);white-space:nowrap}
-.sa-table td{padding:12px 11px;font-size:13.5px;color:var(--text);border-bottom:1px solid var(--border);vertical-align:middle}
-.sa-table th.num,.sa-table td.num{text-align:center;width:1%;white-space:nowrap;padding-left:8px;padding-right:8px}
+.sa-table th{text-align:left;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px;padding:11px 9px;border-bottom:2px solid var(--border);white-space:nowrap}
+.sa-table td{padding:11px 9px;font-size:13.5px;color:var(--text);border-bottom:1px solid var(--border);vertical-align:middle}
+.sa-table th.num,.sa-table td.num{text-align:center;width:1%;white-space:nowrap;padding-left:7px;padding-right:7px}
 .sa-table tr:last-child td{border-bottom:none}
 .sa-table tr:hover td{background:#fafaf8}
 .sa-table tr.new-today td{background:#f0fdf4}
@@ -147,13 +147,13 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
 .badge-blue{background:var(--blue-bg);color:var(--blue)}
 .num{font-family:var(--num)}
 
-.btn-enter{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid var(--g-border);background:var(--g-bg);color:var(--g);text-decoration:none;transition:all .12s;white-space:nowrap}
+.btn-enter{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid var(--g-border);background:var(--g-bg);color:var(--g);text-decoration:none;transition:all .12s;white-space:nowrap}
 .btn-enter:hover{background:var(--g);color:#fff}
-.btn-detail{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid var(--border2);background:var(--white);color:var(--t2);text-decoration:none;transition:all .12s;white-space:nowrap}
+.btn-detail{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid var(--border2);background:var(--white);color:var(--t2);text-decoration:none;transition:all .12s;white-space:nowrap}
 .btn-detail:hover{border-color:var(--blue);color:var(--blue)}
-.btn-suspend{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid #fca5a5;background:var(--danger-bg);color:var(--danger);text-decoration:none;transition:all .12s;white-space:nowrap}
+.btn-suspend{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid #fca5a5;background:var(--danger-bg);color:var(--danger);text-decoration:none;transition:all .12s;white-space:nowrap}
 .btn-suspend:hover{background:var(--danger);color:#fff}
-.btn-activate{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid var(--g-border);background:var(--g-bg);color:var(--g);text-decoration:none;transition:all .12s;white-space:nowrap}
+.btn-activate{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:var(--r-sm);font:600 12px var(--body);cursor:pointer;border:1.5px solid var(--g-border);background:var(--g-bg);color:var(--g);text-decoration:none;transition:all .12s;white-space:nowrap}
 .btn-activate:hover{background:var(--g);color:#fff}
 
 .actions-cell{display:flex;gap:6px;align-items:center}
@@ -246,12 +246,12 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
     <th>Plan</th>
     <th>Vence</th>
     <th>Estado</th>
-    <th class="num">Usuarios</th>
+    <th class="num">Usrs</th>
     <th class="num">Cots</th>
     <th class="num">Vistas</th>
     <th class="num">Ventas</th>
-    <th>Último login</th>
-    <th>Registrada</th>
+    <th>Acceso</th>
+    <th>Alta</th>
     <th></th>
 </tr>
 </thead>
