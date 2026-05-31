@@ -53,7 +53,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 .wz-bar{height:100%;background:var(--g);width:16%;transition:width .3s ease}
 .wz-skip{position:absolute;top:16px;right:18px;font:600 12px var(--body);color:var(--t3);text-decoration:none;z-index:2}
 .wz-skip:hover{color:var(--t2)}
-.wz-body{padding:40px 40px 28px;text-align:center;height:480px;overflow-y:auto;display:flex;flex-direction:column}
+.wz-body{padding:36px 40px 26px;text-align:center;height:466px;overflow:hidden;display:flex;flex-direction:column}
 .wz-slide{display:none;animation:wzf .35s ease;flex:1;flex-direction:column;justify-content:center}
 .wz-slide.on{display:flex}
 @keyframes wzf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -127,10 +127,9 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 
     <!-- glosario -->
     <div class="wz-slide">
-      <div class="wz-ico wz-ico--pop">📖</div>
       <div class="wz-step">Primero, 3 palabras</div>
       <h2 class="wz-h">Conoce a tus 3 nuevos aliados</h2>
-      <p class="wz-p">En CotizaCloud vas a oír mucho estos 3 nombres. Pronto te van a sonar de toda la vida. Aquí el resumen rápido — en las siguientes pantallas te explicamos cada uno:</p>
+      <p class="wz-p">Vas a oír mucho estos 3 nombres. Pronto te sonarán de toda la vida. Aquí el resumen — en las siguientes pantallas te explicamos cada uno:</p>
       <div class="wz-terms">
         <div class="wz-term"><span class="wz-term-ico">🛡️</span><span class="wz-term-tx"><b>Escudo</b><br>Evita que tus propias revisadas cuenten como si fueran las del cliente.</span></div>
         <div class="wz-term"><span class="wz-term-ico">🎯</span><span class="wz-term-tx"><b>Radar</b><br>Te dice qué clientes están a punto de comprar y a quién llamar primero.</span></div>
