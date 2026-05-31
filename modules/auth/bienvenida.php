@@ -47,6 +47,12 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 .radar .tgt{position:absolute;left:50%;top:50%;width:11px;height:11px;border-radius:50%;background:var(--g);transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(26,92,56,.18)}
 .radar .ring{position:absolute;left:50%;top:50%;width:18px;height:18px;border-radius:50%;border:2px solid var(--g);transform:translate(-50%,-50%);animation:rdPulse 2s ease-out infinite}
 @keyframes rdPulse{0%{transform:translate(-50%,-50%) scale(.7);opacity:1}100%{transform:translate(-50%,-50%) scale(2.4);opacity:0}}
+/* Radar mini — para slide final (mismo tamaño que los iconos) */
+.radar--mini{width:84px;height:84px;margin:0 auto 22px;border-width:2px}
+.radar--mini .r1{inset:14px}.radar--mini .r2{inset:28px}
+.radar--mini .blip{width:6px;height:6px}
+.radar--mini .tgt{width:8px;height:8px}
+.radar--mini .ring{width:13px;height:13px}
 
 .wz{background:#fff;border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.12);width:100%;max-width:560px;overflow:hidden;position:relative;display:none}
 .wz-top{height:5px;background:#e7e5df}
@@ -175,7 +181,16 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 
     <!-- 6 -->
     <div class="wz-slide">
-      <div class="wz-ico wz-ico--rocket">🚀</div>
+      <div class="radar radar--mini">
+        <i class="r1"></i><i class="r2"></i>
+        <span class="cx"></span><span class="cy"></span>
+        <span class="sweep"></span>
+        <span class="blip" style="left:72%;top:34%;animation-delay:.2s"></span>
+        <span class="blip" style="left:32%;top:66%;animation-delay:1.4s"></span>
+        <span class="blip" style="left:66%;top:70%;animation-delay:2.4s"></span>
+        <span class="ring"></span>
+        <span class="tgt"></span>
+      </div>
       <div class="wz-step">A vender</div>
       <h2 class="wz-h">Listo. Que empiece la cacería 🎯</h2>
       <p class="wz-p">Arranca <b>configurando tu empresa</b> y manda tu primera cotización hoy mismo. Esta guía completa siempre está en el menú de <b>Ayuda</b> cuando la necesites.</p>
