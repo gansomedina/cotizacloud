@@ -158,10 +158,10 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
     <!-- 4 -->
     <div class="wz-slide">
       <div class="wz-ico wz-ico--target">🎯</div>
-      <div class="wz-step">Arma 3 de 4 · tu diferenciador</div>
-      <h2 class="wz-h">El Radar: lo que nadie más te da</h2>
-      <p class="wz-p">Mientras otros mandan una cotización y se quedan a ciegas, tú ves <b>en tiempo real</b> cómo cada cliente trata tu propuesta: cuándo la abre, cuánto la lee, si se detiene en el precio, cuántas veces vuelve y desde cuántos dispositivos. El Radar convierte eso en una <b>lista ordenada por quién está más enganchado</b>.</p>
-      <div class="wz-why">💡 Deja de perseguir a ciegas. Cada mañana atiende primero "Probable cierre", lee el botón <b>"?"</b> de cada cliente y, tras hablarle, márcalo con <b>👍 / 👎</b> según su interés real.</div>
+      <div class="wz-step">Arma 3 de 4 · el corazón del sistema</div>
+      <h2 class="wz-h">Léele la mente a tu cliente</h2>
+      <p class="wz-p">Tu cliente casi nunca te dice si de verdad le interesó tu propuesta. <b>Su comportamiento sí — y el Radar lo lee por ti.</b> Sabe quién la abrió, quién la leyó completa, quién volvió a ver el precio y quién ni la tocó, y te ordena a tus clientes como un <b>semáforo</b>: a quién llamar AHORA, a quién dar un empujón y a quién soltar.</p>
+      <div class="wz-why">💡 Dejas de vender a ciegas y empiezas a vender con <b>información que tu competencia ni sueña tener</b>. Tras hablar con cada cliente, márcalo 👍 / 👎 y el Radar se vuelve aún más certero.</div>
     </div>
 
     <!-- 5 -->
