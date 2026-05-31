@@ -152,7 +152,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
       <div class="wz-ico wz-ico--shield">🛡️</div>
       <div class="wz-step">Arma 2 de 4 · ¡la más importante!</div>
       <h2 class="wz-h">Activa tu Escudo</h2>
-      <p class="wz-p">El <b>Escudo</b> le avisa al sistema cuándo el que está viendo la cotización eres <b>TÚ</b> y no tu cliente. Activarlo es de <b>un solo clic</b>: al entrar al sistema te aparece un <b>botón verde que dice "Activar Escudo"</b>. Dale click y listo.</p>
+      <p class="wz-p">El <b>Escudo</b> le avisa al sistema cuándo el que está viendo la cotización eres <b>TÚ</b> y no tu cliente. Activarlo es de <b>un solo clic</b>: al entrar al sistema te aparece un <b>botón verde que dice "Activar Escudo"</b>. Dale click y listo. Puedes proteger <b>todos los dispositivos que uses</b> (tu compu, tu celular, tu tablet): solo inicia sesión en cada uno — no estás limitado a uno solo.</p>
       <div class="wz-why">💡 Además, revisa las cotizaciones siempre desde tu <b>propia computadora o celular</b> (donde escribiste tu usuario y contraseña). Si las abres desde otro lado, el sistema creerá que tu cliente está interesado cuando en realidad eras tú — y te haría perder tiempo.</div>
     </div>
 
