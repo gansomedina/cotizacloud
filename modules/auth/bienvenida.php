@@ -23,7 +23,32 @@ $emp_nom = $empresa['nombre'] ?? 'tu empresa';
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--g:#1a5c38;--g2:#22784a;--bg:#f4f4f0;--text:#1a1a18;--t2:#4a4a46;--t3:#6a6a64;--body:'Plus Jakarta Sans',sans-serif}
 body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f0 60%);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.wz{background:#fff;border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.12);width:100%;max-width:560px;overflow:hidden;position:relative}
+
+/* ── Portada ── */
+.cover{background:#fff;border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.14);width:100%;max-width:560px;padding:44px 40px 38px;text-align:center;animation:wzf .4s ease}
+.cover-kicker{font:700 11px var(--body);letter-spacing:.16em;text-transform:uppercase;color:var(--g);margin-bottom:16px}
+.cover h1{font:800 28px var(--body);letter-spacing:-.03em;line-height:1.15;margin-bottom:14px}
+.cover p{font:400 15.5px var(--body);color:var(--t2);line-height:1.65;max-width:430px;margin:0 auto 12px}
+.cover p b{color:var(--text)}
+.cover-cta{margin-top:24px;background:var(--g);color:#fff;border:none;border-radius:13px;padding:15px 44px;font:800 16px var(--body);cursor:pointer;box-shadow:0 8px 22px rgba(26,92,56,.30);transition:transform .15s,opacity .15s}
+.cover-cta:hover{transform:translateY(-1px);opacity:.95}
+
+/* ── Radar animado ── */
+.radar{position:relative;width:170px;height:170px;margin:0 auto 26px;border-radius:50%;background:radial-gradient(circle,rgba(26,92,56,.07) 0%,rgba(26,92,56,.02) 72%);border:2px solid rgba(26,92,56,.22);overflow:hidden}
+.radar i{position:absolute;border-radius:50%;border:1px solid rgba(26,92,56,.16)}
+.radar .r1{inset:28px}.radar .r2{inset:56px}
+.radar .cx,.radar .cy{position:absolute;background:rgba(26,92,56,.12)}
+.radar .cx{left:50%;top:0;bottom:0;width:1px;transform:translateX(-.5px)}
+.radar .cy{top:50%;left:0;right:0;height:1px;transform:translateY(-.5px)}
+.radar .sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,rgba(26,92,56,.32),rgba(26,92,56,0) 70deg,transparent 360deg);animation:rdSpin 3.5s linear infinite}
+@keyframes rdSpin{to{transform:rotate(360deg)}}
+.radar .blip{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--g);transform:translate(-50%,-50%);animation:rdBlip 3.5s ease-out infinite}
+@keyframes rdBlip{0%,100%{opacity:.2}40%{opacity:1;box-shadow:0 0 0 5px rgba(26,92,56,0)}48%{box-shadow:0 0 0 0 rgba(26,92,56,.45)}}
+.radar .tgt{position:absolute;left:50%;top:50%;width:11px;height:11px;border-radius:50%;background:var(--g);transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(26,92,56,.18)}
+.radar .ring{position:absolute;left:50%;top:50%;width:18px;height:18px;border-radius:50%;border:2px solid var(--g);transform:translate(-50%,-50%);animation:rdPulse 2s ease-out infinite}
+@keyframes rdPulse{0%{transform:translate(-50%,-50%) scale(.7);opacity:1}100%{transform:translate(-50%,-50%) scale(2.4);opacity:0}}
+
+.wz{background:#fff;border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.12);width:100%;max-width:560px;overflow:hidden;position:relative;display:none}
 .wz-top{height:5px;background:#e7e5df}
 .wz-bar{height:100%;background:var(--g);width:16%;transition:width .3s ease}
 .wz-skip{position:absolute;top:16px;right:18px;font:600 12px var(--body);color:var(--t3);text-decoration:none;z-index:2}
@@ -51,6 +76,27 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 </style>
 </head>
 <body>
+
+<!-- ── PORTADA ── -->
+<div class="cover" id="wzCover">
+  <div class="radar">
+    <i class="r1"></i><i class="r2"></i>
+    <span class="cx"></span><span class="cy"></span>
+    <span class="sweep"></span>
+    <span class="blip" style="left:74%;top:32%;animation-delay:.2s"></span>
+    <span class="blip" style="left:30%;top:64%;animation-delay:1.1s"></span>
+    <span class="blip" style="left:64%;top:72%;animation-delay:1.9s"></span>
+    <span class="blip" style="left:36%;top:30%;animation-delay:2.6s"></span>
+    <span class="ring"></span>
+    <span class="tgt"></span>
+  </div>
+  <div class="cover-kicker">Bienvenido a bordo</div>
+  <h1>Gracias por elegir CotizaCloud 🎯</h1>
+  <p>Acabas de activar tu <b>radar de ventas</b>. Tu sistema no solo crea cotizaciones profesionales: <b>detecta qué clientes están listos para comprar, te dice a quién contactar y monitorea a tus asesores en tiempo real.</b></p>
+  <p>Pero toda arma poderosa necesita calibrarse. En <b>1 minuto</b> te enseñamos cómo dejarla lista para <b>dar justo en el blanco.</b></p>
+  <button class="cover-cta" id="wzComenzar">Comenzar →</button>
+</div>
+
 <div class="wz">
   <div class="wz-top"><div class="wz-bar" id="wzBar"></div></div>
   <a href="#" class="wz-skip" id="wzSkip">Saltar</a>
@@ -120,6 +166,11 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 <script>
 (function(){
   var CSRF = <?= json_encode(csrf_token()) ?>;
+  // Portada → wizard
+  var cover = document.getElementById('wzCover'), wz = document.querySelector('.wz');
+  document.getElementById('wzComenzar').addEventListener('click', function(){
+    cover.style.display = 'none'; wz.style.display = 'block';
+  });
   var slides = document.querySelectorAll('.wz-slide');
   var total = slides.length, i = 0;
   var bar = document.getElementById('wzBar'), dots = document.getElementById('wzDots');
