@@ -162,7 +162,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
       <div class="wz-step">Arma 3 de 4</div>
       <h2 class="wz-h">A quién cazar HOY</h2>
       <p class="wz-p"><b>El Radar</b> es tu lista de clientes ordenada por quién está más cerca de comprar — te dice <b>a quién llamar primero</b>. Lee el botón <b>"?"</b> de cada uno y, tras hablarle, márcalo con <b>👍 / 👎</b> según su interés real.</p>
-      <div class="wz-why">💡 Deja de adivinar. Cada mañana entra al Radar y empieza por "Probable cierre": ahí están los que SÍ van a comprar.</div>
+      <div class="wz-why">💡 Deja de adivinar. Cada mañana entra al Radar y empieza por "Probable cierre": ahí están los clientes que <b>más se engancharon con tu propuesta</b>.</div>
     </div>
 
     <!-- 5 -->
