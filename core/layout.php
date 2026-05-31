@@ -725,6 +725,8 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
 if (Auth::rol() === 'admin' && (!defined('EMPRESA_SLUG') || EMPRESA_SLUG !== 'apple-review')):
 ?>
 <style>
+/* dar espacio al footer del sidebar (Plan/Vence) para que el fab no lo tape */
+.sidebar-footer{padding-bottom:140px !important}
 #czs-fab{position:fixed;left:18px;bottom:24px;z-index:9000;display:flex;flex-direction:column-reverse;align-items:flex-start;gap:8px;cursor:pointer;max-width:calc(var(--sidebar-w,220px) - 36px)}
 #czs-bubble{position:relative;width:54px;height:54px;border-radius:50%;background:var(--g,#1a5c38);color:#fff;border:none;box-shadow:0 6px 18px rgba(26,92,56,.35);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;transition:transform .15s}
 #czs-fab:hover #czs-bubble{transform:scale(1.06)}
