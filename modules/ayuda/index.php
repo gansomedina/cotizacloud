@@ -626,38 +626,126 @@ if (!$is_native_app_ayuda): ?>
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-ventas">
   <h2 class="ay-h2">🛒 Ventas</h2>
-  <p class="ay-subtitle">Gestiona tus ventas cerradas. Registra pagos, emite recibos y controla entregas.</p>
+  <p class="ay-subtitle">Cuando una cotización se cierra, se vuelve una <b>venta</b>. Aquí cobras (abonos), emites recibos, llevas el saldo y controlas la entrega. Esta guía explica <b>cada botón y cada opción</b> del detalle de la venta y de cómo editarla.</p>
 
+  <!-- ── ESTADOS ── -->
   <div class="ay-card">
-    <h3>Estados de una venta</h3>
+    <h3>Los estados de una venta</h3>
+    <p>Una venta cambia de estado <b>sola</b> según lo que cobres. Lo verás como etiqueta de color en el listado y arriba del detalle:</p>
     <ul>
-      <li><span class="ay-shortcut">Pendiente</span> Venta creada, sin pagos registrados.</li>
-      <li><span class="ay-shortcut">Parcial</span> El cliente ha hecho abonos pero falta saldo.</li>
-      <li><span class="ay-shortcut">Pagada</span> El monto total fue cubierto.</li>
-      <li><span class="ay-shortcut">Entregada</span> Producto/servicio entregado al cliente.</li>
-      <li><span class="ay-shortcut">Cancelada</span> Venta cancelada.</li>
+      <li><span class="ay-shortcut">Pendiente</span> Venta creada, <b>sin ningún pago</b> registrado.</li>
+      <li><span class="ay-shortcut">Parcial</span> El cliente ya <b>abonó algo</b>, pero todavía debe saldo.</li>
+      <li><span class="ay-shortcut">Pagada</span> Se cubrió el total. El saldo llega a cero. <i>(El sistema lo pone solo cuando los pagos igualan o superan el total.)</i></li>
+      <li><span class="ay-shortcut">Entregada</span> Marcaste que ya entregaste el producto o servicio.</li>
+      <li><span class="ay-shortcut">Cancelada</span> La venta se anuló. Solo se puede cancelar si <b>no tiene pagos activos</b>.</li>
     </ul>
   </div>
 
+  <!-- ── DE DÓNDE SALE UNA VENTA ── -->
   <div class="ay-card">
-    <h3>Registrar pagos</h3>
+    <h3>¿Cómo nace una venta?</h3>
+    <p>Una venta sale de una cotización: cuando el cliente <b>acepta</b> desde el link, o cuando tú la <b>conviertes a venta</b> desde el editor de la cotización. En ese momento la cotización original queda <b>congelada</b> (no se modifica) y la venta arranca su propia vida con su folio (ej. <code>VTA-2026-0007</code>) y su saldo igual al total.</p>
+  </div>
+
+  <!-- ── ENCABEZADO ── -->
+  <div class="ay-card">
+    <h3>El detalle de la venta (lo de arriba)</h3>
+    <p>Al abrir una venta verás un encabezado con la información clave. Si eres <b>administrador</b>, varios datos traen un lápiz ✏️ para editarlos en el momento:</p>
+    <ul>
+      <li><b>Cliente</b> — A quién se le vende. El admin puede <b>cambiarlo</b> con "✏️ cambiar".</li>
+      <li><b>Fecha</b> — Cuándo se creó la venta.</li>
+      <li><b>Asesor</b> — El vendedor responsable. El admin puede <b>reasignarlo</b> con el lápiz (también actualiza la cotización origen).</li>
+      <li><b>Cotización</b> — Un enlace a la cotización de la que salió, por si necesitas revisarla.</li>
+    </ul>
+  </div>
+
+  <!-- ── ARTÍCULOS ── -->
+  <div class="ay-card">
+    <h3>Los artículos de la venta</h3>
+    <p>Abajo aparecen los conceptos contratados con su cantidad, precio y total. El <b>administrador</b> puede modificarlos:</p>
+    <ul>
+      <li><b>+ Agregar artículo</b> — Abre una ventana con dos pestañas: <b>Del catálogo</b> (busca y elige, pones la cantidad) o <b>Manual</b> (escribes nombre, SKU, descripción, cantidad y precio a mano).</li>
+      <li><b>✏️ Editar</b> — Cambia nombre, SKU, descripción, cantidad o precio de una línea.</li>
+      <li><b>🗑 Eliminar</b> — Quita el artículo. <i>(Necesita ser admin o tener el permiso de eliminar artículos de venta.)</i></li>
+      <li><b>Botón ↓ / ↑ "Mover a extra / principal"</b> — Convierte un artículo en extra (se muestra aparte con su subtotal) o lo regresa a principal.</li>
+    </ul>
+    <div class="ay-warn">Los cambios a los artículos <b>no se guardan solos</b>: al modificar algo aparece el botón verde <b>"Guardar cambios"</b> en el lado derecho. Tócalo para que se apliquen. El total y el saldo se recalculan automáticamente.</div>
+  </div>
+
+  <!-- ── COBRAR / ABONOS ── -->
+  <div class="ay-card">
+    <h3>Cobrar: registrar abonos</h3>
+    <p>Aquí registras cada pago que te hace el cliente. Una venta puede recibir varios abonos hasta quedar pagada.</p>
     <div class="ay-steps">
       <div class="ay-step">
-        <h4>Abre la venta</h4>
-        <p>Haz clic en la venta desde el listado para ver el detalle.</p>
+        <h4>Toca "Registrar abono"</h4>
+        <p>Está en el historial de pagos y en los botones del lado derecho.</p>
       </div>
       <div class="ay-step">
-        <h4>Registra un abono</h4>
-        <p>Ingresa el monto del pago y el método (efectivo, transferencia, tarjeta, etc.). El sistema calcula el saldo restante automáticamente.</p>
+        <h4>Elige la forma de pago y el monto</h4>
+        <p>Efectivo 💵, transferencia 🏦 o tarjeta 💳. Pon el <b>monto</b> (obligatorio) y, si quieres, un <b>concepto</b> ("Anticipo 50%", "Pago final") y una <b>referencia/nota</b> ("BBVA ref. 8823"). La fecha y hora se ponen solas.</p>
       </div>
       <div class="ay-step">
-        <h4>Emite recibo</h4>
-        <p>Cada pago genera un recibo con folio que puedes compartir con el cliente como comprobante.</p>
+        <h4>Guarda</h4>
+        <p>El sistema genera un <b>recibo con folio</b> (ej. <code>REC-2026-0012</code>), actualiza el saldo y cambia el estado solo (a Parcial o Pagada). Si activaste avisos, te llega notificación push y correo del abono.</p>
       </div>
     </div>
   </div>
 
-  <div class="ay-tip">El cliente también puede ver el estado de su venta y saldo pendiente desde un link público — ideal para que sepa cuánto debe sin tener que preguntar.</div>
+  <!-- ── RECIBOS ── -->
+  <div class="ay-card">
+    <h3>Recibos de pago</h3>
+    <ul>
+      <li>Cada abono genera su <b>recibo</b>. En el historial de pagos puedes tocar <b>"🖨 PDF"</b> para imprimir el comprobante (sale en dos copias: empresa y cliente).</li>
+      <li><b>Cancelar un recibo</b> (botón ✕): si te equivocaste en un pago, lo cancelas con un motivo. El saldo de la venta <b>se reajusta</b> automáticamente. <i>(Necesita permiso de cancelar recibos.)</i></li>
+      <li>El cliente también tiene su propio link de recibo como comprobante.</li>
+    </ul>
+  </div>
+
+  <!-- ── RESUMEN FINANCIERO ── -->
+  <div class="ay-card">
+    <h3>El resumen financiero (lado derecho)</h3>
+    <p>De un vistazo controlas el dinero de la venta:</p>
+    <ul>
+      <li><b>Total</b> — Lo que cuesta la venta completa.</li>
+      <li><b>Pagado</b> — Lo que el cliente ya cubrió.</li>
+      <li><b>Saldo pendiente</b> — Lo que falta por cobrar (o "Pagado completo ✓").</li>
+      <li><b>Barra de progreso</b> — El % cobrado, visual.</li>
+    </ul>
+  </div>
+
+  <!-- ── BOTONES DE ACCIÓN ── -->
+  <div class="ay-card">
+    <h3>Botones de acción (lado derecho)</h3>
+    <ul>
+      <li><b>Registrar abono</b> — Cobra un pago (ver arriba).</li>
+      <li><b>Copiar URL del cliente</b> — Copia el link público de la venta para que el cliente vea su saldo y pagos.</li>
+      <li><b>Agregar descuento</b> — Aplica un descuento en pesos directo al total. <b>Se acumula</b> sobre el descuento que ya hubiera. Pon 0 para quitarlo. <i>(Necesita permiso de descuentos.)</i></li>
+      <li><b>Agregar extra</b> <span class="ay-shortcut">Business</span> — Suma un concepto extra (instalación, flete, accesorio) con su nombre y total. Aparece en sección aparte.</li>
+      <li><b>Guardar cambios</b> — Aparece en verde solo cuando hay cambios pendientes en artículos o descuentos.</li>
+      <li><b>🖨️ Imprimir / PDF</b> — Genera el comprobante completo de la venta (no es factura fiscal).</li>
+      <li><b>📋 Estado de cuenta</b> — Imprime un desglose claro: conceptos, extras, ajustes, pagos y saldo. Ideal para mandárselo al cliente.</li>
+      <li><b>✕ Cancelar venta</b> — Anula la venta (admin). Solo se permite si <b>no tiene pagos</b>; si los tiene, primero cancela los recibos.</li>
+    </ul>
+  </div>
+
+  <!-- ── NOTAS / HISTORIAL ── -->
+  <div class="ay-card">
+    <h3>Notas internas e historial</h3>
+    <ul>
+      <li><b>Notas internas</b> — Un espacio para apuntar lo de producción, entrega u observaciones. Se guarda solo conforme escribes. El cliente <b>no lo ve</b>.</li>
+      <li><b>Historial</b> — Registra todo lo que pasa con la venta: abonos, cambios de artículos, descuentos, cambio de cliente o asesor, cancelaciones, y quién lo hizo.</li>
+    </ul>
+  </div>
+
+  <!-- ── LISTADO ── -->
+  <div class="ay-card">
+    <h3>El listado de ventas</h3>
+    <p>En <b>Ventas</b> ves todas tus ventas. Arriba hay <b>filtros rápidos</b> (Todas, Pendiente, Parcial, Pagada, Entregada, Cancelada) con su contador, y un <b>buscador</b> por folio, cliente o título. Cada renglón muestra el estado y cuánto falta por cobrar; las ventas <b>sin ningún pago</b> se resaltan para que las persigas.</p>
+  </div>
+
+  <div class="ay-tip">El cliente puede ver su venta, su saldo y sus pagos desde un link público — perfecto para que sepa cuánto debe sin tener que preguntarte.</div>
+  <div class="ay-warn">Los documentos que genera CotizaCloud (recibos, estado de cuenta, comprobante de venta) son <b>internos</b>, no son facturas fiscales (CFDI).</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
