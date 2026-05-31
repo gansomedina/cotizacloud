@@ -53,7 +53,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 .wz-bar{height:100%;background:var(--g);width:16%;transition:width .3s ease}
 .wz-skip{position:absolute;top:16px;right:18px;font:600 12px var(--body);color:var(--t3);text-decoration:none;z-index:2}
 .wz-skip:hover{color:var(--t2)}
-.wz-body{padding:36px 40px 26px;text-align:center;height:466px;overflow:hidden;display:flex;flex-direction:column}
+.wz-body{padding:36px 40px 26px;text-align:center;height:510px;overflow:hidden;display:flex;flex-direction:column}
 .wz-slide{display:none;animation:wzf .35s ease;flex:1;flex-direction:column;justify-content:center}
 .wz-slide.on{display:flex}
 @keyframes wzf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -87,7 +87,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 .wz-next{background:var(--g);color:#fff}
 .wz-back{background:transparent;color:var(--t3);font-weight:600}
 .wz-back:disabled{opacity:0;pointer-events:none}
-@media(max-width:560px){.wz-body{padding:32px 22px 22px;height:74vh}.wz-nav{padding:16px 24px 26px}.wz-h{font-size:22px}}
+@media(max-width:560px){.wz-body{padding:30px 22px 20px;height:auto;overflow:visible}.wz-nav{padding:16px 24px 26px}.wz-h{font-size:22px}}
 </style>
 </head>
 <body>
@@ -158,10 +158,10 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
     <!-- 4 -->
     <div class="wz-slide">
       <div class="wz-ico wz-ico--target">🎯</div>
-      <div class="wz-step">Arma 3 de 4 · el corazón del sistema</div>
-      <h2 class="wz-h">Léele la mente a tu cliente</h2>
-      <p class="wz-p">Tu cliente casi nunca te dice si de verdad le interesó tu propuesta. <b>Su comportamiento sí — y el Radar lo lee por ti.</b> Sabe quién la abrió, quién la leyó completa, quién volvió a ver el precio y quién ni la tocó, y te ordena a tus clientes como un <b>semáforo</b>: a quién llamar AHORA, a quién dar un empujón y a quién soltar.</p>
-      <div class="wz-why">💡 Dejas de vender a ciegas y empiezas a vender con <b>información que tu competencia ni sueña tener</b>. Tras hablar con cada cliente, márcalo 👍 / 👎 y el Radar se vuelve aún más certero.</div>
+      <div class="wz-step">Arma 3 de 4 · la parte medular</div>
+      <h2 class="wz-h">Radar, tu secreto mejor guardado</h2>
+      <p class="wz-p">Te anticipa <b>qué cliente se enganchó con tu propuesta</b>, te dice <b>a quién darle seguimiento HOY</b> y hasta te ayuda a entender <b>qué necesita para decidirse</b>. Mientras tu competencia adivina, tú te <b>anticipas</b>.</p>
+      <div class="wz-why">💡 Es el corazón de CotizaCloud — lo que te hará vender más. Tras hablar con cada cliente, márcalo 👍 / 👎 y el Radar afina aún más su puntería.</div>
     </div>
 
     <!-- 5 -->
