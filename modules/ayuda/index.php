@@ -970,29 +970,152 @@ if (!$is_native_app_ayuda): ?>
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-configuracion">
   <h2 class="ay-h2">⚙️ Configuración</h2>
-  <p class="ay-subtitle">Personaliza tu cuenta, equipo y catálogo. Solo visible para administradores.</p>
+  <p class="ay-subtitle">El centro de control de tu cuenta. Aquí está organizado en <b>pestañas (tabs)</b>. Esta guía explica <b>cada pestaña y cada opción</b> que vas a encontrar. <b>Solo el administrador</b> entra a Configuración. Algunas pestañas aparecen según tu plan (Free, Pro o Business).</p>
 
   <div class="ay-card">
-    <h3>Secciones de configuración</h3>
+    <h3>Las pestañas que verás</h3>
     <ul>
-      <li><b>Empresa</b> — Nombre, logo, datos fiscales, moneda, condiciones comerciales. Todo esto aparece en tus cotizaciones.</li>
-      <li><b>Catálogo</b> — Tus productos/servicios con SKU, nombre, descripción y precio. Puedes agregar, editar o desactivar artículos.</li>
-      <li><b>Clientes</b> — Gestión masiva de tu base de clientes.</li>
-      <li><b>Cupones</b> — Crea códigos de descuento que tus clientes pueden aplicar a cotizaciones.</li>
-      <li><b>Usuarios</b> — Agrega asesores y administradores. Cada usuario tiene su login y puedes asignar permisos.</li>
-      <li><b>Radar</b> — Ajusta la sensibilidad del radar (agresivo, medio, ligero) y configura IPs internas para excluir vistas propias.</li>
+      <li><b>Empresa</b> — Tus datos, impuestos, avisos, apariencia y textos. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Catálogo</b> (o <b>Propiedades</b> si vendes inmuebles) — Tus productos o servicios. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Clientes</b> — Tu base de clientes. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Cupones</b> — Códigos de descuento + el descuento con cronómetro. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Usuarios</b> — Tu equipo y sus permisos. <span class="ay-shortcut">Business</span></li>
+      <li><b>Radar</b> — Qué tan fino detecta el interés de tus clientes. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Costos</b> — Cómo registras tus gastos. <span class="ay-shortcut">Pro y Business</span></li>
+      <li><b>Marketing</b> — Pixels de Meta, Google, TikTok. <span class="ay-shortcut">Business</span></li>
+      <li><b>Historial</b> — Tus números viejos para alimentar reportes. <span class="ay-shortcut">Business</span></li>
+      <li><b>Termómetro</b> — Mostrar u ocultar el score a los asesores. <span class="ay-shortcut">Business</span></li>
+      <li><b>Feedback</b> — Pedir calificación al cliente. <span class="ay-shortcut">Free y Business</span></li>
+      <li><b>Suscripción</b> — Tu plan y pagos. <span class="ay-shortcut">Todos</span></li>
+    </ul>
+    <div class="ay-tip">Recuerda tocar el botón <b>"Guardar cambios"</b> de cada pestaña. Los cambios no se aplican hasta que guardas.</div>
+  </div>
+
+  <!-- ── EMPRESA ── -->
+  <div class="ay-card">
+    <h3>Pestaña Empresa — empieza aquí</h3>
+    <p>Es lo primero que debes llenar. Todo esto aparece en las cotizaciones y ventas que ve tu cliente.</p>
+    <ul>
+      <li><b>Datos generales</b> — Sube tu <b>logo</b> (PNG, SVG o WEBP, máx. 2 MB), y pon nombre, ciudad/sucursal, teléfono, email, dirección, RFC y sitio web.</li>
+      <li><b>Impuestos</b> — Elige cómo manejas el IVA: <b>Ninguno</b> (sin impuesto), <b>Suma</b> (el IVA se agrega al subtotal) o <b>Incluido</b> (tus precios ya traen IVA). Y el <b>porcentaje</b>.</li>
+      <li><b>Notificaciones</b> — Pon un <b>email de avisos</b> y prende/apaga qué te notifican: cotización aceptada, rechazada, abono registrado, alertas del Radar y feedback del cliente.</li>
+      <li><b>Apariencia</b> — Elige el <b>color</b> con que se ve la cotización pública del cliente (verde, azul, rojo, naranja, dorado, morado u oscuro).</li>
+      <li><b>Defaults de cotizaciones</b> — La <b>vigencia</b> por defecto (días para que venza), si los asesores <b>pueden editar precios</b>, si <b>ocultas cantidad y precio unitario</b> al cliente (solo ve descripción y total), y el <b>auto-suspender</b> (suspende solas las cotizaciones sin actividad tras X días).</li>
+      <li><b>Mensajes</b> — Personaliza el <b>saludo/encabezado</b>, el mensaje al <b>aceptar</b> y al <b>rechazar</b>. Puedes insertar variables como <code>{{cliente}}</code>, <code>{{empresa}}</code> o <code>{{asesor}}</code> que se rellenan solas.</li>
+      <li><b>Términos y condiciones</b> — Textos al pie de las cotizaciones y de las ventas/recibos, más un footer chico para cada uno.</li>
     </ul>
   </div>
 
+  <!-- ── CATÁLOGO ── -->
   <div class="ay-card">
-    <h3>Roles de usuario</h3>
+    <h3>Pestaña Catálogo (o Propiedades)</h3>
+    <p>Tu lista de productos o servicios con su precio. Es lo que eliges al armar una cotización para no escribir todo a mano.</p>
     <ul>
-      <li><b>Admin</b> — Acceso total: configuración, todos los clientes, todas las cotizaciones, reportes completos</li>
-      <li><b>Asesor</b> — Ve solo sus propias cotizaciones y clientes (salvo que tenga permiso especial)</li>
+      <li><b>+ Nuevo artículo</b> — Pon nombre, SKU (clave interna, opcional), descripción (opcional) y precio.</li>
+      <li><b>✎ Editar / ✕ Eliminar</b> — Modifica o quita cualquier artículo. Hay un buscador arriba.</li>
+      <li>Si tu giro es <b>inmuebles</b>, esta pestaña se llama <b>Propiedades</b> y captura datos de la propiedad (m², recámaras, fotos, etc.).</li>
     </ul>
   </div>
 
-  <div class="ay-warn">Solo los administradores pueden acceder a Configuración. Si no ves esta opción en el menú, contacta a tu administrador.</div>
+  <!-- ── CLIENTES ── -->
+  <div class="ay-card">
+    <h3>Pestaña Clientes</h3>
+    <p>Tu directorio. Cada cliente muestra su teléfono, email y cuántas cotizaciones tiene.</p>
+    <ul>
+      <li><b>+ Nuevo cliente</b> — Nombre, teléfono, email (opcional) y notas internas (solo las ves tú).</li>
+      <li>Toca cualquier cliente para editarlo. Hay buscador arriba.</li>
+    </ul>
+  </div>
+
+  <!-- ── CUPONES ── -->
+  <div class="ay-card">
+    <h3>Pestaña Cupones</h3>
+    <ul>
+      <li><b>+ Nuevo cupón</b> — Define un <b>código</b>, el <b>tipo de descuento</b> (porcentaje % o monto fijo $), una descripción, el <b>vencimiento</b> (nunca / a los X días / en una fecha) y si está activo.</li>
+      <li>La tabla muestra cuántas veces se ha usado cada cupón y si está activo.</li>
+      <li><b>Descuento automático (cronómetro)</b> — Abajo defines los valores por defecto (porcentaje y días) del descuento con cuenta regresiva que activas en cada cotización.</li>
+    </ul>
+  </div>
+
+  <!-- ── USUARIOS ── -->
+  <div class="ay-card">
+    <h3>Pestaña Usuarios <span class="ay-shortcut">Business</span></h3>
+    <p>Tu equipo. Cada vendedor tiene su propio login y su score del Termómetro visible aquí. Al crear o editar un usuario defines:</p>
+    <ul>
+      <li><b>Datos</b> — Nombre, email, contraseña (mín. 8 caracteres; déjala vacía para no cambiarla), <b>rol</b> (Asesor o Admin) y si está activo.</li>
+      <li><b>Permisos del asesor</b> (cada uno es un interruptor): crear cotizaciones, editar cotizaciones, ver cantidad y precio unitario, editar precios, aplicar descuentos/cupones, ver todas las cotizaciones, ver todas las ventas, eliminar ítems de ventas, agregar extras, cancelar recibos, capturar pagos/abonos y asignar cotizaciones.</li>
+      <li><b>Acceso a módulos</b>: Costos, Proveedores, Reportes, Adjuntar archivos y Editar clientes.</li>
+    </ul>
+    <div class="ay-tip">El <b>Admin</b> tiene acceso total. El <b>Asesor</b> por defecto solo ve lo suyo; tú decides qué más puede hacer con estos interruptores.</div>
+  </div>
+
+  <!-- ── RADAR ── -->
+  <div class="ay-card">
+    <h3>Pestaña Radar</h3>
+    <p>Ajusta qué tan fino detecta el Radar el interés de tus clientes.</p>
+    <ul>
+      <li><b>Sensibilidad</b> — <b>Agresivo</b> (muestra más cotizaciones con menos señales, bueno si tienes poco volumen), <b>Medio</b> (equilibrado, recomendado) o <b>Ligero</b> (solo las señales más sólidas).</li>
+      <li><b>Calibración FIT</b> — El Radar aprende de tus cierres reales. Puedes <b>recalibrar</b> manualmente (recomendado cada 5+ ventas nuevas) o dejar la <b>calibración automática</b> (recalibra solo cada 10 ventas cerradas).</li>
+      <li><b>Buckets activos</b> — Prende o apaga los grupos del Radar (probable cierre, validando precio, decisión activa, revisión multi-persona, revivió, enfriándose, hesitación). Los apagados no se calculan ni aparecen.</li>
+      <li><b>Filtros de ruido</b> (se sugiere no mover) — Excluir visitas del equipo interno, filtrar bots conocidos y deduplicar vistas de la misma IP dentro de 30 min.</li>
+    </ul>
+  </div>
+
+  <!-- ── COSTOS ── -->
+  <div class="ay-card">
+    <h3>Pestaña Costos <span class="ay-shortcut">Pro y Business</span></h3>
+    <p>Elige cómo registras tus gastos:</p>
+    <ul>
+      <li><b>Por venta</b> — Cada costo se asigna a una venta. Ideal para ver margen y rentabilidad por proyecto.</li>
+      <li><b>Por empresa</b> — Los costos son gastos generales del negocio. Ideal para rentabilidad global mensual.</li>
+      <li><b>Ambos</b> <span class="ay-shortcut">Business</span> — Lo combina: gastos por venta y generales. Máximo control.</li>
+    </ul>
+    <p style="margin-top:6px">Cambiar de modo <b>no borra</b> los costos ya registrados; solo cambia cómo capturas los nuevos.</p>
+  </div>
+
+  <!-- ── MARKETING ── -->
+  <div class="ay-card">
+    <h3>Pestaña Marketing <span class="ay-shortcut">Business</span></h3>
+    <p>Conecta tus <b>pixels de seguimiento</b> para medir y hacer remarketing. Prende el que uses y pega tu ID:</p>
+    <ul>
+      <li><b>Meta Pixel</b> (Facebook/Instagram) + token de Conversions API opcional.</li>
+      <li><b>Google Analytics 4</b> (ID G-XXXXXXXXXX).</li>
+      <li><b>Google Ads</b> (Conversion ID + Label).</li>
+      <li><b>TikTok Pixel</b>.</li>
+    </ul>
+    <p style="margin-top:6px">Los scripts se inyectan solos en las cotizaciones y ventas públicas. Se disparan eventos cuando el cliente <b>abre</b>, <b>acepta</b> o <b>rechaza</b> una cotización. La configuración de cada pixel es responsabilidad tuya (consulta la doc oficial de cada plataforma).</p>
+  </div>
+
+  <!-- ── HISTORIAL ── -->
+  <div class="ay-card">
+    <h3>Pestaña Historial <span class="ay-shortcut">Business</span></h3>
+    <p>Captura tus números de <b>antes de usar CotizaCloud</b> (mes a mes: cotizaciones, monto, ventas, monto). El sistema los usa como base para tus reportes y para calcular mejor la tasa de cierre del Radar. Verás totales y tasa de cierre promedio.</p>
+  </div>
+
+  <!-- ── TERMÓMETRO ── -->
+  <div class="ay-card">
+    <h3>Pestaña Termómetro <span class="ay-shortcut">Business</span></h3>
+    <p>Un solo interruptor: <b>mostrar el termómetro a los asesores</b>. Si lo prendes, cada asesor ve su score, su diagnóstico y el leaderboard en su panel. Si lo apagas, solo tú lo ves en el panel ejecutivo.</p>
+  </div>
+
+  <!-- ── FEEDBACK ── -->
+  <div class="ay-card">
+    <h3>Pestaña Feedback <span class="ay-shortcut">Free y Business</span></h3>
+    <p>Pide a tus clientes que <b>califiquen la atención</b> directamente al final de la cotización pública (5 estrellas + comentario). Es una calificación por cotización y solo te llega a ti.</p>
+    <ul>
+      <li>Préndelo con el interruptor y <b>personaliza los textos</b>: pregunta principal, texto secundario, placeholder del comentario y mensaje de agradecimiento.</li>
+      <li>Tienes una <b>vista previa</b> en vivo de cómo lo verá el cliente.</li>
+    </ul>
+  </div>
+
+  <!-- ── SUSCRIPCIÓN ── -->
+  <div class="ay-card">
+    <h3>Pestaña Suscripción</h3>
+    <p>Tu plan actual, próximo cobro e historial de pagos. Desde aquí puedes cambiar o cancelar tu plan.</p>
+    <div class="ay-warn">En la <b>app de iPhone</b> esta gestión no aparece (regla de Apple). Para cambiar tu plan, abre <b>cotiza.cloud</b> en Safari o Chrome.</div>
+  </div>
+
+  <div class="ay-warn">Solo los administradores ven Configuración. Si no la encuentras en el menú, pídele a tu administrador que te dé acceso.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
