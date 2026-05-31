@@ -725,9 +725,10 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
 if (Auth::rol() === 'admin' && (!defined('EMPRESA_SLUG') || EMPRESA_SLUG !== 'apple-review')):
 ?>
 <style>
-#czs-bubble{position:fixed;right:18px;bottom:24px;width:56px;height:56px;border-radius:50%;background:var(--g,#1a5c38);color:#fff;border:none;box-shadow:0 4px 16px rgba(0,0,0,.22);cursor:pointer;z-index:9000;display:flex;align-items:center;justify-content:center;font-size:24px}
+#czs-bubble{position:fixed;left:18px;bottom:24px;height:48px;padding:0 16px 0 14px;border-radius:26px;background:var(--g,#1a5c38);color:#fff;border:none;box-shadow:0 4px 16px rgba(0,0,0,.22);cursor:pointer;z-index:9000;display:inline-flex;align-items:center;gap:8px;font:700 14px -apple-system,sans-serif;white-space:nowrap}
+#czs-bubble .czs-ico{font-size:20px;line-height:1}
 #czs-bubble .czs-badge{position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font:700 11px sans-serif;min-width:20px;height:20px;border-radius:99px;display:none;align-items:center;justify-content:center;padding:0 5px}
-#czs-win{position:fixed;right:18px;bottom:24px;width:360px;max-width:calc(100vw - 24px);height:480px;max-height:calc(100vh - 48px);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);z-index:9001;display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+#czs-win{position:fixed;left:18px;bottom:24px;width:360px;max-width:calc(100vw - 24px);height:480px;max-height:calc(100vh - 48px);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);z-index:9001;display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 #czs-win.open{display:flex}
 .czs-hdr{background:var(--g,#1a5c38);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
 .czs-hdr .t{font-weight:700;font-size:15px}
@@ -745,12 +746,12 @@ if (Auth::rol() === 'admin' && (!defined('EMPRESA_SLUG') || EMPRESA_SLUG !== 'ap
 .czs-foot button{background:var(--g,#1a5c38);color:#fff;border:none;border-radius:10px;width:42px;height:40px;cursor:pointer;font-size:17px}
 @media (max-width:768px){
   #czs-bubble{bottom:calc(var(--nav-h,64px) + env(safe-area-inset-bottom,0px) + 12px)}
-  #czs-win{right:0;bottom:0;width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0}
+  #czs-win{left:0;right:0;bottom:0;width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0}
 }
 @media print{#czs-bubble,#czs-win{display:none!important}}
 </style>
 
-<button id="czs-bubble" type="button" aria-label="Soporte">💬<span class="czs-badge" id="czs-badge">0</span></button>
+<button id="czs-bubble" type="button" aria-label="Soporte"><span class="czs-ico">💬</span><span>Ayuda para empezar</span><span class="czs-badge" id="czs-badge">0</span></button>
 <div id="czs-win" role="dialog" aria-label="Chat de soporte">
   <div class="czs-hdr">
     <div><div class="t">Soporte CotizaCloud</div><div class="s" id="czs-status">Cargando…</div></div>

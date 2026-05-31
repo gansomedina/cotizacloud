@@ -159,6 +159,7 @@ const CSRF = <?= json_encode(csrf_token()) ?>;
   const msgs = document.getElementById('msgs');
   const reply = document.getElementById('reply');
   const send = document.getElementById('send');
+  let lastId = <?= !empty($mensajes) ? (int)DB::val("SELECT MAX(id) FROM soporte_mensajes WHERE conversacion_id=?", [$sel]) : 0 ?>;
 
   function scrollBottom(){ msgs.scrollTop = msgs.scrollHeight; }
   scrollBottom();
@@ -182,14 +183,22 @@ const CSRF = <?= json_encode(csrf_token()) ?>;
         body: JSON.stringify({accion:'responder', conversacion_id:convId, cuerpo:txt})
       });
       const d = await r.json();
-      if (d.ok){ addMsg('agente', txt, new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})); reply.value=''; }
+      if (d.ok){ addMsg('agente', txt, new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})); if(d.mensaje_id)lastId=Math.max(lastId,d.mensaje_id); reply.value=''; }
     } catch(e){}
     send.disabled = false; reply.focus();
   }
   send.addEventListener('click', doSend);
   reply.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); doSend(); }});
-  // Sin auto-reload: el push avisa de mensajes nuevos. Recarga manual para verlos
-  // (no recargamos solos para no borrar lo que estés escribiendo).
+
+  // Poll: agrega mensajes nuevos del usuario sin recargar (no borra lo que escribes).
+  async function poll(){
+    try{
+      const r = await fetch('/api/soporte/poll?conv='+convId+'&since='+lastId);
+      const d = await r.json(); if(!d.ok)return;
+      (d.mensajes||[]).forEach(m => { addMsg(m.autor, m.cuerpo, m.hora); lastId=Math.max(lastId, m.id); });
+    }catch(e){}
+  }
+  setInterval(() => { if(!document.hidden) poll(); }, 6000);
 })();
 <?php endif; ?>
 </script>

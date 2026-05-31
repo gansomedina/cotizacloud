@@ -45,7 +45,7 @@ if ($accion === 'responder') {
     $conv = DB::row("SELECT id, empresa_id, usuario_id FROM soporte_conversaciones WHERE id = ?", [$conv_id]);
     if (!$conv) { echo json_encode(['ok' => false, 'error' => 'Conversación no existe']); exit; }
 
-    DB::insert(
+    $resp_id = DB::insert(
         "INSERT INTO soporte_mensajes (conversacion_id, autor, cuerpo) VALUES (?, 'agente', ?)",
         [$conv_id, $cuerpo]
     );
@@ -68,7 +68,7 @@ if ($accion === 'responder') {
         );
     } catch (\Throwable $e) {}
 
-    echo json_encode(['ok' => true]);
+    echo json_encode(['ok' => true, 'mensaje_id' => $resp_id]);
     exit;
 }
 
