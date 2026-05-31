@@ -90,11 +90,11 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
     <span class="ring"></span>
     <span class="tgt"></span>
   </div>
-  <div class="cover-kicker">Bienvenido a bordo</div>
-  <h1>Gracias por elegir CotizaCloud 🎯</h1>
-  <p>Acabas de activar tu <b>radar de ventas</b>. Tu sistema no solo crea cotizaciones profesionales: <b>detecta qué clientes están listos para comprar, te dice a quién contactar y monitorea a tus asesores en tiempo real.</b></p>
-  <p>Pero toda arma poderosa necesita calibrarse. En <b>1 minuto</b> te enseñamos cómo dejarla lista para <b>dar justo en el blanco.</b></p>
-  <button class="cover-cta" id="wzComenzar">Comenzar →</button>
+  <div class="cover-kicker">Acabas de subir de nivel</div>
+  <h1>Bienvenido a tu máquina de cerrar ventas 🎯</h1>
+  <p>La mayoría manda una cotización y se queda <b>esperando a ver qué pasa.</b> Tú ya no. CotizaCloud te dice <b>quién abrió tu cotización, cuántas veces volvió y quién está a un paso de firmar.</b> Tú solo llegas a cerrar.</p>
+  <p>Y mientras vendes, el sistema <b>vigila a tu equipo</b>: sabrás quién está rompiéndola y a quién hay que apretar. Dale 1 minuto a esta guía y prepárate para <b>dar justo en el blanco.</b></p>
+  <button class="cover-cta" id="wzComenzar">Encender mi radar →</button>
 </div>
 
 <div class="wz">
@@ -104,55 +104,56 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 
     <!-- 1 -->
     <div class="wz-slide on">
-      <div class="wz-ico">👋</div>
-      <div class="wz-step">Bienvenido</div>
-      <h2 class="wz-h">¡Hola<?= $primer ? ', '.htmlspecialchars($primer) : '' ?>! <?= htmlspecialchars($emp_nom) ?> ya está lista</h2>
-      <p class="wz-p">En menos de <b>1 minuto</b> te mostramos las <b>4 armas</b> que usarás para vender más con CotizaCloud. Vale la pena — esto es lo que separa a un vendedor que cierra de uno que persigue clientes a ciegas.</p>
+      <div class="wz-ico">🚀</div>
+      <div class="wz-step">Empecemos</div>
+      <h2 class="wz-h"><?= $primer ? htmlspecialchars($primer).', ' : '' ?>tienes 4 armas. Vamos a cargarlas</h2>
+      <p class="wz-p"><b><?= htmlspecialchars($emp_nom) ?></b> ya está dentro. Antes de salir a cazar ventas, calibremos tus 4 armas en <b>1 minuto</b>. Esto es lo que separa al vendedor que <b>cierra</b> del que persigue clientes a ciegas.</p>
     </div>
 
     <!-- 2 -->
     <div class="wz-slide">
       <div class="wz-ico">🏢</div>
       <div class="wz-step">Arma 1 de 4</div>
-      <h2 class="wz-h">Configura tu empresa</h2>
-      <p class="wz-p">Es la base de todo. Sube tu <b>logo</b>, tus <b>datos fiscales</b> y arma tu <b>catálogo</b> de productos o servicios con precios.</p>
-      <div class="wz-why">💡 Una empresa bien configurada hace que tus cotizaciones se vean profesionales y las generes en segundos.</div>
+      <h2 class="wz-h">Tu primera impresión cierra ventas</h2>
+      <p class="wz-p">Sube tu <b>logo</b>, tus <b>datos fiscales</b> y arma tu <b>catálogo</b> con precios. Una empresa bien armada manda cotizaciones que se ven <b>de millones</b>… en segundos.</p>
+      <div class="wz-why">💡 El cliente que ve algo profesional, confía. Y el que confía, compra.</div>
     </div>
 
     <!-- 3 -->
     <div class="wz-slide">
       <div class="wz-ico">🛡️</div>
       <div class="wz-step">Arma 2 de 4</div>
-      <h2 class="wz-h">El Escudo</h2>
-      <p class="wz-p">Abre las cotizaciones de tus clientes <b>solo desde tu dispositivo con la sesión iniciada</b>. Así el sistema sabe que eres tú y no el cliente.</p>
-      <div class="wz-why">💡 Si no lo cuidas, el sistema cree que el cliente está interesado cuando en realidad eras tú revisando. Te haría perder tiempo.</div>
+      <h2 class="wz-h">Que el radar no te mienta</h2>
+      <p class="wz-p">Abre las cotizaciones de tus clientes <b>solo desde tu equipo con la sesión iniciada</b>. Así el sistema sabe que el que mira eres tú, no el cliente.</p>
+      <div class="wz-why">💡 Sin Escudo, persigues fantasmas: el sistema marca "caliente" a un cliente cuando en realidad eras tú revisando. Y pierdes la venta real.</div>
     </div>
 
     <!-- 4 -->
     <div class="wz-slide">
       <div class="wz-ico">🎯</div>
       <div class="wz-step">Arma 3 de 4</div>
-      <h2 class="wz-h">El Radar</h2>
-      <p class="wz-p">Tu herramienta diaria. Te dice <b>quién está a punto de comprar</b> y a quién llamar primero. Lee el botón <b>"?"</b> de cada cliente y marca <b>👍 / 👎</b> según su interés real.</p>
-      <div class="wz-why">💡 Entra al Radar cada mañana: empieza por "Probable cierre", que junta a tus clientes más calientes.</div>
+      <h2 class="wz-h">A quién cazar HOY</h2>
+      <p class="wz-p">El Radar te dice <b>quién está a punto de comprar</b> y a quién llamar primero. Lee el botón <b>"?"</b> de cada cliente y, tras hablarle, márcalo con <b>👍 / 👎</b> según su interés real.</p>
+      <div class="wz-why">💡 Deja de adivinar. Cada mañana entra al Radar y empieza por "Probable cierre": ahí están los que SÍ van a comprar.</div>
     </div>
 
     <!-- 5 -->
     <div class="wz-slide">
       <div class="wz-ico">🌡️</div>
       <div class="wz-step">Arma 4 de 4</div>
-      <h2 class="wz-h">El Termómetro</h2>
-      <p class="wz-p">Es tu <b>calificación como vendedor</b>, del 0 al 100. El sistema <b>analiza todo tu trabajo</b> (envíos, seguimiento, cierres, cobranza) y la calcula solo.</p>
-      <div class="wz-why">💡 No sube con clics sueltos: sube cuando haces bien las otras 3 armas. Es tu espejo objetivo.</div>
+      <h2 class="wz-h">Tu marcador de vendedor</h2>
+      <p class="wz-p">Una <b>calificación del 0 al 100</b> que el sistema calcula solo, analizando <b>todo tu trabajo</b>: envíos, seguimiento, cierres y cobranza. Tú y tu jefe la ven en tiempo real.</p>
+      <div class="wz-why">💡 Lo que se mide, se mejora. Sube tu número y subes tus comisiones. No hay a quién echarle la culpa: el marcador es objetivo.</div>
     </div>
 
     <!-- 6 -->
     <div class="wz-slide">
       <div class="wz-ico">🚀</div>
-      <div class="wz-step">¡Listo!</div>
-      <h2 class="wz-h">Estás listo para vender</h2>
-      <p class="wz-p">Empieza por <b>configurar tu empresa</b> y manda tu primera cotización. Encontrarás esta guía completa en cualquier momento en el menú de <b>Ayuda</b>.</p>
-      <div class="wz-why">¿Tienes dudas del sistema? No dudes en contactarnos por el <b>Chat de soporte</b> (el botón 💬 en tu pantalla), o pídenos ahí mismo una <b>cita de configuración</b>. Estamos para ayudarte.</div>
+      <div class="wz-step">A vender</div>
+      <h2 class="wz-h">Listo. Que empiece la cacería 🎯</h2>
+      <p class="wz-p">Arranca <b>configurando tu empresa</b> y manda tu primera cotización hoy mismo. Esta guía completa siempre está en el menú de <b>Ayuda</b> cuando la necesites.</p>
+      <div class="wz-why">¿Te atoras en algo? Escríbenos por el <b>Chat de soporte</b> (botón 💬 en tu pantalla) o pídenos ahí mismo una <b>cita de configuración</b>. Te dejamos el radar listo para disparar.</div>
+      <p style="margin-top:16px;font:400 12px var(--body);color:var(--t3);line-height:1.55;max-width:440px;margin-left:auto;margin-right:auto"><b>Nota:</b> el Radar y el Termómetro necesitan <b>datos para trabajar</b>: cotizaciones enviadas y la <b>interacción real de tus clientes</b>. Sin cotizaciones y sin interés real del cliente, el Radar no tiene nada que detectar. Entre más uses el sistema, más certero se vuelve.</p>
     </div>
 
   </div>
