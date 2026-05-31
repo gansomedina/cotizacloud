@@ -53,7 +53,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 .wz-bar{height:100%;background:var(--g);width:16%;transition:width .3s ease}
 .wz-skip{position:absolute;top:16px;right:18px;font:600 12px var(--body);color:var(--t3);text-decoration:none;z-index:2}
 .wz-skip:hover{color:var(--t2)}
-.wz-body{padding:46px 40px 32px;text-align:center;min-height:420px;display:flex;flex-direction:column}
+.wz-body{padding:40px 40px 28px;text-align:center;height:480px;overflow-y:auto;display:flex;flex-direction:column}
 .wz-slide{display:none;animation:wzf .35s ease;flex:1;flex-direction:column;justify-content:center}
 .wz-slide.on{display:flex}
 @keyframes wzf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -87,7 +87,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 .wz-next{background:var(--g);color:#fff}
 .wz-back{background:transparent;color:var(--t3);font-weight:600}
 .wz-back:disabled{opacity:0;pointer-events:none}
-@media(max-width:560px){.wz-body{padding:40px 24px 24px}.wz-nav{padding:16px 24px 26px}.wz-h{font-size:22px}}
+@media(max-width:560px){.wz-body{padding:32px 22px 22px;height:74vh}.wz-nav{padding:16px 24px 26px}.wz-h{font-size:22px}}
 </style>
 </head>
 <body>
@@ -159,10 +159,10 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
     <!-- 4 -->
     <div class="wz-slide">
       <div class="wz-ico wz-ico--target">🎯</div>
-      <div class="wz-step">Arma 3 de 4</div>
-      <h2 class="wz-h">A quién cazar HOY</h2>
-      <p class="wz-p"><b>El Radar</b> es tu lista de clientes ordenada por quién está más cerca de comprar — te dice <b>a quién llamar primero</b>. Lee el botón <b>"?"</b> de cada uno y, tras hablarle, márcalo con <b>👍 / 👎</b> según su interés real.</p>
-      <div class="wz-why">💡 Deja de adivinar. Cada mañana entra al Radar y empieza por "Probable cierre": ahí están los clientes que <b>más se engancharon con tu propuesta</b>.</div>
+      <div class="wz-step">Arma 3 de 4 · tu diferenciador</div>
+      <h2 class="wz-h">El Radar: lo que nadie más te da</h2>
+      <p class="wz-p">Mientras otros mandan una cotización y se quedan a ciegas, tú ves <b>en tiempo real</b> cómo cada cliente trata tu propuesta: cuándo la abre, cuánto la lee, si se detiene en el precio, cuántas veces vuelve y desde cuántos dispositivos. El Radar convierte eso en una <b>lista ordenada por quién está más enganchado</b>.</p>
+      <div class="wz-why">💡 Deja de perseguir a ciegas. Cada mañana atiende primero "Probable cierre", lee el botón <b>"?"</b> de cada cliente y, tras hablarle, márcalo con <b>👍 / 👎</b> según su interés real.</div>
     </div>
 
     <!-- 5 -->
