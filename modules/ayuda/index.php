@@ -412,19 +412,92 @@ if (!$is_native_app_ayuda): ?>
 <!--  DASHBOARD                                             -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-dashboard">
-  <h2 class="ay-h2"><?= ico('chart',18,'#2563eb') ?> Dashboard</h2>
-  <p class="ay-subtitle">Tu vista ejecutiva. De un vistazo sabes cómo va tu negocio.</p>
+  <h2 class="ay-h2"><?= ico('chart',18,'#2563eb') ?> Inicio (Dashboard)</h2>
+  <p class="ay-subtitle">Es la pantalla de inicio: la foto de cómo va tu negocio <b>hoy</b>. Esta guía recorre <b>cada bloque de arriba abajo</b> para que sepas qué significa cada número. Si eres asesor, ves solo lo tuyo; si eres admin, ves todo el equipo.</p>
 
   <div class="ay-card">
-    <h3>¿Qué encuentras aquí?</h3>
+    <h3>Filtro de período (arriba a la derecha)</h3>
+    <p>Casi todo el dashboard se mide por un <b>período</b> que tú eliges: <b>Este mes</b>, <b>Mes anterior</b>, <b>Últimos 30 días</b>, <b>Últimos 90 días</b> o <b>Este año</b>. Cámbialo y todos los números se recalculan. Varios bloques comparan contra el período anterior para mostrarte si vas <b>↑ subiendo</b> o <b>↓ bajando</b>.</p>
+  </div>
+
+  <!-- ── ESCUDO ── -->
+  <div class="ay-card">
+    <h3>Tarjeta del Escudo Radar</h3>
+    <p>Arriba puede aparecer la tarjeta <b>"Escudo Radar — Activo"</b> con la lista de tus dispositivos protegidos (tu compu, tu celular). Sus visitas a las cotizaciones <b>no se cuentan como cliente</b>. <b>Regla de oro:</b> si revisas una cotización desde un dispositivo que no está en la lista, inicia sesión ahí de inmediato para protegerlo. Lee el apartado <b>🛡️ Escudo</b> del menú Inicio para entenderlo a fondo.</p>
+  </div>
+
+  <!-- ── TERMÓMETRO + LEADERBOARD ── -->
+  <div class="ay-card">
+    <h3>Tu Termómetro y el ranking del equipo</h3>
+    <p>Si tu empresa lo tiene activado, verás tu <b>score del 0 al 100</b> con tu nivel (Excepcional, Buen ritmo, Puede mejorar, Necesita atención) y una flecha de tendencia (↑ mejorando, → estable, ↓ bajando). Debajo hay 5 barritas — <b>Activación, Engagement, Seguimiento, Radar Health y Conversión</b> — y un diagnóstico que te dice qué mejorar (toca "ver más").</p>
     <ul>
-      <li><b>KPIs principales</b> — Total de cotizaciones, ventas cerradas, tasa de cierre y monto total vendido</li>
-      <li><b>Gráficas de tendencia</b> — Visualiza cómo evolucionan tus ventas en el tiempo</li>
-      <li><b>Filtro por período</b> — Mes actual, mes anterior, últimos 30 días, 90 días o año completo</li>
+      <li>Si eres <b>nuevo</b>, primero verás "Analizando tu actividad": el score se activa tras unos días de uso.</li>
+      <li>Si eres <b>admin</b>, además aparece el <b>Ranking del equipo</b> con el score de cada vendedor, sus abiertas, cierres, dormidas, y un botón <b>"?"</b> que explica a fondo cómo se calcula.</li>
+    </ul>
+    <div class="ay-tip">Hay un apartado completo del <b>🌡️ Termómetro</b> en este manual. Aquí solo lo ves resumido en tu inicio.</div>
+  </div>
+
+  <!-- ── KPIs ── -->
+  <div class="ay-card">
+    <h3>Resumen financiero (las 4 tarjetas de colores)</h3>
+    <ul>
+      <li><b>Ventas del período</b> — Cuánto vendiste y en cuántas ventas, con la comparación contra el período anterior.</li>
+      <li><b>Cobrado</b> — El dinero que realmente <b>entró</b> en el período (suma de los pagos/recibos), y cuántos pagos fueron.</li>
+      <li><b>Por cobrar</b> — Lo que te <b>deben</b> en total (todas las ventas con saldo, sin importar la fecha) y cuántas ventas tienen saldo.</li>
+      <li><b>Cotizaciones creadas</b> — Cuántas hiciste en el período, el monto total cotizado y si subiste o bajaste vs antes.</li>
     </ul>
   </div>
 
-  <div class="ay-tip">Revisa tu dashboard al inicio de cada día para tener contexto antes de empezar a vender.</div>
+  <!-- ── VENTAS SIN PAGOS ── -->
+  <div class="ay-card">
+    <h3>Ventas sin pagos</h3>
+    <p>Lista de ventas que <b>no tienen ningún abono</b> todavía, ordenadas de la más vieja a la más nueva. Te dice cuántos días llevan sin pago (en rojo si pasan de 14). Es tu lista de cobranza: tócalas para ir directo a registrar el pago.</p>
+  </div>
+
+  <!-- ── CONVERSIÓN ── -->
+  <div class="ay-card">
+    <h3>Métricas de conversión</h3>
+    <ul>
+      <li><b>Embudo del período</b> — Cuántas cotizaciones se <b>enviaron</b>, cuántas el cliente <b>abrió</b>, cuántas <b>aceptó</b> y cuántas <b>rechazó</b>, con su barra y porcentaje.</li>
+      <li><b>Indicadores clave</b> — <b>Tasa de cierre</b> (% de enviadas que terminan en venta pagada), <b>ticket promedio</b>, <b>tiempo promedio de cierre</b> (días que tardan en aceptar), cotizaciones <b>rechazadas</b>, cotizaciones <b>sin abrir</b> y cuántas ventas llevaron descuento.</li>
+    </ul>
+  </div>
+
+  <!-- ── ALERTAS ── -->
+  <div class="ay-card">
+    <h3>Alertas — lo que necesita tu atención</h3>
+    <p>Cuatro listas de lo más reciente. Toca cualquier renglón para ir a la cotización o venta:</p>
+    <ul>
+      <li><b>✓ Aceptadas recientemente</b> — Las que el cliente aceptó en los últimos 14 días.</li>
+      <li><b>✕ Rechazadas</b> — Las rechazadas en los últimos 14 días.</li>
+      <li><b>⏰ Próximas a vencer</b> — Enviadas o vistas que vencen en 7 días o menos.</li>
+      <li><b>✉️ Sin abrir</b> — Enviadas que el cliente aún no abre (marca <b>VENCIDA</b> si ya pasó su fecha). <b>Atiende estas rápido:</b> a los 5 días sin abrir golpean fuerte tu Termómetro.</li>
+    </ul>
+  </div>
+
+  <!-- ── RADAR ── -->
+  <div class="ay-card">
+    <h3>Radar — oportunidades activas</h3>
+    <p>Un resumen del Radar con los clientes más calientes, en 4 grupos: <b>Probable cierre</b>, <b>Cierre inminente</b>, <b>On Fire</b> y <b>Validando precio</b>. Cada renglón muestra el cliente, el monto y unos <b>puntos de calor</b> (entre más rojos, más interés). Tócalo para ir a la cotización y darle seguimiento. El Radar completo está en su propio menú.</p>
+  </div>
+
+  <!-- ── RECIBOS DEL DÍA ── -->
+  <div class="ay-card">
+    <h3>Recibos del día</h3>
+    <p>Todos los pagos registrados <b>hoy</b> (y las cancelaciones del día), con cliente, folio, forma de pago y monto. Ideal para tu corte diario.</p>
+  </div>
+
+  <!-- ── ACTIVIDAD ── -->
+  <div class="ay-card">
+    <h3>Actividad del período</h3>
+    <p>Dos tarjetas con el detalle fino:</p>
+    <ul>
+      <li><b>Cotizaciones</b> — Cuántas generaste, total cotizado, ticket promedio (del período y del año), cuántas cerraste, rechazadas y pendientes de respuesta.</li>
+      <li><b>Ventas</b> — Cuántas, total vendido, ticket promedio, completamente pagadas, con saldo y total cobrado.</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">Revisa tu inicio al arrancar el día: primero las <b>Ventas sin pagos</b> (cobranza), luego <b>Sin abrir</b> y <b>Próximas a vencer</b> (seguimiento), y por último el <b>Radar</b> para saber a quién llamar HOY.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -432,30 +505,42 @@ if (!$is_native_app_ayuda): ?>
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-clientes">
   <h2 class="ay-h2">👥 Clientes</h2>
-  <p class="ay-subtitle">Tu base de datos de clientes. Centraliza toda la información de contacto.</p>
+  <p class="ay-subtitle">Tu directorio. Cada cliente guarda sus datos de contacto y todo su historial de cotizaciones y ventas. Esta guía explica el <b>listado</b> y la <b>ficha</b> de cada cliente, opción por opción.</p>
 
+  <!-- ── LISTADO ── -->
   <div class="ay-card">
-    <h3>Funciones principales</h3>
+    <h3>El listado de clientes</h3>
     <ul>
-      <li><b>Crear cliente</b> — Nombre, teléfono, email, dirección y notas</li>
-      <li><b>Buscar</b> — Encuentra clientes por nombre, teléfono o email</li>
-      <li><b>Historial</b> — Ve todas las cotizaciones y ventas asociadas a cada cliente</li>
-      <li><b>Editar</b> — Actualiza datos de contacto en cualquier momento</li>
+      <li><b>+ Nuevo cliente</b> — Abre un formulario con: nombre (obligatorio), teléfono (obligatorio), dirección (opcional) y una nota interna (opcional). Es la forma rápida de dar de alta a alguien sin salir de la pantalla.</li>
+      <li><b>Buscar</b> — Escribe nombre, teléfono o email y la lista se filtra al instante.</li>
+      <li><b>Ordenar</b> — Más reciente, Nombre A–Z, Mayor compra o Más cotizaciones.</li>
+      <li>Cada renglón muestra el cliente, su teléfono, cuántas <b>cotizaciones</b> tiene, cuánto te ha <b>comprado</b> en total y su <b>saldo pendiente</b>. Tócalo para abrir su ficha.</li>
     </ul>
   </div>
 
-  <div class="ay-steps">
-    <div class="ay-step">
-      <h4>Crea un nuevo cliente</h4>
-      <p>Haz clic en <b>"Nuevo cliente"</b>, llena al menos el nombre y un dato de contacto (teléfono o email), y guarda.</p>
-    </div>
-    <div class="ay-step">
-      <h4>Asocia cotizaciones</h4>
-      <p>Al crear una cotización, seleccionas el cliente. Todo queda vinculado automáticamente.</p>
-    </div>
+  <!-- ── FICHA ── -->
+  <div class="ay-card">
+    <h3>La ficha del cliente</h3>
+    <p>Al abrir un cliente ves todo lo suyo en una sola pantalla:</p>
+    <ul>
+      <li><b>Datos de contacto</b> — Nombre, teléfono (toca para llamar) y email (toca para escribir), más la fecha de registro, el asesor que lo dio de alta y la última actividad.</li>
+      <li><b>Cotizaciones</b> — La lista completa de sus cotizaciones con folio, título, monto y estado. Tócalas para abrirlas.</li>
+      <li><b>Ventas</b> — Sus ventas con monto, saldo pendiente y estado.</li>
+      <li><b>Resumen (lado derecho)</b> — Número de cotizaciones, ventas, <b>tasa de conversión</b> (qué % de sus cotizaciones se volvieron venta), total comprado y saldo pendiente.</li>
+    </ul>
   </div>
 
-  <div class="ay-tip">Siempre registra el teléfono del cliente — es el canal más efectivo para dar seguimiento en ventas de alto valor.</div>
+  <!-- ── ACCIONES ── -->
+  <div class="ay-card">
+    <h3>Acciones en la ficha</h3>
+    <ul>
+      <li><b>Editar cliente</b> — Actualiza nombre, teléfono, dirección y nota. <i>(Necesitas ser admin o tener el permiso de editar clientes.)</i></li>
+      <li><b>+ Nueva cotización</b> — Crea una cotización ya ligada a este cliente, sin tener que volver a buscarlo.</li>
+      <li><b>Eliminar cliente</b> — Solo aparece (para admin) si el cliente <b>no tiene ninguna cotización ni venta</b>. Así no se borra información ligada a tu historial.</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">Registra siempre el <b>teléfono</b>: es el canal más efectivo para dar seguimiento. Y revisa la <b>tasa de conversión</b> de tus mejores clientes para detectar a quién vale la pena consentir.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -917,20 +1002,54 @@ if (!$is_native_app_ayuda): ?>
 <!--  COSTOS                                                -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-costos">
-  <h2 class="ay-h2">📉 Costos</h2>
-  <p class="ay-subtitle">Controla los gastos asociados a tus ventas para conocer tu margen real.</p>
+  <h2 class="ay-h2">📉 Costos <span class="ay-shortcut">Pro y Business</span></h2>
+  <p class="ay-subtitle">Registra lo que te cuesta cada venta o tu operación, para conocer tu <b>margen real</b> (no solo lo que vendes, sino lo que te queda). Lo que ves aquí depende del <b>modo de costos</b> que elegiste en Configuración → Costos.</p>
 
   <div class="ay-card">
-    <h3>Funciones principales</h3>
+    <h3>Primero: el modo de costos</h3>
+    <p>En <b>Configuración → Costos</b> eliges cómo trabajas, y eso define las pestañas que aparecen:</p>
     <ul>
-      <li><b>Registrar gastos</b> — Cada gasto con monto, categoría, descripción y fecha</li>
-      <li><b>Categorías</b> — Organiza por tipo: materiales, mano de obra, transporte, etc.</li>
-      <li><b>Asociar a ventas</b> — Vincula gastos a ventas específicas para calcular margen</li>
-      <li><b>Filtrar</b> — Busca por categoría, fecha o descripción</li>
+      <li><b>Por venta</b> — Asignas cada gasto a una venta concreta. Verás la pestaña <b>"Costos por venta"</b>.</li>
+      <li><b>Por empresa</b> — Registras gastos generales del negocio. Verás <b>"Gastos generales"</b>.</li>
+      <li><b>Ambos</b> <span class="ay-shortcut">Business</span> — Las dos pestañas, para control total.</li>
     </ul>
   </div>
 
-  <div class="ay-tip">Registra los costos al momento de incurrir en ellos, no al final del mes. Así siempre tendrás visibilidad real de tu rentabilidad.</div>
+  <!-- ── COSTOS POR VENTA ── -->
+  <div class="ay-card">
+    <h3>Pestaña "Costos por venta"</h3>
+    <p>Arriba ves 3 indicadores del mes: <b>Ventas</b>, <b>Costos</b> y <b>Margen promedio</b> (comparado contra el mes anterior). Debajo, la lista de tus ventas con su margen, filtrable por categoría y con buscador.</p>
+    <ul>
+      <li>Toca <b>"+ Costo"</b> en una venta (o entra a su detalle) para registrar un gasto: <b>categoría</b>, <b>proveedor</b> (opcional), <b>concepto</b>, <b>importe</b>, <b>fecha</b> y nota.</li>
+      <li>En el detalle de cada venta ves todos sus costos sumados, la <b>utilidad</b> (venta − costos) y el <b>% de margen</b> con una barra de color (verde = sano, ámbar = ajustado, rojo = bajo).</li>
+    </ul>
+  </div>
+
+  <!-- ── GASTOS GENERALES ── -->
+  <div class="ay-card">
+    <h3>Pestaña "Gastos generales"</h3>
+    <p>Para gastos que <b>no son de una venta</b>: renta, nómina, servicios, seguros, etc. Cada uno con concepto, categoría, proveedor, fecha e importe. Arriba ves el <b>total</b> de gastos generales y qué <b>% representan de tus ventas</b>.</p>
+  </div>
+
+  <!-- ── CATEGORÍAS ── -->
+  <div class="ay-card">
+    <h3>Pestaña "Categorías"</h3>
+    <p>Organiza tus costos por tipo (materiales, mano de obra, transporte…). Cada categoría tiene un <b>color</b> y un interruptor para <b>activarla o desactivarla</b> (las activas son las que aparecen al registrar un gasto). El <b>admin</b> puede crear y editar categorías.</p>
+  </div>
+
+  <!-- ── ANÁLISIS ── -->
+  <div class="ay-card">
+    <h3>Pestaña "Análisis" <span class="ay-shortcut">Business</span></h3>
+    <p>Gráficas que reparten tus costos <b>por categoría</b> (cuánto pesa cada tipo de gasto) para que veas dónde se te va el dinero.</p>
+  </div>
+
+  <!-- ── PROVEEDORES ── -->
+  <div class="ay-card">
+    <h3>Pestaña "Proveedores"</h3>
+    <p>Tu lista de proveedores. Puedes ligar gastos a un proveedor para luego ver cuánto le pagas a cada uno (el detalle vive en Reportes → Proveedores).</p>
+  </div>
+
+  <div class="ay-tip">Registra los costos <b>cuando ocurren</b>, no a fin de mes. Así tu margen siempre refleja la realidad y sabes qué ventas de verdad te dejan dinero.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -938,31 +1057,49 @@ if (!$is_native_app_ayuda): ?>
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-reportes">
   <h2 class="ay-h2"><?= ico('file',18,'#7c3aed') ?> Reportes</h2>
-  <p class="ay-subtitle">Análisis de rendimiento de tu negocio con datos reales, filtrados por período.</p>
+  <p class="ay-subtitle">La radiografía a fondo de tu negocio, con datos reales. Está organizado en <b>pestañas</b> y todo se filtra por el <b>período</b> que elijas. Esta guía explica cada pestaña.</p>
 
   <div class="ay-card">
-    <h3>Tipos de reporte</h3>
-    <ul>
-      <li><b>Financiero</b> — Ingresos, gastos, margen bruto por período</li>
-      <li><b>Asesores</b> — Rendimiento individual de cada vendedor del equipo</li>
-      <li><b>Cotizaciones</b> — Tasa de cierre, tiempo promedio de cierre, cotizaciones más vistas</li>
-      <li><b>Costos</b> — Desglose de gastos por categoría</li>
-    </ul>
+    <h3>Período y exportar</h3>
+    <p>Arriba eliges el período: <b>este mes, mes anterior, últimos 30/90 días, últimos 12 meses, este año, año anterior, todo el historial</b> o un <b>rango de fechas</b> a tu medida. El botón <b>"↓ Exportar CSV"</b> baja la tabla que estés viendo para abrirla en Excel.</p>
   </div>
 
   <div class="ay-card">
-    <h3>Filtro por período</h3>
-    <p>Todos los reportes permiten filtrar por:</p>
-    <ul>
-      <li>Mes actual</li>
-      <li>Mes anterior</li>
-      <li>Últimos 30 días</li>
-      <li>Últimos 90 días</li>
-      <li>Año completo</li>
-    </ul>
+    <h3>Pestaña Financiero</h3>
+    <p>El panorama del dinero. Indicadores grandes: <b>Ingresos</b>, <b>Cobrado</b> (y lo pendiente), <b>Utilidad bruta</b> (ingresos − costos) y <b>Margen bruto %</b>. Una <b>gráfica</b> de ingresos vs. costos mes a mes, el resumen de cotizaciones del período (generadas, aceptadas, rechazadas, activas, tasa de conversión) y, si lo capturaste, tu <b>historial importado</b>.</p>
   </div>
 
-  <div class="ay-tip">Revisa el reporte de asesores semanalmente si tienes equipo de ventas. Te ayuda a identificar quién necesita apoyo y quién está sobresaliendo.</div>
+  <div class="ay-card">
+    <h3>Pestaña Por asesor <span class="ay-shortcut">Admin</span></h3>
+    <p>Compara a tu equipo: por cada vendedor ves ventas, ingresos, costos, utilidad, margen, cotizaciones y conversión. Ideal para saber quién sobresale y quién necesita apoyo.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Pestaña Cotizaciones</h3>
+    <p>Un conteo rápido por estado (sin abrir, suspendidas, abiertas, aceptadas, rechazadas, vencidas) y la <b>tabla detallada</b> de cada cotización del período con su monto, estado, visitas y fecha. Tócalas para abrirlas.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Pestaña Recibos</h3>
+    <p>Todos los pagos del período: total de recibos, monto cobrado y cancelaciones, con el detalle de cada recibo (cliente, venta, monto, forma de pago y estado).</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Pestaña Costos y márgenes</h3>
+    <p>Profundiza en la rentabilidad: utilidad y margen, <b>costos por categoría</b>, evolución mensual, el <b>margen venta por venta</b>, el <b>punto de equilibrio</b> (cuánto necesitas vender para no perder) y un <b>ranking de rentabilidad</b> de tus ventas.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Pestaña Proveedores <span class="ay-shortcut">Business</span></h3>
+    <p>A quién le pagas y cuánto: top proveedores, pagos mensuales y el detalle de cada pago.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Pestaña Feedback</h3>
+    <p>Aparece si activaste la calificación del cliente (Configuración → Feedback). Muestra la <b>distribución de estrellas</b>, el promedio <b>por asesor</b> y los comentarios recientes de tus clientes.</p>
+  </div>
+
+  <div class="ay-tip">Revisa <b>Por asesor</b> cada semana si tienes equipo, y <b>Costos y márgenes</b> al cierre de mes para confirmar que de verdad estás ganando, no solo vendiendo.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -970,29 +1107,152 @@ if (!$is_native_app_ayuda): ?>
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-configuracion">
   <h2 class="ay-h2">⚙️ Configuración</h2>
-  <p class="ay-subtitle">Personaliza tu cuenta, equipo y catálogo. Solo visible para administradores.</p>
+  <p class="ay-subtitle">El centro de control de tu cuenta. Aquí está organizado en <b>pestañas (tabs)</b>. Esta guía explica <b>cada pestaña y cada opción</b> que vas a encontrar. <b>Solo el administrador</b> entra a Configuración. Algunas pestañas aparecen según tu plan (Free, Pro o Business).</p>
 
   <div class="ay-card">
-    <h3>Secciones de configuración</h3>
+    <h3>Las pestañas que verás</h3>
     <ul>
-      <li><b>Empresa</b> — Nombre, logo, datos fiscales, moneda, condiciones comerciales. Todo esto aparece en tus cotizaciones.</li>
-      <li><b>Catálogo</b> — Tus productos/servicios con SKU, nombre, descripción y precio. Puedes agregar, editar o desactivar artículos.</li>
-      <li><b>Clientes</b> — Gestión masiva de tu base de clientes.</li>
-      <li><b>Cupones</b> — Crea códigos de descuento que tus clientes pueden aplicar a cotizaciones.</li>
-      <li><b>Usuarios</b> — Agrega asesores y administradores. Cada usuario tiene su login y puedes asignar permisos.</li>
-      <li><b>Radar</b> — Ajusta la sensibilidad del radar (agresivo, medio, ligero) y configura IPs internas para excluir vistas propias.</li>
+      <li><b>Empresa</b> — Tus datos, impuestos, avisos, apariencia y textos. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Catálogo</b> (o <b>Propiedades</b> si vendes inmuebles) — Tus productos o servicios. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Clientes</b> — Tu base de clientes. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Cupones</b> — Códigos de descuento + el descuento con cronómetro. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Usuarios</b> — Tu equipo y sus permisos. <span class="ay-shortcut">Business</span></li>
+      <li><b>Radar</b> — Qué tan fino detecta el interés de tus clientes. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Costos</b> — Cómo registras tus gastos. <span class="ay-shortcut">Pro y Business</span></li>
+      <li><b>Marketing</b> — Pixels de Meta, Google, TikTok. <span class="ay-shortcut">Business</span></li>
+      <li><b>Historial</b> — Tus números viejos para alimentar reportes. <span class="ay-shortcut">Business</span></li>
+      <li><b>Termómetro</b> — Mostrar u ocultar el score a los asesores. <span class="ay-shortcut">Business</span></li>
+      <li><b>Feedback</b> — Pedir calificación al cliente. <span class="ay-shortcut">Free y Business</span></li>
+      <li><b>Suscripción</b> — Tu plan y pagos. <span class="ay-shortcut">Todos</span></li>
+    </ul>
+    <div class="ay-tip">Recuerda tocar el botón <b>"Guardar cambios"</b> de cada pestaña. Los cambios no se aplican hasta que guardas.</div>
+  </div>
+
+  <!-- ── EMPRESA ── -->
+  <div class="ay-card">
+    <h3>Pestaña Empresa — empieza aquí</h3>
+    <p>Es lo primero que debes llenar. Todo esto aparece en las cotizaciones y ventas que ve tu cliente.</p>
+    <ul>
+      <li><b>Datos generales</b> — Sube tu <b>logo</b> (PNG, SVG o WEBP, máx. 2 MB), y pon nombre, ciudad/sucursal, teléfono, email, dirección, RFC y sitio web.</li>
+      <li><b>Impuestos</b> — Elige cómo manejas el IVA: <b>Ninguno</b> (sin impuesto), <b>Suma</b> (el IVA se agrega al subtotal) o <b>Incluido</b> (tus precios ya traen IVA). Y el <b>porcentaje</b>.</li>
+      <li><b>Notificaciones</b> — Pon un <b>email de avisos</b> y prende/apaga qué te notifican: cotización aceptada, rechazada, abono registrado, alertas del Radar y feedback del cliente.</li>
+      <li><b>Apariencia</b> — Elige el <b>color</b> con que se ve la cotización pública del cliente (verde, azul, rojo, naranja, dorado, morado u oscuro).</li>
+      <li><b>Defaults de cotizaciones</b> — La <b>vigencia</b> por defecto (días para que venza), si los asesores <b>pueden editar precios</b>, si <b>ocultas cantidad y precio unitario</b> al cliente (solo ve descripción y total), y el <b>auto-suspender</b> (suspende solas las cotizaciones sin actividad tras X días).</li>
+      <li><b>Mensajes</b> — Personaliza el <b>saludo/encabezado</b>, el mensaje al <b>aceptar</b> y al <b>rechazar</b>. Puedes insertar variables como <code>{{cliente}}</code>, <code>{{empresa}}</code> o <code>{{asesor}}</code> que se rellenan solas.</li>
+      <li><b>Términos y condiciones</b> — Textos al pie de las cotizaciones y de las ventas/recibos, más un footer chico para cada uno.</li>
     </ul>
   </div>
 
+  <!-- ── CATÁLOGO ── -->
   <div class="ay-card">
-    <h3>Roles de usuario</h3>
+    <h3>Pestaña Catálogo (o Propiedades)</h3>
+    <p>Tu lista de productos o servicios con su precio. Es lo que eliges al armar una cotización para no escribir todo a mano.</p>
     <ul>
-      <li><b>Admin</b> — Acceso total: configuración, todos los clientes, todas las cotizaciones, reportes completos</li>
-      <li><b>Asesor</b> — Ve solo sus propias cotizaciones y clientes (salvo que tenga permiso especial)</li>
+      <li><b>+ Nuevo artículo</b> — Pon nombre, SKU (clave interna, opcional), descripción (opcional) y precio.</li>
+      <li><b>✎ Editar / ✕ Eliminar</b> — Modifica o quita cualquier artículo. Hay un buscador arriba.</li>
+      <li>Si tu giro es <b>inmuebles</b>, esta pestaña se llama <b>Propiedades</b> y captura datos de la propiedad (m², recámaras, fotos, etc.).</li>
     </ul>
   </div>
 
-  <div class="ay-warn">Solo los administradores pueden acceder a Configuración. Si no ves esta opción en el menú, contacta a tu administrador.</div>
+  <!-- ── CLIENTES ── -->
+  <div class="ay-card">
+    <h3>Pestaña Clientes</h3>
+    <p>Tu directorio. Cada cliente muestra su teléfono, email y cuántas cotizaciones tiene.</p>
+    <ul>
+      <li><b>+ Nuevo cliente</b> — Nombre, teléfono, email (opcional) y notas internas (solo las ves tú).</li>
+      <li>Toca cualquier cliente para editarlo. Hay buscador arriba.</li>
+    </ul>
+  </div>
+
+  <!-- ── CUPONES ── -->
+  <div class="ay-card">
+    <h3>Pestaña Cupones</h3>
+    <ul>
+      <li><b>+ Nuevo cupón</b> — Define un <b>código</b>, el <b>tipo de descuento</b> (porcentaje % o monto fijo $), una descripción, el <b>vencimiento</b> (nunca / a los X días / en una fecha) y si está activo.</li>
+      <li>La tabla muestra cuántas veces se ha usado cada cupón y si está activo.</li>
+      <li><b>Descuento automático (cronómetro)</b> — Abajo defines los valores por defecto (porcentaje y días) del descuento con cuenta regresiva que activas en cada cotización.</li>
+    </ul>
+  </div>
+
+  <!-- ── USUARIOS ── -->
+  <div class="ay-card">
+    <h3>Pestaña Usuarios <span class="ay-shortcut">Business</span></h3>
+    <p>Tu equipo. Cada vendedor tiene su propio login y su score del Termómetro visible aquí. Al crear o editar un usuario defines:</p>
+    <ul>
+      <li><b>Datos</b> — Nombre, email, contraseña (mín. 8 caracteres; déjala vacía para no cambiarla), <b>rol</b> (Asesor o Admin) y si está activo.</li>
+      <li><b>Permisos del asesor</b> (cada uno es un interruptor): crear cotizaciones, editar cotizaciones, ver cantidad y precio unitario, editar precios, aplicar descuentos/cupones, ver todas las cotizaciones, ver todas las ventas, eliminar ítems de ventas, agregar extras, cancelar recibos, capturar pagos/abonos y asignar cotizaciones.</li>
+      <li><b>Acceso a módulos</b>: Costos, Proveedores, Reportes, Adjuntar archivos y Editar clientes.</li>
+    </ul>
+    <div class="ay-tip">El <b>Admin</b> tiene acceso total. El <b>Asesor</b> por defecto solo ve lo suyo; tú decides qué más puede hacer con estos interruptores.</div>
+  </div>
+
+  <!-- ── RADAR ── -->
+  <div class="ay-card">
+    <h3>Pestaña Radar</h3>
+    <p>Ajusta qué tan fino detecta el Radar el interés de tus clientes.</p>
+    <ul>
+      <li><b>Sensibilidad</b> — <b>Agresivo</b> (muestra más cotizaciones con menos señales, bueno si tienes poco volumen), <b>Medio</b> (equilibrado, recomendado) o <b>Ligero</b> (solo las señales más sólidas).</li>
+      <li><b>Calibración FIT</b> — El Radar aprende de tus cierres reales. Puedes <b>recalibrar</b> manualmente (recomendado cada 5+ ventas nuevas) o dejar la <b>calibración automática</b> (recalibra solo cada 10 ventas cerradas).</li>
+      <li><b>Buckets activos</b> — Prende o apaga los grupos del Radar (probable cierre, validando precio, decisión activa, revisión multi-persona, revivió, enfriándose, hesitación). Los apagados no se calculan ni aparecen.</li>
+      <li><b>Filtros de ruido</b> (se sugiere no mover) — Excluir visitas del equipo interno, filtrar bots conocidos y deduplicar vistas de la misma IP dentro de 30 min.</li>
+    </ul>
+  </div>
+
+  <!-- ── COSTOS ── -->
+  <div class="ay-card">
+    <h3>Pestaña Costos <span class="ay-shortcut">Pro y Business</span></h3>
+    <p>Elige cómo registras tus gastos:</p>
+    <ul>
+      <li><b>Por venta</b> — Cada costo se asigna a una venta. Ideal para ver margen y rentabilidad por proyecto.</li>
+      <li><b>Por empresa</b> — Los costos son gastos generales del negocio. Ideal para rentabilidad global mensual.</li>
+      <li><b>Ambos</b> <span class="ay-shortcut">Business</span> — Lo combina: gastos por venta y generales. Máximo control.</li>
+    </ul>
+    <p style="margin-top:6px">Cambiar de modo <b>no borra</b> los costos ya registrados; solo cambia cómo capturas los nuevos.</p>
+  </div>
+
+  <!-- ── MARKETING ── -->
+  <div class="ay-card">
+    <h3>Pestaña Marketing <span class="ay-shortcut">Business</span></h3>
+    <p>Conecta tus <b>pixels de seguimiento</b> para medir y hacer remarketing. Prende el que uses y pega tu ID:</p>
+    <ul>
+      <li><b>Meta Pixel</b> (Facebook/Instagram) + token de Conversions API opcional.</li>
+      <li><b>Google Analytics 4</b> (ID G-XXXXXXXXXX).</li>
+      <li><b>Google Ads</b> (Conversion ID + Label).</li>
+      <li><b>TikTok Pixel</b>.</li>
+    </ul>
+    <p style="margin-top:6px">Los scripts se inyectan solos en las cotizaciones y ventas públicas. Se disparan eventos cuando el cliente <b>abre</b>, <b>acepta</b> o <b>rechaza</b> una cotización. La configuración de cada pixel es responsabilidad tuya (consulta la doc oficial de cada plataforma).</p>
+  </div>
+
+  <!-- ── HISTORIAL ── -->
+  <div class="ay-card">
+    <h3>Pestaña Historial <span class="ay-shortcut">Business</span></h3>
+    <p>Captura tus números de <b>antes de usar CotizaCloud</b> (mes a mes: cotizaciones, monto, ventas, monto). El sistema los usa como base para tus reportes y para calcular mejor la tasa de cierre del Radar. Verás totales y tasa de cierre promedio.</p>
+  </div>
+
+  <!-- ── TERMÓMETRO ── -->
+  <div class="ay-card">
+    <h3>Pestaña Termómetro <span class="ay-shortcut">Business</span></h3>
+    <p>Un solo interruptor: <b>mostrar el termómetro a los asesores</b>. Si lo prendes, cada asesor ve su score, su diagnóstico y el leaderboard en su panel. Si lo apagas, solo tú lo ves en el panel ejecutivo.</p>
+  </div>
+
+  <!-- ── FEEDBACK ── -->
+  <div class="ay-card">
+    <h3>Pestaña Feedback <span class="ay-shortcut">Free y Business</span></h3>
+    <p>Pide a tus clientes que <b>califiquen la atención</b> directamente al final de la cotización pública (5 estrellas + comentario). Es una calificación por cotización y solo te llega a ti.</p>
+    <ul>
+      <li>Préndelo con el interruptor y <b>personaliza los textos</b>: pregunta principal, texto secundario, placeholder del comentario y mensaje de agradecimiento.</li>
+      <li>Tienes una <b>vista previa</b> en vivo de cómo lo verá el cliente.</li>
+    </ul>
+  </div>
+
+  <!-- ── SUSCRIPCIÓN ── -->
+  <div class="ay-card">
+    <h3>Pestaña Suscripción</h3>
+    <p>Tu plan actual, próximo cobro e historial de pagos. Desde aquí puedes cambiar o cancelar tu plan.</p>
+    <div class="ay-warn">En la <b>app de iPhone</b> esta gestión no aparece (regla de Apple). Para cambiar tu plan, abre <b>cotiza.cloud</b> en Safari o Chrome.</div>
+  </div>
+
+  <div class="ay-warn">Solo los administradores ven Configuración. Si no la encuentras en el menú, pídele a tu administrador que te dé acceso.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
