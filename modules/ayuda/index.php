@@ -412,19 +412,92 @@ if (!$is_native_app_ayuda): ?>
 <!--  DASHBOARD                                             -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-dashboard">
-  <h2 class="ay-h2"><?= ico('chart',18,'#2563eb') ?> Dashboard</h2>
-  <p class="ay-subtitle">Tu vista ejecutiva. De un vistazo sabes cómo va tu negocio.</p>
+  <h2 class="ay-h2"><?= ico('chart',18,'#2563eb') ?> Inicio (Dashboard)</h2>
+  <p class="ay-subtitle">Es la pantalla de inicio: la foto de cómo va tu negocio <b>hoy</b>. Esta guía recorre <b>cada bloque de arriba abajo</b> para que sepas qué significa cada número. Si eres asesor, ves solo lo tuyo; si eres admin, ves todo el equipo.</p>
 
   <div class="ay-card">
-    <h3>¿Qué encuentras aquí?</h3>
+    <h3>Filtro de período (arriba a la derecha)</h3>
+    <p>Casi todo el dashboard se mide por un <b>período</b> que tú eliges: <b>Este mes</b>, <b>Mes anterior</b>, <b>Últimos 30 días</b>, <b>Últimos 90 días</b> o <b>Este año</b>. Cámbialo y todos los números se recalculan. Varios bloques comparan contra el período anterior para mostrarte si vas <b>↑ subiendo</b> o <b>↓ bajando</b>.</p>
+  </div>
+
+  <!-- ── ESCUDO ── -->
+  <div class="ay-card">
+    <h3>Tarjeta del Escudo Radar</h3>
+    <p>Arriba puede aparecer la tarjeta <b>"Escudo Radar — Activo"</b> con la lista de tus dispositivos protegidos (tu compu, tu celular). Sus visitas a las cotizaciones <b>no se cuentan como cliente</b>. <b>Regla de oro:</b> si revisas una cotización desde un dispositivo que no está en la lista, inicia sesión ahí de inmediato para protegerlo. Lee el apartado <b>🛡️ Escudo</b> del menú Inicio para entenderlo a fondo.</p>
+  </div>
+
+  <!-- ── TERMÓMETRO + LEADERBOARD ── -->
+  <div class="ay-card">
+    <h3>Tu Termómetro y el ranking del equipo</h3>
+    <p>Si tu empresa lo tiene activado, verás tu <b>score del 0 al 100</b> con tu nivel (Excepcional, Buen ritmo, Puede mejorar, Necesita atención) y una flecha de tendencia (↑ mejorando, → estable, ↓ bajando). Debajo hay 5 barritas — <b>Activación, Engagement, Seguimiento, Radar Health y Conversión</b> — y un diagnóstico que te dice qué mejorar (toca "ver más").</p>
     <ul>
-      <li><b>KPIs principales</b> — Total de cotizaciones, ventas cerradas, tasa de cierre y monto total vendido</li>
-      <li><b>Gráficas de tendencia</b> — Visualiza cómo evolucionan tus ventas en el tiempo</li>
-      <li><b>Filtro por período</b> — Mes actual, mes anterior, últimos 30 días, 90 días o año completo</li>
+      <li>Si eres <b>nuevo</b>, primero verás "Analizando tu actividad": el score se activa tras unos días de uso.</li>
+      <li>Si eres <b>admin</b>, además aparece el <b>Ranking del equipo</b> con el score de cada vendedor, sus abiertas, cierres, dormidas, y un botón <b>"?"</b> que explica a fondo cómo se calcula.</li>
+    </ul>
+    <div class="ay-tip">Hay un apartado completo del <b>🌡️ Termómetro</b> en este manual. Aquí solo lo ves resumido en tu inicio.</div>
+  </div>
+
+  <!-- ── KPIs ── -->
+  <div class="ay-card">
+    <h3>Resumen financiero (las 4 tarjetas de colores)</h3>
+    <ul>
+      <li><b>Ventas del período</b> — Cuánto vendiste y en cuántas ventas, con la comparación contra el período anterior.</li>
+      <li><b>Cobrado</b> — El dinero que realmente <b>entró</b> en el período (suma de los pagos/recibos), y cuántos pagos fueron.</li>
+      <li><b>Por cobrar</b> — Lo que te <b>deben</b> en total (todas las ventas con saldo, sin importar la fecha) y cuántas ventas tienen saldo.</li>
+      <li><b>Cotizaciones creadas</b> — Cuántas hiciste en el período, el monto total cotizado y si subiste o bajaste vs antes.</li>
     </ul>
   </div>
 
-  <div class="ay-tip">Revisa tu dashboard al inicio de cada día para tener contexto antes de empezar a vender.</div>
+  <!-- ── VENTAS SIN PAGOS ── -->
+  <div class="ay-card">
+    <h3>Ventas sin pagos</h3>
+    <p>Lista de ventas que <b>no tienen ningún abono</b> todavía, ordenadas de la más vieja a la más nueva. Te dice cuántos días llevan sin pago (en rojo si pasan de 14). Es tu lista de cobranza: tócalas para ir directo a registrar el pago.</p>
+  </div>
+
+  <!-- ── CONVERSIÓN ── -->
+  <div class="ay-card">
+    <h3>Métricas de conversión</h3>
+    <ul>
+      <li><b>Embudo del período</b> — Cuántas cotizaciones se <b>enviaron</b>, cuántas el cliente <b>abrió</b>, cuántas <b>aceptó</b> y cuántas <b>rechazó</b>, con su barra y porcentaje.</li>
+      <li><b>Indicadores clave</b> — <b>Tasa de cierre</b> (% de enviadas que terminan en venta pagada), <b>ticket promedio</b>, <b>tiempo promedio de cierre</b> (días que tardan en aceptar), cotizaciones <b>rechazadas</b>, cotizaciones <b>sin abrir</b> y cuántas ventas llevaron descuento.</li>
+    </ul>
+  </div>
+
+  <!-- ── ALERTAS ── -->
+  <div class="ay-card">
+    <h3>Alertas — lo que necesita tu atención</h3>
+    <p>Cuatro listas de lo más reciente. Toca cualquier renglón para ir a la cotización o venta:</p>
+    <ul>
+      <li><b>✓ Aceptadas recientemente</b> — Las que el cliente aceptó en los últimos 14 días.</li>
+      <li><b>✕ Rechazadas</b> — Las rechazadas en los últimos 14 días.</li>
+      <li><b>⏰ Próximas a vencer</b> — Enviadas o vistas que vencen en 7 días o menos.</li>
+      <li><b>✉️ Sin abrir</b> — Enviadas que el cliente aún no abre (marca <b>VENCIDA</b> si ya pasó su fecha). <b>Atiende estas rápido:</b> a los 5 días sin abrir golpean fuerte tu Termómetro.</li>
+    </ul>
+  </div>
+
+  <!-- ── RADAR ── -->
+  <div class="ay-card">
+    <h3>Radar — oportunidades activas</h3>
+    <p>Un resumen del Radar con los clientes más calientes, en 4 grupos: <b>Probable cierre</b>, <b>Cierre inminente</b>, <b>On Fire</b> y <b>Validando precio</b>. Cada renglón muestra el cliente, el monto y unos <b>puntos de calor</b> (entre más rojos, más interés). Tócalo para ir a la cotización y darle seguimiento. El Radar completo está en su propio menú.</p>
+  </div>
+
+  <!-- ── RECIBOS DEL DÍA ── -->
+  <div class="ay-card">
+    <h3>Recibos del día</h3>
+    <p>Todos los pagos registrados <b>hoy</b> (y las cancelaciones del día), con cliente, folio, forma de pago y monto. Ideal para tu corte diario.</p>
+  </div>
+
+  <!-- ── ACTIVIDAD ── -->
+  <div class="ay-card">
+    <h3>Actividad del período</h3>
+    <p>Dos tarjetas con el detalle fino:</p>
+    <ul>
+      <li><b>Cotizaciones</b> — Cuántas generaste, total cotizado, ticket promedio (del período y del año), cuántas cerraste, rechazadas y pendientes de respuesta.</li>
+      <li><b>Ventas</b> — Cuántas, total vendido, ticket promedio, completamente pagadas, con saldo y total cobrado.</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">Revisa tu inicio al arrancar el día: primero las <b>Ventas sin pagos</b> (cobranza), luego <b>Sin abrir</b> y <b>Próximas a vencer</b> (seguimiento), y por último el <b>Radar</b> para saber a quién llamar HOY.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
