@@ -11,6 +11,11 @@ $empresa    = Auth::empresa();
 $usuario    = Auth::usuario();
 $moneda     = $empresa['moneda'] ?? 'MXN';
 
+// ─── Onboarding: empresa nueva (admin) ve el wizard de bienvenida una vez ──
+if (Auth::rol() === 'admin' && isset($empresa['onboarding_completo']) && (int)$empresa['onboarding_completo'] === 0) {
+    redirect('/bienvenida');
+}
+
 // ─── Termómetro de actividad (cache 5 min) ────────────────
 $mi_score = ActividadScore::obtener(Auth::id());
 if (!$mi_score || (time() - strtotime($mi_score['updated_at'])) > 300) {
