@@ -134,9 +134,9 @@ ob_start();
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-calibra">
   <h2 class="ay-h2">🎯 Calibra tus armas de venta</h2>
-  <p class="ay-subtitle">Esto es lo más importante de todo el sistema. Antes de salir a vender, asegúrate de tener bien tus 4 armas. Si las cuidas, el sistema trabaja <b>para ti</b> y vendes más con menos esfuerzo. Si las descuidas, trabajas a ciegas.</p>
+  <p class="ay-subtitle">Esto es lo más importante de todo el sistema. Tienes 4 armas. Las <b>3 primeras las usas tú</b> (configurar, proteger, trabajar). La <b>4ª (el Termómetro) es el resultado</b>: el sistema mide solo qué tan bien usaste las otras 3 y te pone una calificación. Si cuidas las 3, la 4ª sube sola.</p>
 
-  <div class="ay-tip">Léelo completo aunque no sepas nada de computadoras. Son 4 cosas sencillas. Cada una tiene su pestaña con el detalle, pero aquí está lo esencial de cada una.</div>
+  <div class="ay-tip">Léelo completo aunque no sepas nada de computadoras. Cada arma tiene su pestaña con el detalle; aquí está lo esencial.</div>
 
   <div class="ay-card" style="border-left:4px solid var(--g)">
     <h3>1️⃣ Configura bien tu empresa <span style="color:var(--t3);font-weight:500">— la base de todo</span></h3>
@@ -146,23 +146,30 @@ ob_start();
 
   <div class="ay-card" style="border-left:4px solid var(--g)">
     <h3>2️⃣ Cuida el Escudo <span style="color:var(--t3);font-weight:500">— para que el Radar no te mienta</span></h3>
-    <p>Abre las cotizaciones de tus clientes <b>SOLO desde tu dispositivo con la sesión iniciada</b>. Si las abres desde varios celulares o navegadores donde no entraste, el sistema creerá que el cliente está interesado… cuando en realidad eras tú. Eso ensucia el Radar y tu termómetro.</p>
-    <p style="margin-top:8px"><a href="#radar" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#radar\']').click()" style="color:var(--g);font-weight:600">→ Ver la regla de oro del Escudo (pestaña Radar)</a></p>
+    <p>Abre las cotizaciones de tus clientes <b>SOLO desde tu dispositivo con la sesión iniciada</b>. Si las abres desde varios celulares o navegadores donde no entraste, el sistema creerá que el cliente está interesado… cuando en realidad eras tú. Eso ensucia todo lo demás.</p>
+    <p style="margin-top:8px"><a href="#escudo" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#escudo\']').click()" style="color:var(--g);font-weight:600">→ Ver la regla de oro del Escudo</a></p>
   </div>
 
   <div class="ay-card" style="border-left:4px solid var(--g)">
-    <h3>3️⃣ Usa el Radar todos los días <span style="color:var(--t3);font-weight:500">— tu lista de a quién llamar</span></h3>
-    <p>Cada mañana entra al <b>Radar</b>. Empieza por el <b>Resumen "Probable cierre"</b>: ahí están tus clientes más calientes, los que tienes que contactar HOY. Lee el botón <b>"?"</b> de cada cotización para saber qué hacer con ese cliente.</p>
-    <p style="margin-top:8px"><a href="#radar" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#radar\']').click()" style="color:var(--g);font-weight:600">→ Ver cómo se usa el Radar (pestaña Radar)</a></p>
+    <h3>3️⃣ Trabaja con el Radar todos los días <span style="color:var(--t3);font-weight:500">— aquí es donde vendes</span></h3>
+    <p>El Radar es tu herramienta de trabajo diaria. Cada mañana:</p>
+    <ul>
+      <li>Entra al <b>Radar</b> y empieza por el <b>Resumen "Probable cierre"</b>: ahí están tus clientes más calientes, los que debes contactar HOY.</li>
+      <li>Lee el botón <b>"?"</b> de cada cotización para saber qué está pasando con ese cliente y qué hacer.</li>
+      <li>Después de hablar con un cliente, márcalo con la <b>manita 👍 (con interés)</b> o <b>👎 (sin interés)</b>, según cómo te fue de verdad. Esto le enseña al sistema a leer a tus clientes.</li>
+      <li>Cierra las ventas y, muy importante, <b>anota el pago</b>.</li>
+    </ul>
+    <p style="margin-top:8px"><a href="#radar" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#radar\']').click()" style="color:var(--g);font-weight:600">→ Ver cómo se usa el Radar y las manitas 👍/👎</a></p>
   </div>
 
   <div class="ay-card" style="border-left:4px solid var(--g)">
-    <h3>4️⃣ Sube tu Termómetro <span style="color:var(--t3);font-weight:500">— tu calificación de vendedor</span></h3>
-    <p>4 pasos diarios: <b>(1)</b> manda tus cotizaciones por el <b>link</b>, <b>(2)</b> dale <b>👍 / 👎</b> a tus clientes en el Radar según el interés real, <b>(3)</b> cierra ventas y <b>anota el pago</b>, y <b>(4)</b> lee tus <b>tips</b> diarios completos.</p>
-    <p style="margin-top:8px"><a href="#termometro" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#termometro\']').click()" style="color:var(--g);font-weight:600">→ Ver cómo subir tu puntaje (pestaña Termómetro)</a></p>
+    <h3>4️⃣ El Termómetro <span style="color:var(--t3);font-weight:500">— tu calificación, calculada por el sistema</span></h3>
+    <p>El Termómetro <b>no es algo que "haces"</b>: es un <b>análisis automático de tu trabajo como vendedor</b>. El sistema revisa TODO — cuántas cotizaciones envías, si las abren, si das seguimiento, si marcas las manitas en el Radar, cada cuánto cierras, si cobras, si das muchos descuentos, cómo va tu cartera de clientes — y con todo eso <b>calcula un número del 0 al 100</b> que es tu calificación.</p>
+    <p style="margin-top:8px">Es tu <b>espejo</b>: te dice de forma objetiva qué tan bien estás vendiendo y en qué estás fallando, sin adivinar. <b>No sube con clics sueltos: sube cuando haces bien las 3 armas de arriba.</b> Si configuras bien, cuidas el Escudo y trabajas el Radar a diario, el Termómetro sube solo.</p>
+    <p style="margin-top:8px"><a href="#termometro" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#termometro\']').click()" style="color:var(--g);font-weight:600">→ Ver cómo se calcula y cómo subirlo (pestaña Termómetro)</a></p>
   </div>
 
-  <div class="ay-warn"><b>En resumen:</b> empresa bien configurada → cotizaciones por link → Radar todos los días → 👍/👎 y cobra → lee tus tips. Calibra estas 4 armas y el sistema hace el trabajo pesado: tú solo sigues las señales y cierras.</div>
+  <div class="ay-warn"><b>En resumen:</b> configura bien tu empresa → cuida el Escudo → trabaja el Radar todos los días (contacta, marca 👍/👎, cierra y cobra). Haz eso y el Termómetro —tu calificación— sube solo. El sistema hace el trabajo pesado: tú solo sigues las señales y cierras.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
