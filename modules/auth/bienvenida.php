@@ -58,6 +58,16 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 .wz-slide.on{display:flex}
 @keyframes wzf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .wz-ico{width:84px;height:84px;border-radius:22px;background:var(--g);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto 22px;box-shadow:0 8px 20px rgba(26,92,56,.28)}
+.wz-slide.on .wz-ico--rocket{animation:icoLaunch 1.8s ease-in-out infinite}
+.wz-slide.on .wz-ico--pop{animation:icoPop 1.6s ease-in-out infinite}
+.wz-slide.on .wz-ico--shield{animation:icoShield 1.8s ease-in-out infinite}
+.wz-slide.on .wz-ico--target{animation:icoTarget 1.3s ease-in-out infinite}
+.wz-slide.on .wz-ico--thermo{animation:icoWiggle 1.6s ease-in-out infinite}
+@keyframes icoLaunch{0%,100%{transform:translateY(0) rotate(0)}45%{transform:translateY(-9px) rotate(-7deg)}}
+@keyframes icoPop{0%,100%{transform:scale(1)}30%{transform:scale(1.12)}55%{transform:scale(.96)}75%{transform:scale(1.04)}}
+@keyframes icoShield{0%,100%{box-shadow:0 8px 20px rgba(26,92,56,.28)}50%{box-shadow:0 8px 26px rgba(26,92,56,.5),0 0 0 7px rgba(26,92,56,.12)}}
+@keyframes icoTarget{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@keyframes icoWiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-9deg)}75%{transform:rotate(9deg)}}
 .wz-step{font:700 11px var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--g);margin-bottom:10px}
 .wz-h{font:800 25px var(--body);letter-spacing:-.02em;line-height:1.2;margin-bottom:14px}
 .wz-p{font:400 15.5px var(--body);color:var(--t2);line-height:1.65;max-width:420px;margin:0 auto}
@@ -104,7 +114,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 
     <!-- 1 -->
     <div class="wz-slide on">
-      <div class="wz-ico">🚀</div>
+      <div class="wz-ico wz-ico--rocket">🚀</div>
       <div class="wz-step">Empecemos</div>
       <h2 class="wz-h"><?= $primer ? htmlspecialchars($primer).', ' : '' ?>tienes 4 armas. Vamos a cargarlas</h2>
       <p class="wz-p"><b><?= htmlspecialchars($emp_nom) ?></b> ya está dentro. Antes de salir a cazar ventas, calibremos tus 4 armas en <b>1 minuto</b>. Esto es lo que separa al vendedor que <b>cierra</b> del que persigue clientes a ciegas.</p>
@@ -112,43 +122,43 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 
     <!-- 2 -->
     <div class="wz-slide">
-      <div class="wz-ico">🏢</div>
+      <div class="wz-ico wz-ico--pop">🏢</div>
       <div class="wz-step">Arma 1 de 4</div>
       <h2 class="wz-h">Tu primera impresión cierra ventas</h2>
-      <p class="wz-p">Sube tu <b>logo</b>, tus <b>datos fiscales</b> y arma tu <b>catálogo</b> con precios. Una empresa bien armada manda cotizaciones que se ven <b>de millones</b>… en segundos.</p>
+      <p class="wz-p">Sube tu <b>logo</b>, tus <b>datos fiscales</b> y arma tu <b>catálogo</b> de productos o servicios con sus precios. Así cada cotización sale <b>con tu marca, profesional y lista para enviar en segundos</b>.</p>
       <div class="wz-why">💡 El cliente que ve algo profesional, confía. Y el que confía, compra.</div>
     </div>
 
     <!-- 3 -->
     <div class="wz-slide">
-      <div class="wz-ico">🛡️</div>
-      <div class="wz-step">Arma 2 de 4</div>
-      <h2 class="wz-h">Que el radar no te mienta</h2>
-      <p class="wz-p">Abre las cotizaciones de tus clientes <b>solo desde tu equipo con la sesión iniciada</b>. Así el sistema sabe que el que mira eres tú, no el cliente.</p>
-      <div class="wz-why">💡 Sin Escudo, persigues fantasmas: el sistema marca "caliente" a un cliente cuando en realidad eras tú revisando. Y pierdes la venta real.</div>
+      <div class="wz-ico wz-ico--shield">🛡️</div>
+      <div class="wz-step">Arma 2 de 4 · ¡la más importante!</div>
+      <h2 class="wz-h">Activa tu Escudo</h2>
+      <p class="wz-p">El <b>Escudo</b> le avisa al sistema cuándo el que está viendo la cotización eres <b>TÚ</b> y no tu cliente. Activarlo es de <b>un solo clic</b>: al entrar al sistema te aparece un <b>botón verde que dice "Activar Escudo"</b>. Dale click y listo.</p>
+      <div class="wz-why">💡 Además, revisa las cotizaciones siempre desde tu <b>propia computadora o celular</b> (donde escribiste tu usuario y contraseña). Si las abres desde otro lado, el sistema creerá que tu cliente está interesado cuando en realidad eras tú — y te haría perder tiempo.</div>
     </div>
 
     <!-- 4 -->
     <div class="wz-slide">
-      <div class="wz-ico">🎯</div>
+      <div class="wz-ico wz-ico--target">🎯</div>
       <div class="wz-step">Arma 3 de 4</div>
       <h2 class="wz-h">A quién cazar HOY</h2>
-      <p class="wz-p">El Radar te dice <b>quién está a punto de comprar</b> y a quién llamar primero. Lee el botón <b>"?"</b> de cada cliente y, tras hablarle, márcalo con <b>👍 / 👎</b> según su interés real.</p>
+      <p class="wz-p"><b>El Radar</b> es tu lista de clientes ordenada por quién está más cerca de comprar — te dice <b>a quién llamar primero</b>. Lee el botón <b>"?"</b> de cada uno y, tras hablarle, márcalo con <b>👍 / 👎</b> según su interés real.</p>
       <div class="wz-why">💡 Deja de adivinar. Cada mañana entra al Radar y empieza por "Probable cierre": ahí están los que SÍ van a comprar.</div>
     </div>
 
     <!-- 5 -->
     <div class="wz-slide">
-      <div class="wz-ico">🌡️</div>
+      <div class="wz-ico wz-ico--thermo">🌡️</div>
       <div class="wz-step">Arma 4 de 4</div>
       <h2 class="wz-h">Tu marcador de vendedor</h2>
-      <p class="wz-p">Una <b>calificación del 0 al 100</b> que el sistema calcula solo, analizando <b>todo tu trabajo</b>: envíos, seguimiento, cierres y cobranza. Tú y tu jefe la ven en tiempo real.</p>
-      <div class="wz-why">💡 Lo que se mide, se mejora. Sube tu número y subes tus comisiones. No hay a quién echarle la culpa: el marcador es objetivo.</div>
+      <p class="wz-p">El <b>Termómetro</b> es tu <b>boleta de calificaciones de ventas</b>: un número del <b>0 al 100</b>. El sistema lo calcula solo, viendo todo lo que haces: cuántas cotizaciones mandas, si les das seguimiento, cuántas cierras y si cobras.</p>
+      <div class="wz-why">💡 Lo que se mide, se mejora. Entre mejor trabajas, más alto tu número — y más vendes. Lo ves tú y lo ve tu jefe.</div>
     </div>
 
     <!-- 6 -->
     <div class="wz-slide">
-      <div class="wz-ico">🚀</div>
+      <div class="wz-ico wz-ico--rocket">🚀</div>
       <div class="wz-step">A vender</div>
       <h2 class="wz-h">Listo. Que empiece la cacería 🎯</h2>
       <p class="wz-p">Arranca <b>configurando tu empresa</b> y manda tu primera cotización hoy mismo. Esta guía completa siempre está en el menú de <b>Ayuda</b> cuando la necesites.</p>
