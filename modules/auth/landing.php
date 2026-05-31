@@ -1167,7 +1167,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   }
 
   function open(){ win.classList.add('open'); fab.style.display='none'; poll(); startPoll(); if(started)input.focus(); }
-  function close(){ win.classList.remove('open'); fab.style.display='flex'; }
+  function close(){ win.classList.remove('open'); fab.style.display='flex'; if(pollTimer){clearInterval(pollTimer);pollTimer=null;} }
   fab.addEventListener('click', open);
   document.getElementById('czl-min').addEventListener('click', close);
   startBtn.addEventListener('click', enviarPrimero);
