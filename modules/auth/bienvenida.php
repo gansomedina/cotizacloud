@@ -73,6 +73,11 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 .wz-p{font:400 15.5px var(--body);color:var(--t2);line-height:1.65;max-width:420px;margin:0 auto}
 .wz-p b{color:var(--text)}
 .wz-why{margin-top:16px;background:#eef7f2;border:1px solid #cce7d8;border-radius:12px;padding:12px 16px;font:500 13.5px var(--body);color:var(--g);line-height:1.5;max-width:440px;margin-left:auto;margin-right:auto}
+.wz-terms{display:flex;flex-direction:column;gap:10px;max-width:440px;margin:18px auto 0;text-align:left}
+.wz-term{display:flex;gap:13px;align-items:flex-start;background:#f7f6f3;border:1px solid #e7e5df;border-radius:13px;padding:13px 15px}
+.wz-term-ico{font-size:26px;line-height:1;flex-shrink:0}
+.wz-term .wz-term-tx{font:400 13px var(--body);color:var(--t2);line-height:1.45}
+.wz-term .wz-term-tx b{color:var(--text);font-size:14.5px}
 .wz-nav{display:flex;align-items:center;justify-content:space-between;padding:18px 40px 30px;gap:12px}
 .wz-dots{display:flex;gap:7px}
 .wz-dot{width:8px;height:8px;border-radius:50%;background:#d9d6cf;transition:all .2s}
@@ -118,6 +123,19 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
       <div class="wz-step">Empecemos</div>
       <h2 class="wz-h"><?= $primer ? htmlspecialchars($primer).', ' : '' ?>tienes 4 armas. Vamos a cargarlas</h2>
       <p class="wz-p"><b><?= htmlspecialchars($emp_nom) ?></b> ya está dentro. Antes de salir a cazar ventas, calibremos tus 4 armas en <b>1 minuto</b>. Esto es lo que separa al vendedor que <b>cierra</b> del que persigue clientes a ciegas.</p>
+    </div>
+
+    <!-- glosario -->
+    <div class="wz-slide">
+      <div class="wz-ico wz-ico--pop">📖</div>
+      <div class="wz-step">Primero, 3 palabras</div>
+      <h2 class="wz-h">Conoce a tus 3 nuevos aliados</h2>
+      <p class="wz-p">En CotizaCloud vas a oír mucho estos 3 nombres. Pronto te van a sonar de toda la vida. Aquí el resumen rápido — en las siguientes pantallas te explicamos cada uno:</p>
+      <div class="wz-terms">
+        <div class="wz-term"><span class="wz-term-ico">🛡️</span><span class="wz-term-tx"><b>Escudo</b><br>Evita que tus propias revisadas cuenten como si fueran las del cliente.</span></div>
+        <div class="wz-term"><span class="wz-term-ico">🎯</span><span class="wz-term-tx"><b>Radar</b><br>Te dice qué clientes están a punto de comprar y a quién llamar primero.</span></div>
+        <div class="wz-term"><span class="wz-term-ico">🌡️</span><span class="wz-term-tx"><b>Termómetro</b><br>Tu calificación como vendedor, del 0 al 100.</span></div>
+      </div>
     </div>
 
     <!-- 2 -->
