@@ -115,6 +115,7 @@ ob_start();
   <a href="#cotizaciones" onclick="ayTab('cotizaciones',this)"><span class="ay-ico"><?= ico('file',14) ?></span> Cotizaciones</a>
   <a href="#ventas" onclick="ayTab('ventas',this)"><span class="ay-ico"><?= ico('money',14) ?></span> Ventas</a>
   <a href="#radar" onclick="ayTab('radar',this)"><span class="ay-ico"><?= ico('target',14) ?></span> Radar</a>
+  <a href="#termometro" onclick="ayTab('termometro',this)"><span class="ay-ico">🌡️</span> Termómetro</a>
   <a href="#costos" onclick="ayTab('costos',this)"><span class="ay-ico"><?= ico('chart',14) ?></span> Costos</a>
   <a href="#reportes" onclick="ayTab('reportes',this)"><span class="ay-ico"><?= ico('file',14) ?></span> Reportes</a>
 
@@ -503,6 +504,89 @@ if (!$is_native_app_ayuda): ?>
   <div class="ay-tip">El Radar se recalibra automáticamente con cada nueva venta. Entre más datos tenga, más preciso se vuelve. Confía en las señales pero siempre usa tu criterio de vendedor.</div>
 
   <div class="ay-warn">El Radar solo funciona cuando el cliente abre la cotización desde el link. Si le mandas un PDF o screenshot, no hay tracking.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  TERMÓMETRO                                            -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-termometro">
+  <h2 class="ay-h2">🌡️ Termómetro de Productividad</h2>
+  <p class="ay-subtitle">Es como el velocímetro de tu trabajo: un número del 0 al 100 que te dice qué tan bien estás vendiendo. Sube cuando haces bien tu trabajo y baja cuando lo dejas de hacer. No necesitas saber de computadoras — solo seguir 4 pasos todos los días. Aquí te explicamos cada uno, paso a paso.</p>
+
+  <div class="ay-card">
+    <h3>📍 ¿Dónde lo veo?</h3>
+    <p>Entra a <b>Inicio</b> (la primera pantalla cuando abres el sistema). Ahí, hacia abajo, está tu termómetro con tu número y tu nivel:</p>
+    <ul>
+      <li>🟢 <b>Top</b> (86 a 100) — Vas excelente</li>
+      <li>🟢 <b>Activo</b> (61 a 85) — Vas bien</li>
+      <li>🟡 <b>Regular</b> (31 a 60) — Te falta seguimiento</li>
+      <li>🔴 <b>Bajo</b> (0 a 30) — Hay que ponerse las pilas</li>
+      <li>⚪ <b>Nuevo</b> — Cuando apenas empiezas, no se te califica todavía (unos días de gracia)</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">El número se calcula solo, con lo que haces de verdad. No se puede "hacer trampa": solo sube si trabajas como un buen vendedor. Mide los <b>últimos 15 días</b>, así que es una foto de cómo estás trabajando AHORA.</div>
+
+  <h3 style="font:800 18px var(--body);margin:30px 0 4px">📋 Lo que tienes que hacer TODOS LOS DÍAS</h3>
+  <p class="ay-subtitle">Haz estos 4 pasos cada día y tu termómetro va a subir solo. Está explicado para que cualquiera lo pueda hacer.</p>
+
+  <div class="ay-steps">
+    <div class="ay-step">
+      <h4>Manda tus cotizaciones por el LINK (no por foto)</h4>
+      <p>Cuando hagas una cotización, mándala con el <b>enlace (link)</b> que te da el sistema — por WhatsApp o correo. <b>NO mandes una foto, captura de pantalla ni PDF.</b> ¿Por qué? Porque solo con el link el sistema sabe si el cliente la abrió. Si mandas una foto, es como si no hubieras mandado nada: el termómetro no lo ve.</p>
+    </div>
+
+    <div class="ay-step">
+      <h4>Entra al RADAR todos los días</h4>
+      <p>El <b>Radar</b> está en el menú. Es la pantalla donde aparecen tus clientes ordenados por quién está más interesado en comprar. Con solo entrar a revisarlo todos los días ya sumas puntos. Un vendedor que no revisa su Radar pierde puntos. Conviértelo en tu primer hábito de la mañana.</p>
+    </div>
+
+    <div class="ay-step">
+      <h4>Lee el botón con el signo de pregunta <b>“?”</b> de cada cotización</h4>
+      <p>Dentro del Radar, cada cotización tiene un botón pequeño con un signo de pregunta <b>(?)</b>. <b>Dale click.</b> Te explica en palabras sencillas: cuántas veces abrió el cliente la cotización, qué tan interesado está, y qué te conviene hacer con ese cliente. Es como un consejo personalizado para cada uno. Revísalo a diario — te dice a quién llamarle primero.</p>
+    </div>
+
+    <div class="ay-step">
+      <h4>Marca la manita 👍 o 👎 según cómo te fue con el cliente</h4>
+      <p>Aquí está <b>lo más importante del termómetro.</b> En el Radar, junto a cada cotización vas a ver dos manitas: una <b>arriba 👍</b> y una <b>abajo 👎</b>.</p>
+      <p style="margin-top:8px">Cuando hablas con el cliente, lo visitas o tienen una cita, <b>tú eres quien sabe</b> si quedó interesado o no. Entonces regresas al Radar, buscas su cotización, y le das click a la manita que corresponde:</p>
+      <ul>
+        <li><b>👍 manita arriba</b> = el cliente SÍ mostró interés (te dijo que le interesa, agendaron, te pidió más información, va en serio).</li>
+        <li><b>👎 manita abajo</b> = el cliente NO mostró interés (te dijo que no, no contesta, ya no quiere, era solo curiosidad).</li>
+      </ul>
+      <p style="margin-top:8px">El sistema después <b>compara tu manita con lo que el cliente hace de verdad</b> (si regresa a ver la cotización, si termina comprando). Si tú marcaste bien lo que iba a pasar, ganas más puntos. Por eso debes ser <b>honesto</b>: marca lo que realmente sentiste en la plática, no lo que te gustaría que pasara. El termómetro premia al vendedor que de verdad conoce a sus clientes.</p>
+    </div>
+
+    <div class="ay-step">
+      <h4>Cierra la venta y REGISTRA EL PAGO</h4>
+      <p>Cuando un cliente te compra, registra la venta y, muy importante, <b>anota el pago (abono) en la sección de Ventas.</b> Una venta sin ningún pago anotado <b>no cuenta</b> para tu termómetro — el sistema no sabe que cobraste hasta que lo registras. Cerrar ventas y cobrarlas es lo que más puntos te da.</p>
+    </div>
+  </div>
+
+  <div class="ay-card">
+    <h3>🌡️ Los consejos (tips) que te salen cada día — LÉELOS COMPLETOS</h3>
+    <p>Cada día, tu termómetro te muestra unos <b>consejos cortos</b> sobre cómo vas trabajando: qué estás haciendo bien y qué te está faltando. <b>Léelos completos, hasta el final.</b> Por dos razones:</p>
+    <ul>
+      <li>Te dicen <b>exactamente qué hacer</b> para vender más y subir tu puntaje.</li>
+      <li>El sistema nota cuando los lees — leerlos también te suma puntos.</li>
+    </ul>
+    <p style="margin-top:8px">No los ignores. Son la guía que el sistema arma especialmente para ti según cómo estuviste trabajando.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>⚠️ Lo que te BAJA el puntaje</h3>
+    <ul>
+      <li>No dar seguimiento: dejar que tus clientes interesados se "enfríen" sin llamarles.</li>
+      <li>No marcar las manitas 👍 / 👎 en el Radar.</li>
+      <li>Vender pero no anotar el pago.</li>
+      <li>Dar demasiados descuentos.</li>
+      <li>No entrar al sistema ni revisar el Radar por varios días.</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">¿Vendes pero tu número no sube? Casi siempre es por una de dos cosas: <b>(1)</b> no anotaste el pago de tus ventas, o <b>(2)</b> no le diste 👍/👎 a tus clientes en el Radar. Revisa esas dos primero.</div>
+
+  <div class="ay-warn">El termómetro mira los últimos 15 días. Si esta semana dejaste de dar seguimiento, baja — aunque el mes pasado hayas vendido mucho. Lo importante es mantener el ritmo todos los días.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
