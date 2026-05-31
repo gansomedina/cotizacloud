@@ -2947,3 +2947,54 @@ GROUP BY ip ORDER BY sesiones DESC;
 1. Monitor de competencia: ruido CGNAT Telmex (200.68.x) ya existe hoy,
    independiente de BOT_IP. Merece su propio análisis.
 2. Considerar mover el monitor de datacenter-IP a un panel de superadmin.
+
+## Sesión 29 mayo 2026 — Chat de soporte casero (admin ↔ superadmin)
+
+### Implementado (sin terceros, reusa push)
+Chat de soporte en vivo dentro del dashboard, solo para `rol='admin'`
+(dueño de empresa). NO asesores, NO superadmin (él es el agente), NO
+apple-review. Cero widgets de tercero (coherente con privacidad).
+
+### Decisiones de diseño
+- Audiencia: admin only (configuración es su dominio; asesores los atiende
+  su propio admin → no inflar soporte)
+- Reabrir conversación si cerró hace <24h, si no, nueva
+- Push de respuesta SOLO al usuario que escribió (`enviar_a_usuario`)
+- Aviso al agente: push (`enviar_a_superadmin`) + email (`SUPERADMIN_EMAIL`)
+- Horario configurable en `data/soporte_config.json` (no bloquea, solo
+  cambia el mensaje "En línea" vs "Fuera de horario"). Siempre acepta mensajes.
+- Panel del agente integrado en `/superadmin/soporte` + botón "Chat soporte"
+  con badge de no leídos en el header del superadmin
+
+### Archivos
+| Archivo | Qué |
+|---|---|
+| `migrations/add_soporte_chat.sql` | tablas soporte_conversaciones, soporte_mensajes |
+| `data/soporte_config.json` | horario + mensajes |
+| `core/PushNotification.php` | NUEVO `enviar_a_usuario()` + `tokens_usuario()` |
+| `api/soporte.php` | dispatcher: enviar/cerrar/leido/responder (CSRF, rate-limit 12/min) |
+| `api/soporte_poll.php` | poll del usuario: mensajes nuevos + horario + no leídos |
+| `core/layout.php` | burbuja flotante + ventana (admin only, oculta en print/móvil sobre bottom-nav) |
+| `modules/superadmin/soporte.php` | panel del agente: lista + chat + contexto (plan, empresa) |
+| `modules/superadmin/index.php` | botón "Chat soporte" + badge |
+| `core/Router.php` | rutas /api/soporte, /api/soporte/poll, /superadmin/soporte |
+
+### Detalles técnicos
+- CSRF: el API lee `X-CSRF-Token` header (el body es JSON, no $_POST).
+  Widget y panel mandan `csrf_token()` en ese header.
+- Bug corregido pre-commit: al enviar, el widget avanzaba mal `lastId` →
+  el poll re-traía el mensaje propio → duplicado. Fix: enviar() devuelve
+  `mensaje_id`, el widget sube `lastId`.
+- Polling: 5s con ventana abierta, 30s en background (solo badge).
+- El panel del agente NO auto-recarga (borraría lo que escribes); el push avisa.
+
+### Migración pendiente en servidor
+```sql
+-- migrations/add_soporte_chat.sql (correr ANTES de desplegar)
+```
+
+### Pendientes / mejoras futuras
+1. UI para editar el horario desde el superadmin (hoy se edita el JSON a mano)
+2. Poll del agente para ver mensajes nuevos sin recargar (hoy: push + recarga manual)
+3. Expandir a asesores si hay demanda (config por empresa)
+4. Adjuntar imágenes/capturas en el chat

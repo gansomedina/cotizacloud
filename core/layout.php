@@ -720,5 +720,114 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
 })();
 </script>
 
+<?php
+// ── Chat de soporte (solo admin de empresa; no superadmin, no apple-review) ──
+if (Auth::rol() === 'admin' && (!defined('EMPRESA_SLUG') || EMPRESA_SLUG !== 'apple-review')):
+?>
+<style>
+#czs-bubble{position:fixed;right:18px;bottom:24px;width:56px;height:56px;border-radius:50%;background:var(--g,#1a5c38);color:#fff;border:none;box-shadow:0 4px 16px rgba(0,0,0,.22);cursor:pointer;z-index:9000;display:flex;align-items:center;justify-content:center;font-size:24px}
+#czs-bubble .czs-badge{position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font:700 11px sans-serif;min-width:20px;height:20px;border-radius:99px;display:none;align-items:center;justify-content:center;padding:0 5px}
+#czs-win{position:fixed;right:18px;bottom:24px;width:360px;max-width:calc(100vw - 24px);height:480px;max-height:calc(100vh - 48px);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);z-index:9001;display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+#czs-win.open{display:flex}
+.czs-hdr{background:var(--g,#1a5c38);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.czs-hdr .t{font-weight:700;font-size:15px}
+.czs-hdr .s{font-size:11px;opacity:.85;margin-top:2px}
+.czs-hdr .btns{display:flex;gap:6px}
+.czs-hdr button{background:rgba(255,255,255,.18);border:none;color:#fff;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1}
+.czs-body{flex:1;overflow-y:auto;padding:14px;background:#f7f6f3;display:flex;flex-direction:column;gap:8px}
+.czs-m{max-width:80%;padding:9px 12px;border-radius:13px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.czs-m.usuario{align-self:flex-end;background:var(--g,#1a5c38);color:#fff;border-bottom-right-radius:4px}
+.czs-m.agente{align-self:flex-start;background:#fff;border:1px solid #e2e2dc;border-bottom-left-radius:4px}
+.czs-sys{align-self:center;background:#eee;color:#666;font-size:11.5px;padding:5px 11px;border-radius:99px;text-align:center}
+.czs-foot{padding:10px;border-top:1px solid #e2e2dc;display:flex;gap:8px;align-items:flex-end}
+.czs-foot textarea{flex:1;border:1.5px solid #c8c8c0;border-radius:10px;padding:9px 11px;font:400 14px inherit;resize:none;outline:none;max-height:90px}
+.czs-foot textarea:focus{border-color:var(--g,#1a5c38)}
+.czs-foot button{background:var(--g,#1a5c38);color:#fff;border:none;border-radius:10px;width:42px;height:40px;cursor:pointer;font-size:17px}
+@media (max-width:768px){
+  #czs-bubble{bottom:calc(var(--nav-h,64px) + env(safe-area-inset-bottom,0px) + 12px)}
+  #czs-win{right:0;bottom:0;width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0}
+}
+@media print{#czs-bubble,#czs-win{display:none!important}}
+</style>
+
+<button id="czs-bubble" type="button" aria-label="Soporte">💬<span class="czs-badge" id="czs-badge">0</span></button>
+<div id="czs-win" role="dialog" aria-label="Chat de soporte">
+  <div class="czs-hdr">
+    <div><div class="t">Soporte CotizaCloud</div><div class="s" id="czs-status">Cargando…</div></div>
+    <div class="btns">
+      <button type="button" id="czs-cerrar" title="Cerrar conversación">✕</button>
+      <button type="button" id="czs-min" title="Minimizar">▽</button>
+    </div>
+  </div>
+  <div class="czs-body" id="czs-body"></div>
+  <div class="czs-foot">
+    <textarea id="czs-input" rows="1" placeholder="Escribe tu mensaje…"></textarea>
+    <button type="button" id="czs-send">➤</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var CSRF = <?= json_encode(csrf_token()) ?>;
+  var bubble=document.getElementById('czs-bubble'), win=document.getElementById('czs-win'),
+      body=document.getElementById('czs-body'), input=document.getElementById('czs-input'),
+      sendBtn=document.getElementById('czs-send'), badge=document.getElementById('czs-badge'),
+      statusEl=document.getElementById('czs-status');
+  var lastId=0, convId=0, saludoShown=false, pollTimer=null, openFlag=false;
+
+  function setBadge(n){ if(n>0){badge.textContent=n;badge.style.display='flex';} else {badge.style.display='none';} }
+  function scrollB(){ body.scrollTop=body.scrollHeight; }
+  function addMsg(autor, cuerpo, hora){
+    var d=document.createElement('div'); d.className='czs-m '+autor; d.textContent=cuerpo; body.appendChild(d); scrollB();
+  }
+  function addSys(t){ var d=document.createElement('div'); d.className='czs-sys'; d.textContent=t; body.appendChild(d); scrollB(); }
+
+  async function poll(){
+    try{
+      var r=await fetch('/api/soporte/poll?since='+lastId,{headers:{'X-Requested-With':'fetch'}});
+      var d=await r.json(); if(!d.ok)return;
+      convId=d.conversacion_id||convId;
+      if(d.horario){ statusEl.textContent = d.horario.online ? ('🟢 '+d.horario.msg) : d.horario.msg; }
+      if(!saludoShown && d.mensajes.length===0 && d.horario && d.horario.saludo){ addSys(d.horario.saludo); saludoShown=true; }
+      (d.mensajes||[]).forEach(function(m){
+        addMsg(m.autor, m.cuerpo, m.hora); lastId=Math.max(lastId, m.id); saludoShown=true;
+      });
+      if(!openFlag){ setBadge(d.no_leidos||0); }
+      else if(d.no_leidos>0){ marcarLeido(); }
+    }catch(e){}
+  }
+  async function marcarLeido(){
+    try{ await fetch('/api/soporte',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({accion:'leido'})}); setBadge(0);}catch(e){}
+  }
+  async function enviar(){
+    var t=input.value.trim(); if(!t)return; sendBtn.disabled=true;
+    try{
+      var r=await fetch('/api/soporte',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({accion:'enviar',cuerpo:t})});
+      var d=await r.json();
+      if(d.ok){ addMsg('usuario',t,''); if(d.mensaje_id)lastId=Math.max(lastId,d.mensaje_id); if(d.conversacion_id)convId=d.conversacion_id; input.value=''; input.style.height='auto'; saludoShown=true; }
+    }catch(e){}
+    sendBtn.disabled=false; input.focus();
+  }
+  async function cerrar(){
+    if(!confirm('¿Cerrar esta conversación?'))return;
+    try{ await fetch('/api/soporte',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({accion:'cerrar'})});}catch(e){}
+    body.innerHTML=''; lastId=0; convId=0; saludoShown=false; closeWin();
+  }
+  function openWin(){ openFlag=true; win.classList.add('open'); bubble.style.display='none'; scrollB(); marcarLeido(); input.focus(); if(!pollTimer)pollTimer=setInterval(function(){if(!document.hidden)poll();},5000); }
+  function closeWin(){ openFlag=false; win.classList.remove('open'); bubble.style.display='flex'; }
+
+  bubble.addEventListener('click', openWin);
+  document.getElementById('czs-min').addEventListener('click', closeWin);
+  document.getElementById('czs-cerrar').addEventListener('click', cerrar);
+  sendBtn.addEventListener('click', enviar);
+  input.addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();} });
+  input.addEventListener('input', function(){ input.style.height='auto'; input.style.height=Math.min(90,input.scrollHeight)+'px'; });
+
+  poll(); // estado inicial + badge
+  setInterval(function(){ if(!document.hidden && !openFlag) poll(); }, 30000); // badge en background
+})();
+</script>
+<?php endif; ?>
+
 </body>
 </html>
