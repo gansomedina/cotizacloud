@@ -245,10 +245,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
     <th>Plan</th>
     <th>Vence</th>
     <th>Estado</th>
-    <th>Usuarios</th>
-    <th>Cots</th>
-    <th>Vistas</th>
-    <th>Ventas</th>
+    <th class="num">Usuarios</th>
+    <th class="num">Cots</th>
+    <th class="num">Vistas</th>
+    <th class="num">Ventas</th>
     <th>Último login</th>
     <th>Registrada</th>
     <th></th>
