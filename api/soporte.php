@@ -104,8 +104,11 @@ if ($accion === 'enviar') {
     if (!$conv) {
         // Primera vez → exigir nombre + correo válido (es el lead)
         if ($nombre === '' || !validar_email($email)) { echo json_encode(['ok'=>false,'error'=>'datos','need'=>['nombre','email']]); exit; }
+        // Anti-spam: máx 5 conversaciones nuevas por IP por hora
+        $nuevas = (int)DB::val("SELECT COUNT(*) FROM soporte_conversaciones WHERE origen='landing' AND ip=? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)", [$ip]);
+        if ($nuevas >= 5) { http_response_code(429); echo json_encode(['ok'=>false,'error'=>'Demasiadas conversaciones, intenta más tarde']); exit; }
         if ($token === '') {
-            $token = sprintf('%04x%04x-%04x-%04x', random_int(0,0xffff), random_int(0,0xffff), random_int(0,0xffff), random_int(0,0xffff));
+            $token = bin2hex(random_bytes(16));
         }
         $conv_id = DB::insert(
             "INSERT INTO soporte_conversaciones (origen, estado, visitante_nombre, visitante_email, visitor_token, ip, ultimo_mensaje_at)
