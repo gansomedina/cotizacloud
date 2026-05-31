@@ -3041,3 +3041,47 @@ Se intentó agregar `mkdir -p data` + `cp -n soporte_config.json` al
 Los archivos de config en data/ (soporte_config.json, etc.) se suben
 **A MANO por File Manager** a `/home/cotizacl/public_html/data/`.
 NO modificar el .cpanel.yml por esto nunca más.
+
+## Sesión 30 mayo 2026 — Chat anónimo en landing (captura de leads)
+
+### Implementado
+Chat de soporte en el landing (cotiza.cloud) para visitantes ANÓNIMOS,
+con captura de lead (nombre + correo). Mismo JSON de horario.
+
+### Migración (correr ANTES de desplegar)
+`migrations/add_soporte_anonimo.sql`:
+- usuario_id, empresa_id → NULL permitido (para anónimos)
+- nuevas columnas: origen ENUM('app','landing'), visitante_nombre,
+  visitante_email, visitor_token, ip + KEY idx_token
+
+### Flujo anónimo
+1. Visitante abre la burbuja en el landing → formulario nombre/correo/mensaje
+2. Primer envío: valida nombre + email válido → crea conversación origen='landing'
+   con visitor_token (UUID en localStorage 'cz_sop_token')
+3. Te llega push (enviar_a_superadmin tipo 'soporte_landing') + email con el lead
+4. El visitante ve tus respuestas por poll (?token=...). No hay push al anónimo.
+5. Token en localStorage permite continuar la conversación si vuelve.
+
+### Identidad y anti-abuso
+- Anónimo NO usa CSRF (no hay sesión estable antes de interactuar). Se
+  protege con rate-limit por IP (15 msg/min) en api/soporte.php.
+- El admin logueado y el superadmin SÍ usan CSRF (header X-CSRF-Token).
+
+### Archivos
+| Archivo | Cambio |
+|---|---|
+| `migrations/add_soporte_anonimo.sql` | ALTER tablas para anónimos |
+| `api/soporte.php` | reescrito: 3 ramas (responder/admin/anónimo landing) |
+| `api/soporte_poll.php` | rama anónima por token + horario compartido |
+| `modules/auth/landing.php` | widget con pre-chat form (bottom-right, prefijo czl-) |
+| `modules/superadmin/soporte.php` | LEFT JOIN; muestra leads con etiqueta LEAD ámbar + correo |
+
+### Panel del agente
+- Conversaciones del landing aparecen con etiqueta "LEAD" (ámbar) + nombre/correo
+- Header muestra 🌱 nombre + correo (mailto) en vez de empresa/plan
+- Responder funciona igual (el push solo aplica a usuarios logueados)
+
+### Pendiente
+- El widget del landing usa prefijo `czl-` (distinto del `czs-` del dashboard)
+  para no chocar si algún día coexisten.
+- Mejora futura: marcar lead como "convertido" si el correo se registra después.
