@@ -186,6 +186,26 @@ ob_start();
   </div>
 
   <div class="ay-card">
+    <h3>📍 ¿Dónde se activa y cómo sé que está funcionando?</h3>
+    <p>Lo bueno: <b>el Escudo se activa casi solo, con que inicies sesión</b> en CotizaCloud en ese dispositivo. No tienes que prender nada complicado. Aun así, sigue estos pasos para asegurarte:</p>
+    <div class="ay-steps">
+      <div class="ay-step">
+        <h4>Inicia sesión en el dispositivo y navegador que usas</h4>
+        <p>Entra a CotizaCloud con tu usuario y contraseña en la computadora o celular donde trabajas. Con eso ese dispositivo ya queda reconocido como tuyo.</p>
+      </div>
+      <div class="ay-step">
+        <h4>Dale click al aviso verde “Activar Escudo”</h4>
+        <p>La primera vez en un navegador nuevo, en tu pantalla de <b>Inicio</b> aparece un aviso verde que dice <b>“Activa tu Escudo Radar”</b> con un botón <b>“Activar Escudo”</b>. Dale click. Eso confirma que ese navegador es tu equipo de trabajo.</p>
+      </div>
+      <div class="ay-step">
+        <h4>Confirma en la tarjeta “Escudo Radar — Activo”</h4>
+        <p>En tu <b>Inicio</b>, busca la tarjeta que dice <b>“Escudo Radar — Activo”</b>. Ahí aparece la lista de tus dispositivos protegidos, cada uno con una palomita ✓. Si el dispositivo que estás usando aparece ahí, ¡listo, estás protegido!</p>
+      </div>
+    </div>
+    <p style="margin-top:10px"><b>¿Vas a usar otro equipo o navegador?</b> Repite lo mismo: inicia sesión ahí y dale “Activar Escudo”. Si revisas una cotización desde un dispositivo que NO está en tu lista, inicia sesión de inmediato desde él.</p>
+  </div>
+
+  <div class="ay-card">
     <h3>✅ La regla de oro (muy fácil)</h3>
     <ul>
       <li>Abre las cotizaciones de tus clientes <b>SOLO desde el dispositivo y el navegador donde tienes tu sesión iniciada</b> en CotizaCloud (donde entras a trabajar normalmente).</li>
