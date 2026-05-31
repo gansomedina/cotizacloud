@@ -16,6 +16,36 @@ $usuarios = DB::query(
     [$empresa_id]
 );
 
+// ── Origen del registro: IP y dispositivo del primer login ──
+// user_sessions guarda ip + user_agent en cada login (Auth.php). La sesión
+// más antigua (id menor) es el primer acceso ≈ momento del alta.
+$primer_login = DB::row(
+    "SELECT s.ip, s.user_agent, s.created_at, u.nombre AS usuario_nombre
+     FROM user_sessions s
+     JOIN usuarios u ON u.id = s.usuario_id
+     WHERE s.empresa_id = ?
+     ORDER BY s.id ASC LIMIT 1",
+    [$empresa_id]
+);
+function sa_dispositivo(string $ua): string {
+    if ($ua === '') return '—';
+    $os  = stripos($ua,'iPhone')!==false ? 'iPhone'
+         : (stripos($ua,'iPad')!==false ? 'iPad'
+         : (stripos($ua,'Android')!==false ? 'Android'
+         : (stripos($ua,'Macintosh')!==false ? 'Mac'
+         : (stripos($ua,'Windows')!==false ? 'Windows'
+         : (stripos($ua,'Linux')!==false ? 'Linux' : 'Dispositivo')))));
+    $nav = (stripos($ua,'Edg')!==false || stripos($ua,'EdgiOS')!==false) ? 'Edge'
+         : ((stripos($ua,'Firefox')!==false || stripos($ua,'FxiOS')!==false) ? 'Firefox'
+         : ((stripos($ua,'CriOS')!==false) ? 'Chrome'
+         : ((stripos($ua,'SamsungBrowser')!==false) ? 'Samsung'
+         : ((stripos($ua,'OPR')!==false || stripos($ua,'OPiOS')!==false) ? 'Opera'
+         : ((stripos($ua,'CotizaCloud')!==false) ? 'App'
+         : ((stripos($ua,'Chrome')!==false) ? 'Chrome'
+         : (stripos($ua,'Safari')!==false ? 'Safari' : '')))))));
+    return $nav ? "$os · $nav" : $os;
+}
+
 // ── Métricas ──────────────────────────────────────────────
 $num_cots = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id = ?", [$empresa_id]);
 $num_ventas = (int)DB::val("SELECT COUNT(*) FROM ventas WHERE empresa_id = ?", [$empresa_id]);
@@ -404,6 +434,44 @@ tr:hover td{background:#fafaf8}
     </div>
 </div>
 <?php endif; ?>
+
+<!-- Origen del registro -->
+<div class="section">
+    <h2>Origen del primer acceso</h2>
+    <?php if ($primer_login): ?>
+    <div class="tbl-wrap">
+    <table>
+    <tbody>
+    <tr>
+        <td style="font-weight:600;width:140px">IP</td>
+        <td>
+            <a href="https://ipinfo.io/<?= e($primer_login['ip']) ?>" target="_blank" rel="noopener"
+               class="num" style="color:var(--blue);text-decoration:none;font-weight:600"><?= e($primer_login['ip']) ?></a>
+            <span style="color:var(--t3);font-size:12px"> — clic para ver ciudad y proveedor</span>
+        </td>
+    </tr>
+    <tr>
+        <td style="font-weight:600">Dispositivo</td>
+        <td><?= e(sa_dispositivo($primer_login['user_agent'] ?? '')) ?></td>
+    </tr>
+    <tr>
+        <td style="font-weight:600">Fecha</td>
+        <td><span class="ago"><?= date('d/m/Y H:i', strtotime($primer_login['created_at'])) ?></span></td>
+    </tr>
+    <tr>
+        <td style="font-weight:600">Usuario</td>
+        <td><?= e($primer_login['usuario_nombre']) ?></td>
+    </tr>
+    </tbody>
+    </table>
+    </div>
+    <div style="font-size:12px;color:var(--t3);margin-top:8px;line-height:1.5">
+        Aproximado: con datos móviles o VPN la ciudad puede no ser exacta. El registro no guarda IP; este dato viene del primer inicio de sesión.
+    </div>
+    <?php else: ?>
+    <div style="color:var(--t3);font-size:13px">Sin sesiones registradas todavía (aún no inicia sesión).</div>
+    <?php endif; ?>
+</div>
 
 <!-- Usuarios -->
 <div class="section">
