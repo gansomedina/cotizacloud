@@ -115,6 +115,7 @@ ob_start();
   <a href="#cotizaciones" onclick="ayTab('cotizaciones',this)"><span class="ay-ico"><?= ico('file',14) ?></span> Cotizaciones</a>
   <a href="#ventas" onclick="ayTab('ventas',this)"><span class="ay-ico"><?= ico('money',14) ?></span> Ventas</a>
   <a href="#radar" onclick="ayTab('radar',this)"><span class="ay-ico"><?= ico('target',14) ?></span> Radar</a>
+  <a href="#termometro" onclick="ayTab('termometro',this)"><span class="ay-ico">🌡️</span> Termómetro</a>
   <a href="#costos" onclick="ayTab('costos',this)"><span class="ay-ico"><?= ico('chart',14) ?></span> Costos</a>
   <a href="#reportes" onclick="ayTab('reportes',this)"><span class="ay-ico"><?= ico('file',14) ?></span> Reportes</a>
 
@@ -503,6 +504,71 @@ if (!$is_native_app_ayuda): ?>
   <div class="ay-tip">El Radar se recalibra automáticamente con cada nueva venta. Entre más datos tenga, más preciso se vuelve. Confía en las señales pero siempre usa tu criterio de vendedor.</div>
 
   <div class="ay-warn">El Radar solo funciona cuando el cliente abre la cotización desde el link. Si le mandas un PDF o screenshot, no hay tracking.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  TERMÓMETRO                                            -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-termometro">
+  <h2 class="ay-h2">🌡️ Termómetro de Productividad</h2>
+  <p class="ay-subtitle">Un puntaje de 0 a 100 que mide qué tan bien estás trabajando tus cotizaciones como vendedor. No premia la suerte: premia las acciones correctas. Se actualiza solo, sobre los últimos 15 días.</p>
+
+  <div class="ay-card">
+    <h3>📍 ¿Dónde lo veo?</h3>
+    <p>En tu <b>Dashboard</b> (pantalla de Inicio). Ahí aparece tu termómetro con tu puntaje y tu nivel. Si eres administrador, también ves el ranking de tu equipo.</p>
+    <ul>
+      <li><b>Top</b> (86–100) · <b>Activo</b> (61–85) · <b>Regular</b> (31–60) · <b>Bajo</b> (0–30)</li>
+      <li><b>Nuevo</b> — durante tus primeros días no se te califica (tienes un periodo de gracia).</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">El puntaje se calcula con tu actividad real. No hay forma de "inflarlo" — solo sube si haces el trabajo de un buen vendedor: enviar, dar seguimiento y cerrar.</div>
+
+  <h3 style="font:800 16px var(--body);margin:28px 0 4px">Las 5 cosas que te dan puntos</h3>
+  <p class="ay-subtitle">Cada acción alimenta una dimensión distinta. Esto es exactamente dónde tienes que interactuar.</p>
+
+  <div class="ay-steps">
+    <div class="ay-step">
+      <h4>Envía cotizaciones y logra que las abran <span style="color:var(--t3);font-weight:500">— Activación</span></h4>
+      <p>Crea y envía cotizaciones desde <b>Cotizaciones</b>. Manda siempre el <b>link</b> (no PDF ni captura), para que el cliente la abra y el Radar lo registre. Una cotización que nunca se abre no suma.</p>
+    </div>
+    <div class="ay-step">
+      <h4>Da feedback en el Radar 👍 / 👎 <span style="color:var(--t3);font-weight:500">— Seguimiento (lo más importante)</span></h4>
+      <p>En el <b>Radar</b>, cada cotización caliente tiene dos botones: <b>👍 Con interés</b> y <b>👎 Sin interés</b>. Marca tu lectura de cada cliente. Esta es la parte más pesada del puntaje. Además se evalúa si acertaste: si marcas "con interés" y el cliente cierra, o "sin interés" y efectivamente no regresa, ganas calidad.</p>
+    </div>
+    <div class="ay-step">
+      <h4>Revisa el Radar seguido <span style="color:var(--t3);font-weight:500">— Actividad</span></h4>
+      <p>Entrar al <b>Radar</b> a revisar tus clientes cuenta como actividad. Un vendedor que no revisa su Radar pierde puntos. Hazlo parte de tu rutina diaria, y expande los <b>consejos</b> que te muestra el termómetro.</p>
+    </div>
+    <div class="ay-step">
+      <h4>Cierra ventas y registra el pago <span style="color:var(--t3);font-weight:500">— Conversión (la de mayor peso)</span></h4>
+      <p>Convertir cotizaciones en ventas es lo que más pesa. <b>Importante:</b> una venta solo cuenta cuando registras al menos un <b>pago</b> en <b>Ventas</b>. Una venta sin ningún pago durante varios días no cuenta y además penaliza.</p>
+    </div>
+    <div class="ay-step">
+      <h4>Mantén tu pipeline sano y cobra completo <span style="color:var(--t3);font-weight:500">— Radar Health y Engagement</span></h4>
+      <p>Da seguimiento para que tus cotizaciones calientes no se <b>enfríen</b> (cuando un cliente pierde interés, tu pipeline se debilita). Y cuida tus márgenes: <b>abusar de descuentos</b> y <b>dejar ventas sin cobrar</b> bajan tu puntaje.</p>
+    </div>
+  </div>
+
+  <div class="ay-grid">
+    <div class="ay-feature"><div class="ay-feat-ico">📤</div><h4>Activación</h4><p>Envías y se abren</p></div>
+    <div class="ay-feature"><div class="ay-feat-ico">👍</div><h4>Seguimiento</h4><p>Feedback del Radar</p></div>
+    <div class="ay-feature"><div class="ay-feat-ico">🔥</div><h4>Radar Health</h4><p>Pipeline caliente</p></div>
+    <div class="ay-feature"><div class="ay-feat-ico">💵</div><h4>Engagement</h4><p>Cobras y cuidas margen</p></div>
+    <div class="ay-feature"><div class="ay-feat-ico">🏆</div><h4>Conversión</h4><p>Cierras ventas</p></div>
+  </div>
+
+  <div class="ay-card">
+    <h3>🎁 Extras que suman</h3>
+    <ul>
+      <li><b>Ticket alto</b> — Cerrar ventas muy por encima de tu ticket promedio te da un bono.</li>
+      <li><b>Racha de cierre</b> — Mantener una tasa de cierre muy superior a la histórica de la empresa también suma.</li>
+    </ul>
+  </div>
+
+  <div class="ay-warn">El termómetro mide los últimos 15 días. Si dejas de dar seguimiento o de cobrar, el puntaje baja aunque hayas cerrado bien el mes pasado. Es una foto de tu ritmo actual.</div>
+
+  <div class="ay-tip">¿Tu puntaje no sube aunque vendes? Revisa: ¿registraste el pago de tus ventas? ¿Diste feedback 👍/👎 a tus cotizaciones calientes? Esas dos son las que más asesores olvidan.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
