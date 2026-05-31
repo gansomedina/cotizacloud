@@ -51,6 +51,12 @@ $tickets = DB::query("
 ");
 $tickets_abiertos = (int)DB::val("SELECT COUNT(*) FROM tickets_soporte WHERE estado != 'cerrado'");
 
+// ── Chat de soporte (no leídos) ────────────────────────────
+$chat_no_leidos = 0;
+try {
+    $chat_no_leidos = (int)DB::val("SELECT COUNT(*) FROM soporte_conversaciones WHERE estado='abierta' AND no_leidos_agente > 0");
+} catch (\Throwable $e) {}
+
 // ── Lista de empresas con stats ────────────────────────────
 $empresas = DB::query("
     SELECT e.*,
@@ -186,6 +192,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         </div>
     </div>
     <div class="sa-actions">
+        <a href="/superadmin/soporte" class="sa-btn sa-btn-ghost" style="position:relative"><i data-feather="message-circle" style="width:14px;height:14px"></i> Chat soporte<?php if ($chat_no_leidos > 0): ?><span style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;font:700 10px var(--body);min-width:18px;height:18px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px"><?= $chat_no_leidos ?></span><?php endif; ?></a>
         <a href="/superadmin/suscripciones" class="sa-btn sa-btn-ghost"><i data-feather="credit-card" style="width:14px;height:14px"></i> Suscripciones</a>
         <a href="/superadmin/executive" class="sa-btn sa-btn-ghost"><i data-feather="bar-chart-2" style="width:14px;height:14px"></i> Ejecutivo</a>
         <a href="/logout" class="sa-btn sa-btn-ghost" style="color:var(--danger);border-color:#fca5a5"><i data-feather="log-out" style="width:14px;height:14px"></i> Salir</a>

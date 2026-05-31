@@ -129,6 +129,8 @@ class Router
         self::post('/api/push/register',    fn() => self::load_api('push_register'));
         self::post('/api/push/unregister',  fn() => self::load_api('push_unregister'));
         self::post('/api/push/reset-badge', fn() => self::load_api('push_reset_badge'));
+        self::post('/api/soporte',          fn() => self::load_api('soporte'));
+        self::get('/api/soporte/poll',      fn() => self::load_api('soporte_poll'));
         self::post('/api/radar-feedback',   fn() => self::load_api('radar_feedback'));
         self::post('/api/track-tip',        fn() => self::load_api('track_tip'));
         self::post('/api/comisiones/marcar', fn() => self::load_api('comisiones_marcar'));
@@ -197,6 +199,7 @@ class Router
         // ── Super Admin ──────────────────────────────────
         self::get('/superadmin',                     fn()   => self::superadmin('index'));
         self::get('/superadmin/executive',            fn()   => self::superadmin('executive'));
+        self::get('/superadmin/soporte',              fn()   => self::superadmin('soporte'));
         self::get('/superadmin/suscripciones',        fn()   => self::superadmin('suscripciones'));
         self::get('/superadmin/empresa/:id',         fn($p) => self::superadmin('empresa', $p));
         self::post('/superadmin/impersonar',         fn()   => self::superadmin('impersonar'));

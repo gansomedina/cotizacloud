@@ -51,6 +51,54 @@ class PushNotification
         );
     }
 
+    // ─── Enviar push a los dispositivos de un solo usuario ──
+    public static function tokens_usuario(int $usuario_id): array
+    {
+        return DB::query(
+            "SELECT id, usuario_id, empresa_id, token, plataforma
+             FROM dispositivos_push
+             WHERE usuario_id = ? AND activo = 1",
+            [$usuario_id]
+        );
+    }
+
+    public static function enviar_a_usuario(
+        int $usuario_id,
+        string $tipo,
+        string $titulo,
+        string $cuerpo,
+        array $datos = []
+    ): int {
+        $dispositivos = self::tokens_usuario($usuario_id);
+        $enviadas = 0;
+
+        foreach ($dispositivos as $disp) {
+            $ok = false; $error = null;
+            DB::execute("UPDATE dispositivos_push SET badge_count = badge_count + 1 WHERE id = ?", [(int)$disp['id']]);
+            $badge = (int)DB::val("SELECT badge_count FROM dispositivos_push WHERE id = ?", [(int)$disp['id']]);
+            try {
+                if ($disp['plataforma'] === 'ios') {
+                    $ok = self::enviar_apns($disp['token'], $titulo, $cuerpo, $datos, $badge);
+                } elseif ($disp['plataforma'] === 'web') {
+                    $ok = WebPush::enviar($disp['token'], $titulo, $cuerpo, $datos);
+                }
+            } catch (\Exception $e) {
+                $error = $e->getMessage();
+                if (self::es_token_invalido($error) || WebPush::es_subscription_expirada($error ?? '')) {
+                    self::desactivar_token($disp['token']);
+                }
+            }
+            DB::insert(
+                "INSERT INTO notificaciones_push
+                 (empresa_id, usuario_id, dispositivo_id, tipo, titulo, cuerpo, datos, enviada, error)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [(int)$disp['empresa_id'], $disp['usuario_id'], $disp['id'], $tipo, $titulo, $cuerpo, $datos ? json_encode($datos) : null, $ok ? 1 : 0, $error]
+            );
+            if ($ok) $enviadas++;
+        }
+        return $enviadas;
+    }
+
     // ─── Enviar push a todos los dispositivos de una empresa ─
     public static function enviar_a_empresa(
         int $empresa_id,
