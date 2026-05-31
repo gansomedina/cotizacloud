@@ -152,7 +152,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
       <div class="wz-step">A vender</div>
       <h2 class="wz-h">Listo. Que empiece la cacería 🎯</h2>
       <p class="wz-p">Arranca <b>configurando tu empresa</b> y manda tu primera cotización hoy mismo. Esta guía completa siempre está en el menú de <b>Ayuda</b> cuando la necesites.</p>
-      <div class="wz-why">¿Te atoras en algo? Escríbenos por el <b>Chat de soporte</b> (botón 💬 en tu pantalla) o pídenos ahí mismo una <b>cita de configuración gratis</b>. Te dejamos el radar listo para disparar.</div>
+      <div class="wz-why">¿Te atoras en algo? Escríbenos por el <b>Chat de soporte</b> (botón 💬 en tu pantalla) o pídenos ahí mismo una <b>cita de configuración</b>. Te dejamos el radar listo para disparar.</div>
       <p style="margin-top:16px;font:400 12px var(--body);color:var(--t3);line-height:1.55;max-width:440px;margin-left:auto;margin-right:auto"><b>Nota:</b> el Radar y el Termómetro necesitan <b>datos para trabajar</b>: cotizaciones enviadas y la <b>interacción real de tus clientes</b>. Sin cotizaciones y sin interés real del cliente, el Radar no tiene nada que detectar. Entre más uses el sistema, más certero se vuelve.</p>
     </div>
 
