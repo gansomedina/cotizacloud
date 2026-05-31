@@ -466,10 +466,36 @@ if (!$is_native_app_ayuda): ?>
     <p style="margin-top:12px">Con estas señales, el sistema clasifica cada cotización en <b>buckets</b> (categorías de intención) y te dice exactamente a quién llamar primero.</p>
   </div>
 
-  <div class="ay-card">
-    <h3>Buckets principales</h3>
+  <div class="ay-card" style="border:2px solid var(--g)">
+    <h3>🛡️ El Escudo — LO MÁS IMPORTANTE del Radar</h3>
+    <p>El Radar funciona porque sabe quién abre cada cotización: <b>el cliente o tú</b>. El <b>Escudo</b> es lo que le dice al sistema "esta vez fui yo, el vendedor, no el cliente", para que <b>tus propias vistas no se cuenten como si fuera el cliente.</b></p>
+    <p style="margin-top:10px">Si no cuidas el Escudo, el Radar te <b>miente</b>: te dirá que un cliente está súper interesado cuando en realidad eras tú revisando tu propia cotización. Perderías tiempo llamándole a quien no toca, y se llena de señales falsas.</p>
+
+    <p style="margin-top:14px;font-weight:700">La regla de oro (muy fácil):</p>
     <ul>
-      <li><b><?= ico('target',12,'#92400e') ?> Probable cierre</b> — Tu lista de trabajo #1. Cotizaciones con intención confirmada desde múltiples señales. Contacta HOY.</li>
+      <li>Abre las cotizaciones de tus clientes <b>SOLO desde el dispositivo y el navegador donde tienes tu sesión iniciada</b> en CotizaCloud (donde entras a trabajar normalmente).</li>
+      <li><b>Mantente con la sesión abierta.</b> Así el sistema te reconoce y no confunde tus vistas con las del cliente.</li>
+    </ul>
+
+    <p style="margin-top:14px;font-weight:700">Lo que NO debes hacer:</p>
+    <ul>
+      <li>Abrir la misma cotización desde tu <b>celular</b>, luego desde <b>otra computadora</b>, luego desde <b>otro navegador</b> donde NO tienes tu sesión.</li>
+      <li>Mandarte el link a ti mismo y abrirlo por curiosidad desde varios lados.</li>
+    </ul>
+    <p style="margin-top:8px">Cada vez que abres desde un lugar distinto donde el sistema no te reconoce, <b>cuenta como si fuera otra persona (el cliente) viendo la cotización</b>. Resultado: el Radar se prende en falso, te muestra clientes "calientes" que en realidad eras tú, y tu termómetro también se ensucia.</p>
+  </div>
+
+  <div class="ay-warn">¿Necesitas enseñarle la cotización a un cliente en persona desde tu celular? Está bien, pero hazlo <b>con tu sesión iniciada</b> en ese celular. Si abres desde un equipo "prestado" o sin sesión, el sistema lo contará como una vista del cliente.</div>
+
+  <div class="ay-card">
+    <h3>🎯 Resumen — Probable cierre (tu lista #1)</h3>
+    <p><b>Esto NO es un grupo más: es el concentrado de todos tus clientes calientes.</b> El sistema junta en una sola lista a las cotizaciones que aparecen en cualquiera de los grupos de abajo y que de verdad muestran intención de compra (varias señales juntas + lectura real + que se fijaron en el precio).</p>
+    <p style="margin-top:8px">Si solo vas a ver una cosa en el Radar, ve esta. <b>Son los clientes a los que tienes que contactar HOY.</b></p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Los grupos (buckets) que alimentan el resumen</h3>
+    <ul>
       <li><b><?= ico('fire',12,'#991b1b') ?> On Fire</b> — Máxima actividad. El cliente está revisando intensamente ahora mismo.</li>
       <li><b><?= ico('fire',12,'#c2410c') ?> Cierre inminente</b> — Varias señales fuertes convergiendo. Está a punto de decidir.</li>
       <li><b>💸 Validando precio</b> — Está enfocado en los números. No bajes el precio — transfiere certeza.</li>
