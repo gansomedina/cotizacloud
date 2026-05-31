@@ -53,7 +53,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 .wz-bar{height:100%;background:var(--g);width:16%;transition:width .3s ease}
 .wz-skip{position:absolute;top:16px;right:18px;font:600 12px var(--body);color:var(--t3);text-decoration:none;z-index:2}
 .wz-skip:hover{color:var(--t2)}
-.wz-body{padding:46px 40px 32px;text-align:center;min-height:420px;display:flex;flex-direction:column}
+.wz-body{padding:40px 40px 28px;text-align:center;height:480px;overflow-y:auto;display:flex;flex-direction:column}
 .wz-slide{display:none;animation:wzf .35s ease;flex:1;flex-direction:column;justify-content:center}
 .wz-slide.on{display:flex}
 @keyframes wzf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -87,7 +87,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 .wz-next{background:var(--g);color:#fff}
 .wz-back{background:transparent;color:var(--t3);font-weight:600}
 .wz-back:disabled{opacity:0;pointer-events:none}
-@media(max-width:560px){.wz-body{padding:40px 24px 24px}.wz-nav{padding:16px 24px 26px}.wz-h{font-size:22px}}
+@media(max-width:560px){.wz-body{padding:32px 22px 22px;height:74vh}.wz-nav{padding:16px 24px 26px}.wz-h{font-size:22px}}
 </style>
 </head>
 <body>
@@ -143,7 +143,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
       <div class="wz-ico wz-ico--pop">🏢</div>
       <div class="wz-step">Arma 1 de 4</div>
       <h2 class="wz-h">Tu primera impresión cierra ventas</h2>
-      <p class="wz-p">Sube tu <b>logo</b>, tus <b>datos fiscales</b> y arma tu <b>catálogo</b> de productos o servicios con sus precios. Así cada cotización sale <b>con tu marca, profesional y lista para enviar en segundos</b>.</p>
+      <p class="wz-p">👉 <b>Empieza por aquí: entra al menú "Configuración".</b> Ahí sube tu <b>logo</b>, tus <b>datos fiscales</b> y arma tu <b>catálogo</b> de productos o servicios con sus precios. Así cada cotización sale <b>con tu marca, profesional y lista para enviar en segundos</b>.</p>
       <div class="wz-why">💡 El cliente que ve algo profesional, confía. Y el que confía, compra.</div>
     </div>
 
@@ -152,26 +152,26 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
       <div class="wz-ico wz-ico--shield">🛡️</div>
       <div class="wz-step">Arma 2 de 4 · ¡la más importante!</div>
       <h2 class="wz-h">Activa tu Escudo</h2>
-      <p class="wz-p">El <b>Escudo</b> le avisa al sistema cuándo el que está viendo la cotización eres <b>TÚ</b> y no tu cliente. Activarlo es de <b>un solo clic</b>: al entrar al sistema te aparece un <b>botón verde que dice "Activar Escudo"</b>. Dale click y listo.</p>
+      <p class="wz-p">El <b>Escudo</b> le avisa al sistema cuándo el que está viendo la cotización eres <b>TÚ</b> y no tu cliente. Activarlo es de <b>un solo clic</b>: al entrar al sistema te aparece un <b>botón verde que dice "Activar Escudo"</b>. Dale click y listo. Puedes proteger <b>todos los dispositivos que uses</b> (tu compu, tu celular, tu tablet): solo inicia sesión en cada uno — no estás limitado a uno solo.</p>
       <div class="wz-why">💡 Además, revisa las cotizaciones siempre desde tu <b>propia computadora o celular</b> (donde escribiste tu usuario y contraseña). Si las abres desde otro lado, el sistema creerá que tu cliente está interesado cuando en realidad eras tú — y te haría perder tiempo.</div>
     </div>
 
     <!-- 4 -->
     <div class="wz-slide">
       <div class="wz-ico wz-ico--target">🎯</div>
-      <div class="wz-step">Arma 3 de 4</div>
-      <h2 class="wz-h">A quién cazar HOY</h2>
-      <p class="wz-p"><b>El Radar</b> es tu lista de clientes ordenada por quién está más cerca de comprar — te dice <b>a quién llamar primero</b>. Lee el botón <b>"?"</b> de cada uno y, tras hablarle, márcalo con <b>👍 / 👎</b> según su interés real.</p>
-      <div class="wz-why">💡 Deja de adivinar. Cada mañana entra al Radar y empieza por "Probable cierre": ahí están los que SÍ van a comprar.</div>
+      <div class="wz-step">Arma 3 de 4 · tu diferenciador</div>
+      <h2 class="wz-h">El Radar: lo que nadie más te da</h2>
+      <p class="wz-p">Mientras otros mandan una cotización y se quedan a ciegas, tú ves <b>en tiempo real</b> cómo cada cliente trata tu propuesta: cuándo la abre, cuánto la lee, si se detiene en el precio, cuántas veces vuelve y desde cuántos dispositivos. El Radar convierte eso en una <b>lista ordenada por quién está más enganchado</b>.</p>
+      <div class="wz-why">💡 Deja de perseguir a ciegas. Cada mañana atiende primero "Probable cierre", lee el botón <b>"?"</b> de cada cliente y, tras hablarle, márcalo con <b>👍 / 👎</b> según su interés real.</div>
     </div>
 
     <!-- 5 -->
     <div class="wz-slide">
       <div class="wz-ico wz-ico--thermo">🌡️</div>
       <div class="wz-step">Arma 4 de 4</div>
-      <h2 class="wz-h">Tu marcador de vendedor</h2>
-      <p class="wz-p">El <b>Termómetro</b> es tu <b>boleta de calificaciones de ventas</b>: un número del <b>0 al 100</b>. El sistema lo calcula solo, viendo todo lo que haces: cuántas cotizaciones mandas, si les das seguimiento, cuántas cierras y si cobras.</p>
-      <div class="wz-why">💡 Lo que se mide, se mejora. Entre mejor trabajas, más alto tu número — y más vendes. Lo ves tú y lo ve tu jefe.</div>
+      <h2 class="wz-h">Aquí se ve quién vende de verdad</h2>
+      <p class="wz-p">El <b>Termómetro</b> es tu <b>boleta de calificaciones de ventas</b>: un número del <b>0 al 100</b> que el sistema calcula solo, viendo todo lo que haces — cuántas cotizaciones mandas, si les das seguimiento y cuántas cierras.</p>
+      <div class="wz-why">💡 Es el gran diferenciador: <b>separa al vendedor profesional del mediocre</b>. Con números claros, queda a la vista quién hace bien su trabajo y quién no. Súbelo y vuélvete el <b>#1 de tu equipo</b>.</div>
     </div>
 
     <!-- 6 -->
