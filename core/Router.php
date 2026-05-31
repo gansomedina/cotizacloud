@@ -154,6 +154,8 @@ class Router
 
         // ── App (requiere login) ───────────────────────────
         self::get('/dashboard',               fn()  => self::app('dashboard',    'index'));
+        self::get('/bienvenida',              fn()  => self::app('auth',         'bienvenida'));
+        self::post('/api/onboarding/completar', fn() => self::load_api('onboarding_completar'));
 
         self::get('/cotizaciones',            fn()  => self::app('cotizaciones', 'lista'));
         self::get('/cotizaciones/nueva',      fn()  => self::app('cotizaciones', 'nueva'));
