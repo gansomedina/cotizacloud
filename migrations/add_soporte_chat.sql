@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS soporte_conversaciones (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_emp_estado (empresa_id, estado),
   KEY idx_usuario (usuario_id),
-  KEY idx_estado_ultimo (estado, ultimo_mensaje_at)
+  KEY idx_estado_ultimo (estado, ultimo_mensaje_at),
+  CONSTRAINT fk_soporte_conv_empresa FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,
+  CONSTRAINT fk_soporte_conv_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS soporte_mensajes (
@@ -24,5 +26,6 @@ CREATE TABLE IF NOT EXISTS soporte_mensajes (
   autor ENUM('usuario','agente') NOT NULL,
   cuerpo TEXT NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_conv (conversacion_id, id)
+  KEY idx_conv (conversacion_id, id),
+  CONSTRAINT fk_soporte_msg_conv FOREIGN KEY (conversacion_id) REFERENCES soporte_conversaciones(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -127,20 +127,30 @@ if ($accion === 'enviar') {
         echo json_encode(['ok' => false, 'error' => 'Demasiados mensajes, espera un momento']); exit;
     }
 
-    $conv_id = soporte_conversacion_activa($uid, $eid, true);
-    $msg_id = DB::insert(
-        "INSERT INTO soporte_mensajes (conversacion_id, autor, cuerpo) VALUES (?, 'usuario', ?)",
-        [$conv_id, $cuerpo]
-    );
-    DB::execute(
-        "UPDATE soporte_conversaciones
-         SET ultimo_mensaje_at = NOW(), no_leidos_agente = no_leidos_agente + 1, estado = 'abierta'
-         WHERE id = ?",
-        [$conv_id]
-    );
+    // Lock por usuario para evitar crear 2 conversaciones abiertas si llegan
+    // dos envíos casi simultáneos (otra pestaña/dispositivo del mismo usuario).
+    $lock_key = 'soporte_conv_' . $uid;
+    DB::val("SELECT GET_LOCK(?, 5)", [$lock_key]);
+    try {
+        $conv_id = soporte_conversacion_activa($uid, $eid, true);
+        $msg_id = DB::insert(
+            "INSERT INTO soporte_mensajes (conversacion_id, autor, cuerpo) VALUES (?, 'usuario', ?)",
+            [$conv_id, $cuerpo]
+        );
+        DB::execute(
+            "UPDATE soporte_conversaciones
+             SET ultimo_mensaje_at = NOW(), no_leidos_agente = no_leidos_agente + 1, estado = 'abierta'
+             WHERE id = ?",
+            [$conv_id]
+        );
+    } finally {
+        DB::val("SELECT RELEASE_LOCK(?)", [$lock_key]);
+    }
 
     // Aviso al superadmin: push + email
+    // Sanitizar saltos de línea para evitar inyección de headers en el mail.
     $ref = ($usuario['nombre'] ?? 'Usuario') . ' · ' . (Auth::empresa()['nombre'] ?? '');
+    $ref = trim(str_replace(["\r", "\n"], ' ', $ref));
     try {
         PushNotification::enviar_a_superadmin(
             'soporte_mensaje',

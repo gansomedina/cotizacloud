@@ -159,7 +159,6 @@ const CSRF = <?= json_encode(csrf_token()) ?>;
   const msgs = document.getElementById('msgs');
   const reply = document.getElementById('reply');
   const send = document.getElementById('send');
-  let lastId = <?= !empty($mensajes) ? (int)DB::val("SELECT MAX(id) FROM soporte_mensajes WHERE conversacion_id=?", [$sel]) : 0 ?>;
 
   function scrollBottom(){ msgs.scrollTop = msgs.scrollHeight; }
   scrollBottom();

@@ -814,7 +814,7 @@ if (Auth::rol() === 'admin' && (!defined('EMPRESA_SLUG') || EMPRESA_SLUG !== 'ap
     body.innerHTML=''; lastId=0; convId=0; saludoShown=false; closeWin();
   }
   function openWin(){ openFlag=true; win.classList.add('open'); bubble.style.display='none'; scrollB(); marcarLeido(); input.focus(); if(!pollTimer)pollTimer=setInterval(function(){if(!document.hidden)poll();},5000); }
-  function closeWin(){ openFlag=false; win.classList.remove('open'); bubble.style.display='flex'; }
+  function closeWin(){ openFlag=false; win.classList.remove('open'); bubble.style.display='flex'; if(pollTimer){clearInterval(pollTimer);pollTimer=null;} }
 
   bubble.addEventListener('click', openWin);
   document.getElementById('czs-min').addEventListener('click', closeWin);
