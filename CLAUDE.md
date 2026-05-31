@@ -3032,3 +3032,12 @@ Se agregó (aditivo, con `|| true` para no tumbar el deploy):
 - NO usar `cp -R data` completo: data/ tiene estado runtime (equilibrio.json
   editado por la app, comisiones_pagadas_*, exchange_rate) que se
   sobrescribiría en cada deploy. Copiar archivos puntuales con `cp -n`.
+
+### ⚠️⚠️ CONFIRMADO 29 mayo: tocar .cpanel.yml para data/ TUMBÓ el deploy
+Se intentó agregar `mkdir -p data` + `cp -n soporte_config.json` al
+.cpanel.yml → **el deploy falló** (como el usuario advirtió). Revertido.
+
+**REGLA DEFINITIVA: NO agregar archivos de `data/` al .cpanel.yml.**
+Los archivos de config en data/ (soporte_config.json, etc.) se suben
+**A MANO por File Manager** a `/home/cotizacl/public_html/data/`.
+NO modificar el .cpanel.yml por esto nunca más.
