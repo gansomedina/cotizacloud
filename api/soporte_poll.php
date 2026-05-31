@@ -8,7 +8,36 @@
 defined('COTIZAAPP') or die;
 header('Content-Type: application/json; charset=utf-8');
 
-if (!Auth::logueado() || Auth::rol() !== 'admin') {
+if (!Auth::logueado()) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'No autorizado']);
+    exit;
+}
+
+$rol   = Auth::rol();
+$since = max(0, (int)($_GET['since'] ?? 0));
+
+// ── Lado AGENTE (superadmin): poll de una conversación concreta ──
+if ($rol === 'superadmin') {
+    $conv_id = (int)($_GET['conv'] ?? 0);
+    if (!$conv_id) { echo json_encode(['ok' => false, 'error' => 'conv requerido']); exit; }
+    // El agente está viendo esta conversación → marcar leídos
+    DB::execute("UPDATE soporte_conversaciones SET no_leidos_agente = 0 WHERE id = ?", [$conv_id]);
+    $rows = DB::query(
+        "SELECT id, autor, cuerpo, created_at FROM soporte_mensajes
+         WHERE conversacion_id = ? AND id > ? ORDER BY id ASC LIMIT 50",
+        [$conv_id, $since]
+    );
+    $mensajes = [];
+    foreach ($rows as $r) {
+        $mensajes[] = ['id' => (int)$r['id'], 'autor' => $r['autor'], 'cuerpo' => $r['cuerpo'], 'hora' => date('H:i', strtotime($r['created_at']))];
+    }
+    echo json_encode(['ok' => true, 'mensajes' => $mensajes]);
+    exit;
+}
+
+// ── Lado USUARIO (admin de empresa) ──
+if ($rol !== 'admin') {
     http_response_code(403);
     echo json_encode(['ok' => false, 'error' => 'No autorizado']);
     exit;
@@ -16,7 +45,6 @@ if (!Auth::logueado() || Auth::rol() !== 'admin') {
 
 $usuario = Auth::usuario();
 $uid     = (int)$usuario['id'];
-$since   = max(0, (int)($_GET['since'] ?? 0));
 
 // ── Estado de horario (desde data/soporte_config.json) ──────
 function soporte_estado_horario(): array {
