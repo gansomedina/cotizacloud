@@ -20,7 +20,13 @@ if (!csrf_verify()) {
 }
 
 $eid = (int)(Auth::empresa()['id'] ?? 0);
+$ok = false;
 if ($eid) {
-    try { DB::execute("UPDATE empresas SET onboarding_completo = 1 WHERE id = ?", [$eid]); } catch (\Throwable $e) {}
+    try {
+        DB::execute("UPDATE empresas SET onboarding_completo = 1 WHERE id = ?", [$eid]);
+        $ok = true;
+    } catch (\Throwable $e) {
+        error_log('[onboarding] no se pudo marcar completo eid=' . $eid . ': ' . $e->getMessage());
+    }
 }
-echo json_encode(['ok' => true]);
+echo json_encode(['ok' => $ok]);

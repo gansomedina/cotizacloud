@@ -8,6 +8,13 @@ defined('COTIZAAPP') or die;
 
 $usuario = Auth::usuario();
 $empresa = Auth::empresa();
+
+// Solo el admin de una empresa que aún no completó el onboarding ve el wizard.
+// Asesores y admins ya "onboarded" van directo al panel.
+if (Auth::rol() !== 'admin' || (int)($empresa['onboarding_completo'] ?? 1) === 1) {
+    redirect('/dashboard');
+}
+
 $nombre  = $usuario['nombre'] ?? '';
 $primer  = trim(explode(' ', $nombre)[0] ?? '');
 $emp_nom = $empresa['nombre'] ?? 'tu empresa';
