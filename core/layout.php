@@ -725,9 +725,11 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
 if (Auth::rol() === 'admin' && (!defined('EMPRESA_SLUG') || EMPRESA_SLUG !== 'apple-review')):
 ?>
 <style>
-#czs-bubble{position:fixed;left:18px;bottom:24px;height:48px;padding:0 16px 0 14px;border-radius:26px;background:var(--g,#1a5c38);color:#fff;border:none;box-shadow:0 4px 16px rgba(0,0,0,.22);cursor:pointer;z-index:9000;display:inline-flex;align-items:center;gap:8px;font:700 14px -apple-system,sans-serif;white-space:nowrap}
-#czs-bubble .czs-ico{font-size:20px;line-height:1}
-#czs-bubble .czs-badge{position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font:700 11px sans-serif;min-width:20px;height:20px;border-radius:99px;display:none;align-items:center;justify-content:center;padding:0 5px}
+#czs-fab{position:fixed;left:18px;bottom:24px;z-index:9000;display:flex;align-items:center;gap:10px;cursor:pointer}
+#czs-bubble{position:relative;width:56px;height:56px;border-radius:50%;background:var(--g,#1a5c38);color:#fff;border:none;box-shadow:0 6px 18px rgba(26,92,56,.35);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;transition:transform .15s}
+#czs-fab:hover #czs-bubble{transform:scale(1.06)}
+#czs-label{background:#fff;color:#1a1a18;font:600 13px -apple-system,sans-serif;padding:9px 14px;border-radius:20px;box-shadow:0 4px 14px rgba(0,0,0,.12);border:1px solid rgba(0,0,0,.05);white-space:nowrap}
+#czs-bubble .czs-badge{position:absolute;top:-3px;right:-3px;background:#dc2626;color:#fff;font:700 11px sans-serif;min-width:20px;height:20px;border-radius:99px;display:none;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff}
 #czs-win{position:fixed;left:18px;bottom:24px;width:360px;max-width:calc(100vw - 24px);height:480px;max-height:calc(100vh - 48px);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);z-index:9001;display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 #czs-win.open{display:flex}
 .czs-hdr{background:var(--g,#1a5c38);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
@@ -745,13 +747,16 @@ if (Auth::rol() === 'admin' && (!defined('EMPRESA_SLUG') || EMPRESA_SLUG !== 'ap
 .czs-foot textarea:focus{border-color:var(--g,#1a5c38)}
 .czs-foot button{background:var(--g,#1a5c38);color:#fff;border:none;border-radius:10px;width:42px;height:40px;cursor:pointer;font-size:17px}
 @media (max-width:768px){
-  #czs-bubble{bottom:calc(var(--nav-h,64px) + env(safe-area-inset-bottom,0px) + 12px)}
+  #czs-fab{bottom:calc(var(--nav-h,64px) + env(safe-area-inset-bottom,0px) + 12px)}
   #czs-win{left:0;right:0;bottom:0;width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0}
 }
-@media print{#czs-bubble,#czs-win{display:none!important}}
+@media print{#czs-fab,#czs-win{display:none!important}}
 </style>
 
-<button id="czs-bubble" type="button" aria-label="Soporte"><span class="czs-ico">💬</span><span>Ayuda para empezar</span><span class="czs-badge" id="czs-badge">0</span></button>
+<div id="czs-fab" role="button" tabindex="0" aria-label="Abrir soporte">
+  <button id="czs-bubble" type="button" aria-label="Soporte">💬<span class="czs-badge" id="czs-badge">0</span></button>
+  <span id="czs-label">Ayuda para empezar</span>
+</div>
 <div id="czs-win" role="dialog" aria-label="Chat de soporte">
   <div class="czs-hdr">
     <div><div class="t">Soporte CotizaCloud</div><div class="s" id="czs-status">Cargando…</div></div>
@@ -770,7 +775,7 @@ if (Auth::rol() === 'admin' && (!defined('EMPRESA_SLUG') || EMPRESA_SLUG !== 'ap
 <script>
 (function(){
   var CSRF = <?= json_encode(csrf_token()) ?>;
-  var bubble=document.getElementById('czs-bubble'), win=document.getElementById('czs-win'),
+  var fab=document.getElementById('czs-fab'), win=document.getElementById('czs-win'),
       body=document.getElementById('czs-body'), input=document.getElementById('czs-input'),
       sendBtn=document.getElementById('czs-send'), badge=document.getElementById('czs-badge'),
       statusEl=document.getElementById('czs-status');
@@ -814,10 +819,10 @@ if (Auth::rol() === 'admin' && (!defined('EMPRESA_SLUG') || EMPRESA_SLUG !== 'ap
     try{ await fetch('/api/soporte',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({accion:'cerrar'})});}catch(e){}
     body.innerHTML=''; lastId=0; convId=0; saludoShown=false; closeWin();
   }
-  function openWin(){ openFlag=true; win.classList.add('open'); bubble.style.display='none'; scrollB(); marcarLeido(); input.focus(); if(!pollTimer)pollTimer=setInterval(function(){if(!document.hidden)poll();},5000); }
-  function closeWin(){ openFlag=false; win.classList.remove('open'); bubble.style.display='flex'; if(pollTimer){clearInterval(pollTimer);pollTimer=null;} }
+  function openWin(){ openFlag=true; win.classList.add('open'); fab.style.display='none'; scrollB(); marcarLeido(); input.focus(); if(!pollTimer)pollTimer=setInterval(function(){if(!document.hidden)poll();},5000); }
+  function closeWin(){ openFlag=false; win.classList.remove('open'); fab.style.display='flex'; if(pollTimer){clearInterval(pollTimer);pollTimer=null;} }
 
-  bubble.addEventListener('click', openWin);
+  fab.addEventListener('click', openWin);
   document.getElementById('czs-min').addEventListener('click', closeWin);
   document.getElementById('czs-cerrar').addEventListener('click', cerrar);
   sendBtn.addEventListener('click', enviar);
