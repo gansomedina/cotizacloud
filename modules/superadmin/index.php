@@ -131,8 +131,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
 /* Table */
 .sa-table-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow-x:auto}
 .sa-table{width:100%;border-collapse:collapse;min-width:800px}
-.sa-table th{text-align:left;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;padding:12px 14px;border-bottom:2px solid var(--border);white-space:nowrap}
-.sa-table td{padding:12px 14px;font-size:13.5px;color:var(--text);border-bottom:1px solid var(--border);vertical-align:middle}
+.sa-table th{text-align:left;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;padding:12px 11px;border-bottom:2px solid var(--border);white-space:nowrap}
+.sa-table td{padding:12px 11px;font-size:13.5px;color:var(--text);border-bottom:1px solid var(--border);vertical-align:middle}
+.sa-table th.num,.sa-table td.num{text-align:center;width:1%;white-space:nowrap;padding-left:8px;padding-right:8px}
 .sa-table tr:last-child td{border-bottom:none}
 .sa-table tr:hover td{background:#fafaf8}
 .sa-table tr.new-today td{background:#f0fdf4}
