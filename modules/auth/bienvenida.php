@@ -169,9 +169,9 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
     <div class="wz-slide">
       <div class="wz-ico wz-ico--thermo">🌡️</div>
       <div class="wz-step">Arma 4 de 4</div>
-      <h2 class="wz-h">Tu marcador de vendedor</h2>
-      <p class="wz-p">El <b>Termómetro</b> es tu <b>boleta de calificaciones de ventas</b>: un número del <b>0 al 100</b>. El sistema lo calcula solo, viendo todo lo que haces: cuántas cotizaciones mandas, si les das seguimiento, cuántas cierras y si cobras.</p>
-      <div class="wz-why">💡 Lo que se mide, se mejora. Entre mejor trabajas, más alto tu número — y más vendes. Lo ves tú y lo ve tu jefe.</div>
+      <h2 class="wz-h">Aquí se ve quién vende de verdad</h2>
+      <p class="wz-p">El <b>Termómetro</b> es tu <b>boleta de calificaciones de ventas</b>: un número del <b>0 al 100</b> que el sistema calcula solo, viendo todo lo que haces — cuántas cotizaciones mandas, si les das seguimiento y cuántas cierras.</p>
+      <div class="wz-why">💡 Es el gran diferenciador: <b>separa al vendedor profesional del mediocre</b>. Con números claros, queda a la vista quién hace bien su trabajo y quién no. Súbelo y vuélvete el <b>#1 de tu equipo</b>.</div>
     </div>
 
     <!-- 6 -->
