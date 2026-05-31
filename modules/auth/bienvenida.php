@@ -143,7 +143,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
       <div class="wz-ico wz-ico--pop">🏢</div>
       <div class="wz-step">Arma 1 de 4</div>
       <h2 class="wz-h">Tu primera impresión cierra ventas</h2>
-      <p class="wz-p">Sube tu <b>logo</b>, tus <b>datos fiscales</b> y arma tu <b>catálogo</b> de productos o servicios con sus precios. Así cada cotización sale <b>con tu marca, profesional y lista para enviar en segundos</b>.</p>
+      <p class="wz-p">👉 <b>Empieza por aquí: entra al menú "Configuración".</b> Ahí sube tu <b>logo</b>, tus <b>datos fiscales</b> y arma tu <b>catálogo</b> de productos o servicios con sus precios. Así cada cotización sale <b>con tu marca, profesional y lista para enviar en segundos</b>.</p>
       <div class="wz-why">💡 El cliente que ve algo profesional, confía. Y el que confía, compra.</div>
     </div>
 
