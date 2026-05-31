@@ -8,14 +8,15 @@ Auth::requerir_superadmin();
 
 $sel = (int)($_GET['c'] ?? 0);
 
-// Lista de conversaciones
+// Lista de conversaciones (app + landing anónimo)
 $convs = DB::query(
-    "SELECT c.id, c.estado, c.no_leidos_agente, c.ultimo_mensaje_at,
+    "SELECT c.id, c.estado, c.origen, c.no_leidos_agente, c.ultimo_mensaje_at,
+            c.visitante_nombre, c.visitante_email,
             e.nombre AS emp_nombre, e.slug AS emp_slug, e.plan AS emp_plan,
             u.nombre AS usr_nombre, u.email AS usr_email
      FROM soporte_conversaciones c
-     JOIN empresas e  ON e.id = c.empresa_id
-     JOIN usuarios u  ON u.id = c.usuario_id
+     LEFT JOIN empresas e  ON e.id = c.empresa_id
+     LEFT JOIN usuarios u  ON u.id = c.usuario_id
      ORDER BY (c.estado='abierta') DESC, c.no_leidos_agente DESC, c.ultimo_mensaje_at DESC
      LIMIT 100"
 );
@@ -30,8 +31,8 @@ if ($sel) {
         "SELECT c.*, e.nombre AS emp_nombre, e.slug AS emp_slug, e.plan AS emp_plan,
                 e.created_at AS emp_creada, u.nombre AS usr_nombre, u.email AS usr_email
          FROM soporte_conversaciones c
-         JOIN empresas e ON e.id = c.empresa_id
-         JOIN usuarios u ON u.id = c.usuario_id
+         LEFT JOIN empresas e ON e.id = c.empresa_id
+         LEFT JOIN usuarios u ON u.id = c.usuario_id
          WHERE c.id = ?",
         [$sel]
     );
@@ -105,13 +106,17 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
       <?php else: foreach ($convs as $cv):
         $act = ($sel === (int)$cv['id']) ? 'active' : '';
         $cerr = $cv['estado'] === 'cerrada' ? 'st-cerrada' : '';
+        $es_landing = ($cv['origen'] ?? 'app') === 'landing';
+        $nombre = $es_landing ? ($cv['visitante_nombre'] ?: 'Visitante') : ($cv['usr_nombre'] ?: 'Usuario');
+        $sub    = $es_landing ? ($cv['visitante_email'] ?: '') : ($cv['emp_nombre'] ?: '');
+        $etiqueta = $es_landing ? 'LEAD' : ($cv['emp_plan'] ?: '—');
       ?>
         <a class="conv <?= $act ?> <?= $cerr ?>" href="/superadmin/soporte?c=<?= (int)$cv['id'] ?>">
           <div class="top">
-            <span class="name"><?= e($cv['usr_nombre'] ?: 'Usuario') ?></span>
+            <span class="name"><?= e($nombre) ?></span>
             <?php if ((int)$cv['no_leidos_agente'] > 0): ?><span class="dot" title="<?= (int)$cv['no_leidos_agente'] ?> sin leer"></span><?php endif; ?>
           </div>
-          <div class="emp"><span class="tag"><?= e($cv['emp_plan'] ?: '—') ?></span> <?= e($cv['emp_nombre']) ?></div>
+          <div class="emp"><span class="tag" style="<?= $es_landing ? 'background:#d97706' : '' ?>"><?= e($etiqueta) ?></span> <?= e($sub) ?></div>
           <div class="prev"><?= e($cv['ultimo_mensaje_at'] ? date('d/m H:i', strtotime($cv['ultimo_mensaje_at'])) : '') ?> · <?= $cv['estado']==='abierta'?'Abierta':'Cerrada' ?></div>
         </a>
       <?php endforeach; endif; ?>
@@ -125,13 +130,21 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         <div class="chat" id="chat" data-conv="<?= (int)$conv['id'] ?>">
           <div class="chat-hdr">
             <div>
+              <?php if (($conv['origen'] ?? 'app') === 'landing'): ?>
+              <div style="font-weight:700">🌱 <?= e($conv['visitante_nombre'] ?: 'Visitante') ?> <span style="font:700 10px var(--body);color:#fff;background:#d97706;padding:1px 7px;border-radius:5px;vertical-align:middle">LEAD</span></div>
+              <div class="ctx">
+                Prospecto del landing ·
+                <a href="mailto:<?= e($conv['visitante_email']) ?>" style="color:var(--g)"><?= e($conv['visitante_email']) ?></a>
+              </div>
+              <?php else: ?>
               <div style="font-weight:700"><?= e($conv['usr_nombre']) ?> · <?= e($conv['emp_nombre']) ?></div>
               <div class="ctx">
                 Plan <?= e($conv['emp_plan'] ?: '—') ?> ·
                 <?= e($conv['usr_email']) ?> ·
-                Empresa desde <?= e(date('d/m/Y', strtotime($conv['emp_creada']))) ?> ·
+                <?php if (!empty($conv['emp_creada'])): ?>Empresa desde <?= e(date('d/m/Y', strtotime($conv['emp_creada']))) ?> · <?php endif; ?>
                 <a href="/superadmin/empresa/<?= (int)$conv['empresa_id'] ?>" target="_blank" style="color:var(--g)">ver empresa ↗</a>
               </div>
+              <?php endif; ?>
             </div>
             <span style="font:700 11px var(--body);color:<?= $conv['estado']==='abierta'?'var(--g)':'var(--t3)' ?>"><?= $conv['estado']==='abierta'?'Abierta':'Cerrada' ?></span>
           </div>

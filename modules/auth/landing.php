@@ -1058,5 +1058,127 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   Cotiza.cloud &copy; <?= date('Y') ?> &middot; <a href="/login">Iniciar sesion</a> &middot; <a href="/registro">Crear cuenta</a>
 </footer>
 
+<!-- ── Chat de soporte / captura de lead (landing, anónimo) ── -->
+<style>
+#czl-fab{position:fixed;right:20px;bottom:22px;z-index:9000;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:8px;cursor:pointer}
+#czl-bubble{position:relative;width:56px;height:56px;border-radius:50%;background:#1a5c38;color:#fff;border:none;box-shadow:0 6px 20px rgba(26,92,56,.4);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:24px;transition:transform .15s}
+#czl-fab:hover #czl-bubble{transform:scale(1.06)}
+#czl-label{background:#fff;color:#1a1a18;font:600 13px -apple-system,sans-serif;padding:8px 13px;border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.14);border:1px solid rgba(0,0,0,.05);white-space:nowrap}
+#czl-win{position:fixed;right:20px;bottom:22px;width:360px;max-width:calc(100vw - 24px);height:500px;max-height:calc(100vh - 44px);background:#fff;border-radius:16px;box-shadow:0 14px 44px rgba(0,0,0,.28);z-index:9001;display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+#czl-win.open{display:flex}
+.czl-hdr{background:#1a5c38;color:#fff;padding:15px 16px;display:flex;align-items:center;justify-content:space-between}
+.czl-hdr .t{font-weight:700;font-size:15px}.czl-hdr .s{font-size:11px;opacity:.85;margin-top:2px}
+.czl-hdr button{background:rgba(255,255,255,.18);border:none;color:#fff;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px}
+.czl-body{flex:1;overflow-y:auto;padding:14px;background:#f7f6f3;display:flex;flex-direction:column;gap:8px}
+.czl-m{max-width:82%;padding:9px 12px;border-radius:13px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.czl-m.usuario{align-self:flex-end;background:#1a5c38;color:#fff;border-bottom-right-radius:4px}
+.czl-m.agente{align-self:flex-start;background:#fff;border:1px solid #e2e2dc;border-bottom-left-radius:4px}
+.czl-sys{align-self:center;background:#eee;color:#666;font-size:11.5px;padding:5px 11px;border-radius:99px;text-align:center}
+.czl-form{padding:14px;display:flex;flex-direction:column;gap:9px}
+.czl-form .intro{font-size:13px;color:#4a4a46;line-height:1.5;margin-bottom:2px}
+.czl-form input,.czl-foot textarea{border:1.5px solid #c8c8c0;border-radius:10px;padding:10px 12px;font:400 14px inherit;outline:none;width:100%}
+.czl-form input:focus,.czl-foot textarea:focus{border-color:#1a5c38}
+.czl-form textarea{resize:none;min-height:60px}
+.czl-form .err{color:#c53030;font-size:12px;display:none}
+.czl-form button{background:#1a5c38;color:#fff;border:none;border-radius:10px;padding:11px;font:700 14px inherit;cursor:pointer}
+.czl-foot{padding:10px;border-top:1px solid #e2e2dc;display:flex;gap:8px;align-items:flex-end}
+.czl-foot button{background:#1a5c38;color:#fff;border:none;border-radius:10px;width:42px;height:40px;cursor:pointer;font-size:17px}
+@media(max-width:768px){#czl-win{right:0;left:0;bottom:0;width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0}}
+@media print{#czl-fab,#czl-win{display:none!important}}
+</style>
+
+<div id="czl-fab" role="button" tabindex="0" aria-label="Abrir chat">
+  <button id="czl-bubble" type="button">💬</button>
+  <span id="czl-label">¿Dudas? Escríbenos</span>
+</div>
+<div id="czl-win" role="dialog" aria-label="Chat">
+  <div class="czl-hdr">
+    <div><div class="t">¿Te ayudamos?</div><div class="s" id="czl-status">Cargando…</div></div>
+    <button type="button" id="czl-min" title="Cerrar">▽</button>
+  </div>
+  <!-- Pre-chat: captura de lead -->
+  <div class="czl-form" id="czl-form">
+    <div class="intro" id="czl-intro">Déjanos tus datos y tu pregunta. Te respondemos por aquí.</div>
+    <input type="text" id="czl-nombre" placeholder="Tu nombre" autocomplete="name">
+    <input type="email" id="czl-email" placeholder="Tu correo" autocomplete="email">
+    <textarea id="czl-msg" placeholder="¿En qué te ayudamos?"></textarea>
+    <div class="err" id="czl-err">Completa nombre, un correo válido y tu mensaje.</div>
+    <button type="button" id="czl-start">Enviar</button>
+  </div>
+  <!-- Chat -->
+  <div class="czl-body" id="czl-cbody" style="display:none"></div>
+  <div class="czl-foot" id="czl-cfoot" style="display:none">
+    <textarea id="czl-input" rows="1" placeholder="Escribe tu mensaje…"></textarea>
+    <button type="button" id="czl-send">➤</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var fab=document.getElementById('czl-fab'), win=document.getElementById('czl-win'),
+      form=document.getElementById('czl-form'), cbody=document.getElementById('czl-cbody'),
+      cfoot=document.getElementById('czl-cfoot'), statusEl=document.getElementById('czl-status'),
+      input=document.getElementById('czl-input'), sendBtn=document.getElementById('czl-send'),
+      startBtn=document.getElementById('czl-start'), errEl=document.getElementById('czl-err');
+  var token='', lastId=0, pollTimer=null, saludoShown=false, started=false;
+  try{ token=localStorage.getItem('cz_sop_token')||''; }catch(e){}
+
+  function scrollB(){ cbody.scrollTop=cbody.scrollHeight; }
+  function addMsg(a,c){ var d=document.createElement('div'); d.className='czl-m '+a; d.textContent=c; cbody.appendChild(d); scrollB(); }
+  function addSys(t){ var d=document.createElement('div'); d.className='czl-sys'; d.textContent=t; cbody.appendChild(d); scrollB(); }
+  function showChat(){ form.style.display='none'; cbody.style.display='flex'; cfoot.style.display='flex'; started=true; }
+
+  async function poll(){
+    var url='/api/soporte/poll'+(token?('?token='+encodeURIComponent(token)+'&since='+lastId):'');
+    try{
+      var r=await fetch(url); var d=await r.json(); if(!d.ok)return;
+      if(d.horario){ statusEl.textContent=d.horario.online?('🟢 '+d.horario.msg):d.horario.msg; }
+      if(token && d.conversacion_id){
+        if(!started) showChat();
+        if(!saludoShown && (d.mensajes||[]).length===0 && d.horario && d.horario.saludo){ addSys(d.horario.saludo); saludoShown=true; }
+        (d.mensajes||[]).forEach(function(m){ addMsg(m.autor,m.cuerpo); lastId=Math.max(lastId,m.id); saludoShown=true; });
+      }
+    }catch(e){}
+  }
+  function startPoll(){ if(!pollTimer) pollTimer=setInterval(function(){ if(!document.hidden) poll(); },5000); }
+
+  async function enviarPrimero(){
+    var nombre=document.getElementById('czl-nombre').value.trim();
+    var email=document.getElementById('czl-email').value.trim();
+    var msg=document.getElementById('czl-msg').value.trim();
+    if(!nombre || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !msg){ errEl.style.display='block'; return; }
+    errEl.style.display='none'; startBtn.disabled=true;
+    try{
+      var r=await fetch('/api/soporte',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accion:'enviar',nombre:nombre,email:email,cuerpo:msg,token:token})});
+      var d=await r.json();
+      if(d.ok){ token=d.token||token; try{localStorage.setItem('cz_sop_token',token);}catch(e){} showChat(); addMsg('usuario',msg); if(d.mensaje_id)lastId=Math.max(lastId,d.mensaje_id); saludoShown=true; startPoll(); }
+      else { errEl.textContent=d.error==='datos'?'Completa nombre, un correo válido y tu mensaje.':'No se pudo enviar, intenta de nuevo.'; errEl.style.display='block'; }
+    }catch(e){}
+    startBtn.disabled=false;
+  }
+  async function enviar(){
+    var t=input.value.trim(); if(!t)return; sendBtn.disabled=true;
+    try{
+      var r=await fetch('/api/soporte',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accion:'enviar',cuerpo:t,token:token})});
+      var d=await r.json();
+      if(d.ok){ addMsg('usuario',t); if(d.mensaje_id)lastId=Math.max(lastId,d.mensaje_id); input.value=''; input.style.height='auto'; }
+    }catch(e){}
+    sendBtn.disabled=false; input.focus();
+  }
+
+  function open(){ win.classList.add('open'); fab.style.display='none'; poll(); startPoll(); if(started)input.focus(); }
+  function close(){ win.classList.remove('open'); fab.style.display='flex'; }
+  fab.addEventListener('click', open);
+  document.getElementById('czl-min').addEventListener('click', close);
+  startBtn.addEventListener('click', enviarPrimero);
+  sendBtn.addEventListener('click', enviar);
+  input.addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();} });
+  input.addEventListener('input', function(){ input.style.height='auto'; input.style.height=Math.min(90,input.scrollHeight)+'px'; });
+
+  // Si ya había conversación previa (token), precargar al abrir; si no, mostrar form.
+  if(token){ poll(); }
+})();
+</script>
+
 </body>
 </html>
