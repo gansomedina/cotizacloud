@@ -106,6 +106,7 @@ ob_start();
 
   <div class="ay-nav-section">Inicio</div>
   <a href="#calibra" onclick="ayTab('calibra',this)" style="font-weight:800;color:var(--g)"><span class="ay-ico">🎯</span> Calibra tus armas</a>
+  <a href="#escudo" onclick="ayTab('escudo',this)" style="font-weight:800;color:var(--g)"><span class="ay-ico">🛡️</span> Escudo</a>
   <a href="#inicio" class="active" onclick="ayTab('inicio',this)"><span class="ay-ico">🏠</span> Bienvenida</a>
   <a href="#primeros-pasos" onclick="ayTab('primeros-pasos',this)"><span class="ay-ico">🚀</span> Primeros pasos</a>
   <a href="#soporte" onclick="ayTab('soporte',this)"><span class="ay-ico"><?= ico('mail',14) ?></span> Enviar ticket</a>
@@ -162,6 +163,39 @@ ob_start();
   </div>
 
   <div class="ay-warn"><b>En resumen:</b> empresa bien configurada → cotizaciones por link → Radar todos los días → 👍/👎 y cobra → lee tus tips. Calibra estas 4 armas y el sistema hace el trabajo pesado: tú solo sigues las señales y cierras.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  ESCUDO (lo más importante)                            -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-escudo">
+  <h2 class="ay-h2">🛡️ El Escudo — lo más importante</h2>
+  <p class="ay-subtitle">Léelo con calma. Si entiendes esto, todo el sistema trabaja a tu favor. Si lo ignoras, el Radar te va a engañar y vas a perder tiempo y puntos.</p>
+
+  <div class="ay-card" style="border:2px solid var(--g)">
+    <h3>¿Qué es el Escudo?</h3>
+    <p>El Radar funciona porque sabe quién abre cada cotización: <b>el cliente o tú</b>. El <b>Escudo</b> es lo que le dice al sistema "esta vez fui yo, el vendedor, no el cliente", para que <b>tus propias vistas no se cuenten como si fuera el cliente.</b></p>
+    <p style="margin-top:10px">Si no cuidas el Escudo, el Radar te <b>miente</b>: te dirá que un cliente está súper interesado cuando en realidad eras tú revisando tu propia cotización. Perderías tiempo llamándole a quien no toca, y se llena de señales falsas.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>✅ La regla de oro (muy fácil)</h3>
+    <ul>
+      <li>Abre las cotizaciones de tus clientes <b>SOLO desde el dispositivo y el navegador donde tienes tu sesión iniciada</b> en CotizaCloud (donde entras a trabajar normalmente).</li>
+      <li><b>Mantente con la sesión abierta.</b> Así el sistema te reconoce y no confunde tus vistas con las del cliente.</li>
+    </ul>
+  </div>
+
+  <div class="ay-card">
+    <h3>🚫 Lo que NO debes hacer</h3>
+    <ul>
+      <li>Abrir la misma cotización desde tu <b>celular</b>, luego desde <b>otra computadora</b>, luego desde <b>otro navegador</b> donde NO tienes tu sesión.</li>
+      <li>Mandarte el link a ti mismo y abrirlo por curiosidad desde varios lados.</li>
+    </ul>
+    <p style="margin-top:8px">Cada vez que abres desde un lugar distinto donde el sistema no te reconoce, <b>cuenta como si fuera otra persona (el cliente) viendo la cotización</b>. Resultado: el Radar se prende en falso, te muestra clientes "calientes" que en realidad eras tú, y tu termómetro también se ensucia.</p>
+  </div>
+
+  <div class="ay-warn">¿Necesitas enseñarle la cotización a un cliente en persona desde tu celular? Está bien, pero hazlo <b>con tu sesión iniciada</b> en ese celular. Si abres desde un equipo "prestado" o sin sesión, el sistema lo contará como una vista del cliente.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -503,26 +537,7 @@ if (!$is_native_app_ayuda): ?>
     <p style="margin-top:12px">Con estas señales, el sistema clasifica cada cotización en <b>buckets</b> (categorías de intención) y te dice exactamente a quién llamar primero.</p>
   </div>
 
-  <div class="ay-card" style="border:2px solid var(--g)">
-    <h3>🛡️ El Escudo — LO MÁS IMPORTANTE del Radar</h3>
-    <p>El Radar funciona porque sabe quién abre cada cotización: <b>el cliente o tú</b>. El <b>Escudo</b> es lo que le dice al sistema "esta vez fui yo, el vendedor, no el cliente", para que <b>tus propias vistas no se cuenten como si fuera el cliente.</b></p>
-    <p style="margin-top:10px">Si no cuidas el Escudo, el Radar te <b>miente</b>: te dirá que un cliente está súper interesado cuando en realidad eras tú revisando tu propia cotización. Perderías tiempo llamándole a quien no toca, y se llena de señales falsas.</p>
-
-    <p style="margin-top:14px;font-weight:700">La regla de oro (muy fácil):</p>
-    <ul>
-      <li>Abre las cotizaciones de tus clientes <b>SOLO desde el dispositivo y el navegador donde tienes tu sesión iniciada</b> en CotizaCloud (donde entras a trabajar normalmente).</li>
-      <li><b>Mantente con la sesión abierta.</b> Así el sistema te reconoce y no confunde tus vistas con las del cliente.</li>
-    </ul>
-
-    <p style="margin-top:14px;font-weight:700">Lo que NO debes hacer:</p>
-    <ul>
-      <li>Abrir la misma cotización desde tu <b>celular</b>, luego desde <b>otra computadora</b>, luego desde <b>otro navegador</b> donde NO tienes tu sesión.</li>
-      <li>Mandarte el link a ti mismo y abrirlo por curiosidad desde varios lados.</li>
-    </ul>
-    <p style="margin-top:8px">Cada vez que abres desde un lugar distinto donde el sistema no te reconoce, <b>cuenta como si fuera otra persona (el cliente) viendo la cotización</b>. Resultado: el Radar se prende en falso, te muestra clientes "calientes" que en realidad eras tú, y tu termómetro también se ensucia.</p>
-  </div>
-
-  <div class="ay-warn">¿Necesitas enseñarle la cotización a un cliente en persona desde tu celular? Está bien, pero hazlo <b>con tu sesión iniciada</b> en ese celular. Si abres desde un equipo "prestado" o sin sesión, el sistema lo contará como una vista del cliente.</div>
+  <div class="ay-tip">🛡️ Para que el Radar no te mienta, cuida el <b>Escudo</b>: abre las cotizaciones solo desde tu dispositivo con la sesión iniciada. Lee el apartado <b>🛡️ Escudo</b> en el menú de Inicio — es de lo más importante.</div>
 
   <div class="ay-card">
     <h3>🎯 Resumen — Probable cierre (tu lista #1)</h3>
