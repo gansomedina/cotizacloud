@@ -105,6 +105,7 @@ ob_start();
   <div class="ay-nav-title">Centro de Ayuda</div>
 
   <div class="ay-nav-section">Inicio</div>
+  <a href="#calibra" onclick="ayTab('calibra',this)" style="font-weight:800;color:var(--g)"><span class="ay-ico">🎯</span> Calibra tus armas</a>
   <a href="#inicio" class="active" onclick="ayTab('inicio',this)"><span class="ay-ico">🏠</span> Bienvenida</a>
   <a href="#primeros-pasos" onclick="ayTab('primeros-pasos',this)"><span class="ay-ico">🚀</span> Primeros pasos</a>
   <a href="#soporte" onclick="ayTab('soporte',this)"><span class="ay-ico"><?= ico('mail',14) ?></span> Enviar ticket</a>
@@ -126,6 +127,42 @@ ob_start();
 
 <!-- ── Contenido ── -->
 <div class="ay-body">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  CALIBRA TUS ARMAS (lo más importante)                 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="ay-section" id="sec-calibra">
+  <h2 class="ay-h2">🎯 Calibra tus armas de venta</h2>
+  <p class="ay-subtitle">Esto es lo más importante de todo el sistema. Antes de salir a vender, asegúrate de tener bien tus 4 armas. Si las cuidas, el sistema trabaja <b>para ti</b> y vendes más con menos esfuerzo. Si las descuidas, trabajas a ciegas.</p>
+
+  <div class="ay-tip">Léelo completo aunque no sepas nada de computadoras. Son 4 cosas sencillas. Cada una tiene su pestaña con el detalle, pero aquí está lo esencial de cada una.</div>
+
+  <div class="ay-card" style="border-left:4px solid var(--g)">
+    <h3>1️⃣ Configura bien tu empresa <span style="color:var(--t3);font-weight:500">— la base de todo</span></h3>
+    <p>Es lo PRIMERO. Sube tu <b>logo</b>, tus <b>datos fiscales</b>, y arma tu <b>catálogo</b> de productos o servicios con sus precios. Una empresa bien configurada hace que tus cotizaciones se vean profesionales y las generes en segundos. Si esto está mal, todo lo demás sale mal.</p>
+    <p style="margin-top:8px"><a href="#configuracion" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#configuracion\']').click()" style="color:var(--g);font-weight:600">→ Ver cómo configurar (pestaña Configuración)</a></p>
+  </div>
+
+  <div class="ay-card" style="border-left:4px solid var(--g)">
+    <h3>2️⃣ Cuida el Escudo <span style="color:var(--t3);font-weight:500">— para que el Radar no te mienta</span></h3>
+    <p>Abre las cotizaciones de tus clientes <b>SOLO desde tu dispositivo con la sesión iniciada</b>. Si las abres desde varios celulares o navegadores donde no entraste, el sistema creerá que el cliente está interesado… cuando en realidad eras tú. Eso ensucia el Radar y tu termómetro.</p>
+    <p style="margin-top:8px"><a href="#radar" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#radar\']').click()" style="color:var(--g);font-weight:600">→ Ver la regla de oro del Escudo (pestaña Radar)</a></p>
+  </div>
+
+  <div class="ay-card" style="border-left:4px solid var(--g)">
+    <h3>3️⃣ Usa el Radar todos los días <span style="color:var(--t3);font-weight:500">— tu lista de a quién llamar</span></h3>
+    <p>Cada mañana entra al <b>Radar</b>. Empieza por el <b>Resumen "Probable cierre"</b>: ahí están tus clientes más calientes, los que tienes que contactar HOY. Lee el botón <b>"?"</b> de cada cotización para saber qué hacer con ese cliente.</p>
+    <p style="margin-top:8px"><a href="#radar" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#radar\']').click()" style="color:var(--g);font-weight:600">→ Ver cómo se usa el Radar (pestaña Radar)</a></p>
+  </div>
+
+  <div class="ay-card" style="border-left:4px solid var(--g)">
+    <h3>4️⃣ Sube tu Termómetro <span style="color:var(--t3);font-weight:500">— tu calificación de vendedor</span></h3>
+    <p>4 pasos diarios: <b>(1)</b> manda tus cotizaciones por el <b>link</b>, <b>(2)</b> dale <b>👍 / 👎</b> a tus clientes en el Radar según el interés real, <b>(3)</b> cierra ventas y <b>anota el pago</b>, y <b>(4)</b> lee tus <b>tips</b> diarios completos.</p>
+    <p style="margin-top:8px"><a href="#termometro" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#termometro\']').click()" style="color:var(--g);font-weight:600">→ Ver cómo subir tu puntaje (pestaña Termómetro)</a></p>
+  </div>
+
+  <div class="ay-warn"><b>En resumen:</b> empresa bien configurada → cotizaciones por link → Radar todos los días → 👍/👎 y cobra → lee tus tips. Calibra estas 4 armas y el sistema hace el trabajo pesado: tú solo sigues las señales y cierras.</div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
 <!--  BIENVENIDA                                            -->
