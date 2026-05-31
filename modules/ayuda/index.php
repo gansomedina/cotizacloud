@@ -505,30 +505,42 @@ if (!$is_native_app_ayuda): ?>
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-clientes">
   <h2 class="ay-h2">👥 Clientes</h2>
-  <p class="ay-subtitle">Tu base de datos de clientes. Centraliza toda la información de contacto.</p>
+  <p class="ay-subtitle">Tu directorio. Cada cliente guarda sus datos de contacto y todo su historial de cotizaciones y ventas. Esta guía explica el <b>listado</b> y la <b>ficha</b> de cada cliente, opción por opción.</p>
 
+  <!-- ── LISTADO ── -->
   <div class="ay-card">
-    <h3>Funciones principales</h3>
+    <h3>El listado de clientes</h3>
     <ul>
-      <li><b>Crear cliente</b> — Nombre, teléfono, email, dirección y notas</li>
-      <li><b>Buscar</b> — Encuentra clientes por nombre, teléfono o email</li>
-      <li><b>Historial</b> — Ve todas las cotizaciones y ventas asociadas a cada cliente</li>
-      <li><b>Editar</b> — Actualiza datos de contacto en cualquier momento</li>
+      <li><b>+ Nuevo cliente</b> — Abre un formulario con: nombre (obligatorio), teléfono (obligatorio), dirección (opcional) y una nota interna (opcional). Es la forma rápida de dar de alta a alguien sin salir de la pantalla.</li>
+      <li><b>Buscar</b> — Escribe nombre, teléfono o email y la lista se filtra al instante.</li>
+      <li><b>Ordenar</b> — Más reciente, Nombre A–Z, Mayor compra o Más cotizaciones.</li>
+      <li>Cada renglón muestra el cliente, su teléfono, cuántas <b>cotizaciones</b> tiene, cuánto te ha <b>comprado</b> en total y su <b>saldo pendiente</b>. Tócalo para abrir su ficha.</li>
     </ul>
   </div>
 
-  <div class="ay-steps">
-    <div class="ay-step">
-      <h4>Crea un nuevo cliente</h4>
-      <p>Haz clic en <b>"Nuevo cliente"</b>, llena al menos el nombre y un dato de contacto (teléfono o email), y guarda.</p>
-    </div>
-    <div class="ay-step">
-      <h4>Asocia cotizaciones</h4>
-      <p>Al crear una cotización, seleccionas el cliente. Todo queda vinculado automáticamente.</p>
-    </div>
+  <!-- ── FICHA ── -->
+  <div class="ay-card">
+    <h3>La ficha del cliente</h3>
+    <p>Al abrir un cliente ves todo lo suyo en una sola pantalla:</p>
+    <ul>
+      <li><b>Datos de contacto</b> — Nombre, teléfono (toca para llamar) y email (toca para escribir), más la fecha de registro, el asesor que lo dio de alta y la última actividad.</li>
+      <li><b>Cotizaciones</b> — La lista completa de sus cotizaciones con folio, título, monto y estado. Tócalas para abrirlas.</li>
+      <li><b>Ventas</b> — Sus ventas con monto, saldo pendiente y estado.</li>
+      <li><b>Resumen (lado derecho)</b> — Número de cotizaciones, ventas, <b>tasa de conversión</b> (qué % de sus cotizaciones se volvieron venta), total comprado y saldo pendiente.</li>
+    </ul>
   </div>
 
-  <div class="ay-tip">Siempre registra el teléfono del cliente — es el canal más efectivo para dar seguimiento en ventas de alto valor.</div>
+  <!-- ── ACCIONES ── -->
+  <div class="ay-card">
+    <h3>Acciones en la ficha</h3>
+    <ul>
+      <li><b>Editar cliente</b> — Actualiza nombre, teléfono, dirección y nota. <i>(Necesitas ser admin o tener el permiso de editar clientes.)</i></li>
+      <li><b>+ Nueva cotización</b> — Crea una cotización ya ligada a este cliente, sin tener que volver a buscarlo.</li>
+      <li><b>Eliminar cliente</b> — Solo aparece (para admin) si el cliente <b>no tiene ninguna cotización ni venta</b>. Así no se borra información ligada a tu historial.</li>
+    </ul>
+  </div>
+
+  <div class="ay-tip">Registra siempre el <b>teléfono</b>: es el canal más efectivo para dar seguimiento. Y revisa la <b>tasa de conversión</b> de tus mejores clientes para detectar a quién vale la pena consentir.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -990,20 +1002,54 @@ if (!$is_native_app_ayuda): ?>
 <!--  COSTOS                                                -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-costos">
-  <h2 class="ay-h2">📉 Costos</h2>
-  <p class="ay-subtitle">Controla los gastos asociados a tus ventas para conocer tu margen real.</p>
+  <h2 class="ay-h2">📉 Costos <span class="ay-shortcut">Pro y Business</span></h2>
+  <p class="ay-subtitle">Registra lo que te cuesta cada venta o tu operación, para conocer tu <b>margen real</b> (no solo lo que vendes, sino lo que te queda). Lo que ves aquí depende del <b>modo de costos</b> que elegiste en Configuración → Costos.</p>
 
   <div class="ay-card">
-    <h3>Funciones principales</h3>
+    <h3>Primero: el modo de costos</h3>
+    <p>En <b>Configuración → Costos</b> eliges cómo trabajas, y eso define las pestañas que aparecen:</p>
     <ul>
-      <li><b>Registrar gastos</b> — Cada gasto con monto, categoría, descripción y fecha</li>
-      <li><b>Categorías</b> — Organiza por tipo: materiales, mano de obra, transporte, etc.</li>
-      <li><b>Asociar a ventas</b> — Vincula gastos a ventas específicas para calcular margen</li>
-      <li><b>Filtrar</b> — Busca por categoría, fecha o descripción</li>
+      <li><b>Por venta</b> — Asignas cada gasto a una venta concreta. Verás la pestaña <b>"Costos por venta"</b>.</li>
+      <li><b>Por empresa</b> — Registras gastos generales del negocio. Verás <b>"Gastos generales"</b>.</li>
+      <li><b>Ambos</b> <span class="ay-shortcut">Business</span> — Las dos pestañas, para control total.</li>
     </ul>
   </div>
 
-  <div class="ay-tip">Registra los costos al momento de incurrir en ellos, no al final del mes. Así siempre tendrás visibilidad real de tu rentabilidad.</div>
+  <!-- ── COSTOS POR VENTA ── -->
+  <div class="ay-card">
+    <h3>Pestaña "Costos por venta"</h3>
+    <p>Arriba ves 3 indicadores del mes: <b>Ventas</b>, <b>Costos</b> y <b>Margen promedio</b> (comparado contra el mes anterior). Debajo, la lista de tus ventas con su margen, filtrable por categoría y con buscador.</p>
+    <ul>
+      <li>Toca <b>"+ Costo"</b> en una venta (o entra a su detalle) para registrar un gasto: <b>categoría</b>, <b>proveedor</b> (opcional), <b>concepto</b>, <b>importe</b>, <b>fecha</b> y nota.</li>
+      <li>En el detalle de cada venta ves todos sus costos sumados, la <b>utilidad</b> (venta − costos) y el <b>% de margen</b> con una barra de color (verde = sano, ámbar = ajustado, rojo = bajo).</li>
+    </ul>
+  </div>
+
+  <!-- ── GASTOS GENERALES ── -->
+  <div class="ay-card">
+    <h3>Pestaña "Gastos generales"</h3>
+    <p>Para gastos que <b>no son de una venta</b>: renta, nómina, servicios, seguros, etc. Cada uno con concepto, categoría, proveedor, fecha e importe. Arriba ves el <b>total</b> de gastos generales y qué <b>% representan de tus ventas</b>.</p>
+  </div>
+
+  <!-- ── CATEGORÍAS ── -->
+  <div class="ay-card">
+    <h3>Pestaña "Categorías"</h3>
+    <p>Organiza tus costos por tipo (materiales, mano de obra, transporte…). Cada categoría tiene un <b>color</b> y un interruptor para <b>activarla o desactivarla</b> (las activas son las que aparecen al registrar un gasto). El <b>admin</b> puede crear y editar categorías.</p>
+  </div>
+
+  <!-- ── ANÁLISIS ── -->
+  <div class="ay-card">
+    <h3>Pestaña "Análisis" <span class="ay-shortcut">Business</span></h3>
+    <p>Gráficas que reparten tus costos <b>por categoría</b> (cuánto pesa cada tipo de gasto) para que veas dónde se te va el dinero.</p>
+  </div>
+
+  <!-- ── PROVEEDORES ── -->
+  <div class="ay-card">
+    <h3>Pestaña "Proveedores"</h3>
+    <p>Tu lista de proveedores. Puedes ligar gastos a un proveedor para luego ver cuánto le pagas a cada uno (el detalle vive en Reportes → Proveedores).</p>
+  </div>
+
+  <div class="ay-tip">Registra los costos <b>cuando ocurren</b>, no a fin de mes. Así tu margen siempre refleja la realidad y sabes qué ventas de verdad te dejan dinero.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -1011,31 +1057,49 @@ if (!$is_native_app_ayuda): ?>
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-reportes">
   <h2 class="ay-h2"><?= ico('file',18,'#7c3aed') ?> Reportes</h2>
-  <p class="ay-subtitle">Análisis de rendimiento de tu negocio con datos reales, filtrados por período.</p>
+  <p class="ay-subtitle">La radiografía a fondo de tu negocio, con datos reales. Está organizado en <b>pestañas</b> y todo se filtra por el <b>período</b> que elijas. Esta guía explica cada pestaña.</p>
 
   <div class="ay-card">
-    <h3>Tipos de reporte</h3>
-    <ul>
-      <li><b>Financiero</b> — Ingresos, gastos, margen bruto por período</li>
-      <li><b>Asesores</b> — Rendimiento individual de cada vendedor del equipo</li>
-      <li><b>Cotizaciones</b> — Tasa de cierre, tiempo promedio de cierre, cotizaciones más vistas</li>
-      <li><b>Costos</b> — Desglose de gastos por categoría</li>
-    </ul>
+    <h3>Período y exportar</h3>
+    <p>Arriba eliges el período: <b>este mes, mes anterior, últimos 30/90 días, últimos 12 meses, este año, año anterior, todo el historial</b> o un <b>rango de fechas</b> a tu medida. El botón <b>"↓ Exportar CSV"</b> baja la tabla que estés viendo para abrirla en Excel.</p>
   </div>
 
   <div class="ay-card">
-    <h3>Filtro por período</h3>
-    <p>Todos los reportes permiten filtrar por:</p>
-    <ul>
-      <li>Mes actual</li>
-      <li>Mes anterior</li>
-      <li>Últimos 30 días</li>
-      <li>Últimos 90 días</li>
-      <li>Año completo</li>
-    </ul>
+    <h3>Pestaña Financiero</h3>
+    <p>El panorama del dinero. Indicadores grandes: <b>Ingresos</b>, <b>Cobrado</b> (y lo pendiente), <b>Utilidad bruta</b> (ingresos − costos) y <b>Margen bruto %</b>. Una <b>gráfica</b> de ingresos vs. costos mes a mes, el resumen de cotizaciones del período (generadas, aceptadas, rechazadas, activas, tasa de conversión) y, si lo capturaste, tu <b>historial importado</b>.</p>
   </div>
 
-  <div class="ay-tip">Revisa el reporte de asesores semanalmente si tienes equipo de ventas. Te ayuda a identificar quién necesita apoyo y quién está sobresaliendo.</div>
+  <div class="ay-card">
+    <h3>Pestaña Por asesor <span class="ay-shortcut">Admin</span></h3>
+    <p>Compara a tu equipo: por cada vendedor ves ventas, ingresos, costos, utilidad, margen, cotizaciones y conversión. Ideal para saber quién sobresale y quién necesita apoyo.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Pestaña Cotizaciones</h3>
+    <p>Un conteo rápido por estado (sin abrir, suspendidas, abiertas, aceptadas, rechazadas, vencidas) y la <b>tabla detallada</b> de cada cotización del período con su monto, estado, visitas y fecha. Tócalas para abrirlas.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Pestaña Recibos</h3>
+    <p>Todos los pagos del período: total de recibos, monto cobrado y cancelaciones, con el detalle de cada recibo (cliente, venta, monto, forma de pago y estado).</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Pestaña Costos y márgenes</h3>
+    <p>Profundiza en la rentabilidad: utilidad y margen, <b>costos por categoría</b>, evolución mensual, el <b>margen venta por venta</b>, el <b>punto de equilibrio</b> (cuánto necesitas vender para no perder) y un <b>ranking de rentabilidad</b> de tus ventas.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Pestaña Proveedores <span class="ay-shortcut">Business</span></h3>
+    <p>A quién le pagas y cuánto: top proveedores, pagos mensuales y el detalle de cada pago.</p>
+  </div>
+
+  <div class="ay-card">
+    <h3>Pestaña Feedback</h3>
+    <p>Aparece si activaste la calificación del cliente (Configuración → Feedback). Muestra la <b>distribución de estrellas</b>, el promedio <b>por asesor</b> y los comentarios recientes de tus clientes.</p>
+  </div>
+
+  <div class="ay-tip">Revisa <b>Por asesor</b> cada semana si tienes equipo, y <b>Costos y márgenes</b> al cierre de mes para confirmar que de verdad estás ganando, no solo vendiendo.</div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
