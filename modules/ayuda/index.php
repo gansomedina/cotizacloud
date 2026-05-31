@@ -463,45 +463,162 @@ if (!$is_native_app_ayuda): ?>
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-cotizaciones">
   <h2 class="ay-h2">📄 Cotizaciones</h2>
-  <p class="ay-subtitle">El corazón del sistema. Crea propuestas profesionales que tus clientes pueden ver, aceptar o rechazar desde un link.</p>
+  <p class="ay-subtitle">El corazón del sistema. Aquí creas la propuesta, la mandas por un link y le das seguimiento. Esta guía explica <b>botón por botón, campo por campo</b> todo lo que puedes hacer al crear y al editar una cotización. No te saltes nada: cada opción está aquí por una razón.</p>
 
+  <!-- ── ESTADOS ── -->
   <div class="ay-card">
-    <h3>Estados de una cotización</h3>
+    <h3>Los estados (en qué punto va cada cotización)</h3>
+    <p>Cada cotización tiene una "etiqueta de color" que te dice en qué va. La verás en el listado y arriba del editor:</p>
     <ul>
-      <li><span class="ay-shortcut">Borrador</span> Aún no se envía al cliente. Puedes editarla libremente.</li>
-      <li><span class="ay-shortcut">Enviada</span> El cliente recibió el link pero no la ha abierto.</li>
-      <li><span class="ay-shortcut">Vista</span> El cliente abrió la cotización. El Radar empieza a rastrear.</li>
-      <li><span class="ay-shortcut">Aceptada</span> El cliente aceptó. Se convierte en venta automáticamente.</li>
-      <li><span class="ay-shortcut">Rechazada</span> El cliente rechazó la propuesta.</li>
+      <li><span class="ay-shortcut">Enviada</span> Recién creada. Ya tiene su link listo para mandar, pero el cliente <b>todavía no la abre</b>. <i>(Toda cotización nueva nace en este estado.)</i></li>
+      <li><span class="ay-shortcut">Vista</span> El cliente <b>ya la abrió</b>. Aquí arranca el Radar a rastrear su interés.</li>
+      <li><span class="ay-shortcut">Aceptada</span> El cliente le dio "Aceptar" desde el link. ¡Felicidades!</li>
+      <li><span class="ay-shortcut">Rechazada</span> El cliente le dio "Rechazar".</li>
+      <li><span class="ay-shortcut">Vencida</span> Pasó la fecha de "Vence" sin que el cliente decidiera.</li>
+      <li><span class="ay-shortcut">Convertida</span> Ya la pasaste a venta. Queda "congelada" (de solo lectura) para que la venta no le borre nada.</li>
+      <li><span class="ay-shortcut">Borrador</span> Estado interno para cotizaciones que aún no se mandan.</li>
+      <li><span class="ay-shortcut">Suspendida</span> Tú la pausaste a propósito. El cliente <b>ya no puede abrir el link</b> y deja de contar para el Termómetro.</li>
+    </ul>
+    <p style="margin-top:8px"><b>¿Cuándo puedo editar?</b> Solo mientras esté <b>Enviada</b>, <b>Vista</b> o <b>Borrador</b> (y no esté suspendida). Una vez <b>Aceptada</b>, <b>Rechazada</b> o <b>Convertida</b> queda de <b>solo lectura</b> para proteger lo que el cliente ya vio.</p>
+  </div>
+
+  <!-- ── CREAR: PASO A PASO ── -->
+  <div class="ay-card">
+    <h3>Crear una cotización nueva</h3>
+    <p>Entra a <b>Cotizaciones → Nueva cotización</b>. Verás una pantalla dividida: a la izquierda armas la cotización, a la derecha (en computadora) están las opciones y el total. En celular, esas opciones aparecen abajo en secciones que se despliegan.</p>
+    <div class="ay-steps">
+      <div class="ay-step">
+        <h4>Elige el cliente (obligatorio)</h4>
+        <p>Toca <b>"Seleccionar cliente"</b>. Se abre una ventana con dos pestañas: <b>Clientes</b> (busca por nombre o teléfono) y <b>Nuevo cliente</b> (lo das de alta ahí mismo con nombre, teléfono y dirección, sin salir de la cotización). No puedes guardar sin cliente.</p>
+      </div>
+      <div class="ay-step">
+        <h4>Pon el título y las fechas</h4>
+        <p><b>Título</b> es obligatorio (ej. "Cocina integral para Sra. López"). La <b>Fecha</b> sale con el día de hoy y <b>Vence</b> se calcula solo según la vigencia que configuraste (por defecto 30 días). Puedes cambiarlas.</p>
+      </div>
+      <div class="ay-step">
+        <h4>Agrega los artículos</h4>
+        <p>Toca <b>"Agregar artículo"</b>: se abre tu catálogo, busca y toca el que quieras. ¿No está en el catálogo? Usa <b>"Ítem libre"</b> para escribirlo a mano. Cada artículo trae nombre, SKU, descripción, cantidad y precio.</p>
+      </div>
+      <div class="ay-step">
+        <h4>Revisa el total y genera</h4>
+        <p>El <b>Total</b> se calcula solo a la derecha conforme agregas cosas, cupones o descuentos. Cuando esté listo, toca <b>"Generar cotización"</b>. Te aparece una ventana para <b>copiar el link</b>, ver la cotización o editarla.</p>
+      </div>
+    </div>
+    <div class="ay-warn">Plan Free: tienes un máximo de <b>25 cotizaciones en total</b>. Al llegar al límite el sistema te pide activar Pro para seguir creando. Pro y Business son ilimitadas.</div>
+  </div>
+
+  <!-- ── CADA ARTÍCULO POR DENTRO ── -->
+  <div class="ay-card">
+    <h3>Cada artículo, botón por botón</h3>
+    <p>Cada artículo es una tarjeta. Dentro tiene:</p>
+    <ul>
+      <li><b>Flechas ▲ ▼</b> — Suben o bajan el artículo para cambiar el orden en que el cliente los ve.</li>
+      <li><b>Nombre</b> — El nombre del producto o servicio (lo que ve el cliente).</li>
+      <li><b>SKU</b> (opcional) — Tu clave o código interno. Si no lo usas, déjalo vacío.</li>
+      <li><b>Descripción</b> (opcional) — Detalles, medidas, condiciones. Se ve en el link del cliente.</li>
+      <li><b>Cantidad</b> y <b>Precio unit.</b> — El <b>Total</b> de la línea se multiplica solo.</li>
+      <li><b>Botón ↗ "Mover a extra / Mover a principal"</b> — Convierte el artículo en un "extra" (o lo regresa a principal). Ver abajo qué son los extras.</li>
+      <li><b>✕ Eliminar</b> — Quita el artículo de la cotización.</li>
+    </ul>
+    <div class="ay-tip">Si tu cuenta no tiene permiso para <b>editar precios</b>, el campo de precio se bloquea y toma el precio que tiene el artículo en el catálogo. Así nadie cambia precios sin autorización.</div>
+  </div>
+
+  <!-- ── EXTRAS (BUSINESS) ── -->
+  <div class="ay-card">
+    <h3>Artículos "Extra" <span class="ay-shortcut">Business</span></h3>
+    <p>Los <b>extras</b> son artículos opcionales que se muestran en una sección aparte (con borde ámbar) y con su <b>subtotal separado</b>. Sirven para ofrecer complementos sin inflar el precio principal ("agrégale esto si quieres"). Usa el botón <b>"Agregar extra"</b> o el botón ↗ de cualquier artículo.</p>
+    <ul>
+      <li>Los <b>cupones y descuentos NO aplican</b> sobre los extras: solo sobre los artículos principales.</li>
+      <li>Disponible únicamente en plan <b>Business</b> y para giros que no sean inmuebles.</li>
     </ul>
   </div>
 
+  <!-- ── PANEL DE OPCIONES ── -->
   <div class="ay-card">
-    <h3>Crear una cotización</h3>
-    <div class="ay-steps">
-      <div class="ay-step">
-        <h4>Selecciona o crea el cliente</h4>
-        <p>Busca un cliente existente o crea uno nuevo directamente desde el formulario de cotización.</p>
-      </div>
-      <div class="ay-step">
-        <h4>Agrega productos o servicios</h4>
-        <p>Selecciona del catálogo o agrega líneas personalizadas con descripción, cantidad y precio.</p>
-      </div>
-      <div class="ay-step">
-        <h4>Revisa y envía</h4>
-        <p>Verifica totales, agrega notas si es necesario, y presiona <b>Enviar</b>. El cliente recibe un link que puede ver desde cualquier dispositivo.</p>
-      </div>
-    </div>
+    <h3>El panel de opciones (lado derecho)</h3>
+    <p>Aquí está todo lo que afina la cotización. En celular lo encuentras abajo, en secciones que se abren al tocarlas.</p>
+    <ul>
+      <li><b>Cupones</b> — Si creaste cupones en Configuración, aquí los activas con un toque. Aplican un % de descuento. <i>(Necesita permiso de descuentos.)</i></li>
+      <li><b>Descuento automático</b> — Un descuento con <b>cronómetro</b>: el cliente ve "este precio vence en X días" sin necesidad de código. Prendes el interruptor, pones el <b>porcentaje</b> y los <b>días</b> que dura. Es ideal para crear urgencia. <i>(Necesita permiso de descuentos.)</i></li>
+      <li><b>Totales</b> — Te muestra desglosado: Subtotal, lo que baja el Cupón, lo que baja el Descuento, el impuesto (IVA u otro, si tu empresa lo usa) y el <b>Total</b> final.</li>
+      <li><b>Notas para el cliente</b> — Texto que <b>SÍ ve el cliente</b> en su link (condiciones, formas de pago, agradecimientos).</li>
+      <li><b>Notas internas</b> — Texto <b>privado, solo para ti y tu equipo</b>. El cliente nunca lo ve.</li>
+      <li><b>Vendedor asignado</b> — Si eres admin (o tienes permiso), puedes asignar la cotización a otro vendedor de tu equipo. Por defecto queda a tu nombre.</li>
+      <li><b>Historial de visitas</b> — Vacío al crear. Se llena cuando el cliente abre el link (ver más abajo).</li>
+    </ul>
   </div>
 
+  <!-- ── EDITAR ── -->
   <div class="ay-card">
-    <h3>¿Qué ve el cliente?</h3>
-    <p>El cliente recibe un link (ej: <code>tuempresa.cotiza.cloud/c/abc123</code>) que abre una página profesional con tu logo, productos, precios y totales. Puede aceptar o rechazar directamente desde ahí.</p>
+    <h3>Editar una cotización (la barra de arriba)</h3>
+    <p>Al abrir una cotización ya creada (desde el listado o el Radar) entras al editor. Es la misma pantalla de crear, pero con los datos cargados y con una <b>barra de acciones arriba</b>:</p>
+    <ul>
+      <li><b>Guardar</b> — Guarda tus cambios. El sistema <b>recalcula los totales por seguridad</b> (no confía en lo que muestra la pantalla) y reemplaza las líneas. <i>(Solo aparece si la cotización es editable.)</i></li>
+      <li><b>Copiar</b> — Copia el link del cliente al portapapeles, listo para pegar en WhatsApp o correo.</li>
+      <li><b>Ver</b> — Abre el link <b>tal como lo ve el cliente</b>, en otra pestaña. <span class="ay-shortcut">🛡️</span> Recuerda: ábrelo solo desde tu equipo con tu sesión iniciada, para que el Escudo no lo cuente como visita de cliente.</li>
+      <li><b>Suspender / Reactivar</b> — Pausa la cotización (el cliente deja de poder abrirla) o la vuelve a activar. Útil para clientes que no responden.</li>
+      <li><b>Eliminar</b> — Borra la cotización para siempre. Solo lo ve el <b>administrador</b> y no se puede eliminar una ya convertida en venta.</li>
+    </ul>
+    <div class="ay-warn">Si editas una cotización que ya está <b>Vista</b>, los cambios se reflejan <b>al instante</b> en el link del cliente. Ten cuidado si sabes que la está revisando en ese momento.</div>
   </div>
 
-  <div class="ay-tip">Envía la cotización por WhatsApp para mejor tasa de apertura. El link funciona en cualquier dispositivo sin necesidad de descargar nada.</div>
+  <!-- ── COMPARTIR ── -->
+  <div class="ay-card">
+    <h3>Mandarle la cotización al cliente</h3>
+    <p>Cuando generas o abres una cotización tienes botones para compartir el link:</p>
+    <ul>
+      <li><b>Copiar link</b> — El enlace se ve como <code>tuempresa.cotiza.cloud/c/abc123</code>. Funciona en cualquier celular o compu, sin instalar nada.</li>
+      <li><b>WhatsApp</b> — Abre WhatsApp con el link listo para enviar. <b>Es la forma con mejor tasa de apertura.</b></li>
+      <li><b>Correo</b> — Abre tu correo con el link en el cuerpo, al correo del cliente si lo tienes registrado.</li>
+      <li><b>Marcar como enviada</b> — Deja el estado en "Enviada" para empezar el seguimiento.</li>
+    </ul>
+    <div class="ay-warn">Manda <b>siempre el LINK</b>, nunca una foto o PDF. El link es lo que activa el Radar y el seguimiento: una captura de pantalla no te dice nada de lo que hace el cliente.</div>
+  </div>
 
-  <div class="ay-warn">Una vez enviada, editar la cotización actualiza lo que el cliente ve en tiempo real. Ten cuidado si el cliente ya la está revisando.</div>
+  <!-- ── ADJUNTOS ── -->
+  <div class="ay-card">
+    <h3>Archivos adjuntos</h3>
+    <p>Después de guardar la cotización puedes <b>adjuntar archivos</b> (planos, fichas técnicas, fotos, contratos) que el cliente verá junto a la propuesta.</p>
+    <ul>
+      <li>Hasta <b>3 archivos</b>, <b>1 MB cada uno</b>.</li>
+      <li>Formatos: imágenes (JPG, PNG, GIF), PDF, Word (DOC/DOCX) y Excel (XLS/XLSX).</li>
+      <li>Para subir o borrar adjuntos necesitas ser admin o tener el permiso correspondiente.</li>
+    </ul>
+  </div>
+
+  <!-- ── HISTORIAL ── -->
+  <div class="ay-card">
+    <h3>Historial de visitas e historial de cambios</h3>
+    <p>En el panel derecho, al editar, tienes dos historiales muy útiles:</p>
+    <ul>
+      <li><b>Historial de visitas</b> — Cada vez que el cliente abre el link aparece una línea: hace cuánto fue, desde qué dispositivo (iPhone, Android, computadora), su zona y cuánto tiempo lo tuvo abierto ("12s" o "breve").</li>
+      <li><b>Historial de cambios</b> — Registro de qué se hizo con la cotización (creada, editada, enviada, suspendida) y quién lo hizo.</li>
+    </ul>
+    <div class="ay-tip">Una visita solo cuenta si el cliente <b>realmente vio la cotización al menos 2 segundos</b>. Las aperturas instantáneas (vistas previas de WhatsApp, toques accidentales) se filtran solas para que tu contador no mienta.</div>
+  </div>
+
+  <!-- ── CLONAR / CONVERTIR ── -->
+  <div class="ay-card">
+    <h3>Clonar y convertir a venta</h3>
+    <ul>
+      <li><b>Clonar</b> (desde el listado de Cotizaciones) — Crea una copia idéntica con nuevo folio: mismos artículos, cliente, notas, extras y descuentos. Ideal para clientes que piden algo casi igual o para volver a cotizar lo mismo a otro cliente.</li>
+      <li><b>Convertir a venta</b> — Pasa la cotización a venta para empezar a cobrar. La cotización original queda <b>congelada</b> (no se modifica aunque luego edites la venta). Cuando el cliente <b>acepta</b> desde el link, esto puede pasar automáticamente.</li>
+    </ul>
+  </div>
+
+  <!-- ── PERMISOS ── -->
+  <div class="ay-card">
+    <h3>¿Por qué a mí no me aparecen algunas opciones?</h3>
+    <p>El administrador puede limitar qué hace cada vendedor. Si no ves cierto botón, es por permisos. Estos son los que afectan cotizaciones:</p>
+    <ul>
+      <li><b>Crear / Editar cotizaciones</b> — Sin esto, no ves el botón de nueva ni puedes guardar cambios.</li>
+      <li><b>Editar precios</b> — Sin esto, los precios quedan bloqueados al precio del catálogo.</li>
+      <li><b>Aplicar descuentos</b> — Controla si ves cupones y el descuento automático.</li>
+      <li><b>Asignar cotizaciones</b> — Permite cambiar el vendedor asignado.</li>
+      <li><b>Ver todas las cotizaciones</b> — Sin esto, solo ves las tuyas (las que creaste o te asignaron).</li>
+      <li><b>Ver cantidades / Adjuntar</b> — Controlan si ves cantidades y precios, y si puedes subir archivos.</li>
+    </ul>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
