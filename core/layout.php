@@ -725,10 +725,12 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
 if (Auth::rol() === 'admin' && (!defined('EMPRESA_SLUG') || EMPRESA_SLUG !== 'apple-review')):
 ?>
 <style>
-#czs-fab{position:fixed;left:18px;bottom:24px;z-index:9000;display:flex;align-items:center;gap:10px;cursor:pointer}
-#czs-bubble{position:relative;width:56px;height:56px;border-radius:50%;background:var(--g,#1a5c38);color:#fff;border:none;box-shadow:0 6px 18px rgba(26,92,56,.35);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;transition:transform .15s}
+/* dar espacio al footer del sidebar (Plan/Vence) para que el fab no lo tape */
+.sidebar-footer{padding-bottom:140px !important}
+#czs-fab{position:fixed;left:18px;bottom:24px;z-index:9000;display:flex;flex-direction:column-reverse;align-items:flex-start;gap:8px;cursor:pointer;max-width:calc(var(--sidebar-w,220px) - 36px)}
+#czs-bubble{position:relative;width:54px;height:54px;border-radius:50%;background:var(--g,#1a5c38);color:#fff;border:none;box-shadow:0 6px 18px rgba(26,92,56,.35);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;transition:transform .15s}
 #czs-fab:hover #czs-bubble{transform:scale(1.06)}
-#czs-label{background:#fff;color:#1a1a18;font:600 13px -apple-system,sans-serif;padding:9px 14px;border-radius:20px;box-shadow:0 4px 14px rgba(0,0,0,.12);border:1px solid rgba(0,0,0,.05);white-space:nowrap}
+#czs-label{background:#fff;color:#1a1a18;font:600 12.5px -apple-system,sans-serif;padding:8px 13px;border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.12);border:1px solid rgba(0,0,0,.05);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 #czs-bubble .czs-badge{position:absolute;top:-3px;right:-3px;background:#dc2626;color:#fff;font:700 11px sans-serif;min-width:20px;height:20px;border-radius:99px;display:none;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff}
 #czs-win{position:fixed;left:18px;bottom:24px;width:360px;max-width:calc(100vw - 24px);height:480px;max-height:calc(100vh - 48px);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);z-index:9001;display:none;flex-direction:column;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
 #czs-win.open{display:flex}
