@@ -2998,3 +2998,46 @@ apple-review. Cero widgets de tercero (coherente con privacidad).
 2. Poll del agente para ver mensajes nuevos sin recargar (hoy: push + recarga manual)
 3. Expandir a asesores si hay demanda (config por empresa)
 4. Adjuntar imágenes/capturas en el chat
+
+## ⚠️ NOTA — .cpanel.yml es delicado (deploy cPanel)
+
+**Historial:** cada vez que se toca `.cpanel.yml` algo tiende a fallar en
+el deploy. Tocar con cuidado y verificar el deploy después de cada push.
+
+### Cambio 29 mayo 2026 (chat de soporte)
+El `.cpanel.yml` NO desplegaba la carpeta `data/`. Por eso
+`data/soporte_config.json` (horario del chat) nunca llegaba al servidor —
+y `equilibrio.json` funcionaba solo porque ya existía ahí subido a mano.
+
+Se agregó (aditivo, con `|| true` para no tumbar el deploy):
+```yaml
+- /bin/mkdir -p $DEPLOYPATH/data
+- /bin/cp -n data/soporte_config.json $DEPLOYPATH/data/soporte_config.json || true
+```
+- `cp -n` = no-clobber: siembra el archivo solo si NO existe en el server.
+  Así, si editas el horario en el servidor, el deploy NO lo sobrescribe.
+- Para cambiar el horario: editar el JSON EN EL SERVIDOR (no en el repo),
+  o borrarlo del server y redeployar para que se re-siembre.
+
+### Qué verificar tras CUALQUIER cambio a .cpanel.yml
+1. Que el deploy de cPanel salga verde (no rojo) tras el push.
+2. Que el sitio cargue (no 500).
+3. Si el deploy falla: lo más probable es la línea nueva — quitarla y
+   subir el archivo a mano por File Manager.
+
+### Reglas al tocar .cpanel.yml
+- Cambios SIEMPRE aditivos, nunca reordenar/borrar líneas existentes.
+- Todo `cp` que pueda fallar lleva `|| true`.
+- `mkdir -p` antes de copiar a una carpeta nueva.
+- NO usar `cp -R data` completo: data/ tiene estado runtime (equilibrio.json
+  editado por la app, comisiones_pagadas_*, exchange_rate) que se
+  sobrescribiría en cada deploy. Copiar archivos puntuales con `cp -n`.
+
+### ⚠️⚠️ CONFIRMADO 29 mayo: tocar .cpanel.yml para data/ TUMBÓ el deploy
+Se intentó agregar `mkdir -p data` + `cp -n soporte_config.json` al
+.cpanel.yml → **el deploy falló** (como el usuario advirtió). Revertido.
+
+**REGLA DEFINITIVA: NO agregar archivos de `data/` al .cpanel.yml.**
+Los archivos de config en data/ (soporte_config.json, etc.) se suben
+**A MANO por File Manager** a `/home/cotizacl/public_html/data/`.
+NO modificar el .cpanel.yml por esto nunca más.

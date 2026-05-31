@@ -13,8 +13,6 @@ deployment:
     - /bin/cp -R tools $DEPLOYPATH
     - /bin/cp -R vendor $DEPLOYPATH
     - /bin/cp -R migrations $DEPLOYPATH
-    - /bin/mkdir -p $DEPLOYPATH/data
-    - /bin/cp -n data/soporte_config.json $DEPLOYPATH/data/soporte_config.json || true
     - /bin/mkdir -p $DEPLOYPATH/cron
     - /bin/cp -R cron $DEPLOYPATH
     - /bin/mkdir -p $DEPLOYPATH/.well-known
