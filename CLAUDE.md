@@ -3249,6 +3249,16 @@ el Lite (da el valor del "interés" sin el módulo dedicado). Se deja tal cual
 futura opcional: simplificar la jerga de buckets para Lite, pero por defecto
 queda igual.
 
+### Menú Lite: "Interpretación de buckets" (en vez del módulo Radar)
+Como el Lite NO tiene el módulo Radar dedicado pero SÍ muestra el badge del
+bucket en la lista de cotizaciones, en el menú del Lite va una sola entrada
+educativa: **"Interpretación de buckets"** (o "¿Qué significan?"). Al dar click
+abre una página ESTÁTICA que explica qué significa cada bucket (Probable cierre,
+Validando precio, Enfriándose, etc.) y qué hacer ante cada uno. Sin leaderboard,
+sin calibración, sin actividad inusual — solo la leyenda explicativa. Así el
+cliente Lite entiende los badges que ve sin el peso del módulo Radar completo.
+Contenido reusable del manual de Ayuda (sección Radar) ya redactado.
+
 ### Por qué es bajo riesgo / poco código
 El motor de planes YA existe: `core/Helpers.php` → `trial_info()` ya distingue
 free/pro/business y `core/layout.php` ya oculta tabs por plan (ej. tab Usuarios
