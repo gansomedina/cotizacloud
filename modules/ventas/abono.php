@@ -148,7 +148,8 @@ try {
             $nuevo_saldo,
             $forma_pago,
             $url_recibo,
-            $concepto
+            $concepto,
+            $venta['titulo'] ?? ''
         );
     }
 } catch (\Exception $e) {
