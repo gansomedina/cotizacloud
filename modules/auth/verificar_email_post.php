@@ -122,7 +122,7 @@ try {
         );
     }
 
-    DB::insert(
+    $usuario_id = DB::insert(
         "INSERT INTO usuarios
          (empresa_id, nombre, email, password_hash, rol, activo, email_verificado)
          VALUES (?, ?, ?, ?, 'admin', 1, 1)",
@@ -142,6 +142,13 @@ try {
     $_SESSION['registro_valores'] = $pendiente;
     unset($_SESSION['registro_pendiente']);
     redirect('/registro');
+}
+
+// ─── Registrar evidencia de consentimiento (Términos + Privacidad) ──
+// El usuario aceptó en el formulario de registro; aquí ya existen
+// empresa_id y usuario_id reales para atribuir la aceptación.
+if (!empty($pendiente['acepta'])) {
+    Legal::registrar_aceptacion($usuario_id, $empresa_id, $email, ['terminos', 'privacidad']);
 }
 
 // Limpiar sesión de registro pendiente

@@ -47,12 +47,13 @@ $password       = $_POST['password'] ?? '';
 $moneda         = $_POST['moneda'] ?? 'MXN';
 $impuesto_modo  = $_POST['impuesto_modo'] ?? 'ninguno';
 $impuesto_pct   = (float)($_POST['impuesto_pct'] ?? 16);
+$acepta         = !empty($_POST['acepta']);
 
 // ─── Validaciones ────────────────────────────────────────
 $errores = [];
 $valores = compact(
     'nombre_empresa','slug_raw','nombre',
-    'email','moneda','impuesto_modo','impuesto_pct'
+    'email','moneda','impuesto_modo','impuesto_pct','acepta'
 );
 $valores['slug'] = $slug_raw;
 
@@ -78,6 +79,9 @@ elseif (!filter_var($email, FILTER_VALIDATE_EMAIL))
 
 if (strlen($password) < 8)
     $errores['password'] = 'La contraseña debe tener al menos 8 caracteres';
+
+if (!$acepta)
+    $errores['acepta'] = 'Debes aceptar los Términos y Condiciones y el Aviso de Privacidad para continuar';
 
 if (!in_array($moneda, ['MXN','USD','EUR']))                 $moneda = 'MXN';
 if (!in_array($impuesto_modo, ['ninguno','suma','incluido'])) $impuesto_modo = 'ninguno';
@@ -130,6 +134,7 @@ $_SESSION['registro_pendiente'] = [
     'moneda'         => $moneda,
     'impuesto_modo'  => $impuesto_modo,
     'impuesto_pct'   => $impuesto_pct,
+    'acepta'         => $acepta ? 1 : 0,
 ];
 
 // ─── Enviar código por email ────────────────────────────
