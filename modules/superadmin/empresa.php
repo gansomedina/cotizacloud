@@ -46,6 +46,23 @@ function sa_dispositivo(string $ua): string {
     return $nav ? "$os · $nav" : $os;
 }
 
+// ── Consentimientos legales (aceptación de TyC + Privacidad) ──
+// Evidencia de clickwrap registrada al alta. Tabla puede no existir
+// en instalaciones viejas; se protege con try.
+$consentimientos = [];
+try {
+    $consentimientos = DB::query(
+        "SELECT c.aceptado_at, c.ip, c.metodo, c.hash_sha256,
+                dv.tipo, dv.version, u.nombre AS usuario_nombre
+         FROM consentimientos c
+         JOIN documento_versiones dv ON dv.id = c.documento_version_id
+         LEFT JOIN usuarios u ON u.id = c.usuario_id
+         WHERE c.empresa_id = ?
+         ORDER BY c.aceptado_at ASC, dv.tipo ASC",
+        [$empresa_id]
+    );
+} catch (\Throwable $e) { $consentimientos = []; }
+
 // ── Métricas ──────────────────────────────────────────────
 $num_cots = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id = ?", [$empresa_id]);
 $num_ventas = (int)DB::val("SELECT COUNT(*) FROM ventas WHERE empresa_id = ?", [$empresa_id]);
@@ -470,6 +487,49 @@ tr:hover td{background:#fafaf8}
     </div>
     <?php else: ?>
     <div style="color:var(--t3);font-size:13px">Sin sesiones registradas todavía (aún no inicia sesión).</div>
+    <?php endif; ?>
+</div>
+
+<!-- Consentimiento legal -->
+<div class="section">
+    <h2>Aceptación de Términos y Privacidad</h2>
+    <?php if ($consentimientos): ?>
+    <div class="tbl-wrap">
+    <table>
+    <thead>
+    <tr>
+        <th>Documento</th>
+        <th>Versión</th>
+        <th>Fecha y hora</th>
+        <th>IP</th>
+        <th>Método</th>
+        <th>Hash (SHA-256)</th>
+    </tr>
+    </thead>
+    <tbody>
+    <?php foreach ($consentimientos as $cs):
+        $doc_lbl = $cs['tipo'] === 'terminos' ? 'Términos y Condiciones' : 'Aviso de Privacidad';
+    ?>
+    <tr>
+        <td style="font-weight:600"><?= e($doc_lbl) ?></td>
+        <td class="num"><?= e($cs['version']) ?></td>
+        <td><span class="ago"><?= e(date('d/m/Y H:i:s', strtotime($cs['aceptado_at']))) ?></span></td>
+        <td>
+            <a href="https://ipinfo.io/<?= e($cs['ip']) ?>" target="_blank" rel="noopener"
+               class="num" style="color:var(--blue);text-decoration:none"><?= e($cs['ip']) ?></a>
+        </td>
+        <td><span class="badge badge-green"><?= e($cs['metodo']) ?></span></td>
+        <td class="num" style="font-size:11px;color:var(--t3)" title="<?= e($cs['hash_sha256']) ?>"><?= e(substr($cs['hash_sha256'], 0, 16)) ?>…</td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    <div style="font-size:12px;color:var(--t3);margin-top:8px;line-height:1.5">
+        Evidencia de consentimiento (clickwrap) registrada al momento del alta: documento, versión exacta aceptada, fecha con milisegundos, IP, método y hash del texto. Conforme al Código de Comercio (arts. 89 bis, 90, 93).
+    </div>
+    <?php else: ?>
+    <div style="color:var(--t3);font-size:13px">Sin registro de consentimiento. Las empresas dadas de alta antes de junio 2026 (o por el panel superadmin) no tienen este registro.</div>
     <?php endif; ?>
 </div>
 
