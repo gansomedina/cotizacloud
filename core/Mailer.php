@@ -147,7 +147,8 @@ HTML;
         float  $saldo_pendiente,
         string $forma_pago,
         string $url_recibo,
-        string $concepto = ''
+        string $concepto = '',
+        string $titulo_venta = ''
     ): bool {
         $monto_fmt = format_money($monto, $moneda);
         $saldo_fmt = format_money($saldo_pendiente, $moneda);
@@ -155,6 +156,8 @@ HTML;
         $estado_lbl = $saldo_pendiente <= 0 ? '<span style="color:#16a34a;font-weight:700">PAGADA</span>' : "Saldo pendiente: <strong>{$saldo_fmt}</strong>";
         $concepto_safe = htmlspecialchars($concepto);
         $concepto_row = $concepto !== '' ? '<tr style="border-bottom:1px solid #e2e2dc"><td style="padding:10px 0;color:#6a6a64">Concepto</td><td style="padding:10px 0;text-align:right">' . $concepto_safe . '</td></tr>' : '';
+        $titulo_safe = htmlspecialchars($titulo_venta);
+        $titulo_row = $titulo_venta !== '' ? '<tr style="border-bottom:1px solid #e2e2dc"><td style="padding:10px 0;color:#6a6a64">Proyecto</td><td style="padding:10px 0;text-align:right;font-weight:600">' . $titulo_safe . '</td></tr>' : '';
 
         $asunto = "Abono registrado {$monto_fmt} — {$empresa_nombre}";
         $body = <<<HTML
@@ -170,6 +173,7 @@ HTML;
         <td style="padding:10px 0;color:#6a6a64">Monto</td>
         <td style="padding:10px 0;text-align:right;font-weight:700;color:#1a5c38;font-size:18px">{$monto_fmt}</td>
     </tr>
+    {$titulo_row}
     {$concepto_row}
     <tr style="border-bottom:1px solid #e2e2dc">
         <td style="padding:10px 0;color:#6a6a64">Forma de pago</td>
