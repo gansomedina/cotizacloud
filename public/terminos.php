@@ -44,7 +44,7 @@
     <li><strong>CotizaCloud:</strong> el proveedor del servicio tecnológico descrito en estos Términos.</li>
     <li><strong>Usuario:</strong> toda persona física o moral que crea una cuenta en la Plataforma.</li>
     <li><strong>Empresa:</strong> la entidad comercial o persona física con actividad empresarial que utiliza la Plataforma para crear y gestionar cotizaciones, ventas y cobros.</li>
-    <li><strong>Cliente Final:</strong> la persona que recibe una cotización, venta o recibo generado por una Empresa a través de la Plataforma.</li>
+    <li><strong>Cliente Final:</strong> la persona que recibe una cotización, venta o recibo generado por una Empresa a través de la Plataforma. El Cliente Final es cliente <strong>exclusivamente de la Empresa</strong>, y no tiene relación alguna con CotizaCloud.</li>
     <li><strong>Contenido del Usuario:</strong> toda información, datos, textos, imágenes, logotipos, catálogos, precios, descripciones de productos o servicios, y cualquier otro material que el Usuario introduzca, cargue o genere en la Plataforma.</li>
     <li><strong>Servicios:</strong> las funcionalidades que ofrece la Plataforma, incluyendo la creación de cotizaciones, seguimiento de actividad (Radar), gestión de ventas, registro de pagos, emisión de recibos y herramientas de análisis.</li>
 </ul>
@@ -137,17 +137,33 @@
 <h3>7.1. CotizaCloud no es parte de las transacciones</h3>
 <p>CotizaCloud es una herramienta tecnológica que facilita la creación y envío de cotizaciones. <strong>No participa, interviene ni media en la relación comercial</strong> entre la Empresa y sus Clientes Finales. Cualquier negociación, acuerdo, entrega, garantía, devolución o reclamación sobre los productos o servicios cotizados o vendidos corresponde <strong>exclusiva y únicamente a la Empresa</strong>.</p>
 
-<h3>7.2. Contenido y catálogos</h3>
+<h3>7.2. CotizaCloud no tiene relación alguna con el Cliente Final</h3>
+<p>El Usuario reconoce expresamente que <strong>no existe ninguna relación jurídica, comercial, contractual ni de cualquier otra naturaleza entre CotizaCloud y los Clientes Finales</strong> de la Empresa. El Cliente Final es exclusivamente cliente de la Empresa que lo contrató. CotizaCloud:</p>
+<ul>
+    <li>No conoce, contacta ni gestiona a los Clientes Finales de la Empresa.</li>
+    <li>No es responsable frente a los Clientes Finales por ningún concepto.</li>
+    <li>No asume obligación alguna de servicio, atención, soporte, garantía o cumplimiento frente a los Clientes Finales.</li>
+    <li>No recibe pago ni contraprestación alguna de los Clientes Finales.</li>
+</ul>
+<p>Toda responsabilidad, obligación o relación derivada de la cotización, venta, producto o servicio frente al Cliente Final recae <strong>de manera total, exclusiva e indelegable en la Empresa</strong> que utilizó la Plataforma.</p>
+
+<h3>7.3. Contenido y catálogos</h3>
 <p>La Empresa es la <strong>única responsable</strong> de la veracidad, legalidad, exactitud y vigencia de todos los precios, descripciones, imágenes, catálogos, especificaciones técnicas y cualquier otro Contenido del Usuario que publique en la Plataforma. CotizaCloud <strong>no verifica, valida, aprueba ni respalda</strong> dicho contenido.</p>
 
-<h3>7.3. Garantías de productos y servicios</h3>
+<h3>7.4. Garantías de productos y servicios</h3>
 <p>CotizaCloud <strong>no ofrece ni implica garantía alguna</strong> sobre los productos o servicios que las Empresas ofrecen a sus Clientes Finales. Cualquier garantía, política de devolución, plazo de entrega, condición de servicio o compromiso comercial es responsabilidad exclusiva de la Empresa que lo ofrece.</p>
 
-<h3>7.4. Calidad y cumplimiento</h3>
+<h3>7.5. Calidad y cumplimiento</h3>
 <p>CotizaCloud no es responsable de la calidad, seguridad, legalidad o idoneidad de los productos o servicios que las Empresas comercializan. El cumplimiento de normas oficiales mexicanas (NOMs), regulaciones sectoriales, permisos, licencias o cualquier obligación regulatoria aplicable a los productos o servicios de la Empresa es responsabilidad exclusiva de ésta.</p>
 
-<h3>7.5. Disputas entre la Empresa y sus Clientes</h3>
+<h3>7.6. Datos e información de los Clientes Finales</h3>
+<p>Toda la información de los Clientes Finales (nombres, teléfonos, correos, direcciones, historial de compras, etc.) que la Empresa introduce o gestiona en la Plataforma es <strong>propiedad y responsabilidad de la Empresa</strong>. CotizaCloud únicamente la almacena y procesa por instrucción de la Empresa, en su calidad de Encargado del tratamiento (ver sección 8). La Empresa es la única responsable de la obtención, uso, resguardo y licitud de dichos datos.</p>
+
+<h3>7.7. Disputas entre la Empresa y sus Clientes</h3>
 <p>Cualquier disputa, reclamación, queja o controversia entre la Empresa y sus Clientes Finales deberá resolverse directamente entre ellos. El Usuario libera y mantiene indemne a CotizaCloud de cualquier reclamación derivada de dichas disputas.</p>
+
+<h3>7.8. Reconocimiento expreso</h3>
+<p>El Usuario reconoce y acepta que ha leído y comprendido el presente deslinde de responsabilidad, y que utiliza la Plataforma entendiendo que CotizaCloud es <strong>únicamente un proveedor de tecnología</strong> y que <strong>toda la responsabilidad comercial, legal, fiscal, de garantía, de calidad y de protección de datos frente a los Clientes Finales corresponde de manera exclusiva a la Empresa</strong> que contrató el servicio.</p>
 
 <!-- ═══════════════════════════════════════════════════════ -->
 <h2>8. Datos personales y responsabilidad del tratamiento</h2>
