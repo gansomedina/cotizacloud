@@ -3149,3 +3149,67 @@ bumpear la fecha en `Legal::VERSIONES['terminos']`.
 
 **Decisión:** NO construir hasta que de verdad se cambien los TyC. La base
 (versionado + evidencia histórica) ya está lista.
+
+## Plan de Arranque — Adquisición (pendiente, sesión futura)
+
+### Contexto / decisión del CEO
+Meta declarada: **1,000 empresas PAGANDO** (Pro/Business) = ~$449K MXN/mes MRR
+(~$5.4M MXN ARR). Estrategia elegida por el usuario: **Facebook Ads agresivo
++ demos online**. Capital primeros 6 meses: **$100K-$300K MXN**. Quién da las
+demos: **el usuario al principio**, contratar closers cuando el volumen lo exija.
+
+### Realidad matemática (no negociable)
+- El cuello de botella NO es el dinero, es que el usuario da las demos.
+- Demo + seguimiento ≈ 1 hora. Realista solo: ~100 demos/mes → ~25 cierres/mes
+  al 25%. Techo de ~150-200 pagando en 12 meses haciéndolo solo.
+- 1,000 pagando con un solo demo-er es físicamente imposible. Requiere fase 2
+  con equipo. 1,000 llegan en ~24 meses reinvirtiendo MRR, no en 12.
+
+### Embudo FB Ads → demo → cierre (datos México, investigación 5 agentes)
+- CPL México B2B: $150-$460 MXN
+- Lead → agenda demo: 30-40%
+- Show rate (se presenta): 50-60% (CRÍTICO; recordatorio por WhatsApp, no email)
+- Demo → cierre: 20-30%
+- CAC real estimado: ~$6,000 MXN/cliente
+- **A Pro $299 NO es rentable** (LTV ~$6K = CAC, churn se lo come).
+  **Solo funciona empujando Business $799** (LTV ~$16K, ratio 2.7:1) o Pro anual
+  pagado por adelantado.
+
+### Plan en 2 fases
+**FASE 1 — Validación (meses 1-3), tú das las demos, ~$50K MXN:**
+- FB Ads $400-600/día con creativos del Radar (~$45K) + herramientas (~$5K)
+- Medir: CPL real, show rate real, % cierre real, CAC verdadero, plan que cierra
+- Meta: 20-40 pagando + guion de demo probado + CAC conocido
+- NO meter los $300K hasta tener estos números
+
+**FASE 2 — Escalamiento (meses 4-12), contratar closers:**
+- 2-3 closers en Hermosillo (~$12-15K base + comisión) que replican el guion
+- FB Ads escalado $1,000-1,500/día
+- Migrar infra a DigitalOcean (~$2K MXN/mes)
+- Se financia con el MRR que ya entra
+
+### Proyección 12 meses (realista con su capital)
+- Tú + 2 closers desde mes 4: **250-400 pagando, $110K-$180K MXN MRR**
+- 1,000 pagando en ~24 meses reinvirtiendo
+
+### Las 3 palancas que deciden ganar vs quemar
+1. **Creativo del Radar**: el anuncio muestra "mira cuándo tu cliente abre tu
+   cotización y cuántas veces" — visualmente irresistible, ninguna competencia
+   lo tiene. Baja el CPL.
+2. **WhatsApp para show rate** (no email). Duplica el CAC si se ignora.
+3. **Vender Business o Pro anual en la demo**, no Pro mensual.
+
+### Infraestructura (de investigación)
+- Hosting cPanel actual revienta a ~50-100 empresas activas (25 conexiones
+  MySQL, 25 procesos PHP, 500 emails/hora, Imunify360 sin control).
+- Migrar a DigitalOcean: ~$109 USD/mes (~$2K MXN) aguanta 1,000 empresas.
+  Droplet 4GB ($24) + Managed MySQL 4GB ($60) + Spaces ($5) + Cloudflare Free
+  + SendGrid ($20).
+
+### Siguiente paso cuando se retome
+Diseñar los 3 creativos de FB Ads (guion visual del anuncio del Radar) + guion
+de demo de 15 min que cierra a Business. Arrancar Fase 1 con $50K.
+
+### Loop viral acordado
+"Powered by CotizaCloud" en slugs públicos de SUBDOMINIO (no en dominios
+custom — ahí se respeta la marca del cliente). Gratis y compuesto.
