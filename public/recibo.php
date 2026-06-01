@@ -212,8 +212,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <?php endif; ?>
     <div class="det-row"><span class="det-lbl">Concepto</span><span class="det-val"><?= e($rec['concepto'] ?? 'Pago') ?></span></div>
     <div class="det-row"><span class="det-lbl">Forma de pago</span><span class="det-val"><?= $forma_lbl ?></span></div>
-    <?php if ($rec['referencia']): ?>
-    <div class="det-row"><span class="det-lbl">Referencia</span><span class="det-val"><?= e($rec['referencia']) ?></span></div>
+    <?php if ($rec['notas'] ?? ''): ?>
+    <div class="det-row"><span class="det-lbl">Referencia</span><span class="det-val"><?= e($rec['notas']) ?></span></div>
     <?php endif; ?>
     <div class="det-row section-title"><span class="det-lbl">Referencia de venta</span></div>
     <div class="det-row"><span class="det-lbl">Venta</span><span class="det-val"><?= e($rec['venta_numero']) ?></span></div>
