@@ -3085,3 +3085,67 @@ con captura de lead (nombre + correo). Mismo JSON de horario.
 - El widget del landing usa prefijo `czl-` (distinto del `czs-` del dashboard)
   para no chocar si algún día coexisten.
 - Mejora futura: marcar lead como "convertido" si el correo se registra después.
+
+## Sistema Legal — Términos y Condiciones + evidencia de consentimiento
+
+### Implementado (junio 2026)
+- `public/terminos.php` — TyC completos (20 secciones). Deslinde fuerte en
+  sección 7 (9 subsecciones): CotizaCloud no es parte de transacciones,
+  cero relación con el Cliente Final, NO procesa pagos (7.3), no valida
+  catálogos/precios/garantías, datos del cliente son de la Empresa.
+  Ruta `/terminos` en Router.
+- `core/Legal.php` — versionado + registro de consentimiento (clickwrap).
+  - `Legal::VERSIONES` = versión vigente de cada doc (terminos, privacidad)
+  - `Legal::version_vigente($tipo)` — archiva copia HTML renderizada +
+    hash SHA-256 la primera vez que ve una versión (inmutable)
+  - `Legal::registrar_aceptacion($uid, $eid, $email, $tipos)` — un row por
+    documento aceptado con IP, user_agent, timestamp(ms), versión, hash
+- `migrations/add_consentimientos.sql` — tablas `documento_versiones`
+  (inmutable: tipo, version, contenido, hash_sha256) y `consentimientos`
+  (audit trail: usuario_id, empresa_id, email, documento_version_id,
+  hash_sha256, aceptado_at DATETIME(3), ip, user_agent, metodo, accion,
+  nom151_constancia hook futuro). YA CORRIDA en producción.
+- `modules/auth/registro.php` — checkbox obligatorio (botón deshabilitado
+  por JS hasta marcarlo) con links a /terminos y /privacidad
+- `modules/auth/registro_post.php` — validación backend (rechaza sin acepta)
+  + flag en $_SESSION['registro_pendiente']
+- `modules/auth/verificar_email_post.php` — tras crear empresa+usuario,
+  llama Legal::registrar_aceptacion con los IDs reales
+- `modules/superadmin/empresa.php` — sección "Aceptación de Términos y
+  Privacidad" con tabla (doc, versión, fecha, IP clicable, método, hash)
+
+### Decisiones tomadas (investigación legal con 4 agentes, fuentes reales)
+- NO se obliga a leer (scroll/timer): checkbox con link basta legalmente
+  (Código de Comercio art. 89 bis; confirmado en Shopify/DocuSign/iubenda)
+- B2B: PROFECO no aplica (LFPC art. 2 "destinatario final")
+- Cap de responsabilidad 12 meses de cuotas (CCF art. 2110 ya excluye
+  daños indirectos por default)
+- NOM-151 (constancia PSC tipo Mifiel) = OPCIONAL, da presunción de
+  integridad. Hook `nom151_constancia` listo para el futuro, no urgente.
+
+### PENDIENTE — Gate de re-aceptación cuando cambien los TyC
+Hoy el versionado YA funciona (al bumpear `Legal::VERSIONES` se archiva la
+versión nueva y los consentimientos viejos quedan ligados a su versión —
+cadena histórica intacta). Lo que FALTA es forzar a usuarios YA registrados
+a re-aceptar. Proceso cuando se necesite:
+
+**Paso 1 (manual, 1 min):** editar texto en `public/terminos.php` +
+bumpear la fecha en `Legal::VERSIONES['terminos']`.
+
+**Paso 2 (construir gate, ~1-2h):** reusar el patrón del onboarding wizard.
+- Al cargar dashboard (o en Auth), comparar: ¿el usuario tiene un row en
+  `consentimientos` para la versión vigente de `Legal::VERSIONES['terminos']`?
+  Query: `SELECT 1 FROM consentimientos c JOIN documento_versiones dv ON
+  dv.id=c.documento_version_id WHERE c.usuario_id=? AND dv.tipo='terminos'
+  AND dv.version=?`
+- Si NO → modal bloqueante: "Actualizamos los Términos. Revísalos y acepta
+  para continuar." [Ver Términos] ☐ Acepto [Continuar]
+- Al aceptar → `Legal::registrar_aceptacion()` con la versión nueva (misma
+  evidencia: IP, fecha, hash). Endpoint tipo /api/legal/aceptar con CSRF.
+- Mientras no acepte, no usa la plataforma (gate como /bienvenida).
+- Legal: para cambios MATERIALES exige re-aceptación afirmativa (no basta
+  email — caso Safeway $42M USD). Cambios menores/cosméticos pueden no
+  requerir gate, criterio del CEO.
+
+**Decisión:** NO construir hasta que de verdad se cambien los TyC. La base
+(versionado + evidencia histórica) ya está lista.
