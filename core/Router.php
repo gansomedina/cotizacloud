@@ -143,6 +143,7 @@ class Router
 
         // ── Páginas legales (público) ───────────────────────
         self::get('/privacidad', fn() => self::load_public('privacidad'));
+        self::get('/terminos', fn() => self::load_public('terminos'));
 
         // ── Solicitar licencia (público — desde página de empresa suspendida) ──
         self::post('/solicitar-licencia', fn() => self::load('auth', 'solicitar_licencia'));
