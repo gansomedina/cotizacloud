@@ -100,6 +100,13 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
 
         .auth-link { font: 400 13px var(--body); color: var(--t3); margin-top: 16px; text-align: center; }
         .auth-link strong { color: var(--text); font-weight: 600; }
+
+        .terms-check { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; font: 400 13px var(--body); color: var(--t2); line-height: 1.5; }
+        .terms-check input { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: var(--g); cursor: pointer; }
+        .terms-check a { color: var(--g); font-weight: 600; text-decoration: none; }
+        .terms-check a:hover { text-decoration: underline; }
+        .terms-check.error span { color: var(--danger); }
+        .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -204,7 +211,23 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
                 </div>
             </div>
 
-            <button type="submit" class="btn-submit">Crear cuenta</button>
+            <!-- ── Aceptación de términos ── -->
+            <div class="field" style="margin-top:18px">
+                <label class="terms-check <?= !empty($errores['acepta']) ? 'error' : '' ?>">
+                    <input type="checkbox" name="acepta" value="1" id="acepta_chk"
+                           <?= !empty($valores['acepta']) ? 'checked' : '' ?>>
+                    <span>He leído y acepto los
+                        <a href="/terminos" target="_blank" rel="noopener">Términos y Condiciones</a>
+                        y el
+                        <a href="/privacidad" target="_blank" rel="noopener">Aviso de Privacidad</a>.
+                    </span>
+                </label>
+                <?php if (!empty($errores['acepta'])): ?>
+                    <div class="field-error"><?= e($errores['acepta']) ?></div>
+                <?php endif; ?>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btn_crear">Crear cuenta</button>
         </form>
     </div>
 
@@ -259,6 +282,16 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php if (!empty($valores['slug'])): ?>
 updateHint('<?= e($valores['slug']) ?>');
 <?php endif; ?>
+
+// Validación del checkbox de términos: el botón se habilita solo al aceptar
+(function() {
+    var chk = document.getElementById('acepta_chk');
+    var btn = document.getElementById('btn_crear');
+    if (!chk || !btn) return;
+    function sync() { btn.disabled = !chk.checked; }
+    chk.addEventListener('change', sync);
+    sync();
+})();
 </script>
 </body>
 </html>
