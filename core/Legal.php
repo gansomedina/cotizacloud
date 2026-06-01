@@ -51,8 +51,21 @@ class Legal
         if ($existente) return (int)$existente;
 
         // Primera vez que se ve esta versión: archivar contenido + hash.
+        // Se captura el HTML RENDERIZADO (no el PHP crudo) para que el hash
+        // represente exactamente lo que el usuario vio, incluso si el
+        // documento tuviera lógica PHP (banners, condicionales).
         $ruta = ROOT_PATH . '/' . (self::ARCHIVOS[$tipo] ?? '');
-        $contenido = is_file($ruta) ? (file_get_contents($ruta) ?: '') : '';
+        $contenido = '';
+        if (is_file($ruta)) {
+            try {
+                ob_start();
+                include $ruta;
+                $contenido = ob_get_clean() ?: '';
+            } catch (\Throwable $e) {
+                if (ob_get_level() > 0) ob_end_clean();
+                $contenido = file_get_contents($ruta) ?: '';
+            }
+        }
         $hash = hash('sha256', $contenido);
 
         try {
@@ -63,6 +76,13 @@ class Legal
                 [$tipo, $version, $contenido, $hash, $version . ' 00:00:00']
             );
         } catch (\Throwable $e) {
+            // Posible carrera: otro proceso ya creó esta versión (UNIQUE).
+            // Reintentar el SELECT para no perder la evidencia del consentimiento.
+            $reintento = DB::val(
+                "SELECT id FROM documento_versiones WHERE tipo = ? AND version = ?",
+                [$tipo, $version]
+            );
+            if ($reintento) return (int)$reintento;
             error_log('[Legal] no se pudo registrar versión ' . $tipo . ': ' . $e->getMessage());
             return null;
         }
@@ -83,7 +103,7 @@ class Legal
     ): void {
         $ip = function_exists('ip_real') ? ip_real() : ($_SERVER['REMOTE_ADDR'] ?? '');
         $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500);
-        $ahora = date('Y-m-d H:i:s'); // los milisegundos los pone la columna DATETIME(3) si aplica
+        $ahora = (new DateTime())->format('Y-m-d H:i:s.v'); // con milisegundos (DATETIME(3))
 
         foreach ($tipos as $tipo) {
             $ver_id = self::version_vigente($tipo);
