@@ -3213,3 +3213,65 @@ de demo de 15 min que cierra a Business. Arrancar Fase 1 con $50K.
 ### Loop viral acordado
 "Powered by CotizaCloud" en slugs públicos de SUBDOMINIO (no en dominios
 custom — ahí se respeta la marca del cliente). Gratis y compuesto.
+
+## Plan Lite — diseño (pendiente implementación, sesión futura)
+
+### Decisión del CEO
+Crear un nivel **Lite** como **plan dentro del mismo CotizaCloud** (NO producto
+separado — un solo código, evita duplicar mantenimiento/soporte/bugs). Rol:
+**gancho de entrada** para los Facebook Ads, con upsell natural a Pro.
+
+### Precio
+**$199/mes** (no $149). Razón: $50 casi no afecta la conversión del anuncio
+("menos de $200" pesa psicológicamente igual), pero da ~33% más margen y mejor
+colchón contra el churn alto de planes baratos + comisión MercadoPago (~3.5%+IVA).
+El Lite NO es donde se gana — es donde se entra barato y se convierte a Pro.
+
+### Qué ve el Lite
+- **Dashboard** (versión básica, KPIs principales)
+- **Clientes** (tal cual)
+- **Cotizaciones** (TAL CUAL — ya trae 👁 visitas + badge de bucket en la lista
+  `modules/cotizaciones/lista.php:381,403` y el historial de visitas completo en
+  el detalle `ver.php`). La inteligencia de "quién la vio, cuántas veces, si le
+  interesó" YA vive dentro del módulo de Cotizaciones. NO se construye un "Radar
+  simplificado" — no hace falta.
+- **Ventas** (tal cual)
+
+### Qué se OCULTA del menú en Lite (gate por es_lite, igual que ya se hace con Business)
+- Menú **Radar** dedicado (la info de visitas ya está en Cotizaciones)
+- **Termómetro**, **Costos**, **Marketing**, **Reportes** (avanzados),
+  **Proveedores**, **usuarios múltiples**, **Feedback**
+
+### El badge del bucket en la lista — SÍ se mantiene
+El usuario quiere conservar el badge del Radar en la lista de cotizaciones para
+el Lite (da el valor del "interés" sin el módulo dedicado). Se deja tal cual
+(👁 visitas + badge tipo "Probable cierre"/"Validando precio"). Micro-decisión
+futura opcional: simplificar la jerga de buckets para Lite, pero por defecto
+queda igual.
+
+### Por qué es bajo riesgo / poco código
+El motor de planes YA existe: `core/Helpers.php` → `trial_info()` ya distingue
+free/pro/business y `core/layout.php` ya oculta tabs por plan (ej. tab Usuarios
+solo Business). El Lite reusa ese motor — NO toca la lógica de cotizaciones/
+ventas, solo QUÉ se muestra en el menú.
+
+### Implementación estimada (sesión futura)
+1. Migración: agregar `'lite'` al ENUM de planes en empresas
+2. `Helpers.php` → `trial_info()`: agregar flag `es_lite` (como es_pro/es_business)
+3. `core/layout.php` (sidebar): ocultar módulos no-Lite con gate `es_lite`
+4. Landing + `modules/config/suscripcion.php`: agregar columna/plan Lite $199
+5. `modules/superadmin/toggle_plan.php`: permitir asignar Lite
+6. Dashboard: versión básica para Lite (ocultar termómetro/leaderboard)
+
+### Escalera de precios resultante
+| Plan | Precio | Qué ve |
+|------|--------|--------|
+| Free | $0 | 25 cotizaciones, básico |
+| **Lite (NUEVO)** | **$199** | Dashboard + Clientes + Cotizaciones (con visitas/badge) + Ventas |
+| Pro | $299 | Todo lo de hoy (+ Radar dedicado, ilimitado) |
+| Business | $799 | Todo + equipo + módulos avanzados |
+
+### Advertencia documentada
+A $199 con cobro recurrente, el margen es delgado y el churn de planes baratos
+es alto. El Lite SOLO es rentable como puerta de entrada que convierte parte de
+su base a Pro/Business. No es el destino final del cliente.
