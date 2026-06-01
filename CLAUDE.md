@@ -3085,3 +3085,203 @@ con captura de lead (nombre + correo). Mismo JSON de horario.
 - El widget del landing usa prefijo `czl-` (distinto del `czs-` del dashboard)
   para no chocar si algún día coexisten.
 - Mejora futura: marcar lead como "convertido" si el correo se registra después.
+
+## Sistema Legal — Términos y Condiciones + evidencia de consentimiento
+
+### Implementado (junio 2026)
+- `public/terminos.php` — TyC completos (20 secciones). Deslinde fuerte en
+  sección 7 (9 subsecciones): CotizaCloud no es parte de transacciones,
+  cero relación con el Cliente Final, NO procesa pagos (7.3), no valida
+  catálogos/precios/garantías, datos del cliente son de la Empresa.
+  Ruta `/terminos` en Router.
+- `core/Legal.php` — versionado + registro de consentimiento (clickwrap).
+  - `Legal::VERSIONES` = versión vigente de cada doc (terminos, privacidad)
+  - `Legal::version_vigente($tipo)` — archiva copia HTML renderizada +
+    hash SHA-256 la primera vez que ve una versión (inmutable)
+  - `Legal::registrar_aceptacion($uid, $eid, $email, $tipos)` — un row por
+    documento aceptado con IP, user_agent, timestamp(ms), versión, hash
+- `migrations/add_consentimientos.sql` — tablas `documento_versiones`
+  (inmutable: tipo, version, contenido, hash_sha256) y `consentimientos`
+  (audit trail: usuario_id, empresa_id, email, documento_version_id,
+  hash_sha256, aceptado_at DATETIME(3), ip, user_agent, metodo, accion,
+  nom151_constancia hook futuro). YA CORRIDA en producción.
+- `modules/auth/registro.php` — checkbox obligatorio (botón deshabilitado
+  por JS hasta marcarlo) con links a /terminos y /privacidad
+- `modules/auth/registro_post.php` — validación backend (rechaza sin acepta)
+  + flag en $_SESSION['registro_pendiente']
+- `modules/auth/verificar_email_post.php` — tras crear empresa+usuario,
+  llama Legal::registrar_aceptacion con los IDs reales
+- `modules/superadmin/empresa.php` — sección "Aceptación de Términos y
+  Privacidad" con tabla (doc, versión, fecha, IP clicable, método, hash)
+
+### Decisiones tomadas (investigación legal con 4 agentes, fuentes reales)
+- NO se obliga a leer (scroll/timer): checkbox con link basta legalmente
+  (Código de Comercio art. 89 bis; confirmado en Shopify/DocuSign/iubenda)
+- B2B: PROFECO no aplica (LFPC art. 2 "destinatario final")
+- Cap de responsabilidad 12 meses de cuotas (CCF art. 2110 ya excluye
+  daños indirectos por default)
+- NOM-151 (constancia PSC tipo Mifiel) = OPCIONAL, da presunción de
+  integridad. Hook `nom151_constancia` listo para el futuro, no urgente.
+
+### PENDIENTE — Gate de re-aceptación cuando cambien los TyC
+Hoy el versionado YA funciona (al bumpear `Legal::VERSIONES` se archiva la
+versión nueva y los consentimientos viejos quedan ligados a su versión —
+cadena histórica intacta). Lo que FALTA es forzar a usuarios YA registrados
+a re-aceptar. Proceso cuando se necesite:
+
+**Paso 1 (manual, 1 min):** editar texto en `public/terminos.php` +
+bumpear la fecha en `Legal::VERSIONES['terminos']`.
+
+**Paso 2 (construir gate, ~1-2h):** reusar el patrón del onboarding wizard.
+- Al cargar dashboard (o en Auth), comparar: ¿el usuario tiene un row en
+  `consentimientos` para la versión vigente de `Legal::VERSIONES['terminos']`?
+  Query: `SELECT 1 FROM consentimientos c JOIN documento_versiones dv ON
+  dv.id=c.documento_version_id WHERE c.usuario_id=? AND dv.tipo='terminos'
+  AND dv.version=?`
+- Si NO → modal bloqueante: "Actualizamos los Términos. Revísalos y acepta
+  para continuar." [Ver Términos] ☐ Acepto [Continuar]
+- Al aceptar → `Legal::registrar_aceptacion()` con la versión nueva (misma
+  evidencia: IP, fecha, hash). Endpoint tipo /api/legal/aceptar con CSRF.
+- Mientras no acepte, no usa la plataforma (gate como /bienvenida).
+- Legal: para cambios MATERIALES exige re-aceptación afirmativa (no basta
+  email — caso Safeway $42M USD). Cambios menores/cosméticos pueden no
+  requerir gate, criterio del CEO.
+
+**Decisión:** NO construir hasta que de verdad se cambien los TyC. La base
+(versionado + evidencia histórica) ya está lista.
+
+## Plan de Arranque — Adquisición (pendiente, sesión futura)
+
+### Contexto / decisión del CEO
+Meta declarada: **1,000 empresas PAGANDO** (Pro/Business) = ~$449K MXN/mes MRR
+(~$5.4M MXN ARR). Estrategia elegida por el usuario: **Facebook Ads agresivo
++ demos online**. Capital primeros 6 meses: **$100K-$300K MXN**. Quién da las
+demos: **el usuario al principio**, contratar closers cuando el volumen lo exija.
+
+### Realidad matemática (no negociable)
+- El cuello de botella NO es el dinero, es que el usuario da las demos.
+- Demo + seguimiento ≈ 1 hora. Realista solo: ~100 demos/mes → ~25 cierres/mes
+  al 25%. Techo de ~150-200 pagando en 12 meses haciéndolo solo.
+- 1,000 pagando con un solo demo-er es físicamente imposible. Requiere fase 2
+  con equipo. 1,000 llegan en ~24 meses reinvirtiendo MRR, no en 12.
+
+### Embudo FB Ads → demo → cierre (datos México, investigación 5 agentes)
+- CPL México B2B: $150-$460 MXN
+- Lead → agenda demo: 30-40%
+- Show rate (se presenta): 50-60% (CRÍTICO; recordatorio por WhatsApp, no email)
+- Demo → cierre: 20-30%
+- CAC real estimado: ~$6,000 MXN/cliente
+- **A Pro $299 NO es rentable** (LTV ~$6K = CAC, churn se lo come).
+  **Solo funciona empujando Business $799** (LTV ~$16K, ratio 2.7:1) o Pro anual
+  pagado por adelantado.
+
+### Plan en 2 fases
+**FASE 1 — Validación (meses 1-3), tú das las demos, ~$50K MXN:**
+- FB Ads $400-600/día con creativos del Radar (~$45K) + herramientas (~$5K)
+- Medir: CPL real, show rate real, % cierre real, CAC verdadero, plan que cierra
+- Meta: 20-40 pagando + guion de demo probado + CAC conocido
+- NO meter los $300K hasta tener estos números
+
+**FASE 2 — Escalamiento (meses 4-12), contratar closers:**
+- 2-3 closers en Hermosillo (~$12-15K base + comisión) que replican el guion
+- FB Ads escalado $1,000-1,500/día
+- Migrar infra a DigitalOcean (~$2K MXN/mes)
+- Se financia con el MRR que ya entra
+
+### Proyección 12 meses (realista con su capital)
+- Tú + 2 closers desde mes 4: **250-400 pagando, $110K-$180K MXN MRR**
+- 1,000 pagando en ~24 meses reinvirtiendo
+
+### Las 3 palancas que deciden ganar vs quemar
+1. **Creativo del Radar**: el anuncio muestra "mira cuándo tu cliente abre tu
+   cotización y cuántas veces" — visualmente irresistible, ninguna competencia
+   lo tiene. Baja el CPL.
+2. **WhatsApp para show rate** (no email). Duplica el CAC si se ignora.
+3. **Vender Business o Pro anual en la demo**, no Pro mensual.
+
+### Infraestructura (de investigación)
+- Hosting cPanel actual revienta a ~50-100 empresas activas (25 conexiones
+  MySQL, 25 procesos PHP, 500 emails/hora, Imunify360 sin control).
+- Migrar a DigitalOcean: ~$109 USD/mes (~$2K MXN) aguanta 1,000 empresas.
+  Droplet 4GB ($24) + Managed MySQL 4GB ($60) + Spaces ($5) + Cloudflare Free
+  + SendGrid ($20).
+
+### Siguiente paso cuando se retome
+Diseñar los 3 creativos de FB Ads (guion visual del anuncio del Radar) + guion
+de demo de 15 min que cierra a Business. Arrancar Fase 1 con $50K.
+
+### Loop viral acordado
+"Powered by CotizaCloud" en slugs públicos de SUBDOMINIO (no en dominios
+custom — ahí se respeta la marca del cliente). Gratis y compuesto.
+
+## Plan Lite — diseño (pendiente implementación, sesión futura)
+
+### Decisión del CEO
+Crear un nivel **Lite** como **plan dentro del mismo CotizaCloud** (NO producto
+separado — un solo código, evita duplicar mantenimiento/soporte/bugs). Rol:
+**gancho de entrada** para los Facebook Ads, con upsell natural a Pro.
+
+### Precio
+**$199/mes** (no $149). Razón: $50 casi no afecta la conversión del anuncio
+("menos de $200" pesa psicológicamente igual), pero da ~33% más margen y mejor
+colchón contra el churn alto de planes baratos + comisión MercadoPago (~3.5%+IVA).
+El Lite NO es donde se gana — es donde se entra barato y se convierte a Pro.
+
+### Qué ve el Lite
+- **Dashboard** (versión básica, KPIs principales)
+- **Clientes** (tal cual)
+- **Cotizaciones** (TAL CUAL — ya trae 👁 visitas + badge de bucket en la lista
+  `modules/cotizaciones/lista.php:381,403` y el historial de visitas completo en
+  el detalle `ver.php`). La inteligencia de "quién la vio, cuántas veces, si le
+  interesó" YA vive dentro del módulo de Cotizaciones. NO se construye un "Radar
+  simplificado" — no hace falta.
+- **Ventas** (tal cual)
+
+### Qué se OCULTA del menú en Lite (gate por es_lite, igual que ya se hace con Business)
+- Menú **Radar** dedicado (la info de visitas ya está en Cotizaciones)
+- **Termómetro**, **Costos**, **Marketing**, **Reportes** (avanzados),
+  **Proveedores**, **usuarios múltiples**, **Feedback**
+
+### El badge del bucket en la lista — SÍ se mantiene
+El usuario quiere conservar el badge del Radar en la lista de cotizaciones para
+el Lite (da el valor del "interés" sin el módulo dedicado). Se deja tal cual
+(👁 visitas + badge tipo "Probable cierre"/"Validando precio"). Micro-decisión
+futura opcional: simplificar la jerga de buckets para Lite, pero por defecto
+queda igual.
+
+### Menú Lite: "Interpretación de buckets" (en vez del módulo Radar)
+Como el Lite NO tiene el módulo Radar dedicado pero SÍ muestra el badge del
+bucket en la lista de cotizaciones, en el menú del Lite va una sola entrada
+educativa: **"Interpretación de buckets"** (o "¿Qué significan?"). Al dar click
+abre una página ESTÁTICA que explica qué significa cada bucket (Probable cierre,
+Validando precio, Enfriándose, etc.) y qué hacer ante cada uno. Sin leaderboard,
+sin calibración, sin actividad inusual — solo la leyenda explicativa. Así el
+cliente Lite entiende los badges que ve sin el peso del módulo Radar completo.
+Contenido reusable del manual de Ayuda (sección Radar) ya redactado.
+
+### Por qué es bajo riesgo / poco código
+El motor de planes YA existe: `core/Helpers.php` → `trial_info()` ya distingue
+free/pro/business y `core/layout.php` ya oculta tabs por plan (ej. tab Usuarios
+solo Business). El Lite reusa ese motor — NO toca la lógica de cotizaciones/
+ventas, solo QUÉ se muestra en el menú.
+
+### Implementación estimada (sesión futura)
+1. Migración: agregar `'lite'` al ENUM de planes en empresas
+2. `Helpers.php` → `trial_info()`: agregar flag `es_lite` (como es_pro/es_business)
+3. `core/layout.php` (sidebar): ocultar módulos no-Lite con gate `es_lite`
+4. Landing + `modules/config/suscripcion.php`: agregar columna/plan Lite $199
+5. `modules/superadmin/toggle_plan.php`: permitir asignar Lite
+6. Dashboard: versión básica para Lite (ocultar termómetro/leaderboard)
+
+### Escalera de precios resultante
+| Plan | Precio | Qué ve |
+|------|--------|--------|
+| Free | $0 | 25 cotizaciones, básico |
+| **Lite (NUEVO)** | **$199** | Dashboard + Clientes + Cotizaciones (con visitas/badge) + Ventas |
+| Pro | $299 | Todo lo de hoy (+ Radar dedicado, ilimitado) |
+| Business | $799 | Todo + equipo + módulos avanzados |
+
+### Advertencia documentada
+A $199 con cobro recurrente, el margen es delgado y el churn de planes baratos
+es alto. El Lite SOLO es rentable como puerta de entrada que convierte parte de
+su base a Pro/Business. No es el destino final del cliente.
