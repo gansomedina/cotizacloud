@@ -779,17 +779,16 @@ function render_comp_row($cv, $empresa_id, $tipo) {
         $conf_color = '#dc2626';
         $conf_desc = 'Mismo dispositivo (' . $dev_str . ') vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes, aunque las cookies cambiaron.';
     } else {
+        // IP sola = señal ambigua (CGNAT carrier, oficina/wifi compartido, o
+        // competencia con varios dispositivos). No confirma ni descarta nada,
+        // por eso siempre es confianza Baja: es una pista, no una certeza.
         $span_h = (int)($cv['span_horas'] ?? 0);
         $span_dias = round($span_h / 24);
-        if ($span_h <= 168) {
-            $conf_label = 'Media';
-            $conf_color = '#d97706';
-            $conf_desc = 'Misma IP vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes en ' . ($span_dias ?: '<1') . ' día' . ($span_dias != 1 ? 's' : '') . '.';
-        } else {
-            $conf_label = 'Baja';
-            $conf_color = '#6b7280';
-            $conf_desc = 'Misma IP vio cotizaciones de ' . (int)$cv['clientes_distintos'] . ' clientes diferentes, pero con ' . $span_dias . ' días de diferencia. Probablemente IP de carrier móvil rotada.';
-        }
+        $conf_label = 'Baja';
+        $conf_color = '#6b7280';
+        $conf_desc = 'Misma IP vio cotizaciones de ' . (int)$cv['clientes_distintos']
+            . ' clientes diferentes' . ($span_dias > 0 ? ' en ' . $span_dias . ' día' . ($span_dias != 1 ? 's' : '') : '')
+            . '. Las IPs suelen rotar (carrier móvil, oficina o red compartida) — revisa con criterio.';
     }
     $visitas_total = (int)($cv['cots_vistas'] ?? 0);
 
@@ -937,7 +936,7 @@ if ($total_comp): ?>
 
     <?php if ($comp_by_ip): ?>
     <div style="font:700 11px var(--body);color:#991b1b;margin:<?= $comp_by_user ? '12px' : '0' ?> 0 6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
-        🌐 Misma red vio múltiples clientes (<?= count($comp_by_ip) ?>) — confianza media
+        🌐 Misma red vio múltiples clientes (<?= count($comp_by_ip) ?>) — confianza baja
     </div>
     <?php foreach ($comp_by_ip as $cv) render_comp_row($cv, $empresa_id, 'ip'); ?>
     <?php endif; ?>
