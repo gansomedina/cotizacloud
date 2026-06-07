@@ -16,19 +16,23 @@ $empresa_slug = trim(strtolower($_POST['empresa_slug'] ?? ''));
 $usuario_str  = trim($_POST['usuario'] ?? '');
 $password     = $_POST['password'] ?? '';
 
+// Preservar la intención de plan a través de errores de login (no perder el nudge)
+$pi_post     = in_array($_POST['plan_intento'] ?? '', ['lite','pro','business']) ? $_POST['plan_intento'] : '';
+$plan_suffix = $pi_post ? '&plan=' . urlencode($pi_post) : '';
+
 // Rate limit: máximo 5 intentos de login por IP cada 15 minutos
 $rate = rate_check('login', 5, 15);
 if (!$rate['ok']) {
     flash('error', $rate['error']);
-    redirect('/login?error=rate&empresa=' . urlencode($empresa_slug));
+    redirect('/login?error=rate&empresa=' . urlencode($empresa_slug) . $plan_suffix);
 }
 
 if (empty($empresa_slug)) {
-    redirect('/login?error=empresa&empresa=' . urlencode($empresa_slug));
+    redirect('/login?error=empresa&empresa=' . urlencode($empresa_slug) . $plan_suffix);
 }
 
 if (empty($usuario_str) || empty($password)) {
-    redirect('/login?error=credenciales&empresa=' . urlencode($empresa_slug));
+    redirect('/login?error=credenciales&empresa=' . urlencode($empresa_slug) . $plan_suffix);
 }
 
 $is_app_login = !empty($_POST['is_app']);
@@ -46,7 +50,7 @@ if (!$resultado['ok']) {
         $error = 'credenciales';
     }
 
-    redirect('/login?error=' . $error . '&empresa=' . urlencode($empresa_slug));
+    redirect('/login?error=' . $error . '&empresa=' . urlencode($empresa_slug) . $plan_suffix);
 }
 
 // Login exitoso — registrar las 3 señales internas: visitor_id + IP + device_sig
@@ -98,9 +102,8 @@ if ($device_sig_post === '') {
 }
 
 // Intención de plan (viene del registro vía landing)
-$pi = $_POST['plan_intento'] ?? '';
-if (in_array($pi, ['lite','pro','business'])) {
-    $_SESSION['plan_intento'] = $pi;
+if ($pi_post) {
+    $_SESSION['plan_intento'] = $pi_post;
 }
 
 // Redirigir: superadmin con _admin va al panel, otros al dashboard
