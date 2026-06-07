@@ -20,6 +20,10 @@ class MercadoPago
     public static function precios(): array
     {
         return [
+            'lite' => [
+                'mensual' => 199.00,
+                'anual'   => 1910.00,   // 20% desc (≈ $159/mes)
+            ],
             'pro' => [
                 'mensual' => 299.00,
                 'anual'   => 2868.00,
@@ -51,7 +55,7 @@ class MercadoPago
             return ['error' => 'Plan o ciclo inválido'];
         }
 
-        $plan_label = $plan === 'business' ? 'Business' : 'Pro';
+        $plan_label = match($plan) { 'business' => 'Business', 'lite' => 'Lite', default => 'Pro' };
         $ciclo_label = $ciclo === 'anual' ? 'Anual' : 'Mensual';
 
         // Solo email: MP captura datos del cardholder en el checkout.
@@ -193,7 +197,7 @@ class MercadoPago
             return ['error' => 'Plan o ciclo inválido'];
         }
 
-        $plan_label = $plan === 'business' ? 'Business' : 'Pro';
+        $plan_label = match($plan) { 'business' => 'Business', 'lite' => 'Lite', default => 'Pro' };
         $ciclo_label = $ciclo === 'anual' ? 'Anual' : 'Mensual';
         $frequency = $ciclo === 'anual' ? ['frequency' => 12, 'frequency_type' => 'months']
                                          : ['frequency' => 1,  'frequency_type' => 'months'];
@@ -265,7 +269,7 @@ class MercadoPago
         $extRef   = $remote['external_reference'] ?? '';
         $nextDate = $remote['next_payment_date'] ?? null;
 
-        preg_match('/^cz_(\d+)_(pro|business)_(mensual|anual)$/', $extRef, $m);
+        preg_match('/^cz_(\d+)_(lite|pro|business)_(mensual|anual)$/', $extRef, $m);
         if (!$m) {
             return ['synced' => false, 'reason' => 'invalid_external_reference'];
         }
@@ -370,7 +374,7 @@ class MercadoPago
         $status = $remote['status'] ?? '';
         $extRef = $remote['external_reference'] ?? '';
 
-        preg_match('/^cz_(\d+)_(pro|business)_(mensual|anual)$/', $extRef, $m);
+        preg_match('/^cz_(\d+)_(lite|pro|business)_(mensual|anual)$/', $extRef, $m);
         if (!$m) return ['processed' => false, 'reason' => 'invalid external_reference'];
 
         $empresa_id = (int)$m[1];

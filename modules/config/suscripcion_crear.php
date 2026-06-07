@@ -14,7 +14,7 @@ csrf_check();
 $plan  = $_POST['plan']  ?? '';
 $ciclo = $_POST['ciclo'] ?? '';
 
-if (!in_array($plan, ['pro', 'business']) || !in_array($ciclo, ['mensual', 'anual'])) {
+if (!in_array($plan, ['lite', 'pro', 'business']) || !in_array($ciclo, ['mensual', 'anual'])) {
     $_SESSION['flash'] = ['tipo' => 'error', 'msg' => 'Plan o ciclo inválido.'];
     redirect('/config?tab=suscripcion');
 }

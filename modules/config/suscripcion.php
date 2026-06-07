@@ -133,16 +133,39 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
   </div>
   <?php endif; ?>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-    <?php foreach (['pro' => 'Pro', 'business' => 'Business'] as $plan_key => $plan_name):
+  <?php
+  $planes_grid = [
+    'lite' => [
+      'name'     => 'Lite',
+      'color'    => '#92400e',
+      'tagline'  => 'Para empezar — lo esencial',
+      'features' => 'Cotizaciones ilimitadas, clientes, ventas y seguimiento de visitas',
+    ],
+    'pro' => [
+      'name'     => 'Pro',
+      'color'    => 'var(--g)',
+      'tagline'  => 'Para profesionales independientes',
+      'features' => 'Todo lo de Lite + Radar completo, reportes, costos y app móvil',
+    ],
+    'business' => [
+      'name'     => 'Business',
+      'color'    => 'var(--blue)',
+      'tagline'  => 'Para equipos de trabajo',
+      'features' => 'Todo lo de Pro + usuarios ilimitados, marketing, extras y reportes avanzados',
+    ],
+  ];
+  ?>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:16px">
+    <?php foreach ($planes_grid as $plan_key => $pd):
+      if (empty($precios[$plan_key])) continue;
       $is_current = $trial['plan'] === $plan_key && $trial['es_pagado'] && $tiene_auto_renew && !$cobro_fallido;
-      $color = $plan_key === 'business' ? 'var(--blue)' : 'var(--g)';
+      $color = $pd['color'];
     ?>
     <div class="card" style="border-color:<?= $is_current ? $color : 'var(--border)' ?>">
       <div style="padding:20px;border-bottom:1px solid var(--border)">
-        <div style="font:700 18px var(--body);color:<?= $color ?>"><?= $plan_name ?></div>
+        <div style="font:700 18px var(--body);color:<?= $color ?>"><?= $pd['name'] ?></div>
         <div style="font:400 12px var(--body);color:var(--t3);margin-top:4px">
-          <?= $plan_key === 'pro' ? 'Para profesionales independientes' : 'Para equipos de trabajo' ?>
+          <?= $pd['tagline'] ?>
         </div>
       </div>
 
@@ -173,15 +196,9 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
         </div>
       </div>
 
-      <?php if ($plan_key === 'pro'): ?>
       <div style="padding:12px 20px;border-top:1px solid var(--border);font:400 12px var(--body);color:var(--t3);line-height:1.6">
-        Cotizaciones ilimitadas, todos los módulos, app móvil
+        <?= $pd['features'] ?>
       </div>
-      <?php else: ?>
-      <div style="padding:12px 20px;border-top:1px solid var(--border);font:400 12px var(--body);color:var(--t3);line-height:1.6">
-        Usuarios ilimitados, marketing pixels, extras, reportes avanzados
-      </div>
-      <?php endif; ?>
     </div>
     <?php endforeach; ?>
   </div>
