@@ -48,6 +48,7 @@ $moneda         = $_POST['moneda'] ?? 'MXN';
 $impuesto_modo  = $_POST['impuesto_modo'] ?? 'ninguno';
 $impuesto_pct   = (float)($_POST['impuesto_pct'] ?? 16);
 $acepta         = !empty($_POST['acepta']);
+$plan_intento   = in_array($_POST['plan_intento'] ?? '', ['lite','pro','business']) ? $_POST['plan_intento'] : '';
 
 // ─── Validaciones ────────────────────────────────────────
 $errores = [];
@@ -135,6 +136,7 @@ $_SESSION['registro_pendiente'] = [
     'impuesto_modo'  => $impuesto_modo,
     'impuesto_pct'   => $impuesto_pct,
     'acepta'         => $acepta ? 1 : 0,
+    'plan_intento'   => $plan_intento,
 ];
 
 // ─── Enviar código por email ────────────────────────────

@@ -129,6 +129,7 @@ class Router
         self::post('/api/push/register',    fn() => self::load_api('push_register'));
         self::post('/api/push/unregister',  fn() => self::load_api('push_unregister'));
         self::post('/api/push/reset-badge', fn() => self::load_api('push_reset_badge'));
+        self::post('/api/dismiss-plan-intento', fn() => self::load_api('dismiss_plan_intento'));
         self::post('/api/soporte',          fn() => self::load_api('soporte'));
         self::get('/api/soporte/poll',      fn() => self::load_api('soporte_poll'));
         self::post('/api/radar-feedback',   fn() => self::load_api('radar_feedback'));

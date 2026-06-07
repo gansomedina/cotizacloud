@@ -141,6 +141,10 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
 
         <form method="POST" action="/registro">
             <?= csrf_field() ?>
+            <?php $plan_intento = $_GET['plan'] ?? $valores['plan_intento'] ?? ''; ?>
+            <?php if (in_array($plan_intento, ['lite','pro','business'])): ?>
+            <input type="hidden" name="plan_intento" value="<?= e($plan_intento) ?>">
+            <?php endif; ?>
             <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true" tabindex="-1">
                 <input type="text" name="website_url" value="" autocomplete="off" tabindex="-1">
             </div>
