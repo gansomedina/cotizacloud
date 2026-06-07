@@ -820,9 +820,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="price-period monthly-price"><span data-mxn="2388">$2,388</span> <span class="cur-lbl">MXN</span>/año</div>
       <div class="price-period annual-price" style="display:none"><span data-mxn="1910">$1,910</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="478">$478</span></strong></div>
       <a href="/registro" class="price-btn price-btn-outline">Crear cuenta gratis</a>
-      <div class="price-trial-note">Activa Lite desde tu cuenta.</div>
+      <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
-        <div class="price-feat-header">Para arrancar sin limites:</div>
+        <div class="price-feat-header">Ideal para emprendedores que inician:</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Seguimiento de visitas e interes</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Clientes ilimitados</div>
