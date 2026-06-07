@@ -41,7 +41,7 @@ $datos = MercadoPago::extraerDatosPago($pago);
 $status = $datos['status'];
 
 if ((!$plan || !$ciclo) && $datos['external_reference']) {
-    if (preg_match('/^cz_\d+_(pro|business)_(mensual|anual)/', $datos['external_reference'], $m)) {
+    if (preg_match('/^cz_\d+_(lite|pro|business)_(mensual|anual)/', $datos['external_reference'], $m)) {
         $plan  = $m[1];
         $ciclo = $m[2];
     }

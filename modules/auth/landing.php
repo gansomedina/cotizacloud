@@ -262,7 +262,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .toggle-save{font:700 12px var(--body);color:#fff;background:var(--g);padding:4px 12px;border-radius:20px;letter-spacing:.02em;animation:pulse-save 2s infinite}
 @keyframes pulse-save{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.85;transform:scale(1.05)}}
 
-.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start}
+.pricing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;align-items:start}
 .price-card{background:var(--white);border:1.5px solid var(--border);border-radius:20px;padding:36px 28px;position:relative;transition:all .3s}
 .price-card:hover{box-shadow:var(--sh-lg);transform:translateY(-4px)}
 .price-card-featured{border:2.5px solid var(--g);box-shadow:var(--sh-lg);transform:scale(1.04);z-index:2}
@@ -304,7 +304,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
 .pricing-note{text-align:center;font:400 13px var(--body);color:var(--t3);margin-top:32px}
 
-@media(max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:400px;margin:0 auto}.price-card-featured{transform:scale(1)}.price-card-featured:hover{transform:translateY(-4px)}}
+@media(max-width:1080px){.pricing-grid{grid-template-columns:repeat(2,1fr);max-width:680px;margin:0 auto}}
+@media(max-width:600px){.pricing-grid{grid-template-columns:1fr;max-width:400px}.price-card-featured{transform:scale(1)}.price-card-featured:hover{transform:translateY(-4px)}}
 
 /* CTA */
 .cta{max-width:720px;margin:0 auto;padding:80px 24px;text-align:center}
@@ -758,7 +759,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <section class="pricing" id="precios">
   <span class="section-label">Planes y precios</span>
   <div class="section-title">¿Cual plan mueve tu negocio?</div>
-  <p class="section-sub">Todos incluyen Radar. La diferencia esta en cuanto quieres crecer.</p>
+  <p class="section-sub">Del primer cliente al equipo completo. Crece a tu ritmo.</p>
 
   <div class="pricing-toggle">
     <span class="toggle-label" id="toggleMensual">Mensual</span>
@@ -800,6 +801,33 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-feat"><span class="feat-check">&#10003;</span>Costos basicos</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Catalogo de articulos</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y descuentos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
+      </div>
+    </div>
+
+    <!-- LITE -->
+    <div class="price-card">
+      <div class="price-header">
+        <div class="price-plan-name">Lite</div>
+        <div class="price-plan-desc">Lo esencial para cotizar y vender.</div>
+      </div>
+      <div class="price-amount">
+        <span class="price-currency">$</span>
+        <span class="price-value monthly-price" data-mxn="199">199</span>
+        <span class="price-value annual-price" data-mxn="159" style="display:none">159</span>
+        <span class="price-mo">/mes</span>
+      </div>
+      <div class="price-period monthly-price"><span data-mxn="2388">$2,388</span> <span class="cur-lbl">MXN</span>/año</div>
+      <div class="price-period annual-price" style="display:none"><span data-mxn="1910">$1,910</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="478">$478</span></strong></div>
+      <a href="/registro" class="price-btn price-btn-outline">Crear cuenta gratis</a>
+      <div class="price-trial-note">Activa Lite desde tu cuenta.</div>
+      <div class="price-features">
+        <div class="price-feat-header">Para arrancar sin limites:</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Seguimiento de visitas e interes</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Clientes ilimitados</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas, recibos y abonos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Portal publico del cliente</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
       </div>
     </div>
