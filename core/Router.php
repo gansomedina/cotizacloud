@@ -230,6 +230,7 @@ class Router
 
         self::get('/reportes',               fn()   => self::app('reportes',    'index'));
         self::get('/ayuda',                  fn()   => self::app('ayuda',       'index'));
+        self::get('/ayuda/buckets',          fn()   => self::app('ayuda',       'buckets'));
         self::post('/ayuda/ticket',          fn()   => self::app('ayuda',       'ticket'));
         self::get('/licencia',               fn()   => self::app('ayuda',       'licencia'));
 
