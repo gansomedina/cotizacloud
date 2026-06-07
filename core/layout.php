@@ -124,15 +124,21 @@ $empresa = Auth::empresa();
 $flash   = flash_get();
 $path    = Router::path();
 
+// Plan de la empresa (para gates de menú). Disponible en todo el archivo.
+$plan_menu = trial_info(EMPRESA_ID);
+$es_lite_menu = !empty($plan_menu['es_lite']);
+
 // Menú principal (sidebar desktop)
+// 'lite_oculto' => true  → no se muestra en plan Lite (Radar/Costos/Reportes)
 $menu = [
     ['href' => '/dashboard',    'icon' => 'home',          'label' => 'Inicio'],
     ['href' => '/clientes',     'icon' => 'users',         'label' => 'Clientes'],
     ['href' => '/cotizaciones', 'icon' => 'file-text',     'label' => 'Cotizaciones'],
     ['href' => '/ventas',       'icon' => 'shopping-bag',  'label' => 'Ventas'],
-    ['href' => '/costos',       'icon' => 'trending-down', 'label' => 'Costos',       'perm' => 'ver_costos'],
-    ['href' => '/radar',        'icon' => 'activity',      'label' => 'Radar'],
-    ['href' => '/reportes',     'icon' => 'bar-chart-2',   'label' => 'Reportes', 'perm' => 'ver_reportes'],
+    ['href' => '/costos',       'icon' => 'trending-down', 'label' => 'Costos',       'perm' => 'ver_costos', 'lite_oculto' => true],
+    ['href' => '/radar',        'icon' => 'activity',      'label' => 'Radar',        'lite_oculto' => true],
+    ['href' => '/reportes',     'icon' => 'bar-chart-2',   'label' => 'Reportes',     'perm' => 'ver_reportes', 'lite_oculto' => true],
+    ['href' => '/ayuda/buckets','icon' => 'compass',       'label' => 'Interpretación de buckets', 'solo_lite' => true],
     ['href' => '/config',       'icon' => 'settings',      'label' => 'Configuración', 'admin' => true],
     ['href' => '/ayuda',        'icon' => 'help-circle',   'label' => 'Ayuda'],
 ];
@@ -408,8 +414,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
     </div>
     <nav class="sidebar-nav">
         <?php
-        $plan_sidebar = trial_info(EMPRESA_ID);
+        $plan_sidebar = $plan_menu;
         foreach ($menu as $item):
+            if (!empty($item['lite_oculto']) && $plan_sidebar['es_lite']) continue;
+            if (!empty($item['solo_lite']) && !$plan_sidebar['es_lite']) continue;
             if (!empty($item['business']) && !$plan_sidebar['es_business']) continue;
             if (!empty($item['admin']) && !Auth::es_admin()) continue;
             if (!empty($item['perm']) && !Auth::es_admin() && !Auth::puede($item['perm'])) continue;
@@ -581,7 +589,11 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
     <a href="/dashboard"    class="bn-item <?= menu_activo('/dashboard',    $path) ? 'active' : '' ?>"><?= $S['home'] ?>Inicio</a>
     <a href="/cotizaciones" class="bn-item <?= menu_activo('/cotizaciones', $path) ? 'active' : '' ?>"><?= $S['cot']  ?>Cotizaciones</a>
     <a href="/ventas"       class="bn-item <?= menu_activo('/ventas',       $path) ? 'active' : '' ?>"><?= $S['ven']  ?>Ventas</a>
+    <?php if ($es_lite_menu): ?>
+    <a href="/clientes"     class="bn-item <?= menu_activo('/clientes',     $path) ? 'active' : '' ?>"><?= $S['cli']  ?>Clientes</a>
+    <?php else: ?>
     <a href="/radar"        class="bn-item <?= menu_activo('/radar',        $path) ? 'active' : '' ?>"><?= $S['rad']  ?>Radar</a>
+    <?php endif; ?>
     <button class="bn-item <?= $mas_activo ? 'active' : '' ?>" onclick="toggleMoreDrawer()"><?= $S['mas'] ?>Más</button>
 </nav>
 
@@ -590,9 +602,13 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
 <div id="more-drawer">
     <div class="more-handle"></div>
     <div class="more-grid">
+        <?php if (!$es_lite_menu): ?>
         <a href="/clientes" class="more-item <?= menu_activo('/clientes', $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['cli'] ?>Clientes</a>
         <a href="/costos"   class="more-item <?= menu_activo('/costos',   $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['cos'] ?>Costos</a>
         <a href="/reportes" class="more-item <?= menu_activo('/reportes', $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['rep'] ?>Reportes</a>
+        <?php else: ?>
+        <a href="/ayuda/buckets" class="more-item <?= menu_activo('/ayuda/buckets', $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['rad'] ?>Buckets</a>
+        <?php endif; ?>
         <?php if (Auth::es_admin()): ?><a href="/config"   class="more-item <?= menu_activo('/config',   $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['cfg'] ?>Configuración</a><?php endif; ?>
         <a href="/ayuda"    class="more-item <?= menu_activo('/ayuda',    $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['ayu'] ?>Ayuda</a>
         <a href="/logout"   class="more-item more-item-logout"><?= $S['sal'] ?>Salir</a>

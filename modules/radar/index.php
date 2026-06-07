@@ -8,6 +8,9 @@
 
 defined('COTIZAAPP') or die;
 
+// Plan Lite no tiene módulo Radar (la info de visitas vive en Cotizaciones)
+if (trial_info(EMPRESA_ID)['es_lite']) { redirect('/dashboard'); }
+
 // Evitar cache agresivo en iOS WKWebView
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
