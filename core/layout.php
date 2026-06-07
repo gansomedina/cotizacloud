@@ -180,7 +180,7 @@ $feather_map = [
     'home' => 'home', 'users' => 'cli', 'file-text' => 'cot',
     'shopping-bag' => 'ven', 'trending-down' => 'cos', 'activity' => 'rad',
     'bar-chart-2' => 'rep', 'settings' => 'cfg', 'help-circle' => 'ayu',
-    'log-out' => 'sal', 'shield' => 'shi',
+    'log-out' => 'sal', 'shield' => 'shi', 'compass' => 'rad',
 ];
 
 // Rutas del drawer "Más"
