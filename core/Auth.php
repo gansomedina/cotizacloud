@@ -586,8 +586,8 @@ p{font:400 14px 'DM Sans',sans-serif;color:#6b7280;line-height:1.6;margin-bottom
 
         // Determinar si venció la licencia
         $plan = $emp['plan'] ?? 'free';
-        $es_pagado = in_array($plan, ['pro', 'business']);
-        $plan_label = match($plan) { 'pro' => 'Pro', 'business' => 'Business', default => 'Free' };
+        $es_pagado = in_array($plan, ['lite', 'pro', 'business']);
+        $plan_label = match($plan) { 'lite' => 'Lite', 'pro' => 'Pro', 'business' => 'Business', default => 'Free' };
         $vencida = ($es_pagado && $emp['plan_vence'] && $emp['plan_vence'] < date('Y-m-d'));
         $titulo = $vencida ? 'Licencia Vencida' : 'Licencia Suspendida';
         $msg = $vencida
