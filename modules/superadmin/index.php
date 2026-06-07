@@ -280,13 +280,13 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         <?php if ($plan === 'free' && (int)$e['num_cots'] >= TRIAL_LIMIT): ?>
             <span class="badge badge-red">FREE AGOTADO</span>
         <?php else: ?>
-            <span class="badge <?= match($plan) { 'business' => 'badge-blue', 'pro' => 'badge-green', default => 'badge-amber' } ?>"><?= strtoupper($plan) ?></span>
+            <span class="badge <?= match($plan) { 'business' => 'badge-blue', 'pro' => 'badge-green', 'lite' => 'badge-amber', default => 'badge-amber' } ?>"><?= strtoupper($plan) ?></span>
         <?php endif; ?>
     </td>
     <td>
         <?php
         $pv = $e['plan_vence'] ?? null;
-        if (in_array($plan, ['pro', 'business']) && $pv):
+        if (in_array($plan, ['lite', 'pro', 'business']) && $pv):
             $dias_r = (int)((strtotime($pv) - strtotime(date('Y-m-d'))) / 86400);
             if ($dias_r < 0): ?>
                 <span class="badge badge-red"><?= date('d/m', strtotime($pv)) ?></span>
@@ -295,7 +295,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             <?php else: ?>
                 <span class="ago"><?= date('d/m/Y', strtotime($pv)) ?></span>
             <?php endif;
-        elseif (in_array($plan, ['pro', 'business'])): ?>
+        elseif (in_array($plan, ['lite', 'pro', 'business'])): ?>
             <span class="ago">—</span>
         <?php else: ?>
             <span class="ago">—</span>
