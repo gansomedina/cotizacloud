@@ -819,10 +819,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       </div>
       <div class="price-period monthly-price"><span data-mxn="2388">$2,388</span> <span class="cur-lbl">MXN</span>/año</div>
       <div class="price-period annual-price" style="display:none"><span data-mxn="1910">$1,910</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="478">$478</span></strong></div>
-      <a href="/registro" class="price-btn price-btn-outline">Crear cuenta gratis</a>
-      <div class="price-trial-note">Activa Lite desde tu cuenta.</div>
+      <a href="/registro?plan=lite" class="price-btn price-btn-outline">Crear cuenta gratis</a>
+      <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
-        <div class="price-feat-header">Para arrancar sin limites:</div>
+        <div class="price-feat-header">Ideal para emprendedores que inician:</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Seguimiento de visitas e interes</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Clientes ilimitados</div>
@@ -850,7 +850,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       </div>
       <div class="price-period monthly-price"><span data-mxn="3588">$3,588</span> <span class="cur-lbl">MXN</span>/año</div>
       <div class="price-period annual-price" style="display:none"><span data-mxn="2868">$2,868</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="720">$720</span></strong></div>
-      <a href="/registro" class="price-btn price-btn-solid">Empezar 14 dias gratis</a>
+      <a href="/registro?plan=pro" class="price-btn price-btn-solid">Empezar gratis</a>
       <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
         <div class="price-feat-header">Todo de Free, sin limites:</div>
@@ -881,7 +881,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       </div>
       <div class="price-period monthly-price"><span data-mxn="9588">$9,588</span> <span class="cur-lbl">MXN</span>/año</div>
       <div class="price-period annual-price" style="display:none"><span data-mxn="7668">$7,668</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="1920">$1,920</span></strong></div>
-      <a href="/registro" class="price-btn price-btn-business">Empezar 14 dias gratis</a>
+      <a href="/registro?plan=business" class="price-btn price-btn-business">Empezar gratis</a>
       <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
         <div class="price-feat-header">Todo de Pro, mas:</div>

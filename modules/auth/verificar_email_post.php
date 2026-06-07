@@ -173,4 +173,8 @@ try {
 } catch (Exception $e) {}
 
 // ─── Redirigir al login centralizado ─────────────
-redirect('/login?nuevo=1&empresa=' . urlencode($slug_raw) . '&u=' . urlencode($email));
+$redir = '/login?nuevo=1&empresa=' . urlencode($slug_raw) . '&u=' . urlencode($email);
+if (!empty($pendiente['plan_intento'])) {
+    $redir .= '&plan=' . urlencode($pendiente['plan_intento']);
+}
+redirect($redir);

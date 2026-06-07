@@ -737,6 +737,27 @@ ob_start();
 </div>
 <?php endif; ?>
 
+<?php
+$plan_intento = $_SESSION['plan_intento'] ?? '';
+if ($plan_intento && in_array($plan_intento, ['lite','pro','business']) && $trial['es_free']):
+    $pi_label = match($plan_intento) { 'lite' => 'Lite', 'pro' => 'Pro', 'business' => 'Business', default => '' };
+    $pi_color = match($plan_intento) { 'lite' => '#92400e', 'pro' => 'var(--g)', 'business' => '#1d4ed8', default => '' };
+    $pi_bg    = match($plan_intento) { 'lite' => '#fffbeb', 'pro' => 'var(--g-bg)', 'business' => '#eff6ff', default => '' };
+    $pi_brd   = match($plan_intento) { 'lite' => '#fcd34d', 'pro' => 'var(--g-border)', 'business' => '#bfdbfe', default => '' };
+?>
+<div style="background:<?= $pi_bg ?>;border:1px solid <?= $pi_brd ?>;border-radius:var(--r);padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap" id="plan-intento-banner">
+    <div style="width:44px;height:44px;border-radius:50%;background:<?= $pi_color ?>;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </div>
+    <div style="flex:1">
+        <div style="font:700 15px var(--body);color:<?= $pi_color ?>;margin-bottom:3px">Activa tu plan <?= $pi_label ?></div>
+        <div style="font:400 13px var(--body);color:var(--t2);line-height:1.5">Tu cuenta esta lista. Activa el plan <?= $pi_label ?> para desbloquear todas las funciones.</div>
+    </div>
+    <a href="/config?tab=suscripcion" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--r-sm);font:600 13px var(--body);background:<?= $pi_color ?>;color:#fff;text-decoration:none;white-space:nowrap;transition:opacity .12s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Activar <?= $pi_label ?></a>
+    <button onclick="this.parentElement.remove();fetch('/api/dismiss-plan-intento',{method:'POST',headers:{'X-CSRF-Token':'<?= csrf_token() ?>'}})" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--t3);font-size:18px;line-height:1" title="Cerrar">&times;</button>
+</div>
+<?php endif; ?>
+
 <!-- SELECTOR DE PERÍODO (en topbar via slot extra) -->
 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
   <div>

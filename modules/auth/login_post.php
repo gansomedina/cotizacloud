@@ -97,6 +97,12 @@ if ($device_sig_post === '') {
     flash('warning', 'Tu dispositivo no se pudo registrar completamente en el Radar. Desactiva bloqueadores de contenido y vuelve a ingresar.');
 }
 
+// Intención de plan (viene del registro vía landing)
+$pi = $_POST['plan_intento'] ?? '';
+if (in_array($pi, ['lite','pro','business'])) {
+    $_SESSION['plan_intento'] = $pi;
+}
+
 // Redirigir: superadmin con _admin va al panel, otros al dashboard
 $redirect_to = $_SESSION['redirect_after_login'] ?? '/dashboard';
 unset($_SESSION['redirect_after_login']);

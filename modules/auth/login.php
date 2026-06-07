@@ -204,6 +204,9 @@ $empresa_pre   = e($_GET['empresa'] ?? $_POST['empresa_slug'] ?? '');
             <?= csrf_field() ?>
             <input type="hidden" id="vid_field" name="visitor_id" value="">
             <input type="hidden" id="dsig_field" name="device_sig" value="">
+            <?php if (in_array($_GET['plan'] ?? '', ['lite','pro','business'])): ?>
+            <input type="hidden" name="plan_intento" value="<?= e($_GET['plan']) ?>">
+            <?php endif; ?>
             <script>try{var _df=document.getElementById('dsig_field');if(_df){var _sw=Math.min(screen.width,screen.height),_sh=Math.max(screen.width,screen.height),_dpr=Math.round((window.devicePixelRatio||1)*100)/100,_tp=navigator.maxTouchPoints||0,_mt=0;try{var _c=document.createElement('canvas'),_gl=_c.getContext('webgl');if(_gl)_mt=_gl.getParameter(_gl.MAX_TEXTURE_SIZE)||0}catch(e){}var _l=navigator.language||'',_tz=(Intl.DateTimeFormat().resolvedOptions().timeZone||'').split('/').pop(),_hc=Intl.DateTimeFormat().resolvedOptions().hourCycle||'',_mo=matchMedia('(prefers-reduced-motion:reduce)').matches?1:0,_co=matchMedia('(prefers-contrast:more)').matches?1:0,_iv=matchMedia('(inverted-colors:inverted)').matches?1:0,_tr=matchMedia('(prefers-reduced-transparency:reduce)').matches?1:0,_io=(navigator.userAgent.match(/OS (\d+)/)||[])[1]||'0';_df.value=[_sw,_sh,_dpr,_tp,_mt,_l,_tz,_hc,_mo,_co,_iv,_tr,_io].join('|')}}catch(e){}</script>
 
             <div class="field">
