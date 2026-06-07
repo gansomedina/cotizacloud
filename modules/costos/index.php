@@ -6,6 +6,9 @@
 
 defined('COTIZAAPP') or die;
 
+// Costos no disponible en plan Lite (solo Pro/Business)
+if (!trial_info(EMPRESA_ID)['es_pro_o_superior']) { redirect('/dashboard'); }
+
 // Permiso de módulo
 if (!Auth::es_admin() && !Auth::puede('ver_costos')) { redirect('/dashboard'); }
 

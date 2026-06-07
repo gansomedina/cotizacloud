@@ -8,6 +8,9 @@
 defined('COTIZAAPP') or die;
 Auth::requerir_login();
 
+// Reportes no disponible en plan Lite (solo Pro/Business)
+if (!trial_info(EMPRESA_ID)['es_pro_o_superior']) { redirect('/dashboard'); }
+
 // Permiso de módulo
 if (!Auth::es_admin() && !Auth::puede('ver_reportes')) { redirect('/dashboard'); }
 

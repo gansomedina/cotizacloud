@@ -793,7 +793,7 @@ ob_start();
 <?php endif; ?>
 
 <!-- ══ TERMÓMETRO + LEADERBOARD ══ -->
-<?php if (!empty($empresa['termometro_visible'])):
+<?php if (!empty($empresa['termometro_visible']) && !$trial['es_lite']):
 $ts = $mi_score;
 $ts_en_gracia = ($ts['nivel'] ?? '') === 'nuevo' || !empty($ts['en_gracia']);
 

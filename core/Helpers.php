@@ -381,11 +381,11 @@ function trial_info(int $empresa_id): array
     static $migrated = false;
     if (!$migrated) {
         try {
-            DB::execute("ALTER TABLE empresas ADD COLUMN plan ENUM('free','pro','business') NOT NULL DEFAULT 'free'");
+            DB::execute("ALTER TABLE empresas ADD COLUMN plan ENUM('free','lite','pro','business') NOT NULL DEFAULT 'free'");
         } catch (\PDOException $e) {
             // Columna ya existe — intentar ampliar ENUM si es el antiguo trial/pro
             try {
-                DB::execute("ALTER TABLE empresas MODIFY COLUMN plan ENUM('free','pro','business') NOT NULL DEFAULT 'free'");
+                DB::execute("ALTER TABLE empresas MODIFY COLUMN plan ENUM('free','lite','pro','business') NOT NULL DEFAULT 'free'");
             } catch (\PDOException $e2) {
                 // Ya tiene el ENUM correcto — OK
             }
@@ -410,7 +410,10 @@ function trial_info(int $empresa_id): array
     $plan_vence = $row['plan_vence'] ?? null;
     $grace_hasta = $row['grace_hasta'] ?? null;
     $activa = (int)($row['activa'] ?? 1);
-    $es_pagado = in_array($plan, ['pro', 'business']);
+    // es_pagado = licencia/cobro/vencimiento (Lite también paga y vence).
+    $es_pagado = in_array($plan, ['lite', 'pro', 'business']);
+    // es_pro_o_superior = features avanzadas (Costos, etc.) — Lite NO las tiene.
+    $es_pro_o_superior = in_array($plan, ['pro', 'business']);
     $en_grace = $es_pagado && $grace_hasta && $grace_hasta >= date('Y-m-d');
 
     // Auto-suspender si el plan pagado venció (y no está en grace period)
@@ -432,19 +435,22 @@ function trial_info(int $empresa_id): array
 
     $plan_label = match($plan) {
         'free' => 'Free',
+        'lite' => 'Lite',
         'pro' => 'Pro',
         'business' => 'Business',
         default => 'Free',
     };
 
     return [
-        'plan'            => $plan,
-        'plan_label'      => $plan_label,
-        'es_free'         => $plan === 'free',
-        'es_trial'        => $plan === 'free',
-        'es_pro'          => $plan === 'pro',
-        'es_business'     => $plan === 'business',
-        'es_pagado'       => $es_pagado,
+        'plan'              => $plan,
+        'plan_label'        => $plan_label,
+        'es_free'           => $plan === 'free',
+        'es_trial'          => $plan === 'free',
+        'es_lite'           => $plan === 'lite',
+        'es_pro'            => $plan === 'pro',
+        'es_business'       => $plan === 'business',
+        'es_pagado'         => $es_pagado,
+        'es_pro_o_superior' => $es_pro_o_superior,
         'usadas'          => $usadas,
         'limite'          => TRIAL_LIMIT,
         'restantes'       => max(0, TRIAL_LIMIT - $usadas),

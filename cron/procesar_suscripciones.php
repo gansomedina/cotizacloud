@@ -144,7 +144,7 @@ $expiradas_grace = DB::query(
      FROM empresas e
      WHERE e.grace_hasta IS NOT NULL
        AND e.grace_hasta < CURDATE()
-       AND e.plan IN ('pro','business')"
+       AND e.plan != 'free'"
 );
 
 foreach ($expiradas_grace as $emp) {
@@ -175,7 +175,7 @@ foreach ($expiradas_grace as $emp) {
 $vencidas_sin_grace = DB::query(
     "SELECT e.id, e.nombre, e.email, e.plan, e.plan_vence
      FROM empresas e
-     WHERE e.plan IN ('pro','business')
+     WHERE e.plan != 'free'
        AND e.plan_vence IS NOT NULL
        AND e.plan_vence < CURDATE()
        AND e.grace_hasta IS NULL"
@@ -200,7 +200,7 @@ $por_vencer = DB::query(
     "SELECT e.id, e.nombre, e.email, e.plan, e.plan_vence, s.cancel_al_vencer, s.mp_customer_id
      FROM empresas e
      LEFT JOIN suscripciones s ON s.empresa_id = e.id
-     WHERE e.plan IN ('pro','business')
+     WHERE e.plan != 'free'
        AND e.plan_vence IS NOT NULL
        AND e.plan_vence = DATE_ADD(CURDATE(), INTERVAL 7 DAY)
        AND (s.cancel_al_vencer = 1 OR s.id IS NULL OR s.mp_customer_id IS NULL)"

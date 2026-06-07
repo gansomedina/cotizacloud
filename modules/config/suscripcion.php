@@ -34,6 +34,7 @@ $cobro_fallido = $sub && (int)($sub['intentos_cobro'] ?? 0) > 0 && !empty($sub['
           $plan_color = match($trial['plan']) {
               'business' => 'var(--blue)',
               'pro' => 'var(--g)',
+              'lite' => '#92400e',
               default => 'var(--amb)',
           };
           ?>

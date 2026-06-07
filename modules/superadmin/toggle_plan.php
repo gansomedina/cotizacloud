@@ -27,7 +27,11 @@ $duracion_dias = function() {
     };
 };
 
-if ($accion === 'activar_pro') {
+if ($accion === 'activar_lite') {
+    $vence = date('Y-m-d', strtotime("+{$duracion_dias()} days"));
+    DB::execute("UPDATE empresas SET plan = 'lite', plan_vence = ?, activa = 1 WHERE id = ?", [$vence, $empresa_id]);
+
+} elseif ($accion === 'activar_pro') {
     $vence = date('Y-m-d', strtotime("+{$duracion_dias()} days"));
     DB::execute("UPDATE empresas SET plan = 'pro', plan_vence = ?, activa = 1 WHERE id = ?", [$vence, $empresa_id]);
 
@@ -41,14 +45,14 @@ if ($accion === 'activar_pro') {
     $vence_actual = $emp['plan_vence'] ?? null;
     $base = ($vence_actual && $vence_actual >= date('Y-m-d')) ? $vence_actual : date('Y-m-d');
     $nuevo_vence = date('Y-m-d', strtotime($base . " +{$dias} days"));
-    // Mantener el plan actual (pro o business)
-    $plan_actual = in_array($emp['plan'], ['pro', 'business']) ? $emp['plan'] : 'pro';
+    // Mantener el plan actual (lite, pro o business)
+    $plan_actual = in_array($emp['plan'], ['lite', 'pro', 'business']) ? $emp['plan'] : 'pro';
     DB::execute("UPDATE empresas SET plan = ?, plan_vence = ?, activa = 1 WHERE id = ?", [$plan_actual, $nuevo_vence, $empresa_id]);
 
 } elseif ($accion === 'cambiar_plan') {
-    // Cambiar entre pro y business manteniendo la fecha de vencimiento
+    // Cambiar entre lite, pro y business manteniendo la fecha de vencimiento
     $nuevo_plan = $_POST['nuevo_plan'] ?? 'pro';
-    if (!in_array($nuevo_plan, ['pro', 'business'])) $nuevo_plan = 'pro';
+    if (!in_array($nuevo_plan, ['lite', 'pro', 'business'])) $nuevo_plan = 'pro';
     DB::execute("UPDATE empresas SET plan = ? WHERE id = ?", [$nuevo_plan, $empresa_id]);
 
 } elseif ($accion === 'regresar_free') {
