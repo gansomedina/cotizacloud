@@ -14,7 +14,7 @@ csrf_check();
 $empresa_id = EMPRESA_ID;
 $plan = trial_info($empresa_id);
 
-if (!$plan['es_pagado']) json_error('Función no disponible en plan Free', 403);
+if (!$plan['es_pro_o_superior']) json_error('Función no disponible en tu plan', 403);
 
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 $modo = $body['costos_modo'] ?? '';

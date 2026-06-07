@@ -18,10 +18,16 @@ if ($tab_activo === 'usuarios') {
     if (!$plan_check['es_business']) $tab_activo = 'empresa';
 }
 
-// Costos solo disponible en plan Pro o Business
+// Costos solo disponible en plan Pro o Business (NO Lite)
 if ($tab_activo === 'costos') {
     $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
-    if (!$plan_check['es_pagado']) $tab_activo = 'empresa';
+    if (!$plan_check['es_pro_o_superior']) $tab_activo = 'empresa';
+}
+
+// Radar (config) oculto para Lite — no tiene módulo Radar
+if ($tab_activo === 'radar') {
+    $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
+    if ($plan_check['es_lite']) $tab_activo = 'empresa';
 }
 
 // Suscripción se oculta en app iOS vía JS (window.Capacitor)
@@ -341,8 +347,10 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <?php $plan_info = trial_info(EMPRESA_ID); if ($plan_info['es_business']): ?>
     <a class="cfg-tab <?= $tab_activo==='usuarios'  ?'on':'' ?>" href="/config?tab=usuarios">Usuarios</a>
     <?php endif; ?>
+    <?php if (!$plan_info['es_lite']): ?>
     <a class="cfg-tab <?= $tab_activo==='radar'     ?'on':'' ?>" href="/config?tab=radar">Radar</a>
-    <?php if ($plan_info['es_pagado']): ?>
+    <?php endif; ?>
+    <?php if ($plan_info['es_pro_o_superior']): ?>
     <a class="cfg-tab <?= $tab_activo==='costos'    ?'on':'' ?>" href="/config?tab=costos">Costos</a>
     <?php endif; ?>
     <?php if ($plan_info['es_business']): ?>
@@ -1063,7 +1071,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 
 
 <!-- ══ TAB: COSTOS ══════════════════════════════════════════ -->
-<?php if ($plan_info['es_pagado']):
+<?php if ($plan_info['es_pro_o_superior']):
   $costos_modo = $empresa['costos_modo'] ?? 'venta';
 ?>
 <div class="tab-panel <?= $tab_activo==='costos'?'on':'' ?>" id="panel-costos">
