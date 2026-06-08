@@ -401,7 +401,12 @@ foreach ($chips as $k => $lbl):
         $cupon_title = implode(' · ', $title_parts);
         $cupon_html = '<span title="' . e($cupon_title) . '" style="font:500 11px var(--num);color:#7c3aed;background:#ede9fe;padding:2px 7px;border-radius:5px">' . implode(' ', $parts) . '</span>';
     }
-    $estado_activo = in_array($c['estado'], ['enviada','vista']);
+    // Usar estado_real (no el calculado): una cotización vencida sigue siendo
+    // enviada/vista en realidad. Si el cliente la lee activamente (probable
+    // cierre, lectura comprometida...) queremos mostrar su badge del radar,
+    // igual que lo hace el módulo Radar de Business. La vigencia no debe
+    // ocultar la señal de interés — es justo el lead más valioso (recotizar).
+    $estado_activo = in_array($c['estado_real'] ?? $c['estado'], ['enviada','vista']);
     // 'probable_cierre' es el paraguas que agrupa los buckets calientes.
     // Mostramos el motivo real (pc_source guardado en radar_senales) para que el
     // asesor sepa QUÉ pasa (validando precio, multi-persona, onfire...), no solo
