@@ -79,7 +79,7 @@ $rows = DB::query(
             END AS estado,
             c.estado AS estado_real,
             c.total, c.created_at, c.valida_hasta, c.visitas,
-            c.radar_bucket, c.radar_score, c.suspendida,
+            c.radar_bucket, c.radar_score, c.radar_senales, c.suspendida,
             c.cupon_codigo, c.cupon_monto,
             c.descuento_auto_activo, c.descuento_auto_amt,
             (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_validate_click') AS cupon_intentos,
@@ -104,6 +104,8 @@ function radar_badge(?string $bucket, ?int $score, int $vistas = 0): string {
         'probable_cierre'  => [ico('yellow',10),'#92400e','#fffbeb'],
         'decision_activa'  => [ico('yellow',10),'#92400e','#fffbeb'],
         'validando_precio' => [ico('yellow',10),'#92400e','#fffbeb'],
+        'alto_importe'     => [ico('yellow',10),'#92400e','#fffbeb'],
+        'lectura_comprometida' => [ico('yellow',10),'#92400e','#fffbeb'],
         'prediccion_alta'  => [ico('green',10),'#166534','#f0fdf4'],
         'revision_profunda'=> [ico('blue',10),'#1d4ed8','#dbeafe'],
         'multi_persona'    => [ico('blue',10),'#1d4ed8','#dbeafe'],
@@ -400,7 +402,16 @@ foreach ($chips as $k => $lbl):
         $cupon_html = '<span title="' . e($cupon_title) . '" style="font:500 11px var(--num);color:#7c3aed;background:#ede9fe;padding:2px 7px;border-radius:5px">' . implode(' ', $parts) . '</span>';
     }
     $estado_activo = in_array($c['estado'], ['enviada','vista']);
-    $radar  = $estado_activo ? radar_badge($c['radar_bucket'], (int)($c['radar_score'] ?? 0), $vistas) : '';
+    // 'probable_cierre' es el paraguas que agrupa los buckets calientes.
+    // Mostramos el motivo real (pc_source guardado en radar_senales) para que el
+    // asesor sepa QUÉ pasa (validando precio, multi-persona, onfire...), no solo
+    // que está caliente. radar_bucket NO se toca (lo leen dashboard/radar/termómetro).
+    $bucket_badge = $c['radar_bucket'];
+    if ($bucket_badge === 'probable_cierre' && !empty($c['radar_senales'])) {
+        $rs = json_decode($c['radar_senales'], true);
+        if (!empty($rs['pc_source'])) $bucket_badge = $rs['pc_source'];
+    }
+    $radar  = $estado_activo ? radar_badge($bucket_badge, (int)($c['radar_score'] ?? 0), $vistas) : '';
     $ed_url = '/cotizaciones/'.(int)$c['id'];
   ?>
   <div class="cot-row" id="row-<?= (int)$c['id'] ?>" onclick="toggleCot(<?= (int)$c['id'] ?>,event)">

@@ -57,6 +57,7 @@ $valores = compact(
     'email','moneda','impuesto_modo','impuesto_pct','acepta'
 );
 $valores['slug'] = $slug_raw;
+$valores['plan_intento'] = $plan_intento;
 
 if (empty($nombre_empresa) || strlen($nombre_empresa) < 2)
     $errores['nombre_empresa'] = 'Nombre de empresa requerido (mínimo 2 caracteres)';

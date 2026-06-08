@@ -739,7 +739,9 @@ ob_start();
 
 <?php
 $plan_intento = $_SESSION['plan_intento'] ?? '';
-if ($plan_intento && in_array($plan_intento, ['lite','pro','business']) && $trial['es_free']):
+// Ocultar en app nativa iOS/Android (Apple Guideline 3.1.1: sin steering a pago externo)
+$dash_native_app = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+if ($plan_intento && in_array($plan_intento, ['lite','pro','business']) && $trial['es_free'] && !$dash_native_app):
     $pi_label = match($plan_intento) { 'lite' => 'Lite', 'pro' => 'Pro', 'business' => 'Business', default => '' };
     $pi_color = match($plan_intento) { 'lite' => '#92400e', 'pro' => 'var(--g)', 'business' => '#1d4ed8', default => '' };
     $pi_bg    = match($plan_intento) { 'lite' => '#fffbeb', 'pro' => 'var(--g-bg)', 'business' => '#eff6ff', default => '' };
