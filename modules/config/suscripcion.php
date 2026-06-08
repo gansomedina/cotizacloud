@@ -154,11 +154,19 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
       'features' => 'Todo lo de Pro + usuarios ilimitados, marketing, extras y reportes avanzados',
     ],
   ];
+
+  // Jerarquía de planes. Un cliente que YA paga un plan no puede bajarse solo
+  // a uno menor desde aquí — eso pasa por soporte (el superadmin lo ajusta a
+  // mano). Evita dejar asesores/datos colgados en un downgrade automático.
+  $plan_rango   = ['free' => 0, 'lite' => 1, 'pro' => 2, 'business' => 3];
+  $rango_actual = $plan_rango[$trial['plan']] ?? 0;
   ?>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:16px">
     <?php foreach ($planes_grid as $plan_key => $pd):
       if (empty($precios[$plan_key])) continue;
       $is_current = $trial['plan'] === $plan_key && $trial['es_pagado'] && $tiene_auto_renew && !$cobro_fallido;
+      // Downgrade = ya tiene un plan pagado y este es de rango menor al actual.
+      $is_downgrade = $trial['es_pagado'] && ($plan_rango[$plan_key] ?? 0) < $rango_actual;
       $color = $pd['color'];
     ?>
     <div class="card" style="border-color:<?= $is_current ? $color : 'var(--border)' ?>">
@@ -170,6 +178,14 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
       </div>
 
       <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+        <?php if ($is_downgrade): ?>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+          <div style="font:700 16px var(--num);color:var(--t3)">$<?= number_format($precios[$plan_key]['mensual'], 0) ?> <span style="font:400 12px var(--body);color:var(--t3)">MXN/mes</span></div>
+          <div style="font:400 12px var(--body);color:var(--t3);line-height:1.5">
+            Ya tienes un plan superior (<?= htmlspecialchars($trial['plan_label']) ?>). Para cambiar a un plan menor, <a href="/ayuda" style="color:<?= $color ?>;font-weight:600">contacta a soporte</a>.
+          </div>
+        </div>
+        <?php else: ?>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>
             <div style="font:700 16px var(--num);color:var(--text)">$<?= number_format($precios[$plan_key]['mensual'], 0) ?> <span style="font:400 12px var(--body);color:var(--t3)">MXN/mes</span></div>
@@ -194,6 +210,7 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
             <button type="submit" class="btn-main" style="padding:8px 18px;font-size:12px;background:<?= $color ?>;border-color:<?= $color ?>">Anual</button>
           </form>
         </div>
+        <?php endif; ?>
       </div>
 
       <div style="padding:12px 20px;border-top:1px solid var(--border);font:400 12px var(--body);color:var(--t3);line-height:1.6">
