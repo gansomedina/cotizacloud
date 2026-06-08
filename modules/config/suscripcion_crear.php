@@ -19,6 +19,16 @@ if (!in_array($plan, ['lite', 'pro', 'business']) || !in_array($ciclo, ['mensual
     redirect('/config?tab=suscripcion');
 }
 
+// Candado de downgrade: un cliente que ya paga un plan NO puede bajarse solo a
+// uno menor desde aquí. Eso lo gestiona soporte (superadmin) para no dejar
+// asesores/datos colgados. La UI ya lo oculta; esto es la defensa de servidor.
+$plan_rango = ['free' => 0, 'lite' => 1, 'pro' => 2, 'business' => 3];
+$trial      = trial_info(EMPRESA_ID);
+if ($trial['es_pagado'] && ($plan_rango[$plan] ?? 0) < ($plan_rango[$trial['plan']] ?? 0)) {
+    $_SESSION['flash'] = ['tipo' => 'error', 'msg' => 'Para cambiar a un plan menor, contacta a soporte. No es posible bajar de plan automáticamente.'];
+    redirect('/config?tab=suscripcion');
+}
+
 $empresa = DB::row("SELECT email, nombre, telefono, rfc FROM empresas WHERE id=?", [EMPRESA_ID]);
 if (!$empresa) {
     $_SESSION['flash'] = ['tipo' => 'error', 'msg' => 'Empresa no encontrada.'];

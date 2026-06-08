@@ -138,7 +138,7 @@ $menu = [
     ['href' => '/costos',       'icon' => 'trending-down', 'label' => 'Costos',       'perm' => 'ver_costos', 'lite_oculto' => true],
     ['href' => '/radar',        'icon' => 'activity',      'label' => 'Radar',        'lite_oculto' => true],
     ['href' => '/reportes',     'icon' => 'bar-chart-2',   'label' => 'Reportes',     'perm' => 'ver_reportes', 'lite_oculto' => true],
-    ['href' => '/ayuda/buckets','icon' => 'compass',       'label' => 'Interpretación de buckets', 'solo_lite' => true],
+    ['href' => '/ayuda/buckets','icon' => 'compass',       'label' => 'Interpretación del radar', 'solo_lite' => true],
     ['href' => '/config',       'icon' => 'settings',      'label' => 'Configuración', 'admin' => true],
     ['href' => '/ayuda',        'icon' => 'help-circle',   'label' => 'Ayuda'],
 ];
@@ -607,7 +607,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         <a href="/costos"   class="more-item <?= menu_activo('/costos',   $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['cos'] ?>Costos</a>
         <a href="/reportes" class="more-item <?= menu_activo('/reportes', $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['rep'] ?>Reportes</a>
         <?php else: ?>
-        <a href="/ayuda/buckets" class="more-item <?= menu_activo('/ayuda/buckets', $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['rad'] ?>Buckets</a>
+        <a href="/ayuda/buckets" class="more-item <?= menu_activo('/ayuda/buckets', $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['rad'] ?>Radar</a>
         <?php endif; ?>
         <?php if (Auth::es_admin()): ?><a href="/config"   class="more-item <?= menu_activo('/config',   $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['cfg'] ?>Configuración</a><?php endif; ?>
         <a href="/ayuda"    class="more-item <?= menu_activo('/ayuda',    $path) ? 'active' : '' ?>" onclick="closeMoreDrawer()"><?= $S['ayu'] ?>Ayuda</a>
