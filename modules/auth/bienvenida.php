@@ -18,6 +18,14 @@ if (Auth::rol() !== 'admin' || (int)($empresa['onboarding_completo'] ?? 1) === 1
 $nombre  = $usuario['nombre'] ?? '';
 $primer  = trim(explode(' ', $nombre)[0] ?? '');
 $emp_nom = $empresa['nombre'] ?? 'tu empresa';
+
+// Si el usuario eligió un plan en la landing, al terminar (o saltar) el intro
+// lo llevamos directo a Suscripción a activarlo, en vez de al dashboard.
+// No borramos plan_intento: el banner del dashboard sigue como recordatorio.
+$plan_intento_bv = $_SESSION['plan_intento'] ?? '';
+$va_a_suscripcion = in_array($plan_intento_bv, ['lite', 'pro', 'business'], true);
+$destino_final    = $va_a_suscripcion ? '/config?tab=suscripcion' : '/dashboard';
+$btn_final_lbl    = $va_a_suscripcion ? 'Activar mi plan →' : 'Ir a mi panel';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -216,6 +224,8 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
 <script>
 (function(){
   var CSRF = <?= json_encode(csrf_token()) ?>;
+  var DESTINO = <?= json_encode($destino_final) ?>;
+  var FIN_LBL = <?= json_encode($btn_final_lbl) ?>;
   // Portada → wizard
   var cover = document.getElementById('wzCover'), wz = document.querySelector('.wz');
   document.getElementById('wzComenzar').addEventListener('click', function(){
@@ -233,12 +243,12 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
     for (var k=0;k<total;k++){ slides[k].classList.toggle('on', k===i); dotEls[k].classList.toggle('on', k===i); }
     bar.style.width = Math.round(((i+1)/total)*100) + '%';
     back.disabled = (i===0);
-    next.textContent = (i===total-1) ? 'Ir a mi panel' : 'Siguiente →';
+    next.textContent = (i===total-1) ? FIN_LBL : 'Siguiente →';
   }
   async function finish(){
     next.disabled = true;
     try{ await fetch('/api/onboarding/completar', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF}, body:'{}'}); }catch(e){}
-    window.location.href = '/dashboard';
+    window.location.href = DESTINO;
   }
   next.addEventListener('click', function(){ if(i===total-1){ finish(); } else { i++; render(); } });
   back.addEventListener('click', function(){ if(i>0){ i--; render(); } });

@@ -141,6 +141,9 @@ $menu = [
     ['href' => '/ayuda/buckets','icon' => 'compass',       'label' => 'Interpretación del radar', 'solo_lite' => true],
     ['href' => '/config',       'icon' => 'settings',      'label' => 'Configuración', 'admin' => true],
     ['href' => '/ayuda',        'icon' => 'help-circle',   'label' => 'Ayuda'],
+    // CTA: solo no-Business (Free/Lite/Pro), admin, y NO en app nativa
+    // (Apple Guideline 3.1.1 — sin steering a pago externo).
+    ['href' => '/config?tab=suscripcion', 'icon' => 'zap', 'label' => 'Mejorar plan', 'upgrade' => true, 'admin' => true],
 ];
 
 if (Auth::es_superadmin()) {
@@ -173,6 +176,7 @@ $S = [
     'ham'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
     'ayu'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     'shi'     => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    'up'      => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
 ];
 
 // Mapa feather icon name → SVG key para sidebar
@@ -181,6 +185,7 @@ $feather_map = [
     'shopping-bag' => 'ven', 'trending-down' => 'cos', 'activity' => 'rad',
     'bar-chart-2' => 'rep', 'settings' => 'cfg', 'help-circle' => 'ayu',
     'log-out' => 'sal', 'shield' => 'shi', 'compass' => 'rad',
+    'zap' => 'up',
 ];
 
 // Rutas del drawer "Más"
@@ -419,6 +424,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             if (!empty($item['lite_oculto']) && $plan_sidebar['es_lite']) continue;
             if (!empty($item['solo_lite']) && !$plan_sidebar['es_lite']) continue;
             if (!empty($item['business']) && !$plan_sidebar['es_business']) continue;
+            if (!empty($item['upgrade']) && ($plan_sidebar['es_business'] || $is_native_app)) continue;
             if (!empty($item['admin']) && !Auth::es_admin()) continue;
             if (!empty($item['perm']) && !Auth::es_admin() && !Auth::puede($item['perm'])) continue;
         ?>
