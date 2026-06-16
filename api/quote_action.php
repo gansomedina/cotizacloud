@@ -126,9 +126,7 @@ if ($accion === 'aceptar') {
                 DB::execute("UPDATE cupones SET usos=usos+1 WHERE id=?", [$cupon_db['id']]);
             }
         }
-        if ($desc_auto_srv > 0) {
-            DB::execute("UPDATE cotizaciones SET descuento_auto_amt=? WHERE id=?", [$desc_auto_srv, $cot_id]);
-        }
+        DB::execute("UPDATE cotizaciones SET descuento_auto_amt=? WHERE id=?", [$desc_auto_srv, $cot_id]);
 
         // Congelar el original (líneas + descuento) antes de que la venta
         // pueda modificar cotizacion_lineas.

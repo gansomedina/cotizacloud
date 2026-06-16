@@ -20,7 +20,7 @@ $venta = DB::row(
             c.numero  AS cot_numero,
             c.cupon_monto AS cupon_amt, c.cupon_codigo, c.cupon_pct,
             c.subtotal AS cot_subtotal,
-            c.descuento_auto_amt, c.descuento_auto_pct,
+            c.descuento_auto_amt AS cot_desc_auto_amt, c.descuento_auto_pct,
             c.impuesto_pct, c.impuesto_modo, c.impuesto_amt,
             0 AS descuento_manual_amt
      FROM ventas v
