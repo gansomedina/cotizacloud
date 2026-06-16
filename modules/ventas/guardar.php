@@ -106,8 +106,8 @@ try {
     }
 
     // ── Actualizar venta ──
-    $update_sql = "UPDATE ventas SET total=?, saldo=?, updated_at=NOW()";
-    $params = [$nuevo_total, $nuevo_saldo];
+    $update_sql = "UPDATE ventas SET total=?, saldo=?, descuento_auto_amt=?, updated_at=NOW()";
+    $params = [$nuevo_total, $nuevo_saldo, $desc_auto_amt];
 
     if ($nuevo_estado && $venta['estado'] !== 'cancelada') {
         $update_sql .= ", estado=?";
