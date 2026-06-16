@@ -19,7 +19,8 @@ $venta = DB::row(
             c.numero  AS cot_numero, c.id AS cot_id,
             c.subtotal AS cot_subtotal,
             c.cupon_pct, c.cupon_codigo, c.cupon_monto AS cupon_amt,
-            c.descuento_auto_activo, c.descuento_auto_pct, c.descuento_auto_amt,
+            c.descuento_auto_activo, c.descuento_auto_pct,
+            c.descuento_auto_amt AS cot_desc_auto_amt,
             c.impuesto_pct, c.impuesto_modo, c.impuesto_amt
      FROM ventas v
      LEFT JOIN clientes cl    ON cl.id = v.cliente_id
