@@ -75,16 +75,7 @@ if ($accion === 'aceptar') {
         );
         $subtotal_srv = $lineas_sub > 0 ? $lineas_sub : (float)$cot_data['subtotal'];
 
-        // Descuento automático (solo si está activo y no expirado)
-        $desc_auto_srv = 0;
-        if (!empty($cot_data['descuento_auto_activo'])) {
-            $exp = $cot_data['descuento_auto_expira'] ? strtotime($cot_data['descuento_auto_expira']) : 0;
-            if (!$exp || $exp > time()) {
-                $desc_auto_srv = round($subtotal_srv * (float)$cot_data['descuento_auto_pct'] / 100, 2);
-            }
-        }
-
-        // Cupón — re-validar server-side
+        // Cupón — re-validar server-side (se aplica primero, igual que guardar.php)
         $cupon_amt_srv = 0;
         if ($cupon_codigo) {
             $cupon_real = DB::row(
@@ -97,7 +88,18 @@ if ($accion === 'aceptar') {
             }
         }
 
-        $base_srv = $subtotal_srv - $desc_auto_srv - $cupon_amt_srv;
+        // Descuento automático sobre el subtotal DESPUÉS del cupón
+        // (mismo orden que guardar.php: cupón primero, descuento sobre el resto)
+        $base_after_cupon = $subtotal_srv - $cupon_amt_srv;
+        $desc_auto_srv = 0;
+        if (!empty($cot_data['descuento_auto_activo'])) {
+            $exp = $cot_data['descuento_auto_expira'] ? strtotime($cot_data['descuento_auto_expira']) : 0;
+            if (!$exp || $exp > time()) {
+                $desc_auto_srv = round($base_after_cupon * (float)$cot_data['descuento_auto_pct'] / 100, 2);
+            }
+        }
+
+        $base_srv = $base_after_cupon - $desc_auto_srv;
         $imp_modo = $cot_data['impuesto_modo'] ?? 'ninguno';
         $imp_pct  = (float)($cot_data['impuesto_pct'] ?? 0);
         if ($imp_modo === 'suma') {
