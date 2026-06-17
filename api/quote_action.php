@@ -79,12 +79,17 @@ if ($accion === 'aceptar') {
         $cupon_amt_srv = 0;
         if ($cupon_codigo) {
             $cupon_real = DB::row(
-                "SELECT id, porcentaje FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
+                "SELECT id, porcentaje, monto_fijo FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
                 [EMPRESA_ID, $cupon_codigo]
             );
             if ($cupon_real) {
-                $cupon_pct = (float)$cupon_real['porcentaje'];
-                $cupon_amt_srv = round($subtotal_srv * $cupon_pct / 100, 2);
+                // Cupón de monto fijo o por porcentaje (mismo cálculo que guardar.php)
+                if ($cupon_real['monto_fijo'] !== null) {
+                    $cupon_amt_srv = round(min((float)$cupon_real['monto_fijo'], $subtotal_srv), 2);
+                } else {
+                    $cupon_pct = (float)$cupon_real['porcentaje'];
+                    $cupon_amt_srv = round($subtotal_srv * $cupon_pct / 100, 2);
+                }
             }
         }
 
