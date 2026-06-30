@@ -183,6 +183,7 @@ $page_title = 'Nueva cotización';
     .back-btn:hover { border-color:var(--g); color:var(--g); }
     .topbar-title { font:700 15px var(--body); }
     .topbar-num   { font:500 12px var(--num); color:var(--t3); margin-left:6px; }
+    .topbar-emp   { font:700 12px var(--body); color:var(--g); margin-left:8px; }
 
     /* LAYOUT */
     .page-wrap   { max-width:1200px; margin:0 auto; padding:0 20px; }
@@ -397,6 +398,7 @@ $page_title = 'Nueva cotización';
             <div>
                 <div class="topbar-title">Nueva cotización</div>
                 <span class="topbar-num" id="cot-numero">—</span>
+                <span class="topbar-emp"><?= e($empresa['nombre']) ?></span>
             </div>
         </div>
     </div>
