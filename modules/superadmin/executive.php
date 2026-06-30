@@ -1880,7 +1880,7 @@ $bot_rows = DB::query(
        AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
        AND {$bot_like}
      GROUP BY qs.ip
-     ORDER BY sin_engagement DESC, sesiones DESC
+     ORDER BY ultima DESC
      LIMIT 30"
 );
 
