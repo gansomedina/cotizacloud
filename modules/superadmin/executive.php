@@ -516,7 +516,19 @@ foreach ($empresas_cfg as $eid => $ec) {
     ];
 }
 
-// ─── COMISIONES: ventas 100% pagadas (filtro por fecha del último pago) ──
+// ─── Comisiones marcadas como pagadas (persistencia en JSON server-side) ──
+// Se carga ANTES de la query para excluir las ya pagadas del resultado.
+$comi_pagadas_file = dirname(__DIR__, 2) . '/data/comisiones_pagadas_' . (int)Auth::id() . '.json';
+$comi_pagadas_map = [];
+if (file_exists($comi_pagadas_file)) {
+    $loaded = json_decode(file_get_contents($comi_pagadas_file), true);
+    if (is_array($loaded)) $comi_pagadas_map = $loaded;
+}
+
+// ─── COMISIONES: ventas 100% pagadas por el cliente, comisión aún NO pagada ──
+// Es un saldo "por pagar" (cuentas por pagar), NO un reporte del mes: se muestran
+// TODAS las abiertas sin importar la fecha del último pago, hasta que se marquen
+// como pagadas. Por eso NO se filtra por el período del reporte.
 $comisiones = DB::query(
     "SELECT v.id, v.empresa_id, v.titulo, v.numero, v.total, v.pagado, v.created_at,
             COALESCE(v.vendedor_id, v.usuario_id) AS asesor_id,
@@ -536,24 +548,19 @@ $comisiones = DB::query(
         GROUP BY venta_id
      ) rx ON rx.venta_id = v.id
      WHERE v.empresa_id IN ({$emp_ids}) AND v.estado IN ('pagada','entregada')
-       AND rx.ultimo_pago BETWEEN ? AND ?
-     ORDER BY v.empresa_id, rx.ultimo_pago DESC",
-    [$p_ini_dt, $p_fin_dt]
+     ORDER BY v.empresa_id, rx.ultimo_pago DESC"
 );
-// ─── Comisiones marcadas como pagadas (persistencia en JSON server-side) ──
-$comi_pagadas_file = dirname(__DIR__, 2) . '/data/comisiones_pagadas_' . (int)Auth::id() . '.json';
-$comi_pagadas_map = [];
-if (file_exists($comi_pagadas_file)) {
-    $loaded = json_decode(file_get_contents($comi_pagadas_file), true);
-    if (is_array($loaded)) $comi_pagadas_map = $loaded;
-}
 
 $comi_por_empresa = [];
 foreach ($comisiones as $cm) {
     $eid = (int)$cm['empresa_id'];
     if (!isset($empresas_cfg[$eid])) continue;
+    // Excluir las que ya se marcaron como pagadas (server-side, no solo con JS)
+    if (isset($comi_pagadas_map[(int)$cm['id']]) || isset($comi_pagadas_map[(string)$cm['id']])) continue;
     $comi_por_empresa[$eid][] = $cm;
 }
+// Total de comisiones ABIERTAS (ya excluidas las pagadas)
+$total_comi_abiertas = array_sum(array_map('count', $comi_por_empresa));
 
 // ─── Helpers ────────────────────────────────────────────────
 function xm(float $n): string {
@@ -1778,20 +1785,20 @@ foreach ($empresas_cfg as $eid => $ecfg) {
 <!-- ─── COMISIONES ─────────────────────────────────────────── -->
 <?php
 $total_comi_empresas = count($comi_por_empresa);
-$total_comi_rows = count($comisiones);
+$total_comi_rows = $total_comi_abiertas; // solo abiertas (ya excluidas las pagadas)
 ?>
 <div class="sec" style="margin-top:28px" id="sec-comisiones">
     <div class="sec-hdr">
         <div class="sec-title">💰 Comisiones por pagar</div>
         <div class="sec-count">
-            <span id="comi-pendientes-count"><?= $total_comi_rows ?></span> ventas pagadas ·
-            <?= $total_comi_empresas ?> empresa<?= $total_comi_empresas === 1 ? '' : 's' ?> · <?= $p_label ?>
+            <span id="comi-pendientes-count"><?= $total_comi_rows ?></span> comisiones abiertas ·
+            <?= $total_comi_empresas ?> empresa<?= $total_comi_empresas === 1 ? '' : 's' ?> · todas (sin filtro de mes)
         </div>
     </div>
 
     <?php if ($total_comi_rows === 0): ?>
     <div class="tbl-card" style="padding:24px;text-align:center;color:var(--t2);font:600 14px 'Inter',sans-serif">
-        Sin ventas pagadas en el periodo seleccionado
+        No hay comisiones abiertas por pagar
     </div>
     <?php else: ?>
         <?php foreach ($comi_por_empresa as $eid => $filas):
