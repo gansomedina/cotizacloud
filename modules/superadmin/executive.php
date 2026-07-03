@@ -1730,26 +1730,11 @@ foreach ($empresas_cfg as $eid => $ecfg) {
         ) sub",
         [$eid, $eid, $eid]
     ) : 0;
-    $comp_ip_cnt = (int)(DB::val(
-        "SELECT COUNT(*) FROM (
-            SELECT qs.ip
-            FROM quote_sessions qs
-            JOIN cotizaciones c ON c.id = qs.cotizacion_id
-            WHERE c.empresa_id = ?
-              AND qs.es_interno = 0
-              AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
-              AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
-              AND qs.ip NOT IN (SELECT ip FROM radar_ips_internas WHERE empresa_id = ? AND aprendida_ts >= UNIX_TIMESTAMP() - 604800)
-              AND qs.ip NOT IN (SELECT DISTINCT us.ip FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id WHERE (u.empresa_id = ? OR u.rol = 'superadmin') AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY))
-            GROUP BY qs.ip
-            HAVING COUNT(DISTINCT c.cliente_id) > 1
-              AND TIMESTAMPDIFF(HOUR, MIN(qs.created_at), MAX(qs.created_at)) <= 720
-              AND MAX(qs.created_at) > COALESCE((SELECT reviewed_at FROM radar_comp_reviewed WHERE empresa_id = ? AND tipo = 'ip' AND valor = qs.ip), '2000-01-01')
-        ) sub",
-        [$eid, $eid, $eid, $eid]
-    ) ?: 0);
-    if ($comp_cnt || $comp_ip_cnt) {
-        $comp_por_empresa[$eid] = ['user' => (int)$comp_cnt, 'ip' => (int)$comp_ip_cnt];
+    // Alerta por IP (confianza baja) eliminada: la IP es ambigua (CGNAT carrier,
+    // red compartida) y generaba falsos positivos. Solo se conserva la señal de
+    // alta confianza por visitor_id (cookie).
+    if ($comp_cnt) {
+        $comp_por_empresa[$eid] = ['user' => (int)$comp_cnt];
     }
 }
 ?>
@@ -1761,7 +1746,7 @@ foreach ($empresas_cfg as $eid => $ecfg) {
     <?php if ($comp_por_empresa): ?>
     <div class="tbl-card">
     <table>
-    <thead><tr><th></th><th>Empresa</th><th class="r">Por Usuario</th><th class="r">Por IP</th><th class="r">Total</th></tr></thead>
+    <thead><tr><th></th><th>Empresa</th><th class="r">Por Usuario (cookie)</th></tr></thead>
     <tbody>
     <?php foreach ($comp_por_empresa as $eid => $cc):
         $ec = $empresas_cfg[$eid];
@@ -1769,9 +1754,7 @@ foreach ($empresas_cfg as $eid => $ecfg) {
     <tr>
         <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
         <td><?= e($ec['nombre']) ?></td>
-        <td class="r"><?= $cc['user'] ?: '—' ?></td>
-        <td class="r"><?= $cc['ip'] ?: '—' ?></td>
-        <td class="r" style="font-weight:700;color:var(--r)"><?= $cc['user'] + $cc['ip'] ?></td>
+        <td class="r" style="font-weight:700;color:var(--r)"><?= $cc['user'] ?: '—' ?></td>
     </tr>
     <?php endforeach; ?>
     </tbody>

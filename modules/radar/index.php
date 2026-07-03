@@ -868,37 +868,16 @@ $comp_by_user = DB::query(
     [$empresa_id, $empresa_id]
 );
 
-// ── 2. Alerta por IP ──
-$comp_by_ip = DB::query(
-    "SELECT qs.ip,
-            COUNT(DISTINCT c.cliente_id) AS clientes_distintos,
-            COUNT(DISTINCT qs.cotizacion_id) AS cots_vistas,
-            COUNT(DISTINCT qs.visitor_id) AS visitors_distintos,
-            MAX(qs.created_at) AS ultima_visita,
-            TIMESTAMPDIFF(HOUR, MIN(qs.created_at), MAX(qs.created_at)) AS span_horas
-     FROM quote_sessions qs
-     JOIN cotizaciones c ON c.id = qs.cotizacion_id
-     WHERE c.empresa_id = ?
-       AND qs.es_interno = 0
-       AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
-       AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
-       AND qs.ip NOT IN (SELECT ip FROM radar_ips_internas WHERE empresa_id = ? AND aprendida_ts >= UNIX_TIMESTAMP() - 604800)
-       AND qs.ip NOT IN (SELECT DISTINCT us.ip FROM user_sessions us JOIN usuarios u ON u.id = us.usuario_id WHERE (u.empresa_id = ? OR u.rol = 'superadmin') AND us.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY))
-     GROUP BY qs.ip
-     HAVING clientes_distintos > 1
-       AND TIMESTAMPDIFF(HOUR, MIN(qs.created_at), MAX(qs.created_at)) <= 720
-       {$reviewed_filter_ip}
-     ORDER BY clientes_distintos DESC, ultima_visita DESC
-     LIMIT 10",
-    [$empresa_id, $empresa_id, $empresa_id]
-);
+// ── 2. Alerta por IP — DESACTIVADA ──
+// La IP es una señal ambigua (CGNAT carrier, oficina/wifi compartido) y generaba
+// falsos positivos. Se conserva solo la señal de alta confianza por visitor_id.
+$comp_by_ip = [];
 
 // ── 3. Alerta por Device Signature — DESACTIVADA ──
 // Genera falsos positivos en iPhones: mismo modelo+iOS+idioma+timezone = mismo hash.
-// Los casos reales ya se cubren por visitor_id (alta confianza) e IP (media confianza).
 $comp_by_device = [];
 
-$total_comp = count($comp_by_user ?: []) + count($comp_by_ip ?: []);
+$total_comp = count($comp_by_user ?: []);
 if ($total_comp): ?>
 <div id="comp-alert" style="background:#fff5f5;border:1.5px solid #fca5a5;border-radius:var(--r);padding:14px 18px;margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById('comp-body').style.display=document.getElementById('comp-body').style.display==='none'?'block':'none'">
@@ -912,13 +891,6 @@ if ($total_comp): ?>
         🔍 Mismo navegador vio múltiples clientes (<?= count($comp_by_user) ?>) — confianza alta
     </div>
     <?php foreach ($comp_by_user as $cv) render_comp_row($cv, $empresa_id, 'user'); ?>
-    <?php endif; ?>
-
-    <?php if ($comp_by_ip): ?>
-    <div style="font:700 11px var(--body);color:#991b1b;margin:<?= $comp_by_user ? '12px' : '0' ?> 0 6px;text-transform:uppercase;letter-spacing:.05em;padding:4px 0;border-bottom:1px solid #fca5a5">
-        🌐 Misma red vio múltiples clientes (<?= count($comp_by_ip) ?>) — confianza baja
-    </div>
-    <?php foreach ($comp_by_ip as $cv) render_comp_row($cv, $empresa_id, 'ip'); ?>
     <?php endif; ?>
 
     <?php if ($comp_by_device): ?>
