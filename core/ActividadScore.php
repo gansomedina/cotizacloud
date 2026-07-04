@@ -1241,6 +1241,20 @@ class ActividadScore
 
     public static function diagnostico(array $s, ?array $ctx = null): string
     {
+        // Motor nuevo (voz de gerente comercial — core/DiagnosticoTips.php).
+        // Ante cualquier edge case que lance, cae al legacy para no romper el
+        // dashboard. Para revertir del todo: comentar este bloque try.
+        try {
+            $txt = DiagnosticoTips::build($s, $ctx);
+            if (is_string($txt) && trim($txt) !== '') return $txt;
+        } catch (\Throwable $e) {
+            if (defined('DEBUG') && DEBUG) throw $e;
+        }
+        return self::_diagnostico_legacy($s, $ctx);
+    }
+
+    private static function _diagnostico_legacy(array $s, ?array $ctx = null): string
+    {
         $act  = (float)($s['s_activacion'] ?? 0);
         $eng  = (float)($s['s_engagement'] ?? 1);
         $seg  = (float)($s['s_seguimiento'] ?? 0);
