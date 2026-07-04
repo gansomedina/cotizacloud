@@ -84,6 +84,12 @@ final class DiagnosticoTips
             'tips_s'     => (float)($s['tips_score'] ?? 1),
             'dias_act'   => (int)($s['dias_activos'] ?? 0),
             'bcierre'    => (int)($s['bonus_cierre'] ?? 0),
+            // Las 5 dimensiones (0-1) — las mismas barras que se pintan en el termómetro
+            's_act'      => (float)($s['s_activacion']  ?? 0.5),
+            's_eng'      => (float)($s['s_engagement']  ?? 0.5),
+            's_seg'      => (float)($s['s_seguimiento'] ?? 0.5),
+            's_hlt'      => (float)($s['s_radar_health']?? 0.5),
+            's_conv'     => (float)($s['s_conversion']  ?? 0.5),
         ];
     }
 
@@ -122,10 +128,11 @@ final class DiagnosticoTips
 
         $partes = [];
 
-        // Prefijo de tono (breve, factual). El opener es el diagnóstico corto.
+        // 1) Abre por la(s) DIMENSIÓN débil (la barra más baja del termómetro):
+        //    qué le falta + QUÉ LA CONSTRUYE (requisito) + psicología de ventas.
         $pre = self::_prefijo_tier($tier, $seed);
-        $diag = self::_diagnostico($fuga, $m, $seed);
-        $partes[] = $pre !== '' ? ($pre . ' ' . $diag) : $diag;
+        $op  = self::_opener_dimension($m, $seed);
+        $partes[] = $pre !== '' ? ($pre . ' ' . $op) : $op;
 
         // Mérito FACTUAL (sin pep-talk) si lo hay — para no borrar lo real.
         $pos = self::_positivo($m, $seed);
@@ -155,7 +162,97 @@ final class DiagnosticoTips
         };
     }
 
-    // ── DIAGNÓSTICO breve (1 frase con el dato, sin repetir) ──
+    // ════════════════════════════════════════════════════════
+    //  DIMENSIONES — la barra más baja dice qué falta.
+    //  Cada dimensión tiene un REQUISITO (qué la construye) + psicología.
+    // ════════════════════════════════════════════════════════
+
+    /** Devuelve la(s) dimensión(es) más baja(s) (1, o 2 si están cerca y bajas). */
+    private static function _dims_debiles(array $m): array
+    {
+        $d = ['act' => $m['s_act'], 'conv' => $m['s_conv'], 'seg' => $m['s_seg'],
+              'hlt' => $m['s_hlt'], 'eng' => $m['s_eng']];
+        asort($d);
+        $keys = array_keys($d);
+        $out = [$keys[0]];
+        // Incluir la 2da si está cerca de la 1ra y también es baja.
+        if (($d[$keys[1]] - $d[$keys[0]]) <= 0.12 && $d[$keys[1]] < 0.60) {
+            $out[] = $keys[1];
+        }
+        return $out;
+    }
+
+    private static function _dim_nombre(string $k): string
+    {
+        return match ($k) {
+            'act'  => 'la activación',
+            'conv' => 'el cierre',
+            'seg'  => 'el seguimiento',
+            'hlt'  => 'el ritmo del Radar',
+            'eng'  => 'la disciplina de cobro',
+            default => 'tu ejecución',
+        };
+    }
+
+    /** Dato concreto de la dimensión (para no perder el número real). */
+    private static function _dim_stat(string $k, array $m): string
+    {
+        return match ($k) {
+            'conv' => $m['vist'] > 0 ? " (cerraste {$m['cierres']} de {$m['vist']} — {$m['tasa_pct']}% contra {$m['bench_pct']}% de la empresa)" : '',
+            'act'  => ($m['sin_abrir'] > 0 || $m['dorm'] > 0)
+                ? ' (' . trim(($m['sin_abrir'] > 0 ? self::_pl($m['sin_abrir'], 'sin abrir', 'sin abrir') : '')
+                    . ($m['sin_abrir'] > 0 && $m['dorm'] > 0 ? ', ' : '')
+                    . ($m['dorm'] > 0 ? self::_pl($m['dorm'], 'dormida', 'dormidas') : '')) . ')'
+                : '',
+            'seg'  => $m['ign'] > 0 ? ' (' . self::_pl($m['ign'], 'caliente sin atender', 'calientes sin atender') . ')' : '',
+            'hlt'  => $m['h_down'] > 0 ? ' (' . self::_pl($m['h_down'], 'cliente se enfrió', 'clientes se enfriaron') . ')' : '',
+            'eng'  => $m['vsp'] > 0 ? ' (' . self::_pl($m['vsp'], 'venta sin cobrar', 'ventas sin cobrar') . ')' : '',
+            default => '',
+        };
+    }
+
+    /** Requisito (qué la construye) + micro-psicología. Oración completa. */
+    private static function _dim_clause(string $k, array $m, int $seed): string
+    {
+        return match ($k) {
+            'act' => self::_pick([
+                "La activación es trabajo diario: mandar propuestas y dar seguimiento TODOS los días, no por rachas — el pipeline se alimenta a diario o se seca.",
+                "La activación no es talento, es rutina: cotizaciones que sí se abren y que no dejas dormir, un día tras otro.",
+                "La activación se levanta apareciendo cada día con tus clientes; el que trabaja por rachas desaparece del radar del cliente.",
+            ], $seed + 2),
+            'conv' => self::_pick([
+                "El cierre es constancia: casi nadie compra al primer toque — gana el que insiste con método hasta destrabar la duda.",
+                "El cierre no sube con más cotizaciones sino con seguimiento constante: la venta vive en el 3er, 4to y 5to contacto, justo donde la mayoría se rinde.",
+                "El cierre es persistencia con técnica: la objeción no dicha se cae a fuerza de contacto ordenado, no de esperar sentado.",
+            ], $seed + 3),
+            'seg' => self::_pick([
+                "El seguimiento es reacción rápida: una señal caliente dura horas, y el que llama primero —mientras el cliente aún piensa en ti— cierra mucho más.",
+                "El seguimiento es responder a lo que el Radar te marca el mismo día, no cuando tengas hueco; esa ventana se cierra rápido.",
+            ], $seed + 4),
+            'hlt' => self::_pick([
+                "El ritmo del Radar es no dejar enfriar: el interés caduca, se atiende hoy o se pierde — y soltar algo casi cerrado duele más de lo que crees.",
+                "Mantener el Radar vivo es puro timing: recupera a los que iban subiendo antes de que se pasen; mañana ya no te recuerdan igual.",
+            ], $seed + 5),
+            'eng' => self::_pick([
+                "La disciplina de cobro es rigor al cerrar: cobra y sostén el precio — un anticipo amarra el sí (quien pone dinero ya decidió); el descuento fácil te entrena a regalar margen.",
+                "Cerrar bien el ciclo pide disciplina en el remate: una venta sin cobrar o muy rebajada queda a medias; el compromiso se sella con un anticipo, no con una promesa.",
+            ], $seed + 6),
+            default => "Se construye con constancia y foco.",
+        };
+    }
+
+    private static function _opener_dimension(array $m, int $seed): string
+    {
+        $w = self::_dims_debiles($m);
+        $stat = self::_dim_stat($w[0], $m);
+        if (count($w) >= 2) {
+            return "Tus dos barras más bajas son " . self::_dim_nombre($w[0]) . " y " . self::_dim_nombre($w[1]) . "{$stat}. "
+                . self::_dim_clause($w[0], $m, $seed) . " " . self::_dim_clause($w[1], $m, $seed);
+        }
+        return "Tu barra más baja es " . self::_dim_nombre($w[0]) . "{$stat}. " . self::_dim_clause($w[0], $m, $seed);
+    }
+
+    // ── DIAGNÓSTICO breve (legacy — ya no se usa, se conserva por si acaso) ──
     private static function _diagnostico(string $fuga, array $m, int $seed): string
     {
         $v = $m['vist']; $c = $m['cierres']; $bp = $m['bench_pct']; $tp = $m['tasa_pct'];
