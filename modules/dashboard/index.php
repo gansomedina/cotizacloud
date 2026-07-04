@@ -1598,10 +1598,10 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
   <?php if ($fb_mostrar): ?>
   <div class="monthly-card">
     <div class="monthly-header">
-      <div class="monthly-title">⭐ Calificaciones</div>
+      <div class="monthly-title">⭐ Feedbacks de cotización</div>
     </div>
     <div class="monthly-big" style="color:#f59e0b"><?= number_format($fb_promedio, 1) ?><span style="font-size:18px"> ★</span></div>
-    <div class="monthly-sub"><?= $fb_count ?> calificación<?= $fb_count != 1 ? 'es' : '' ?> · histórico</div>
+    <div class="monthly-sub"><?= $fb_count ?> feedback<?= $fb_count != 1 ? 's' : '' ?> · histórico</div>
     <div class="monthly-divider"></div>
     <?php foreach ($mis_feedbacks as $fb):
         $st = max(0, min(5, (int)$fb['stars']));
