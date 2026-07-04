@@ -814,7 +814,7 @@ class ActividadScore
         // ═══════════════════════════════════════════════════
 
         $prev = DB::row(
-            "SELECT ema_activacion, ema_seguimiento, ema_conversion, ema_gestion, ema_presencia, updated_at
+            "SELECT ema_activacion, ema_seguimiento, ema_conversion, ema_engagement, ema_radar_health, ema_gestion, ema_presencia, updated_at
              FROM usuario_score WHERE usuario_id=?",
             [$usuario_id]
         );
@@ -836,6 +836,8 @@ class ActividadScore
             $ema_act  = $alpha * $s_activacion  + (1 - $alpha) * (float)($prev['ema_activacion'] ?? $s_activacion);
             $ema_seg  = $alpha * $s_seguimiento + (1 - $alpha) * (float)($prev['ema_seguimiento'] ?? $s_seguimiento);
             $ema_conv = $alpha * $s_conversion  + (1 - $alpha) * (float)($prev['ema_conversion'] ?? $s_conversion);
+            $ema_eng  = $alpha * $s_engagement   + (1 - $alpha) * (float)($prev['ema_engagement'] ?? $s_engagement);
+            $ema_hlt  = $alpha * $s_radar_health + (1 - $alpha) * (float)($prev['ema_radar_health'] ?? $s_radar_health);
 
             $ema_composite = (float)($prev['ema_gestion'] ?? $proporcional);
             $cur_composite = $proporcional;
@@ -850,6 +852,8 @@ class ActividadScore
             $ema_act  = $s_activacion;
             $ema_seg  = $s_seguimiento;
             $ema_conv = $s_conversion;
+            $ema_eng  = $s_engagement;
+            $ema_hlt  = $s_radar_health;
             $momentum = 1.0;
         }
 
@@ -1003,9 +1007,9 @@ class ActividadScore
               s_activacion, s_activacion_op, tips_score, dias_lectura, radar_why_score, calientes_exploradas, s_engagement, eng_pen_sin_pago, eng_pen_descuento, eng_pen_enfriamiento, eng_pen_bajo_benchmark,
               s_seguimiento, s_radar_health, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
-              ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento,
+              ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento, ema_engagement, ema_radar_health,
               momentum, percentil, bonus_ticket, bonus_ticket_ventas, ticket_promedio, bonus_cierre)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -1029,6 +1033,7 @@ class ActividadScore
               ema_gestion=VALUES(ema_gestion), ema_presencia=VALUES(ema_presencia),
               ema_conversion=VALUES(ema_conversion),
               ema_activacion=VALUES(ema_activacion), ema_seguimiento=VALUES(ema_seguimiento),
+              ema_engagement=VALUES(ema_engagement), ema_radar_health=VALUES(ema_radar_health),
               momentum=VALUES(momentum), percentil=VALUES(percentil),
               bonus_ticket=VALUES(bonus_ticket), bonus_ticket_ventas=VALUES(bonus_ticket_ventas), ticket_promedio=VALUES(ticket_promedio), bonus_cierre=VALUES(bonus_cierre),
               updated_at=NOW()",
@@ -1050,6 +1055,7 @@ class ActividadScore
                 round($alpha * $proporcional + (1 - $alpha) * (float)($prev['ema_gestion'] ?? $proporcional), 3),
                 round($ema_act, 3), round($ema_conv, 3),
                 round($ema_act, 3), round($ema_seg, 3),
+                round($ema_eng, 3), round($ema_hlt, 3),
                 round($momentum, 2), round($percentil, 2),
                 $bonus_ticket, $bonus_ticket_ventas, round($ticket_prom, 2), $bonus_cierre,
             ]

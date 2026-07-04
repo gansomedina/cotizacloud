@@ -107,9 +107,11 @@ final class DiagnosticoTips
             // Promedios móviles (EMA) de períodos anteriores — para leer
             // TENDENCIA (sube/baja/estable) comparando la barra actual vs su EMA.
             // Solo act/seg/conv tienen EMA viva; -1 = sin dato (usa momentum).
-            'ema_act'    => isset($s['ema_activacion'])  ? (float)$s['ema_activacion']  : -1.0,
-            'ema_seg'    => isset($s['ema_seguimiento']) ? (float)$s['ema_seguimiento'] : -1.0,
-            'ema_conv'   => isset($s['ema_conversion'])  ? (float)$s['ema_conversion']  : -1.0,
+            'ema_act'    => isset($s['ema_activacion'])   ? (float)$s['ema_activacion']   : -1.0,
+            'ema_seg'    => isset($s['ema_seguimiento'])  ? (float)$s['ema_seguimiento']  : -1.0,
+            'ema_conv'   => isset($s['ema_conversion'])   ? (float)$s['ema_conversion']   : -1.0,
+            'ema_eng'    => isset($s['ema_engagement'])   ? (float)$s['ema_engagement']   : -1.0,
+            'ema_hlt'    => isset($s['ema_radar_health']) ? (float)$s['ema_radar_health'] : -1.0,
         ];
     }
 
@@ -400,6 +402,10 @@ final class DiagnosticoTips
             case 'no_cierra':
             case 'francotirador':
                 $dir = self::_dir($m['s_conv'], $m['ema_conv']); $cual = 'tu cierre'; break;
+            case 'regalador':
+                $dir = self::_dir($m['s_eng'], $m['ema_eng']); $cual = 'tu disciplina de cierre'; break;
+            case 'enfriador':
+                $dir = self::_dir($m['s_hlt'], $m['ema_hlt']); $cual = 'la salud de tu pipeline'; break;
         }
         if ($dir === 'na') { $dir = self::_dir_global($m); $cual = 'tu ritmo general'; }
 
