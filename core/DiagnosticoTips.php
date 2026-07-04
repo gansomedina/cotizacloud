@@ -127,14 +127,16 @@ final class DiagnosticoTips
         $diag = self::_diagnostico($fuga, $m, $seed);
         $partes[] = $pre !== '' ? ($pre . ' ' . $diag) : $diag;
 
+        // Mérito FACTUAL (sin pep-talk) si lo hay — para no borrar lo real.
+        $pos = self::_positivo($m, $seed);
+        if ($pos !== '') $partes[] = $pos;
+
         // LA JUGADA — el núcleo. Táctica universal + a quién priorizar.
         $partes[] = self::_jugada($fuga, $m, $seed);
 
-        // Nag de herramientas (crisp, y tácticamente útil): solo regular/bajo.
-        if ($tier === 'regular' || $tier === 'bajo') {
-            $nag = self::_tips_nag($m, $seed);
-            if ($nag !== '') $partes[] = $nag;
-        }
+        // Realidad de herramientas (no lee tips / no usa ❓) — en TODOS los tiers.
+        $nag = self::_tips_nag($m, $seed);
+        if ($nag !== '') $partes[] = $nag;
 
         // Consecuencia FACTUAL solo en bajo (sin aliento).
         if ($tier === 'bajo') {
@@ -280,23 +282,47 @@ final class DiagnosticoTips
         return $jug;
     }
 
-    // ── Nag de herramientas (tácticamente útil) ─────────────
+    // ── Mérito FACTUAL (sin pep-talk) ───────────────────────
+    private static function _positivo(array $m, int $seed): string
+    {
+        if ($m['bcierre'] >= 8) {
+            return "A tu favor, y es real: tu cierre va muy por encima de tu propio histórico — cuando te enfocas, cierras.";
+        }
+        if ($m['bcierre'] >= 4) {
+            return "Un dato a tu favor: estás cerrando por encima de tu histórico reciente.";
+        }
+        if ($m['aper'] >= 0.9 && $m['vist'] >= 5) {
+            return "A favor: casi todas tus cotizaciones se abren — el arranque lo tienes resuelto, la fuga está más adelante.";
+        }
+        return '';
+    }
+
+    // ── Realidad de herramientas (tips + ❓) ────────────────
+    // Los asesores NO ven el desglose por dimensión (eso es solo del
+    // superadmin). Se les habla de lo que SÍ pueden hacer: leer los tips
+    // (este análisis) y abrir el ❓ del Radar en sus cotizaciones calientes.
     private static function _tips_nag(array $m, int $seed): string
     {
         if ($m['dias_act'] <= 0) return '';
         $no_tips = $m['tips_s'] <= 0.0;
         $no_explora = $m['cal'] > 0 && ($m['exp'] / max(1, $m['cal'])) < 0.30;
 
-        if ($no_explora) {
+        if ($no_tips && $no_explora) {
             return self::_pick([
-                "Antes de llamar, abre el ❓ de cada cotización caliente: te dice qué señal la disparó (precio, re-visita, varios dispositivos) y con eso llegas sabiendo qué objetar.",
-                "Usa el ❓ del Radar en tus calientes: ahí ves por qué se marcó cada una. Llegar con esa info a la llamada es media venta hecha.",
+                "Y no estás usando lo que ya tienes: ni lees estos tips completos ni abres el ❓ de tus cotizaciones calientes. Ahí el sistema te marca a quién llamar y por qué — es tu lista de trabajo diaria, no un adorno.",
+                "Parte del problema es que no te apoyas en las herramientas: no lees el análisis ni exploras el ❓ del Radar. Empieza por ahí — te está diciendo, gratis, dónde están tus ventas.",
             ], $seed + 9);
         }
         if ($no_tips) {
             return self::_pick([
-                "Y abre el análisis completo del termómetro: ahí tienes el desglose de qué dimensión te está frenando.",
-                "Revisa tu desglose por dimensión en el termómetro — te dice con número dónde está la fuga exacta.",
+                "Y ojo con algo básico: no estás leyendo estos tips. El sistema te dice aquí, cada día, a quién atender y qué hacer — léelos completos y trabájalos, para eso están.",
+                "Estás dejando pasar el análisis: no abres los tips. Son tu guía diaria de a quién llamar y por qué; ignorarlos es pelear a ciegas teniendo el mapa.",
+            ], $seed + 9);
+        }
+        if ($no_explora) {
+            return self::_pick([
+                "Antes de llamar, abre el ❓ de cada cotización caliente: te dice qué disparó la señal (revisó el precio, volvió varias veces, la vieron desde varios lados) y llegas sabiendo qué objetar.",
+                "Usa el ❓ del Radar en tus calientes: ahí ves por qué se marcó cada una. Llegar a la llamada con esa info es media venta hecha.",
             ], $seed + 9);
         }
         return '';
