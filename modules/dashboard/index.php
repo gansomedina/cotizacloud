@@ -538,6 +538,36 @@ foreach ($escudo_dispositivos_raw as $ed) {
     if (count($escudo_dispositivos) >= 5) break;
 }
 
+// ─── Calificaciones del cliente (feedback) del asesor logueado ──────
+// Solo si la empresa tiene el feedback activo. Histórico (no por período).
+// Cada asesor ve las suyas (vendedor_id = usuario logueado).
+$fb_activo     = !empty($empresa['feedback_activo']);
+$fb_count      = 0;
+$fb_promedio   = 0.0;
+$mis_feedbacks = [];
+if ($fb_activo) {
+    $fb_stats  = DB::row(
+        "SELECT COUNT(*) AS n, AVG(stars) AS prom
+         FROM cot_feedbacks WHERE empresa_id=? AND vendedor_id=?",
+        [$empresa_id, Auth::id()]
+    );
+    $fb_count    = (int)($fb_stats['n'] ?? 0);
+    $fb_promedio = $fb_count > 0 ? round((float)$fb_stats['prom'], 1) : 0.0;
+    if ($fb_count > 0) {
+        $mis_feedbacks = DB::query(
+            "SELECT f.stars, f.comentario, f.created_at, cl.nombre AS cliente
+             FROM cot_feedbacks f
+             LEFT JOIN cotizaciones c ON c.id = f.cotizacion_id
+             LEFT JOIN clientes cl    ON cl.id = c.cliente_id
+             WHERE f.empresa_id=? AND f.vendedor_id=?
+             ORDER BY f.created_at DESC
+             LIMIT 6",
+            [$empresa_id, Auth::id()]
+        );
+    }
+}
+$fb_mostrar = $fb_activo && $fb_count > 0;
+
 
 $page_title = 'Inicio';
 ob_start();
@@ -687,6 +717,13 @@ ob_start();
 
 /* ACTIVIDAD MENSUAL */
 .monthly-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.monthly-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.fb-row{display:flex;flex-direction:column;gap:1px;padding:5px 0;border-bottom:1px solid var(--border)}
+.fb-row:last-child{border-bottom:none}
+.fb-row-top{display:flex;align-items:center;gap:6px}
+.fb-stars{font-size:12px;letter-spacing:1px;color:#f59e0b;white-space:nowrap}
+.fb-cmt{font:500 12px var(--body);color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.fb-meta{font:400 11px var(--body);color:var(--t3)}
 .monthly-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh)}
 .monthly-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .monthly-title{font:700 13px var(--body)}
@@ -706,7 +743,7 @@ ob_start();
 /* RESPONSIVE */
 @media(max-width:900px){
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
-  .conv-grid,.monthly-grid{grid-template-columns:1fr}
+  .conv-grid,.monthly-grid,.monthly-grid.cols-3{grid-template-columns:1fr}
   .alert-grid{grid-template-columns:1fr}
   .buckets-grid{grid-template-columns:repeat(2,1fr)}
 }
@@ -1478,7 +1515,7 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
 
 <!-- ══ ACTIVIDAD DEL MES ══ -->
 <div class="slabel">Actividad del período</div>
-<div class="monthly-grid">
+<div class="monthly-grid<?= $fb_mostrar ? ' cols-3' : '' ?>">
 
   <div class="monthly-card">
     <div class="monthly-header">
@@ -1557,6 +1594,36 @@ $hay_radar = !empty($buckets['onfire']) || !empty($buckets['inminente']) || !emp
       <span class="monthly-row-val"><?= fmt_full($cobrado_periodo) ?></span>
     </div>
   </div>
+
+  <?php if ($fb_mostrar): ?>
+  <div class="monthly-card">
+    <div class="monthly-header">
+      <div class="monthly-title">⭐ Calificaciones</div>
+    </div>
+    <div class="monthly-big" style="color:#f59e0b"><?= number_format($fb_promedio, 1) ?><span style="font-size:18px"> ★</span></div>
+    <div class="monthly-sub"><?= $fb_count ?> calificación<?= $fb_count != 1 ? 'es' : '' ?> · histórico</div>
+    <div class="monthly-divider"></div>
+    <?php foreach ($mis_feedbacks as $fb):
+        $st = max(0, min(5, (int)$fb['stars']));
+        $estrellas = str_repeat('★', $st) . '<span style="color:var(--border)">' . str_repeat('★', 5 - $st) . '</span>';
+        $cmt = trim((string)($fb['comentario'] ?? ''));
+        $cli = trim((string)($fb['cliente'] ?? '')) ?: 'Cliente';
+        $ago = time() - strtotime($fb['created_at']);
+        if ($ago < 3600)        $t = 'hace ' . max(1, intdiv($ago, 60)) . ' min';
+        elseif ($ago < 86400)   $t = 'hace ' . intdiv($ago, 3600) . 'h';
+        elseif ($ago < 604800)  { $d = intdiv($ago, 86400); $t = 'hace ' . $d . ($d == 1 ? ' día' : ' días'); }
+        else                    { $w = intdiv($ago, 604800); $t = 'hace ' . $w . ($w == 1 ? ' sem' : ' sems'); }
+    ?>
+    <div class="fb-row">
+      <div class="fb-row-top">
+        <span class="fb-stars"><?= $estrellas ?></span>
+        <?php if ($cmt !== ''): ?><span class="fb-cmt">"<?= e($cmt) ?>"</span><?php endif; ?>
+      </div>
+      <span class="fb-meta"><?= e($cli) ?> · <?= $t ?></span>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
 
 </div>
 
