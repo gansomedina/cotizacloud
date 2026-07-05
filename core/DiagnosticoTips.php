@@ -335,7 +335,7 @@ final class DiagnosticoTips
             'teatro' => [
                 "Traes mucho movimiento y poca venta, y el fondo es un miedito: pedir la decisión expone a un «no». Pero el «no» no te mata, la duda sí — te come el tiempo cuidando a alguien que nunca iba a comprar. Al próximo caliente, en vez de otro seguimiento, pídele una respuesta clara: sí o no.",
                 "Revisar y marcar se siente productivo, pero es el disfraz de la parte que evitas. Sé honesto: ¿estás trabajando o esquivando el momento de pedir la venta? Deja de contar cuántos seguimientos mandas y cuenta cuántas veces pediste el cierre esta semana.",
-                "Un «no» rápido es un regalo: te libera para el que sí. Estás gastando energía en mantener vivas cotizaciones que no te han dicho nada — hoy elige la más caliente y pídele que se defina. El que no pide, no pierde la venta: nunca la tuvo.",
+                "Un «no» rápido es un regalo: te libera para el que sí. Estás gastando energía en seguir a clientes que no te han dicho nada — hoy elige la más caliente y pídele que se defina. El que no pide, no pierde la venta: nunca la tuvo.",
             ],
             'sembrador' => [
                 "Eres bueno para prender el interés; lo que dejas tirado es la cosecha. Regla simple: por cada cotización nueva que mandes, primero remata una que ya abrieron. Ganas el gusto de crear solo después de cobrar lo sembrado.",

@@ -1420,10 +1420,11 @@ class ActividadScore
         // ═══ 4. RADAR HEALTH — clientes con interés que se dejaron morir ═══
         if ($h_up > 0) {
             $tasa_muerte = $h_down / $h_up;
-            if ($tasa_muerte >= 0.50 && $h_down >= 3) {
-                $frases[] = "Dejaste caer del Radar a $h_down de $h_up clientes que tenían interés. Atiéndelos antes de perderlos.";
-            } elseif ($tasa_muerte <= 0.35 && $h_up >= 5) {
-                $frases[] = "Cuidas bien tu Radar: solo $h_down de $h_up clientes con interés se te cayeron.";
+            // Observable (sin asumir abandono): calientes que perdieron el bucket sin cerrar.
+            if ($tasa_muerte >= 0.40 && $h_down >= 3) {
+                $frases[] = "$h_down de $h_up clientes que estaban calientes se enfriaron sin cerrar.";
+            } elseif ($tasa_muerte <= 0.30 && $h_up >= 5) {
+                $frases[] = "Cuidas bien tu Radar: solo $h_down de $h_up calientes se te enfriaron.";
             }
         }
 
