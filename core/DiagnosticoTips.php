@@ -195,62 +195,61 @@ final class DiagnosticoTips
     }
 
     // ── Perfil por el vector COMPLETO de 5 ───────────────────
+    // Reestructurado tras auditoría: S, H y E se revisan SIEMPRE (no solo en los
+    // extremos de C). motor_completo solo si S/H/E están OK. desconectado no atropella
+    // a un cerrador. La franja C=medio ya no es ciega a las fugas de S/H/E.
     private static function _arquetipo(array $m, array $e, array $real): string
     {
         if ($m['asig'] < 6 && $m['cierres'] === 0) return 'muestra_chica';
 
-        $bajos = 0;
-        foreach ($e as $st) if ($st === 'bajo') $bajos++;
-        if ($bajos >= 4) return 'desconectado';
-
-        $aBaja = $e['act'] === 'bajo';
-        $cAlta = $e['conv'] === 'alto';
-        $cBaja = $e['conv'] === 'bajo';
+        $aBaja   = $e['act'] === 'bajo';
+        $cAlta   = $e['conv'] === 'alto';
+        $cBaja   = $e['conv'] === 'bajo';
+        $segBajo = $e['seg'] === 'bajo';
         $segAlto = $e['seg'] === 'alto' && $real['seg'];
         $hltAlto = $e['hlt'] === 'alto' && $real['hlt'];
         $hltBajo = $e['hlt'] === 'bajo';
+        $engBajo = $e['eng'] === 'bajo';
 
-        // Teatro: marca señales y no cierra. EXIGE activación OK — si A está en el
-        // piso, la fuga es la activación (no leer / dejar enfriar), no el miedo al cierre.
+        // Desconectado: casi todo apagado Y no cierra. Si cierra alto, NO está apagado.
+        $bajos = 0;
+        foreach ($e as $st) if ($st === 'bajo') $bajos++;
+        if ($bajos >= 4 && !$cAlta) return 'desconectado';
+
+        // Teatro: S alto hueco + no cierra + activación OK (si A en piso, la fuga es A).
         if (!$aBaja && $real['seg'] === false && $m['s_conv'] < self::BAJO && $e['seg'] === 'alto') return 'teatro';
 
-        // ACTIVACIÓN en el piso → se maneja aparte (con o sin cierre)
+        // ACTIVACIÓN en el piso → se maneja aparte
         if ($aBaja) {
-            // Cierra excelente, solo le falta volumen
             if ($cAlta) {
-                if ($e['seg'] === 'bajo' && $hltBajo) return 'cerrador_solitario';
+                if ($segBajo && $hltBajo) return 'cerrador_solitario';
                 return 'francotirador';
             }
-            // Capaz (cierra decente o trabaja el medio) pero se le CAYÓ el ritmo diario
             if ($e['seg'] === 'alto' || $e['eng'] === 'alto' || !$cBaja) return 'sin_ritmo';
-            // Reactivo total: ni genera ni cierra
             return 'presente_pasivo';
         }
 
-        // A no baja · C↓  (falta técnica de cierre — método)
+        // A no baja · C↓  (falta técnica de cierre)
         if ($cBaja) {
-            if ($segAlto && $hltAlto) return 'cultivador';       // pipeline lleno no cosecha
-            if ($segAlto)             return 'rematador_ausente'; // hace todo, no remata
-            return 'sembrador';                                  // genera, no capitaliza
+            if ($segAlto && $hltAlto) return 'cultivador';
+            if ($segAlto)             return 'rematador_ausente';
+            return 'sembrador';
         }
 
-        // Cierra (C no bajo) pero SUCIO → perfil de Engagement (pecado del cómo cierra).
-        // El cerrador de élite marcó estos como los que cuestan dinero real.
-        if (!$cBaja && $e['eng'] === 'bajo') {
+        // A no baja · C medio/alto — revisar las fugas del medio ANTES de motor/meseta.
+        // Prioridad: señales (S) → pipeline (H) → cierre limpio (E).
+        if ($segBajo && $hltBajo) return 'una_pierna';                    // solo caza al que decide rápido
+        if ($segBajo)             return 'sordo_a_senales';               // ignora las señales calientes
+        if ($hltBajo)             return $cAlta ? 'cerrador_desperdiciado' : 'pipeline_frio';
+        if ($engBajo) {
             $gp = ['cierre_falso' => $m['eps'], 'regalador' => $m['epd'], 'bajo_caudal' => $m['epb']];
             arsort($gp);
             $kp = array_key_first($gp);
-            if ($gp[$kp] > 0.05) return $kp;
+            return $gp[$kp] > 0.05 ? $kp : 'engagement_flojo';            // fallback: E bajo sin pen dominante
         }
 
-        // A↑ · C↑  (autonomía)
-        if ($cAlta) {
-            if ($hltBajo && $e['seg'] === 'bajo') return 'una_pierna';
-            if ($hltBajo)                          return 'cerrador_desperdiciado';
-            return 'motor_completo';
-        }
-
-        return 'meseta';
+        if ($cAlta) return 'motor_completo';   // S, H y E ya verificados OK
+        return 'meseta';                       // C medio, todo lo demás OK
     }
 
     // ════════════════════════════════════════════════════════
@@ -367,6 +366,21 @@ final class DiagnosticoTips
                 "Lo que atiendes lo cierras, pero dejas morir gente que ya había mostrado interés — eso es dinero a la basura. Regrésales con un pretexto nuevo: «salió algo que le queda justo a lo que buscaba, ¿lo retomamos?». No los perdiste, los dejaste.",
                 "Tienes cierre pero eres desperdiciado: dejas morir clientes vivos. Aparta un rato hoy solo para rescatar tibios — reactívalos con novedad, no con «sigo pendiente».",
                 "El que ya abrió y dejaste ir no está muerto, está dormido. Despiértalo con un motivo nuevo para volver. Traer uno de vuelta cuesta menos que conseguir uno de cero.",
+            ],
+            'sordo_a_senales' => [ // cierra bien pero NO capitaliza las señales calientes
+                "Cierras a los que ya vienen convencidos, pero ignoras las señales: cuando un cliente revisa tu propuesta con interés, el sistema te lo marca y no lo trabajas. Ahí se te escapan los cierres más fáciles. Cada mañana revisa quién se puso caliente y contáctalo el mismo día — el que ya te levantó la mano está a un paso.",
+                "Tu problema no es rematar, es que no capitalizas lo que ya está caliente: dejas pasar a los que te mostraron interés. Ese interés dura horas, no días. Reacciona a la señal el mismo día que aparece, no cuando tengas hueco.",
+                "Cierras bien lo que trabajas, pero trabajas solo lo que te cae de frente; las señales de compra que el sistema te marca, las ignoras — y ahí está tu venta más cercana. Empieza el día por los calientes de hoy.",
+            ],
+            'pipeline_frio' => [ // deja morir calientes (H bajo) sin ser cerrador top
+                "Se te están enfriando clientes que ya habían mostrado interés — los dejas madurar hasta que se pierden. Un caliente que se apaga casi nunca es mal cliente, es desatención. Rescátalo antes de que muera con un motivo nuevo: «salió algo que le acomoda, ¿lo retomamos?».",
+                "Tu pipeline pierde temperatura: varios que estaban calientes se murieron sin cerrar. Aparta un rato al día para tocar a los tibios antes de que se enfríen del todo — ahí hay media venta ya hecha.",
+                "Dejas morir el interés que ya generaste, que es lo más caro porque ya hiciste lo difícil. Un toque con ángulo nuevo reabre lo que el silencio cerró; no lo dejes para después.",
+            ],
+            'engagement_flojo' => [ // E bajo sin penalización dominante (cierre sucio genérico)
+                "Cierras, pero el cierre te sale flojo: entre cobros que se atrasan, algún descuento y ventas por debajo del equipo, ganas menos de lo que deberías. Aprieta el remate — pide el anticipo desde el sí y defiende el precio con valor, no con rebaja.",
+                "Vendes, pero no aseguras: el «sí» se te queda a medias. Amarra cada cierre con un anticipo el mismo día y sostén tu precio. Cerrar incluye cobrar, y cobrar bien.",
+                "Tu número de cierres está, pero la calidad no: cierras sin cobrar del todo o cediendo de más. Sube el estándar del remate — dinero de por medio desde el sí, y el precio se defiende, no se regala.",
             ],
             'una_pierna' => [
                 "Cierras rifado al que decide rápido, pero al que necesita dos o tres vueltas lo sueltas — y ahí está la mitad de tu dinero. El de ciclo largo no se cierra hoy, se agenda: «le doy hasta el viernes, ese día lo busco con la propuesta lista». Ponle fecha y no lo sueltes.",
