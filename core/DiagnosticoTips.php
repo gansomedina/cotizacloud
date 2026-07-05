@@ -245,170 +245,102 @@ final class DiagnosticoTips
     private static function _componer(string $arq, string $tono, array $m, array $e, array $real, array $boot, int $seed): string
     {
         if ($arq === 'muestra_chica') return self::_render_muestra_chica($m, $seed);
-
-        $partes = [];
-
-        // 1) Reconocimiento SOLO si el resultado lo valida (booster o alto real)
-        $rec = self::_reconocimiento($m, $e, $real, $boot);
-        if ($rec !== '') $partes[] = $rec;
-
-        // 2) Diagnóstico del perfil + 3) jugada con script (en el tono)
-        $partes[] = self::_perfil($arq, $m, $seed);
-
-        // 4) Capa E si el cierre sale sucio
-        $eng = self::_capa_e($m, $e, $real, $seed);
-        if ($eng !== '') $partes[] = $eng;
-
-        // 5) A quién empezar (dato vivo fiable) — solo donde la jugada no ya lo cubre
-        $t = self::_target($m);
-        if ($t !== '' && in_array($arq, ['sembrador','rematador_ausente','cultivador','presente_pasivo'], true)) {
-            $partes[] = $t;
-        }
-
-        // 6) Consecuencia solo en sacudida / score bajo
-        if ($tono === 'sacudida' || $tono === 'sacudida_cierre' || $m['nivel'] === 'bajo') {
-            $partes[] = self::_consecuencia($seed);
-        }
-
-        return implode(' ', $partes);
+        // PÁRRAFO 2 — el perfil psicológico + los tips exactos (SIN números).
+        return self::_parrafo_perfil($arq, $m, $boot);
     }
 
-    // ── Reconocimiento validado (booster o alto real) ────────
-    private static function _reconocimiento(array $m, array $e, array $real, array $boot): string
+    // ════════════════════════════════════════════════════════
+    //  PÁRRAFO 1 — Los NÚMEROS reales (clavado al dato, sin prosa)
+    //  Público: el dashboard lo muestra como el primer tip.
+    // ════════════════════════════════════════════════════════
+    public static function numeros(array $s, ?array $ctx = null): string
     {
-        if ($boot['merito'] !== '') {
-            return 'Un dato real a tu favor: ' . $boot['merito'] . '.';
-        }
-        // Alto REAL (no hueco) → reconocer la fortaleza de forma factual
-        if ($e['conv'] === 'alto') return 'Cierras por encima del promedio — el remate lo tienes.';
-        if ($e['seg']  === 'alto' && $real['seg']) return 'Trabajas tus señales calientes y eso se nota.';
-        if ($e['act']  === 'alto' && $real['act']) return 'Lo que mandas se abre y no lo dejas enfriar — el arranque lo tienes.';
-        return '';
+        $m = self::_metricas($s, $ctx);
+        if (($s['nivel'] ?? '') === 'nuevo' || $m['asig'] === 0) return '';
+        return self::_parrafo_numeros($m);
     }
 
-    // ── El perfil: diagnóstico + jugada + script ─────────────
-    private static function _perfil(string $arq, array $m, int $seed): string
+    private static function _parrafo_numeros(array $m): string
     {
+        $f = [];
+        // Embudo
+        $vist = $m['vist'] === $m['asig'] ? 'todas' : (string)$m['vist'];
+        $abr  = $m['vist'] === 1 ? 'abrió' : 'abrieron';
+        $cerr = $m['cierres'] === 1 ? 'cerraste 1' : "cerraste {$m['cierres']}";
+        $f[]  = "De " . self::_pl($m['asig'], 'propuesta', 'propuestas') . ", {$vist} {$abr} y {$cerr}.";
+        // Radar
+        if ($m['cal'] > 0) {
+            $r = self::_pl($m['cal'], 'cliente se puso caliente', 'clientes se pusieron calientes');
+            if ($m['h_down'] > 0) $r .= "; " . self::_pl($m['h_down'], 'se enfrió sin cerrar', 'se enfriaron sin cerrar');
+            $f[] = ucfirst($r) . ".";
+        }
+        if ($m['dorm'] > 0) $f[] = ucfirst(self::_pl($m['dorm'], 'cliente abrió y no volvió', 'clientes abrieron y no volvieron')) . ".";
+        if ($m['nab'] > 0)  $f[] = ucfirst(self::_pl($m['nab'], 'propuesta lleva', 'propuestas llevan')) . " 5+ días sin abrir.";
+        // Uso de la guía
+        if ($m['dias_act'] > 0) $f[] = "Leíste la guía {$m['dias_lec']} de {$m['dias_act']} días activos.";
+        // Boosters (mérito por dinero)
+        if ($m['bticket'] >= 5) $f[] = ($m['bticket_v'] === 1 ? 'Cerraste una venta grande' : "Cerraste {$m['bticket_v']} ventas grandes") . " (arriba de tu ticket promedio).";
+        if ($m['bcierre'] >= 4) $f[] = "Tu tasa de cierre viene por arriba de tu histórico.";
+        // Cierre sucio (solo con ventas reales)
+        if ($m['cierres'] >= 1 || $m['vper'] >= 1) {
+            if ($m['vsp'] > 0) $f[] = ucfirst(self::_pl($m['vsp'], 'venta cerrada sin cobrar', 'ventas cerradas sin cobrar')) . ".";
+            if ($m['epd'] > 0.03) $f[] = "Cerraste con descuento.";
+            if ($m['bventas'] > 0 && $m['vper'] < $m['bventas']) $f[] = "Vendiste " . self::_pl($m['vper'], 'venta', 'ventas') . " vs " . round($m['bventas'], 1) . " del promedio del equipo.";
+        }
+        return implode(' ', $f);
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  PÁRRAFO 2 — El PERFIL psicológico + tips exactos (SIN números)
+    //  Determinado por el vector de 5 segmentos y sus valores internos.
+    // ════════════════════════════════════════════════════════
+    private static function _parrafo_perfil(string $arq, array $m, array $boot): string
+    {
+        $capaz = $boot['capaz'];
         switch ($arq) {
 
             case 'desconectado':
-                return self::_pick([
-                    "Seamos claros: no está entrando flujo ni se cierra lo que entra, y ni siquiera estás leyendo lo que el sistema te deja masticado cada día. Esto no es de que no sepas — es de que no le estás entrando. Esta semana, lo mínimo: lee el análisis a diario y toca una sola cotización que ya se enfrió. Un paso, pero arranca hoy.",
-                    "Ahorita el motor está apagado: poco entra, nada cierra, y la guía que te dice qué hacer ni la abres. Nadie va a vender por ti. Lo mínimo esta semana — leer y retomar una dormida — y de ahí construimos. El que no hace ni lo fácil no va a hacer lo difícil.",
-                ], $seed + 1);
+                return "No estás en el juego: ni entras al sistema ni cierras, y ni la guía que te dice qué hacer abres — y eso no se arregla con técnica, se arregla decidiendo entrarle. El tip para ti: esta semana solo lo mínimo, lee el análisis a diario y retoma un cliente que se enfrió. Una victoria chica para volver a arrancar el motor.";
 
             case 'presente_pasivo':
-                return self::_pick([
-                    "Estás pasivo en las dos puntas que deciden la venta: entra poca propuesta nueva y de las que abren, pocas rematan. El medio se te sostiene, pero eso te mantiene a flote, no te hace crecer. Dos frentes: sube el flujo con un bloque diario para prospectar, y al que ya mostró interés llévalo a la decisión — «¿lo dejamos en la opción A o la B para arrancar esta semana?».",
-                    "Trabajas de a ratos y no rematas: administras lo que llega en vez de generar y cerrar. Aparecer a medias no construye un mes. Métele las dos puntas — prospección diaria arriba, y abajo pedir la decisión de frente en vez de dejar la propuesta «enviada».",
-                ], $seed + 1);
+                return "Estás administrando lo que te llega en vez de salir a generar y a cerrar. El tip: fuerza las dos puntas del embudo. Arriba, una hora fija de prospección cada día. Abajo, a cada cliente que ya abrió, pídele la decisión de frente en lugar de esperar a que conteste.";
 
             case 'teatro':
-                return self::_pick([
-                    "Estás haciendo todo lo cómodo —marcar, revisar, seguir— y esquivando lo único que mueve el marcador: pedir la venta. " . self::_pl($m['cal'], 'señal trabajada', 'señales trabajadas') . " y " . ($m['cierres'] === 1 ? 'un cierre' : "{$m['cierres']} cierres") . ". Eso no es estar productivo, es estar ocupado. Marcar que alguien se interesó no lo acerca un paso; pedirle la decisión sí. En tu próxima caliente no la marques y la dejes: remata — «¿qué lo detiene: precio, tiempo o alcance?» y en cuanto lo resuelva, «¿arrancamos con la A o la B esta semana?».",
-                    "Marcas cada señal y revisas cada cliente, pero de eso no sale ni una venta: es teatro de actividad. El trabajo no es tener el tablero al día, es pedir la venta —y ahí te frenas. En la que ya está picando, sácale la objeción de una vez —«¿es precio, tiempo o algo que no le cuadra?»— y pide la decisión de frente. Mientras el trabajo termine en nota y no en un sí o un no, el marcador no se mueve.",
-                ], $seed + 1);
+                $s = "Estás confundiendo actividad con venta: haces todo lo cómodo —marcar señales, revisar el Radar— y esquivas lo único que cierra, pedir la venta.";
+                $s .= $capaz
+                    ? " No es que no sepas —cuando te lo propones, cierras—, es que evitas el momento de rematar."
+                    : " Es renuencia a rematar, no falta de técnica.";
+                $s .= " El tip para ti: deja de mandar seguimientos y empieza a pedir cierres. En cada caliente saca la objeción —«¿qué lo detiene: precio, tiempo o alcance?»— y en cuanto la resuelva, pide la fecha directo: «¿lo cerramos esta semana o la próxima?».";
+                return $s;
 
             case 'sembrador':
-                return self::_pick([
-                    "Generas interés de sobra y no lo capitalizas ni lo rematas: mandas y esperas que el cliente cierre solo. El interés sin un siguiente paso se enfría. Deja de armar la siguiente hasta trabajar la que ya abrieron: llámala en caliente y sácale la objeción —«si arrancáramos hoy, ¿qué es lo único que lo detiene?»— y pídele la decisión.",
-                    "Traes muchos al agua y no los haces beber: buena parte de tu trabajo muere después del envío. Lo que cierra no es otra cotización, es una conversación de cierre — en la que ya mostró interés, dimensiona lo que le cuesta no resolverlo y pide la venta de frente.",
-                ], $seed + 1);
+                return "Se te da generar interés y evitas rematarlo — mandas y esperas. El tip: por cada propuesta nueva que armes, remata una que ya abrieron. Llámala en caliente —«si arrancáramos hoy, ¿qué es lo único que lo detiene?»— y pídele la decisión.";
 
             case 'rematador_ausente':
-                return self::_pick([
-                    "Haces casi todo bien —traes, trabajas las señales— y te caes en el último metro: pedir la decisión. Cerrar no es acompañar más, es sacar la objeción que no te dijeron y pedir la venta. En tu próxima caliente: «para ayudarle mejor, ¿es precio, tiempo o algo del alcance?», y en cuanto lo resuelva, da por hecho el sí — «¿arrancamos con la A o la B esta semana?».",
-                    "Lees bien a tus clientes y los llevas cargados hasta la línea de gol para dejar el balón ahí. Tu seguimiento es fino; el remate falta. La próxima conversación con un caliente no puede terminar sin una pregunta de decisión sobre la mesa.",
-                ], $seed + 1);
+                return "Haces bien todo el proceso —generas, sigues, atiendes las señales— y te falta solo el último paso, pedir la venta. Esto sí es técnica de cierre, no falta de ganas. El tip: tras resolver la duda —«¿es precio, tiempo o alcance?»— no vuelvas a preguntar si le interesa; dalo por hecho y pon la fecha: «¿arrancamos esta o la próxima semana?».";
 
             case 'cultivador':
-                return self::_pick([
-                    "Tienes el pipeline lleno y bien cuidado, y no lo cosechas: cuidas tanto la relación que nunca la vuelves transacción. Ponle fecha de decisión a cada caliente: «la propuesta la sostengo hasta [fecha]; después cambian las condiciones. ¿La cerramos dentro de esa fecha o de plano no es momento?». El «¿o no es momento?» destraba al que estaba cómodo en el limbo.",
-                    "Coleccionas interesados en vez de cerrarlos: un pipeline sano que no produce. Un cliente caliente eterno es un cliente perdido en cámara lenta. Fuerza el desenlace con una fecha de corte real — o compra dentro de ella, o te libera.",
-                ], $seed + 1);
+                return "Cuidas tanto la relación que nunca la cierras — tu pipeline está lleno y vivo, pero no produce. El tip: ponle fecha de decisión a cada caliente. «La sostengo hasta [fecha], ¿la cerramos antes o de plano no es momento?». El «¿o no es momento?» obliga a decidir al que está cómodo en el limbo.";
 
             case 'francotirador':
-                return self::_pick([
-                    "Lo que cotizas, lo cierras — el remate lo tienes. Lo que falta es cuánto sales a vender: juegas muy pocas manos. Con tu nivel de cierre, cada propuesta extra es casi una venta extra. Ponte una meta diaria de cotizaciones nuevas y reusa las que ya te funcionaron para sacar el triple en el mismo tiempo. No toques la técnica; dale volumen.",
-                    "Cierras casi todo lo poco que trabajas: francotirador con poca munición. Tu techo no es cómo cierras, es cuánto expones. Bloquea una hora diaria solo para prospectar y cotizar — el volumen es tu única palanca pendiente.",
-                ], $seed + 1);
+                return "Cierras casi todo lo que trabajas, pero trabajas poco — tienes puntería y te falta munición. El tip: no toques cómo cierras, dale volumen. Meta diaria de cotizaciones nuevas y reusa las que ya te funcionaron para salir a más manos.";
 
             case 'cerrador_solitario':
-                return self::_pick([
-                    "Vives del cierre y no tienes pipeline detrás: dependes de rachas. El mes que no cae un cliente fácil, te quedas en ceros. Construye flujo y seguimiento para no depender de la suerte: meta diaria de propuestas y un toque a cada caliente, para que tu buen remate tenga sobre qué trabajar.",
-                ], $seed + 1);
+                return "Vives del cierre pero sin pipeline atrás, así que dependes de rachas. El tip: construye flujo — meta diaria de propuestas y un toque a cada caliente — para que tu buen remate no dependa de la suerte del mes.";
 
             case 'cerrador_desperdiciado':
-                return self::_pick([
-                    "Cierras bien lo que atiendes y dejas morir el resto del pipeline: conviertes lo fácil y desperdicias lo trabajable. No toques tu cierre; amplía cuánto del pipeline trabajas. Rescata al tibio antes de que muera con un ángulo nuevo —«me acordé de su proyecto, salió [algo], ¿lo retomamos?»— en vez de dejarlo enfriar.",
-                ], $seed + 1);
+                return "Cierras bien lo que atiendes pero abandonas el resto del pipeline. El tip: no toques tu cierre; rescata al tibio antes de que se muera con un ángulo nuevo —«salió algo que le acomoda a su proyecto, ¿lo retomamos?»— en lugar de dejarlo enfriar.";
 
             case 'una_pierna':
-                return self::_pick([
-                    "Cierras y cobras como pocos, pero solo al que compra a la primera: al de dos o tres toques lo dejas enfriar. Vendes con una pierna. Ponle al sostenimiento la misma disciplina que al cierre: al que no decide de una, agéndale un segundo toque con fecha — «le doy hasta [fecha] para aterrizarlo, ese día lo busco con la propuesta lista».",
-                ], $seed + 1);
+                return "Cierras al que decide rápido y sueltas al que necesita dos o tres toques. El tip: al que no decide de una, agéndale el siguiente contacto con fecha —«le doy hasta [fecha] para verlo con calma; ese día lo busco con la propuesta lista para cerrar»— y trátalo como un cierre en dos tiempos, no como perdido.";
 
             case 'motor_completo':
-                return self::_pick([
-                    "Vas completo: traes, trabajas las señales, cierras y cobras. El trabajo ya no es vender más, es vender más grande y volver tu método enseñable. Cuando alguien ya te compró, súbele un complemento en el mismo cierre — «la mayoría suma esto porque les evita [problema] después». En el instante del sí, la resistencia a agregar es casi cero.",
-                    "Rendimiento de primera: cada pieza empuja a la siguiente. Tu siguiente nivel es ticket más alto y clientes más grandes con el mismo método — y documentar lo que haces para que sea tu estándar, no tu buen mes.",
-                ], $seed + 1);
+                return "Traes, sigues, cierras y cobras, y cada pieza empuja a la siguiente. El tip: para crecer, ve por clientes más grandes con el mismo método, y enséñale al equipo lo que haces — vuelve tu forma de vender algo repetible, no solo tu buen mes.";
 
             case 'meseta':
             default:
-                return self::_pick([
-                    "No tienes fugas graves, te falta filo: competente y estancado. La medianía se rompe por un punto, no por todos. Mete un solo hábito esta semana — en cada trato, una pregunta de implicación: «¿qué le cuesta seguir sin resolver esto?». Es lo que más mueve el cierre sin trabajar más horas.",
-                    "Todo se sostiene y nada brilla. El salto sale de profundizar, no de corregir: elige un frente —normalmente el cierre— y llévalo de «bien» a «excelente» este mes pidiendo un compromiso más firme del que sueles pedir.",
-                ], $seed + 1);
+                return "No tienes fugas graves, pero tampoco una fortaleza que jale. El tip: elige el cierre y afílalo — en cada propuesta que abran, en vez de esperar respuesta, pregunta «¿qué falta para decidir?» y pon una fecha. Un solo hábito sube el cierre sin trabajar más horas.";
         }
-    }
-
-    // ── Capa E (cierre sucio) — se suma si aplica ────────────
-    private static function _capa_e(array $m, array $e, array $real, int $seed): string
-    {
-        // Necesita un PATRÓN de ventas (2+); con 1 venta no hay "así cierras siempre".
-        // Y si casi no cierra, la fuga es el cierre, no el cobro.
-        if ($m['cierres'] < 2 && $m['vper'] < 2) return '';
-        // Dominante entre las 3 penalizaciones
-        $g = ['cobro' => $m['eps'], 'descuento' => $m['epd'], 'volumen' => $m['epb']];
-        arsort($g);
-        $k = array_key_first($g);
-        if ($g[$k] < 0.03) return '';
-        switch ($k) {
-            case 'cobro':
-                return "Y ojo con cerrar en falso: " . self::_pl($m['vsp'], 'una venta lleva días', 'ventas llevan días') . " sin un peso — pide el anticipo desde el sí: «para apartar y arrancar hoy, dejamos el anticipo, ¿transferencia o tarjeta?». Quien pone dinero ya decidió.";
-            case 'descuento':
-                return "Y estás comprando el sí con descuento: sostén el precio y cede en plazo o alcance, no en el número — «lo puedo ajustar, pero cerrando hoy con el anticipo completo».";
-            case 'volumen':
-            default:
-                return "Y vendes por debajo del equipo: no es cómo cierras, es cuánto — meta de volumen y un complemento en cada cierre.";
-        }
-    }
-
-    // ── A quién empezar (datos fiables) ──────────────────────
-    private static function _target(array $m): string
-    {
-        $sin_expl = max(0, $m['cal'] - $m['exp']);
-        if ($sin_expl > 0) {
-            return $sin_expl === 1
-                ? "Empieza por la caliente que aún no abres en el ❓ del Radar."
-                : "Empieza por las {$sin_expl} calientes que aún no abres en el ❓ del Radar.";
-        }
-        if ($m['dorm'] > 0) {
-            return $m['dorm'] === 1
-                ? "Arranca con el cliente que abrió y no volvió."
-                : "Arranca con los {$m['dorm']} que abrieron y no volvieron.";
-        }
-        return '';
-    }
-
-    private static function _consecuencia(int $seed): string
-    {
-        return self::_pick([
-            "Con estos números el mes no cierra, y eso pega a todo el equipo. Tiene que cambiar esta semana.",
-            "Así no se sostiene. La empresa necesita que estos números reaccionen ya, no el mes que entra.",
-            "Cada semana así cuesta dinero real. Esto es prioridad hoy.",
-        ], $seed + 11);
     }
 
     private static function _render_muestra_chica(array $m, int $seed): string
