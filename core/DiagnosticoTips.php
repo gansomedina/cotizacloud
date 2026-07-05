@@ -332,10 +332,10 @@ final class DiagnosticoTips
                 "Andas en automático: ni revisas el análisis ni retomas a los que ya abrieron, y el marcador viene cayendo. Un vendedor a media máquina rinde menos que uno a full. Vuelve a la disciplina diaria —la guía cada día, un toque a cada tibio— antes de que el mes se caiga más.",
                 "Bajaste el ritmo: cero lectura y varios tibios sin retomar. Lo primero es volver a aparecer todos los días con tus clientes: abre la guía a diario y no dejes dormir a nadie que ya te vio. Sobre esa base recuperada, lo demás se acomoda.",
             ],
-            'teatro' => [
-                "Traes mucho movimiento y poca venta, y el fondo es un miedito: pedir la decisión expone a un «no». Pero el «no» no te mata, la duda sí — te come el tiempo cuidando a alguien que nunca iba a comprar. Al próximo caliente, en vez de otro seguimiento, pídele una respuesta clara: sí o no.",
-                "Revisar y marcar se siente productivo, pero es el disfraz de la parte que evitas. Sé honesto: ¿estás trabajando o esquivando el momento de pedir la venta? Deja de contar cuántos seguimientos mandas y cuenta cuántas veces pediste el cierre esta semana.",
-                "Un «no» rápido es un regalo: te libera para el que sí. Estás gastando energía en seguir a clientes que no te han dicho nada — hoy elige la más caliente y pídele que se defina. El que no pide, no pierde la venta: nunca la tuvo.",
+            'teatro' => [ // bloqueo = miedo al «no». Técnica: pregunta que da permiso de decir no (script), distinta al cierre asumido del rematador
+                "Tu freno es el miedo al «no», por eso te escondes en marcar y seguir. Pero un «no» te libera para el que sí. Facilítatelo con una pregunta que se conteste sin incomodar: a tu más caliente, «¿ya lo descartó o sigue en la mesa?». El que iba a decir no te lo dice hoy y sueltas ese tiempo; el que sigue, avanza.",
+                "Marcar señales es lo cómodo; pedir la venta es lo que evitas porque expone a un rechazo. Quítale el peso pidiendo permiso para el no: «le hablo para cerrar el tema, no para presionar — ¿le entramos o de plano no es momento?». Te da una respuesta clara sin que sientas que estás forzando.",
+                "Gastas energía en seguir a clientes que no te han dicho nada, y el miedo es al «no». Pero el que no pide, no pierde la venta: nunca la tuvo. Hoy, a tu más caliente, de frente: «para no dejarlo en el aire, ¿lo cerramos esta semana o lo dejo por ahora?». Un sí o un no, los dos te sirven.",
             ],
             'sembrador' => [
                 "Eres bueno para prender el interés; lo que dejas tirado es la cosecha. Regla simple: por cada cotización nueva que mandes, primero remata una que ya abrieron. Ganas el gusto de crear solo después de cobrar lo sembrado.",
