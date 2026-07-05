@@ -327,10 +327,11 @@ final class DiagnosticoTips
                 "Traes el motor en neutral: ni metes prospectos nuevos ni empujas los que ya tienes. Empieza por una punta, la de arriba: una cuota mínima de cotizaciones nuevas hoy, pase lo que pase. Romper el modo espera es el primer paso.",
                 "El que solo atiende lo que llega, se apaga. Vuelve a ser tú quien mueve las fichas: una hora fija de prospección al día, aunque no te nazca. Lo que entra solo nunca llena el mes.",
             ],
-            'sin_ritmo' => [ // A↓: se le cayó la disciplina diaria (no lee, deja enfriar, cae) — NO es técnica
-                "Se te cayó el ritmo: dejaste de leer el análisis, tienes clientes que abrieron y se enfriaron, y vienes a la baja. No es técnica, es constancia — el pipeline se alimenta a diario o se seca. Retoma la rutina: abre la guía en la mañana y dale un toque a cada cliente que ya te vio antes de que se enfríe.",
-                "Andas en automático: ni revisas el análisis ni retomas a los que ya abrieron, y el marcador viene a la baja. La constancia es la mitad del trabajo — un vendedor a media máquina rinde menos que uno normal a full. Vuelve a la disciplina diaria antes de que el mes se caiga más.",
-                "Bajaste el ritmo: cero lectura y varios tibios sin retomar. Lo que te está pesando no es cómo vendes, es que dejaste de aparecer todos los días con tus clientes. Reengánchate: la guía cada día y no dejes dormir a nadie que ya te vio.",
+            'sin_ritmo' => [ // A↓: se le cayó la disciplina diaria (no lee, deja enfriar, cae).
+                             // NO afirmar que vende bien — su conversión puede estar baja también.
+                "Se te cayó el ritmo: dejaste de leer el análisis, tienes clientes que abrieron y se enfriaron, y vienes a la baja. El pipeline se alimenta a diario o se seca. Empieza por reengancharte: abre la guía en la mañana y dale un toque a cada cliente que ya te vio antes de que se enfríe.",
+                "Andas en automático: ni revisas el análisis ni retomas a los que ya abrieron, y el marcador viene cayendo. Un vendedor a media máquina rinde menos que uno a full. Vuelve a la disciplina diaria —la guía cada día, un toque a cada tibio— antes de que el mes se caiga más.",
+                "Bajaste el ritmo: cero lectura y varios tibios sin retomar. Lo primero es volver a aparecer todos los días con tus clientes: abre la guía a diario y no dejes dormir a nadie que ya te vio. Sobre esa base recuperada, lo demás se acomoda.",
             ],
             'teatro' => [
                 "Traes mucho movimiento y poca venta, y el fondo es un miedito: pedir la decisión expone a un «no». Pero el «no» no te mata, la duda sí — te come el tiempo cuidando a alguien que nunca iba a comprar. Al próximo caliente, en vez de otro seguimiento, pídele una respuesta clara: sí o no.",
