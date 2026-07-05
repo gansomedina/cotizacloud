@@ -326,11 +326,11 @@ final class DiagnosticoTips
                 "Traes el motor en neutral: ni metes prospectos nuevos ni empujas los que ya tienes. Empieza por una punta, la de arriba: una cuota mínima de cotizaciones nuevas hoy, pase lo que pase. Romper el modo espera es el primer paso.",
                 "El que solo atiende lo que llega, se apaga. Vuelve a ser tú quien mueve las fichas: una hora fija de prospección al día, aunque no te nazca. Lo que entra solo nunca llena el mes.",
             ],
-            'sin_ritmo' => [ // A↓: disciplina diaria caída. La "no lectura" va en el tip de NÚMEROS;
-                             // aquí SOLO el trabajo observable (tibios sin retomar, tendencia). No afirmar que vende bien.
-                "Se te cayó el ritmo: tienes clientes que abrieron y se enfriaron sin que los retomaras, y el marcador viene a la baja. El pipeline se alimenta a diario o se seca. Vuelve a la rutina: cada día, un toque a cada cliente que ya te vio, antes de que se enfríe.",
-                "Andas en automático y el marcador viene cayendo: varios que ya te abrieron se quedaron sin un segundo toque. Un vendedor a media máquina rinde menos que uno a full. Retoma la disciplina diaria — todos los días trabajas a los tibios, no solo a los que gritan.",
-                "Bajaste el ritmo: varios tibios sin retomar y la tendencia a la baja. Lo primero es volver a aparecer todos los días con los que ya te vieron — un toque diario a cada uno antes de que se enfríe. Sobre esa base, lo demás se acomoda.",
+            'sin_ritmo' => [ // A↓: disciplina diaria caída (no lee + deja enfriar + cae). Su fuga
+                             // literal SÍ incluye el no leer. No afirmar que vende bien.
+                "Se te cayó el ritmo: dejaste de leer el análisis que te marca a quién seguir, tienes clientes que abrieron y se enfriaron, y el marcador viene a la baja. El pipeline se alimenta a diario o se seca. Vuelve a la rutina: abre el análisis en la mañana y dale un toque a cada cliente que ya te vio antes de que se enfríe.",
+                "Andas en automático: ni revisas el análisis ni retomas a los que ya abrieron, y el marcador viene cayendo. Un vendedor a media máquina rinde menos que uno a full. Retoma la disciplina diaria —el análisis cada día, un toque a cada tibio— antes de que el mes se caiga más.",
+                "Bajaste el ritmo: dejaste de leer y varios tibios sin retomar, con la tendencia a la baja. Lo primero es volver a aparecer todos los días con tus clientes: revisa el análisis a diario y no dejes dormir a nadie que ya te vio. Sobre esa base, lo demás se acomoda.",
             ],
             'teatro' => [ // bloqueo = miedo al «no». Técnica: pregunta que da permiso de decir no (script), distinta al cierre asumido del rematador
                 "Tu freno es el miedo al «no», por eso te escondes en marcar y seguir. Pero un «no» te libera para el que sí. Facilítatelo con una pregunta que se conteste sin incomodar: a tu más caliente, «¿ya lo descartó o sigue en la mesa?». El que iba a decir no te lo dice hoy y sueltas ese tiempo; el que sigue, avanza.",
