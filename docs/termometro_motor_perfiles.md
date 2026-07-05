@@ -273,6 +273,15 @@ Auditado por un psicólogo de ventas + un cerrador de élite. Hallazgos aplicado
 Pendiente (sin dato para detectar hoy): "quema-leads" (demasiado agresivo, espanta
 tibios) y "prometedor de zombis" (arrastra cotizaciones «ya casi» que nunca cierran).
 
+### Corrección: Teatro exige Activación OK
+`teatro` (marca señales y no cierra = renuencia al cierre) solo aplica si la
+**activación NO está en el piso**. Si A está baja, la fuga es la activación (no leer,
+dejar enfriar), no el miedo al cierre — aunque S esté alto y C bajo. Perfil nuevo
+**`sin_ritmo`**: A↓ pero el vendedor es capaz (cierra decente o trabaja el medio) y se
+le **cayó la disciplina diaria** (no lee, dormidas, momentum a la baja). Se coachea
+constancia, no técnica de cierre. Distinto de `presente_pasivo` (reactivo total, ni
+genera ni cierra) y de `desconectado` (todo bajo).
+
 ## Notas de implementación
 - El perfil se elige por el vector real de `usuario_score` (los 5 `s_*` + activadores +
   EMAs para tendencia). **Nunca** con datos supuestos.

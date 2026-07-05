@@ -1052,6 +1052,9 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
       <div class="lb-name">
         <?= e($es['nombre']) ?>
         <div class="lb-diag"><?= e($es_diag) ?></div>
+        <?php $es_num = trim(ActividadScore::diagnostico_numeros($es, $diag_ctx ?? null)); if ($es_num !== ''): ?>
+        <div class="lb-diag" style="opacity:.8;margin-top:3px"><?= e($es_num) ?></div>
+        <?php endif; ?>
         <?php if (Auth::es_superadmin() && $es['nivel'] !== 'nuevo'):
           $lb_act = min(100, round((float)($es['s_activacion'] ?? 0) * 100));
           $lb_eng = min(100, round((float)($es['s_engagement'] ?? 0) * 100));
