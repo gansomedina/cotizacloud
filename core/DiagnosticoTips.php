@@ -136,9 +136,13 @@ final class DiagnosticoTips
     {
         $real = ['act' => true, 'eng' => true, 'seg' => true, 'hlt' => true, 'conv' => true];
         // Seguimiento alto + no cierra: ¿es trabajo REAL o teatro de clics?
-        // Diligente (lee la guía + no deja enfriar) → real, es falta de técnica (rematador).
-        // No diligente → hueco, es teatro/renuencia al cierre (voluntad).
-        $diligente = $m['tips_s'] >= 0.7 && ($m['dorm'] / max($m['vist'], 1)) < 0.20;
+        // La diligencia se mide por FOLLOW-UP observable: cubrió sus calientes
+        // (exploró/dio feedback) y NO las dejó dormir. Leer la guía (tips_s) NO
+        // es follow-up — es voluntad/coachabilidad, va aparte (_voluntad).
+        //   Diligente → seguimiento real, es falta de técnica de cierre (rematador).
+        //   No diligente (clickea pero deja enfriar) → hueco, teatro/renuencia (voluntad).
+        $cobertura = $m['cal'] > 0 ? $m['exp'] / $m['cal'] : 0.0;
+        $diligente = $cobertura >= 0.7 && ($m['dorm'] / max($m['vist'], 1)) < 0.20;
         if ($e['seg'] === 'alto' && $m['s_conv'] < self::BAJO && !$diligente) $real['seg'] = false;
         // Apertura alta pero se le duermen = vanidad
         if ($e['act'] === 'alto' && ($m['dorm'] / max($m['vist'], 1)) >= 0.25) $real['act'] = false;
