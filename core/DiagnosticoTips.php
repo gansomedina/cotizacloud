@@ -229,6 +229,15 @@ final class DiagnosticoTips
             return 'francotirador';
         }
 
+        // Cierra (C no bajo) pero SUCIO → perfil de Engagement (pecado del cómo cierra).
+        // El cerrador de élite marcó estos como los que cuestan dinero real.
+        if (!$cBaja && $e['eng'] === 'bajo') {
+            $gp = ['cierre_falso' => $m['eps'], 'regalador' => $m['epd'], 'bajo_caudal' => $m['epb']];
+            arsort($gp);
+            $kp = array_key_first($gp);
+            if ($gp[$kp] > 0.05) return $kp;
+        }
+
         // A↑ · C↑  (autonomía)
         if ($cAlta) {
             if ($hltBajo && $e['seg'] === 'bajo') return 'una_pierna';
@@ -246,7 +255,8 @@ final class DiagnosticoTips
     {
         if ($arq === 'muestra_chica') return self::_render_muestra_chica($m, $seed);
         // PÁRRAFO 2 — el perfil psicológico + los tips exactos (SIN números).
-        return self::_parrafo_perfil($arq, $m, $boot);
+        // 3 variantes por perfil, rotadas por (usuario+día) → el lector diario no repite.
+        return self::_parrafo_perfil($arq, $m, $boot, $seed);
     }
 
     // ════════════════════════════════════════════════════════
@@ -294,53 +304,92 @@ final class DiagnosticoTips
     //  PÁRRAFO 2 — El PERFIL psicológico + tips exactos (SIN números)
     //  Determinado por el vector de 5 segmentos y sus valores internos.
     // ════════════════════════════════════════════════════════
-    private static function _parrafo_perfil(string $arq, array $m, array $boot): string
+    private static function _parrafo_perfil(string $arq, array $m, array $boot, int $seed): string
     {
-        $capaz = $boot['capaz'];
-        switch ($arq) {
-
-            case 'desconectado':
-                return "No estás en el juego: ni entras al sistema ni cierras, y ni la guía que te dice qué hacer abres — y eso no se arregla con técnica, se arregla decidiendo entrarle. El tip para ti: esta semana solo lo mínimo, lee el análisis a diario y retoma un cliente que se enfrió. Una victoria chica para volver a arrancar el motor.";
-
-            case 'presente_pasivo':
-                return "Estás administrando lo que te llega en vez de salir a generar y a cerrar. El tip: fuerza las dos puntas del embudo. Arriba, una hora fija de prospección cada día. Abajo, a cada cliente que ya abrió, pídele la decisión de frente en lugar de esperar a que conteste.";
-
-            case 'teatro':
-                $s = "Estás confundiendo actividad con venta: haces todo lo cómodo —marcar señales, revisar el Radar— y esquivas lo único que cierra, pedir la venta.";
-                $s .= $capaz
-                    ? " No es que no sepas —cuando te lo propones, cierras—, es que evitas el momento de rematar."
-                    : " Es renuencia a rematar, no falta de técnica.";
-                $s .= " El tip para ti: deja de mandar seguimientos y empieza a pedir cierres. En cada caliente saca la objeción —«¿qué lo detiene: precio, tiempo o alcance?»— y en cuanto la resuelva, pide la fecha directo: «¿lo cerramos esta semana o la próxima?».";
-                return $s;
-
-            case 'sembrador':
-                return "Se te da generar interés y evitas rematarlo — mandas y esperas. El tip: por cada propuesta nueva que armes, remata una que ya abrieron. Llámala en caliente —«si arrancáramos hoy, ¿qué es lo único que lo detiene?»— y pídele la decisión.";
-
-            case 'rematador_ausente':
-                return "Haces bien todo el proceso —generas, sigues, atiendes las señales— y te falta solo el último paso, pedir la venta. Esto sí es técnica de cierre, no falta de ganas. El tip: tras resolver la duda —«¿es precio, tiempo o alcance?»— no vuelvas a preguntar si le interesa; dalo por hecho y pon la fecha: «¿arrancamos esta o la próxima semana?».";
-
-            case 'cultivador':
-                return "Cuidas tanto la relación que nunca la cierras — tu pipeline está lleno y vivo, pero no produce. El tip: ponle fecha de decisión a cada caliente. «La sostengo hasta [fecha], ¿la cerramos antes o de plano no es momento?». El «¿o no es momento?» obliga a decidir al que está cómodo en el limbo.";
-
-            case 'francotirador':
-                return "Cierras casi todo lo que trabajas, pero trabajas poco — tienes puntería y te falta munición. El tip: no toques cómo cierras, dale volumen. Meta diaria de cotizaciones nuevas y reusa las que ya te funcionaron para salir a más manos.";
-
-            case 'cerrador_solitario':
-                return "Vives del cierre pero sin pipeline atrás, así que dependes de rachas. El tip: construye flujo — meta diaria de propuestas y un toque a cada caliente — para que tu buen remate no dependa de la suerte del mes.";
-
-            case 'cerrador_desperdiciado':
-                return "Cierras bien lo que atiendes pero abandonas el resto del pipeline. El tip: no toques tu cierre; rescata al tibio antes de que se muera con un ángulo nuevo —«salió algo que le acomoda a su proyecto, ¿lo retomamos?»— en lugar de dejarlo enfriar.";
-
-            case 'una_pierna':
-                return "Cierras al que decide rápido y sueltas al que necesita dos o tres toques. El tip: al que no decide de una, agéndale el siguiente contacto con fecha —«le doy hasta [fecha] para verlo con calma; ese día lo busco con la propuesta lista para cerrar»— y trátalo como un cierre en dos tiempos, no como perdido.";
-
-            case 'motor_completo':
-                return "Traes, sigues, cierras y cobras, y cada pieza empuja a la siguiente. El tip: para crecer, ve por clientes más grandes con el mismo método, y enséñale al equipo lo que haces — vuelve tu forma de vender algo repetible, no solo tu buen mes.";
-
-            case 'meseta':
-            default:
-                return "No tienes fugas graves, pero tampoco una fortaleza que jale. El tip: elige el cierre y afílalo — en cada propuesta que abran, en vez de esperar respuesta, pregunta «¿qué falta para decidir?» y pon una fecha. Un solo hábito sube el cierre sin trabajar más horas.";
-        }
+        // 3 variantes por perfil, cada una con distinto ÁNGULO (reto / coach / calle).
+        // El guion mecánico de cierre («precio, tiempo o alcance» / «pon fecha») vive
+        // SOLO en rematador_ausente — su bloqueo es falta de técnica. En los demás el
+        // cierre se ataca por su bloqueo emocional, con lenguaje distinto (un pecado,
+        // un mensaje).
+        $V = [
+            'desconectado' => [
+                "Ahorita no se trata de vender, se trata de volver a agarrar el ritmo. Escoge UN cliente, el que se enfrió pero te caía bien, y retómalo hoy sin agenda: «me acordé de usted, ¿en qué quedó su proyecto?». Uno hoy, otro mañana. El músculo se recupera moviéndolo, no pensándolo.",
+                "No es cómo vendes, es que te apagaste. La salida no es esforzarte más, es volver al juego con algo chico: una sola cotización vieja, puesta al día hoy. No busques cerrar, busca moverte — el movimiento trae las ganas, no al revés.",
+                "Lo pesado es arrancar, no seguir. Regla de hoy: abre el sistema y trabaja UNA cotización, aunque sean dos minutos. Casi siempre que empiezas, sigues. Una victoria chica prende el motor.",
+            ],
+            'presente_pasivo' => [
+                "Estás viviendo de lo que cae del árbol, y el árbol se seca. Bloquéate una hora en la mañana, la misma todos los días, solo para buscar gente nueva — ni correos ni cotizaciones viejas, pura caza. Esa hora es sagrada.",
+                "Traes el motor en neutral: ni metes prospectos nuevos ni empujas los que ya tienes. Empieza por una punta, la de arriba: una cuota mínima de cotizaciones nuevas hoy, pase lo que pase. Romper el modo espera es el primer paso.",
+                "El que solo atiende lo que llega, se apaga. Vuelve a ser tú quien mueve las fichas: una hora fija de prospección al día, aunque no te nazca. Lo que entra solo nunca llena el mes.",
+            ],
+            'teatro' => [
+                "Traes mucho movimiento y poca venta, y el fondo es un miedito: pedir la decisión expone a un «no». Pero el «no» no te mata, la duda sí — te come el tiempo cuidando a alguien que nunca iba a comprar. Al próximo caliente, en vez de otro seguimiento, pídele una respuesta clara: sí o no.",
+                "Revisar y marcar se siente productivo, pero es el disfraz de la parte que evitas. Sé honesto: ¿estás trabajando o esquivando el momento de pedir la venta? Deja de contar cuántos seguimientos mandas y cuenta cuántas veces pediste el cierre esta semana.",
+                "Un «no» rápido es un regalo: te libera para el que sí. Estás gastando energía en mantener vivas cotizaciones que no te han dicho nada — hoy elige la más caliente y pídele que se defina. El que no pide, no pierde la venta: nunca la tuvo.",
+            ],
+            'sembrador' => [
+                "Eres bueno para prender el interés; lo que dejas tirado es la cosecha. Regla simple: por cada cotización nueva que mandes, primero remata una que ya abrieron. Ganas el gusto de crear solo después de cobrar lo sembrado.",
+                "El subidón lo tienes en mandar, pero el dinero está en volver. Tus mejores prospectos no son los nuevos, son los que ya vieron tu propuesta y no te han dicho que no. Empieza el día por ahí, no por lo nuevo.",
+                "Siembras mucho y cosechas poco: propuestas abiertas juntando polvo mientras haces otras nuevas. Antes de crear una más, ve a una que ya abrió y remátala hoy. Un sembrador que no cosecha se queda sin bodega, no sin semilla.",
+            ],
+            'rematador_ausente' => [ // ← único con el guion mecánico de cierre
+                "Haces todo bien hasta el segundo antes de cobrar la pieza. El error está en la pregunta: cuando dices «¿le interesa?», le das chance de «déjeme lo pienso». No preguntes si quiere, asume que ya: «le tengo lugar esta semana o la próxima, ¿cuál le acomoda?».",
+                "Tú ya ganaste, nomás no recoges el premio. Cambia el sí/no por dos opciones donde ambas son un sí: «¿lo dejamos con el alcance completo o arrancamos con la primera etapa?». El cliente elige cómo comprar, no si comprar.",
+                "Antes de pedir la venta, destapa lo que estorba con una pregunta directa: «¿qué necesitarías para decidir hoy?». Te dice el obstáculo real; lo resuelves, y ahí mismo pones la fecha — sin volver a preguntar si quiere.",
+            ],
+            'cultivador' => [
+                "Eres tan buena onda que ya eres su amigo, y a los amigos no se les cobra — por eso no cierras. Usa la confianza, no la escondas: «con la confianza que ya hay le hablo derecho, ¿le entramos o lo dejamos para más adelante?». La franqueza respeta la relación, no la rompe.",
+                "Tu miedo no es al «no», es a vaciar el pipeline si cierras. Pero un prospecto en el limbo no es un activo, es peso muerto. Date permiso de soltarlo: «la sostengo hasta [fecha]; si no es el momento, la cerramos y liberamos a los dos».",
+                "Estás cómodo en el «ahí la llevamos» y el cliente también — por eso nunca avanza. Rómpelo forzando la definición: «¿la cerramos antes de [fecha] o de plano no es momento?». Un no claro vale más que un tal vez eterno.",
+            ],
+            'francotirador' => [ // ← nunca guion de cierre; su cierre ya es bueno
+                "Lo que agarras, lo tumbas — puntería pura. El pecado no es cómo cierras, es que disparas poquito. No te toco la técnica: métete una meta de cotizaciones nuevas al día. Con tu cierre, el doble de volumen es el doble de venta.",
+                "Tu cierre es de lujo, no se toca. Lo que falta es cantidad: más propuestas afuera, punto. Reusa las que ya te funcionaron para llegarle a más gente hoy.",
+                "Eres francotirador, no ametralladora — y a veces se necesita ametralladora. Sube el número de tiros: bloquea una hora diaria solo para cotizar. Tu porcentaje ya es tu superpoder; multiplícalo.",
+            ],
+            'cerrador_solitario' => [
+                "Cierras bien pero vives al día: dependes de que caiga algo, y cuando no cae, te quedas seco. Arma colchón: mientras cierras lo de hoy, ten cinco cosas prendiéndose para la semana que entra. El cierre lo tienes; la fila no.",
+                "Traes buena mano pero cero banca. Cambia el orden: dedica la primera parte del día a generar, no a cerrar. Así nunca amaneces sin con qué trabajar.",
+                "Vives de rachas porque no siembras mientras cosechas. Un toque nuevo diario y dejas de rezarle al mes. Eres bueno cerrando, malo llenando — llena.",
+            ],
+            'cerrador_desperdiciado' => [
+                "Lo que atiendes lo cierras, pero dejas morir gente que ya había mostrado interés — eso es dinero a la basura. Regrésales con un pretexto nuevo: «salió algo que le queda justo a lo que buscaba, ¿lo retomamos?». No los perdiste, los dejaste.",
+                "Tienes cierre pero eres desperdiciado: dejas morir clientes vivos. Aparta un rato hoy solo para rescatar tibios — reactívalos con novedad, no con «sigo pendiente».",
+                "El que ya abrió y dejaste ir no está muerto, está dormido. Despiértalo con un motivo nuevo para volver. Traer uno de vuelta cuesta menos que conseguir uno de cero.",
+            ],
+            'una_pierna' => [
+                "Cierras rifado al que decide rápido, pero al que necesita dos o tres vueltas lo sueltas — y ahí está la mitad de tu dinero. El de ciclo largo no se cierra hoy, se agenda: «le doy hasta el viernes, ese día lo busco con la propuesta lista». Ponle fecha y no lo sueltes.",
+                "Corres los 100 metros pero no la maratón. Al lento no le pierdas la paciencia: agéndalo con fecha exacta y regrésale ese día. El de ciclo largo no se pierde por lento, se pierde por olvidado.",
+                "Al de decisión lenta no le pidas el sí grande de golpe — se asusta. Pídele un paso chico: una duda que resolver, un siguiente contacto con fecha. Los ciclos largos se cierran por escalones, no de un salto.",
+            ],
+            'motor_completo' => [ // ← nunca guion de cierre; ya cierra
+                "Traes el paquete completo: generas, sigues, cierras y cobras. Ya no creces haciendo más de lo mismo con clientes chicos — crece hacia arriba: el mismo método en cuentas más grandes, donde una venta vale por cinco.",
+                "Estás afinado. Lo que sigue no es más volumen, es más tamaño y más gente: cuentas más gordas, y empieza a soltarle tu forma al equipo. Un maestro vale más que un vendedor.",
+                "Estás en la cima, y ahí el enemigo es la comodidad. No aflojes lo que te trajo: mantén tu cuota de propuestas nuevas aunque el mes ya esté ganado. Los mejores no bajan el ritmo cuando van ganando.",
+            ],
+            'regalador' => [
+                "Cierras, pero regalando: bajas el precio para asegurar el sí. Eso no es vender, es rematar tu propio margen. La próxima que te pidan descuento, aguanta el silencio y defiende el valor antes de mover el número — el que pide precio muchas veces sí compra al precio.",
+                "Vendes bien pero la empresa gana poco, porque cierras con rebaja. Cambia el descuento por una condición: «te lo ajusto, pero cerrando hoy con el anticipo completo». Un descuento regalado devalúa tu producto; uno a cambio de algo, no.",
+                "Estás comprando el sí con precio. Antes de soltar rebaja, recuérdale qué incluye y por qué vale; y si cedes, que sea a cambio de volumen o de decidir hoy, nunca gratis.",
+            ],
+            'cierre_falso' => [
+                "Cierras la venta pero no aseguras el pago: una venta sin anticipo es un favor, no una venta. Pide el anticipo como parte del sí: «para apartar y arrancar, va el anticipo, ¿transferencia o tarjeta?». Quien pone dinero ya decidió; el que no, todavía se puede arrepentir.",
+                "Le pones todo el empeño a que firme y ninguno a que pague — y así se te caen las ventas. Cerrar incluye cobrar: el mismo día del sí, deja amarrado el anticipo. Sin dinero de por medio, el cliente sigue siendo prospecto.",
+                "Un «sí» sin pago se enfría igual que una cotización. Amarra el compromiso con un anticipo desde el cierre, no después. El que ya puso un peso deja de comparar y se vuelve tu cliente.",
+            ],
+            'bajo_caudal' => [
+                "Cierras limpio, sin regalar — eso está bien — pero tu número total queda por debajo del equipo. No es cómo vendes, es cuánto: súbele al volumen de propuestas nuevas por semana sin bajar tu estándar.",
+                "Vendes bien pero poco. Tu cierre ya es sólido; lo que falta es más gente en el embudo. Ponte una meta semanal de ventas y llena arriba para alcanzarla.",
+                "Buena calidad, poco caudal. Lo que te limita no es la técnica, es el número de intentos. Más propuestas afuera, mismo cuidado al cerrar.",
+            ],
+            'meseta' => [
+                "No traes fugas ni una fortaleza que jale — estás parejo, y lo parejo no destaca. No arregles todo: escoge UNA cosa que ya te sale medio bien y vuélvete el mejor de la oficina en eso. Al que es EL BUENO en algo, lo buscan.",
+                "Estás en tierra de nadie, ni mal ni bien. Elige un filo —prospección, cierre o seguimiento— y afílalo hasta que te distinga. Ser correcto en todo no vende; ser el mejor en una cosa, sí.",
+                "La meseta se rompe con foco, no con esfuerzo repartido. Una sola habilidad, a fondo, este mes. Después mueves la siguiente.",
+            ],
+        ];
+        $pool = $V[$arq] ?? $V['meseta'];
+        return self::_pick($pool, $seed);
     }
 
     private static function _render_muestra_chica(array $m, int $seed): string

@@ -251,6 +251,28 @@ que es **voluntad, no habilidad**. Tip generado: reconoce la venta grande → no
 teatro de actividad → jugada de cierre con script → consecuencia. Sin elogiar el
 seguimiento hueco, sin inventar, sin barras.
 
+## PARTE 5 — Auditoría de expertos (anti-repetición)
+
+Auditado por un psicólogo de ventas + un cerrador de élite. Hallazgos aplicados:
+
+1. **Un pecado, un mensaje.** "No cierra" son 5 bloqueos distintos con 5 palancas:
+   - Teatro → miedo al "no" (reencuadrar el no como regalo). NO script.
+   - Rematador ausente → falta de técnica. **Aquí SÍ el guion mecánico de cierre.**
+   - Cultivador → miedo a vaciar el pipeline / usar la relación.
+   - Sembrador → adicción a lo fácil (emparejar crear↔cerrar).
+   - Meseta/Pasivo → sin foco (un solo hábito).
+2. **El guion «precio/tiempo/alcance» + «pon fecha» vive SOLO en rematador_ausente.**
+   Verificar al agregar perfiles que no reaparezca fuera de ahí.
+3. **Nunca guion de cierre al que ya cierra** (francotirador, motor_completo).
+4. **3 variantes por perfil, rotadas por (usuario+día)** → 39 textos, no 13. El lector
+   diario no repite; cada variante cambia el ÁNGULO (reto / coach / calle).
+5. **Perfiles de Engagement como primera clase** (cuestan dinero real, antes invisibles):
+   `regalador` (cierra con descuento), `cierre_falso` (vende sin cobrar), `bajo_caudal`
+   (cierra limpio pero poco). Se detectan cuando C no es bajo y E es la fuga dominante.
+
+Pendiente (sin dato para detectar hoy): "quema-leads" (demasiado agresivo, espanta
+tibios) y "prometedor de zombis" (arrastra cotizaciones «ya casi» que nunca cierran).
+
 ## Notas de implementación
 - El perfil se elige por el vector real de `usuario_score` (los 5 `s_*` + activadores +
   EMAs para tendencia). **Nunca** con datos supuestos.
