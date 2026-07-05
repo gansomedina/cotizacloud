@@ -221,10 +221,40 @@ No cambia *cuánto* vende, sino *con qué costo*. Se añade como cláusula al fi
 
 ---
 
+## PARTE 4 — Ejecución en código (`core/DiagnosticoTips.php`)
+
+Pipeline de `build($s,$ctx)`:
+1. `_metricas` — normaliza TODA la fila: 5 segmentos, activadores (A/E/S/H/C),
+   **boosters** (`bonus_ticket`, `bonus_cierre`, `ticket_promedio`), EMAs y `momentum`.
+2. `_estados` — cada segmento a bajo/medio/alto (umbral **0.40 / 0.63**).
+3. `_validar` — **Goodhart**: marca cada ALTO como real o hueco. S alto + C bajo es
+   hueco **solo si NO es diligente** (diligente = lee la guía `tips_score ≥ 0.7` **y**
+   no deja enfriar `dormidas/vistas < 0.20`). Esto separa **teatro** (hueco → voluntad)
+   de **rematador ausente** (real → habilidad).
+4. `_boosters` — `bonus_ticket`/`bonus_cierre` vienen de ventas PAGADAS → mérito
+   **validado** (reconocimiento real aun con score bajo) + `capaz=true` (prueba de que
+   SÍ sabe cerrar → inclina el diagnóstico a voluntad, descarta "no sabe").
+5. `_voluntad` — índice 0–100: `+lee`, `−deja enfriar`, `−teatro`, `±momentum`, `+capaz`.
+6. `_cuadrante` — A×C + índice → tono: `sacudida` · `sacudida_cierre` · `reenganche` ·
+   `metodo` · `autonomia` · `afinar`.
+7. `_arquetipo` — perfil por el vector completo (desconectado, presente_pasivo, teatro,
+   sembrador, rematador_ausente, cultivador, francotirador, cerrador_solitario,
+   cerrador_desperdiciado, una_pierna, motor_completo, meseta, muestra_chica).
+8. `_componer` — `[reconocimiento si valida/booster] + [perfil: diagnóstico+jugada+script]
+   + [capa E si cierre sucio, con 2+ ventas] + [activador] + [consecuencia si sacudida/bajo]`.
+
+### Ejemplo real — vendedor score 59 (dato del panel)
+Vector `A63 · E87 · S94 · P61 · C3.8`; marca 43/43, explora 43/43, cierra 1/34, lee 4/13,
+`bonus_ticket +5` (1 venta grande). → S↑ hueco (no diligente) + C↓ → **Teatro** →
+`sacudida_cierre`. El booster da reconocimiento real ("cerraste una grande") y confirma
+que es **voluntad, no habilidad**. Tip generado: reconoce la venta grande → nombra el
+teatro de actividad → jugada de cierre con script → consecuencia. Sin elogiar el
+seguimiento hueco, sin inventar, sin barras.
+
 ## Notas de implementación
 - El perfil se elige por el vector real de `usuario_score` (los 5 `s_*` + activadores +
   EMAs para tendencia). **Nunca** con datos supuestos.
-- El reconocimiento pasa SIEMPRE por el chequeo de hueco (Parte 2, paso 2).
+- El reconocimiento pasa SIEMPRE por el chequeo de hueco (Parte 2, paso 2) o de booster.
 - El tono lo fija A×C + índice de voluntad; el contenido, la fuga prioritaria.
 - Ver `core/DiagnosticoTips.php` (tip de psicología) y `_diagnostico_legacy` en
   `core/ActividadScore.php` (tip de números, los activadores).
