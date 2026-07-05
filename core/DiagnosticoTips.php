@@ -300,13 +300,13 @@ final class DiagnosticoTips
         switch ($arq) {
 
             case 'desconectado':
-                return "Tu perfil es el del desconectado: no estás en el juego. Ni entras al sistema ni cierras, y ni la guía que te dice qué hacer abres — y eso no se arregla con técnica, se arregla decidiendo entrarle. El tip para ti: esta semana solo lo mínimo, lee el análisis a diario y retoma un cliente que se enfrió. Una victoria chica para volver a arrancar el motor.";
+                return "No estás en el juego: ni entras al sistema ni cierras, y ni la guía que te dice qué hacer abres — y eso no se arregla con técnica, se arregla decidiendo entrarle. El tip para ti: esta semana solo lo mínimo, lee el análisis a diario y retoma un cliente que se enfrió. Una victoria chica para volver a arrancar el motor.";
 
             case 'presente_pasivo':
-                return "Tu perfil es el del pasivo: administras lo que te llega en vez de salir a generar y a cerrar. El tip: fuerza las dos puntas del embudo. Arriba, una hora fija de prospección cada día. Abajo, a cada cliente que ya abrió, pídele la decisión de frente en lugar de esperar a que conteste.";
+                return "Estás administrando lo que te llega en vez de salir a generar y a cerrar. El tip: fuerza las dos puntas del embudo. Arriba, una hora fija de prospección cada día. Abajo, a cada cliente que ya abrió, pídele la decisión de frente en lugar de esperar a que conteste.";
 
             case 'teatro':
-                $s = "Tu perfil es el que confunde actividad con venta: haces todo lo cómodo —marcar señales, revisar el Radar— y esquivas lo único que cierra, pedir la venta.";
+                $s = "Estás confundiendo actividad con venta: haces todo lo cómodo —marcar señales, revisar el Radar— y esquivas lo único que cierra, pedir la venta.";
                 $s .= $capaz
                     ? " No es que no sepas —cuando te lo propones, cierras—, es que evitas el momento de rematar."
                     : " Es renuencia a rematar, no falta de técnica.";
@@ -314,32 +314,32 @@ final class DiagnosticoTips
                 return $s;
 
             case 'sembrador':
-                return "Tu perfil es el del sembrador que no cosecha: se te da generar interés y evitas rematarlo — mandas y esperas. El tip: por cada propuesta nueva que armes, remata una que ya abrieron. Llámala en caliente —«si arrancáramos hoy, ¿qué es lo único que lo detiene?»— y pídele la decisión.";
+                return "Se te da generar interés y evitas rematarlo — mandas y esperas. El tip: por cada propuesta nueva que armes, remata una que ya abrieron. Llámala en caliente —«si arrancáramos hoy, ¿qué es lo único que lo detiene?»— y pídele la decisión.";
 
             case 'rematador_ausente':
-                return "Tu perfil es el del rematador ausente: haces bien todo el proceso —generas, sigues, atiendes las señales— y te falta solo el último paso, pedir la venta. Esto sí es técnica de cierre, no falta de ganas. El tip: tras resolver la duda —«¿es precio, tiempo o alcance?»— no vuelvas a preguntar si le interesa; dalo por hecho y pon la fecha: «¿arrancamos esta o la próxima semana?».";
+                return "Haces bien todo el proceso —generas, sigues, atiendes las señales— y te falta solo el último paso, pedir la venta. Esto sí es técnica de cierre, no falta de ganas. El tip: tras resolver la duda —«¿es precio, tiempo o alcance?»— no vuelvas a preguntar si le interesa; dalo por hecho y pon la fecha: «¿arrancamos esta o la próxima semana?».";
 
             case 'cultivador':
-                return "Tu perfil es el del cultivador que no cosecha: cuidas tanto la relación que nunca la cierras — tu pipeline está lleno y vivo, pero no produce. El tip: ponle fecha de decisión a cada caliente. «La sostengo hasta [fecha], ¿la cerramos antes o de plano no es momento?». El «¿o no es momento?» obliga a decidir al que está cómodo en el limbo.";
+                return "Cuidas tanto la relación que nunca la cierras — tu pipeline está lleno y vivo, pero no produce. El tip: ponle fecha de decisión a cada caliente. «La sostengo hasta [fecha], ¿la cerramos antes o de plano no es momento?». El «¿o no es momento?» obliga a decidir al que está cómodo en el limbo.";
 
             case 'francotirador':
-                return "Tu perfil es el del francotirador: cierras casi todo lo que trabajas, pero trabajas poco — tienes puntería y te falta munición. El tip: no toques cómo cierras, dale volumen. Meta diaria de cotizaciones nuevas y reusa las que ya te funcionaron para salir a más manos.";
+                return "Cierras casi todo lo que trabajas, pero trabajas poco — tienes puntería y te falta munición. El tip: no toques cómo cierras, dale volumen. Meta diaria de cotizaciones nuevas y reusa las que ya te funcionaron para salir a más manos.";
 
             case 'cerrador_solitario':
-                return "Tu perfil es el del cerrador solitario: vives del cierre pero sin pipeline atrás, así que dependes de rachas. El tip: construye flujo — meta diaria de propuestas y un toque a cada caliente — para que tu buen remate no dependa de la suerte del mes.";
+                return "Vives del cierre pero sin pipeline atrás, así que dependes de rachas. El tip: construye flujo — meta diaria de propuestas y un toque a cada caliente — para que tu buen remate no dependa de la suerte del mes.";
 
             case 'cerrador_desperdiciado':
-                return "Tu perfil es el del cerrador que deja morir: cierras bien lo que atiendes pero abandonas el resto del pipeline. El tip: no toques tu cierre; rescata al tibio antes de que se muera con un ángulo nuevo —«salió algo que le acomoda a su proyecto, ¿lo retomamos?»— en lugar de dejarlo enfriar.";
+                return "Cierras bien lo que atiendes pero abandonas el resto del pipeline. El tip: no toques tu cierre; rescata al tibio antes de que se muera con un ángulo nuevo —«salió algo que le acomoda a su proyecto, ¿lo retomamos?»— en lugar de dejarlo enfriar.";
 
             case 'una_pierna':
-                return "Tu perfil es el del cerrador de una pierna: cierras al que decide rápido y sueltas al que necesita dos o tres toques. El tip: al que no decide de una, agéndale el siguiente contacto con fecha —«le doy hasta [fecha] para verlo con calma; ese día lo busco con la propuesta lista para cerrar»— y trátalo como un cierre en dos tiempos, no como perdido.";
+                return "Cierras al que decide rápido y sueltas al que necesita dos o tres toques. El tip: al que no decide de una, agéndale el siguiente contacto con fecha —«le doy hasta [fecha] para verlo con calma; ese día lo busco con la propuesta lista para cerrar»— y trátalo como un cierre en dos tiempos, no como perdido.";
 
             case 'motor_completo':
-                return "Tu perfil es el del motor completo: traes, sigues, cierras y cobras, y cada pieza empuja a la siguiente. El tip: para crecer, ve por clientes más grandes con el mismo método, y enséñale al equipo lo que haces — vuelve tu forma de vender algo repetible, no solo tu buen mes.";
+                return "Traes, sigues, cierras y cobras, y cada pieza empuja a la siguiente. El tip: para crecer, ve por clientes más grandes con el mismo método, y enséñale al equipo lo que haces — vuelve tu forma de vender algo repetible, no solo tu buen mes.";
 
             case 'meseta':
             default:
-                return "Tu perfil es el del estable sin filo: no tienes fugas graves, pero tampoco una fortaleza que jale. El tip: elige el cierre y afílalo — en cada propuesta que abran, en vez de esperar respuesta, pregunta «¿qué falta para decidir?» y pon una fecha. Un solo hábito sube el cierre sin trabajar más horas.";
+                return "No tienes fugas graves, pero tampoco una fortaleza que jale. El tip: elige el cierre y afílalo — en cada propuesta que abran, en vez de esperar respuesta, pregunta «¿qué falta para decidir?» y pon una fecha. Un solo hábito sube el cierre sin trabajar más horas.";
         }
     }
 
