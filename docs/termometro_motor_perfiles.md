@@ -273,6 +273,19 @@ Auditado por un psicólogo de ventas + un cerrador de élite. Hallazgos aplicado
 Pendiente (sin dato para detectar hoy): "quema-leads" (demasiado agresivo, espanta
 tibios) y "prometedor de zombis" (arrastra cotizaciones «ya casi» que nunca cierran).
 
+### Auditoría del clasificador (7 bugs corregidos)
+Raíz: S y H solo se miraban en los extremos de C (bajo/alto); toda la franja **C=medio
+era ciega** a S/H/E, y `motor_completo` (la afirmación más fuerte) era la que menos
+verificaba. Reestructurado `_arquetipo`:
+- **motor_completo** solo si S, H y E están OK (antes decía "sigues" con S bajo).
+- **desconectado** ya no atropella a un cerrador: `bajos>=4 && conv!='alto'`.
+- **S, H, E se revisan SIEMPRE** antes de motor/meseta (prioridad S→H→E).
+- Arquetipos nuevos: **`sordo_a_senales`** (cierra pero ignora las señales calientes),
+  **`pipeline_frio`** (deja morir calientes con C medio), **`engagement_flojo`**
+  (fallback E bajo sin penalización dominante).
+Verificado con harness sobre los 243 vectores: **0 contradicciones**, 16 arquetipos
+alcanzables.
+
 ### Corrección: Teatro exige Activación OK
 `teatro` (marca señales y no cierra = renuencia al cierre) solo aplica si la
 **activación NO está en el piso**. Si A está baja, la fuga es la activación (no leer,
