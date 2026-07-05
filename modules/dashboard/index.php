@@ -957,22 +957,24 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         </div>
       </div>
       <?php
-      // Bloque 1 (visible) = PERFIL (texto 2). Bloques 2-4 ("siguiente") =
-      // NÚMEROS (texto 1) repartidos por frase → leer todo dispara los 3 expand.
-      $diag_b1 = trim($ts_diag); // perfil
-      $ts_num  = trim(ActividadScore::diagnostico_numeros($ts, $diag_ctx ?? null));
-      $cut_s = function(string $t, int $target) {
+      // El PERFIL se parte a MEDIA FRASE (no en punto final) para dejar la idea
+      // inconclusa y OBLIGAR al "siguiente": bloque 1 (visible) = 1a mitad cortada a
+      // media frase, bloque 2 (1er "siguiente") = el resto del perfil. Bloques 3-4 =
+      // NÚMEROS en 2 partes. Leer los 3 "siguiente" dispara tip_expand_1/2/3 (crédito).
+      $cut_w = function(string $t, int $target) {
           $len = mb_strlen($t);
           if ($target >= $len) return $len;
-          $next = mb_strpos($t, '. ', $target);
-          return $next !== false ? $next + 1 : $len; // corta al final de una frase
+          $next = mb_strpos($t, ' ', $target);        // corta en el siguiente ESPACIO
+          return $next !== false ? $next : $len;      // → frase inconclusa, no en punto
       };
-      $nlen = mb_strlen($ts_num);
-      $n1 = $cut_s($ts_num, (int)($nlen * 0.34));
-      $n2 = $cut_s($ts_num, (int)($nlen * 0.67));
-      $diag_b2 = trim(mb_substr($ts_num, 0, $n1));
-      $diag_b3 = trim(mb_substr($ts_num, $n1, $n2 - $n1));
-      $diag_b4 = trim(mb_substr($ts_num, $n2));
+      $perfil  = trim($ts_diag);
+      $pcut    = $cut_w($perfil, (int)(mb_strlen($perfil) * 0.45)); // un poco antes de la mitad
+      $diag_b1 = trim(mb_substr($perfil, 0, $pcut));
+      $diag_b2 = trim(mb_substr($perfil, $pcut));
+      $ts_num  = trim(ActividadScore::diagnostico_numeros($ts, $diag_ctx ?? null));
+      $ncut    = $cut_w($ts_num, (int)(mb_strlen($ts_num) * 0.5));
+      $diag_b3 = trim(mb_substr($ts_num, 0, $ncut));
+      $diag_b4 = trim(mb_substr($ts_num, $ncut));
       ?>
       <div class="thermo-diag">
         <span><?= e($diag_b1) ?></span>

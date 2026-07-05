@@ -326,16 +326,16 @@ final class DiagnosticoTips
                 "Traes el motor en neutral: ni metes prospectos nuevos ni empujas los que ya tienes. Empieza por una punta, la de arriba: una cuota mínima de cotizaciones nuevas hoy, pase lo que pase. Romper el modo espera es el primer paso.",
                 "El que solo atiende lo que llega, se apaga. Vuelve a ser tú quien mueve las fichas: una hora fija de prospección al día, aunque no te nazca. Lo que entra solo nunca llena el mes.",
             ],
-            'sin_ritmo' => [ // A↓: se le cayó la disciplina diaria (no lee, deja enfriar, cae).
-                             // NO afirmar que vende bien — su conversión puede estar baja también.
-                "Se te cayó el ritmo: dejaste de leer el análisis, tienes clientes que abrieron y se enfriaron, y vienes a la baja. El pipeline se alimenta a diario o se seca. Empieza por reengancharte: abre la guía en la mañana y dale un toque a cada cliente que ya te vio antes de que se enfríe.",
-                "Andas en automático: ni revisas el análisis ni retomas a los que ya abrieron, y el marcador viene cayendo. Un vendedor a media máquina rinde menos que uno a full. Vuelve a la disciplina diaria —la guía cada día, un toque a cada tibio— antes de que el mes se caiga más.",
-                "Bajaste el ritmo: cero lectura y varios tibios sin retomar. Lo primero es volver a aparecer todos los días con tus clientes: abre la guía a diario y no dejes dormir a nadie que ya te vio. Sobre esa base recuperada, lo demás se acomoda.",
+            'sin_ritmo' => [ // A↓: disciplina diaria caída (no lee + deja enfriar + cae). Su fuga
+                             // literal SÍ incluye el no leer. No afirmar que vende bien.
+                "Se te cayó el ritmo: dejaste de leer el análisis que te marca a quién seguir, tienes clientes que abrieron y se enfriaron, y el marcador viene a la baja. El pipeline se alimenta a diario o se seca. Vuelve a la rutina: abre el análisis en la mañana y dale un toque a cada cliente que ya te vio antes de que se enfríe.",
+                "Andas en automático: ni revisas el análisis ni retomas a los que ya abrieron, y el marcador viene cayendo. Un vendedor a media máquina rinde menos que uno a full. Retoma la disciplina diaria —el análisis cada día, un toque a cada tibio— antes de que el mes se caiga más.",
+                "Bajaste el ritmo: dejaste de leer y varios tibios sin retomar, con la tendencia a la baja. Lo primero es volver a aparecer todos los días con tus clientes: revisa el análisis a diario y no dejes dormir a nadie que ya te vio. Sobre esa base, lo demás se acomoda.",
             ],
-            'teatro' => [
-                "Traes mucho movimiento y poca venta, y el fondo es un miedito: pedir la decisión expone a un «no». Pero el «no» no te mata, la duda sí — te come el tiempo cuidando a alguien que nunca iba a comprar. Al próximo caliente, en vez de otro seguimiento, pídele una respuesta clara: sí o no.",
-                "Revisar y marcar se siente productivo, pero es el disfraz de la parte que evitas. Sé honesto: ¿estás trabajando o esquivando el momento de pedir la venta? Deja de contar cuántos seguimientos mandas y cuenta cuántas veces pediste el cierre esta semana.",
-                "Un «no» rápido es un regalo: te libera para el que sí. Estás gastando energía en mantener vivas cotizaciones que no te han dicho nada — hoy elige la más caliente y pídele que se defina. El que no pide, no pierde la venta: nunca la tuvo.",
+            'teatro' => [ // bloqueo = miedo al «no». Técnica: pregunta que da permiso de decir no (script), distinta al cierre asumido del rematador
+                "Tu freno es el miedo al «no», por eso te escondes en marcar y seguir. Pero un «no» te libera para el que sí. Facilítatelo con una pregunta que se conteste sin incomodar: a tu más caliente, «¿ya lo descartó o sigue en la mesa?». El que iba a decir no te lo dice hoy y sueltas ese tiempo; el que sigue, avanza.",
+                "Marcar señales es lo cómodo; pedir la venta es lo que evitas porque expone a un rechazo. Quítale el peso pidiendo permiso para el no: «le hablo para cerrar el tema, no para presionar — ¿le entramos o de plano no es momento?». Te da una respuesta clara sin que sientas que estás forzando.",
+                "Gastas energía en seguir a clientes que no te han dicho nada, y el miedo es al «no». Pero el que no pide, no pierde la venta: nunca la tuvo. Hoy, a tu más caliente, de frente: «para no dejarlo en el aire, ¿lo cerramos esta semana o lo dejo por ahora?». Un sí o un no, los dos te sirven.",
             ],
             'sembrador' => [
                 "Eres bueno para prender el interés; lo que dejas tirado es la cosecha. Regla simple: por cada cotización nueva que mandes, primero remata una que ya abrieron. Ganas el gusto de crear solo después de cobrar lo sembrado.",
@@ -368,7 +368,7 @@ final class DiagnosticoTips
                 "El que ya abrió y dejaste ir no está muerto, está dormido. Despiértalo con un motivo nuevo para volver. Traer uno de vuelta cuesta menos que conseguir uno de cero.",
             ],
             'sordo_a_senales' => [ // cierra bien pero NO capitaliza las señales calientes
-                "Cierras a los que ya vienen convencidos, pero ignoras las señales: cuando un cliente revisa tu propuesta con interés, el sistema te lo marca y no lo trabajas. Ahí se te escapan los cierres más fáciles. Cada mañana revisa quién se puso caliente y contáctalo el mismo día — el que ya te levantó la mano está a un paso.",
+                "Cierras a los que ya vienen convencidos, pero ignoras las señales: cuando un cliente revisa tu propuesta con interés, el sistema te lo marca y no lo trabajas. Ahí se te escapan los cierres más fáciles. Cada mañana revisa quién se puso caliente y contáctalo el mismo día: «vi que estuvo revisando la propuesta, ¿qué duda le resuelvo para que decida?». El que ya te levantó la mano está a un paso.",
                 "Tu problema no es rematar, es que no capitalizas lo que ya está caliente: dejas pasar a los que te mostraron interés. Ese interés dura horas, no días. Reacciona a la señal el mismo día que aparece, no cuando tengas hueco.",
                 "Cierras bien lo que trabajas, pero trabajas solo lo que te cae de frente; las señales de compra que el sistema te marca, las ignoras — y ahí está tu venta más cercana. Empieza el día por los calientes de hoy.",
             ],
@@ -408,9 +408,9 @@ final class DiagnosticoTips
                 "Buena calidad, poco caudal. Lo que te limita no es la técnica, es el número de intentos. Más propuestas afuera, mismo cuidado al cerrar.",
             ],
             'meseta' => [
-                "No traes fugas ni una fortaleza que jale — estás parejo, y lo parejo no destaca. No arregles todo: escoge UNA cosa que ya te sale medio bien y vuélvete el mejor de la oficina en eso. Al que es EL BUENO en algo, lo buscan.",
-                "Estás en tierra de nadie, ni mal ni bien. Elige un filo —prospección, cierre o seguimiento— y afílalo hasta que te distinga. Ser correcto en todo no vende; ser el mejor en una cosa, sí.",
-                "La meseta se rompe con foco, no con esfuerzo repartido. Una sola habilidad, a fondo, este mes. Después mueves la siguiente.",
+                "No traes fugas ni una fortaleza que jale — estás parejo, y lo parejo no destaca. Elige tu palanca más rentable, casi siempre el cierre: esta semana, a cada propuesta que ya abrieron, ponle una fecha de decisión en vez de dejarla abierta. Un solo hábito afilado mueve más que cinco a medias.",
+                "Estás en tierra de nadie, ni mal ni bien. No repartas esfuerzo en todo: escoge el cierre y aprieta ahí una semana — a los que ya abrieron, pídeles un sí o un no claro, no un «lo pienso». Lo que se afila destaca; lo parejo, no.",
+                "La meseta se rompe con foco, no con esfuerzo repartido. Toma la etapa donde una mejora chica rinde más —normalmente pedir la decisión a tiempo— y vuélvela tu costumbre esta semana: a cada propuesta abierta, un siguiente paso con fecha. Una cosa bien hecha vale más que cinco a medias.",
             ],
         ];
         $pool = $V[$arq] ?? $V['meseta'];
