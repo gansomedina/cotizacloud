@@ -1389,13 +1389,8 @@ class ActividadScore
         if ($nab > 0) $frases[] = "⚠️ $nab " . ($nab > 1 ? 'cotizaciones' : 'cotización') . " sin abrir en más de 5 días — penaliza tu score.";
         if ($dorm > 0) $frases[] = "$dorm " . ($dorm > 1 ? 'cotizaciones' : 'cotización') . " donde el cliente no regresa en 7+ días.";
 
-        // ═══ 3. VOLUMEN / RADAR ═══
-        if ($pocos_cierres && $score < 80) {
-            $v = ["Solo $cierres venta" . ($cierres > 1 ? 's' : '') . " de $vist cotizaciones abiertas — el volumen de cierre necesita subir.", "$sin_cerrar clientes vieron tu propuesta y no compraron."];
-            $frases[] = $v[$rot % count($v)];
-        } elseif ($sin_cerrar > 5 && $score < 70) {
-            $frases[] = "De $vist clientes que abrieron tu cotización, $sin_cerrar no compraron.";
-        }
+        // ═══ 3. RADAR (apoyo en cierres) ═══
+        // (Se quitó el restatement "N no compraron" — la tasa de cierre de arriba ya lo dice.)
         if ($cierres > 0 && $cbkt === $cierres) {
             // Todas las ventas con apoyo del Radar — fortaleza
             $v = $cierres === 1
@@ -1437,7 +1432,7 @@ class ActividadScore
 
         // ═══ 7. COBROS ═══
         if ($vsp > 0) $frases[] = "$vsp venta" . ($vsp > 1 ? 's' : '') . " sin cobrar.";
-        if ($cierres > 0 && $sdto < $cierres) { $pct_dto = round(($cierres - $sdto) / $cierres * 100); if ($pct_dto >= 50 && $score < 80) $frases[] = "$pct_dto% de ventas con descuento."; }
+        if ($cierres >= 2 && $sdto < $cierres) { $pct_dto = round(($cierres - $sdto) / $cierres * 100); if ($pct_dto >= 50 && $score < 80) $frases[] = "$pct_dto% de ventas con descuento."; }
 
         // ═══ 8. TENDENCIA ═══
         if ($mom <= 0.80 && $score < 80) $frases[] = "Tendencia a la baja.";
@@ -1463,45 +1458,9 @@ class ActividadScore
             $frases[] = "Cerraste claramente por arriba de tu histórico — gran mes.";
         }
 
-        // ═══ ACCIÓN FINAL ═══
-        if ($score >= 85) {
-            $v = ["Sigue cotizando y revisa el Radar.", "Cotiza más para mantener el flujo.", "Mantén el ritmo cotizando y revisando el Radar."];
-        } elseif ($score >= 75) {
-            $v = ["Cotiza más y apóyate en el Radar para priorizar.", "Sigue cotizando. El Radar te ayuda a identificar a quién darle prioridad.", "Cotiza más para generar oportunidades y usa el Radar para dar seguimiento."];
-        } elseif ($score >= 70) {
-            $v = [" 💡 Entra al Radar, identifica dónde hay actividad y enfócate en cerrar. Cotiza más para generar volumen.", " 💡 El Radar te muestra dónde están las oportunidades. Enfócate en lo que tiene movimiento y sigue cotizando.", " 💡 Cotiza más y revisa el Radar para saber a quién darle seguimiento. El volumen de cotizaciones es lo que genera oportunidades."];
-        } elseif ($score >= 45) {
-            $v = [" 💡 Los números necesitan atención urgente. Entra al Radar, enfócate en lo que tiene actividad y cotiza más. Cada cotización sin seguimiento es una venta que se pierde.", " 💡 Revisa el Radar, enfócate en cerrar lo que tiene movimiento y sigue cotizando. Los números están por debajo de lo que la empresa necesita.", " 💡 El Radar te muestra dónde hay oportunidad real. Enfócate ahí, cotiza más y trabaja en mejorar el cierre. Los números tienen que subir ya."];
-        } else {
-            $v = [" 💡 Los números no están dando. Entra al Radar, enfócate y cotiza. Se necesita acción inmediata.", " 💡 La situación es urgente. Revisa el Radar, enfócate en cerrar y cotiza más.", " 💡 Se necesita un cambio. El Radar te muestra dónde hay actividad. Enfócate y cotiza."];
-        }
-        $frases[] = $v[$rot];
-
-        // ═══ CIERRE: COMPARACIÓN HISTÓRICA EMPRESA ═══
-        $monto_actual = (float)($ctx['monto_mes_actual'] ?? 0);
-        if ($avg_monto_mes > 0) {
-            $ratio_mes = $monto_actual / $avg_monto_mes;
-            if ($ratio_mes < 0.5) {
-                $v = [
-                    "Falta bastante para alcanzar el promedio mensual de ventas de la empresa.",
-                    "Las ventas del mes están lejos del promedio mensual de la empresa.",
-                    "El mes va por debajo del promedio mensual de la empresa.",
-                ];
-                $frases[] = $v[$rot];
-            } elseif ($ratio_mes < 0.85) {
-                $v = [
-                    "Las ventas del mes van acercándose al promedio mensual de la empresa.",
-                    "Falta para alcanzar el promedio mensual de la empresa.",
-                ];
-                $frases[] = $v[$rot % count($v)];
-            } elseif ($ratio_mes >= 1.0) {
-                $v = [
-                    "El mes ya alcanzó el promedio mensual de ventas de la empresa.",
-                    "Las ventas del mes ya están al nivel del promedio de la empresa.",
-                ];
-                $frases[] = $v[$rot % count($v)];
-            }
-        }
+        // (Se quitaron la "acción final" genérica y la comparación mensual: eran filler
+        //  que contradecía otros segmentos. El párrafo de números da SOLO datos concretos;
+        //  el qué-hacer va en el tip de perfil, no aquí.)
 
         return implode(' ', $frases);
     }
