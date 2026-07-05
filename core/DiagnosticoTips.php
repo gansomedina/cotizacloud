@@ -203,9 +203,6 @@ final class DiagnosticoTips
         foreach ($e as $st) if ($st === 'bajo') $bajos++;
         if ($bajos >= 4) return 'desconectado';
 
-        // Teatro: seguimiento se veía alto pero es hueco y no cierra
-        if ($real['seg'] === false && $m['s_conv'] < self::BAJO && $e['seg'] === 'alto') return 'teatro';
-
         $aBaja = $e['act'] === 'bajo';
         $cAlta = $e['conv'] === 'alto';
         $cBaja = $e['conv'] === 'bajo';
@@ -213,20 +210,28 @@ final class DiagnosticoTips
         $hltAlto = $e['hlt'] === 'alto' && $real['hlt'];
         $hltBajo = $e['hlt'] === 'bajo';
 
-        // A↓ · C↓
-        if ($aBaja && $cBaja) return 'presente_pasivo';
+        // Teatro: marca señales y no cierra. EXIGE activación OK — si A está en el
+        // piso, la fuga es la activación (no leer / dejar enfriar), no el miedo al cierre.
+        if (!$aBaja && $real['seg'] === false && $m['s_conv'] < self::BAJO && $e['seg'] === 'alto') return 'teatro';
 
-        // A↑/~ · C↓  (falta técnica de cierre — método)
+        // ACTIVACIÓN en el piso → se maneja aparte (con o sin cierre)
+        if ($aBaja) {
+            // Cierra excelente, solo le falta volumen
+            if ($cAlta) {
+                if ($e['seg'] === 'bajo' && $hltBajo) return 'cerrador_solitario';
+                return 'francotirador';
+            }
+            // Capaz (cierra decente o trabaja el medio) pero se le CAYÓ el ritmo diario
+            if ($e['seg'] === 'alto' || $e['eng'] === 'alto' || !$cBaja) return 'sin_ritmo';
+            // Reactivo total: ni genera ni cierra
+            return 'presente_pasivo';
+        }
+
+        // A no baja · C↓  (falta técnica de cierre — método)
         if ($cBaja) {
             if ($segAlto && $hltAlto) return 'cultivador';       // pipeline lleno no cosecha
             if ($segAlto)             return 'rematador_ausente'; // hace todo, no remata
             return 'sembrador';                                  // genera, no capitaliza
-        }
-
-        // A↓ · C↑  (re-enganche)
-        if ($aBaja && $cAlta) {
-            if ($e['seg'] === 'bajo' && $hltBajo) return 'cerrador_solitario';
-            return 'francotirador';
         }
 
         // Cierra (C no bajo) pero SUCIO → perfil de Engagement (pecado del cómo cierra).
@@ -321,6 +326,11 @@ final class DiagnosticoTips
                 "Estás viviendo de lo que cae del árbol, y el árbol se seca. Bloquéate una hora en la mañana, la misma todos los días, solo para buscar gente nueva — ni correos ni cotizaciones viejas, pura caza. Esa hora es sagrada.",
                 "Traes el motor en neutral: ni metes prospectos nuevos ni empujas los que ya tienes. Empieza por una punta, la de arriba: una cuota mínima de cotizaciones nuevas hoy, pase lo que pase. Romper el modo espera es el primer paso.",
                 "El que solo atiende lo que llega, se apaga. Vuelve a ser tú quien mueve las fichas: una hora fija de prospección al día, aunque no te nazca. Lo que entra solo nunca llena el mes.",
+            ],
+            'sin_ritmo' => [ // A↓: se le cayó la disciplina diaria (no lee, deja enfriar, cae) — NO es técnica
+                "Se te cayó el ritmo: dejaste de leer el análisis, tienes clientes que abrieron y se enfriaron, y vienes a la baja. No es técnica, es constancia — el pipeline se alimenta a diario o se seca. Retoma la rutina: abre la guía en la mañana y dale un toque a cada cliente que ya te vio antes de que se enfríe.",
+                "Andas en automático: ni revisas el análisis ni retomas a los que ya abrieron, y el marcador viene a la baja. La constancia es la mitad del trabajo — un vendedor a media máquina rinde menos que uno normal a full. Vuelve a la disciplina diaria antes de que el mes se caiga más.",
+                "Bajaste el ritmo: cero lectura y varios tibios sin retomar. Lo que te está pesando no es cómo vendes, es que dejaste de aparecer todos los días con tus clientes. Reengánchate: la guía cada día y no dejes dormir a nadie que ya te vio.",
             ],
             'teatro' => [
                 "Traes mucho movimiento y poca venta, y el fondo es un miedito: pedir la decisión expone a un «no». Pero el «no» no te mata, la duda sí — te come el tiempo cuidando a alguien que nunca iba a comprar. Al próximo caliente, en vez de otro seguimiento, pídele una respuesta clara: sí o no.",
