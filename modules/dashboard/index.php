@@ -957,23 +957,22 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         </div>
       </div>
       <?php
-      // Dividir diagnóstico en 4 bloques (3 expansiones reales).
-      // Cortes a media frase por chars (en espacios) para forzar lectura.
-      $diag_full = trim($ts_diag);
-      $diag_len = mb_strlen($diag_full);
-      $find_cut = function(string $t, int $target) {
+      // Bloque 1 (visible) = PERFIL (texto 2). Bloques 2-4 ("siguiente") =
+      // NÚMEROS (texto 1) repartidos por frase → leer todo dispara los 3 expand.
+      $diag_b1 = trim($ts_diag); // perfil
+      $ts_num  = trim(ActividadScore::diagnostico_numeros($ts, $diag_ctx ?? null));
+      $cut_s = function(string $t, int $target) {
           $len = mb_strlen($t);
           if ($target >= $len) return $len;
-          $next = mb_strpos($t, ' ', $target);
-          return $next !== false ? $next : $len;
+          $next = mb_strpos($t, '. ', $target);
+          return $next !== false ? $next + 1 : $len; // corta al final de una frase
       };
-      $c1 = $find_cut($diag_full, (int)($diag_len * 0.25));
-      $c2 = $find_cut($diag_full, (int)($diag_len * 0.50));
-      $c3 = $find_cut($diag_full, (int)($diag_len * 0.75));
-      $diag_b1 = mb_substr($diag_full, 0, $c1);
-      $diag_b2 = trim(mb_substr($diag_full, $c1, $c2 - $c1));
-      $diag_b3 = trim(mb_substr($diag_full, $c2, $c3 - $c2));
-      $diag_b4 = trim(mb_substr($diag_full, $c3));
+      $nlen = mb_strlen($ts_num);
+      $n1 = $cut_s($ts_num, (int)($nlen * 0.34));
+      $n2 = $cut_s($ts_num, (int)($nlen * 0.67));
+      $diag_b2 = trim(mb_substr($ts_num, 0, $n1));
+      $diag_b3 = trim(mb_substr($ts_num, $n1, $n2 - $n1));
+      $diag_b4 = trim(mb_substr($ts_num, $n2));
       ?>
       <div class="thermo-diag">
         <span><?= e($diag_b1) ?></span>

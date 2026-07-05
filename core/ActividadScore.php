@@ -1259,6 +1259,13 @@ class ActividadScore
         return self::_diagnostico_legacy($s, $ctx);
     }
 
+    // Texto 1 (números) — el análisis del checkpoint original.
+    public static function diagnostico_numeros(array $s, ?array $ctx = null): string
+    {
+        if (($s['nivel'] ?? '') === 'nuevo') return '';
+        return self::_diagnostico_legacy($s, $ctx);
+    }
+
     private static function _diagnostico_legacy(array $s, ?array $ctx = null): string
     {
         $act  = (float)($s['s_activacion'] ?? 0);
@@ -1378,9 +1385,9 @@ class ActividadScore
         }
 
         // ═══ 2. SIN ABRIR / DORMIDAS (prioridad alta, no deben cortarse) ═══
-        if ($sin_abrir > 0) $frases[] = "$sin_abrir cotización" . ($sin_abrir > 1 ? 'es' : '') . " sin abrir.";
-        if ($nab > 0) $frases[] = "⚠️ $nab cotización" . ($nab > 1 ? 'es' : '') . " sin abrir en más de 5 días — penaliza tu score.";
-        if ($dorm > 0) $frases[] = "$dorm cotización" . ($dorm > 1 ? 'es' : '') . " donde el cliente no regresa en 7+ días.";
+        if ($sin_abrir > 0) $frases[] = "$sin_abrir " . ($sin_abrir > 1 ? 'cotizaciones' : 'cotización') . " sin abrir.";
+        if ($nab > 0) $frases[] = "⚠️ $nab " . ($nab > 1 ? 'cotizaciones' : 'cotización') . " sin abrir en más de 5 días — penaliza tu score.";
+        if ($dorm > 0) $frases[] = "$dorm " . ($dorm > 1 ? 'cotizaciones' : 'cotización') . " donde el cliente no regresa en 7+ días.";
 
         // ═══ 3. VOLUMEN / RADAR ═══
         if ($pocos_cierres && $score < 80) {
@@ -1391,7 +1398,9 @@ class ActividadScore
         }
         if ($cierres > 0 && $cbkt === $cierres) {
             // Todas las ventas con apoyo del Radar — fortaleza
-            $v = ["Tus $cierres ventas se cerraron con apoyo del Radar.", "Las $cierres ventas vinieron asistidas por el Radar."];
+            $v = $cierres === 1
+                ? ["Tu venta se cerró con apoyo del Radar.", "La venta vino asistida por el Radar."]
+                : ["Tus $cierres ventas se cerraron con apoyo del Radar.", "Las $cierres ventas vinieron asistidas por el Radar."];
             $frases[] = $v[$rot % count($v)];
         } elseif ($cbkt > 0 && $cbkt < $cierres) {
             // Mezcla: parte con radar, parte fuera
