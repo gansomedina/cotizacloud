@@ -59,7 +59,12 @@ class Mesa
              FROM cotizaciones c
              LEFT JOIN clientes cl ON cl.id = c.cliente_id
              WHERE c.empresa_id = ? AND COALESCE(c.vendedor_id, c.usuario_id) = ?
-               AND c.estado IN ('enviada','vista') AND c.suspendida = 0 AND c.total > 0",
+               AND c.estado IN ('enviada','vista') AND c.suspendida = 0 AND c.total > 0
+               AND c.accion_at IS NULL
+               AND NOT EXISTS (
+                   SELECT 1 FROM ventas v
+                   WHERE v.cotizacion_id = c.id AND v.estado != 'cancelada'
+               )",
             [$empresa_id, $vendedor_id]
         );
 
@@ -111,13 +116,16 @@ class Mesa
                  GROUP BY bt.cotizacion_id", []
             ) as $r) {
                 $cid = (int)$r['cotizacion_id'];
-                if (strtotime($r['ult_hot']) > strtotime($fb[$cid]['updated_at'])) {
+                $t_hot = strtotime($r['ult_hot']);
+                if ($t_hot > strtotime($fb[$cid]['updated_at']) && $t_hot >= time() - 7 * 86400) {
                     $revividas[$cid] = true;
                 }
             }
         }
 
-        // ── Clasificar ────────────────────────────────────────
+        // ── Clasificar por CATEGORÍA DE FALTA ────────────────
+        // La mesa NO repite el Radar: solo muestra donde falta o se
+        // contradice la ACCIÓN/JUICIO del asesor. Lo que va bien, no sale.
         $rows = [];
         $limpieza_n = 0; $limpieza_monto = 0.0;
         $now = time();
@@ -129,67 +137,62 @@ class Mesa
             $es_hot = $bucket !== null && in_array($bucket, self::HOT, true);
             $hot_reciente = $es_hot && $c['radar_bucket_at']
                 && (strtotime($c['radar_bucket_at']) >= $now - 7 * 86400);
-            $postura = $fb[$cid]['tipo'] ?? null;
+            $postura    = $fb[$cid]['tipo'] ?? null;
             $descartada = ($postura === 'sin_interes');
+            $dormida    = ((int)$c['visitas'] > 0 && (int)$c['dias_sin_vista'] >= 7);
+            $fuera      = $edad > 2 * $p75;
 
-            // Descartada sin revivir → fuera de la mesa (el Radar la vigila)
+            // Descartada sin revivir RECIENTE → fuera (el Radar la vigila)
             if ($descartada && !isset($revividas[$cid])) {
-                if ($edad > $linea_limpieza && !$es_hot) { $limpieza_n++; $limpieza_monto += (float)$c['total']; }
+                if ($edad > $linea_limpieza && !$hot_reciente) { $limpieza_n++; $limpieza_monto += (float)$c['total']; }
+                continue;
+            }
+            // Fuera de toda ventana, sin calor reciente, sin revivir → limpieza
+            if ($fuera && !$hot_reciente && !isset($revividas[$cid])) {
+                if ($edad > $linea_limpieza) { $limpieza_n++; $limpieza_monto += (float)$c['total']; }
                 continue;
             }
 
-            // Tier
-            if ($edad <= $p75)            $tier = 1;
-            elseif ($edad <= 2 * $p75)    $tier = 2;
-            elseif ($hot_reciente || isset($revividas[$cid])) $tier = 3; // milagro / revivida
-            else {
-                // Fuera de toda ventana y sin calor → candidata a limpieza
-                $limpieza_n++; $limpieza_monto += (float)$c['total'];
-                continue;
+            // ¿Cuál es LA FALTA? (si no hay falta, no sale en la mesa)
+            $cat = null;
+            if (isset($revividas[$cid])) {
+                $cat = 'revivida';           // tu 👎 dice muerto; el cliente, vivo AHORA
+            } elseif ($fuera && $hot_reciente) {
+                $cat = 'milagro';            // fuera de ciclo pero viéndola AHORA
+            } elseif ($postura === 'con_interes' && ($dormida || $bucket === 'enfriandose')) {
+                $cat = 'interes_muriendo';   // dijiste que va en serio y se apaga
+            } elseif ($postura === 'con_interes' && $edad > $p75) {
+                $cat = 'ultimo_tramo';       // en serio, pero saliendo de tu ventana
+            } elseif ($postura === null && $edad >= 1 && ((int)$c['visitas'] > 0 || $es_hot)) {
+                $cat = 'sin_postura';        // el cliente ya se movió y tú no lo has juzgado
             }
+            if ($cat === null) continue;     // va bien o es fresca → territorio del Radar
 
             $rows[] = [
-                'id'         => $cid,
-                'numero'     => $c['numero'],
-                'titulo'     => $c['titulo'],
-                'cliente'    => $c['cliente'] ?: '—',
-                'telefono'   => $c['cli_tel'],
-                'total'      => (float)$c['total'],
-                'edad'       => $edad,
-                'tier'       => $tier,
-                'bucket'     => $bucket,
-                'es_hot'     => $es_hot,
-                'visitas'    => (int)$c['visitas'],
-                'dias_sin_vista' => (int)$c['dias_sin_vista'],
-                'postura'    => $postura,
-                'ultima_accion' => $acc[$cid] ?? null,
-                'revivida'   => isset($revividas[$cid]),
-                'dormida'    => ((int)$c['visitas'] > 0 && (int)$c['dias_sin_vista'] >= 7),
-                'sugerencia' => self::sugerencia($bucket, $postura, $tier, $edad, $p75, isset($revividas[$cid])),
+                'id' => $cid, 'numero' => $c['numero'], 'titulo' => $c['titulo'],
+                'cliente' => $c['cliente'] ?: '—', 'telefono' => $c['cli_tel'],
+                'total' => (float)$c['total'], 'edad' => $edad, 'cat' => $cat,
+                'bucket' => $bucket, 'es_hot' => $es_hot,
+                'visitas' => (int)$c['visitas'], 'dias_sin_vista' => (int)$c['dias_sin_vista'],
+                'postura' => $postura, 'ultima_accion' => $acc[$cid] ?? null,
+                'dormida' => $dormida,
             ];
         }
 
-        // ── Orden: milagros → sin postura → tier → calor → monto ──
-        $prio_bucket = array_flip(self::HOT); // menor índice = más caliente
-        usort($rows, function ($a, $b) use ($prio_bucket) {
-            if ($a['tier'] === 3 xor $b['tier'] === 3) return $a['tier'] === 3 ? -1 : 1;
-            $ap = $a['postura'] === null ? 0 : 1;
-            $bp = $b['postura'] === null ? 0 : 1;
-            if ($ap !== $bp) return $ap <=> $bp;
-            if ($a['tier'] !== $b['tier']) return $a['tier'] <=> $b['tier'];
-            $ah = $prio_bucket[$a['bucket']] ?? 99;
-            $bh = $prio_bucket[$b['bucket']] ?? 99;
-            if ($ah !== $bh) return $ah <=> $bh;
-            return $b['total'] <=> $a['total'];
+        // Orden: revividas/milagros → interés muriéndose → sin postura → último tramo; monto DESC dentro
+        $cat_prio = ['revivida' => 0, 'milagro' => 1, 'interes_muriendo' => 2, 'sin_postura' => 3, 'ultimo_tramo' => 4];
+        usort($rows, function ($a, $b) use ($cat_prio) {
+            $d = $cat_prio[$a['cat']] <=> $cat_prio[$b['cat']];
+            return $d !== 0 ? $d : ($b['total'] <=> $a['total']);
         });
 
-        // Caps
-        $milagros = 0;
-        $rows = array_values(array_filter($rows, function ($r) use (&$milagros) {
-            if ($r['tier'] === 3) { $milagros++; return $milagros <= self::CAP_MILAGROS; }
-            return true;
-        }));
-        $rows = array_slice($rows, 0, self::CAP_MESA);
+        // Caps: 4 por categoría, 12 total (una mesa, no una lista)
+        $por_cat = []; $capped = [];
+        foreach ($rows as $r) {
+            $por_cat[$r['cat']] = ($por_cat[$r['cat']] ?? 0) + 1;
+            if ($por_cat[$r['cat']] <= 4 && count($capped) < 12) $capped[] = $r;
+        }
+        $rows = $capped;
 
         $sin_postura = 0; $monto = 0.0; $mas_viejo = 0;
         foreach ($rows as $r) {
@@ -207,32 +210,6 @@ class Mesa
             'resumen'  => ['n' => count($rows), 'monto' => $monto,
                            'sin_postura' => $sin_postura, 'mas_viejo_dias' => $mas_viejo],
         ];
-    }
-
-    // ── Sugerencia v1: bucket × postura × ventana (sin arquetipo aún) ──
-    private static function sugerencia(?string $bucket, ?string $postura, int $tier, int $edad, int $p75, bool $revivida): string
-    {
-        if ($revivida) return 'La descartaste y el cliente volvió a calentarse — los milagros no se repiten: un mensaje directo, hoy.';
-        if ($tier === 3) return 'Fuera de tu ciclo normal y el cliente la está viendo AHORA — es ahora o se va.';
-
-        $ventana = $edad <= $p75
-            ? "día {$edad} de un ciclo de ~{$p75}"
-            : "día {$edad} — saliendo de tu ventana de cierre (~{$p75}d)";
-
-        return match (true) {
-            $bucket === 'validando_precio' || $bucket === 'probable_cierre' && $postura === null
-                => "Se está clavando en el precio ({$ventana}). No lo defiendas — llega con la estructura de pago resuelta.",
-            $bucket === 'multi_persona'
-                => "Varias personas la están evaluando ({$ventana}). Dale municiones al tuyo: garantía y proceso por escrito.",
-            $bucket === 'onfire' || $bucket === 'inminente'
-                => "Señal fuerte y reciente ({$ventana}). Es tu contacto del día — directo al siguiente paso.",
-            $postura === 'con_interes' && $edad > $p75
-                => "Tú dijiste que va en serio y ya está en {$ventana}. Último tramo útil — toque con motivo concreto.",
-            $bucket === null && $tier === 2
-                => "Sin señal del cliente y {$ventana}. Reenvíale el link con una línea nueva, no con 'sigo pendiente'.",
-            default
-                => "En juego ({$ventana}). Un toque que termine en algo concreto — cita, ajuste o fecha.",
-        };
     }
 
     /** Resumen agregado por vendedor — para el leaderboard del admin. */
