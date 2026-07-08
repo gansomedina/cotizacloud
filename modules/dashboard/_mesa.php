@@ -1,13 +1,12 @@
 <?php
 // ============================================================
-//  Mesa de Trabajo — v1 BETA (solo admin/superadmin)
-//  Franja comprimida + tabla expandible por vendedor.
-//  Solo lectura: el CEO evalúa antes de soltarla a asesores.
+//  Mesa de Trabajo — v1.1 BETA (solo admin/superadmin)
+//  Solo muestra FALTAS y CONTRADICCIONES del asesor — lo que va
+//  bien y lo fresco vive en el Radar, no aquí.
 // ============================================================
 defined('COTIZAAPP') or die;
 if (empty($es_admin_dash)) return;
 
-// Vendedores de la empresa con cotizaciones activas
 $mesa_vendedores = DB::query(
     "SELECT DISTINCT u.id, u.nombre
      FROM usuarios u
@@ -27,28 +26,42 @@ $mesa = Mesa::armar($empresa_id, $mesa_uid);
 $mr   = $mesa['resumen'];
 $mmoney = fn(float $n) => '$' . number_format($n, 0);
 
-$MESA_BUCKET_LBL = [
-    'probable_cierre' => ['Probable cierre', '#dc2626'], 'onfire' => ['On fire', '#dc2626'],
-    'inminente' => ['Inminente', '#dc2626'], 'validando_precio' => ['Validando precio', '#d97706'],
-    'prediccion_alta' => ['Predicción alta', '#16a34a'], 'lectura_comprometida' => ['Lectura comprometida', '#7c3aed'],
-    'multi_persona' => ['Multi-persona', '#dc2626'], 'alto_importe' => ['Alto importe', '#1d4ed8'],
-    'hesitacion' => ['Hesitación', '#d97706'], 'enfriandose' => ['Enfriándose', '#64748b'],
-    'sobre_analisis' => ['Sobre-análisis', '#92400e'], 'comparando' => ['Comparando', '#ea580c'],
-    'regreso' => ['Regreso', '#7c3aed'], 'revivio' => ['Revivió', '#7c3aed'],
-    're_enganche' => ['Re-enganche', '#7c3aed'], 're_enganche_caliente' => ['Re-enganche 🔥', '#dc2626'],
-    'revision_profunda' => ['Revisión profunda', '#4f46e5'], 'vistas_multiples' => ['Vistas múltiples', '#16a34a'],
-    'decision_activa' => ['Decisión activa', '#1d4ed8'], 'no_abierta' => ['Sin abrir', '#dc2626'],
+// Categoría → [emoji, título de sección, la jugada (una vez, no por fila)]
+$MESA_CATS = [
+    'revivida'         => ['⚡', 'La descartaste — y volvió a calentarse esta semana',
+                           'Tu 👎 dice muerto, el cliente dice vivo. Un mensaje directo hoy — los milagros no se repiten.'],
+    'milagro'          => ['⚡', 'Fuera de tu ciclo, pero la está viendo AHORA',
+                           'Ya no debería estar viva y lo está. Es ahora o se va.'],
+    'interes_muriendo' => ['⚠️', 'Dijiste "con interés" — y se está apagando',
+                           'Tu juicio y el Radar se contradicen. Rescátala hoy o corrige tu postura.'],
+    'sin_postura'      => ['❓', 'El cliente ya se movió y falta tu juicio',
+                           'Ya la abrió y no la has calificado. ¿Cómo lo ves? (👍/👎 en el Radar)'],
+    'ultimo_tramo'     => ['⏳', 'En serio, pero saliendo de tu ventana de cierre',
+                           'Último tramo útil — un toque con motivo concreto, no un "sigo pendiente".'],
 ];
-$POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 descartada'];
+$MESA_B_SHORT = [
+    'probable_cierre' => 'probable cierre', 'onfire' => 'on fire', 'inminente' => 'inminente',
+    'validando_precio' => 'validando precio', 'prediccion_alta' => 'predicción alta',
+    'lectura_comprometida' => 'lectura comprometida', 'multi_persona' => 'multi-persona',
+    'alto_importe' => 'alto importe', 'hesitacion' => 'hesitación', 'enfriandose' => 'enfriándose',
+];
+
+// Agrupar filas por categoría (ya vienen ordenadas del motor)
+$mesa_grupos = [];
+foreach ($mesa['rows'] as $r) $mesa_grupos[$r['cat']][] = $r;
 ?>
 <details class="card" id="mesa-card" style="margin-bottom:16px" <?= isset($_GET['mesa_uid']) ? 'open' : '' ?>>
   <summary style="cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;list-style:none">
     <span style="font-weight:800">📋 Mesa de trabajo</span>
     <span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:10px;font-weight:700">BETA · solo admin</span>
     <span style="color:#4a4a46;font-size:13.5px">
-      <b><?= (int)$mr['n'] ?></b> en juego · <b><?= $mmoney($mr['monto']) ?></b>
-      <?php if ($mr['sin_postura'] > 0): ?>
-        · <span style="color:#dc2626;font-weight:700"><?= (int)$mr['sin_postura'] ?> sin postura<?= $mr['mas_viejo_dias'] > 0 ? ' (la más vieja: ' . (int)$mr['mas_viejo_dias'] . 'd)' : '' ?></span>
+      <?php if ($mr['n'] > 0): ?>
+        <b><?= (int)$mr['n'] ?></b> pendientes · <b><?= $mmoney($mr['monto']) ?></b> en juego
+        <?php if ($mr['sin_postura'] > 0): ?>
+          · <span style="color:#dc2626;font-weight:700"><?= (int)$mr['sin_postura'] ?> sin juicio</span>
+        <?php endif; ?>
+      <?php else: ?>
+        <span style="color:#16a34a;font-weight:700">✓ al corriente</span>
       <?php endif; ?>
     </span>
     <span style="margin-left:auto;color:#6a6a64;font-size:12px">tap para expandir ▾</span>
@@ -67,56 +80,40 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
     <?php endif; ?>
 
     <?php $mc = $mesa['ciclo']; if (!empty($mc['auto'])): ?>
-    <div style="font-size:12px;color:#6a6a64;margin-bottom:10px">
-      Ciclo real de la empresa: la mitad de tus ventas cierra en <b><?= (int)$mc['mediana'] ?>d</b>,
-      el 75% antes del día <b><?= (int)$mc['p75'] ?></b> (<?= (int)$mc['n'] ?> cierres).
+    <div style="font-size:12px;color:#6a6a64;margin-bottom:12px">
+      Ciclo real: la mitad de tus ventas cierra en <b><?= (int)$mc['mediana'] ?>d</b>,
+      el 75% antes del día <b><?= (int)$mc['p75'] ?></b>. La mesa solo enseña faltas y contradicciones — lo que va bien vive en el Radar.
     </div>
     <?php endif; ?>
 
     <?php if (!$mesa['rows']): ?>
-      <div style="color:#6a6a64;padding:12px 0">Sin cotizaciones en ventana de trabajo para este vendedor.</div>
+      <div style="color:#16a34a;padding:10px 0;font-weight:600">✓ Sin faltas: todo lo activo está juzgado y dentro de ventana.</div>
     <?php else: ?>
-    <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead><tr style="text-align:left;color:#6a6a64;font-size:11px;text-transform:uppercase;letter-spacing:.04em">
-        <th style="padding:6px 8px">Cliente</th><th style="padding:6px 8px">Monto</th>
-        <th style="padding:6px 8px">Ciclo</th><th style="padding:6px 8px">Radar</th>
-        <th style="padding:6px 8px">Postura</th><th style="padding:6px 8px">Sugerencia</th>
-      </tr></thead>
-      <tbody>
-      <?php foreach ($mesa['rows'] as $r):
-          $bl = $r['bucket'] ? ($MESA_BUCKET_LBL[$r['bucket']] ?? [$r['bucket'], '#64748b']) : null;
-          $ciclo_txt = 'día ' . (int)$r['edad'];
-          $ciclo_rojo = $r['tier'] >= 2;
-      ?>
-      <tr style="border-top:1px solid #eeeee9;vertical-align:top<?= $r['tier'] === 3 ? ';background:#fefce8' : '' ?>">
-        <td style="padding:8px;white-space:nowrap">
+      <?php foreach ($MESA_CATS as $catk => $cmeta): if (empty($mesa_grupos[$catk])) continue; ?>
+      <div style="margin-bottom:14px">
+        <div style="font-weight:800;font-size:13.5px;margin-bottom:2px"><?= $cmeta[0] ?> <?= e($cmeta[1]) ?> <span style="color:#8a8a84;font-weight:600">(<?= count($mesa_grupos[$catk]) ?>)</span></div>
+        <div style="font-size:12px;color:#6a6a64;margin-bottom:6px"><?= e($cmeta[2]) ?></div>
+        <?php foreach ($mesa_grupos[$catk] as $r):
+            $senal = $r['dormida'] ? '😴 ' . (int)$r['dias_sin_vista'] . 'd sin volver'
+                   : ($r['bucket'] ? ($MESA_B_SHORT[$r['bucket']] ?? $r['bucket']) : '');
+        ?>
+        <div style="display:flex;align-items:baseline;gap:10px;padding:6px 10px;border-left:3px solid <?= in_array($catk,['revivida','milagro'],true) ? '#d97706' : ($catk==='interes_muriendo' ? '#dc2626' : '#c8c8c0') ?>;background:#fafaf8;border-radius:0 8px 8px 0;margin-bottom:4px;font-size:13px;flex-wrap:wrap">
           <a href="/cotizaciones/<?= (int)$r['id'] ?>" style="font-weight:700;color:#1a1a18;text-decoration:none"><?= e($r['cliente']) ?></a>
-          <div style="font-size:11px;color:#8a8a84"><?= e($r['numero']) ?><?= $r['dormida'] ? ' · 😴 ' . (int)$r['dias_sin_vista'] . 'd sin volver' : '' ?></div>
-        </td>
-        <td style="padding:8px;font-weight:700;white-space:nowrap"><?= $mmoney($r['total']) ?></td>
-        <td style="padding:8px;white-space:nowrap;<?= $ciclo_rojo ? 'color:#dc2626;font-weight:700' : 'color:#4a4a46' ?>">
-          <?= $r['tier'] === 3 ? '⚡ ' : '' ?><?= $ciclo_txt ?></td>
-        <td style="padding:8px;white-space:nowrap">
-          <?php if ($r['revivida']): ?><span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:9px;font-weight:700">⚡ revivió tras descarte</span>
-          <?php elseif ($bl): ?><span style="font-size:11px;background:<?= $bl[1] ?>18;color:<?= $bl[1] ?>;padding:2px 7px;border-radius:9px;font-weight:700"><?= e($bl[0]) ?></span>
-          <?php else: ?><span style="color:#a8a8a2;font-size:11px">—</span><?php endif; ?>
-        </td>
-        <td style="padding:8px;white-space:nowrap;font-size:12px">
-          <?= $r['postura'] ? e($POSTURA_LBL[$r['postura']] ?? $r['postura']) : '<span style="color:#dc2626;font-weight:700">sin postura</span>' ?></td>
-        <td style="padding:8px;color:#4a4a46;min-width:220px"><?= e($r['sugerencia']) ?></td>
-      </tr>
+          <span style="font-weight:800;white-space:nowrap"><?= $mmoney($r['total']) ?></span>
+          <span style="color:#6a6a64;white-space:nowrap">día <?= (int)$r['edad'] ?></span>
+          <?php if ($senal): ?><span style="color:#8a8a84;font-size:12px;white-space:nowrap"><?= e($senal) ?></span><?php endif; ?>
+          <span style="color:#a8a8a2;font-size:11px;margin-left:auto;white-space:nowrap"><?= e($r['numero']) ?></span>
+        </div>
+        <?php endforeach; ?>
+      </div>
       <?php endforeach; ?>
-      </tbody>
-    </table>
-    </div>
     <?php endif; ?>
 
     <?php if ($mesa['limpieza']['n'] >= 10): ?>
-    <div style="margin-top:12px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:12.5px;color:#7f1d1d">
-      🗑 <b><?= (int)$mesa['limpieza']['n'] ?></b> cotizaciones (<?= $mmoney($mesa['limpieza']['monto']) ?>) tienen más de
+    <div style="margin-top:6px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:12.5px;color:#7f1d1d">
+      🗑 <b><?= (int)$mesa['limpieza']['n'] ?></b> cotizaciones (<?= $mmoney($mesa['limpieza']['monto']) ?>) rebasan los
       <b><?= (int)$mesa['limpieza']['linea_dias'] ?> días</b> — tu empresa jamás ha cerrado una de esa edad.
-      Ya no son pipeline, son ruido. <span style="color:#9a3412">(Suspensión en lote: próxima versión.)</span>
+      No son pipeline, son ruido. <span style="color:#9a3412">(Suspensión en lote: próxima versión.)</span>
     </div>
     <?php endif; ?>
 
