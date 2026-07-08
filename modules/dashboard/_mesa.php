@@ -99,8 +99,9 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
           <div style="font-size:11px;color:#8a8a84"><?= e($r['numero']) ?><?= $r['dormida'] ? ' · 😴 ' . (int)$r['dias_sin_vista'] . 'd sin volver' : '' ?></div>
         </td>
         <td style="padding:8px;font-weight:700;white-space:nowrap"><?= $mmoney($r['total']) ?></td>
-        <td style="padding:8px;white-space:nowrap;<?= $r['fuera_ventana'] ? 'color:#dc2626;font-weight:700' : 'color:#4a4a46' ?>">
-          <?= $es_milagro ? '⚡ ' : '' ?>día <?= (int)$r['edad'] ?></td>
+        <td style="padding:8px;white-space:nowrap;<?= ($r['fuera_ventana'] && !$es_milagro) ? 'color:#dc2626;font-weight:700' : 'color:#4a4a46' ?>">
+          <?= $es_milagro ? '⚡ ' : '' ?>día <?= (int)$r['edad'] ?>
+          <?php if ($es_milagro): ?><div style="font-size:11px;color:#92400e;font-weight:600"><?= (int)$r['dias_sin_vista'] <= 1 ? 'volvió hoy' : 'volvió hace ' . (int)$r['dias_sin_vista'] . 'd' ?></div><?php endif; ?></td>
         <td style="padding:8px;white-space:nowrap">
           <?php if ($r['revivida']): ?><span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:9px;font-weight:700">⚡ revivió tras descarte</span>
           <?php elseif ($bl): ?><span style="font-size:11px;background:<?= $bl[1] ?>18;color:<?= $bl[1] ?>;padding:2px 7px;border-radius:9px;font-weight:700"><?= e($bl[0]) ?></span>
