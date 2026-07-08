@@ -185,3 +185,37 @@ estados = fase posterior (decisión CEO).
 4. Caps: mesa 25 filas, milagros 3.
 5. Citas: ¿pedir fecha exacta en el tap "en cita" (un tap más) o solo
    hoy/mañana/semana? (la auditoría de cita-en-riesgo la necesita).
+
+## ADDENDUM v2 — Decisiones finales del CEO (8 jul 2026)
+
+1. TAXONOMÍA v2 — "CICLO DEL TOQUE" (sustituye §1): la venta es un loop, no
+   estados. Cada toque = misma hoja de 3 renglones: (a) ¿Qué pasó? no
+   respondió / hablamos (canal 📞💬🤝 — "fui a la cita" ES un toque en
+   persona); (b) ¿Quedaron en algo CONCRETO? sí / propuse-y-no-quiso / no
+   quedamos en nada — "COMPROMISO" reemplaza a "cita" (universal por giro:
+   cita, visita, llamada de decisión, propuesta ajustada); (c) ¿Cómo lo ves?
+   chips MULTI: decidiendo / objeción precio / pidió cambios / en el aire /
+   ya no le interesa. SIN FECHAS de cita (decisión CEO) — la frescura
+   uniforme del ciclo maneja el vencimiento ("¿ya pasó? ¿cómo fue?").
+2. INTEGRACIONES: semáforo declarado-vs-observado (4 cuadrantes: avanza /
+   OREJAS FELICES / MILAGRO / archivo); briefing pre-toque (Radar arma la
+   llamada); hoja precargada por señales del Radar; arquetipos confirmados
+   con evidencia conductual (tasa de avance por vendedor: conversaciones →
+   compromiso); juicio con línea de tiempo (insert-only).
+3. Lite SÍ ve la franja.
+4. Umbral alerta admin X = MEDIANA del ciclo de la empresa (piso 1 día).
+5. ROLLOUT: v1 SOLO ADMIN/SUPERADMIN — el CEO evalúa y pule antes de
+   soltarla a asesores. Hoy no existen asesores-admin: margen seguro.
+6. Caps por defecto: mesa 25, milagros 3 (afinables).
+
+### Estado de implementación
+- HECHO v1 (solo lectura, gated admin): core/Mesa.php (motor de filas:
+  tiers por ciclo real + línea de limpieza con evidencia + resurrección de
+  descartadas + orden milagros→sin-postura→tier→calor→monto + caps) +
+  modules/dashboard/_mesa.php (franja <details> + selector de vendedor +
+  tabla + banner limpieza informativo) + include en dashboard/index.php:856.
+  Postura v1 = radar_feedback existente. Sin migración aún.
+- SIGUIENTE: migración mesa_estados (toques insert-only) + hoja de toque
+  (endpoint POST /api/mesa/toque) + MesaSugerencias con arquetipos +
+  semáforo declarado-vs-observado + push digest admin (X=mediana) +
+  suspensión en lote.
