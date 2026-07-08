@@ -176,6 +176,10 @@ class Mesa
                 'visitas' => (int)$c['visitas'], 'dias_sin_vista' => (int)$c['dias_sin_vista'],
                 'postura' => $postura, 'ultima_accion' => $acc[$cid] ?? null,
                 'dormida' => $dormida,
+                'revivida' => ($cat === 'revivida'),
+                'milagro'  => ($cat === 'milagro'),
+                'fuera_ventana' => ($edad > $p75),
+                'sugerencia' => self::sugerencia($cat, $bucket, $postura, $edad, $p75),
             ];
         }
 
@@ -205,11 +209,36 @@ class Mesa
 
         return self::$cache[$ck] = [
             'rows'     => $rows,
+            'p75'      => $p75,
             'limpieza' => ['n' => $limpieza_n, 'monto' => $limpieza_monto, 'linea_dias' => $linea_limpieza],
             'ciclo'    => $ciclo,
             'resumen'  => ['n' => count($rows), 'monto' => $monto,
                            'sin_postura' => $sin_postura, 'mas_viejo_dias' => $mas_viejo],
         ];
+    }
+
+    // ── Sugerencia por fila (bucket × categoría-de-falta × ventana) ──
+    private static function sugerencia(string $cat, ?string $bucket, ?string $postura, int $edad, int $p75): string
+    {
+        if ($cat === 'revivida')
+            return 'La descartaste y el cliente volvió a calentarse esta semana — los milagros no se repiten: un mensaje directo hoy.';
+        if ($cat === 'milagro')
+            return 'Fuera de tu ciclo normal y la está viendo AHORA — es ahora o se va.';
+        if ($cat === 'interes_muriendo')
+            return 'Tú dijiste que va en serio y el cliente se está apagando — rescátala hoy con un motivo concreto, o corrige tu postura.';
+        if ($cat === 'ultimo_tramo')
+            return "Va en serio pero ya está en día {$edad}, saliendo de tu ventana (~{$p75}d) — último tramo útil.";
+        // sin_postura → según lo que muestra el Radar
+        return match ($bucket) {
+            'validando_precio', 'probable_cierre'
+                => 'Se está clavando en el precio y no lo has calificado — ¿cómo lo ves? No lo defiendas, llega con la estructura de pago.',
+            'multi_persona'
+                => 'Varias personas la evalúan y falta tu juicio — dale municiones al tuyo: garantía y proceso por escrito.',
+            'onfire', 'inminente'
+                => 'Señal fuerte y reciente sin tu juicio — es tu contacto del día.',
+            default
+                => 'El cliente ya se movió y no la has calificado — ¿cómo lo ves? (👍/👎)',
+        };
     }
 
     /** Resumen agregado por vendedor — para el leaderboard del admin. */
