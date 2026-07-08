@@ -852,6 +852,9 @@ if ($plan_intento && in_array($plan_intento, ['lite','pro','business']) && $tria
 </script>
 <?php endif; ?>
 
+<!-- ══ MESA DE TRABAJO (v1 beta — solo admin) ══ -->
+<?php include __DIR__ . '/_mesa.php'; ?>
+
 <!-- ══ TERMÓMETRO + LEADERBOARD ══ -->
 <?php if (!empty($empresa['termometro_visible']) && !$trial['es_lite']):
 $ts = $mi_score;
