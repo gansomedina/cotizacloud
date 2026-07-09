@@ -98,6 +98,16 @@ class MesaSugerencias
             ]);
         }
         if (!empty($c['revivida'])) {
+            // El cliente revivió tras el descarte PERO puede haberse vuelto a callar.
+            // Si ya lleva 3+ días sin abrir, no digas "mándale antes de que se enfríe"
+            // (ya se enfrió): último empujón o descarte en firme.
+            if (!$hot && $dsv >= 3) {
+                return $pk([
+                    "El cliente reabrió esta cotización tras tu descarte pero ya lleva {$dsv}d sin volver — un último mensaje directo hoy, o descártala en firme.",
+                    "Volvió sola después del descarte y otra vez se calló ({$dsv}d sin abrir) — hoy decides: un empujón directo o el descarte final.",
+                    "Reapareció tras el descarte y lleva {$dsv}d sin abrirla de nuevo — mándale hoy un mensaje directo; si no responde, descártala en firme.",
+                ]);
+            }
             return match ($c['razon_descarte'] ?? '') {
                 'precio' => $pk([
                     'La descartaste por precio y el cliente la volvió a abrir solo — algo cambió de su lado: mándale un mensaje hoy.',
@@ -117,6 +127,16 @@ class MesaSugerencias
             };
         }
         if (!empty($c['milagro'])) {
+            // "AHORA" solo si abrió HOY (v24>=1). Si el bucket se calentó hace
+            // días pero el cliente no ha vuelto a abrir, NO está "viéndola ahora".
+            if (!$leyendo) {
+                $ev = $dsv <= 1 ? 'ayer' : "hace {$dsv}d";
+                return $pk([
+                    "Una cotización que ya dabas por vieja se volvió a calentar ({$ev} la última apertura) — fuera de tu ciclo pero con señal: contáctalo hoy antes de que se enfríe.",
+                    "El cliente reactivó una cotización vieja (última apertura {$ev}) — está fuera de tu ciclo normal: mándale hoy un mensaje directo citando la cotización.",
+                    "Cotización vieja que revivió, abierta {$ev} — no la dejes pasar: contáctalo hoy y pregúntale si la retoman.",
+                ]);
+            }
             if ($con_e === 'no_contesta') {
                 return $pk([
                     'El cliente que dabas por perdido está viendo la cotización AHORA — mándale un mensaje en este momento citando la cotización.',
