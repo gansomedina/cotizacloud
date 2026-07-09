@@ -108,7 +108,17 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
           <?php else: ?><span style="color:#a8a8a2;font-size:11px">—</span><?php endif; ?>
         </td>
         <td style="padding:8px;white-space:nowrap;font-size:12px">
-          <?= $r['postura'] ? e($POSTURA_LBL[$r['postura']] ?? $r['postura']) : '<span style="color:#dc2626;font-weight:700">sin postura</span>' ?></td>
+          <select onchange="mesaEstado(<?= (int)$r['id'] ?>, this)" style="font-size:12px;padding:3px 6px;border:1px solid #d4d4ce;border-radius:8px;background:#fff;max-width:150px">
+            <option value=""><?= $r['postura'] ? e($POSTURA_LBL[$r['postura']] ?? $r['postura']) : '— ¿qué pasó? —' ?></option>
+            <option value="no_contesta">📵 No contesta</option>
+            <option value="en_cita">📅 Quedamos en cita</option>
+            <option value="decidiendo">💬 Está decidiendo</option>
+            <option value="objecion_precio">💰 Objeción precio</option>
+            <option value="pidio_cambios">✏️ Pidió cambios</option>
+            <option value="sin_compromiso">😶 Hablamos, sin nada concreto</option>
+            <option value="propuse_no_quiso">🚫 Propuse cita, no quiso</option>
+            <option value="descartada">🗑 Descartar…</option>
+          </select></td>
         <td style="padding:8px;color:#4a4a46;min-width:240px"><?= e($r['sugerencia']) ?></td>
       </tr>
       <?php endforeach; ?>
@@ -126,4 +136,24 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
     <?php endif; ?>
 
   </div>
-</details>
+</details>\n
+<script>
+function mesaEstado(cotId, sel){
+  var estado = sel.value; if(!estado) return;
+  var razon = null;
+  if(estado==='descartada'){
+    var r = prompt('Razón: 1=Muy caro  2=Se fue con otro  3=Lo dejó para después  4=Dejó de responder  5=No era comprador  6=Otro','1');
+    var map = {'1':'precio','2':'competencia','3':'despues','4':'no_responde','5':'no_comprador','6':'otro'};
+    razon = map[(r||'').trim()]; if(!razon){ sel.value=''; return; }
+  }
+  sel.disabled = true;
+  fetch('/api/mesa/estado', {method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+    body: JSON.stringify({cotizacion_id:cotId, estado:estado, razon:razon})
+  }).then(function(r){return r.json();}).then(function(d){
+    sel.disabled = false;
+    if(d.ok){ sel.style.borderColor='#16a34a'; sel.style.background='#f0fdf4'; }
+    else { alert('No se pudo guardar: '+(d.error||'')); sel.value=''; }
+  }).catch(function(){ sel.disabled=false; sel.value=''; });
+}
+</script>

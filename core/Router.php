@@ -133,6 +133,7 @@ class Router
         self::post('/api/soporte',          fn() => self::load_api('soporte'));
         self::get('/api/soporte/poll',      fn() => self::load_api('soporte_poll'));
         self::post('/api/radar-feedback',   fn() => self::load_api('radar_feedback'));
+        self::post('/api/mesa/estado',      fn() => self::load_api('mesa_estado'));
         self::post('/api/track-tip',        fn() => self::load_api('track_tip'));
         self::post('/api/comisiones/marcar', fn() => self::load_api('comisiones_marcar'));
         self::post('/api/mp/webhook',       fn() => self::load_api('mp_webhook'));
