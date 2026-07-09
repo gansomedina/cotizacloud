@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS mesa_estados (
     cotizacion_id INT UNSIGNED NOT NULL,
     usuario_id INT UNSIGNED NOT NULL,
     empresa_id INT UNSIGNED NOT NULL,
+    area VARCHAR(12) NOT NULL,      -- contacto | compromiso | postura
     estado VARCHAR(30) NOT NULL,
     razon VARCHAR(30) NULL,
     bucket_snapshot VARCHAR(40) NULL,
