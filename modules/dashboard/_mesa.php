@@ -1,9 +1,13 @@
 <?php
 // ============================================================
-//  Mesa de Trabajo — v1.4 BETA (solo admin/superadmin)
-//  Cola de trabajo del asesor: cada área muestra UN chip con el
-//  status declarado; tap para desplegar opciones y actualizarlo.
-//  Las filas trabajadas hoy pasan a "Atendidas hoy" (al recargar).
+//  Mesa de Trabajo — v2 BETA (solo admin/superadmin)
+//  Fila delgada + cajón (diseño aprobado en mockup):
+//  - una línea por cotización: dot de calor, título, ciclo, monto,
+//    3 columnitas con lo declarado, frescura
+//  - tap en la fila abre el cajón: sugerencia + 3 áreas con pills
+//  - la sugerencia se recalcula en el servidor con cada tap
+//    (MesaSugerencias: mezcla + Radar + negocio + arquetipo)
+//  - filas declaradas hoy → sección "Atendidas hoy" al recargar
 // ============================================================
 defined('COTIZAAPP') or die;
 if (empty($es_admin_dash)) return;
@@ -25,6 +29,7 @@ if (!in_array($mesa_uid, $mesa_ids, true)) $mesa_uid = $mesa_ids[0];
 
 $mesa = Mesa::armar($empresa_id, $mesa_uid);
 $mr   = $mesa['resumen'];
+$mp75 = max(1, (int)$mesa['p75']);
 $mmoney = fn(float $n) => '$' . number_format($n, 0);
 
 $MESA_BUCKET_LBL = [
@@ -40,56 +45,72 @@ $MESA_BUCKET_LBL = [
     'decision_activa' => ['Decisión activa', '#1d4ed8'], 'no_abierta' => ['Sin abrir', '#dc2626'],
 ];
 
-// Un chip por área: label de lo declarado; tap despliega las opciones
+// Áreas: opciones (label completo en el cajón) y label corto (columnita)
 $MESA_AREAS = [
     'contacto'   => ['no_contesta' => 'No contestó', 'hablamos' => 'Hablamos'],
     'compromiso' => ['compromiso' => 'Quedamos en algo', 'propuse_no_quiso' => 'Propuse, no quiso', 'sin_compromiso' => 'Nada concreto'],
-    'postura'    => ['decidiendo' => 'Decidiendo', 'objecion_precio' => 'Objeción precio', 'pidio_cambios' => 'Pidió cambios', 'en_el_aire' => 'En el aire', 'descartada' => 'Descartada'],
+    'postura'    => ['decidiendo' => 'Decidiendo', 'objecion_precio' => 'Objeción precio', 'pidio_cambios' => 'Pidió cambios', 'en_el_aire' => 'En el aire', 'descartada' => 'Descartar'],
+];
+$MESA_SHORT = [
+    'no_contesta' => 'No contestó', 'hablamos' => 'Hablamos',
+    'compromiso' => 'Quedamos', 'propuse_no_quiso' => 'No quiso', 'sin_compromiso' => 'Nada',
+    'decidiendo' => 'Decidiendo', 'objecion_precio' => 'Precio', 'pidio_cambios' => 'Cambios',
+    'en_el_aire' => 'En el aire', 'descartada' => 'Descartada',
 ];
 
 $mesa_pend = array_values(array_filter($mesa['rows'], fn($r) => empty($r['atendida_hoy'])));
 $mesa_aten = array_values(array_filter($mesa['rows'], fn($r) => !empty($r['atendida_hoy'])));
 
-$mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $mmoney) {
+$mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT, $mmoney, $mp75) {
     $d  = $r['decl'] ?? [];
     $bl = $r['bucket'] ? ($MESA_BUCKET_LBL[$r['bucket']] ?? [$r['bucket'], '#64748b']) : null;
     $es_milagro = $r['revivida'] || $r['milagro'];
+    $dot = $es_milagro ? '#d97706' : ($bl[1] ?? null);
+    $udd = $r['ult_decl_dias'];
     ?>
-    <tr style="border-top:1px solid #eeeee9;vertical-align:top<?= $es_milagro ? ';background:#fefce8' : '' ?>">
-      <td style="padding:8px;white-space:nowrap">
-        <a href="/cotizaciones/<?= (int)$r['id'] ?>" style="font-weight:700;color:#1a1a18;text-decoration:none"><?= e($r['cliente']) ?></a>
-        <span class="mesa-done" style="<?= empty($r['atendida_hoy']) ? 'display:none' : '' ?>">✓</span>
-        <div style="font-size:11px;color:#8a8a84"><?= e($r['numero']) ?><?= $r['dormida'] ? ' · 😴 ' . (int)$r['dias_sin_vista'] . 'd sin volver' : '' ?></div>
-        <div style="font-size:10.5px;<?= $r['ult_decl_dias'] === null ? 'color:#d97706' : ($r['ult_decl_dias'] >= 3 ? 'color:#dc2626' : 'color:#a8a8a2') ?>">
-          <?= $r['ult_decl_dias'] === null ? 'sin actualizar' : ($r['ult_decl_dias'] === 0 ? 'actualizada hoy' : 'actualizada hace ' . (int)$r['ult_decl_dias'] . 'd') ?></div>
-      </td>
-      <td style="padding:8px;font-weight:700;white-space:nowrap"><?= $mmoney($r['total']) ?></td>
-      <td style="padding:8px;white-space:nowrap;<?= ($r['fuera_ventana'] && !$es_milagro) ? 'color:#dc2626;font-weight:700' : 'color:#4a4a46' ?>">
-        <?= $es_milagro ? '⚡ ' : '' ?>día <?= (int)$r['edad'] ?>
-        <?php if ($es_milagro): ?><div style="font-size:11px;color:#92400e;font-weight:600"><?= (int)$r['dias_sin_vista'] <= 1 ? 'volvió hoy' : 'volvió hace ' . (int)$r['dias_sin_vista'] . 'd' ?></div><?php endif; ?></td>
-      <td style="padding:8px;white-space:nowrap">
-        <?php if ($r['revivida']): ?><span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:9px;font-weight:700">⚡ revivió tras descarte</span>
-        <?php elseif ($bl): ?><span style="font-size:11px;background:<?= $bl[1] ?>18;color:<?= $bl[1] ?>;padding:2px 7px;border-radius:9px;font-weight:700"><?= e($bl[0]) ?></span>
-        <?php else: ?><span style="color:#a8a8a2;font-size:11px">sin señal</span><?php endif; ?>
-      </td>
-      <?php foreach ($MESA_AREAS as $area => $opciones):
-          $cur = $d[$area]['estado'] ?? '';
-          $lbl = $opciones[$cur] ?? null; ?>
-      <td style="padding:8px">
-        <div class="mesa-decl" data-area="<?= $area ?>">
-          <button type="button" class="chip<?= $lbl ? ' set' : '' ?>" onclick="mesaOpen(this)"><?= $lbl ? e($lbl) : '— declarar' ?></button>
-          <div class="opts" hidden>
-            <?php foreach ($opciones as $ek => $el): ?>
-            <button type="button"<?= $cur === $ek ? ' class="on"' : '' ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'<?= $area ?>','<?= $ek ?>',this)"><?= e($el) ?></button>
-            <?php endforeach; ?>
-          </div>
-        </div>
-      </td>
-      <?php endforeach; ?>
-      <td style="padding:8px;color:#4a4a46;min-width:240px">
-        <?php if (!empty($r['alerta'])): ?><div style="color:#dc2626;font-weight:700;margin-bottom:2px">⚠ <?= e($r['alerta']) ?></div><?php endif; ?>
-        <?= e($r['sugerencia']) ?></td>
-    </tr>
+    <div class="mrow<?= $es_milagro ? ' milagro' : '' ?><?= !empty($r['atendida_hoy']) ? ' done' : '' ?>" data-drawer="md<?= (int)$r['id'] ?>">
+      <?php if ($dot): ?><span class="mdot" style="background:<?= $dot ?>" title="<?= e($r['revivida'] ? 'Revivió tras descarte' : ($bl[0] ?? '')) ?>"></span>
+      <?php else: ?><span class="mdot off" title="Sin señal del Radar"></span><?php endif; ?>
+      <span class="mcli">
+        <a href="/cotizaciones/<?= (int)$r['id'] ?>" onclick="event.stopPropagation()"><?= e($r['titulo'] ?: $r['cliente']) ?></a>
+        <span class="mfolio"><?= e($r['numero']) ?><?= $r['cliente'] && $r['titulo'] ? ' · ' . e($r['cliente']) : '' ?></span>
+      </span>
+      <?php if ($es_milagro): ?><span class="mflag">⚡</span><?php elseif ($r['dormida']): ?><span class="mflag" title="<?= (int)$r['dias_sin_vista'] ?>d sin volver a abrirla">😴</span><?php endif; ?>
+      <span class="mcheck">✓</span>
+      <span class="msp"></span>
+      <span class="mciclo<?= ($r['fuera_ventana'] && !$es_milagro) ? ' late' : '' ?>">d<?= (int)$r['edad'] ?>/<?= $mp75 ?></span>
+      <span class="mmoney"><?= $mmoney($r['total']) ?></span>
+      <span class="mdecl3">
+        <?php foreach (['contacto' => 's1', 'compromiso' => 's2', 'postura' => 's3'] as $a => $cls):
+            $cur = $d[$a]['estado'] ?? ''; ?>
+        <span class="<?= $cls ?><?= $cur ? ' f' : '' ?>"><?= $cur ? e($MESA_SHORT[$cur] ?? $cur) : '—' ?></span>
+        <?php endforeach; ?>
+      </span>
+      <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
+        <?= $udd === null ? 'sin act.' : ($udd === 0 ? 'hoy' : $udd . 'd') ?></span>
+      <span class="mchev">▶</span>
+    </div>
+    <div class="mdrawer" id="md<?= (int)$r['id'] ?>">
+      <div class="msug">
+        <?php if ($r['revivida']): ?><span class="mtag" style="background:#fef3c7;color:#92400e">⚡ revivió tras descarte</span>
+        <?php elseif ($bl && $r['es_hot']): ?><span class="mtag" style="background:<?= $bl[1] ?>18;color:<?= $bl[1] ?>"><?= e($bl[0]) ?></span><?php endif; ?>
+        <span class="mlbl">→</span><span class="msx"><?= e($r['sugerencia']) ?></span>
+      </div>
+      <div class="mareas">
+        <div class="marea"><span class="man">Contacto</span>
+          <?php foreach ($MESA_AREAS['contacto'] as $ek => $el): ?>
+          <button type="button" class="mpill<?= ($d['contacto']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','<?= $ek ?>',this)"><?= e($el) ?></button>
+          <?php endforeach; ?></div>
+        <div class="marea"><span class="man">Compromiso</span>
+          <?php foreach ($MESA_AREAS['compromiso'] as $ek => $el): ?>
+          <button type="button" class="mpill<?= ($d['compromiso']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','<?= $ek ?>',this)"><?= e($el) ?></button>
+          <?php endforeach; ?></div>
+        <div class="marea"><span class="man">¿Cómo lo ves?</span>
+          <?php foreach ($MESA_AREAS['postura'] as $ek => $el): ?>
+          <button type="button" class="mpill<?= ($d['postura']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','<?= $ek ?>',this)"><?= e($el) ?></button>
+          <?php endforeach; ?></div>
+      </div>
+    </div>
     <?php
 };
 ?>
@@ -101,7 +122,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $mmoney) {
       <?php if ($mr['n'] > 0 || !empty($mr['atendidas'])): ?>
         <b><?= (int)$mr['n'] ?></b> pendientes · <b><?= $mmoney($mr['monto']) ?></b> en juego
         <?php if ($mr['sin_postura'] > 0): ?>
-          · <span style="color:#dc2626;font-weight:700"><?= (int)$mr['sin_postura'] ?> sin postura<?= $mr['mas_viejo_dias'] > 0 ? ' (la más vieja: ' . (int)$mr['mas_viejo_dias'] . 'd)' : '' ?></span>
+          · <span style="color:#dc2626;font-weight:700"><?= (int)$mr['sin_postura'] ?> sin calificar</span>
         <?php endif; ?>
         <?php if (!empty($mr['atendidas'])): ?>
           · <span style="color:#16a34a;font-weight:700">✓ <?= (int)$mr['atendidas'] ?> atendida<?= $mr['atendidas'] > 1 ? 's' : '' ?> hoy</span>
@@ -131,37 +152,23 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $mmoney) {
       Ciclo real de la empresa: la mitad de tus ventas cierra en <b><?= (int)$mc['mediana'] ?>d</b>,
       el 75% antes del día <b><?= (int)$mc['p75'] ?></b>.
       <?php endif; ?>
-      Aquí capturas el <b>status actual</b> de cada cotización — tapea un chip para declararlo
-      y actualízalo en cada toque; siempre puedes cambiarlo.
+      Aquí capturas el <b>status actual</b> de cada cotización — tapea una fila para trabajarla
+      y actualízala en cada toque.
     </div>
 
     <?php if (!$mesa['rows']): ?>
-      <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Sin pendientes: todo lo activo está juzgado y dentro de ventana.</div>
+      <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Sin pendientes: todo lo activo está trabajado y dentro de ventana.</div>
     <?php else: ?>
 
       <?php if ($mesa_pend): ?>
-      <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="text-align:left;color:#6a6a64;font-size:11px;text-transform:uppercase;letter-spacing:.04em">
-          <th style="padding:6px 8px">Cliente</th><th style="padding:6px 8px">Monto</th>
-          <th style="padding:6px 8px">Ciclo</th><th style="padding:6px 8px">Radar</th>
-          <th style="padding:6px 8px">Contacto</th><th style="padding:6px 8px">Compromiso</th><th style="padding:6px 8px">¿Cómo lo ves?</th><th style="padding:6px 8px">Sugerencia</th>
-        </tr></thead>
-        <tbody><?php foreach ($mesa_pend as $r) $mesa_row($r); ?></tbody>
-      </table>
-      </div>
+      <div class="mlist"><?php foreach ($mesa_pend as $r) $mesa_row($r); ?></div>
       <?php else: ?>
       <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Pendientes en cero — todo lo de hoy ya está atendido.</div>
       <?php endif; ?>
 
       <?php if ($mesa_aten): ?>
-      <div style="margin-top:14px;font-size:12px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:.04em">
-        ✓ Atendidas hoy (<?= count($mesa_aten) ?>)</div>
-      <div style="overflow-x:auto;opacity:.72">
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <tbody><?php foreach ($mesa_aten as $r) $mesa_row($r); ?></tbody>
-      </table>
-      </div>
+      <div class="msect">✓ Atendidas hoy (<?= count($mesa_aten) ?>)</div>
+      <div class="mlist mdone-zone"><?php foreach ($mesa_aten as $r) $mesa_row($r); ?></div>
       <?php endif; ?>
 
     <?php endif; ?>
@@ -178,38 +185,84 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $mmoney) {
 </details>
 
 <style>
-.mesa-done{color:#16a34a;font-weight:800;margin-left:4px}
-.mesa-decl{position:relative;min-width:110px}
-.mesa-decl .chip{
-  border:1px dashed #d6d6d0;background:#fff;color:#8a8a84;
-  border-radius:999px;padding:4px 12px;cursor:pointer;
-  font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;
-  white-space:nowrap;line-height:1.4;transition:all .12s}
-.mesa-decl .chip:hover{border-color:#1a5c38;color:#1a5c38}
-.mesa-decl .chip.set{
-  border:1px solid #bbdcc8;background:#eef7f1;color:#14532d;font-weight:700}
-.mesa-decl .opts{
-  display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;
-  padding:8px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;
-  box-shadow:0 4px 14px rgba(0,0,0,.08)}
-.mesa-decl .opts button{
-  border:1px solid #e2e2dc;background:#fafaf8;color:#57534e;
-  border-radius:999px;padding:4px 11px;cursor:pointer;
-  font:600 11px 'Plus Jakarta Sans',system-ui,sans-serif;
-  white-space:nowrap;line-height:1.4;transition:all .12s}
-.mesa-decl .opts button:hover{border-color:#1a5c38;color:#1a5c38;background:#fff}
-.mesa-decl .opts button.on{background:#1a5c38;border-color:#1a5c38;color:#fff}
-.mesa-decl .opts button:disabled{opacity:.5}
-</style>
-<script>
-function mesaOpen(chip){
-  var box  = chip.closest('.mesa-decl');
-  var opts = box.querySelector('.opts');
-  document.querySelectorAll('#mesa-card .mesa-decl .opts').forEach(function(o){
-    if(o !== opts) o.hidden = true;
-  });
-  opts.hidden = !opts.hidden;
+#mesa-card .mlist{border:1px solid #eeeee9;border-radius:10px;overflow:hidden}
+#mesa-card .mrow{display:flex;align-items:center;gap:10px;padding:0 12px;height:38px;cursor:pointer;background:#fafaf8}
+#mesa-card .mrow + .mdrawer + .mrow, #mesa-card .mrow + .mrow{border-top:1px solid #eeeee9}
+#mesa-card .mdrawer + .mrow{border-top:1px solid #eeeee9}
+#mesa-card .mrow:hover{background:#f4f4ef}
+#mesa-card .mrow.open{background:#fff}
+#mesa-card .mrow.milagro{background:#fefce8}
+#mesa-card .mdone-zone .mrow{opacity:.72}
+#mesa-card .mdot{width:9px;height:9px;border-radius:50%;flex:none}
+#mesa-card .mdot.off{background:transparent;border:1.5px solid #c9c9c2}
+#mesa-card .mcli{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+#mesa-card .mcli a{color:#1a1a18;text-decoration:none}
+#mesa-card .mcli a:hover{color:#1a5c38;text-decoration:underline}
+#mesa-card .mfolio{font-weight:500;color:#a3a39d;font-size:11px;margin-left:6px}
+#mesa-card .mflag{font-size:11px;flex:none}
+#mesa-card .mcheck{color:#16a34a;font-weight:800;display:none;flex:none}
+#mesa-card .mrow.done .mcheck{display:inline}
+#mesa-card .msp{flex:1}
+#mesa-card .mciclo{font-size:12px;color:#57534e;font-variant-numeric:tabular-nums;flex:none;width:56px;text-align:right}
+#mesa-card .mciclo.late{color:#dc2626;font-weight:700}
+#mesa-card .mmoney{font-weight:700;font-variant-numeric:tabular-nums;flex:none;width:82px;text-align:right}
+#mesa-card .mdecl3{display:flex;gap:6px;flex:none}
+#mesa-card .mdecl3 span{font-size:10.5px;line-height:1.3;color:#c9c9c2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mesa-card .mdecl3 .s1{width:74px}#mesa-card .mdecl3 .s2{width:70px}#mesa-card .mdecl3 .s3{width:70px}
+#mesa-card .mdecl3 span.f{color:#1a5c38;font-weight:700}
+#mesa-card .mfresh{font-size:10.5px;flex:none;width:50px;text-align:right;color:#a8a8a2}
+#mesa-card .mfresh.warn{color:#d97706;font-weight:700}
+#mesa-card .mfresh.bad{color:#dc2626;font-weight:700}
+#mesa-card .mfresh.ok{color:#16a34a;font-weight:700}
+#mesa-card .mchev{color:#c9c9c2;flex:none;font-size:11px;transition:transform .15s}
+#mesa-card .mrow.open .mchev{transform:rotate(90deg)}
+#mesa-card .mdrawer{display:none;background:#fff;padding:12px 14px 14px 31px;border-top:1px solid #f4f4ef}
+#mesa-card .mdrawer.open{display:block}
+#mesa-card .mtag{font-size:11px;padding:2px 7px;border-radius:9px;font-weight:700;margin-right:6px}
+#mesa-card .msug{font-size:13px;color:#3f3f3a;margin-bottom:10px;max-width:78ch}
+#mesa-card .mlbl{color:#1a5c38;font-weight:800;margin-right:4px}
+#mesa-card .mareas{display:flex;flex-direction:column;gap:7px}
+#mesa-card .marea{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+#mesa-card .man{font-size:10.5px;font-weight:800;color:#8a8a84;text-transform:uppercase;letter-spacing:.05em;width:96px;flex:none}
+#mesa-card .mpill{border:1px solid #e2e2dc;background:#fafaf8;color:#57534e;border-radius:999px;padding:4px 12px;cursor:pointer;font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;white-space:nowrap;line-height:1.4;transition:all .12s}
+#mesa-card .mpill:hover{border-color:#1a5c38;color:#1a5c38;background:#fff}
+#mesa-card .mpill.on{background:#1a5c38;border-color:#1a5c38;color:#fff}
+#mesa-card .mpill:disabled{opacity:.5}
+#mesa-card .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+#mesa-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1a1a18;color:#fff;font-size:12.5px;padding:9px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:9999}
+#mesa-toast.show{opacity:.95}
+@media (max-width:640px){
+  #mesa-card .mfolio,#mesa-card .mfresh{display:none}
+  #mesa-card .mdecl3 .s2,#mesa-card .mdecl3 .s3{display:none}
+  #mesa-card .mdecl3 .s1{width:64px}
+  #mesa-card .mmoney{width:auto}
+  #mesa-card .mdrawer{padding-left:14px}
+  #mesa-card .man{width:100%}
 }
+</style>
+<div id="mesa-toast"></div>
+<script>
+document.querySelectorAll('#mesa-card .mrow').forEach(function(row){
+  row.addEventListener('click', function(){
+    var d = document.getElementById(row.dataset.drawer);
+    if(!d) return;
+    var was = d.classList.contains('open');
+    document.querySelectorAll('#mesa-card .mdrawer').forEach(function(x){x.classList.remove('open')});
+    document.querySelectorAll('#mesa-card .mrow').forEach(function(x){x.classList.remove('open')});
+    if(!was){ d.classList.add('open'); row.classList.add('open'); }
+  });
+});
+
+var mesaToastT;
+function mesaToast(msg){
+  var t = document.getElementById('mesa-toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(mesaToastT); mesaToastT = setTimeout(function(){t.classList.remove('show')}, 2600);
+}
+
+var MESA_SHORT = <?= json_encode($MESA_SHORT, JSON_UNESCAPED_UNICODE) ?>;
+var MESA_IDX   = {contacto:0, compromiso:1, postura:2};
+
 function mesaTap(cotId, area, estado, btn){
   var razon = null;
   if(estado === 'descartada'){
@@ -223,17 +276,27 @@ function mesaTap(cotId, area, estado, btn){
     body: JSON.stringify({cotizacion_id:cotId, area:area, estado:estado, razon:razon})
   }).then(function(r){return r.json();}).then(function(d){
     btn.disabled = false;
-    if(d.ok){
-      var box = btn.closest('.mesa-decl');
-      box.querySelectorAll('.opts button').forEach(function(b){ b.classList.remove('on'); });
-      btn.classList.add('on');
-      var chip = box.querySelector('.chip');
-      chip.textContent = btn.textContent;
-      chip.classList.add('set');
-      box.querySelector('.opts').hidden = true;
-      var done = btn.closest('tr').querySelector('.mesa-done');
-      if(done) done.style.display = '';
-    } else { alert('No se pudo guardar: ' + (d.error || 'error')); }
-  }).catch(function(){ btn.disabled = false; alert('No se pudo guardar (red o sesión). Recarga la página e intenta de nuevo.'); });
+    if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
+    var drawer = btn.closest('.mdrawer');
+    var row = document.querySelector('#mesa-card .mrow[data-drawer="'+drawer.id+'"]');
+    // pill exclusivo dentro del área
+    btn.closest('.marea').querySelectorAll('.mpill').forEach(function(x){x.classList.remove('on')});
+    btn.classList.add('on');
+    // columnita con el label corto
+    var slot = row.querySelectorAll('.mdecl3 span')[MESA_IDX[area]];
+    if(slot){ slot.textContent = MESA_SHORT[estado] || estado; slot.classList.add('f'); }
+    // frescura
+    var fr = row.querySelector('.mfresh');
+    if(fr){ fr.textContent = 'hoy'; fr.className = 'mfresh ok'; }
+    // sugerencia recalculada por el servidor (mezcla + Radar + arquetipo)
+    if(d.sugerencia){
+      var sx = drawer.querySelector('.msx');
+      if(sx) sx.textContent = d.sugerencia;
+    }
+    if(!row.classList.contains('done')){
+      row.classList.add('done');
+      mesaToast('✓ Atendida — al recargar pasa a "Atendidas hoy"');
+    }
+  }).catch(function(){ btn.disabled = false; mesaToast('No se pudo guardar (red o sesión) — recarga e intenta de nuevo.'); });
 }
 </script>

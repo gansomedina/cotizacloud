@@ -38,6 +38,17 @@ final class DiagnosticoTips
         return empty($pool) ? '' : $pool[$seed % count($pool)];
     }
 
+    // Expone el arquetipo del asesor para otros motores (Mesa de Trabajo).
+    // Reusa el pipeline existente sin tocarlo.
+    public static function arquetipo(array $s, ?array $ctx = null): string
+    {
+        $m = self::_metricas($s, $ctx);
+        if (($s['nivel'] ?? '') === 'nuevo' || $m['asig'] === 0) return 'muestra_chica';
+        $e    = self::_estados($m);
+        $real = self::_validar($m, $e);
+        return self::_arquetipo($m, $e, $real);
+    }
+
     public static function build(array $s, ?array $ctx = null): string
     {
         $m = self::_metricas($s, $ctx);

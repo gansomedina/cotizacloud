@@ -1,5 +1,7 @@
 <?php
 // POST /api/mesa/estado — declara el desenlace de un toque (Mesa de Trabajo)
+// Responde {"ok":true,"estado":...,"sugerencia":...} — la sugerencia se
+// recalcula con la MEZCLA completa (MesaSugerencias) para swap instantáneo.
 defined('COTIZAAPP') or die;
 header('Content-Type: application/json; charset=utf-8');
 if (!Auth::logueado()) { http_response_code(401); echo json_encode(['ok'=>false]); exit; }
@@ -22,8 +24,12 @@ if (!$cot_id || !in_array($estado, $VALIDOS, true)) { echo json_encode(['ok'=>fa
 if ($estado === 'descartada' && !in_array($razon, $RAZONES, true)) { echo json_encode(['ok'=>false,'error'=>'razon']); exit; }
 if ($estado !== 'descartada') $razon = null;
 
-$cot = DB::row("SELECT id, radar_bucket, COALESCE(vendedor_id, usuario_id) AS vend
-                FROM cotizaciones WHERE id=? AND empresa_id=?", [$cot_id, EMPRESA_ID]);
+$cot = DB::row(
+    "SELECT id, total, visitas, radar_bucket, radar_bucket_at, ultima_vista_at, created_at,
+            DATEDIFF(NOW(), created_at) AS edad,
+            DATEDIFF(NOW(), COALESCE(ultima_vista_at, created_at)) AS dias_sin_vista,
+            COALESCE(vendedor_id, usuario_id) AS vend
+     FROM cotizaciones WHERE id=? AND empresa_id=?", [$cot_id, EMPRESA_ID]);
 if (!$cot) { echo json_encode(['ok'=>false,'error'=>'no_encontrada']); exit; }
 if ((int)$cot['vend'] !== Auth::id() && !Auth::es_admin()) { echo json_encode(['ok'=>false,'error'=>'permiso']); exit; }
 
@@ -44,4 +50,97 @@ if (isset($map[$estado])) {
         [$cot_id, Auth::id(), EMPRESA_ID, $map[$estado]]
     );
 }
-echo json_encode(['ok'=>true, 'estado'=>$estado]);
+
+// ── Recalcular la sugerencia con la mezcla completa ──
+$sugerencia = null;
+try {
+    // Última declaración por área (incluye la recién insertada)
+    $decl = []; $nc = 0;
+    foreach (DB::query(
+        "SELECT m.area, m.estado, m.razon, m.created_at
+         FROM mesa_estados m
+         JOIN (SELECT area, MAX(id) AS mid FROM mesa_estados
+               WHERE cotizacion_id = ? GROUP BY area) t ON t.mid = m.id",
+        [$cot_id]
+    ) as $r) {
+        $decl[$r['area']] = ['estado' => $r['estado'], 'at' => $r['created_at'], 'razon' => $r['razon']];
+    }
+    foreach (DB::query(
+        "SELECT estado FROM mesa_estados WHERE cotizacion_id = ? AND area = 'contacto' ORDER BY id",
+        [$cot_id]
+    ) as $r) {
+        $nc = ($r['estado'] === 'hablamos') ? 0 : $nc + 1;
+    }
+
+    $act = DB::row(
+        "SELECT SUM(created_at >= NOW() - INTERVAL 1 DAY) AS v24,
+                SUM(created_at >= NOW() - INTERVAL 7 DAY) AS v7,
+                COUNT(DISTINCT CASE WHEN created_at >= NOW() - INTERVAL 7 DAY THEN ip END) AS ips7
+         FROM quote_sessions
+         WHERE cotizacion_id = ? AND es_interno = 0
+           AND NOT (COALESCE(visible_ms,0) < 200 AND COALESCE(scroll_max,0) < 35)",
+        [$cot_id]
+    ) ?: [];
+
+    $ult_accion = DB::val(
+        "SELECT MAX(created_at) FROM cotizacion_log
+         WHERE cotizacion_id = ? AND usuario_id IS NOT NULL
+           AND COALESCE(accion, evento) IN ('editada','enviada')", [$cot_id]
+    );
+
+    $t = DB::row(
+        "SELECT AVG(total) AS avg_t, COUNT(*) AS n FROM ventas
+         WHERE empresa_id = ? AND estado != 'cancelada' AND total > 0
+           AND created_at >= NOW() - INTERVAL 180 DAY", [EMPRESA_ID]);
+    if ((int)($t['n'] ?? 0) < 5) {
+        $t = DB::row(
+            "SELECT AVG(total) AS avg_t, COUNT(*) AS n FROM ventas
+             WHERE empresa_id = ? AND estado != 'cancelada' AND total > 0", [EMPRESA_ID]);
+    }
+    $ticket = ((int)($t['n'] ?? 0) >= 5) ? (float)$t['avg_t'] : null;
+
+    $arquetipo = 'muestra_chica';
+    $us = DB::row(
+        "SELECT * FROM usuario_score WHERE usuario_id = ? AND empresa_id = ?
+         ORDER BY id DESC LIMIT 1", [(int)$cot['vend'], EMPRESA_ID]);
+    if ($us) $arquetipo = DiagnosticoTips::arquetipo($us);
+
+    if (!class_exists('Radar')) require_once MODULES_PATH . '/radar/Radar.php';
+    $ciclo = Radar::ciclo_venta(EMPRESA_ID);
+    $p75   = (!empty($ciclo['auto']) && !empty($ciclo['p75'])) ? max(1, (int)$ciclo['p75']) : 30;
+
+    $es_hot = $cot['radar_bucket'] !== null
+        && in_array($cot['radar_bucket'], Mesa::HOT, true)
+        && $cot['radar_bucket_at']
+        && strtotime($cot['radar_bucket_at']) >= time() - 7 * 86400;
+
+    $accion_post_cambios = false;
+    if (($decl['postura']['estado'] ?? '') === 'pidio_cambios') {
+        $accion_post_cambios = $ult_accion && strtotime($ult_accion) > strtotime($decl['postura']['at']);
+    }
+
+    $sugerencia = MesaSugerencias::sugerir([
+        'total' => (float)$cot['total'], 'edad' => (int)$cot['edad'], 'cat' => 'trabajo',
+        'bucket' => $cot['radar_bucket'], 'es_hot' => $es_hot,
+        'visitas' => (int)$cot['visitas'], 'dias_sin_vista' => (int)$cot['dias_sin_vista'],
+        'ultima_vista_at' => $cot['ultima_vista_at'],
+        'revivida' => false, 'milagro' => false,
+        'contacto' => $decl['contacto'] ?? null,
+        'compromiso' => $decl['compromiso'] ?? null,
+        'postura_decl' => $decl['postura'] ?? null,
+        'razon_descarte' => $decl['postura']['razon'] ?? null,
+        'intentos_nc' => $nc,
+        'vistas_24h' => (int)($act['v24'] ?? 0),
+        'vistas_7d'  => (int)($act['v7'] ?? 0),
+        'ips_7d'     => (int)($act['ips7'] ?? 0),
+        'accion_post_cambios' => $accion_post_cambios,
+        'p75' => $p75, 'mediana' => (int)($ciclo['mediana'] ?? $p75),
+        'ticket_empresa' => $ticket,
+        'arquetipo' => $arquetipo,
+    ]);
+} catch (Throwable $e) {
+    // El tap ya se guardó — no romper la respuesta por la sugerencia
+    error_log('[Mesa sugerencia] ' . $e->getMessage());
+}
+
+echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia]);
