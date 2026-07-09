@@ -100,6 +100,21 @@ class Mesa
             $acc[(int)$r['cotizacion_id']] = $r['ult'];
         }
 
+        // Estados declarados en la mesa (última declaración por área)
+        $me = [];
+        try {
+            foreach (DB::query(
+                "SELECT m.cotizacion_id, m.area, m.estado, m.created_at
+                 FROM mesa_estados m
+                 JOIN (SELECT cotizacion_id, area, MAX(id) AS mid FROM mesa_estados
+                       WHERE empresa_id = ? AND cotizacion_id IN ($in)
+                       GROUP BY cotizacion_id, area) t ON t.mid = m.id",
+                [$empresa_id]
+            ) as $r) {
+                $me[(int)$r['cotizacion_id']][$r['area']] = ['estado' => $r['estado'], 'at' => $r['created_at']];
+            }
+        } catch (Throwable $e) {} // tabla aún no migrada
+
         // Resurrección: descartadas cuyo cliente volvió a calentarse DESPUÉS del descarte
         $revividas = [];
         $descartadas_ids = [];
@@ -181,6 +196,23 @@ class Mesa
                 'postura' => $postura, 'ultima_accion' => $acc[$cid] ?? null,
                 'dormida' => $dormida,
                 'tier' => ($edad <= $p75 ? 1 : 2),
+                'decl' => $me[$cid] ?? [],
+                'alerta' => (function () use ($me, $cid, $c) {
+                    $d = $me[$cid] ?? [];
+                    $uv = $c['ultima_vista_at'] ? strtotime($c['ultima_vista_at']) : 0;
+                    // Compromiso declarado y el cliente no ha vuelto a abrir desde entonces
+                    if (($d['compromiso']['estado'] ?? '') === 'compromiso') {
+                        $t = strtotime($d['compromiso']['at']);
+                        $dias = (int)floor((time() - $t) / 86400);
+                        if ($dias >= 2 && $uv < $t) return "Quedaron en algo hace {$dias}d y el cliente no ha vuelto a abrir — confírmalo o era humo.";
+                    }
+                    if (($d['postura']['estado'] ?? '') === 'decidiendo') {
+                        $t = strtotime($d['postura']['at']);
+                        $dias = (int)floor((time() - $t) / 86400);
+                        if ($dias >= 3 && $uv < $t) return "Dijiste 'decidiendo' hace {$dias}d y no ha reabierto ni una vez — decidiendo pero frío.";
+                    }
+                    return null;
+                })(),
                 'revivida' => ($cat === 'revivida'),
                 'milagro'  => ($cat === 'milagro'),
                 'fuera_ventana' => ($edad > $p75),
