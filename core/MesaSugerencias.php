@@ -79,7 +79,7 @@ class MesaSugerencias
         }
         if (!empty($c['milagro'])) {
             if ($con_e === 'no_contesta') {
-                return 'La dabas por incontactable, está fuera de tu ciclo y la está viendo AHORA — WhatsApp en este instante citando la cotización.';
+                return 'La dabas por incontactable, está fuera de tu ciclo y la está viendo AHORA — mensaje en este instante citando la cotización.';
             }
             return 'Fuera de tu ciclo normal y la está viendo AHORA — es ahora o se va: mensaje en cuanto sueltes esta pantalla.';
         }
@@ -108,17 +108,17 @@ class MesaSugerencias
             // EVASIVA (sin_compromiso junto a no_contesta es redundante: se absorbe)
             else {
                 if ($alto && $ips7 >= 2) {
-                    $f = 'No te contesta pero vale ' . self::x($ratio) . ' de tu venta típica y más gente la está viendo — no la quemes a llamadas: mensaje a tu contacto ofreciendo resolver dudas de todos.';
+                    $f = 'No te contesta pero vale ' . self::x($ratio) . ' de tu venta típica y más gente la está viendo — no la quemes a insistencia: mensaje a tu contacto ofreciendo resolver las dudas de todos.';
                 } elseif ($leyendo) {
-                    $f = 'No te contesta pero abrió la cotización ' . ($v24 > 1 ? "{$v24} veces hoy" : 'hoy') . ' — te lee aunque te evite: WhatsApp corto con una pregunta que se conteste con sí o no.';
+                    $f = 'No te contesta pero abrió la cotización ' . ($v24 > 1 ? "{$v24} veces hoy" : 'hoy') . ' — te lee aunque te evite: mensaje corto con una pregunta que se conteste con sí o no; si ya le escribiste, márcale.';
                 } elseif ($reabrio) {
-                    $f = 'Te evita el teléfono pero reabrió la cotización después de tu intento — deja de llamar: mensaje escrito con pregunta cerrada, que pueda contestar sin hablar contigo.';
+                    $f = 'No te responde pero reabrió la cotización después de tu intento — búscalo por escrito con una pregunta cerrada, que pueda contestar sin conversación.';
                 } elseif ($intentos_nc >= 3) {
                     $f = 'Van ' . $intentos_nc . ' intentos sin respuesta — cambia de canal obligado: si llamas, escribe; si escribes, llama, o busca otro contacto de la cuenta.';
                 } elseif ($dormida) {
                     $f = "No contesta y lleva {$dsv}d sin abrirla — reintento mañana por OTRO canal; si tampoco, va camino a fantasma.";
                 } else {
-                    $f = 'No te contestó — cambia de canal: WhatsApp corto con una pregunta que se conteste con sí o no.';
+                    $f = 'No te contestó — cambia de canal: mensaje corto con una pregunta que se conteste con sí o no; si ya le escribiste, márcale.';
                 }
             }
         }
@@ -135,7 +135,7 @@ class MesaSugerencias
                 if (empty($c['accion_post_cambios'])) {
                     $f = 'Quedaron en algo y pidió cambios — la versión nueva sale HOY: llega al compromiso con ella en mano.';
                 } elseif (!$reabrio && $dcom >= 2) {
-                    $f = 'Le mandaste la versión nueva y no la ha abierto — avísale por WhatsApp que ya está lista; no asumas que la vio.';
+                    $f = 'Le mandaste la versión nueva y no la ha abierto — avísale que la versión nueva ya está lista; no asumas que la vio.';
                 } else {
                     $f = 'Pidió cambios, ya abrió tu versión nueva — no esperes su opinión: márcale y pregunta "¿así ya cerramos?".';
                     $slots['cierre'] = true;
@@ -144,7 +144,7 @@ class MesaSugerencias
                 $f = 'Quedaron en algo y volvió a revisarla — está cumpliendo su parte: confírmale antes de que se enfríe.';
                 $slots['cierre'] = true;
             } elseif ($dcom >= 2) {
-                $f = "Quedaron en algo hace {$dcom}d y no ha vuelto a abrirla ni una vez — confírmalo hoy por WhatsApp o era humo.";
+                $f = "Quedaron en algo hace {$dcom}d y no ha vuelto a abrirla ni una vez — confírmalo hoy con un mensaje o era humo.";
                 $slots['confronta'] = true;
             } elseif ($fuera) {
                 $f = "Va en serio pero ya se salió de tu ventana de ~{$p75}d — el siguiente toque pone fecha de decisión, no un \"cómo vamos\".";
@@ -277,7 +277,7 @@ class MesaSugerencias
             case 'pidio_cambios':
                 if (empty($c['accion_post_cambios'])) return 'Pidió cambios y la cotización sigue igual — la versión nueva sale HOY: cotización que se mueve, cierra.';
                 if ($reabrio) { $slots['cierre'] = true; return 'Ya abrió tu versión nueva — no esperes su opinión: márcale y pregunta "¿así ya cerramos?".'; }
-                return 'Le mandaste la versión nueva y no la ha abierto — avísale por WhatsApp que ya está lista; no asumas que la vio.';
+                return 'Le mandaste la versión nueva y no la ha abierto — avísale que la versión nueva ya está lista; no asumas que la vio.';
             case 'en_el_aire':
                 if ($viva) { $slots['confronta'] = true; return 'Tú la ves en el aire y el cliente la está releyendo — el que está en el aire eres tú: márcale hoy y sal de la duda.'; }
                 if ($dormida) return "Lleva {$dsv}d sin abrirla y tú mismo la ves en el aire — ponle fecha límite hoy o descártala; la mesa no es velorio.";
@@ -298,24 +298,38 @@ class MesaSugerencias
             $slots['decision'] = true;
             return "Va en serio pero ya está en día {$edad}, saliendo de tu ventana (~{$p75}d) — último tramo útil.";
         }
-        // Por bucket (matiz del playbook) — solo si el calor es real
+        // Evidencia propia de ESTA fila (cada cotización cita sus números)
+        $v24 = (int)($c['vistas_24h'] ?? 0);
+        $v7  = (int)($c['vistas_7d'] ?? 0);
+        $ev  = null;
+        if ($v24 >= 2)      $ev = "La abrió {$v24} veces hoy";
+        elseif ($v24 === 1) $ev = 'La abrió hoy';
+        elseif ($dsv === 1) $ev = 'La abrió ayer';
+        elseif ($v7 >= 3)   $ev = "La abrió {$v7} veces esta semana";
+        elseif ($dsv >= 2 && $dsv < 7 && (int)($c['visitas'] ?? 0) > 0) $ev = "Lleva {$dsv}d sin volver a verla";
+
+        // Por bucket (matiz del playbook) — solo si el calor es real.
+        // probable_cierre agrupa varios motivos: pc_source dice CUÁL fue.
         if ($hot) {
             $slots['senal_viva'] = true;
-            $f = match ($bucket) {
-                'onfire'               => 'La leyó completa y volvió más de una vez — no reexpliques nada: contacto de cierre HOY.',
-                'inminente'            => 'Se fue, lo pensó y regresó — está decidiendo YA: pregunta directa hoy, qué falta para arrancar.',
-                'probable_cierre'      => 'Lectura real con foco en el precio y no la has calificado — es tu contacto del día: llega con opciones de pago y declara cómo lo ves.',
-                'validando_precio'     => 'Está clavado en los totales — llega con la estructura de pago, no defiendas el número.',
-                'decision_activa'      => 'Va y viene con ella — lo está consultando: ponte disponible y pregunta si alguien más decide.',
-                'prediccion_alta'      => 'Su patrón se parece al de los que sí compran — contacto proactivo suave: confirma, no asumas.',
-                'lectura_comprometida' => 'La leyó a fondo a la primera y tocó el precio — esta señal dura horas: contáctalo HOY.',
-                'multi_persona'        => ($ips7 >= 2 ? "Hay {$ips7} personas viéndola" : 'Varias personas la están viendo') . ' — tu contacto no decide solo: reunión con todos y garantía por escrito.',
-                'alto_importe'         => 'Está arriba de lo que normalmente vendes — paciencia y garantía, jamás cierre exprés.',
-                're_enganche_caliente' => 'Regresó directo a los precios tras días fuera — está comparando en la mesa final: aparece YA con seguridad.',
-                default                => 'El Radar la trae caliente y no la has calificado — dale el toque hoy y declara cómo lo ves.',
+            $b = $bucket;
+            if ($b === 'probable_cierre' && !empty($c['pc_source'])) $b = $c['pc_source'];
+            [$intro, $accion, $con_num] = match ($b) {
+                'onfire'               => ['la leyó completa y volvió más de una vez', 'no reexpliques nada: contacto de cierre HOY.', false],
+                'inminente'            => ['se fue, lo pensó y regresó — está decidiendo YA', 'pregunta directa hoy: qué falta para arrancar.', false],
+                'validando_precio'     => ['está clavado en los totales', 'llega con la estructura de pago, no defiendas el número.', false],
+                'decision_activa'      => ['va y viene con ella, la está consultando', 'ponte disponible y pregunta si alguien más decide.', false],
+                'prediccion_alta'      => ['su patrón se parece al de los que sí compran', 'contacto proactivo suave: confirma, no asumas.', false],
+                'lectura_comprometida' => ['la leyó a fondo a la primera y tocó el precio', 'esta señal dura horas: contáctalo HOY.', false],
+                'multi_persona'        => [($ips7 >= 2 ? "hay {$ips7} personas viéndola" : 'varias personas la están viendo'), 'tu contacto no decide solo: reunión con todos y garantía por escrito.', true],
+                'alto_importe'         => ['está arriba de lo que normalmente vendes', 'paciencia y garantía, jamás cierre exprés.', false],
+                're_enganche_caliente' => ['regresó directo a los precios tras días fuera', 'está comparando en la mesa final: aparece YA con seguridad.', false],
+                default                => ['el Radar la trae caliente y no la has calificado', 'dale el toque hoy y declara cómo lo ves.', false],
             };
-            if ($bucket === 'validando_precio' || $bucket === 'probable_cierre') $slots['precio'] = true;
-            return $f;
+            if (in_array($b, ['validando_precio', 're_enganche_caliente'], true)) $slots['precio'] = true;
+            // Componer: evidencia de la fila + motivo + acción (1 número máx)
+            if ($ev && !$con_num) return $ev . ' y ' . $intro . ' — ' . $accion;
+            return ucfirst($intro) . ' — ' . $accion;
         }
         return match ($bucket) {
             're_enganche', 'regreso' => 'Volvió a asomarse tras días de silencio — retómala natural: pregunta si algo cambió de su lado.',

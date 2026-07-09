@@ -25,7 +25,7 @@ if ($estado === 'descartada' && !in_array($razon, $RAZONES, true)) { echo json_e
 if ($estado !== 'descartada') $razon = null;
 
 $cot = DB::row(
-    "SELECT id, total, visitas, radar_bucket, radar_bucket_at, ultima_vista_at, created_at,
+    "SELECT id, total, visitas, radar_bucket, radar_bucket_at, radar_senales, ultima_vista_at, created_at,
             DATEDIFF(NOW(), created_at) AS edad,
             DATEDIFF(NOW(), COALESCE(ultima_vista_at, created_at)) AS dias_sin_vista,
             COALESCE(vendedor_id, usuario_id) AS vend
@@ -122,6 +122,10 @@ try {
     $sugerencia = MesaSugerencias::sugerir([
         'total' => (float)$cot['total'], 'edad' => (int)$cot['edad'], 'cat' => 'trabajo',
         'bucket' => $cot['radar_bucket'], 'es_hot' => $es_hot,
+        'pc_source' => (function () use ($cot) {
+            $s = !empty($cot['radar_senales']) ? json_decode($cot['radar_senales'], true) : null;
+            return $s['pc_source'] ?? null;
+        })(),
         'visitas' => (int)$cot['visitas'], 'dias_sin_vista' => (int)$cot['dias_sin_vista'],
         'ultima_vista_at' => $cot['ultima_vista_at'],
         'revivida' => false, 'milagro' => false,
