@@ -98,6 +98,16 @@ class MesaSugerencias
             ]);
         }
         if (!empty($c['revivida'])) {
+            // El cliente revivió tras el descarte PERO puede haberse vuelto a callar.
+            // Si ya lleva 3+ días sin abrir, no digas "mándale antes de que se enfríe"
+            // (ya se enfrió): último empujón o descarte en firme.
+            if (!$hot && $dsv >= 3) {
+                return $pk([
+                    "El cliente reabrió esta cotización tras tu descarte pero ya lleva {$dsv}d sin volver — un último mensaje directo hoy, o descártala en firme.",
+                    "Volvió sola después del descarte y otra vez se calló ({$dsv}d sin abrir) — hoy decides: un empujón directo o el descarte final.",
+                    "Reapareció tras el descarte y lleva {$dsv}d sin abrirla de nuevo — mándale hoy un mensaje directo; si no responde, descártala en firme.",
+                ]);
+            }
             return match ($c['razon_descarte'] ?? '') {
                 'precio' => $pk([
                     'La descartaste por precio y el cliente la volvió a abrir solo — algo cambió de su lado: mándale un mensaje hoy.',

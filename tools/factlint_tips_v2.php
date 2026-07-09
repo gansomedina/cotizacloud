@@ -157,6 +157,38 @@ foreach ($states as $rs) {
   }
 }
 
+
+// ── OVERLAYS revivida/milagro: freshness gate (hueco marcado por el workflow) ──
+// La afirmación "regresó/está viendo AHORA/antes de que se enfríe" exige que el
+// cliente esté fresco (abrió <=2d) o caliente; si ya se calló, es mentira.
+$RX_REV_URGENTE = '/antes de que se (?:vuelva a )?enfr[íi]e|una se[ñn]al as[íi] no se repite|una segunda oportunidad as[íi] no se repite|regres[óo] solo|volvi[óo] a abrir la cotizaci[óo]n esta semana|reabri[óo] una cotizaci[óo]n que ya hab[íi]as descartado|La descartaste por precio y el cliente la volvi[óo] a abrir solo|reabri[óo] sin que lo buscaras|esta se[ñn]al no va a repetirse/u';
+$RX_MIL_AHORA = '/est[áa] (?:viendo|leyendo)[^.]{0,30}AHORA|la tiene (?:abierta )?AHORA|la est[áa] viendo AHORA|est[áa] leyendo AHORA/u';
+foreach ([0,1,2,4,6] as $dsvv) {
+  foreach (['','precio','no_responde','competencia','despues'] as $rz) {
+    foreach ([0,1] as $ihot) {
+      $ov = [
+        'cot_id'=>$dsvv+strlen($rz), 'total'=>50000,'edad'=>7,'cat'=>'revivida',
+        'bucket'=>$ihot?'onfire':null,'es_hot'=>$ihot,'pc_source'=>null,'momentum'=>null,'fit_pct'=>0,
+        'visitas'=>3,'dias_sin_vista'=>$dsvv,'vistas_24h'=>($dsvv===0?1:0),'vistas_7d'=>1,'ips_7d'=>1,
+        'ultima_vista_at'=>date('Y-m-d H:i:s',$now-$dsvv*86400),'revivida'=>true,'milagro'=>false,
+        'contacto'=>null,'compromiso'=>null,'postura_decl'=>null,'razon_descarte'=>$rz?:null,
+        'intentos_nc'=>0,'accion_post_cambios'=>false,'p75'=>10,'mediana'=>5,'ticket_empresa'=>90000,'arquetipo'=>'',
+      ];
+      $fr = MesaSugerencias::sugerir($ov);
+      $fresco = ($dsvv<=2) || $ihot;
+      if (preg_match($RX_REV_URGENTE,$fr) && !$fresco)
+        pv($viol,'OV_revivida_stale',$fr,"revivida dsv=$dsvv hot=$ihot rz=".($rz?:'-'));
+      // milagro SOLO existe con hot (Mesa.php: cat milagro requiere hot_reciente)
+      if (!$ihot) continue;
+      $ov['cat']='trabajo'; $ov['revivida']=false; $ov['milagro']=true;
+      $fm = MesaSugerencias::sugerir($ov);
+      $activo = ($ov['vistas_24h']>=1) || $ihot;
+      if (preg_match($RX_MIL_AHORA,$fm) && !$activo)
+        pv($viol,'OV_milagro_stale',$fm,"milagro dsv=$dsvv hot=$ihot");
+    }
+  }
+}
+
 echo "Combos: $combos\n";
 echo "Reglas cargadas: ".count($RULES)."\n";
 $nunca = array_filter($RULES, fn($r)=>!isset($everfired[$r['id']]));
