@@ -165,8 +165,8 @@ class Mesa
         $arquetipo = 'muestra_chica';
         try {
             $us = DB::row(
-                "SELECT * FROM usuario_score WHERE usuario_id = ? AND empresa_id = ?
-                 ORDER BY id DESC LIMIT 1", [$vendedor_id, $empresa_id]
+                "SELECT * FROM usuario_score WHERE usuario_id = ? AND empresa_id = ?",
+                [$vendedor_id, $empresa_id]
             );
             if ($us) $arquetipo = DiagnosticoTips::arquetipo($us);
         } catch (Throwable $e) {}

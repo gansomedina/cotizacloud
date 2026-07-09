@@ -101,8 +101,8 @@ try {
 
     $arquetipo = 'muestra_chica';
     $us = DB::row(
-        "SELECT * FROM usuario_score WHERE usuario_id = ? AND empresa_id = ?
-         ORDER BY id DESC LIMIT 1", [(int)$cot['vend'], EMPRESA_ID]);
+        "SELECT * FROM usuario_score WHERE usuario_id = ? AND empresa_id = ?",
+        [(int)$cot['vend'], EMPRESA_ID]);
     if ($us) $arquetipo = DiagnosticoTips::arquetipo($us);
 
     if (!class_exists('Radar')) require_once MODULES_PATH . '/radar/Radar.php';
