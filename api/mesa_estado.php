@@ -41,15 +41,17 @@ DB::execute(
     [$cot_id, Auth::id(), EMPRESA_ID, $area, $estado, $razon, $cot['radar_bucket']]
 );
 
-// Declarar compromiso implica que hablaron: si no hay contacto capturado,
-// el sistema marca "Hablamos" solo (las áreas NO son secuenciales, pero
-// esta implicación es lógica, no opcional)
+// Declarar CUALQUIER compromiso implica que hablaron (quedar en algo,
+// proponer o "nada concreto" requieren conversación). Si no hay contacto
+// capturado — o el último fue "No contestó" — el sistema marca "Hablamos"
+// solo. Las áreas NO son secuenciales; esta implicación es lógica.
 $auto_contacto = false;
 if ($area === 'compromiso') {
-    $tiene_con = DB::val(
-        "SELECT 1 FROM mesa_estados WHERE cotizacion_id = ? AND area = 'contacto' LIMIT 1", [$cot_id]
+    $ult_con = DB::val(
+        "SELECT estado FROM mesa_estados
+         WHERE cotizacion_id = ? AND area = 'contacto' ORDER BY id DESC LIMIT 1", [$cot_id]
     );
-    if (!$tiene_con) {
+    if ($ult_con !== 'hablamos') {
         DB::execute(
             "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
              VALUES (?,?,?,'contacto','hablamos',NULL,?)",

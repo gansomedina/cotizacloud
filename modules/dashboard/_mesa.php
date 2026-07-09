@@ -210,8 +210,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       te pide definición — fecha límite o descarte, no seguimiento eterno.</p>
       <p style="margin:0 0 8px"><b>¿Hay que capturar en orden?</b> No — las 3 áreas son independientes.
       "¿Cómo lo ves?" es tu lectura y vale aunque no hayas hablado con él (el consejo te pedirá el toque).
-      Lo único automático: si declaras un Compromiso sin haber capturado contacto, el sistema marca
-      "Hablamos" solo — quedar en algo implica que hablaron.</p>
+      Lo único automático: cualquier declaración de Compromiso implica conversación — si el contacto
+      estaba vacío o en "No contestó", el sistema lo actualiza a "Hablamos" solo. Y todo se puede
+      modificar después: la declaración más reciente manda, el consejo se rearma con cada cambio.</p>
       <p style="margin:0 0 8px"><b>¿Por qué salen cotizaciones pasadas de la ventana (venta tardía)?</b>
       Porque tu propia historia dice que sí cierras algunas tarde — tu récord es el que marca el aviso de
       limpieza. La mesa las mantiene hasta el día 2× tu ventana con un consejo de ultimátum (fecha límite o
