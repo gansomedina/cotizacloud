@@ -595,9 +595,9 @@ class MesaSugerencias
         if ($cat === 'ultimo_tramo') {
             $slots['decision'] = true;
             return $pk([
-                "Marcaste 👍 pero la cotización ya está en día {$edad}, al borde de tu ventana — el siguiente toque pide definición al cliente, no otra plática.",
-                "El 👍 sigue pero el tiempo se acaba: la cotización va en día {$edad} — llámale hoy al cliente y pide una definición concreta.",
-                "La cotización llegó al día {$edad}, el final de tu ventana — este toque es para que el cliente defina: fecha, anticipo o descarte.",
+                "Marcaste 👍 pero la cotización ya va en día {$edad} y pasó tu ventana de cierre — el siguiente toque pide definición al cliente, no otra plática.",
+                "El 👍 sigue pero la cotización va en día {$edad}, ya fuera de tu ventana — llámale hoy al cliente y pide una definición concreta.",
+                "La cotización llegó al día {$edad}, ya fuera de tu ventana — este toque es para que el cliente defina: fecha, anticipo o descarte.",
             ]);
         }
         // Evidencia propia de ESTA fila (cada cotización cita sus números)

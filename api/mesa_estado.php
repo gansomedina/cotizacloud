@@ -145,10 +145,17 @@ try {
         $accion_post_cambios = $ult_accion && strtotime($ult_accion) > strtotime($decl['postura']['at']);
     }
 
+    // Si el tap acaba de descartar (botón "Descartar" o 👎 de Feedback Radar),
+    // el tip instantáneo debe reflejar el descarte, no un consejo de trabajo.
+    $descartada_ahora = $estado === 'descartada' || $estado === 'sin_interes';
+    $cat_now = $descartada_ahora ? 'descartada_hoy' : 'trabajo';
+    $razon_now = ($decl['postura']['estado'] ?? '') === 'descartada'
+        ? ($decl['postura']['razon'] ?? null) : null;
+
     $sen = !empty($cot['radar_senales']) ? (json_decode($cot['radar_senales'], true) ?: []) : [];
     $sugerencia = MesaSugerencias::sugerir([
         'cot_id' => $cot_id,
-        'total' => (float)$cot['total'], 'edad' => (int)$cot['edad'], 'cat' => 'trabajo',
+        'total' => (float)$cot['total'], 'edad' => (int)$cot['edad'], 'cat' => $cat_now,
         'bucket' => $cot['radar_bucket'], 'es_hot' => $es_hot,
         'pc_source' => $sen['pc_source'] ?? null,
         'momentum'  => $sen['momentum'] ?? null,
@@ -159,7 +166,7 @@ try {
         'contacto' => $decl['contacto'] ?? null,
         'compromiso' => $decl['compromiso'] ?? null,
         'postura_decl' => $decl['postura'] ?? null,
-        'razon_descarte' => $decl['postura']['razon'] ?? null,
+        'razon_descarte' => $razon_now,
         'intentos_nc' => $nc,
         'vistas_24h' => (int)($act['v24'] ?? 0),
         'vistas_7d'  => (int)($act['v7'] ?? 0),
