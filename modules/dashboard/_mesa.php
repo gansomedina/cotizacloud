@@ -112,26 +112,34 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <?php elseif ($bl && $r['es_hot']): ?><span class="mtag" style="background:<?= $bl[1] ?>18;color:<?= $bl[1] ?>"><?= e($bl[0]) ?></span><?php endif; ?>
         <span class="mlbl">→</span><span class="msx"><?= e($r['sugerencia']) ?></span>
       </div>
+      <?php
+          // Candados secuenciales 1→2→3 (área con valor previo = siempre editable)
+          $con_e0 = $d['contacto']['estado'] ?? '';
+          $lock2 = empty($d['compromiso']) && $con_e0 !== 'hablamos';
+          $lock3 = empty($d['postura']) && empty($d['compromiso']) && $con_e0 !== 'no_contesta';
+      ?>
       <div class="mareas">
-        <div class="marea"><span class="man">Contacto</span>
+        <div class="marea" data-area="contacto"><span class="man">1 · Contacto</span>
           <?php foreach ($MESA_AREAS['contacto'] as $ek => $el): ?>
-          <button type="button" class="mpill<?= ($d['contacto']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','<?= $ek ?>',this)"><?= e($el) ?></button>
+          <button type="button" data-e="<?= $ek ?>" class="mpill<?= ($d['contacto']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','<?= $ek ?>',this)"><?= e($el) ?></button>
           <?php endforeach; ?></div>
-        <div class="marea"><span class="man">Compromiso</span>
+        <div class="marea<?= $lock2 ? ' lock' : '' ?>" data-area="compromiso"><span class="man">2 · Compromiso</span>
           <?php foreach ($MESA_AREAS['compromiso'] as $ek => $el): ?>
-          <button type="button" class="mpill<?= ($d['compromiso']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','<?= $ek ?>',this)"><?= e($el) ?></button>
-          <?php endforeach; ?></div>
-        <div class="marea"><span class="man">¿Cómo lo ves?</span>
-          <?php foreach ($MESA_AREAS['postura'] as $ek => $el): if ($ek === 'descartada') continue; ?>
-          <button type="button" class="mpill<?= ($d['postura']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','<?= $ek ?>',this)"><?= e($el) ?></button>
+          <button type="button" data-e="<?= $ek ?>" class="mpill<?= ($d['compromiso']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','<?= $ek ?>',this)"><?= e($el) ?></button>
           <?php endforeach; ?>
-          <button type="button" class="mpill mdesc<?= ($d['postura']['estado'] ?? '') === 'descartada' ? ' on' : '' ?>" onclick="mesaRz(this)">Descartar</button>
+          <span class="mlockmsg">primero el contacto (si hablaron)</span></div>
+        <div class="marea<?= $lock3 ? ' lock' : '' ?>" data-area="postura"><span class="man">3 · ¿Cómo lo ves?</span>
+          <?php foreach ($MESA_AREAS['postura'] as $ek => $el): if ($ek === 'descartada') continue; ?>
+          <button type="button" data-e="<?= $ek ?>" class="mpill<?= ($d['postura']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','<?= $ek ?>',this)"><?= e($el) ?></button>
+          <?php endforeach; ?>
+          <button type="button" data-e="descartada" class="mpill mdesc<?= ($d['postura']['estado'] ?? '') === 'descartada' ? ' on' : '' ?>" onclick="mesaRz(this)">Descartar</button>
           <span class="mrz">
             <span class="mrz-l">¿motivo?</span>
             <?php foreach (['precio' => 'Muy caro', 'competencia' => 'Se fue con otro', 'despues' => 'Lo dejó para después', 'no_responde' => 'Dejó de responder', 'no_comprador' => 'No era comprador', 'otro' => 'Otro'] as $rk => $rl): ?>
-            <button type="button" class="mpill mrz-b<?= ($d['postura']['estado'] ?? '') === 'descartada' && ($d['postura']['razon'] ?? '') === $rk ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this,'<?= $rk ?>')"><?= e($rl) ?></button>
+            <button type="button" data-e="descartada" class="mpill mrz-b<?= ($d['postura']['estado'] ?? '') === 'descartada' && ($d['postura']['razon'] ?? '') === $rk ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this,'<?= $rk ?>')"><?= e($rl) ?></button>
             <?php endforeach; ?>
-          </span></div>
+          </span>
+          <span class="mlockmsg">primero el paso anterior</span></div>
       </div>
     </div>
     <?php
@@ -208,6 +216,11 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <p style="margin:0 0 8px"><b>"Día X de Y".</b> La Y es tu ventana real: el 75% de tus ventas cierra antes de ese día
       (dato de tus cierres, no teoría). Dentro de la ventana el consejo empuja a cerrar; pasada la ventana
       te pide definición — fecha límite o descarte, no seguimiento eterno.</p>
+      <p style="margin:0 0 8px"><b>El orden es 1 → 2 → 3, como la venta.</b> Primero el contacto;
+      si hablaron se abre el Compromiso, y con el desenlace se abre tu lectura. Si NO contestó,
+      el Compromiso no aplica (no hubo conversación) y pasas directo al paso 3 — ahí viven
+      "En el aire" y "Descartar" para el que te evade. Una vez capturada, cualquier área se puede
+      modificar cuando quieras: la declaración más reciente manda y el consejo se rearma con cada cambio.</p>
       <p style="margin:0 0 8px"><b>¿Por qué salen cotizaciones pasadas de la ventana (venta tardía)?</b>
       Porque tu propia historia dice que sí cierras algunas tarde — tu récord es el que marca el aviso de
       limpieza. La mesa las mantiene hasta el día 2× tu ventana con un consejo de ultimátum (fecha límite o
@@ -313,7 +326,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mlbl{color:#1a5c38;font-weight:800;margin-right:4px}
 #mesa-card .mareas{display:flex;flex-direction:column;gap:7px}
 #mesa-card .marea{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-#mesa-card .man{font-size:10.5px;font-weight:800;color:#8a8a84;text-transform:uppercase;letter-spacing:.05em;width:112px;flex:none}
+#mesa-card .man{font-size:10.5px;font-weight:800;color:#8a8a84;text-transform:uppercase;letter-spacing:.05em;width:132px;flex:none;white-space:nowrap}
 #mesa-card .mpill{border:1px solid #e2e2dc;background:#fafaf8;color:#57534e;border-radius:999px;padding:4px 12px;cursor:pointer;font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;white-space:nowrap;line-height:1.4;transition:all .12s}
 #mesa-card .mpill:hover{border-color:#1a5c38;color:#1a5c38;background:#fff}
 #mesa-card .mpill.on{background:#1a5c38;border-color:#1a5c38;color:#fff}
@@ -326,6 +339,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mrz-b{border-color:#fecaca}
 #mesa-card .mrz-b:hover{border-color:#b91c1c;color:#b91c1c}
 #mesa-card .mrz-b.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
+#mesa-card .marea .mlockmsg{display:none;font-size:10.5px;color:#a8a8a2;font-style:italic}
+#mesa-card .marea.lock .mpill{opacity:.35;pointer-events:none}
+#mesa-card .marea.lock .mlockmsg{display:inline}
 #mesa-card .mhead{display:flex;align-items:center;gap:10px;padding:0 12px;font-size:10px;font-weight:800;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em}
 #mesa-card .mhead .mh-dot{flex:none;width:9px}
 #mesa-card .mhead .mh-cot{flex:1 1 380px;max-width:520px;min-width:0}
@@ -390,6 +406,20 @@ function mesaFb(cotId, tipo, btn){
   }).catch(function(){ btn.disabled = false; mesaToast('No se pudo guardar (red o sesión).'); });
 }
 
+// Candados 1→2→3: un área con valor siempre es editable; sin valor,
+// se desbloquea cuando el paso anterior aplica (no_contesta salta el 2)
+function mesaLocks(drawer){
+  var val = function(area){
+    var b = drawer.querySelector('.marea[data-area="'+area+'"] .mpill.on');
+    return b ? (b.dataset.e || '') : '';
+  };
+  var con = val('contacto'), com = val('compromiso'), pos = val('postura');
+  var a2 = drawer.querySelector('.marea[data-area="compromiso"]');
+  var a3 = drawer.querySelector('.marea[data-area="postura"]');
+  if(a2) a2.classList.toggle('lock', !com && con !== 'hablamos');
+  if(a3) a3.classList.toggle('lock', !pos && !com && con !== 'no_contesta');
+}
+
 var MESA_SHORT = <?= json_encode($MESA_SHORT, JSON_UNESCAPED_UNICODE) ?>;
 var MESA_IDX   = {contacto:0, compromiso:1, postura:2};
 
@@ -422,11 +452,21 @@ function mesaTap(cotId, area, estado, btn, razon){
     // frescura
     var fr = row.querySelector('.mfresh');
     if(fr){ fr.textContent = 'hoy'; fr.className = 'mfresh ok'; }
+    // compromiso sin contacto → el sistema marcó "Hablamos" solo
+    if(d.auto_contacto){
+      var slot0 = row.querySelectorAll('.mdecl3 span')[0];
+      if(slot0){ slot0.textContent = 'Hablamos'; slot0.classList.add('f'); }
+      var conArea = drawer.querySelectorAll('.marea')[0];
+      if(conArea) conArea.querySelectorAll('.mpill').forEach(function(x){
+        x.classList.toggle('on', x.textContent.trim() === 'Hablamos');
+      });
+    }
     // sugerencia recalculada por el servidor (mezcla + Radar + arquetipo)
     if(d.sugerencia){
       var sx = drawer.querySelector('.msx');
       if(sx) sx.textContent = d.sugerencia;
     }
+    mesaLocks(drawer);
     if(!row.classList.contains('done')){
       row.classList.add('done');
       mesaToast('✓ Atendida — al recargar pasa a "Atendidas hoy"');

@@ -203,6 +203,7 @@ class Mesa
 
         foreach ($cots as $c) {
             $cid    = (int)$c['id'];
+            $sen    = $c['radar_senales'] ? (json_decode($c['radar_senales'], true) ?: []) : [];
             $edad   = (int)$c['edad'];
             $bucket = $c['radar_bucket'];
             $es_hot = $bucket !== null && in_array($bucket, self::HOT, true);
@@ -277,12 +278,12 @@ class Mesa
                 'milagro'  => ($cat === 'milagro'),
                 'fuera_ventana' => ($edad > $p75),
                 'sugerencia' => MesaSugerencias::sugerir([
+                    'cot_id' => $cid,
                     'total' => (float)$c['total'], 'edad' => $edad, 'cat' => $cat,
                     'bucket' => $bucket, 'es_hot' => $es_hot && $hot_reciente,
-                    'pc_source' => (function () use ($c) {
-                        $s = $c['radar_senales'] ? json_decode($c['radar_senales'], true) : null;
-                        return $s['pc_source'] ?? null;
-                    })(),
+                    'pc_source' => $sen['pc_source'] ?? null,
+                    'momentum'  => $sen['momentum'] ?? null,
+                    'fit_pct'   => (int)($sen['fit_pct'] ?? 0),
                     'visitas' => (int)$c['visitas'], 'dias_sin_vista' => (int)$c['dias_sin_vista'],
                     'ultima_vista_at' => $c['ultima_vista_at'],
                     'revivida' => ($cat === 'revivida'), 'milagro' => ($cat === 'milagro'),
