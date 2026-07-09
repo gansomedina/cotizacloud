@@ -78,7 +78,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <?php if ($es_milagro): ?><span class="mflag">⚡</span><?php elseif ($r['dormida']): ?><span class="mflag" title="<?= (int)$r['dias_sin_vista'] ?>d sin volver a abrirla">😴</span><?php endif; ?>
       <span class="mcheck">✓</span>
       <span class="msp"></span>
-      <span class="mciclo<?= ($r['fuera_ventana'] && !$es_milagro) ? ' late' : '' ?>">d<?= (int)$r['edad'] ?>/<?= $mp75 ?></span>
+      <span class="mciclo<?= ($r['fuera_ventana'] && !$es_milagro) ? ' late' : '' ?>">día <?= (int)$r['edad'] ?> de <?= $mp75 ?></span>
       <span class="mmoney"><?= $mmoney($r['total']) ?></span>
       <span class="mdecl3">
         <?php foreach (['contacto' => 's1', 'compromiso' => 's2', 'postura' => 's3'] as $a => $cls):
@@ -87,7 +87,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <?php endforeach; ?>
       </span>
       <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
-        <?= $udd === null ? 'sin act.' : ($udd === 0 ? 'hoy' : $udd . 'd') ?></span>
+        <?= $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d") ?></span>
       <span class="mchev">▶</span>
     </div>
     <div class="mdrawer" id="md<?= (int)$r['id'] ?>">
@@ -161,6 +161,12 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     <?php else: ?>
 
       <?php if ($mesa_pend): ?>
+      <div class="mhead">
+        <span class="mh-cot">Cotización</span><span class="msp"></span>
+        <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
+        <span class="mh-decl"><span class="s1">Contacto</span><span class="s2">Compromiso</span><span class="s3">Cómo lo ves</span></span>
+        <span class="mh-fresh">Captura</span><span class="mh-chev"></span>
+      </div>
       <div class="mlist"><?php foreach ($mesa_pend as $r) $mesa_row($r); ?></div>
       <?php else: ?>
       <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Pendientes en cero — todo lo de hoy ya está atendido.</div>
@@ -203,14 +209,14 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mcheck{color:#16a34a;font-weight:800;display:none;flex:none}
 #mesa-card .mrow.done .mcheck{display:inline}
 #mesa-card .msp{flex:1}
-#mesa-card .mciclo{font-size:12px;color:#57534e;font-variant-numeric:tabular-nums;flex:none;width:56px;text-align:right}
+#mesa-card .mciclo{font-size:12px;color:#57534e;font-variant-numeric:tabular-nums;flex:none;width:86px;text-align:right;white-space:nowrap}
 #mesa-card .mciclo.late{color:#dc2626;font-weight:700}
 #mesa-card .mmoney{font-weight:700;font-variant-numeric:tabular-nums;flex:none;width:82px;text-align:right}
 #mesa-card .mdecl3{display:flex;gap:6px;flex:none}
 #mesa-card .mdecl3 span{font-size:10.5px;line-height:1.3;color:#c9c9c2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#mesa-card .mdecl3 .s1{width:74px}#mesa-card .mdecl3 .s2{width:70px}#mesa-card .mdecl3 .s3{width:70px}
+#mesa-card .mdecl3 .s1{width:80px}#mesa-card .mdecl3 .s2{width:88px}#mesa-card .mdecl3 .s3{width:86px}
 #mesa-card .mdecl3 span.f{color:#1a5c38;font-weight:700}
-#mesa-card .mfresh{font-size:10.5px;flex:none;width:50px;text-align:right;color:#a8a8a2}
+#mesa-card .mfresh{font-size:10.5px;flex:none;width:82px;text-align:right;color:#a8a8a2;white-space:nowrap}
 #mesa-card .mfresh.warn{color:#d97706;font-weight:700}
 #mesa-card .mfresh.bad{color:#dc2626;font-weight:700}
 #mesa-card .mfresh.ok{color:#16a34a;font-weight:700}
@@ -219,20 +225,30 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mdrawer{display:none;background:#fff;padding:12px 14px 14px 31px;border-top:1px solid #f4f4ef}
 #mesa-card .mdrawer.open{display:block}
 #mesa-card .mtag{font-size:11px;padding:2px 7px;border-radius:9px;font-weight:700;margin-right:6px}
-#mesa-card .msug{font-size:13px;color:#3f3f3a;margin-bottom:10px;max-width:78ch}
+#mesa-card .msug{font-size:13px;color:#3f3f3a;margin-bottom:10px}
 #mesa-card .mlbl{color:#1a5c38;font-weight:800;margin-right:4px}
 #mesa-card .mareas{display:flex;flex-direction:column;gap:7px}
 #mesa-card .marea{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-#mesa-card .man{font-size:10.5px;font-weight:800;color:#8a8a84;text-transform:uppercase;letter-spacing:.05em;width:96px;flex:none}
+#mesa-card .man{font-size:10.5px;font-weight:800;color:#8a8a84;text-transform:uppercase;letter-spacing:.05em;width:112px;flex:none}
 #mesa-card .mpill{border:1px solid #e2e2dc;background:#fafaf8;color:#57534e;border-radius:999px;padding:4px 12px;cursor:pointer;font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;white-space:nowrap;line-height:1.4;transition:all .12s}
 #mesa-card .mpill:hover{border-color:#1a5c38;color:#1a5c38;background:#fff}
 #mesa-card .mpill.on{background:#1a5c38;border-color:#1a5c38;color:#fff}
 #mesa-card .mpill:disabled{opacity:.5}
+#mesa-card .mhead{display:flex;align-items:center;gap:10px;padding:0 12px 5px;font-size:10px;font-weight:800;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em}
+#mesa-card .mhead .mh-cot{width:auto}
+#mesa-card .mhead .mh-ciclo{flex:none;width:86px;text-align:right}
+#mesa-card .mhead .mh-money{flex:none;width:82px;text-align:right}
+#mesa-card .mhead .mh-decl{display:flex;gap:6px;flex:none}
+#mesa-card .mhead .mh-decl .s1{width:80px}#mesa-card .mhead .mh-decl .s2{width:88px}#mesa-card .mhead .mh-decl .s3{width:86px}
+#mesa-card .mhead .mh-decl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mesa-card .mhead .mh-fresh{flex:none;width:82px;text-align:right}
+#mesa-card .mhead .mh-chev{flex:none;width:11px}
 #mesa-card .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
 #mesa-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1a1a18;color:#fff;font-size:12.5px;padding:9px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:9999}
 #mesa-toast.show{opacity:.95}
 @media (max-width:640px){
   #mesa-card .mfolio,#mesa-card .mfresh{display:none}
+  #mesa-card .mhead{display:none}
   #mesa-card .mdecl3 .s2,#mesa-card .mdecl3 .s3{display:none}
   #mesa-card .mdecl3 .s1{width:64px}
   #mesa-card .mmoney{width:auto}

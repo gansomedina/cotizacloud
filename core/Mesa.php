@@ -274,6 +274,10 @@ class Mesa
                 'sugerencia' => MesaSugerencias::sugerir([
                     'total' => (float)$c['total'], 'edad' => $edad, 'cat' => $cat,
                     'bucket' => $bucket, 'es_hot' => $es_hot && $hot_reciente,
+                    'pc_source' => (function () use ($c) {
+                        $s = $c['radar_senales'] ? json_decode($c['radar_senales'], true) : null;
+                        return $s['pc_source'] ?? null;
+                    })(),
                     'visitas' => (int)$c['visitas'], 'dias_sin_vista' => (int)$c['dias_sin_vista'],
                     'ultima_vista_at' => $c['ultima_vista_at'],
                     'revivida' => ($cat === 'revivida'), 'milagro' => ($cat === 'milagro'),
