@@ -218,7 +218,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <span class="mh-dot"></span><span class="mh-cot">Cotización</span><span class="mh-flag"></span><span class="mh-check"></span>
         <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
         <span class="mh-decl"><span class="s1">Contacto</span><span class="s2">Compromiso</span><span class="s3">Cómo lo ves</span></span>
-        <span class="mh-marc">Feedback Radar</span>
+        <span class="mh-marc">Feedback<br>Radar</span>
         <span class="mh-fresh">Actividad</span><span class="msp"></span><span class="mh-chev"></span>
       </div>
       <div class="mlist"><?php foreach ($mesa_pend as $r) $mesa_row($r); ?></div>
@@ -306,7 +306,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mhead .mh-decl{display:flex;gap:6px;flex:none}
 #mesa-card .mhead .mh-decl .s1{width:80px}#mesa-card .mhead .mh-decl .s2{width:88px}#mesa-card .mhead .mh-decl .s3{width:86px}
 #mesa-card .mhead .mh-decl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#mesa-card .mhead .mh-marc{flex:none;width:74px;text-align:center;white-space:nowrap}
+#mesa-card .mhead .mh-marc{flex:none;width:74px;text-align:center;line-height:1.2}
 #mesa-card .mhead .mh-fresh{flex:none;width:82px;text-align:right}
 #mesa-card .mhead .mh-chev{flex:none;width:11px}
 #mesa-card .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
