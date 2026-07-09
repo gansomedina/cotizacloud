@@ -78,12 +78,12 @@ class Mesa
         $ids = array_map(fn($c) => (int)$c['id'], $cots);
         $in  = implode(',', $ids);
 
-        // Postura actual (radar_feedback = proyección del juicio; v1 la usa como postura)
+        // Feedback Radar del ASESOR de esta mesa (una marca por cotización)
         $fb = [];
         foreach (DB::query(
             "SELECT cotizacion_id, tipo, updated_at FROM radar_feedback
-             WHERE empresa_id = ? AND cotizacion_id IN ($in)",
-            [$empresa_id]
+             WHERE empresa_id = ? AND usuario_id = ? AND cotizacion_id IN ($in)",
+            [$empresa_id, $vendedor_id]
         ) as $r) {
             $fb[(int)$r['cotizacion_id']] = $r;
         }
@@ -213,8 +213,11 @@ class Mesa
             $dormida    = ((int)$c['visitas'] > 0 && (int)$c['dias_sin_vista'] >= 7);
             $fuera      = $edad > 2 * $p75;
 
-            // Descartada sin revivir RECIENTE → fuera (el Radar la vigila)
-            if ($descartada && !isset($revividas[$cid])) {
+            // Descartada HOY: se queda visible un día en su propia sección
+            $descartada_hoy = $descartada && !empty($fb[$cid]['updated_at'])
+                && strtotime($fb[$cid]['updated_at']) >= strtotime('today');
+            // Descartada de días anteriores sin revivir → fuera (el Radar la vigila)
+            if ($descartada && !isset($revividas[$cid]) && !$descartada_hoy) {
                 if ($edad > $linea_limpieza && !$hot_reciente) { $limpieza_n++; $limpieza_monto += (float)$c['total']; }
                 continue;
             }
@@ -229,7 +232,9 @@ class Mesa
             if (!$es_hot && (int)$c['visitas'] === 0) continue;
 
             // Categoría: mesa (capturas) + like del Radar (columna "Marcaste")
-            if (isset($revividas[$cid])) {
+            if ($descartada && !isset($revividas[$cid])) {
+                $cat = 'descartada_hoy';     // visible solo hoy; mañana sale de la mesa
+            } elseif (isset($revividas[$cid])) {
                 $cat = 'revivida';           // descartada y el cliente volvió vivo AHORA
             } elseif ($fuera && $hot_reciente) {
                 $cat = 'milagro';            // fuera de ciclo pero viéndola AHORA
@@ -328,8 +333,9 @@ class Mesa
         }
         $rows = $capped;
 
-        $sin_postura = 0; $monto = 0.0; $mas_viejo = 0; $atendidas = 0;
+        $sin_postura = 0; $monto = 0.0; $mas_viejo = 0; $atendidas = 0; $descartadas = 0;
         foreach ($rows as $r) {
+            if ($r['cat'] === 'descartada_hoy') { $descartadas++; continue; }
             if ($r['atendida_hoy']) { $atendidas++; continue; }
             $monto += $r['total'];
             if ($r['cat'] === 'sin_postura') {
@@ -343,7 +349,8 @@ class Mesa
             'p75'      => $p75,
             'limpieza' => ['n' => $limpieza_n, 'monto' => $limpieza_monto, 'linea_dias' => $linea_limpieza],
             'ciclo'    => $ciclo,
-            'resumen'  => ['n' => count($rows) - $atendidas, 'monto' => $monto, 'atendidas' => $atendidas,
+            'resumen'  => ['n' => count($rows) - $atendidas - $descartadas, 'monto' => $monto,
+                           'atendidas' => $atendidas, 'descartadas' => $descartadas,
                            'sin_postura' => $sin_postura, 'mas_viejo_dias' => $mas_viejo],
         ];
     }

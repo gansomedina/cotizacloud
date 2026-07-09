@@ -58,8 +58,9 @@ $MESA_SHORT = [
     'en_el_aire' => 'En el aire', 'descartada' => 'Descartada',
 ];
 
-$mesa_pend = array_values(array_filter($mesa['rows'], fn($r) => empty($r['atendida_hoy'])));
-$mesa_aten = array_values(array_filter($mesa['rows'], fn($r) => !empty($r['atendida_hoy'])));
+$mesa_desc = array_values(array_filter($mesa['rows'], fn($r) => $r['cat'] === 'descartada_hoy'));
+$mesa_pend = array_values(array_filter($mesa['rows'], fn($r) => empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
+$mesa_aten = array_values(array_filter($mesa['rows'], fn($r) => !empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
 
 $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT, $mmoney, $mp75) {
     $d  = $r['decl'] ?? [];
@@ -149,6 +150,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <?php if (!empty($mr['atendidas'])): ?>
           · <span style="color:#16a34a;font-weight:700">✓ <?= (int)$mr['atendidas'] ?> atendida<?= $mr['atendidas'] > 1 ? 's' : '' ?> hoy</span>
         <?php endif; ?>
+        <?php if (!empty($mr['descartadas'])): ?>
+          · <span style="color:#b91c1c;font-weight:700">🗑 <?= (int)$mr['descartadas'] ?> descartada<?= $mr['descartadas'] > 1 ? 's' : '' ?> hoy</span>
+        <?php endif; ?>
       <?php else: ?>
         <span style="color:#16a34a;font-weight:700">✓ al corriente</span>
       <?php endif; ?>
@@ -174,8 +178,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       Ciclo real de la empresa: la mitad de tus ventas cierra en <b><?= (int)$mc['mediana'] ?>d</b>,
       el 75% antes del día <b><?= (int)$mc['p75'] ?></b>.
       <?php endif; ?>
-      Aquí capturas el <b>status actual</b> de cada cotización — tapea una fila para trabajarla
-      y actualízala en cada toque.
+      Cada cotización vive en la mesa hasta el día <b><?= 2 * $mp75 ?></b> (2× tu ventana) porque
+      tu cierre más tardío fue a los <b><?= (int)$mesa['limpieza']['linea_dias'] ?> días</b> — pasada tu ventana
+      el consejo pide definición, no seguimiento eterno. Tapea una fila para trabajarla y actualízala en cada toque.
       <span style="white-space:nowrap;margin-left:6px">
         <span class="mleg" style="background:#dc2626"></span>caliente
         <span class="mleg" style="background:#d97706"></span>actividad reciente
@@ -203,6 +208,11 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <p style="margin:0 0 8px"><b>"Día X de Y".</b> La Y es tu ventana real: el 75% de tus ventas cierra antes de ese día
       (dato de tus cierres, no teoría). Dentro de la ventana el consejo empuja a cerrar; pasada la ventana
       te pide definición — fecha límite o descarte, no seguimiento eterno.</p>
+      <p style="margin:0 0 8px"><b>¿Por qué salen cotizaciones pasadas de la ventana (venta tardía)?</b>
+      Porque tu propia historia dice que sí cierras algunas tarde — tu récord es el que marca el aviso de
+      limpieza. La mesa las mantiene hasta el día 2× tu ventana con un consejo de ultimátum (fecha límite o
+      descarte); después de ese día salen solas y, pasado tu récord histórico, se cuentan como ruido en el
+      aviso rojo de abajo.</p>
       <p style="margin:0 0 8px"><b>"⚡ Revivió".</b> La descartaste y el cliente volvió a abrirla esta semana por su cuenta.
       Algo cambió de su lado — esas se atienden HOY, los milagros no se repiten.</p>
       <p style="margin:0 0 8px"><b>El consejo (→).</b> No te repite lo que tú declaraste — te dice lo que el cliente
@@ -210,8 +220,8 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       y la jugada concreta para el siguiente toque.</p>
       <p style="margin:0 0 8px"><b>👍👎 Feedback Radar.</b> Tu calificación de la cotización — es la MISMA
       del Radar: lo que marcas aquí aparece allá y viceversa. En el Radar los botones solo salen en señales
-      calientes; aquí puedes calificar cualquiera. El 👎 la descarta de la mesa (el Radar la sigue vigilando
-      y si el cliente revive, te la regresa con ⚡).</p>
+      calientes; aquí puedes calificar cualquiera. El 👎 la manda a \"Descartadas hoy\" (visible solo hoy, para que veas qué mataste); mañana sale de
+      la mesa. El Radar la sigue vigilando y si el cliente revive, te la regresa con ⚡.</p>
       <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
       La meta del día es simple: dejar los pendientes en cero.</p>
     </div>
@@ -236,6 +246,11 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <?php if ($mesa_aten): ?>
       <div class="msect">✓ Atendidas hoy (<?= count($mesa_aten) ?>)</div>
       <div class="mlist mdone-zone"><?php foreach ($mesa_aten as $r) $mesa_row($r); ?></div>
+      <?php endif; ?>
+
+      <?php if ($mesa_desc): ?>
+      <div class="msect" style="color:#b91c1c">🗑 Descartadas hoy (<?= count($mesa_desc) ?>) — mañana salen de la mesa</div>
+      <div class="mlist mdone-zone"><?php foreach ($mesa_desc as $r) $mesa_row($r); ?></div>
       <?php endif; ?>
 
     <?php endif; ?>
@@ -357,12 +372,13 @@ function mesaToast(msg){
   clearTimeout(mesaToastT); mesaToastT = setTimeout(function(){t.classList.remove('show')}, 2600);
 }
 
-// Feedback Radar desde la mesa — escribe al MISMO radar_feedback que el Radar
+// Feedback Radar desde la mesa — se guarda a nombre del asesor dueño de la
+// cotización (una sola marca: el descarte voltea el 👍 a 👎 automáticamente)
 function mesaFb(cotId, tipo, btn){
   btn.disabled = true;
-  fetch('/api/radar-feedback', {method:'POST',
+  fetch('/api/mesa/estado', {method:'POST',
     headers:{'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
-    body: JSON.stringify({cotizacion_id:cotId, tipo:tipo})
+    body: JSON.stringify({cotizacion_id:cotId, area:'feedback', estado:tipo})
   }).then(function(r){return r.json();}).then(function(d){
     btn.disabled = false;
     if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
@@ -370,7 +386,7 @@ function mesaFb(cotId, tipo, btn){
     btn.classList.add('on');
     mesaToast(tipo === 'con_interes'
       ? '👍 marcado — también quedó en el Radar'
-      : '👎 marcado — se descarta de la mesa al recargar; si el cliente revive, vuelve sola');
+      : '👎 marcado — pasa a \"Descartadas hoy\" y mañana sale de la mesa; si el cliente revive, vuelve sola');
   }).catch(function(){ btn.disabled = false; mesaToast('No se pudo guardar (red o sesión).'); });
 }
 
@@ -397,7 +413,7 @@ function mesaTap(cotId, area, estado, btn, razon){
     areaEl.querySelectorAll('.mpill').forEach(function(x){x.classList.remove('on')});
     if(estado === 'descartada'){
       var md = areaEl.querySelector('.mdesc'); if(md) md.classList.add('on');
-      mesaToast('Descartada — sale de la mesa al recargar. El Radar la sigue vigilando: si el cliente revive, vuelve sola con ⚡');
+      mesaToast('Descartada — pasa a \"Descartadas hoy\" al recargar y mañana sale de la mesa. Si el cliente revive, vuelve sola con ⚡');
     }
     btn.classList.add('on');
     // columnita con el label corto

@@ -17,6 +17,7 @@ $AREAS = [
     'contacto'   => ['no_contesta','hablamos'],
     'compromiso' => ['compromiso','propuse_no_quiso','sin_compromiso'],
     'postura'    => ['decidiendo','objecion_precio','pidio_cambios','en_el_aire','descartada'],
+    'feedback'   => ['con_interes','sin_interes'],   // 👍/👎 homologado con el Radar
 ];
 $VALIDOS = $AREAS[$area] ?? [];
 $RAZONES = ['precio','competencia','despues','no_responde','no_comprador','otro'];
@@ -41,13 +42,18 @@ DB::execute(
 );
 
 // Proyección compatible → radar_feedback (el examen del score no se toca)
+// Proyección → radar_feedback A NOMBRE DEL ASESOR dueño de la cotización.
+// La llave es (cotizacion, usuario): escribir como el vendedor garantiza UNA
+// sola marca que siempre se sobreescribe (un descarte voltea el 👍 a 👎),
+// sin importar si el tap lo dio el admin desde la mesa del asesor.
 $map = ['compromiso'=>'con_interes','decidiendo'=>'con_interes','objecion_precio'=>'con_interes',
-        'pidio_cambios'=>'con_interes','descartada'=>'sin_interes'];
+        'pidio_cambios'=>'con_interes','descartada'=>'sin_interes',
+        'con_interes'=>'con_interes','sin_interes'=>'sin_interes'];
 if (isset($map[$estado])) {
     DB::execute(
         "INSERT INTO radar_feedback (cotizacion_id, usuario_id, empresa_id, tipo)
          VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE tipo=VALUES(tipo), updated_at=NOW()",
-        [$cot_id, Auth::id(), EMPRESA_ID, $map[$estado]]
+        [$cot_id, (int)$cot['vend'], EMPRESA_ID, $map[$estado]]
     );
 }
 
