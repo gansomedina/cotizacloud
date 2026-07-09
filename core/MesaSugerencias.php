@@ -441,9 +441,9 @@ class MesaSugerencias
         elseif ($con_e === 'hablamos' && !$com_vig && !$pos_vig) {
             $f = $viva
                 ? $pk([
-                    'Hablaste con el cliente, no registraste en qué quedaron, y el Radar trae la cotización caliente — captura el desenlace y dale el siguiente toque hoy.',
-                    'La cotización está caliente en el Radar pero no declaraste cómo terminó la plática — registra en qué quedaron y contacta al cliente hoy.',
-                    'El Radar marca interés vivo y tú no capturaste el resultado de la plática — decláralo ahora y dale al cliente el siguiente toque hoy mismo.',
+                    'Hablaste con el cliente, no registraste en qué quedaron, y él sigue entrando a la cotización — captura el desenlace y dale el siguiente toque hoy.',
+                    'El cliente sigue revisando la cotización pero no declaraste cómo terminó la plática — registra en qué quedaron y contáctalo hoy.',
+                    'El cliente sigue moviéndose en la cotización y tú no capturaste el resultado de la plática — decláralo ahora y dale el siguiente toque hoy mismo.',
                 ])
                 : $pk([
                     'Hablaron — ¿y quedaron en algo? Registra el desenlace; si no quedaron en nada, esa es tu siguiente llamada.',
@@ -468,8 +468,8 @@ class MesaSugerencias
 
         // ══ CAPA 3 extra: alto importe — SOLO cuando nada está declarado
         // (las filas ya declaradas traen guía específica; no meter ruido)
-        if ($alto && !$con && !$com && !$pos && !str_contains($f, 'venta típica')) {
-            $f .= ' Vale ' . self::x($ratio) . ' de tu venta típica — trátala como prioridad.';
+        if ($alto && !$con && !$com && !$pos && !str_contains($f, 'venta típica') && mb_strlen($f) < 130) {
+            $f .= ' Vale ' . self::x($ratio) . ' de tu venta típica.';
         }
 
         // ══ CAPA 4: modulación por arquetipo (CÓMO, nunca QUÉ) ══
@@ -753,7 +753,7 @@ class MesaSugerencias
             case 'sin_ritmo':
             case 'desconectado':
             case 'presente_pasivo':
-                $f = $pk(['Tu toque del día es este: ', 'Empieza el día por aquí: ', 'Arranca tu día con esta cotización: ']) . lcfirst($f);
+                $f = $pk(['Tu prioridad de hoy. ', 'Empieza el día aquí. ', 'Arranca el día por aquí. ']) . ucfirst($f);
                 break;
             case 'sordo_a_senales':
                 if ($viva || !empty($slots['senal_viva'])) {
