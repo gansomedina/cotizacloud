@@ -13,7 +13,7 @@ $razon  = trim((string)($b['razon'] ?? '')) ?: null;
 
 $AREAS = [
     'contacto'   => ['no_contesta','hablamos'],
-    'compromiso' => ['en_cita','propuse_no_quiso','sin_compromiso'],
+    'compromiso' => ['compromiso','propuse_no_quiso','sin_compromiso'],
     'postura'    => ['decidiendo','objecion_precio','pidio_cambios','en_el_aire','descartada'],
 ];
 $VALIDOS = $AREAS[$area] ?? [];
@@ -35,7 +35,7 @@ DB::execute(
 );
 
 // Proyección compatible → radar_feedback (el examen del score no se toca)
-$map = ['en_cita'=>'con_interes','decidiendo'=>'con_interes','objecion_precio'=>'con_interes',
+$map = ['compromiso'=>'con_interes','decidiendo'=>'con_interes','objecion_precio'=>'con_interes',
         'pidio_cambios'=>'con_interes','descartada'=>'sin_interes'];
 if (isset($map[$estado])) {
     DB::execute(

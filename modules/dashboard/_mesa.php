@@ -107,20 +107,19 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
           <?php elseif ($bl): ?><span style="font-size:11px;background:<?= $bl[1] ?>18;color:<?= $bl[1] ?>;padding:2px 7px;border-radius:9px;font-weight:700"><?= e($bl[0]) ?></span>
           <?php else: ?><span style="color:#a8a8a2;font-size:11px">—</span><?php endif; ?>
         </td>
-        <td style="padding:8px;white-space:nowrap" class="mesa-chips">
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','no_contesta',this)" title="No contestó">📵</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','hablamos',this)" title="Hablamos">🗣</button></td>
-        <td style="padding:8px;white-space:nowrap" class="mesa-chips">
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','en_cita',this)" title="Quedamos en cita">📅</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','propuse_no_quiso',this)" title="Propuse cita, no quiso">🚫</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','sin_compromiso',this)" title="Sin nada concreto">😶</button></td>
-        <td style="padding:8px;white-space:nowrap" class="mesa-chips">
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','decidiendo',this)" title="Está decidiendo">💬</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','objecion_precio',this)" title="Objeción de precio">💰</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','pidio_cambios',this)" title="Pidió cambios">✏️</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','en_el_aire',this)" title="Quedó en el aire">🌫</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this)" title="Descartar">🗑</button>
-          <?php if ($r['postura']): ?><div style="font-size:10px;color:#8a8a84;margin-top:2px"><?= e($POSTURA_LBL[$r['postura']] ?? '') ?></div><?php endif; ?></td>
+        <td style="padding:8px" class="mesa-chips">
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','no_contesta',this)">No contestó</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','hablamos',this)">Hablamos</button></td>
+        <td style="padding:8px" class="mesa-chips">
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','compromiso',this)">Quedamos en algo</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','propuse_no_quiso',this)">Propuse, no quiso</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','sin_compromiso',this)">Nada concreto</button></td>
+        <td style="padding:8px" class="mesa-chips">
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','decidiendo',this)">Decidiendo</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','objecion_precio',this)">Objeción precio</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','pidio_cambios',this)">Pidió cambios</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','en_el_aire',this)">En el aire</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this)">Descartar</button></td>
         <td style="padding:8px;color:#4a4a46;min-width:240px"><?= e($r['sugerencia']) ?></td>
       </tr>
       <?php endforeach; ?>
@@ -140,7 +139,7 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
   </div>
 </details>\n
 <style>
-.mesa-chips button{border:1px solid #d4d4ce;background:#fff;border-radius:8px;padding:3px 7px;margin-right:3px;cursor:pointer;font-size:13px}
+.mesa-chips button{border:1px solid #d4d4ce;background:#fff;border-radius:8px;padding:3px 8px;margin:0 3px 3px 0;cursor:pointer;font-size:11.5px;color:#4a4a46;font-weight:600;white-space:nowrap}
 .mesa-chips button:hover{border-color:#1a5c38}
 .mesa-chips button.on{background:#dcfce7;border-color:#16a34a}
 </style>
