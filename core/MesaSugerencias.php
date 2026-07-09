@@ -70,6 +70,14 @@ class MesaSugerencias
         $f = null;
 
         // ══ OVERLAYS (pisan todo; saltan la Capa 4) ══
+        if (($c['cat'] ?? '') === 'descartada_hoy') {
+            $rz = match ($c['razon_descarte'] ?? '') {
+                'precio' => ' por precio', 'competencia' => ' porque se fue con otro',
+                'despues' => ' porque lo dejó para después', 'no_responde' => ' porque dejó de responder',
+                'no_comprador' => ' porque no era comprador', default => '',
+            };
+            return "Descartada hoy{$rz} — mañana sale de la mesa. El Radar la sigue vigilando: si el cliente revive, vuelve sola con ⚡.";
+        }
         if (!empty($c['revivida'])) {
             return match ($c['razon_descarte'] ?? '') {
                 'precio' => 'La descartaste por precio y el cliente la reabrió solo — algo cambió de su lado: mensaje directo hoy.',
