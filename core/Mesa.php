@@ -197,6 +197,21 @@ class Mesa
                 'dormida' => $dormida,
                 'tier' => ($edad <= $p75 ? 1 : 2),
                 'decl' => $me[$cid] ?? [],
+                'atendida_hoy' => (function () use ($me, $cid) {
+                    foreach (($me[$cid] ?? []) as $d) {
+                        if (strtotime($d['at']) >= strtotime('today')) return true;
+                    }
+                    return false;
+                })(),
+                // Días desde la última declaración en la mesa (null = nunca)
+                'ult_decl_dias' => (function () use ($me, $cid) {
+                    $max = 0;
+                    foreach (($me[$cid] ?? []) as $d) {
+                        $t = strtotime($d['at']);
+                        if ($t > $max) $max = $t;
+                    }
+                    return $max ? (int)floor((time() - $max) / 86400) : null;
+                })(),
                 'alerta' => (function () use ($me, $cid, $c) {
                     $d = $me[$cid] ?? [];
                     $uv = $c['ultima_vista_at'] ? strtotime($c['ultima_vista_at']) : 0;
@@ -246,8 +261,9 @@ class Mesa
         }
         $rows = $capped;
 
-        $sin_postura = 0; $monto = 0.0; $mas_viejo = 0;
+        $sin_postura = 0; $monto = 0.0; $mas_viejo = 0; $atendidas = 0;
         foreach ($rows as $r) {
+            if ($r['atendida_hoy']) { $atendidas++; continue; }
             $monto += $r['total'];
             if ($r['postura'] === null) {
                 $sin_postura++;
@@ -260,7 +276,7 @@ class Mesa
             'p75'      => $p75,
             'limpieza' => ['n' => $limpieza_n, 'monto' => $limpieza_monto, 'linea_dias' => $linea_limpieza],
             'ciclo'    => $ciclo,
-            'resumen'  => ['n' => count($rows), 'monto' => $monto,
+            'resumen'  => ['n' => count($rows) - $atendidas, 'monto' => $monto, 'atendidas' => $atendidas,
                            'sin_postura' => $sin_postura, 'mas_viejo_dias' => $mas_viejo],
         ];
     }
