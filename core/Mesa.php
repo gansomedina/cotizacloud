@@ -228,19 +228,19 @@ class Mesa
             // de mesa (la tarjeta "Sin abrir" del dashboard ya la cubre)
             if (!$es_hot && (int)$c['visitas'] === 0) continue;
 
-            // Categoría: faltas/contradicciones primero; lo demás = trabajo del día
+            // Categoría: mesa (capturas) + like del Radar (columna "Marcaste")
             if (isset($revividas[$cid])) {
-                $cat = 'revivida';           // tu 👎 dice muerto; el cliente, vivo AHORA
+                $cat = 'revivida';           // descartada y el cliente volvió vivo AHORA
             } elseif ($fuera && $hot_reciente) {
                 $cat = 'milagro';            // fuera de ciclo pero viéndola AHORA
-            } elseif ($postura === 'con_interes' && ($dormida || $bucket === 'enfriandose')) {
-                $cat = 'interes_muriendo';   // dijiste que va en serio y se apaga
-            } elseif ($postura === null && ((int)$c['visitas'] > 0 || $es_hot)) {
-                $cat = 'sin_postura';        // el cliente ya se movió y tú no lo has juzgado
-            } elseif ($postura === 'con_interes' && $edad > $p75) {
-                $cat = 'ultimo_tramo';       // en serio, pero saliendo de tu ventana
+            } elseif ($postura === 'con_interes' && empty($me[$cid]['postura']) && ($dormida || $bucket === 'enfriandose')) {
+                $cat = 'interes_muriendo';   // tu 👍 dice interés y el cliente se apaga
+            } elseif ($postura === 'con_interes' && empty($me[$cid]['postura']) && $edad > $p75) {
+                $cat = 'ultimo_tramo';       // 👍 pero saliendo de tu ventana
+            } elseif (empty($me[$cid]) && $postura === null) {
+                $cat = 'sin_postura';        // nada capturado ni marcado aún
             } else {
-                $cat = 'trabajo';            // buena y en ventana → a cerrarla
+                $cat = 'trabajo';            // capturada → a trabajarla
             }
 
             $rows[] = [
@@ -332,7 +332,7 @@ class Mesa
         foreach ($rows as $r) {
             if ($r['atendida_hoy']) { $atendidas++; continue; }
             $monto += $r['total'];
-            if ($r['postura'] === null) {
+            if ($r['cat'] === 'sin_postura') {
                 $sin_postura++;
                 if ($r['edad'] > $mas_viejo) $mas_viejo = $r['edad'];
             }

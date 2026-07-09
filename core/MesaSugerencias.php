@@ -290,17 +290,18 @@ class MesaSugerencias
     private static function virgen(array $c, ?string $bucket, bool $hot, bool $viva, bool $dormida, int $dsv, int $edad, int $p75, int $mediana, int $ips7, array &$slots): string
     {
         $cat = $c['cat'] ?? 'trabajo';
+        $fuera = $edad > $p75;
         if ($cat === 'interes_muriendo') {
             $slots['dormida'] = true;
             // Fuera de ventana Y dormida: rescatarla ya no es el consejo honesto
-            if ($edad > $p75 && $dormida) {
-                return "Marcaste \"con interés\" pero ya se salió de tu ventana y lleva {$dsv}d sin abrirla — última jugada: motivo nuevo hoy con fecha límite, y si no responde, descártala.";
+            if ($fuera && $dormida) {
+                return "Marcaste 👍 pero ya se salió de tu ventana y lleva {$dsv}d sin abrirla — última jugada: motivo nuevo hoy con fecha límite, y si no responde, descártala.";
             }
-            return 'Marcaste "con interés" y el cliente se está apagando — rescátala hoy con un motivo concreto, o corrige tu postura.';
+            return 'Marcaste 👍 y el cliente se está apagando — rescátala hoy con un motivo concreto, o corrige tu marca.';
         }
         if ($cat === 'ultimo_tramo') {
             $slots['decision'] = true;
-            return "Marcaste \"con interés\" pero ya está en día {$edad}, saliendo de tu ventana (~{$p75}d) — último tramo útil: el siguiente toque pide definición.";
+            return "Marcaste 👍 pero ya está en día {$edad}, saliendo de tu ventana (~{$p75}d) — último tramo útil: el siguiente toque pide definición.";
         }
         // Evidencia propia de ESTA fila (cada cotización cita sus números)
         $v24 = (int)($c['vistas_24h'] ?? 0);
@@ -343,11 +344,13 @@ class MesaSugerencias
             'sobre_analisis'     => 'Lleva días dándole vueltas con toda la información — invita la objeción; jamás mandes más información.',
             'comparando'         => 'La están abriendo desde lados distintos — ayúdale a comparar con garantía y tiempos, no bajando precio.',
             'enfriandose'        => 'Se está apagando — cadencia de 3 toques con salida honrosa, empezando hoy.',
-            default              => $dormida
-                ? "Lleva {$dsv}d sin volver a abrirla — dale un motivo nuevo para reabrirla hoy (algo nuevo, no un \"¿ya lo viste?\")."
-                : ($edad <= $mediana
-                    ? 'Está en tu mejor ventana de cierre — un toque hoy que termine en algo concreto.'
-                    : "Va a media ventana (día {$edad} de ~{$p75}) — el siguiente toque busca compromiso, no plática."),
+            default              => match (true) {
+                $fuera && $dormida => "Lleva {$dsv}d sin abrirla y ya se salió de tu ventana — última jugada: motivo nuevo hoy con fecha límite, y si no responde, descártala.",
+                $fuera             => "Ya pasó tu ventana de ~{$p75}d — el siguiente toque define: fecha de decisión o descarte, no otro \"¿cómo vamos?\".",
+                $dormida           => "Lleva {$dsv}d sin volver a abrirla — dale un motivo nuevo para reabrirla hoy (algo nuevo, no un \"¿ya lo viste?\").",
+                $edad <= $mediana  => 'Está en tu mejor ventana de cierre — un toque hoy que termine en algo concreto.',
+                default            => "Va a media ventana (día {$edad} de ~{$p75}) — el siguiente toque busca compromiso, no plática.",
+            },
         };
     }
 

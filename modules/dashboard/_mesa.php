@@ -88,15 +88,12 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <span class="mmoney"><?= $mmoney($r['total']) ?></span>
       <span class="mdecl3">
         <?php foreach (['contacto' => 's1', 'compromiso' => 's2', 'postura' => 's3'] as $a => $cls):
-            $cur = $d[$a]['estado'] ?? '';
-            // Sin declaración nueva de postura: mostrar el 👍/👎 heredado del Radar
-            if ($a === 'postura' && !$cur && $r['postura']): ?>
-        <span class="<?= $cls ?> leg" title="Lo marcaste en el Radar — tapea la fila para actualizarlo"><?= $r['postura'] === 'con_interes' ? '👍 interés' : '👎 descartada' ?></span>
-            <?php else: ?>
+            $cur = $d[$a]['estado'] ?? ''; ?>
         <span class="<?= $cls ?><?= $cur ? ' f' : '' ?>"><?= $cur ? e($MESA_SHORT[$cur] ?? $cur) : '—' ?></span>
-            <?php endif; ?>
         <?php endforeach; ?>
       </span>
+      <span class="mmarc" title="Tu marca en el Radar (👍 con interés / 👎 descartada)"><?=
+        $r['postura'] === 'con_interes' ? '👍' : ($r['postura'] === 'sin_interes' ? '👎' : '—') ?></span>
       <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
         <?= $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d") ?></span>
       <span class="mchev">▶</span>
@@ -171,6 +168,34 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <span class="mleg" style="background:#94a3b8"></span>enfriándose
         <span class="mleg off"></span>sin señal
       </span>
+      <a href="#" onclick="event.preventDefault();var p=document.getElementById('mesa-pb');p.style.display=p.style.display==='none'?'block':'none'"
+         style="margin-left:10px;color:#1a5c38;font-weight:700;text-decoration:none;white-space:nowrap">📖 ¿Cómo funciona?</a>
+    </div>
+
+    <div id="mesa-pb" style="display:none;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a;line-height:1.6">
+      <div style="font-weight:800;margin-bottom:6px">📖 Playbook de la Mesa de Trabajo</div>
+      <p style="margin:0 0 8px"><b>Qué es.</b> Tu lista de trabajo del día. Se arma sola con 3 datos:
+      qué tan caliente está el cliente (el Radar lee cómo abre y lee tu cotización), en qué día va
+      contra el <b>ciclo real</b> de tu empresa, y cuánto vale. No tienes que armarla ni ordenarla — solo trabajarla.</p>
+      <p style="margin:0 0 8px"><b>Qué haces aquí.</b> Después de cada toque al cliente, tapea la fila y
+      declara el resultado en 3 pasos: <b>Contacto</b> (¿te respondió?), <b>Compromiso</b> (¿quedaron en
+      algo?) y <b>Cómo lo ves</b> (tu lectura). Siempre puedes cambiarlo — la mesa guarda la historia y el
+      consejo se rehace al instante con tu mezcla + lo que el cliente hace en la cotización.</p>
+      <p style="margin:0 0 8px"><b>El semáforo.</b>
+      <span class="mleg" style="background:#dc2626"></span><b>Caliente</b>: la está leyendo con intención AHORA — primero de la fila.
+      <span class="mleg" style="background:#d97706"></span><b>Actividad reciente</b>: se movió hace poco (o revivió tras descartarla).
+      <span class="mleg" style="background:#94a3b8"></span><b>Enfriándose</b>: cada vez la abre menos.
+      <span class="mleg off"></span><b>Sin señal</b>: el cliente está quieto — si sigue dentro de tu ventana, tocarla es tu chamba: nadie más la va a mover.</p>
+      <p style="margin:0 0 8px"><b>"Día X de Y".</b> La Y es tu ventana real: el 75% de tus ventas cierra antes de ese día
+      (dato de tus cierres, no teoría). Dentro de la ventana el consejo empuja a cerrar; pasada la ventana
+      te pide definición — fecha límite o descarte, no seguimiento eterno.</p>
+      <p style="margin:0 0 8px"><b>"⚡ Revivió".</b> La descartaste y el cliente volvió a abrirla esta semana por su cuenta.
+      Algo cambió de su lado — esas se atienden HOY, los milagros no se repiten.</p>
+      <p style="margin:0 0 8px"><b>El consejo (→).</b> No te repite lo que tú declaraste — te dice lo que el cliente
+      hizo y tú no puedes ver (cuántas veces la abrió, cuántos días lleva callado, cuánta gente la está viendo)
+      y la jugada concreta para el siguiente toque.</p>
+      <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
+      La meta del día es simple: dejar los pendientes en cero.</p>
     </div>
 
     <?php if (!$mesa['rows']): ?>
@@ -182,6 +207,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <span class="mh-dot"></span><span class="mh-cot">Cotización</span><span class="mh-flag"></span><span class="mh-check"></span>
         <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
         <span class="mh-decl"><span class="s1">Contacto</span><span class="s2">Compromiso</span><span class="s3">Cómo lo ves</span></span>
+        <span class="mh-marc">Marcaste</span>
         <span class="mh-fresh">Actividad</span><span class="mh-chev"></span>
       </div>
       <div class="mlist"><?php foreach ($mesa_pend as $r) $mesa_row($r); ?></div>
@@ -237,7 +263,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mdecl3 span{font-size:10.5px;line-height:1.3;color:#c9c9c2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mesa-card .mdecl3 .s1{width:80px}#mesa-card .mdecl3 .s2{width:88px}#mesa-card .mdecl3 .s3{width:86px}
 #mesa-card .mdecl3 span.f{color:#1a5c38;font-weight:700}
-#mesa-card .mdecl3 span.leg{color:#4d7c62;font-weight:600}
+#mesa-card .mmarc{flex:none;width:58px;text-align:center;font-size:12px;color:#c9c9c2}
 #mesa-card .mfresh{font-size:10.5px;flex:none;width:82px;text-align:right;color:#a8a8a2;white-space:nowrap}
 #mesa-card .mfresh.warn{color:#d97706;font-weight:700}
 #mesa-card .mfresh.bad{color:#dc2626;font-weight:700}
@@ -266,13 +292,14 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mhead .mh-decl{display:flex;gap:6px;flex:none}
 #mesa-card .mhead .mh-decl .s1{width:80px}#mesa-card .mhead .mh-decl .s2{width:88px}#mesa-card .mhead .mh-decl .s3{width:86px}
 #mesa-card .mhead .mh-decl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mesa-card .mhead .mh-marc{flex:none;width:58px;text-align:center}
 #mesa-card .mhead .mh-fresh{flex:none;width:82px;text-align:right}
 #mesa-card .mhead .mh-chev{flex:none;width:11px}
 #mesa-card .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
 #mesa-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1a1a18;color:#fff;font-size:12.5px;padding:9px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:9999}
 #mesa-toast.show{opacity:.95}
 @media (max-width:640px){
-  #mesa-card .mfolio,#mesa-card .mfresh{display:none}
+  #mesa-card .mfolio,#mesa-card .mfresh,#mesa-card .mmarc{display:none}
   #mesa-card .mhead{display:none}
   #mesa-card .mdecl3 .s2,#mesa-card .mdecl3 .s3{display:none}
   #mesa-card .mdecl3 .s1{width:64px}
