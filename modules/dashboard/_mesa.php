@@ -121,9 +121,16 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           <button type="button" class="mpill<?= ($d['compromiso']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','<?= $ek ?>',this)"><?= e($el) ?></button>
           <?php endforeach; ?></div>
         <div class="marea"><span class="man">¿Cómo lo ves?</span>
-          <?php foreach ($MESA_AREAS['postura'] as $ek => $el): ?>
+          <?php foreach ($MESA_AREAS['postura'] as $ek => $el): if ($ek === 'descartada') continue; ?>
           <button type="button" class="mpill<?= ($d['postura']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','<?= $ek ?>',this)"><?= e($el) ?></button>
-          <?php endforeach; ?></div>
+          <?php endforeach; ?>
+          <button type="button" class="mpill mdesc<?= ($d['postura']['estado'] ?? '') === 'descartada' ? ' on' : '' ?>" onclick="mesaRz(this)">Descartar</button>
+          <span class="mrz">
+            <span class="mrz-l">¿motivo?</span>
+            <?php foreach (['precio' => 'Muy caro', 'competencia' => 'Se fue con otro', 'despues' => 'Lo dejó para después', 'no_responde' => 'Dejó de responder', 'no_comprador' => 'No era comprador', 'otro' => 'Otro'] as $rk => $rl): ?>
+            <button type="button" class="mpill mrz-b<?= ($d['postura']['estado'] ?? '') === 'descartada' && ($d['postura']['razon'] ?? '') === $rk ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this,'<?= $rk ?>')"><?= e($rl) ?></button>
+            <?php endforeach; ?>
+          </span></div>
       </div>
     </div>
     <?php
@@ -296,6 +303,14 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mpill:hover{border-color:#1a5c38;color:#1a5c38;background:#fff}
 #mesa-card .mpill.on{background:#1a5c38;border-color:#1a5c38;color:#fff}
 #mesa-card .mpill:disabled{opacity:.5}
+#mesa-card .mdesc{border-color:#fecaca;color:#b91c1c;background:#fff}
+#mesa-card .mdesc.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
+#mesa-card .mrz{display:none;align-items:baseline;gap:4px;flex-wrap:wrap;margin-left:8px;padding-left:10px;border-left:2px solid #fecaca}
+#mesa-card .mrz.show{display:inline-flex}
+#mesa-card .mrz-l{font-size:10.5px;color:#b91c1c;font-weight:800}
+#mesa-card .mrz-b{border-color:#fecaca}
+#mesa-card .mrz-b:hover{border-color:#b91c1c;color:#b91c1c}
+#mesa-card .mrz-b.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
 #mesa-card .mhead{display:flex;align-items:center;gap:10px;padding:0 12px;font-size:10px;font-weight:800;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em}
 #mesa-card .mhead .mh-dot{flex:none;width:9px}
 #mesa-card .mhead .mh-cot{flex:1 1 380px;max-width:520px;min-width:0}
@@ -362,13 +377,12 @@ function mesaFb(cotId, tipo, btn){
 var MESA_SHORT = <?= json_encode($MESA_SHORT, JSON_UNESCAPED_UNICODE) ?>;
 var MESA_IDX   = {contacto:0, compromiso:1, postura:2};
 
-function mesaTap(cotId, area, estado, btn){
-  var razon = null;
-  if(estado === 'descartada'){
-    var r = prompt('Razón: 1=Muy caro  2=Se fue con otro  3=Lo dejó para después  4=Dejó de responder  5=No era comprador  6=Otro','1');
-    var map = {'1':'precio','2':'competencia','3':'despues','4':'no_responde','5':'no_comprador','6':'otro'};
-    razon = map[(r||'').trim()]; if(!razon) return;
-  }
+// Descartar: despliega los motivos a la derecha (misma línea), sin popup
+function mesaRz(btn){
+  btn.closest('.marea').querySelector('.mrz').classList.toggle('show');
+}
+function mesaTap(cotId, area, estado, btn, razon){
+  razon = razon || null;
   btn.disabled = true;
   fetch('/api/mesa/estado', {method:'POST',
     headers:{'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
@@ -379,7 +393,12 @@ function mesaTap(cotId, area, estado, btn){
     var drawer = btn.closest('.mdrawer');
     var row = document.querySelector('#mesa-card .mrow[data-drawer="'+drawer.id+'"]');
     // pill exclusivo dentro del área
-    btn.closest('.marea').querySelectorAll('.mpill').forEach(function(x){x.classList.remove('on')});
+    var areaEl = btn.closest('.marea');
+    areaEl.querySelectorAll('.mpill').forEach(function(x){x.classList.remove('on')});
+    if(estado === 'descartada'){
+      var md = areaEl.querySelector('.mdesc'); if(md) md.classList.add('on');
+      mesaToast('Descartada — sale de la mesa al recargar. El Radar la sigue vigilando: si el cliente revive, vuelve sola con ⚡');
+    }
     btn.classList.add('on');
     // columnita con el label corto
     var slot = row.querySelectorAll('.mdecl3 span')[MESA_IDX[area]];
