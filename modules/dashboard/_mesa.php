@@ -90,6 +90,8 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
       </tr></thead>
       <tbody>
       <?php foreach ($mesa['rows'] as $r):
+          $d = $r['decl'] ?? [];
+          $on = fn($a, $e) => (($d[$a]['estado'] ?? '') === $e) ? ' class="on"' : '';
           $bl = $r['bucket'] ? ($MESA_BUCKET_LBL[$r['bucket']] ?? [$r['bucket'], '#64748b']) : null;
           $es_milagro = $r['revivida'] || $r['milagro'];
       ?>
@@ -108,19 +110,21 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
           <?php else: ?><span style="color:#a8a8a2;font-size:11px">—</span><?php endif; ?>
         </td>
         <td style="padding:8px" class="mesa-chips"><div class="grp">
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','no_contesta',this)">No contestó</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','hablamos',this)">Hablamos</button></div></td>
+          <button<?= $on('contacto','no_contesta') ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','no_contesta',this)">No contestó</button>
+          <button<?= $on('contacto','hablamos') ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','hablamos',this)">Hablamos</button></div></td>
         <td style="padding:8px" class="mesa-chips"><div class="grp">
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','compromiso',this)">Quedamos en algo</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','propuse_no_quiso',this)">Propuse, no quiso</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','sin_compromiso',this)">Nada concreto</button></div></td>
+          <button<?= $on('compromiso','compromiso') ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','compromiso',this)">Quedamos en algo</button>
+          <button<?= $on('compromiso','propuse_no_quiso') ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','propuse_no_quiso',this)">Propuse, no quiso</button>
+          <button<?= $on('compromiso','sin_compromiso') ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','sin_compromiso',this)">Nada concreto</button></div></td>
         <td style="padding:8px" class="mesa-chips"><div class="grp">
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','decidiendo',this)">Decidiendo</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','objecion_precio',this)">Objeción precio</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','pidio_cambios',this)">Pidió cambios</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','en_el_aire',this)">En el aire</button>
-          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this)">Descartar</button></div></td>
-        <td style="padding:8px;color:#4a4a46;min-width:240px"><?= e($r['sugerencia']) ?></td>
+          <button<?= $on('postura','decidiendo') ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','decidiendo',this)">Decidiendo</button>
+          <button<?= $on('postura','objecion_precio') ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','objecion_precio',this)">Objeción precio</button>
+          <button<?= $on('postura','pidio_cambios') ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','pidio_cambios',this)">Pidió cambios</button>
+          <button<?= $on('postura','en_el_aire') ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','en_el_aire',this)">En el aire</button>
+          <button<?= $on('postura','descartada') ?> onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this)">Descartar</button></div></td>
+        <td style="padding:8px;color:#4a4a46;min-width:240px">
+          <?php if (!empty($r['alerta'])): ?><div style="color:#dc2626;font-weight:700;margin-bottom:2px">⚠ <?= e($r['alerta']) ?></div><?php endif; ?>
+          <?= e($r['sugerencia']) ?></td>
       </tr>
       <?php endforeach; ?>
       </tbody>
