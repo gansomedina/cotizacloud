@@ -225,7 +225,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mdrawer{display:none;background:#fff;padding:12px 14px 14px 31px;border-top:1px solid #f4f4ef}
 #mesa-card .mdrawer.open{display:block}
 #mesa-card .mtag{font-size:11px;padding:2px 7px;border-radius:9px;font-weight:700;margin-right:6px}
-#mesa-card .msug{font-size:13px;color:#3f3f3a;margin-bottom:10px;max-width:78ch}
+#mesa-card .msug{font-size:13px;color:#3f3f3a;margin-bottom:10px}
 #mesa-card .mlbl{color:#1a5c38;font-weight:800;margin-right:4px}
 #mesa-card .mareas{display:flex;flex-direction:column;gap:7px}
 #mesa-card .marea{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
