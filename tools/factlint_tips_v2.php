@@ -182,7 +182,7 @@ foreach ([0,1,2,4,6] as $dsvv) {
       if (!$ihot) continue;
       $ov['cat']='trabajo'; $ov['revivida']=false; $ov['milagro']=true;
       $fm = MesaSugerencias::sugerir($ov);
-      $activo = ($ov['vistas_24h']>=1) || $ihot;
+      $activo = ($ov['vistas_24h']>=1); // AHORA exige apertura de hoy, no solo hot
       if (preg_match($RX_MIL_AHORA,$fm) && !$activo)
         pv($viol,'OV_milagro_stale',$fm,"milagro dsv=$dsvv hot=$ihot");
     }

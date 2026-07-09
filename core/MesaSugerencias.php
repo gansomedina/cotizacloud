@@ -127,6 +127,16 @@ class MesaSugerencias
             };
         }
         if (!empty($c['milagro'])) {
+            // "AHORA" solo si abrió HOY (v24>=1). Si el bucket se calentó hace
+            // días pero el cliente no ha vuelto a abrir, NO está "viéndola ahora".
+            if (!$leyendo) {
+                $ev = $dsv <= 1 ? 'ayer' : "hace {$dsv}d";
+                return $pk([
+                    "Una cotización que ya dabas por vieja se volvió a calentar ({$ev} la última apertura) — fuera de tu ciclo pero con señal: contáctalo hoy antes de que se enfríe.",
+                    "El cliente reactivó una cotización vieja (última apertura {$ev}) — está fuera de tu ciclo normal: mándale hoy un mensaje directo citando la cotización.",
+                    "Cotización vieja que revivió, abierta {$ev} — no la dejes pasar: contáctalo hoy y pregúntale si la retoman.",
+                ]);
+            }
             if ($con_e === 'no_contesta') {
                 return $pk([
                     'El cliente que dabas por perdido está viendo la cotización AHORA — mándale un mensaje en este momento citando la cotización.',
