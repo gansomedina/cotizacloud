@@ -65,6 +65,15 @@ class MesaSugerencias
         }
         $alto = $ratio !== null && $ratio >= 2;
 
+        // Rotación de variantes: determinística por cotización y por día
+        // (la misma fila mantiene su frase durante el día; cambia mañana)
+        $seed = ((int)($c['cot_id'] ?? 0)) * 7 + (int)date('z');
+        $pk = fn(array $pool) => $pool[$seed % count($pool)];
+
+        // Señales finas del Radar
+        $momentum = $c['momentum'] ?? null;
+        $fit      = (int)($c['fit_pct'] ?? 0);
+
         // slots que la frase compuesta acepta para la modulación
         $slots = [];
         $f = null;
@@ -118,7 +127,12 @@ class MesaSugerencias
                 if ($alto && $ips7 >= 2) {
                     $f = 'No te contesta pero vale ' . self::x($ratio) . ' de tu venta típica y más gente la está viendo — no la quemes a insistencia: mensaje a tu contacto ofreciendo resolver las dudas de todos.';
                 } elseif ($leyendo) {
-                    $f = 'No te contesta pero abrió la cotización ' . ($v24 > 1 ? "{$v24} veces hoy" : 'hoy') . ' — te lee aunque te evite: mensaje corto con una pregunta que se conteste con sí o no; si ya le escribiste, márcale.';
+                    $vv = $v24 > 1 ? "{$v24} veces hoy" : 'hoy';
+                    $f = $pk([
+                        "No te contesta pero abrió la cotización {$vv} — te lee aunque te evite: mensaje corto con una pregunta que se conteste con sí o no; si ya le escribiste, márcale.",
+                        "Te evade pero {$vv} volvió a meterse a la cotización — no pidas \"un espacio para platicar\": mándale UNA pregunta cerrada que conteste en 5 segundos.",
+                    ]);
+                    $slots['senal_viva'] = true;
                 } elseif ($reabrio) {
                     $f = 'No te responde pero reabrió la cotización después de tu intento — búscalo por escrito con una pregunta cerrada, que pueda contestar sin conversación.';
                 } elseif ($intentos_nc >= 3) {
@@ -126,7 +140,10 @@ class MesaSugerencias
                 } elseif ($dormida) {
                     $f = "No contesta y lleva {$dsv}d sin abrirla — reintento mañana por OTRO canal; si tampoco, va camino a fantasma.";
                 } else {
-                    $f = 'No te contestó — cambia de canal: mensaje corto con una pregunta que se conteste con sí o no; si ya le escribiste, márcale.';
+                    $f = $pk([
+                        'No te contestó — cambia de canal: mensaje corto con una pregunta que se conteste con sí o no; si ya le escribiste, márcale.',
+                        'Sin respuesta — no repitas el mismo canal a la misma hora: otro medio, otra hora, y una pregunta que se conteste con sí o no.',
+                    ]);
                 }
             }
         }
@@ -149,16 +166,25 @@ class MesaSugerencias
                     $slots['cierre'] = true;
                 }
             } elseif ($reabrio || $leyendo) {
-                $f = 'Quedaron en algo y volvió a revisarla — está cumpliendo su parte: confírmale antes de que se enfríe.';
+                $f = $pk([
+                    'Quedaron en algo y volvió a revisarla — está cumpliendo su parte: confírmale antes de que se enfríe.',
+                    'Después del acuerdo reabrió la cotización — va en serio: adelántate tú con el siguiente paso hoy, no esperes a que él te busque.',
+                ]);
                 $slots['cierre'] = true;
             } elseif ($dcom >= 2) {
-                $f = "Quedaron en algo hace {$dcom}d y no ha vuelto a abrirla ni una vez — confírmalo hoy con un mensaje o era humo.";
+                $f = $pk([
+                    "Quedaron en algo hace {$dcom}d y no ha vuelto a abrirla ni una vez — confírmalo hoy con un mensaje o era humo.",
+                    "El acuerdo ya tiene {$dcom}d y el cliente ni se ha asomado a la cotización — recuérdaselo hoy citando exactamente lo que quedaron.",
+                ]);
                 $slots['confronta'] = true;
             } elseif ($fuera) {
                 $f = "Va en serio pero ya se salió de tu ventana de ~{$p75}d — el siguiente toque pone fecha de decisión, no un \"cómo vamos\".";
                 $slots['decision'] = true;
             } else {
-                $f = 'Prepara hoy tu parte del acuerdo y ponle fecha — si en 2 días él no ha vuelto a abrir la cotización, confírmalo: un pacto sin movimiento es humo.';
+                $f = $pk([
+                    'Prepara hoy tu parte del acuerdo y ponle fecha — si en 2 días él no ha vuelto a abrir la cotización, confírmalo: un pacto sin movimiento es humo.',
+                    'Amarra el acuerdo por escrito hoy (qué quedó y para cuándo) — lo que no se confirma por escrito se desdibuja en una semana.',
+                ]);
                 $slots['cierre'] = true;
             }
         }
@@ -224,10 +250,16 @@ class MesaSugerencias
             } elseif ($bucket === 'multi_persona' && $ips7 >= 2) {
                 $f = "Hablaron sin quedar en nada y hay {$ips7} dispositivos viéndola — tu contacto no decide solo: proponle la reunión con todos y garantía por escrito.";
             } elseif ($viva) {
-                $f = 'Después de la plática siguió leyendo la cotización — le interesa pero algo no te dijo: márcale y ofrécele dos fechas de arranque para que escoja una.';
+                $f = $pk([
+                    'Después de la plática siguió leyendo la cotización — le interesa pero algo no te dijo: márcale y ofrécele dos fechas de arranque para que escoja una.',
+                    'La plática no aterrizó pero él siguió estudiando la cotización — hay interés atorado: pregunta directo qué lo detiene y dale dos opciones de arranque.',
+                ]);
                 $slots['decision'] = true;
             } else {
-                $f = 'No repitas la plática: mándale por escrito una propuesta con fecha y anticipo definidos, y que tu siguiente llamada solo pida el sí o el no.';
+                $f = $pk([
+                    'No repitas la plática: mándale por escrito una propuesta con fecha y anticipo definidos, y que tu siguiente llamada solo pida el sí o el no.',
+                    'La siguiente llamada necesita algo nuevo sobre la mesa — mándale antes una propuesta cerrada (fecha + anticipo) y llama solo a confirmarla.',
+                ]);
                 $slots['decision'] = true;
             }
         }
@@ -250,7 +282,7 @@ class MesaSugerencias
 
         // ══ VIRGEN — nada declarado: fallback por Radar/categoría ══
         if ($f === null) {
-            $f = self::virgen($c, $bucket, $hot, $viva, $dormida, $dsv, $edad, $p75, $mediana, $ips7, $slots);
+            $f = self::virgen($c, $bucket, $hot, $viva, $dormida, $dsv, $edad, $p75, $mediana, $ips7, $slots, $pk, $momentum, $fit);
         }
 
         // ══ CAPA 3 extra: alto importe — SOLO cuando nada está declarado
@@ -260,7 +292,7 @@ class MesaSugerencias
         }
 
         // ══ CAPA 4: modulación por arquetipo (CÓMO, nunca QUÉ) ══
-        return self::modular($f, (string)($c['arquetipo'] ?? ''), $slots, $viva, $dormida);
+        return self::modular($f, (string)($c['arquetipo'] ?? ''), $slots, $viva, $dormida, $pk);
     }
 
     // ── Postura declarada sin (o con) contacto — auditada contra el Radar ──
@@ -295,7 +327,7 @@ class MesaSugerencias
     }
 
     // ── Sin declaración: la voz del Radar por bucket/categoría ──
-    private static function virgen(array $c, ?string $bucket, bool $hot, bool $viva, bool $dormida, int $dsv, int $edad, int $p75, int $mediana, int $ips7, array &$slots): string
+    private static function virgen(array $c, ?string $bucket, bool $hot, bool $viva, bool $dormida, int $dsv, int $edad, int $p75, int $mediana, int $ips7, array &$slots, callable $pk, ?string $momentum, int $fit): string
     {
         $cat = $c['cat'] ?? 'trabajo';
         $fuera = $edad > $p75;
@@ -328,11 +360,11 @@ class MesaSugerencias
             $b = $bucket;
             if ($b === 'probable_cierre' && !empty($c['pc_source'])) $b = $c['pc_source'];
             [$intro, $accion, $con_num] = match ($b) {
-                'onfire'               => ['la leyó completa y volvió más de una vez', 'no reexpliques nada: contacto de cierre HOY.', false],
+                'onfire'               => ['la leyó completa y volvió más de una vez', $pk(['no reexpliques nada: contacto de cierre HOY.', 'ya no vendas: pregunta con cuál fecha arrancamos.']), false],
                 'inminente'            => ['se fue, lo pensó y regresó — está decidiendo YA', 'pregunta directa hoy: qué falta para arrancar.', false],
-                'validando_precio'     => ['está clavado en los totales', 'llega con la estructura de pago, no defiendas el número.', false],
+                'validando_precio'     => ['está clavado en los totales', $pk(['llega con la estructura de pago, no defiendas el número.', 'arma 2 formas de pagar el mismo número y dáselas a escoger.']), false],
                 'decision_activa'      => ['va y viene con ella, la está consultando', 'ponte disponible y pregunta si alguien más decide.', false],
-                'prediccion_alta'      => ['su patrón se parece al de los que sí compran', 'contacto proactivo suave: confirma, no asumas.', false],
+                'prediccion_alta'      => ['su patrón se parece al de los que sí compran', $pk(['contacto proactivo suave: confirma, no asumas.', 'un toque ligero hoy — pregúntale qué le pareció, sin presionar.']), false],
                 'lectura_comprometida' => ['la leyó a fondo a la primera y tocó el precio', 'esta señal dura horas: contáctalo HOY.', false],
                 'multi_persona'        => [($ips7 >= 2 ? "hay {$ips7} personas viéndola" : 'varias personas la están viendo'), 'tu contacto no decide solo: reunión con todos y garantía por escrito.', true],
                 'alto_importe'         => ['está arriba de lo que normalmente vendes', 'paciencia y garantía, jamás cierre exprés.', false],
@@ -355,48 +387,82 @@ class MesaSugerencias
             default              => match (true) {
                 $fuera && $dormida => "Lleva {$dsv}d sin abrirla y ya se salió de tu ventana — última jugada: motivo nuevo hoy con fecha límite, y si no responde, descártala.",
                 $fuera             => "Ya pasó tu ventana de ~{$p75}d — el siguiente toque define: fecha de decisión o descarte, no otro \"¿cómo vamos?\".",
-                $dormida           => "Lleva {$dsv}d sin volver a abrirla — dale un motivo nuevo para reabrirla hoy (algo nuevo, no un \"¿ya lo viste?\").",
-                $edad <= $mediana  => 'Está en tu mejor ventana de cierre — un toque hoy que termine en algo concreto.',
-                default            => "Va a media ventana (día {$edad} de ~{$p75}) — el siguiente toque busca compromiso, no plática.",
+                $momentum === 'down' && !$dormida => $pk([
+                    'Cada vez la abre menos — recupérala con algo nuevo (una foto, un ajuste, un beneficio), no con un "¿ya lo pensó?".',
+                    'El interés va bajando lectura tras lectura — tu siguiente mensaje necesita una razón nueva para que la reabra.',
+                ]),
+                $dormida           => $pk([
+                    "Lleva {$dsv}d sin volver a abrirla — dale un motivo nuevo para reabrirla hoy (algo nuevo, no un \"¿ya lo viste?\").",
+                    "El cliente lleva {$dsv}d sin asomarse — mándale algo que lo obligue a reabrirla: un cambio, una foto, una fecha que expira.",
+                ]),
+                $fit >= 60         => 'Su patrón de lectura se parece al de los que sí compran (FIT alto) — no la dejes enfriar: toque suave hoy.',
+                $edad <= $mediana  => $pk([
+                    'Está en tu mejor ventana de cierre — un toque hoy que termine en algo concreto.',
+                    "Tus ventas se deciden en estos días (mediana {$mediana}d) — este toque busca un acuerdo, no un \"ahí la lleva\".",
+                ]),
+                default            => $pk([
+                    "Va a media ventana (día {$edad} de ~{$p75}) — el siguiente toque busca compromiso, no plática.",
+                    "A esta altura del ciclo el que no amarra fecha, pierde — pide una definición chica hoy (visita, anticipo o fecha).",
+                ]),
             },
         };
     }
 
     // ── Capa 4: el arquetipo modula el CÓMO ──
-    private static function modular(string $f, string $arq, array $slots, bool $viva, bool $dormida): string
+    private static function modular(string $f, string $arq, array $slots, bool $viva, bool $dormida, callable $pk): string
     {
         if ($arq === '' || $arq === 'muestra_chica' || $arq === 'motor_completo') return $f;
 
         switch ($arq) {
             case 'regalador':
-                if (!empty($slots['precio']) && !str_contains($f, 'descuento')) $f .= ' Cero descuento — cambia la forma de pago, no el número.';
+                if (!empty($slots['precio']) && !str_contains($f, 'descuento')) {
+                    $f .= ' ' . $pk(['Cero descuento — cambia la forma de pago, no el número.',
+                                     'Y ni un peso de descuento: tu margen ya paga tus rebajas anteriores.']);
+                } elseif (!empty($slots['cierre'])) {
+                    $f .= ' Cierra al precio cotizado — el descuento no es herramienta de cierre, es costumbre tuya.';
+                }
                 break;
             case 'cierre_falso':
             case 'engagement_flojo':
-                if (!empty($slots['cierre'])) $f .= ' Y si te dice sí, el anticipo se pide el mismo día.';
+                if (!empty($slots['cierre']) || !empty($slots['decision'])) {
+                    $f .= ' ' . $pk(['Y si te dice sí, el anticipo se pide el mismo día.',
+                                     'Cierre completo: fecha Y anticipo — un sí sin dinero no es venta.']);
+                }
                 break;
             case 'rematador_ausente':
             case 'meseta':
-                if (!empty($slots['decision'])) $f .= ' No preguntes si quiere: dos opciones donde ambas son sí.';
+                if (!empty($slots['decision']) || !empty($slots['cierre'])) {
+                    $f .= ' ' . $pk(['No preguntes si quiere: dos opciones donde ambas son sí.',
+                                     'Remata con alternativa doble: "¿esta semana o la próxima?".']);
+                }
                 break;
             case 'cultivador':
             case 'teatro':
-                if (!empty($slots['confronta'])) $f .= ' Un "no" también te sirve — pídelo de frente.';
+                if (!empty($slots['confronta']) || !empty($slots['decision'])) {
+                    $f .= ' ' . $pk(['Un "no" también te sirve — pídelo de frente.',
+                                     'Pregunta que se pueda contestar sin pena: ¿sigue en la mesa o ya lo descartó?']);
+                }
                 break;
             case 'sin_ritmo':
             case 'desconectado':
             case 'presente_pasivo':
-                $f = 'Tu toque del día es este: ' . lcfirst($f);
+                $f = $pk(['Tu toque del día es este: ', 'Empieza el día por aquí: ']) . lcfirst($f);
                 break;
             case 'sordo_a_senales':
-                if ($viva || !empty($slots['senal_viva'])) $f .= ' La señal dura horas — hoy antes de comer, no cuando tengas hueco.';
+                if ($viva || !empty($slots['senal_viva'])) {
+                    $f .= ' ' . $pk(['La señal dura horas — hoy antes de comer, no cuando tengas hueco.',
+                                     'Estas señales caducan el mismo día — atiéndela antes que nada.']);
+                }
                 break;
             case 'una_pierna':
                 if (!$viva && !$dormida) $f .= ' Agéndalo con fecha exacta — el lento se pierde por olvidado.';
                 break;
             case 'cerrador_desperdiciado':
             case 'pipeline_frio':
-                if ($dormida || !empty($slots['dormida'])) $f .= ' Con pretexto nuevo — no con "sigo pendiente".';
+                if ($dormida || !empty($slots['dormida'])) {
+                    $f .= ' ' . $pk(['Con pretexto nuevo — no con "sigo pendiente".',
+                                     'Y que el mensaje traiga algo nuevo — el "¿cómo vamos?" ya no abre puertas.']);
+                }
                 break;
             case 'sembrador':
                 if ($viva) $f .= ' Remata ESTA antes de mandar una cotización nueva.';

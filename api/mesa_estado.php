@@ -41,6 +41,24 @@ DB::execute(
     [$cot_id, Auth::id(), EMPRESA_ID, $area, $estado, $razon, $cot['radar_bucket']]
 );
 
+// Declarar compromiso implica que hablaron: si no hay contacto capturado,
+// el sistema marca "Hablamos" solo (las áreas NO son secuenciales, pero
+// esta implicación es lógica, no opcional)
+$auto_contacto = false;
+if ($area === 'compromiso') {
+    $tiene_con = DB::val(
+        "SELECT 1 FROM mesa_estados WHERE cotizacion_id = ? AND area = 'contacto' LIMIT 1", [$cot_id]
+    );
+    if (!$tiene_con) {
+        DB::execute(
+            "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
+             VALUES (?,?,?,'contacto','hablamos',NULL,?)",
+            [$cot_id, Auth::id(), EMPRESA_ID, $cot['radar_bucket']]
+        );
+        $auto_contacto = true;
+    }
+}
+
 // Proyección compatible → radar_feedback (el examen del score no se toca)
 // Proyección → radar_feedback A NOMBRE DEL ASESOR dueño de la cotización.
 // La llave es (cotizacion, usuario): escribir como el vendedor garantiza UNA
@@ -125,13 +143,14 @@ try {
         $accion_post_cambios = $ult_accion && strtotime($ult_accion) > strtotime($decl['postura']['at']);
     }
 
+    $sen = !empty($cot['radar_senales']) ? (json_decode($cot['radar_senales'], true) ?: []) : [];
     $sugerencia = MesaSugerencias::sugerir([
+        'cot_id' => $cot_id,
         'total' => (float)$cot['total'], 'edad' => (int)$cot['edad'], 'cat' => 'trabajo',
         'bucket' => $cot['radar_bucket'], 'es_hot' => $es_hot,
-        'pc_source' => (function () use ($cot) {
-            $s = !empty($cot['radar_senales']) ? json_decode($cot['radar_senales'], true) : null;
-            return $s['pc_source'] ?? null;
-        })(),
+        'pc_source' => $sen['pc_source'] ?? null,
+        'momentum'  => $sen['momentum'] ?? null,
+        'fit_pct'   => (int)($sen['fit_pct'] ?? 0),
         'visitas' => (int)$cot['visitas'], 'dias_sin_vista' => (int)$cot['dias_sin_vista'],
         'ultima_vista_at' => $cot['ultima_vista_at'],
         'revivida' => false, 'milagro' => false,
@@ -153,4 +172,4 @@ try {
     error_log('[Mesa sugerencia] ' . $e->getMessage());
 }
 
-echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia]);
+echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia, 'auto_contacto' => $auto_contacto]);

@@ -208,6 +208,10 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <p style="margin:0 0 8px"><b>"Día X de Y".</b> La Y es tu ventana real: el 75% de tus ventas cierra antes de ese día
       (dato de tus cierres, no teoría). Dentro de la ventana el consejo empuja a cerrar; pasada la ventana
       te pide definición — fecha límite o descarte, no seguimiento eterno.</p>
+      <p style="margin:0 0 8px"><b>¿Hay que capturar en orden?</b> No — las 3 áreas son independientes.
+      "¿Cómo lo ves?" es tu lectura y vale aunque no hayas hablado con él (el consejo te pedirá el toque).
+      Lo único automático: si declaras un Compromiso sin haber capturado contacto, el sistema marca
+      "Hablamos" solo — quedar en algo implica que hablaron.</p>
       <p style="margin:0 0 8px"><b>¿Por qué salen cotizaciones pasadas de la ventana (venta tardía)?</b>
       Porque tu propia historia dice que sí cierras algunas tarde — tu récord es el que marca el aviso de
       limpieza. La mesa las mantiene hasta el día 2× tu ventana con un consejo de ultimátum (fecha límite o
@@ -422,6 +426,15 @@ function mesaTap(cotId, area, estado, btn, razon){
     // frescura
     var fr = row.querySelector('.mfresh');
     if(fr){ fr.textContent = 'hoy'; fr.className = 'mfresh ok'; }
+    // compromiso sin contacto → el sistema marcó "Hablamos" solo
+    if(d.auto_contacto){
+      var slot0 = row.querySelectorAll('.mdecl3 span')[0];
+      if(slot0){ slot0.textContent = 'Hablamos'; slot0.classList.add('f'); }
+      var conArea = drawer.querySelectorAll('.marea')[0];
+      if(conArea) conArea.querySelectorAll('.mpill').forEach(function(x){
+        x.classList.toggle('on', x.textContent.trim() === 'Hablamos');
+      });
+    }
     // sugerencia recalculada por el servidor (mezcla + Radar + arquetipo)
     if(d.sugerencia){
       var sx = drawer.querySelector('.msx');
