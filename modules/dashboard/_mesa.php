@@ -92,10 +92,17 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <span class="<?= $cls ?><?= $cur ? ' f' : '' ?>"><?= $cur ? e($MESA_SHORT[$cur] ?? $cur) : '—' ?></span>
         <?php endforeach; ?>
       </span>
-      <span class="mmarc" title="Tu marca en el Radar (👍 con interés / 👎 descartada)"><?=
-        $r['postura'] === 'con_interes' ? '👍' : ($r['postura'] === 'sin_interes' ? '👎' : '—') ?></span>
+      <span class="mmarc" onclick="event.stopPropagation()">
+        <button type="button" class="fbi<?= $r['postura'] === 'con_interes' ? ' on' : '' ?>"
+          title="Con interés — se marca también en el Radar"
+          onclick="mesaFb(<?= (int)$r['id'] ?>,'con_interes',this)">👍</button>
+        <button type="button" class="fbi<?= $r['postura'] === 'sin_interes' ? ' on' : '' ?>"
+          title="Sin interés — se descarta de la mesa; si el cliente revive, vuelve sola"
+          onclick="mesaFb(<?= (int)$r['id'] ?>,'sin_interes',this)">👎</button>
+      </span>
       <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
         <?= $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d") ?></span>
+      <span class="msp"></span>
       <span class="mchev">▶</span>
     </div>
     <div class="mdrawer" id="md<?= (int)$r['id'] ?>">
@@ -194,6 +201,10 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <p style="margin:0 0 8px"><b>El consejo (→).</b> No te repite lo que tú declaraste — te dice lo que el cliente
       hizo y tú no puedes ver (cuántas veces la abrió, cuántos días lleva callado, cuánta gente la está viendo)
       y la jugada concreta para el siguiente toque.</p>
+      <p style="margin:0 0 8px"><b>👍👎 Feedback Radar.</b> Tu calificación de la cotización — es la MISMA
+      del Radar: lo que marcas aquí aparece allá y viceversa. En el Radar los botones solo salen en señales
+      calientes; aquí puedes calificar cualquiera. El 👎 la descarta de la mesa (el Radar la sigue vigilando
+      y si el cliente revive, te la regresa con ⚡).</p>
       <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
       La meta del día es simple: dejar los pendientes en cero.</p>
     </div>
@@ -207,8 +218,8 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <span class="mh-dot"></span><span class="mh-cot">Cotización</span><span class="mh-flag"></span><span class="mh-check"></span>
         <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
         <span class="mh-decl"><span class="s1">Contacto</span><span class="s2">Compromiso</span><span class="s3">Cómo lo ves</span></span>
-        <span class="mh-marc">Marcaste</span>
-        <span class="mh-fresh">Actividad</span><span class="mh-chev"></span>
+        <span class="mh-marc">Feedback<br>Radar</span>
+        <span class="mh-fresh">Actividad</span><span class="msp"></span><span class="mh-chev"></span>
       </div>
       <div class="mlist"><?php foreach ($mesa_pend as $r) $mesa_row($r); ?></div>
       <?php else: ?>
@@ -235,7 +246,6 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 
 <style>
 #mesa-card .mlist{border:1px solid #eeeee9;border-radius:10px;overflow:hidden}
-#mesa-card .mlist,#mesa-card .mhead,#mesa-card .msect{max-width:1240px;margin-left:auto;margin-right:auto}
 #mesa-card .mhead{margin-bottom:5px}
 #mesa-card .mleg{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 4px 0 10px;vertical-align:baseline}
 #mesa-card .mleg.off{background:transparent;border:1.5px solid #c9c9c2;width:7px;height:7px}
@@ -263,11 +273,15 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mdecl3 span{font-size:10.5px;line-height:1.3;color:#c9c9c2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mesa-card .mdecl3 .s1{width:80px}#mesa-card .mdecl3 .s2{width:88px}#mesa-card .mdecl3 .s3{width:86px}
 #mesa-card .mdecl3 span.f{color:#1a5c38;font-weight:700}
-#mesa-card .mmarc{flex:none;width:58px;text-align:center;font-size:12px;color:#c9c9c2}
+#mesa-card .mmarc{flex:none;width:74px;display:flex;gap:2px;justify-content:center}
+#mesa-card .mmarc .fbi{border:none;background:none;cursor:pointer;font-size:13px;line-height:1;padding:3px 4px;filter:grayscale(1);opacity:.4;transition:all .12s}
+#mesa-card .mmarc .fbi:hover{filter:none;opacity:.8}
+#mesa-card .mmarc .fbi.on{filter:none;opacity:1}
 #mesa-card .mfresh{font-size:10.5px;flex:none;width:82px;text-align:right;color:#a8a8a2;white-space:nowrap}
 #mesa-card .mfresh.warn{color:#d97706;font-weight:700}
 #mesa-card .mfresh.bad{color:#dc2626;font-weight:700}
 #mesa-card .mfresh.ok{color:#16a34a;font-weight:700}
+#mesa-card .msp{flex:1}
 #mesa-card .mchev{color:#c9c9c2;flex:none;font-size:11px;transition:transform .15s}
 #mesa-card .mrow.open .mchev{transform:rotate(90deg)}
 #mesa-card .mdrawer{display:none;background:#fff;padding:12px 14px 14px 31px;border-top:1px solid #f4f4ef}
@@ -292,7 +306,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mhead .mh-decl{display:flex;gap:6px;flex:none}
 #mesa-card .mhead .mh-decl .s1{width:80px}#mesa-card .mhead .mh-decl .s2{width:88px}#mesa-card .mhead .mh-decl .s3{width:86px}
 #mesa-card .mhead .mh-decl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#mesa-card .mhead .mh-marc{flex:none;width:58px;text-align:center}
+#mesa-card .mhead .mh-marc{flex:none;width:74px;text-align:center;line-height:1.2}
 #mesa-card .mhead .mh-fresh{flex:none;width:82px;text-align:right}
 #mesa-card .mhead .mh-chev{flex:none;width:11px}
 #mesa-card .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
@@ -326,6 +340,23 @@ function mesaToast(msg){
   var t = document.getElementById('mesa-toast');
   t.textContent = msg; t.classList.add('show');
   clearTimeout(mesaToastT); mesaToastT = setTimeout(function(){t.classList.remove('show')}, 2600);
+}
+
+// Feedback Radar desde la mesa — escribe al MISMO radar_feedback que el Radar
+function mesaFb(cotId, tipo, btn){
+  btn.disabled = true;
+  fetch('/api/radar-feedback', {method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+    body: JSON.stringify({cotizacion_id:cotId, tipo:tipo})
+  }).then(function(r){return r.json();}).then(function(d){
+    btn.disabled = false;
+    if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
+    btn.parentElement.querySelectorAll('.fbi').forEach(function(x){x.classList.remove('on')});
+    btn.classList.add('on');
+    mesaToast(tipo === 'con_interes'
+      ? '👍 marcado — también quedó en el Radar'
+      : '👎 marcado — se descarta de la mesa al recargar; si el cliente revive, vuelve sola');
+  }).catch(function(){ btn.disabled = false; mesaToast('No se pudo guardar (red o sesión).'); });
 }
 
 var MESA_SHORT = <?= json_encode($MESA_SHORT, JSON_UNESCAPED_UNICODE) ?>;
