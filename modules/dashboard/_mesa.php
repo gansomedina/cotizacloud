@@ -88,8 +88,13 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <span class="mmoney"><?= $mmoney($r['total']) ?></span>
       <span class="mdecl3">
         <?php foreach (['contacto' => 's1', 'compromiso' => 's2', 'postura' => 's3'] as $a => $cls):
-            $cur = $d[$a]['estado'] ?? ''; ?>
+            $cur = $d[$a]['estado'] ?? '';
+            // Sin declaración nueva de postura: mostrar el 👍/👎 heredado del Radar
+            if ($a === 'postura' && !$cur && $r['postura']): ?>
+        <span class="<?= $cls ?> leg" title="Lo marcaste en el Radar — tapea la fila para actualizarlo"><?= $r['postura'] === 'con_interes' ? '👍 interés' : '👎 descartada' ?></span>
+            <?php else: ?>
         <span class="<?= $cls ?><?= $cur ? ' f' : '' ?>"><?= $cur ? e($MESA_SHORT[$cur] ?? $cur) : '—' ?></span>
+            <?php endif; ?>
         <?php endforeach; ?>
       </span>
       <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
@@ -232,6 +237,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mdecl3 span{font-size:10.5px;line-height:1.3;color:#c9c9c2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mesa-card .mdecl3 .s1{width:80px}#mesa-card .mdecl3 .s2{width:88px}#mesa-card .mdecl3 .s3{width:86px}
 #mesa-card .mdecl3 span.f{color:#1a5c38;font-weight:700}
+#mesa-card .mdecl3 span.leg{color:#4d7c62;font-weight:600}
 #mesa-card .mfresh{font-size:10.5px;flex:none;width:82px;text-align:right;color:#a8a8a2;white-space:nowrap}
 #mesa-card .mfresh.warn{color:#d97706;font-weight:700}
 #mesa-card .mfresh.bad{color:#dc2626;font-weight:700}

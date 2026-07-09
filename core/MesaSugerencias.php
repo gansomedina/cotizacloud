@@ -292,11 +292,15 @@ class MesaSugerencias
         $cat = $c['cat'] ?? 'trabajo';
         if ($cat === 'interes_muriendo') {
             $slots['dormida'] = true;
-            return 'Tú dijiste que va en serio y el cliente se está apagando — rescátala hoy con un motivo concreto, o corrige tu postura.';
+            // Fuera de ventana Y dormida: rescatarla ya no es el consejo honesto
+            if ($edad > $p75 && $dormida) {
+                return "Marcaste \"con interés\" pero ya se salió de tu ventana y lleva {$dsv}d sin abrirla — última jugada: motivo nuevo hoy con fecha límite, y si no responde, descártala.";
+            }
+            return 'Marcaste "con interés" y el cliente se está apagando — rescátala hoy con un motivo concreto, o corrige tu postura.';
         }
         if ($cat === 'ultimo_tramo') {
             $slots['decision'] = true;
-            return "Va en serio pero ya está en día {$edad}, saliendo de tu ventana (~{$p75}d) — último tramo útil.";
+            return "Marcaste \"con interés\" pero ya está en día {$edad}, saliendo de tu ventana (~{$p75}d) — último tramo útil: el siguiente toque pide definición.";
         }
         // Evidencia propia de ESTA fila (cada cotización cita sus números)
         $v24 = (int)($c['vistas_24h'] ?? 0);
