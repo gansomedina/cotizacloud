@@ -40,7 +40,13 @@ class MesaSugerencias
         $ips7     = (int)($c['ips_7d'] ?? 0);
         $leyendo  = $v24 >= 1;
         $dormida  = $visitas > 0 && $dsv >= 7;
-        $viva     = $leyendo || $hot;
+        // Abrió hoy/ayer/antier: cliente ACTIVO aunque no esté leyendo ahorita.
+        // Regla de hechos: jamás afirmar "no abre" si abrió hace <3 días.
+        $reciente = $visitas > 0 && $dsv <= 2;
+        $viva     = $leyendo || $hot || $reciente;
+        // Evidencia de apertura para citar en la frase (siempre factual)
+        $ev_abrio = $leyendo ? ($v24 > 1 ? "{$v24} veces hoy" : 'hoy')
+                  : ($dsv === 1 ? 'ayer' : ($dsv === 2 ? 'hace 2 días' : 'hace poco'));
 
         // ¿El cliente reabrió DESPUÉS de la última declaración?
         $ult_decl = 0;
@@ -156,14 +162,14 @@ class MesaSugerencias
             elseif ($com_e === 'propuse_no_quiso') {
                 $f = $viva
                     ? $pk([
-                        'El cliente te dijo que no, no contesta, pero sigue abriendo la cotización — algo lo detiene y no te lo ha dicho: pregúntaselo directo por mensaje.',
-                        'El cliente te dijo que no y te evita, pero sigue leyendo la cotización — hay una duda que no te contó: mándale un mensaje preguntando qué lo detiene.',
-                        'El cliente dijo que no, dejó de contestar y aun así abre la cotización — el interés sigue: escríbele hoy preguntando qué le falta para decidirse.',
+                        "El cliente te dijo que no y no contesta, pero abrió la cotización {$ev_abrio} — algo lo detiene y no te lo ha dicho: pregúntaselo directo por mensaje.",
+                        "El cliente te dijo que no y te evita, pero abrió la cotización {$ev_abrio} — hay una duda que no te contó: mándale un mensaje preguntando qué lo detiene.",
+                        "El cliente dijo que no, dejó de contestar y aun así abrió la cotización {$ev_abrio} — el interés sigue: escríbele hoy preguntando qué le falta para decidirse.",
                     ])
                     : $pk([
-                        'El cliente te dijo que no y lleva días sin contestar ni abrir la cotización — mándale un último mensaje sin presión y, si no responde, descártala con razón.',
-                        'El cliente te dijo que no, no contesta y tampoco abre la cotización — un último mensaje amable hoy; si sigue el silencio, descártala con razón.',
-                        'El cliente dijo que no y desapareció: ni contesta ni abre la cotización — mándale un último mensaje hoy y descártala con razón si no responde.',
+                        "El cliente te dijo que no y lleva {$dsv}d sin abrir la cotización — mándale un último mensaje sin presión y, si no responde, descártala con razón.",
+                        "El cliente te dijo que no, no contesta y lleva {$dsv}d sin abrir la cotización — un último mensaje amable hoy; si sigue el silencio, descártala con razón.",
+                        "El cliente dijo que no y lleva {$dsv}d sin contestar ni abrir la cotización — mándale un último mensaje hoy y descártala con razón si no responde.",
                     ]);
             }
             // EVASIVA (sin_compromiso junto a no_contesta es redundante: se absorbe)
@@ -174,8 +180,8 @@ class MesaSugerencias
                         'Tu contacto no responde pero la cotización vale ' . self::x($ratio) . ' de tu venta típica y varias personas la revisan — escríbele hoy y ofrece una llamada para resolver dudas de todos.',
                         'Sin respuesta, pero la cotización vale ' . self::x($ratio) . ' de tu venta típica y más gente la está viendo — no lo satures de mensajes: ofrécele hoy resolver las dudas del grupo.',
                     ]);
-                } elseif ($leyendo) {
-                    $vv = $v24 > 1 ? "{$v24} veces hoy" : 'hoy';
+                } elseif ($leyendo || $reciente) {
+                    $vv = $ev_abrio;
                     $f = $pk([
                         "El cliente no te contesta pero abrió la cotización {$vv} — te lee aunque no responda: mándale una pregunta que se conteste con sí o no.",
                         "El cliente te evita pero volvió a abrir la cotización {$vv} — no pidas llamada: mándale UNA pregunta cerrada, de las que se contestan con sí o no.",
@@ -369,7 +375,7 @@ class MesaSugerencias
                         "El cliente \"decide\" desde hace {$dsv}d sin abrir la cotización — nadie decide sin releer: contáctalo hoy y pide una respuesta con fecha.",
                     ]);
                     $slots['confronta'] = true;
-                } elseif ($viva) {
+                } elseif ($reabrio || $leyendo) {
                     $f = $pk([
                         'Hablaron sin acuerdo pero el cliente está decidiendo y relee la cotización — agenda hoy la llamada de decisión, no esperes su veredicto.',
                         'El cliente lo está pensando y sigue abriendo la cotización — proponle hoy una llamada para decidir juntos; no esperes a que él te busque.',
