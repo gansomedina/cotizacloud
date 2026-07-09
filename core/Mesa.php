@@ -13,7 +13,7 @@ defined('COTIZAAPP') or die;
 class Mesa
 {
     // Buckets calientes — mismo set que gatea el feedback del Radar
-    private const HOT = [
+    public const HOT = [
         'probable_cierre','onfire','inminente','validando_precio',
         'prediccion_alta','lectura_comprometida','multi_persona','alto_importe',
     ];
@@ -52,7 +52,7 @@ class Mesa
         // Universo: activas del vendedor (mismos criterios que score/Radar)
         $cots = DB::query(
             "SELECT c.id, c.numero, c.titulo, c.total, c.estado, c.visitas,
-                    c.radar_bucket, c.radar_bucket_at, c.ultima_vista_at, c.created_at,
+                    c.radar_bucket, c.radar_bucket_at, c.ultima_vista_at, c.created_at, c.radar_senales,
                     cl.nombre AS cliente, cl.telefono AS cli_tel,
                     DATEDIFF(NOW(), c.created_at) AS edad,
                     DATEDIFF(NOW(), COALESCE(c.ultima_vista_at, c.created_at)) AS dias_sin_vista
@@ -101,19 +101,75 @@ class Mesa
         }
 
         // Estados declarados en la mesa (última declaración por área)
-        $me = [];
+        $me = []; $nc = [];
         try {
             foreach (DB::query(
-                "SELECT m.cotizacion_id, m.area, m.estado, m.created_at
+                "SELECT m.cotizacion_id, m.area, m.estado, m.razon, m.created_at
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, area, MAX(id) AS mid FROM mesa_estados
                        WHERE empresa_id = ? AND cotizacion_id IN ($in)
                        GROUP BY cotizacion_id, area) t ON t.mid = m.id",
                 [$empresa_id]
             ) as $r) {
-                $me[(int)$r['cotizacion_id']][$r['area']] = ['estado' => $r['estado'], 'at' => $r['created_at']];
+                $me[(int)$r['cotizacion_id']][$r['area']] = [
+                    'estado' => $r['estado'], 'at' => $r['created_at'], 'razon' => $r['razon'],
+                ];
+            }
+            // Historia de contacto → intentos de no_contesta desde el último "hablamos"
+            foreach (DB::query(
+                "SELECT cotizacion_id, estado FROM mesa_estados
+                 WHERE empresa_id = ? AND cotizacion_id IN ($in) AND area = 'contacto'
+                 ORDER BY id",
+                [$empresa_id]
+            ) as $r) {
+                $cid = (int)$r['cotizacion_id'];
+                if ($r['estado'] === 'hablamos') $nc[$cid] = 0;
+                else $nc[$cid] = ($nc[$cid] ?? 0) + 1;
             }
         } catch (Throwable $e) {} // tabla aún no migrada
+
+        // Actividad reciente del cliente (respeta Escudo + filtro ghost)
+        $act_c = [];
+        foreach (DB::query(
+            "SELECT cotizacion_id,
+                    SUM(created_at >= NOW() - INTERVAL 1 DAY) AS v24,
+                    SUM(created_at >= NOW() - INTERVAL 7 DAY) AS v7,
+                    COUNT(DISTINCT CASE WHEN created_at >= NOW() - INTERVAL 7 DAY THEN ip END) AS ips7
+             FROM quote_sessions
+             WHERE cotizacion_id IN ($in) AND es_interno = 0
+               AND NOT (COALESCE(visible_ms,0) < 200 AND COALESCE(scroll_max,0) < 35)
+             GROUP BY cotizacion_id", []
+        ) as $r) {
+            $act_c[(int)$r['cotizacion_id']] = $r;
+        }
+
+        // Ticket promedio de la empresa (cache estático)
+        static $tickets = [];
+        if (!array_key_exists($empresa_id, $tickets)) {
+            $t = DB::row(
+                "SELECT AVG(total) AS avg_t, COUNT(*) AS n FROM ventas
+                 WHERE empresa_id = ? AND estado != 'cancelada' AND total > 0
+                   AND created_at >= NOW() - INTERVAL 180 DAY", [$empresa_id]
+            );
+            if ((int)($t['n'] ?? 0) < 5) {
+                $t = DB::row(
+                    "SELECT AVG(total) AS avg_t, COUNT(*) AS n FROM ventas
+                     WHERE empresa_id = ? AND estado != 'cancelada' AND total > 0", [$empresa_id]
+                );
+            }
+            $tickets[$empresa_id] = ((int)($t['n'] ?? 0) >= 5) ? (float)$t['avg_t'] : null;
+        }
+        $ticket_empresa = $tickets[$empresa_id];
+
+        // Arquetipo del asesor (termómetro) — modula el CÓMO de los tips
+        $arquetipo = 'muestra_chica';
+        try {
+            $us = DB::row(
+                "SELECT * FROM usuario_score WHERE usuario_id = ? AND empresa_id = ?",
+                [$vendedor_id, $empresa_id]
+            );
+            if ($us) $arquetipo = DiagnosticoTips::arquetipo($us);
+        } catch (Throwable $e) {}
 
         // Resurrección: descartadas cuyo cliente volvió a calentarse DESPUÉS del descarte
         $revividas = [];
@@ -212,26 +268,33 @@ class Mesa
                     }
                     return $max ? (int)floor((time() - $max) / 86400) : null;
                 })(),
-                'alerta' => (function () use ($me, $cid, $c) {
-                    $d = $me[$cid] ?? [];
-                    $uv = $c['ultima_vista_at'] ? strtotime($c['ultima_vista_at']) : 0;
-                    // Compromiso declarado y el cliente no ha vuelto a abrir desde entonces
-                    if (($d['compromiso']['estado'] ?? '') === 'compromiso') {
-                        $t = strtotime($d['compromiso']['at']);
-                        $dias = (int)floor((time() - $t) / 86400);
-                        if ($dias >= 2 && $uv < $t) return "Quedaron en algo hace {$dias}d y el cliente no ha vuelto a abrir — confírmalo o era humo.";
-                    }
-                    if (($d['postura']['estado'] ?? '') === 'decidiendo') {
-                        $t = strtotime($d['postura']['at']);
-                        $dias = (int)floor((time() - $t) / 86400);
-                        if ($dias >= 3 && $uv < $t) return "Dijiste 'decidiendo' hace {$dias}d y no ha reabierto ni una vez — decidiendo pero frío.";
-                    }
-                    return null;
-                })(),
                 'revivida' => ($cat === 'revivida'),
                 'milagro'  => ($cat === 'milagro'),
                 'fuera_ventana' => ($edad > $p75),
-                'sugerencia' => self::sugerencia($cat, $bucket, $postura, $edad, $p75),
+                'sugerencia' => MesaSugerencias::sugerir([
+                    'total' => (float)$c['total'], 'edad' => $edad, 'cat' => $cat,
+                    'bucket' => $bucket, 'es_hot' => $es_hot && $hot_reciente,
+                    'visitas' => (int)$c['visitas'], 'dias_sin_vista' => (int)$c['dias_sin_vista'],
+                    'ultima_vista_at' => $c['ultima_vista_at'],
+                    'revivida' => ($cat === 'revivida'), 'milagro' => ($cat === 'milagro'),
+                    'contacto' => $me[$cid]['contacto'] ?? null,
+                    'compromiso' => $me[$cid]['compromiso'] ?? null,
+                    'postura_decl' => $me[$cid]['postura'] ?? null,
+                    'razon_descarte' => $me[$cid]['postura']['razon'] ?? null,
+                    'intentos_nc' => $nc[$cid] ?? 0,
+                    'vistas_24h' => (int)($act_c[$cid]['v24'] ?? 0),
+                    'vistas_7d'  => (int)($act_c[$cid]['v7'] ?? 0),
+                    'ips_7d'     => (int)($act_c[$cid]['ips7'] ?? 0),
+                    'accion_post_cambios' => (function () use ($me, $acc, $cid) {
+                        $pc = $me[$cid]['postura'] ?? null;
+                        if (!$pc || $pc['estado'] !== 'pidio_cambios') return false;
+                        $ua = $acc[$cid] ?? null;
+                        return $ua && strtotime($ua) > strtotime($pc['at']);
+                    })(),
+                    'p75' => $p75, 'mediana' => (int)($ciclo['mediana'] ?? $p75),
+                    'ticket_empresa' => $ticket_empresa,
+                    'arquetipo' => $arquetipo,
+                ]),
             ];
         }
 
@@ -279,42 +342,6 @@ class Mesa
             'resumen'  => ['n' => count($rows) - $atendidas, 'monto' => $monto, 'atendidas' => $atendidas,
                            'sin_postura' => $sin_postura, 'mas_viejo_dias' => $mas_viejo],
         ];
-    }
-
-    // ── Sugerencia por fila (bucket × categoría-de-falta × ventana) ──
-    private static function sugerencia(string $cat, ?string $bucket, ?string $postura, int $edad, int $p75): string
-    {
-        if ($cat === 'revivida')
-            return 'La descartaste y el cliente volvió a calentarse esta semana — los milagros no se repiten: un mensaje directo hoy.';
-        if ($cat === 'milagro')
-            return 'Fuera de tu ciclo normal y la está viendo AHORA — es ahora o se va.';
-        if ($cat === 'interes_muriendo')
-            return 'Tú dijiste que va en serio y el cliente se está apagando — rescátala hoy con un motivo concreto, o corrige tu postura.';
-        if ($cat === 'ultimo_tramo')
-            return "Va en serio pero ya está en día {$edad}, saliendo de tu ventana (~{$p75}d) — último tramo útil.";
-        if ($cat === 'trabajo') {
-            if ($postura === 'con_interes' && $es_hot_txt = true) {
-                return match ($bucket) {
-                    'validando_precio' => "Va en serio y está validando el precio (día {$edad} de ~{$p75}) — llega con la estructura de pago, no defiendas el número.",
-                    'multi_persona'    => "Va en serio y varias personas la evalúan — dale municiones: garantía y proceso por escrito.",
-                    'onfire', 'inminente', 'probable_cierre'
-                                       => "Va en serio y el Radar la marca fuerte (día {$edad} de ~{$p75}) — ciérrala esta semana.",
-                    default            => "Va en serio y está en tu ventana (día {$edad} de ~{$p75}) — un toque que termine en algo concreto.",
-                };
-            }
-            return "En ventana (día {$edad} de ~{$p75}) — trabájala hoy: cita, ajuste o fecha.";
-        }
-        // sin_postura → según lo que muestra el Radar
-        return match ($bucket) {
-            'validando_precio', 'probable_cierre'
-                => 'Se está clavando en el precio y no lo has calificado — ¿cómo lo ves? No lo defiendas, llega con la estructura de pago.',
-            'multi_persona'
-                => 'Varias personas la evalúan y falta tu juicio — dale municiones al tuyo: garantía y proceso por escrito.',
-            'onfire', 'inminente'
-                => 'Señal fuerte y reciente sin tu juicio — es tu contacto del día.',
-            default
-                => 'El cliente ya se movió y no la has calificado — ¿cómo lo ves? (👍/👎)',
-        };
     }
 
     /** Resumen agregado por vendedor — para el leaderboard del admin. */
