@@ -129,7 +129,7 @@ class MesaSugerencias
             if ($pos_vig && $pos_e === 'en_el_aire') {
                 $f = 'Declaraste pacto y "en el aire" a la vez — no pueden ser las dos: si el pacto es real ponle fecha, si no, corrige la postura.';
             } elseif ($pos_vig && $pos_e === 'objecion_precio') {
-                $f = 'Quedaron en algo pero el precio sigue atorado — llega al compromiso con la estructura de pago lista, no defiendas el número.';
+                $f = 'El pacto se puede caer por el precio — antes de verlo arma 2 formas de pagar el mismo número (anticipo + resto, o parcialidades) y dáselas a escoger.';
                 $slots['precio'] = true;
             } elseif ($pos_vig && $pos_e === 'pidio_cambios') {
                 if (empty($c['accion_post_cambios'])) {
@@ -150,7 +150,7 @@ class MesaSugerencias
                 $f = "Va en serio pero ya se salió de tu ventana de ~{$p75}d — el siguiente toque pone fecha de decisión, no un \"cómo vamos\".";
                 $slots['decision'] = true;
             } else {
-                $f = 'Quedaron en algo — registrado. Si en 2 días no vuelve a abrir la cotización, la mesa te lo va a reclamar.';
+                $f = 'Prepara hoy tu parte del acuerdo y ponle fecha — si en 2 días él no ha vuelto a abrir la cotización, confírmalo: un pacto sin movimiento es humo.';
                 $slots['cierre'] = true;
             }
         }
@@ -177,7 +177,7 @@ class MesaSugerencias
                 $f = 'Te dijo que no al compromiso pero el Radar la trae ' . self::bnom($bucket) . ' — el freno no es interés: pregúntale de frente qué le falta.';
                 $slots['confronta'] = true;
             } elseif ($viva) {
-                $f = 'No quiso comprometerse pero sigue clavado en la cotización — algo le estorba que no te dijo: pregúntaselo directo.';
+                $f = 'Después de decirte que no, sigue metido en la cotización — hay un freno que no te dijo: pregúntale qué tendría que cambiar para que sí.';
                 $slots['confronta'] = true;
             } else {
                 $f = 'Propusiste y no quiso, y no diagnosticaste el freno — la siguiente llamada es para saber el porqué, no para cerrar.';
@@ -216,10 +216,10 @@ class MesaSugerencias
             } elseif ($bucket === 'multi_persona' && $ips7 >= 2) {
                 $f = "Hablaron sin quedar en nada y hay {$ips7} dispositivos viéndola — tu contacto no decide solo: proponle la reunión con todos y garantía por escrito.";
             } elseif ($viva) {
-                $f = 'Hablaron sin quedar en nada y la sigue leyendo — le interesa: márcale hoy con UNA propuesta cerrada de fecha y pago.';
+                $f = 'Después de la plática siguió leyendo la cotización — le interesa pero algo no te dijo: márcale y ofrécele dos fechas de arranque para que escoja una.';
                 $slots['decision'] = true;
             } else {
-                $f = 'Hablaron y no salió nada concreto — la próxima llamada lleva UNA propuesta cerrada de fecha y pago, no otra plática.';
+                $f = 'No repitas la plática: mándale por escrito una propuesta con fecha y anticipo definidos, y que tu siguiente llamada solo pida el sí o el no.';
                 $slots['decision'] = true;
             }
         }
@@ -280,7 +280,7 @@ class MesaSugerencias
                 return 'Le mandaste la versión nueva y no la ha abierto — avísale que la versión nueva ya está lista; no asumas que la vio.';
             case 'en_el_aire':
                 if ($viva) { $slots['confronta'] = true; return 'Tú la ves en el aire y el cliente la está releyendo — el que está en el aire eres tú: márcale hoy y sal de la duda.'; }
-                if ($dormida) return "Lleva {$dsv}d sin abrirla y tú mismo la ves en el aire — ponle fecha límite hoy o descártala; la mesa no es velorio.";
+                if ($dormida) return "Lleva {$dsv}d sin abrirla y tú mismo la ves en el aire — ponle fecha límite hoy o descártala — cargarla otra semana no la revive.";
                 return 'La traes en el aire — una pregunta directa hoy vale más que otra semana de limbo: define qué falta para aterrizarla.';
         }
         return 'Captura el status: un tap hoy vale más que la memoria de la semana.';
