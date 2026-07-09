@@ -7,11 +7,16 @@ csrf_check();
 
 $b = json_decode(file_get_contents('php://input'), true) ?? [];
 $cot_id = (int)($b['cotizacion_id'] ?? 0);
+$area   = trim((string)($b['area'] ?? ''));
 $estado = trim((string)($b['estado'] ?? ''));
 $razon  = trim((string)($b['razon'] ?? '')) ?: null;
 
-$VALIDOS = ['no_contesta','en_cita','decidiendo','objecion_precio','pidio_cambios',
-            'sin_compromiso','propuse_no_quiso','descartada'];
+$AREAS = [
+    'contacto'   => ['no_contesta','hablamos'],
+    'compromiso' => ['en_cita','propuse_no_quiso','sin_compromiso'],
+    'postura'    => ['decidiendo','objecion_precio','pidio_cambios','en_el_aire','descartada'],
+];
+$VALIDOS = $AREAS[$area] ?? [];
 $RAZONES = ['precio','competencia','despues','no_responde','no_comprador','otro'];
 if (!$cot_id || !in_array($estado, $VALIDOS, true)) { echo json_encode(['ok'=>false,'error'=>'datos']); exit; }
 if ($estado === 'descartada' && !in_array($razon, $RAZONES, true)) { echo json_encode(['ok'=>false,'error'=>'razon']); exit; }
@@ -24,9 +29,9 @@ if ((int)$cot['vend'] !== Auth::id() && !Auth::es_admin()) { echo json_encode(['
 
 // Historia insert-only
 DB::execute(
-    "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, estado, razon, bucket_snapshot)
-     VALUES (?,?,?,?,?,?)",
-    [$cot_id, Auth::id(), EMPRESA_ID, $estado, $razon, $cot['radar_bucket']]
+    "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
+     VALUES (?,?,?,?,?,?,?)",
+    [$cot_id, Auth::id(), EMPRESA_ID, $area, $estado, $razon, $cot['radar_bucket']]
 );
 
 // Proyección compatible → radar_feedback (el examen del score no se toca)

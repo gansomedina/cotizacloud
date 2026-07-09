@@ -86,7 +86,7 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
       <thead><tr style="text-align:left;color:#6a6a64;font-size:11px;text-transform:uppercase;letter-spacing:.04em">
         <th style="padding:6px 8px">Cliente</th><th style="padding:6px 8px">Monto</th>
         <th style="padding:6px 8px">Ciclo</th><th style="padding:6px 8px">Radar</th>
-        <th style="padding:6px 8px">Postura</th><th style="padding:6px 8px">Sugerencia</th>
+        <th style="padding:6px 8px">Contacto</th><th style="padding:6px 8px">Compromiso</th><th style="padding:6px 8px">¿Cómo lo ves?</th><th style="padding:6px 8px">Sugerencia</th>
       </tr></thead>
       <tbody>
       <?php foreach ($mesa['rows'] as $r):
@@ -107,18 +107,20 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
           <?php elseif ($bl): ?><span style="font-size:11px;background:<?= $bl[1] ?>18;color:<?= $bl[1] ?>;padding:2px 7px;border-radius:9px;font-weight:700"><?= e($bl[0]) ?></span>
           <?php else: ?><span style="color:#a8a8a2;font-size:11px">—</span><?php endif; ?>
         </td>
-        <td style="padding:8px;white-space:nowrap;font-size:12px">
-          <select onchange="mesaEstado(<?= (int)$r['id'] ?>, this)" style="font-size:12px;padding:3px 6px;border:1px solid #d4d4ce;border-radius:8px;background:#fff;max-width:150px">
-            <option value=""><?= $r['postura'] ? e($POSTURA_LBL[$r['postura']] ?? $r['postura']) : '— ¿qué pasó? —' ?></option>
-            <option value="no_contesta">📵 No contesta</option>
-            <option value="en_cita">📅 Quedamos en cita</option>
-            <option value="decidiendo">💬 Está decidiendo</option>
-            <option value="objecion_precio">💰 Objeción precio</option>
-            <option value="pidio_cambios">✏️ Pidió cambios</option>
-            <option value="sin_compromiso">😶 Hablamos, sin nada concreto</option>
-            <option value="propuse_no_quiso">🚫 Propuse cita, no quiso</option>
-            <option value="descartada">🗑 Descartar…</option>
-          </select></td>
+        <td style="padding:8px;white-space:nowrap" class="mesa-chips">
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','no_contesta',this)" title="No contestó">📵</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','hablamos',this)" title="Hablamos">🗣</button></td>
+        <td style="padding:8px;white-space:nowrap" class="mesa-chips">
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','en_cita',this)" title="Quedamos en cita">📅</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','propuse_no_quiso',this)" title="Propuse cita, no quiso">🚫</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','sin_compromiso',this)" title="Sin nada concreto">😶</button></td>
+        <td style="padding:8px;white-space:nowrap" class="mesa-chips">
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','decidiendo',this)" title="Está decidiendo">💬</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','objecion_precio',this)" title="Objeción de precio">💰</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','pidio_cambios',this)" title="Pidió cambios">✏️</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','en_el_aire',this)" title="Quedó en el aire">🌫</button>
+          <button onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this)" title="Descartar">🗑</button>
+          <?php if ($r['postura']): ?><div style="font-size:10px;color:#8a8a84;margin-top:2px"><?= e($POSTURA_LBL[$r['postura']] ?? '') ?></div><?php endif; ?></td>
         <td style="padding:8px;color:#4a4a46;min-width:240px"><?= e($r['sugerencia']) ?></td>
       </tr>
       <?php endforeach; ?>
@@ -137,23 +139,30 @@ $POSTURA_LBL = ['con_interes' => '👍 con interés', 'sin_interes' => '👎 des
 
   </div>
 </details>\n
+<style>
+.mesa-chips button{border:1px solid #d4d4ce;background:#fff;border-radius:8px;padding:3px 7px;margin-right:3px;cursor:pointer;font-size:13px}
+.mesa-chips button:hover{border-color:#1a5c38}
+.mesa-chips button.on{background:#dcfce7;border-color:#16a34a}
+</style>
 <script>
-function mesaEstado(cotId, sel){
-  var estado = sel.value; if(!estado) return;
+function mesaTap(cotId, area, estado, btn){
   var razon = null;
   if(estado==='descartada'){
     var r = prompt('Razón: 1=Muy caro  2=Se fue con otro  3=Lo dejó para después  4=Dejó de responder  5=No era comprador  6=Otro','1');
     var map = {'1':'precio','2':'competencia','3':'despues','4':'no_responde','5':'no_comprador','6':'otro'};
-    razon = map[(r||'').trim()]; if(!razon){ sel.value=''; return; }
+    razon = map[(r||'').trim()]; if(!razon) return;
   }
-  sel.disabled = true;
+  btn.disabled = true;
   fetch('/api/mesa/estado', {method:'POST',
     headers:{'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
-    body: JSON.stringify({cotizacion_id:cotId, estado:estado, razon:razon})
+    body: JSON.stringify({cotizacion_id:cotId, area:area, estado:estado, razon:razon})
   }).then(function(r){return r.json();}).then(function(d){
-    sel.disabled = false;
-    if(d.ok){ sel.style.borderColor='#16a34a'; sel.style.background='#f0fdf4'; }
-    else { alert('No se pudo guardar: '+(d.error||'')); sel.value=''; }
-  }).catch(function(){ sel.disabled=false; sel.value=''; });
+    btn.disabled = false;
+    if(d.ok){
+      var sibs = btn.parentElement.querySelectorAll('button');
+      if(area !== 'postura') for(var i=0;i<sibs.length;i++) sibs[i].classList.remove('on');
+      btn.classList.add('on');
+    } else { alert('No se pudo guardar: '+(d.error||'')); }
+  }).catch(function(){ btn.disabled=false; });
 }
 </script>
