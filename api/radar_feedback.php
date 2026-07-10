@@ -29,7 +29,7 @@ $usuario_id = Auth::id();
 
 // Verificar que la cotización existe y pertenece a la empresa
 $cot = DB::row(
-    "SELECT id, estado, COALESCE(vendedor_id, usuario_id) AS vendedor_id
+    "SELECT id, estado, radar_bucket, COALESCE(vendedor_id, usuario_id) AS vendedor_id
      FROM cotizaciones WHERE id=? AND empresa_id=?",
     [$cot_id, $empresa_id]
 );
@@ -60,5 +60,16 @@ DB::execute(
      ON DUPLICATE KEY UPDATE tipo = VALUES(tipo), updated_at = NOW()",
     [$cot_id, (int)$cot['vendedor_id'], $empresa_id, $tipo]
 );
+
+// Historia insert-only (misma que los taps de la Mesa): el upsert de arriba
+// pierde el CUÁNDO al re-tapear (updated_at se bumpea) — esta fila preserva
+// que la señal se atendió en su momento, para el reporte del equipo.
+try {
+    DB::execute(
+        "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
+         VALUES (?,?,?,'feedback',?,NULL,?)",
+        [$cot_id, $usuario_id, $empresa_id, $tipo, $cot['radar_bucket']]
+    );
+} catch (Throwable $e) {} // tabla aún no migrada — el feedback ya quedó arriba
 
 echo json_encode(['ok' => true, 'tipo' => $tipo]);

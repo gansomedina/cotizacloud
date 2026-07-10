@@ -153,10 +153,11 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     <span style="font-weight:800">📋 Mesa de trabajo</span>
     <span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:10px;font-weight:700">BETA · solo admin</span>
     <span style="color:#4a4a46;font-size:13.5px">
-      <?php if ($mr['n'] > 0 || !empty($mr['atendidas'])): ?>
-        <b><?= (int)$mr['n'] ?></b> pendientes · <b><?= $mmoney($mr['monto']) ?></b> en juego
+      <?php if ($mr['n'] > 0 || !empty($mr['atendidas']) || !empty($mr['descartadas'])): ?>
+        <b><?= (int)$mr['n'] ?></b> pendientes · <b><?= $mmoney($mr['monto']) ?></b> en juego<?php
+          if (($mr['universo'] ?? 0) > count($mesa['rows'])): ?> <span style="color:#a8a8a2">(top <?= count($mesa['rows']) ?> de <?= (int)$mr['universo'] ?> — cartera completa en el 📊 Reporte)</span><?php endif; ?>
         <?php if ($mr['sin_postura'] > 0): ?>
-          · <span style="color:#dc2626;font-weight:700"><?= (int)$mr['sin_postura'] ?> sin calificar</span>
+          · <span style="color:#dc2626;font-weight:700"><?= (int)$mr['sin_postura'] ?> sin captura</span>
         <?php endif; ?>
         <?php if (!empty($mr['atendidas'])): ?>
           · <span style="color:#16a34a;font-weight:700">✓ <?= (int)$mr['atendidas'] ?> atendida<?= $mr['atendidas'] > 1 ? 's' : '' ?> hoy</span>
@@ -168,7 +169,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <span style="color:#16a34a;font-weight:700">✓ al corriente</span>
       <?php endif; ?>
       <?php if ($mrec['rec_monto'] > 0): ?>
-        · <span style="color:#15803d;font-weight:800">💰 <?= $mmoney($mrec['rec_monto']) ?> recuperado</span>
+        · <span style="color:#15803d;font-weight:800" title="Toda la empresa, últimos <?= (int)$mrec['dias'] ?> días">💰 <?= $mmoney($mrec['rec_monto']) ?> recuperado (<?= (int)$mrec['dias'] ?>d)</span>
       <?php endif; ?>
     </span>
     <span style="margin-left:auto;color:#6a6a64;font-size:12px">tap para expandir ▾</span>
@@ -192,9 +193,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       Ciclo real de la empresa: la mitad de tus ventas cierra en <b><?= (int)$mc['mediana'] ?>d</b>,
       el 75% antes del día <b><?= (int)$mc['p75'] ?></b>.
       <?php endif; ?>
-      Cada cotización vive en la mesa hasta el día <b><?= 2 * $mp75 ?></b> (2× tu ventana) porque
-      tu cierre más tardío fue a los <b><?= (int)$mesa['limpieza']['linea_dias'] ?> días</b> — pasada tu ventana
-      el consejo pide definición, no seguimiento eterno. Tapea una fila para trabajarla y actualízala en cada toque.
+      Cada cotización vive en la mesa hasta el día <b><?= 2 * $mp75 ?></b> (2× tu ventana) — pasada tu ventana
+      el consejo pide definición, no seguimiento eterno. El aviso de limpieza corre en el día
+      <b><?= (int)$mesa['limpieza']['linea_dias'] ?></b> (tu cierre más tardío registrado o 2× tu ventana, lo que sea mayor). Tapea una fila para trabajarla y actualízala en cada toque.
       <span style="white-space:nowrap;margin-left:6px">
         <span class="mleg" style="background:#dc2626"></span>caliente
         <span class="mleg" style="background:#d97706"></span>actividad reciente
@@ -247,7 +248,8 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <p style="margin:0 0 8px"><b>¿Por qué salen cotizaciones pasadas de la ventana (venta tardía)?</b>
       Porque tu propia historia dice que sí cierras algunas tarde — tu récord es el que marca el aviso de
       limpieza. La mesa las mantiene hasta el día 2× tu ventana con un consejo de ultimátum (fecha límite o
-      descarte); después de ese día salen solas y, pasado tu récord histórico, se cuentan como ruido en el
+      descarte); después de ese día salen solas — salvo las que se vuelven a calentar (⚡ milagros), que se
+      quedan mientras tengan señal viva — y, pasado tu récord histórico, se cuentan como ruido en el
       aviso rojo de abajo.</p>
       <p style="margin:0 0 8px"><b>"⚡ Revivió".</b> La descartaste y el cliente volvió a abrirla esta semana.
       La mesa no afirma por qué volvió (pudo ser un toque tuyo o movimiento del cliente) — solo te avisa que
@@ -259,7 +261,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       del Radar: lo que marcas aquí aparece allá y viceversa. En el Radar los botones solo salen en señales
       calientes; aquí puedes calificar cualquiera. El 👎 la manda a "Descartadas hoy" (visible solo hoy, para que veas qué mataste); mañana sale de
       la mesa. El Radar la sigue vigilando y si el cliente revive, te la regresa con ⚡.</p>
-      <p style="margin:0 0 8px"><b>💰 Recuperado.</b> Suma las ventas de los últimos 30 días cuya cotización
+      <p style="margin:0 0 8px"><b>💰 Recuperado.</b> Suma las ventas del período elegido (<?= (int)$mrec['dias'] ?> días) cuya cotización
       YA estaba descartada (👎 o "Descartar") antes de cerrarse. Ese dinero se daba por muerto y aun así se
       cerró — sea porque el Radar te la regresó con ⚡ o porque alguien la retomó por su lado; el dato duro es
       solo ese: descartada antes, vendida después. Es de toda la empresa. "Cerrado tras trabajarse aquí" suma
@@ -394,24 +396,25 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <b>Cartera:</b>
         <b>Activas</b>: cotizaciones vivas asignadas (enviadas/vistas, sin venta).
         <b>Sin calificar</b>: activas donde el asesor no ha dado NINGÚN juicio (ni "¿Cómo lo ves?" ni 👍👎).
-        <b>Sin trabajar</b>: activas sin una sola captura en la mesa — cartera que nadie está tocando, con su monto.
+        <b>Sin trabajar</b>: activas sin una sola captura en la mesa ni calificación 👍👎 — cartera que nadie está tocando, con su monto.
         <b>Se le fueron</b>: pasaron la ventana de cierre (día <?= $mp75 ?>) y llevan <?= max(3, (int)ceil($mp75 / 2)) ?>+ días sin
         ninguna atención — ni captura, ni calificación, ni edición/reenvío. Mide atención, no ventas: cerrar no depende
         solo del asesor, pero tocarla sí. Descartarla con 👎 también cuenta (es una decisión) y la saca de esta columna.
-        <b>Señales 🔥 desatendidas</b>: cada vez que el cliente se calentó (episodio del Radar) sin ninguna acción en los <b>2 días siguientes</b> — ni captura, ni calificación, ni venta. Cada episodio se juzga solo: atender hoy no perdona la señal que se ignoró hace semanas. Rebotes entre buckets calientes del mismo episodio no cuentan doble.
+        <b>Señales 🔥 desatendidas</b>: cada vez que el cliente se calentó (episodio del Radar) sin ninguna acción en los <b>2 días siguientes</b> — ni captura, ni calificación. Cada episodio se juzga solo: atender hoy no perdona la señal que se ignoró hace semanas. Rebotes entre buckets calientes del mismo episodio no cuentan doble; las señales de las últimas 48h aún no se juzgan; si la cotización se cerró tras la señal (venta o respuesta del cliente), cuenta atendida — el desenlace llegó.
         <br><b>Trabajo:</b>
         <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática.
-        <b>Genera compromiso</b>: de las cotizaciones donde hubo plática, en cuántas quedó en algo (por cotización — re-declarar no infla).
+        <b>Genera compromiso</b>: de las cotizaciones con conversación declarada en el período (plática o desenlace), en cuántas el acuerdo VIGENTE es "Quedamos en algo" — si después se cambió a "Nada"/"No quiso", cuenta como eso, igual que en la mesa.
         <b>Cumplidos</b>: de los acuerdos con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio. "En curso" = acuerdos de hace menos de 5 días: aún no se califican, ni a favor ni en contra.
-        <b>¿Cómo lo ve?</b>: su última lectura declarada por cotización.
-        <b>👎 que revivieron</b>: descartes donde el cliente volvió a calentarse después — muchos = está matando ventas vivas.
+        <b>¿Cómo lo ve?</b>: su última lectura declarada por cotización, dentro del período elegido.
+        <b>👎 que revivieron</b>: descartes donde el cliente volvió a calentarse en cualquier momento posterior al descarte — muchos = está matando ventas vivas.
         <b>Recuperado</b>: ventas que ya estaban descartadas y aun así se cerraron.
       </div>
     <?php endif; ?>
     </div>
 
     <?php if (!$mesa['rows']): ?>
-      <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Sin pendientes: todo lo activo está trabajado y dentro de ventana.</div>
+      <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Sin filas accionables hoy — la mesa solo muestra lo trabajable
+        (con señal del cliente o dentro de ventana). La cartera completa, incluidas las que nadie ha tocado, está en el 📊 Reporte.</div>
     <?php else: ?>
 
       <?php if ($mesa_pend): ?>
