@@ -72,7 +72,7 @@ class Mesa
             return self::$cache[$ck] = [
                 'rows' => [], 'p75' => $p75,
                 'limpieza' => ['n' => 0, 'monto' => 0.0, 'linea_dias' => $linea_limpieza],
-                'ciclo' => $ciclo, 'resumen' => ['n' => 0, 'monto' => 0.0, 'sin_postura' => 0,
+                'ciclo' => $ciclo, 'resumen' => ['n' => 0, 'monto' => 0.0, 'sin_postura' => 0, 'universo' => 0,
                                                  'mas_viejo_dias' => 0, 'atendidas' => 0, 'descartadas' => 0],
             ];
         }
@@ -333,6 +333,7 @@ class Mesa
         });
 
         // Caps: milagros/revividas 6, mesa 25
+        $universo = count($rows);
         $t3 = 0; $capped = [];
         foreach ($rows as $r) {
             if (in_array($r['cat'], ['revivida','milagro'], true)) {
@@ -361,7 +362,7 @@ class Mesa
             'limpieza' => ['n' => $limpieza_n, 'monto' => $limpieza_monto, 'linea_dias' => $linea_limpieza],
             'ciclo'    => $ciclo,
             'resumen'  => ['n' => count($rows) - $atendidas - $descartadas, 'monto' => $monto,
-                           'atendidas' => $atendidas, 'descartadas' => $descartadas,
+                           'atendidas' => $atendidas, 'descartadas' => $descartadas, 'universo' => $universo,
                            'sin_postura' => $sin_postura, 'mas_viejo_dias' => $mas_viejo],
         ];
     }
@@ -449,16 +450,19 @@ class Mesa
                                         WHERE m.cotizacion_id = c.id
                                           AND m.area IN ('contacto','compromiso','postura'))
                             AND NOT EXISTS (SELECT 1 FROM radar_feedback rf
-                                            WHERE rf.cotizacion_id = c.id)) AS sin_trabajar,
+                                            WHERE rf.cotizacion_id = c.id
+                                              AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id))) AS sin_trabajar,
                            (NOT EXISTS (SELECT 1 FROM mesa_estados m2
                                         WHERE m2.cotizacion_id = c.id AND m2.area = 'postura')
                             AND NOT EXISTS (SELECT 1 FROM radar_feedback rf2
-                                            WHERE rf2.cotizacion_id = c.id)) AS sin_calificar,
+                                            WHERE rf2.cotizacion_id = c.id
+                                              AND rf2.usuario_id = COALESCE(c.vendedor_id, c.usuario_id))) AS sin_calificar,
                            (NOT EXISTS (SELECT 1 FROM mesa_estados m3
                                         WHERE m3.cotizacion_id = c.id
                                           AND m3.created_at >= NOW() - INTERVAL $k DAY)
                             AND NOT EXISTS (SELECT 1 FROM radar_feedback rf3
                                             WHERE rf3.cotizacion_id = c.id
+                                              AND rf3.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                                               AND rf3.updated_at >= NOW() - INTERVAL $k DAY)
                             AND NOT EXISTS (SELECT 1 FROM cotizacion_log cl
                                             WHERE cl.cotizacion_id = c.id AND cl.usuario_id IS NOT NULL
@@ -466,6 +470,7 @@ class Mesa
                                               AND cl.created_at >= NOW() - INTERVAL $k DAY)) AS abandonada,
                            EXISTS (SELECT 1 FROM radar_feedback rf4
                                    WHERE rf4.cotizacion_id = c.id
+                                     AND rf4.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                                      AND rf4.tipo = 'sin_interes') AS descartada
                     FROM cotizaciones c
                     WHERE c.empresa_id = ? AND c.estado IN ('enviada','vista')
@@ -492,10 +497,13 @@ class Mesa
             //     👍👎 o venta) DENTRO de los 2 días siguientes a la señal —
             //     atender hoy no perdona la señal ignorada hace semanas.
             //     Solo episodios con la ventana ya cerrada (2+ días de edad).
+            //     JUSTA: si la cotización se CERRÓ tras la señal (venta o
+            //     respuesta del cliente), cuenta atendida — el desenlace llegó
+            //     y los taps se bloquean en cerradas; no era atendible.
             $hot_in_rep = "'" . implode("','", self::HOT) . "'";
             foreach (DB::query(
                 "SELECT uid, COUNT(*) AS hot_total,
-                        SUM(NOT (ate_mesa OR ate_fb OR ate_venta)) AS hot_desatendidas
+                        SUM(NOT (ate_mesa OR ate_fb OR ate_venta OR ate_cierre)) AS hot_desatendidas
                  FROM (
                     SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
                            EXISTS (SELECT 1 FROM mesa_estados m
@@ -504,16 +512,18 @@ class Mesa
                                      AND m.created_at <= s.senal_at + INTERVAL 2 DAY) AS ate_mesa,
                            EXISTS (SELECT 1 FROM radar_feedback rf
                                    WHERE rf.cotizacion_id = s.cotizacion_id
+                                     AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                                      AND rf.updated_at >= s.senal_at
                                      AND rf.updated_at <= s.senal_at + INTERVAL 2 DAY) AS ate_fb,
                            EXISTS (SELECT 1 FROM ventas v
                                    WHERE v.cotizacion_id = s.cotizacion_id AND v.estado != 'cancelada'
-                                     AND v.created_at >= s.senal_at
-                                     AND v.created_at <= s.senal_at + INTERVAL 2 DAY) AS ate_venta
+                                     AND v.created_at >= s.senal_at) AS ate_venta,
+                           (c.accion_at IS NOT NULL AND c.accion_at >= s.senal_at) AS ate_cierre
                     FROM (SELECT bt.cotizacion_id, bt.created_at AS senal_at
                           FROM bucket_transitions bt
                           JOIN cotizaciones c2 ON c2.id = bt.cotizacion_id
                           WHERE c2.empresa_id = ? AND bt.bucket_nuevo IN ($hot_in_rep)
+                            AND c2.suspendida = 0 AND c2.total > 0
                             AND bt.created_at >= NOW() - INTERVAL $dias DAY
                             AND bt.created_at <= NOW() - INTERVAL 2 DAY
                             AND NOT EXISTS (SELECT 1 FROM bucket_transitions bt2
@@ -547,23 +557,39 @@ class Mesa
                 $out[$u]['no_contesta'] = (int)$r['no_contesta'];
             }
 
-            // 2) Desenlaces de plática — POR COTIZACIÓN, no por tap (re-tapear
-            //    la misma pill no infla). hablamos_cots = cotizaciones con
-            //    plática en el período: el denominador de "genera compromiso".
+            // 2) Desenlaces de plática — POR COTIZACIÓN y por estado VIGENTE
+            //    (un compromiso luego cambiado a "Nada" cuenta como "Nada",
+            //    igual que en la mesa). Denominador: cotizaciones con
+            //    conversación declarada en el período — plática O desenlace
+            //    (un compromiso implica plática aunque el "hablamos" haya
+            //    quedado fuera del período) — el numerador siempre cabe.
             foreach (DB::query(
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
-                        COUNT(DISTINCT CASE WHEN m.area = 'contacto' AND m.estado = 'hablamos' THEN m.cotizacion_id END) AS hablamos_cots,
-                        COUNT(DISTINCT CASE WHEN m.area = 'compromiso' AND m.estado = 'compromiso' THEN m.cotizacion_id END) AS con_compromiso,
-                        COUNT(DISTINCT CASE WHEN m.area = 'compromiso' AND m.estado = 'propuse_no_quiso' THEN m.cotizacion_id END) AS no_quiso,
-                        COUNT(DISTINCT CASE WHEN m.area = 'compromiso' AND m.estado = 'sin_compromiso' THEN m.cotizacion_id END) AS sin_compromiso
+                        COUNT(DISTINCT m.cotizacion_id) AS hablamos_cots
                  FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
-                 WHERE m.empresa_id = ? AND m.area IN ('contacto','compromiso')
-                   AND m.created_at >= NOW() - INTERVAL $dias DAY
+                 WHERE m.empresa_id = ? AND m.created_at >= NOW() - INTERVAL $dias DAY
+                   AND ((m.area = 'contacto' AND m.estado = 'hablamos') OR m.area = 'compromiso')
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
                 $out[$u] ??= $base;
-                $out[$u]['hablamos_cots']  = (int)$r['hablamos_cots'];
+                $out[$u]['hablamos_cots'] = (int)$r['hablamos_cots'];
+            }
+            foreach (DB::query(
+                "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
+                        SUM(m.estado = 'compromiso')       AS con_compromiso,
+                        SUM(m.estado = 'propuse_no_quiso') AS no_quiso,
+                        SUM(m.estado = 'sin_compromiso')   AS sin_compromiso
+                 FROM mesa_estados m
+                 JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
+                       WHERE empresa_id = ? AND area = 'compromiso'
+                         AND created_at >= NOW() - INTERVAL $dias DAY
+                       GROUP BY cotizacion_id) td ON td.mid = m.id
+                 JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 GROUP BY uid", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid']; if (!$u) continue;
+                $out[$u] ??= $base;
                 $out[$u]['con_compromiso'] = (int)$r['con_compromiso'];
                 $out[$u]['no_quiso']       = (int)$r['no_quiso'];
                 $out[$u]['sin_compromiso'] = (int)$r['sin_compromiso'];
@@ -572,7 +598,13 @@ class Mesa
             // 3) Compromisos cumplidos: el cliente se movió en los 5 días
             //    siguientes al "Quedamos en algo" (abrió la cotización con
             //    engagement real, o hubo venta). POR COTIZACIÓN: solo su
-            //    ÚLTIMO "Quedamos en algo" del período — re-tapear no infla.
+            //    "Quedamos en algo" VIGENTE del período: si después se cambió a
+            //    "Nada"/"No quiso", el acuerdo ya no existe y NO cuenta como
+            //    en curso — el reporte debe cuadrar con lo que la mesa muestra.
+            //    DESCARTADAS fuera: al descartar (👎 o postura descartada), el
+            //    acuerdo sale del examen — la cotización se juzga en descartes
+            //    (revividos/recuperado), no aquí. Ni "en curso" falso ni
+            //    "no cumplido" injusto por haberla matado a tiempo.
             //    Maduro = 5+ días; los frescos van como "en curso", no en contra.
             foreach (DB::query(
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
@@ -591,10 +623,18 @@ class Mesa
                         )) AS cumplidos
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
-                       WHERE empresa_id = ? AND area = 'compromiso' AND estado = 'compromiso'
+                       WHERE empresa_id = ? AND area = 'compromiso'
                          AND created_at >= NOW() - INTERVAL $dias DAY
                        GROUP BY cotizacion_id) tc ON tc.mid = m.id
                  JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 WHERE m.estado = 'compromiso'
+                   AND NOT ((SELECT mp.estado FROM mesa_estados mp
+                             WHERE mp.cotizacion_id = m.cotizacion_id AND mp.area = 'postura'
+                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada')
+                   AND NOT EXISTS (SELECT 1 FROM radar_feedback rf
+                                   WHERE rf.cotizacion_id = m.cotizacion_id
+                                     AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                     AND rf.tipo = 'sin_interes')
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
@@ -620,7 +660,10 @@ class Mesa
                 $out[$u]['postura'][$r['estado']] = (int)$r['n'];
             }
 
-            // 5) Descartes (👎 vigentes del período) que el cliente recalentó después
+            // 5) Descartes (👎 vigentes del período, DEL DUEÑO) que el cliente
+            //    recalentó después. Ancla: el PRIMER 'sin_interes' de la
+            //    historia insert-only — re-confirmar el 👎 no borra el revivido
+            //    (radar_feedback.updated_at se bumpea con cada re-tap).
             $hot_in = "'" . implode("','", self::HOT) . "'";
             foreach (DB::query(
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
@@ -628,9 +671,14 @@ class Mesa
                         SUM(EXISTS (SELECT 1 FROM bucket_transitions bt
                                     WHERE bt.cotizacion_id = rf.cotizacion_id
                                       AND bt.bucket_nuevo IN ($hot_in)
-                                      AND bt.created_at > rf.updated_at)) AS revividos
+                                      AND bt.created_at > COALESCE(
+                                          (SELECT MIN(mf.created_at) FROM mesa_estados mf
+                                           WHERE mf.cotizacion_id = rf.cotizacion_id
+                                             AND mf.area = 'feedback' AND mf.estado = 'sin_interes'),
+                                          rf.updated_at))) AS revividos
                  FROM radar_feedback rf JOIN cotizaciones c ON c.id = rf.cotizacion_id
                  WHERE rf.empresa_id = ? AND rf.tipo = 'sin_interes'
+                   AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                    AND rf.updated_at >= NOW() - INTERVAL $dias DAY
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
@@ -645,13 +693,17 @@ class Mesa
                 "SELECT uid, SUM(fd) AS rec_n, SUM(CASE WHEN fd THEN total ELSE 0 END) AS rec_monto
                  FROM (
                     SELECT COALESCE(c2.vendedor_id, c2.usuario_id) AS uid, v.total,
-                           (EXISTS (SELECT 1 FROM mesa_estados m
-                                    WHERE m.cotizacion_id = v.cotizacion_id AND m.empresa_id = v.empresa_id
-                                      AND m.created_at < v.created_at
-                                      AND ((m.area = 'postura'  AND m.estado = 'descartada')
-                                        OR (m.area = 'feedback' AND m.estado = 'sin_interes'))
-                            ) OR EXISTS (SELECT 1 FROM radar_feedback rf
+                           ((SELECT mf.estado FROM mesa_estados mf
+                             WHERE mf.cotizacion_id = v.cotizacion_id AND mf.empresa_id = v.empresa_id
+                               AND mf.area = 'feedback' AND mf.created_at < v.created_at
+                             ORDER BY mf.id DESC LIMIT 1) <=> 'sin_interes'
+                            OR (SELECT mp.estado FROM mesa_estados mp
+                             WHERE mp.cotizacion_id = v.cotizacion_id AND mp.empresa_id = v.empresa_id
+                               AND mp.area = 'postura' AND mp.created_at < v.created_at
+                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'
+                            OR EXISTS (SELECT 1 FROM radar_feedback rf
                                     WHERE rf.cotizacion_id = v.cotizacion_id AND rf.empresa_id = v.empresa_id
+                                      AND rf.usuario_id = COALESCE(c2.vendedor_id, c2.usuario_id)
                                       AND rf.tipo = 'sin_interes' AND rf.updated_at < v.created_at
                             )) AS fd
                     FROM ventas v JOIN cotizaciones c2 ON c2.id = v.cotizacion_id
@@ -672,8 +724,10 @@ class Mesa
 
         if ($out) {
             $uin = implode(',', array_map('intval', array_keys($out)));
-            foreach (DB::query("SELECT id, nombre FROM usuarios WHERE id IN ($uin)", []) as $r) {
-                if (isset($out[(int)$r['id']])) $out[(int)$r['id']]['nombre'] = $r['nombre'];
+            foreach (DB::query("SELECT id, nombre, activo FROM usuarios WHERE id IN ($uin)", []) as $r) {
+                if (isset($out[(int)$r['id']])) {
+                    $out[(int)$r['id']]['nombre'] = $r['nombre'] . ((int)($r['activo'] ?? 1) ? '' : ' (inactivo)');
+                }
             }
             uasort($out, fn($a, $b) => strcasecmp($a['nombre'], $b['nombre']));
         }
@@ -691,9 +745,9 @@ class Mesa
      * en la mesa (contacto/compromiso/postura) antes de cerrar. Excluye las
      * ya contadas como recuperadas para no sumar el mismo peso dos veces.
      *
-     * Sub-conteo honesto: si el asesor cambió el 👎 a 👍 antes de cerrar, el
-     * feedback vigente ya no es sin_interes y esa venta NO cuenta como
-     * recuperada por esa vía (queda el rastro en mesa_estados si lo declaró ahí).
+     * Se evalúa el estado VIGENTE al momento de la venta: si el asesor
+     * corrigió el 👎 a 👍 (o la postura descartada a otra) ANTES de cerrar,
+     * la venta NO cuenta como recuperada — por ninguna de las 3 vías.
      */
     public static function recuperado(int $empresa_id, int $dias = 30): array
     {
@@ -702,15 +756,18 @@ class Mesa
         try {
             $rows = DB::query(
                 "SELECT v.total,
-                        (EXISTS (
-                            SELECT 1 FROM mesa_estados m
-                            WHERE m.cotizacion_id = v.cotizacion_id AND m.empresa_id = v.empresa_id
-                              AND m.created_at < v.created_at
-                              AND ((m.area = 'postura'  AND m.estado = 'descartada')
-                                OR (m.area = 'feedback' AND m.estado = 'sin_interes'))
-                        ) OR EXISTS (
+                        ((SELECT mf.estado FROM mesa_estados mf
+                          WHERE mf.cotizacion_id = v.cotizacion_id AND mf.empresa_id = v.empresa_id
+                            AND mf.area = 'feedback' AND mf.created_at < v.created_at
+                          ORDER BY mf.id DESC LIMIT 1) <=> 'sin_interes'
+                         OR (SELECT mp.estado FROM mesa_estados mp
+                          WHERE mp.cotizacion_id = v.cotizacion_id AND mp.empresa_id = v.empresa_id
+                            AND mp.area = 'postura' AND mp.created_at < v.created_at
+                          ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'
+                         OR EXISTS (
                             SELECT 1 FROM radar_feedback rf
                             WHERE rf.cotizacion_id = v.cotizacion_id AND rf.empresa_id = v.empresa_id
+                              AND rf.usuario_id = COALESCE(c2.vendedor_id, c2.usuario_id)
                               AND rf.tipo = 'sin_interes' AND rf.updated_at < v.created_at
                         )) AS fue_descartada,
                         EXISTS (
@@ -719,7 +776,7 @@ class Mesa
                               AND m2.area IN ('contacto','compromiso','postura')
                               AND m2.created_at < v.created_at
                         ) AS fue_trabajada
-                 FROM ventas v
+                 FROM ventas v JOIN cotizaciones c2 ON c2.id = v.cotizacion_id
                  WHERE v.empresa_id = ? AND v.estado != 'cancelada'
                    AND v.cotizacion_id IS NOT NULL AND v.total > 0
                    AND v.created_at >= NOW() - INTERVAL $dias DAY",
