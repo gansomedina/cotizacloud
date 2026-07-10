@@ -206,9 +206,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     <?php if ($mrec['rec_n'] > 0 || $mrec['trab_n'] > 0): ?>
     <div style="margin-bottom:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;font-size:13px;color:#14532d">
       <?php if ($mrec['rec_n'] > 0): ?>
-      💰 <b>Recuperado por la Mesa (últimos <?= (int)$mrec['dias'] ?> días): <?= $mmoney($mrec['rec_monto']) ?></b>
+      💰 <b>Recuperado (últimos <?= (int)$mrec['dias'] ?> días): <?= $mmoney($mrec['rec_monto']) ?></b>
       — <?= (int)$mrec['rec_n'] ?> venta<?= $mrec['rec_n'] > 1 ? 's' : '' ?> que ya estaba<?= $mrec['rec_n'] > 1 ? 'n' : '' ?>
-      descartada<?= $mrec['rec_n'] > 1 ? 's' : '' ?> cuando el Radar avisó que el cliente revivió.
+      descartada<?= $mrec['rec_n'] > 1 ? 's' : '' ?> y aun así se cerr<?= $mrec['rec_n'] > 1 ? 'aron' : 'ó' ?>.
       <?php endif; ?>
       <?php if ($mrec['trab_n'] > 0): ?>
       <?= $mrec['rec_n'] > 0 ? '<span style="color:#16a34a">·</span> ' : '' ?>Cerrado tras trabajarse aquí:
@@ -245,8 +245,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       limpieza. La mesa las mantiene hasta el día 2× tu ventana con un consejo de ultimátum (fecha límite o
       descarte); después de ese día salen solas y, pasado tu récord histórico, se cuentan como ruido en el
       aviso rojo de abajo.</p>
-      <p style="margin:0 0 8px"><b>"⚡ Revivió".</b> La descartaste y el cliente volvió a abrirla esta semana por su cuenta.
-      Algo cambió de su lado — esas se atienden HOY, los milagros no se repiten.</p>
+      <p style="margin:0 0 8px"><b>"⚡ Revivió".</b> La descartaste y el cliente volvió a abrirla esta semana.
+      La mesa no afirma por qué volvió (pudo ser un toque tuyo o movimiento del cliente) — solo te avisa que
+      la señal existe. Esas se atienden HOY: una cotización descartada que se mueve no se deja pasar.</p>
       <p style="margin:0 0 8px"><b>El consejo (→).</b> No te repite lo que tú declaraste — te dice lo que el cliente
       hizo y tú no puedes ver (cuántas veces la abrió, cuántos días lleva callado, cuánta gente la está viendo)
       y la jugada concreta para el siguiente toque.</p>
@@ -255,10 +256,10 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       calientes; aquí puedes calificar cualquiera. El 👎 la manda a "Descartadas hoy" (visible solo hoy, para que veas qué mataste); mañana sale de
       la mesa. El Radar la sigue vigilando y si el cliente revive, te la regresa con ⚡.</p>
       <p style="margin:0 0 8px"><b>💰 Recuperado.</b> Suma las ventas de los últimos 30 días cuya cotización
-      YA estaba descartada (👎 o "Descartar") antes de cerrarse. Sin la mesa, ese dinero se daba por muerto —
-      el Radar detectó que el cliente volvió, te la regresó con ⚡, y se cerró. Es el retorno de la mesa en
-      pesos, de toda la empresa. "Cerrado tras trabajarse aquí" suma las demás ventas que pasaron por la mesa
-      (con capturas) antes de cerrar.</p>
+      YA estaba descartada (👎 o "Descartar") antes de cerrarse. Ese dinero se daba por muerto y aun así se
+      cerró — sea porque el Radar te la regresó con ⚡ o porque alguien la retomó por su lado; el dato duro es
+      solo ese: descartada antes, vendida después. Es de toda la empresa. "Cerrado tras trabajarse aquí" suma
+      las demás ventas que pasaron por la mesa (con capturas) antes de cerrar.</p>
       <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
       La meta del día es simple: dejar los pendientes en cero.</p>
     </div>
