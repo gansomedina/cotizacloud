@@ -31,7 +31,9 @@ $mesa = Mesa::armar($empresa_id, $mesa_uid);
 $mr   = $mesa['resumen'];
 $mp75 = max(1, (int)$mesa['p75']);
 $mmoney = fn(float $n) => '$' . number_format($n, 0);
-$mrec = Mesa::recuperado($empresa_id); // empresa-wide: la prueba en pesos de la mesa
+$mesa_dias = (int)($_GET['mesa_dias'] ?? 30);
+if (!in_array($mesa_dias, [7, 15, 30, 60, 90], true)) $mesa_dias = 30;
+$mrec = Mesa::recuperado($empresa_id, $mesa_dias); // empresa-wide: la prueba en pesos de la mesa
 
 $MESA_BUCKET_LBL = [
     'probable_cierre' => ['Probable cierre', '#dc2626'], 'onfire' => ['On fire', '#dc2626'],
@@ -146,7 +148,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     <?php
 };
 ?>
-<details class="card" id="mesa-card" style="margin-bottom:16px" <?= isset($_GET['mesa_uid']) ? 'open' : '' ?>>
+<details class="card" id="mesa-card" style="margin-bottom:16px" <?= isset($_GET['mesa_uid']) || isset($_GET['mesa_dias']) ? 'open' : '' ?>>
   <summary style="cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;list-style:none">
     <span style="font-weight:800">📋 Mesa de trabajo</span>
     <span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:10px;font-weight:700">BETA · solo admin</span>
@@ -267,13 +269,21 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     </div>
 
     <?php
-    $mrep = Mesa::reporte($empresa_id);
+    $mrep = Mesa::reporte($empresa_id, $mesa_dias);
     $mpct = fn(int $n, int $d) => $d > 0 ? round(100 * $n / $d) . '%' : '—';
     ?>
-    <div id="mesa-rp" style="display:none;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a">
+    <div id="mesa-rp" style="display:<?= isset($_GET['mesa_dias']) ? 'block' : 'none' ?>;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a">
       <div style="font-weight:800;margin-bottom:2px">📊 Reporte del equipo</div>
-      <div style="color:#6a6a64;margin-bottom:10px">Qué cartera carga cada asesor, qué NO ha hecho con ella, y qué está
+      <div style="color:#6a6a64;margin-bottom:8px">Qué cartera carga cada asesor, qué NO ha hecho con ella, y qué está
         declarando en la mesa. Los taps que das desde la mesa de un asesor cuentan a nombre de ese asesor.</div>
+      <div style="margin-bottom:10px;font-size:12px;color:#6a6a64">Período:
+        <?php foreach ([7, 15, 30, 60, 90] as $md): $act = $md === $mesa_dias; ?>
+        <a href="?mesa_uid=<?= (int)$mesa_uid ?>&mesa_dias=<?= $md ?>#mesa-card"
+           style="margin-left:4px;padding:2px 10px;border-radius:12px;text-decoration:none;font-weight:700;
+                  <?= $act ? 'background:#1a5c38;color:#fff' : 'background:#f4f4f0;color:#4a4a46;border:1px solid #e2e2dc' ?>"><?= $md ?>d</a>
+        <?php endforeach; ?>
+        <span style="margin-left:8px;color:#a8a8a2">la cartera es la foto de HOY; el período aplica a señales, trabajo y recuperado</span>
+      </div>
       <?php if (!$mrep['asesores']): ?>
         <div style="color:#6a6a64">Sin cotizaciones activas ni capturas — el reporte se llena conforme hay cartera y se usa la mesa.</div>
       <?php else: ?>
