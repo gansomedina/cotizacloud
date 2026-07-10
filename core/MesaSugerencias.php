@@ -240,6 +240,8 @@ class MesaSugerencias
                         'El cliente no te contestó — cambia de canal: mándale un mensaje corto con una pregunta que se conteste con sí o no; si ya le escribiste, márcale.',
                         'Sin respuesta del cliente — no repitas el mismo canal a la misma hora: otro medio, otra hora, y una pregunta de sí o no.',
                         'El cliente no respondió a tu último toque — intenta hoy por otro canal con una sola pregunta que pueda contestar con sí o no.',
+                        'Sin respuesta todavía — prueba hoy a otra hora y por otro medio; una pregunta corta, fácil de contestar.',
+                        'El cliente no ha contestado — el siguiente intento va por otro canal y con una pregunta que se responda en segundos.',
                     ]);
                 }
             }
@@ -473,6 +475,8 @@ class MesaSugerencias
                     'No repitas la plática: mándale al cliente una propuesta por escrito con fecha y anticipo definidos, y que tu siguiente llamada solo pida el sí o el no.',
                     'La siguiente llamada necesita algo nuevo — mándale antes al cliente una propuesta cerrada con fecha y anticipo, y llama solo a confirmarla.',
                     'Otra plática igual no cierra nada — mándale hoy al cliente una propuesta escrita con fecha y anticipo; la siguiente llamada es solo para el sí o el no.',
+                    'Ya hablaron y no aterrizó nada — pon la propuesta por escrito hoy (fecha y anticipo) y que el cliente solo diga sí o no.',
+                    'Para que la próxima llamada sirva, primero mándale hoy una propuesta cerrada — sin propuesta enfrente, el cliente no decide.',
                 ]);
                 $slots['decision'] = true;
             }
@@ -490,6 +494,8 @@ class MesaSugerencias
                     'Hablaron — ¿y quedaron en algo? Registra el desenlace; si no quedaron en nada, esa es tu siguiente llamada.',
                     'Hubo plática pero no declaraste el resultado — captúralo hoy; si no quedaron en nada, llama al cliente para aterrizar un acuerdo.',
                     'La plática quedó sin registro — declara en qué terminó; y si terminó en nada, tu siguiente llamada es para quedar en algo concreto.',
+                    'Hablaste con el cliente pero no capturaste el resultado — regístralo ahora; sin eso la mesa no puede ayudarte a darle seguimiento.',
+                    'Falta el desenlace de tu plática — decláralo y, si no quedaron en nada, ese es justo tu pendiente de hoy.',
                 ]);
         }
 
@@ -711,21 +717,29 @@ class MesaSugerencias
                     "El cliente lleva {$dsv}d sin abrir la cotización y ya salió de tu ventana — última jugada hoy: motivo nuevo con fecha límite; si no responde, descártala.",
                     "Van {$dsv}d sin aperturas y la cotización ya rebasó tu ventana — un último mensaje hoy con fecha límite; si sigue el silencio, descártala con razón.",
                     "El cliente tiene {$dsv}d sin abrir la cotización y el tiempo ya se pasó — hoy decides: mensaje final con fecha límite o descarte con razón.",
+                    "Cliente callado {$dsv}d y cotización vencida contra tu historial — un último mensaje con fecha límite y a lo que sigue.",
+                    "Ni aperturas en {$dsv}d ni tiempo a favor — cierra el caso hoy: última oferta con fecha o descarte con razón.",
                 ]),
                 $fuera             => $pk([
                     "La cotización ya pasó los {$p75} días en que normalmente cierras — el siguiente toque define: fecha de decisión o descarte, no otro \"¿cómo vamos?\".",
                     "Ya pasaron los {$p75} días en que sueles cerrar — llámale hoy al cliente para poner fecha de decisión; si no hay fecha, va para descarte.",
                     "Esta cotización ya tardó más de tus {$p75} días normales — el próximo contacto le pide al cliente una fecha, o se descarta.",
+                    "El tiempo de esta cotización ya venció contra tu propio historial — hoy le pones fecha límite al cliente o la descartas con razón.",
+                    "A esta edad tus cotizaciones ya no cierran solas — llámale hoy: fecha de decisión o la das de baja.",
                 ]),
                 $momentum === 'down' && !$dormida => $pk([
                     'El cliente abre la cotización cada vez menos — recupéralo con algo nuevo (una foto, un ajuste, un beneficio), no con un "¿ya lo pensó?".',
                     'El interés del cliente baja lectura tras lectura — tu siguiente mensaje necesita una razón nueva para que reabra la cotización.',
                     'Cada apertura de la cotización es más corta y más espaciada — mándale hoy algo distinto: un cambio, una foto o una fecha que expira.',
+                    'El cliente va soltando la cotización poco a poco — recupéralo hoy con una novedad real, no con un recordatorio.',
+                    'Las lecturas del cliente van en picada — cambia el juego hoy: ajuste, beneficio nuevo o fecha límite.',
                 ]),
                 $dormida           => $pk([
                     "El cliente lleva {$dsv}d sin volver a abrir la cotización — dale hoy un motivo nuevo para reabrirla; no un \"¿ya lo viste?\".",
                     "El cliente lleva {$dsv}d sin asomarse a la cotización — mándale algo que lo obligue a reabrirla: un cambio, una foto, una fecha que expira.",
                     "Van {$dsv}d sin una sola apertura de la cotización — escríbele hoy con una razón nueva para verla; el recordatorio solo ya no funciona.",
+                    "El cliente se durmió: {$dsv}d sin tocar la cotización — despiértalo con algo distinto: una foto, un ajuste o una fecha que vence.",
+                    "Silencio de {$dsv}d en la cotización — tu mensaje de hoy necesita traer algo nuevo que el anterior no tenía.",
                 ]),
                 $fit >= 60         => $pk([
                     'El patrón de lectura del cliente se parece al de los que sí compran (FIT alto) — no dejes enfriar la cotización: toque suave hoy.',
@@ -736,11 +750,15 @@ class MesaSugerencias
                     'La cotización está en tu mejor ventana de cierre — dale hoy un toque que termine en algo concreto: fecha, visita o anticipo.',
                     "La mayoría de tus ventas se cierran antes del día {$mediana} — el toque de hoy busca un acuerdo con el cliente, no un \"ahí la lleva\".",
                     'Estos son los días donde tus ventas se cierran — contacta hoy al cliente y sal con un compromiso chico: fecha, visita o anticipo.',
+                    'La cotización está fresca y es cuando más cierras — búscalo hoy y amarra el siguiente paso con fecha.',
+                    'Ahorita es cuando: tus cierres ocurren en estos primeros días — un toque hoy con propuesta de fecha o visita.',
                 ]),
                 default            => $pk([
                     "La cotización va en el día {$edad}, a medio camino de tu tiempo normal de cierre — el siguiente toque busca compromiso del cliente, no plática.",
                     'A esta altura, el que no amarra fecha pierde la venta — pídele hoy al cliente una definición chica: visita, anticipo o fecha.',
                     "La cotización ya va en el día {$edad} de tu ciclo — el toque de hoy pide algo concreto al cliente, no otro sondeo.",
+                    "El reloj corre: día {$edad} del ciclo — hoy toca pedirle al cliente una definición chica, no saludar.",
+                    'Va a media carrera — el siguiente contacto propone fecha o anticipo; un saludo suelto ya no suma.',
                 ]),
             },
         };
@@ -750,6 +768,9 @@ class MesaSugerencias
     private static function modular(string $f, string $arq, array $slots, bool $viva, bool $dormida, callable $pk): string
     {
         if ($arq === '' || $arq === 'muestra_chica' || $arq === 'motor_completo') return $f;
+        // El remate del arquetipo en TODAS las filas se vuelve muletilla.
+        // Aplicar solo en la mitad (determinístico por cotización+día).
+        if (($pk([0, 1])) === 1) return $f;
 
         switch ($arq) {
             case 'regalador':
@@ -790,7 +811,9 @@ class MesaSugerencias
             case 'sin_ritmo':
             case 'desconectado':
             case 'presente_pasivo':
-                $f = $pk(['Tu prioridad de hoy. ', 'Empieza el día aquí. ', 'Arranca el día por aquí. ']) . ucfirst($f);
+                $f .= ' ' . $pk(['Hazlo en tu primera hora — lo que no se hace temprano, no se hace.',
+                                 'Este toque va hoy antes de mediodía, no "al rato".',
+                                 'Agéndalo ahora mismo con hora — tu patrón es dejarlo pasar.']);
                 break;
             case 'sordo_a_senales':
                 if ($viva || !empty($slots['senal_viva'])) {
