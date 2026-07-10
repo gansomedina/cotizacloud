@@ -271,14 +271,61 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     $mpct = fn(int $n, int $d) => $d > 0 ? round(100 * $n / $d) . '%' : '—';
     ?>
     <div id="mesa-rp" style="display:none;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a">
-      <div style="font-weight:800;margin-bottom:2px">📊 Reporte del equipo — últimos <?= (int)$mrep['dias'] ?> días</div>
-      <div style="color:#6a6a64;margin-bottom:10px">Lo que cada asesor está capturando en la mesa y qué está pasando con eso.
-        Los taps que das desde la mesa de un asesor cuentan a nombre de ese asesor.</div>
+      <div style="font-weight:800;margin-bottom:2px">📊 Reporte del equipo</div>
+      <div style="color:#6a6a64;margin-bottom:10px">Qué cartera carga cada asesor, qué NO ha hecho con ella, y qué está
+        declarando en la mesa. Los taps que das desde la mesa de un asesor cuentan a nombre de ese asesor.</div>
       <?php if (!$mrep['asesores']): ?>
-        <div style="color:#6a6a64">Aún no hay capturas en el período — el reporte se llena conforme se usa la mesa.</div>
+        <div style="color:#6a6a64">Sin cotizaciones activas ni capturas — el reporte se llena conforme hay cartera y se usa la mesa.</div>
       <?php else: ?>
+
+      <div style="font-weight:800;font-size:11px;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Cartera hoy — lo que tiene y lo que NO ha hecho</div>
+      <div style="overflow-x:auto;margin-bottom:14px">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:820px">
+        <thead><tr style="text-align:left;color:#a8a8a2;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">
+          <th style="padding:4px 8px 4px 0">Asesor</th>
+          <th style="padding:4px 8px">Activas</th>
+          <th style="padding:4px 8px">Sin calificar</th>
+          <th style="padding:4px 8px">Sin trabajar</th>
+          <th style="padding:4px 8px">Se le fueron</th>
+          <th style="padding:4px 8px">Señales 🔥 desatendidas</th>
+        </tr></thead>
+        <tbody>
+        <?php foreach ($mrep['asesores'] as $ru): ?>
+        <tr style="border-top:1px solid #eeeee9;vertical-align:top">
+          <td style="padding:7px 8px 7px 0;font-weight:700;white-space:nowrap"><?= e($ru['nombre'] ?: '—') ?></td>
+          <td style="padding:7px 8px"><b><?= (int)$ru['activas'] ?></b></td>
+          <td style="padding:7px 8px;white-space:nowrap">
+            <?php if ($ru['sin_calificar']): ?>
+              <span style="color:#dc2626;font-weight:700"><?= (int)$ru['sin_calificar'] ?></span> de <?= (int)$ru['activas'] ?>
+              (<?= $mpct($ru['sin_calificar'], $ru['activas']) ?>)
+            <?php else: ?><span style="color:#16a34a;font-weight:700">0 ✓</span><?php endif; ?>
+          </td>
+          <td style="padding:7px 8px;white-space:nowrap">
+            <?php if ($ru['sin_trabajar']): ?>
+              <span style="color:#dc2626;font-weight:700"><?= (int)$ru['sin_trabajar'] ?></span>
+              · <?= $mmoney($ru['monto_sin_trabajar']) ?>
+            <?php else: ?><span style="color:#16a34a;font-weight:700">0 ✓</span><?php endif; ?>
+          </td>
+          <td style="padding:7px 8px;white-space:nowrap">
+            <?php if ($ru['se_fueron']): ?>
+              <span style="color:#b91c1c;font-weight:800"><?= (int)$ru['se_fueron'] ?></span>
+              · <?= $mmoney($ru['monto_se_fueron']) ?>
+            <?php else: ?><span style="color:#16a34a;font-weight:700">0 ✓</span><?php endif; ?>
+          </td>
+          <td style="padding:7px 8px;white-space:nowrap">
+            <?php if ($ru['hot_total']): ?>
+              <span style="<?= $ru['hot_desatendidas'] > 0 ? 'color:#b91c1c;font-weight:800' : 'color:#16a34a;font-weight:700' ?>"><?= (int)$ru['hot_desatendidas'] ?></span> de <?= (int)$ru['hot_total'] ?>
+            <?php else: ?><span style="color:#a8a8a2">sin señales</span><?php endif; ?>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+      </div>
+
+      <div style="font-weight:800;font-size:11px;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Trabajo declarado — últimos <?= (int)$mrep['dias'] ?> días</div>
       <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:760px">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:820px">
         <thead><tr style="text-align:left;color:#a8a8a2;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">
           <th style="padding:4px 8px 4px 0">Asesor</th>
           <th style="padding:4px 8px">Le contesta</th>
@@ -297,8 +344,8 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           <td style="padding:7px 8px 7px 0;font-weight:700;white-space:nowrap"><?= e($ru['nombre'] ?: '—') ?></td>
           <td style="padding:7px 8px;white-space:nowrap">
             <?php if ($toques): ?><b><?= (int)$ru['hablamos'] ?></b> de <?= $toques ?> toques
-              <span style="color:<?= $toques && $ru['hablamos'] / $toques >= .5 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['hablamos'], $toques) ?>)</span>
-            <?php else: ?><span style="color:#a8a8a2">sin toques</span><?php endif; ?>
+              <span style="color:<?= $ru['hablamos'] / $toques >= .5 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['hablamos'], $toques) ?>)</span>
+            <?php else: ?><span style="color:#dc2626;font-weight:700">sin toques declarados</span><?php endif; ?>
           </td>
           <td style="padding:7px 8px;white-space:nowrap">
             <?php if ($ru['hablamos']): ?><b><?= (int)$ru['con_compromiso'] ?></b> de <?= (int)$ru['hablamos'] ?> pláticas
@@ -332,12 +379,20 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         </tbody>
       </table>
       </div>
+
       <div style="margin-top:10px;color:#6a6a64;font-size:11.5px;line-height:1.55">
-        <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática ("Hablamos" vs "No contestó").
-        <b>Genera compromiso</b>: de las pláticas, cuántas amarraron "Quedamos en algo" — mide si la conversación produce compromisos, no solo saludos.
-        <b>Cumplidos</b>: de los "Quedamos en algo" con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio.
+        <b>Cartera:</b>
+        <b>Activas</b>: cotizaciones vivas asignadas (enviadas/vistas, sin venta).
+        <b>Sin calificar</b>: activas donde el asesor no ha dado NINGÚN juicio (ni "¿Cómo lo ves?" ni 👍👎).
+        <b>Sin trabajar</b>: activas sin una sola captura en la mesa — cartera que nadie está tocando, con su monto.
+        <b>Se le fueron</b>: pasaron la ventana de cierre (día <?= $mp75 ?>) sin una sola captura — envejecieron sin que las trabajara.
+        <b>Señales 🔥 desatendidas</b>: el Radar avisó que el cliente se calentó (con 1+ día para reaccionar) y no hubo ninguna acción después: ni captura, ni calificación, ni venta.
+        <br><b>Trabajo:</b>
+        <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática.
+        <b>Genera compromiso</b>: de las pláticas, cuántas amarraron "Quedamos en algo".
+        <b>Cumplidos</b>: de los acuerdos con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio.
         <b>¿Cómo lo ve?</b>: su última lectura declarada por cotización.
-        <b>👎 que revivieron</b>: descartes donde el cliente volvió a calentarse después — muchos revividos = está matando ventas vivas.
+        <b>👎 que revivieron</b>: descartes donde el cliente volvió a calentarse después — muchos = está matando ventas vivas.
         <b>Recuperado</b>: ventas que ya estaban descartadas y aun así se cerraron.
       </div>
     <?php endif; ?>
