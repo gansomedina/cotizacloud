@@ -371,4 +371,66 @@ class Mesa
     {
         return self::armar($empresa_id, $vendedor_id)['resumen'];
     }
+
+    /**
+     * Contador de recuperado — la prueba en pesos de la Mesa (empresa-wide).
+     *
+     * "Recuperado": ventas de los últimos N días cuya cotización YA estaba
+     * descartada ANTES de la venta (👎 del Radar o "Descartar" en la mesa) —
+     * dinero que sin la vigilancia de revividas se habría dado por muerto.
+     *
+     * "Trabajada": ventas cuya cotización tuvo al menos una declaración real
+     * en la mesa (contacto/compromiso/postura) antes de cerrar. Excluye las
+     * ya contadas como recuperadas para no sumar el mismo peso dos veces.
+     *
+     * Sub-conteo honesto: si el asesor cambió el 👎 a 👍 antes de cerrar, el
+     * feedback vigente ya no es sin_interes y esa venta NO cuenta como
+     * recuperada por esa vía (queda el rastro en mesa_estados si lo declaró ahí).
+     */
+    public static function recuperado(int $empresa_id, int $dias = 30): array
+    {
+        $dias  = max(1, (int)$dias);
+        $vacio = ['rec_n' => 0, 'rec_monto' => 0.0, 'trab_n' => 0, 'trab_monto' => 0.0, 'dias' => $dias];
+        try {
+            $rows = DB::query(
+                "SELECT v.total,
+                        (EXISTS (
+                            SELECT 1 FROM mesa_estados m
+                            WHERE m.cotizacion_id = v.cotizacion_id AND m.empresa_id = v.empresa_id
+                              AND m.created_at < v.created_at
+                              AND ((m.area = 'postura'  AND m.estado = 'descartada')
+                                OR (m.area = 'feedback' AND m.estado = 'sin_interes'))
+                        ) OR EXISTS (
+                            SELECT 1 FROM radar_feedback rf
+                            WHERE rf.cotizacion_id = v.cotizacion_id AND rf.empresa_id = v.empresa_id
+                              AND rf.tipo = 'sin_interes' AND rf.updated_at < v.created_at
+                        )) AS fue_descartada,
+                        EXISTS (
+                            SELECT 1 FROM mesa_estados m2
+                            WHERE m2.cotizacion_id = v.cotizacion_id AND m2.empresa_id = v.empresa_id
+                              AND m2.area IN ('contacto','compromiso','postura')
+                              AND m2.created_at < v.created_at
+                        ) AS fue_trabajada
+                 FROM ventas v
+                 WHERE v.empresa_id = ? AND v.estado != 'cancelada'
+                   AND v.cotizacion_id IS NOT NULL AND v.total > 0
+                   AND v.created_at >= NOW() - INTERVAL $dias DAY",
+                [$empresa_id]
+            );
+        } catch (Throwable $e) {
+            return $vacio; // mesa_estados aún no migrada
+        }
+
+        $out = $vacio;
+        foreach ($rows as $r) {
+            if ((int)$r['fue_descartada'] === 1) {
+                $out['rec_n']++;
+                $out['rec_monto'] += (float)$r['total'];
+            } elseif ((int)$r['fue_trabajada'] === 1) {
+                $out['trab_n']++;
+                $out['trab_monto'] += (float)$r['total'];
+            }
+        }
+        return $out;
+    }
 }

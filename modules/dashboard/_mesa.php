@@ -31,6 +31,7 @@ $mesa = Mesa::armar($empresa_id, $mesa_uid);
 $mr   = $mesa['resumen'];
 $mp75 = max(1, (int)$mesa['p75']);
 $mmoney = fn(float $n) => '$' . number_format($n, 0);
+$mrec = Mesa::recuperado($empresa_id); // empresa-wide: la prueba en pesos de la mesa
 
 $MESA_BUCKET_LBL = [
     'probable_cierre' => ['Probable cierre', '#dc2626'], 'onfire' => ['On fire', '#dc2626'],
@@ -164,6 +165,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <?php else: ?>
         <span style="color:#16a34a;font-weight:700">✓ al corriente</span>
       <?php endif; ?>
+      <?php if ($mrec['rec_monto'] > 0): ?>
+        · <span style="color:#15803d;font-weight:800">💰 <?= $mmoney($mrec['rec_monto']) ?> recuperado</span>
+      <?php endif; ?>
     </span>
     <span style="margin-left:auto;color:#6a6a64;font-size:12px">tap para expandir ▾</span>
   </summary>
@@ -198,6 +202,21 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <a href="#" onclick="event.preventDefault();var p=document.getElementById('mesa-pb');p.style.display=p.style.display==='none'?'block':'none'"
          style="margin-left:10px;color:#1a5c38;font-weight:700;text-decoration:none;white-space:nowrap">📖 ¿Cómo funciona?</a>
     </div>
+
+    <?php if ($mrec['rec_n'] > 0 || $mrec['trab_n'] > 0): ?>
+    <div style="margin-bottom:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;font-size:13px;color:#14532d">
+      <?php if ($mrec['rec_n'] > 0): ?>
+      💰 <b>Recuperado por la Mesa (últimos <?= (int)$mrec['dias'] ?> días): <?= $mmoney($mrec['rec_monto']) ?></b>
+      — <?= (int)$mrec['rec_n'] ?> venta<?= $mrec['rec_n'] > 1 ? 's' : '' ?> que ya estaba<?= $mrec['rec_n'] > 1 ? 'n' : '' ?>
+      descartada<?= $mrec['rec_n'] > 1 ? 's' : '' ?> cuando el Radar avisó que el cliente revivió.
+      <?php endif; ?>
+      <?php if ($mrec['trab_n'] > 0): ?>
+      <?= $mrec['rec_n'] > 0 ? '<span style="color:#16a34a">·</span> ' : '' ?>Cerrado tras trabajarse aquí:
+      <b><?= $mmoney($mrec['trab_monto']) ?></b> (<?= (int)$mrec['trab_n'] ?> venta<?= $mrec['trab_n'] > 1 ? 's' : '' ?>).
+      <?php endif; ?>
+      <span style="color:#3f6212;font-size:12px">Datos de toda la empresa, no solo de este asesor.</span>
+    </div>
+    <?php endif; ?>
 
     <div id="mesa-pb" style="display:none;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a;line-height:1.6">
       <div style="font-weight:800;margin-bottom:6px">📖 Playbook de la Mesa de Trabajo</div>
@@ -235,6 +254,11 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       del Radar: lo que marcas aquí aparece allá y viceversa. En el Radar los botones solo salen en señales
       calientes; aquí puedes calificar cualquiera. El 👎 la manda a "Descartadas hoy" (visible solo hoy, para que veas qué mataste); mañana sale de
       la mesa. El Radar la sigue vigilando y si el cliente revive, te la regresa con ⚡.</p>
+      <p style="margin:0 0 8px"><b>💰 Recuperado.</b> Suma las ventas de los últimos 30 días cuya cotización
+      YA estaba descartada (👎 o "Descartar") antes de cerrarse. Sin la mesa, ese dinero se daba por muerto —
+      el Radar detectó que el cliente volvió, te la regresó con ⚡, y se cerró. Es el retorno de la mesa en
+      pesos, de toda la empresa. "Cerrado tras trabajarse aquí" suma las demás ventas que pasaron por la mesa
+      (con capturas) antes de cerrar.</p>
       <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
       La meta del día es simple: dejar los pendientes en cero.</p>
     </div>
