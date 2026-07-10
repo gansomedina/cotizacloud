@@ -699,6 +699,8 @@ class Mesa
             //    recalentó después. Ancla: el PRIMER 'sin_interes' de la
             //    historia insert-only — re-confirmar el 👎 no borra el revivido
             //    (radar_feedback.updated_at se bumpea con cada re-tap).
+            //    Las VENDIDAS fuera (principio único): descartada-y-vendida se
+            //    juzga en Recuperado — aquí duplicaría el denominador.
             $hot_in = "'" . implode("','", self::HOT) . "'";
             foreach (DB::query(
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
@@ -715,6 +717,9 @@ class Mesa
                  WHERE rf.empresa_id = ? AND rf.tipo = 'sin_interes'
                    AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                    AND rf.updated_at >= NOW() - INTERVAL $dias DAY
+                   AND NOT EXISTS (SELECT 1 FROM ventas v
+                                   WHERE v.cotizacion_id = rf.cotizacion_id
+                                     AND v.estado != 'cancelada')
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
