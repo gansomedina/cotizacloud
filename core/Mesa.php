@@ -373,6 +373,176 @@ class Mesa
     }
 
     /**
+     * Reporte del equipo — métricas por asesor de lo capturado en la mesa.
+     *
+     * Atribución: por el asesor DUEÑO de la cotización (vendedor_id/usuario_id),
+     * no por quién dio el tap — hoy tapea el admin pero el crédito va al asesor.
+     *
+     * - contacto:    conteo de toques declarados → % le contesta
+     * - compromiso:  de las pláticas (hablamos), cuántas amarraron "Quedamos
+     *                en algo" → % genera compromiso (¿están generando compromisos?)
+     * - cumplidos:   de los "Quedamos en algo" con 5+ días de maduración,
+     *                en cuántos el cliente SE MOVIÓ en los 5 días siguientes
+     *                (abrió la cotización o compró) — hecho observable, no juicio
+     * - postura:     distribución de "¿Cómo lo ves?" (última por cotización)
+     * - revividos:   de sus 👎, cuántos el cliente volvió a calentar después
+     * - recuperado:  su rebanada del contador (descartada antes, vendida después)
+     */
+    public static function reporte(int $empresa_id, int $dias = 30): array
+    {
+        $dias = max(1, (int)$dias);
+        $out  = [];
+        $base = [
+            'nombre' => '', 'hablamos' => 0, 'no_contesta' => 0,
+            'con_compromiso' => 0, 'no_quiso' => 0, 'sin_compromiso' => 0,
+            'comp_maduros' => 0, 'comp_cumplidos' => 0, 'comp_en_curso' => 0,
+            'postura' => [], 'descartes' => 0, 'revividos' => 0,
+            'rec_n' => 0, 'rec_monto' => 0.0,
+        ];
+
+        try {
+            // 1) Contacto: cada declaración es un toque registrado
+            foreach (DB::query(
+                "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
+                        SUM(m.estado = 'hablamos')    AS hablamos,
+                        SUM(m.estado = 'no_contesta') AS no_contesta
+                 FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 WHERE m.empresa_id = ? AND m.area = 'contacto'
+                   AND m.created_at >= NOW() - INTERVAL $dias DAY
+                 GROUP BY uid", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid']; if (!$u) continue;
+                $out[$u] ??= $base;
+                $out[$u]['hablamos']    = (int)$r['hablamos'];
+                $out[$u]['no_contesta'] = (int)$r['no_contesta'];
+            }
+
+            // 2) Desenlaces de plática (área compromiso)
+            foreach (DB::query(
+                "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
+                        SUM(m.estado = 'compromiso')       AS con_compromiso,
+                        SUM(m.estado = 'propuse_no_quiso') AS no_quiso,
+                        SUM(m.estado = 'sin_compromiso')   AS sin_compromiso
+                 FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 WHERE m.empresa_id = ? AND m.area = 'compromiso'
+                   AND m.created_at >= NOW() - INTERVAL $dias DAY
+                 GROUP BY uid", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid']; if (!$u) continue;
+                $out[$u] ??= $base;
+                $out[$u]['con_compromiso'] = (int)$r['con_compromiso'];
+                $out[$u]['no_quiso']       = (int)$r['no_quiso'];
+                $out[$u]['sin_compromiso'] = (int)$r['sin_compromiso'];
+            }
+
+            // 3) Compromisos cumplidos: el cliente se movió en los 5 días
+            //    siguientes al "Quedamos en algo" (abrió la cotización con
+            //    engagement real, o hubo venta). Solo compromisos maduros
+            //    (5+ días) — los frescos van como "en curso", no en contra.
+            foreach (DB::query(
+                "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
+                        SUM(m.created_at <= NOW() - INTERVAL 5 DAY) AS maduros,
+                        SUM(m.created_at >  NOW() - INTERVAL 5 DAY) AS en_curso,
+                        SUM(m.created_at <= NOW() - INTERVAL 5 DAY AND (
+                            EXISTS (SELECT 1 FROM ventas v
+                                    WHERE v.cotizacion_id = m.cotizacion_id AND v.estado != 'cancelada'
+                                      AND v.created_at >= m.created_at
+                                      AND v.created_at <= m.created_at + INTERVAL 5 DAY)
+                         OR EXISTS (SELECT 1 FROM quote_sessions qs
+                                    WHERE qs.cotizacion_id = m.cotizacion_id AND qs.es_interno = 0
+                                      AND NOT (COALESCE(qs.visible_ms,0) < 200 AND COALESCE(qs.scroll_max,0) < 35)
+                                      AND qs.created_at > m.created_at
+                                      AND qs.created_at <= m.created_at + INTERVAL 5 DAY)
+                        )) AS cumplidos
+                 FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 WHERE m.empresa_id = ? AND m.area = 'compromiso' AND m.estado = 'compromiso'
+                   AND m.created_at >= NOW() - INTERVAL $dias DAY
+                 GROUP BY uid", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid']; if (!$u) continue;
+                $out[$u] ??= $base;
+                $out[$u]['comp_maduros']   = (int)$r['maduros'];
+                $out[$u]['comp_cumplidos'] = (int)$r['cumplidos'];
+                $out[$u]['comp_en_curso']  = (int)$r['en_curso'];
+            }
+
+            // 4) ¿Cómo lo ves? — última declaración por cotización en el período
+            foreach (DB::query(
+                "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, m.estado, COUNT(*) AS n
+                 FROM mesa_estados m
+                 JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
+                       WHERE empresa_id = ? AND area = 'postura'
+                         AND created_at >= NOW() - INTERVAL $dias DAY
+                       GROUP BY cotizacion_id) t ON t.mid = m.id
+                 JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 GROUP BY uid, m.estado", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid']; if (!$u) continue;
+                $out[$u] ??= $base;
+                $out[$u]['postura'][$r['estado']] = (int)$r['n'];
+            }
+
+            // 5) Descartes (👎 vigentes del período) que el cliente recalentó después
+            $hot_in = "'" . implode("','", self::HOT) . "'";
+            foreach (DB::query(
+                "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
+                        COUNT(*) AS descartes,
+                        SUM(EXISTS (SELECT 1 FROM bucket_transitions bt
+                                    WHERE bt.cotizacion_id = rf.cotizacion_id
+                                      AND bt.bucket_nuevo IN ($hot_in)
+                                      AND bt.created_at > rf.updated_at)) AS revividos
+                 FROM radar_feedback rf JOIN cotizaciones c ON c.id = rf.cotizacion_id
+                 WHERE rf.empresa_id = ? AND rf.tipo = 'sin_interes'
+                   AND rf.updated_at >= NOW() - INTERVAL $dias DAY
+                 GROUP BY uid", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid']; if (!$u) continue;
+                $out[$u] ??= $base;
+                $out[$u]['descartes'] = (int)$r['descartes'];
+                $out[$u]['revividos'] = (int)$r['revividos'];
+            }
+
+            // 6) Recuperado por asesor (mismas condiciones que recuperado())
+            foreach (DB::query(
+                "SELECT uid, SUM(fd) AS rec_n, SUM(CASE WHEN fd THEN total ELSE 0 END) AS rec_monto
+                 FROM (
+                    SELECT COALESCE(c2.vendedor_id, c2.usuario_id) AS uid, v.total,
+                           (EXISTS (SELECT 1 FROM mesa_estados m
+                                    WHERE m.cotizacion_id = v.cotizacion_id AND m.empresa_id = v.empresa_id
+                                      AND m.created_at < v.created_at
+                                      AND ((m.area = 'postura'  AND m.estado = 'descartada')
+                                        OR (m.area = 'feedback' AND m.estado = 'sin_interes'))
+                            ) OR EXISTS (SELECT 1 FROM radar_feedback rf
+                                    WHERE rf.cotizacion_id = v.cotizacion_id AND rf.empresa_id = v.empresa_id
+                                      AND rf.tipo = 'sin_interes' AND rf.updated_at < v.created_at
+                            )) AS fd
+                    FROM ventas v JOIN cotizaciones c2 ON c2.id = v.cotizacion_id
+                    WHERE v.empresa_id = ? AND v.estado != 'cancelada'
+                      AND v.cotizacion_id IS NOT NULL AND v.total > 0
+                      AND v.created_at >= NOW() - INTERVAL $dias DAY
+                 ) x
+                 GROUP BY uid", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid']; if (!$u) continue;
+                $out[$u] ??= $base;
+                $out[$u]['rec_n']     = (int)$r['rec_n'];
+                $out[$u]['rec_monto'] = (float)$r['rec_monto'];
+            }
+        } catch (Throwable $e) {
+            return ['dias' => $dias, 'asesores' => []]; // mesa_estados aún no migrada
+        }
+
+        if ($out) {
+            $uin = implode(',', array_map('intval', array_keys($out)));
+            foreach (DB::query("SELECT id, nombre FROM usuarios WHERE id IN ($uin)", []) as $r) {
+                if (isset($out[(int)$r['id']])) $out[(int)$r['id']]['nombre'] = $r['nombre'];
+            }
+            uasort($out, fn($a, $b) => strcasecmp($a['nombre'], $b['nombre']));
+        }
+        return ['dias' => $dias, 'asesores' => $out];
+    }
+
+    /**
      * Contador de recuperado — la prueba en pesos de la Mesa (empresa-wide).
      *
      * "Recuperado": ventas de los últimos N días cuya cotización YA estaba

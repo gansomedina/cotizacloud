@@ -201,14 +201,16 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       </span>
       <a href="#" onclick="event.preventDefault();var p=document.getElementById('mesa-pb');p.style.display=p.style.display==='none'?'block':'none'"
          style="margin-left:10px;color:#1a5c38;font-weight:700;text-decoration:none;white-space:nowrap">📖 ¿Cómo funciona?</a>
+      <a href="#" onclick="event.preventDefault();var p=document.getElementById('mesa-rp');p.style.display=p.style.display==='none'?'block':'none'"
+         style="margin-left:8px;color:#1a5c38;font-weight:700;text-decoration:none;white-space:nowrap">📊 Reporte del equipo</a>
     </div>
 
     <?php if ($mrec['rec_n'] > 0 || $mrec['trab_n'] > 0): ?>
     <div style="margin-bottom:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;font-size:13px;color:#14532d">
       <?php if ($mrec['rec_n'] > 0): ?>
-      💰 <b>Recuperado por la Mesa (últimos <?= (int)$mrec['dias'] ?> días): <?= $mmoney($mrec['rec_monto']) ?></b>
+      💰 <b>Recuperado (últimos <?= (int)$mrec['dias'] ?> días): <?= $mmoney($mrec['rec_monto']) ?></b>
       — <?= (int)$mrec['rec_n'] ?> venta<?= $mrec['rec_n'] > 1 ? 's' : '' ?> que ya estaba<?= $mrec['rec_n'] > 1 ? 'n' : '' ?>
-      descartada<?= $mrec['rec_n'] > 1 ? 's' : '' ?> cuando el Radar avisó que el cliente revivió.
+      descartada<?= $mrec['rec_n'] > 1 ? 's' : '' ?> y aun así se cerr<?= $mrec['rec_n'] > 1 ? 'aron' : 'ó' ?>.
       <?php endif; ?>
       <?php if ($mrec['trab_n'] > 0): ?>
       <?= $mrec['rec_n'] > 0 ? '<span style="color:#16a34a">·</span> ' : '' ?>Cerrado tras trabajarse aquí:
@@ -245,8 +247,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       limpieza. La mesa las mantiene hasta el día 2× tu ventana con un consejo de ultimátum (fecha límite o
       descarte); después de ese día salen solas y, pasado tu récord histórico, se cuentan como ruido en el
       aviso rojo de abajo.</p>
-      <p style="margin:0 0 8px"><b>"⚡ Revivió".</b> La descartaste y el cliente volvió a abrirla esta semana por su cuenta.
-      Algo cambió de su lado — esas se atienden HOY, los milagros no se repiten.</p>
+      <p style="margin:0 0 8px"><b>"⚡ Revivió".</b> La descartaste y el cliente volvió a abrirla esta semana.
+      La mesa no afirma por qué volvió (pudo ser un toque tuyo o movimiento del cliente) — solo te avisa que
+      la señal existe. Esas se atienden HOY: una cotización descartada que se mueve no se deja pasar.</p>
       <p style="margin:0 0 8px"><b>El consejo (→).</b> No te repite lo que tú declaraste — te dice lo que el cliente
       hizo y tú no puedes ver (cuántas veces la abrió, cuántos días lleva callado, cuánta gente la está viendo)
       y la jugada concreta para el siguiente toque.</p>
@@ -255,12 +258,89 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       calientes; aquí puedes calificar cualquiera. El 👎 la manda a "Descartadas hoy" (visible solo hoy, para que veas qué mataste); mañana sale de
       la mesa. El Radar la sigue vigilando y si el cliente revive, te la regresa con ⚡.</p>
       <p style="margin:0 0 8px"><b>💰 Recuperado.</b> Suma las ventas de los últimos 30 días cuya cotización
-      YA estaba descartada (👎 o "Descartar") antes de cerrarse. Sin la mesa, ese dinero se daba por muerto —
-      el Radar detectó que el cliente volvió, te la regresó con ⚡, y se cerró. Es el retorno de la mesa en
-      pesos, de toda la empresa. "Cerrado tras trabajarse aquí" suma las demás ventas que pasaron por la mesa
-      (con capturas) antes de cerrar.</p>
+      YA estaba descartada (👎 o "Descartar") antes de cerrarse. Ese dinero se daba por muerto y aun así se
+      cerró — sea porque el Radar te la regresó con ⚡ o porque alguien la retomó por su lado; el dato duro es
+      solo ese: descartada antes, vendida después. Es de toda la empresa. "Cerrado tras trabajarse aquí" suma
+      las demás ventas que pasaron por la mesa (con capturas) antes de cerrar.</p>
       <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
       La meta del día es simple: dejar los pendientes en cero.</p>
+    </div>
+
+    <?php
+    $mrep = Mesa::reporte($empresa_id);
+    $mpct = fn(int $n, int $d) => $d > 0 ? round(100 * $n / $d) . '%' : '—';
+    ?>
+    <div id="mesa-rp" style="display:none;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a">
+      <div style="font-weight:800;margin-bottom:2px">📊 Reporte del equipo — últimos <?= (int)$mrep['dias'] ?> días</div>
+      <div style="color:#6a6a64;margin-bottom:10px">Lo que cada asesor está capturando en la mesa y qué está pasando con eso.
+        Los taps que das desde la mesa de un asesor cuentan a nombre de ese asesor.</div>
+      <?php if (!$mrep['asesores']): ?>
+        <div style="color:#6a6a64">Aún no hay capturas en el período — el reporte se llena conforme se usa la mesa.</div>
+      <?php else: ?>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:760px">
+        <thead><tr style="text-align:left;color:#a8a8a2;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">
+          <th style="padding:4px 8px 4px 0">Asesor</th>
+          <th style="padding:4px 8px">Le contesta</th>
+          <th style="padding:4px 8px">Genera compromiso</th>
+          <th style="padding:4px 8px">Compromisos cumplidos</th>
+          <th style="padding:4px 8px">¿Cómo lo ve?</th>
+          <th style="padding:4px 8px">👎 que revivieron</th>
+          <th style="padding:4px 8px;text-align:right">Recuperado</th>
+        </tr></thead>
+        <tbody>
+        <?php foreach ($mrep['asesores'] as $ru):
+            $toques = $ru['hablamos'] + $ru['no_contesta'];
+            $pos_tot = array_sum($ru['postura']);
+        ?>
+        <tr style="border-top:1px solid #eeeee9;vertical-align:top">
+          <td style="padding:7px 8px 7px 0;font-weight:700;white-space:nowrap"><?= e($ru['nombre'] ?: '—') ?></td>
+          <td style="padding:7px 8px;white-space:nowrap">
+            <?php if ($toques): ?><b><?= (int)$ru['hablamos'] ?></b> de <?= $toques ?> toques
+              <span style="color:<?= $toques && $ru['hablamos'] / $toques >= .5 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['hablamos'], $toques) ?>)</span>
+            <?php else: ?><span style="color:#a8a8a2">sin toques</span><?php endif; ?>
+          </td>
+          <td style="padding:7px 8px;white-space:nowrap">
+            <?php if ($ru['hablamos']): ?><b><?= (int)$ru['con_compromiso'] ?></b> de <?= (int)$ru['hablamos'] ?> pláticas
+              <span style="color:<?= $ru['con_compromiso'] / $ru['hablamos'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos']) ?>)</span>
+            <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
+          </td>
+          <td style="padding:7px 8px;white-space:nowrap">
+            <?php if ($ru['comp_maduros']): ?><b><?= (int)$ru['comp_cumplidos'] ?></b> de <?= (int)$ru['comp_maduros'] ?>
+              (<?= $mpct($ru['comp_cumplidos'], $ru['comp_maduros']) ?>)<?= $ru['comp_en_curso'] ? ' · ' . (int)$ru['comp_en_curso'] . ' en curso' : '' ?>
+            <?php elseif ($ru['comp_en_curso']): ?><?= (int)$ru['comp_en_curso'] ?> en curso
+            <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
+          </td>
+          <td style="padding:7px 8px">
+            <?php if ($pos_tot): $pz = [];
+                foreach ($ru['postura'] as $pe => $pn) $pz[] = e($MESA_SHORT[$pe] ?? $pe) . ' ' . $mpct($pn, $pos_tot);
+                echo implode(' · ', $pz);
+            ?><span style="color:#a8a8a2"> (<?= $pos_tot ?> cot.)</span>
+            <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
+          </td>
+          <td style="padding:7px 8px;white-space:nowrap">
+            <?php if ($ru['descartes']): ?>
+              <span style="<?= $ru['revividos'] > 0 ? 'color:#d97706;font-weight:700' : '' ?>"><?= (int)$ru['revividos'] ?> de <?= (int)$ru['descartes'] ?></span>
+            <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
+          </td>
+          <td style="padding:7px 8px;text-align:right;white-space:nowrap">
+            <?php if ($ru['rec_n']): ?><b style="color:#15803d"><?= $mmoney($ru['rec_monto']) ?></b> (<?= (int)$ru['rec_n'] ?>)
+            <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+      </div>
+      <div style="margin-top:10px;color:#6a6a64;font-size:11.5px;line-height:1.55">
+        <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática ("Hablamos" vs "No contestó").
+        <b>Genera compromiso</b>: de las pláticas, cuántas amarraron "Quedamos en algo" — mide si la conversación produce compromisos, no solo saludos.
+        <b>Cumplidos</b>: de los "Quedamos en algo" con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio.
+        <b>¿Cómo lo ve?</b>: su última lectura declarada por cotización.
+        <b>👎 que revivieron</b>: descartes donde el cliente volvió a calentarse después — muchos revividos = está matando ventas vivas.
+        <b>Recuperado</b>: ventas que ya estaban descartadas y aun así se cerraron.
+      </div>
+    <?php endif; ?>
     </div>
 
     <?php if (!$mesa['rows']): ?>

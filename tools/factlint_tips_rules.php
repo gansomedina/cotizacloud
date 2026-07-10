@@ -51,4 +51,12 @@ return [
   ['id'=>'na_version_nueva_enviada','cat'=>'negocio-arquetipo','rx'=>'/(?:[Ll]e mandaste la (?:cotizaci[óo]n|versi[óo]n) (?:actualizada|nueva)|ya le mandaste la nueva|ya tiene la cotizaci[óo]n (?:actualizada|con sus cambios)|ya (?:abri[óo]|vio|revis[óo]) la (?:cotizaci[óo]n|versi[óo]n)(?: nueva| actualizada| con sus cambios)?|[Ll]a versi[óo]n nueva de la cotizaci[óo]n (?:sigue sin abrirse|ya est[áa] enviada)|no ha (?:abierto|visto) la (?:versi[óo]n nueva|cotizaci[óo]n con sus cambios)|La cotizaci[óo]n nueva ya est[áa] en manos del cliente)/u','req'=>'$accion_post_cambios === true'],
   ['id'=>'na_remate_arquetipo_hecho','cat'=>'negocio-arquetipo','rx'=>'/(?:Esta cotizaci[óo]n est[áa] viva|El cliente est[áa] activo: esta venta|Cotizaci[óo]n con se[ñn]al viva: dale prioridad)/u','req'=>'$leyendo || $hot || $reciente'],
   ['id'=>'na_remate_sordo_senal','cat'=>'negocio-arquetipo','rx'=>'/(?:El inter[ée]s del cliente se enfr[íi]a en horas|La se[ñn]al dura horas|Estas se[ñn]ales caducan el mismo d[íi]a)/u','req'=>'$leyendo || $hot || $reciente'],
+  // ── ESPONTANEIDAD: causas que NO observamos. Solo vemos QUE reabrió,
+  //    no POR QUÉ (pudo ser un toque del asesor fuera del sistema).
+  //    req='false' = prohibidas siempre. Solo tiempo pasado: "vuelve/regresa
+  //    sola" en presente habla de la FILA que regresa a la mesa (mecánica real).
+  ['id'=>'esp_volvio_solo','cat'=>'espontaneidad','rx'=>'/(volvi[oó]|regres[oó]|reabri[oó]|revivi[oó]|reapareci[oó])\s+sol[oa]\b/iu','req'=>'false'],
+  ['id'=>'esp_por_su_cuenta','cat'=>'espontaneidad','rx'=>'/por su cuenta/iu','req'=>'false'],
+  ['id'=>'esp_sin_que_buscaras','cat'=>'espontaneidad','rx'=>'/sin que (lo buscaras|t[uú] hicieras|hicieras nada|lo tocaras)/iu','req'=>'false'],
+  ['id'=>'esp_algo_cambio_afirmado','cat'=>'espontaneidad','rx'=>'/(?<!si )(algo cambi[oó] de su lado|su situaci[oó]n cambi[oó])/iu','req'=>'false'],
 ];

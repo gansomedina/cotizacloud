@@ -107,24 +107,24 @@ class MesaSugerencias
             if ($dsv >= 3) {
                 return $pk([
                     "El cliente reabrió esta cotización tras tu descarte pero ya lleva {$dsv}d sin volver — un último mensaje directo hoy, o descártala en firme.",
-                    "Volvió sola después del descarte y otra vez se calló ({$dsv}d sin abrir) — hoy decides: un empujón directo o el descarte final.",
+                    "La reabrió después del descarte y otra vez se calló ({$dsv}d sin abrir) — hoy decides: un empujón directo o el descarte final.",
                     "Reapareció tras el descarte y lleva {$dsv}d sin abrirla de nuevo — mándale hoy un mensaje directo; si no responde, descártala en firme.",
                 ]);
             }
             return match ($c['razon_descarte'] ?? '') {
                 'precio' => $pk([
-                    'La descartaste por precio y el cliente la volvió a abrir solo — algo cambió de su lado: mándale un mensaje hoy.',
-                    'La descartaste por precio y el cliente regresó solo a la cotización — su situación cambió: escríbele hoy mismo.',
-                    'Descartaste esta cotización por precio y el cliente la reabrió sin que lo buscaras — aprovecha: mándale un mensaje hoy.',
+                    'La descartaste por precio y el cliente la volvió a abrir — pregúntale hoy si algo cambió de su lado.',
+                    'La descartaste por precio y el cliente regresó a la cotización — escríbele hoy y averigua si su situación cambió.',
+                    'Descartaste esta cotización por precio y el cliente la reabrió — aprovecha la señal: mándale un mensaje hoy.',
                 ]),
                 'no_responde' => $pk([
-                    'La descartaste porque no respondía y el cliente volvió solo a la cotización — escríbele hoy; una segunda oportunidad así no se repite.',
-                    'El cliente que no respondía reabrió la cotización por su cuenta — mándale un mensaje hoy antes de que se vuelva a enfriar.',
-                    'La descartaste por silencio y el cliente regresó solo — escríbele hoy mismo; esta señal no va a repetirse.',
+                    'La descartaste porque no respondía y el cliente volvió a la cotización — escríbele hoy; una segunda oportunidad así no se repite.',
+                    'El cliente que no respondía reabrió la cotización — mándale un mensaje hoy antes de que se vuelva a enfriar.',
+                    'La descartaste por silencio y el cliente regresó a verla — escríbele hoy mismo; esta señal no va a repetirse.',
                 ]),
                 default => $pk([
                     'La descartaste y el cliente volvió a abrir la cotización esta semana — escríbele hoy; una señal así no se repite.',
-                    'Descartaste esta cotización y el cliente regresó solo — mándale un mensaje directo hoy antes de que se enfríe otra vez.',
+                    'Descartaste esta cotización y el cliente regresó a abrirla — mándale un mensaje directo hoy antes de que se enfríe otra vez.',
                     'El cliente reabrió una cotización que ya habías descartado — aprovecha hoy: mensaje directo preguntando si la retoman.',
                 ]),
             };
@@ -683,7 +683,7 @@ class MesaSugerencias
                 'El cliente regresó a la cotización después del silencio — aprovecha hoy: pregúntale si la retoman, sin presionar.',
             ]),
             'revivio'            => $pk([
-                'La cotización revivió sola: el cliente la volvió a abrir después de semanas — dale continuidad sin presión: pregúntale si el proyecto cambió.',
+                'La cotización revivió: el cliente la volvió a abrir después de semanas — dale continuidad sin presión: pregúntale si el proyecto cambió.',
                 'Tras semanas muerta, el cliente reabrió la cotización — retómala con calma: mensaje hoy preguntando cómo va su proyecto.',
                 'El cliente resucitó la cotización después de semanas — no lo presiones: pregúntale hoy si el plan sigue o algo cambió.',
             ]),
