@@ -388,8 +388,10 @@ class Mesa
      *                   últimos p75/2 días (mín. 3). Justa: mide atención,
      *                   nunca el resultado de la venta; descartarla con 👎
      *                   cuenta como decisión tomada y la excluye
-     * - hot_desatendidas: señales 🔥 del período (1+ día de edad) sin ninguna
-     *                   acción posterior (ni captura, ni feedback, ni venta)
+     * - hot_desatendidas: episodios 🔥 del período sin acción en los 2 días
+     *                   siguientes a la señal. Por episodio (rebotes entre
+     *                   buckets calientes no cuentan doble) y con ventana:
+     *                   atender hoy no perdona la señal ignorada hace semanas
      *
      * TRABAJO (últimos N días):
      * - contacto:    conteo de toques declarados → % le contesta
@@ -483,9 +485,13 @@ class Mesa
                 $out[$u]['monto_se_fueron']    = (float)$r['monto_se_fueron'];
             }
 
-            // 0b) Señales calientes del período DESATENDIDAS: el Radar avisó
-            //     (transición a bucket hot, con 1+ día para reaccionar) y no
-            //     hubo NINGUNA acción después: ni captura, ni 👍👎, ni venta.
+            // 0b) Señales calientes DESATENDIDAS — por EPISODIO y con ventana
+            //     de reacción. Episodio = transición a bucket hot sin otra
+            //     transición hot en los 2 días previos (rebotes entre buckets
+            //     calientes NO son señales nuevas). Atendida = acción (captura,
+            //     👍👎 o venta) DENTRO de los 2 días siguientes a la señal —
+            //     atender hoy no perdona la señal ignorada hace semanas.
+            //     Solo episodios con la ventana ya cerrada (2+ días de edad).
             $hot_in_rep = "'" . implode("','", self::HOT) . "'";
             foreach (DB::query(
                 "SELECT uid, COUNT(*) AS hot_total,
@@ -494,20 +500,27 @@ class Mesa
                     SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
                            EXISTS (SELECT 1 FROM mesa_estados m
                                    WHERE m.cotizacion_id = s.cotizacion_id
-                                     AND m.created_at >= s.senal_at) AS ate_mesa,
+                                     AND m.created_at >= s.senal_at
+                                     AND m.created_at <= s.senal_at + INTERVAL 2 DAY) AS ate_mesa,
                            EXISTS (SELECT 1 FROM radar_feedback rf
                                    WHERE rf.cotizacion_id = s.cotizacion_id
-                                     AND rf.updated_at >= s.senal_at) AS ate_fb,
+                                     AND rf.updated_at >= s.senal_at
+                                     AND rf.updated_at <= s.senal_at + INTERVAL 2 DAY) AS ate_fb,
                            EXISTS (SELECT 1 FROM ventas v
                                    WHERE v.cotizacion_id = s.cotizacion_id AND v.estado != 'cancelada'
-                                     AND v.created_at >= s.senal_at) AS ate_venta
-                    FROM (SELECT bt.cotizacion_id, MIN(bt.created_at) AS senal_at
+                                     AND v.created_at >= s.senal_at
+                                     AND v.created_at <= s.senal_at + INTERVAL 2 DAY) AS ate_venta
+                    FROM (SELECT bt.cotizacion_id, bt.created_at AS senal_at
                           FROM bucket_transitions bt
                           JOIN cotizaciones c2 ON c2.id = bt.cotizacion_id
                           WHERE c2.empresa_id = ? AND bt.bucket_nuevo IN ($hot_in_rep)
                             AND bt.created_at >= NOW() - INTERVAL $dias DAY
-                          GROUP BY bt.cotizacion_id
-                          HAVING MIN(bt.created_at) <= NOW() - INTERVAL 1 DAY) s
+                            AND bt.created_at <= NOW() - INTERVAL 2 DAY
+                            AND NOT EXISTS (SELECT 1 FROM bucket_transitions bt2
+                                            WHERE bt2.cotizacion_id = bt.cotizacion_id
+                                              AND bt2.bucket_nuevo IN ($hot_in_rep)
+                                              AND bt2.created_at < bt.created_at
+                                              AND bt2.created_at >= bt.created_at - INTERVAL 2 DAY)) s
                     JOIN cotizaciones c ON c.id = s.cotizacion_id
                  ) sen
                  GROUP BY uid", [$empresa_id]

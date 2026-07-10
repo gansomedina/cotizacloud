@@ -398,7 +398,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <b>Se le fueron</b>: pasaron la ventana de cierre (día <?= $mp75 ?>) y llevan <?= max(3, (int)ceil($mp75 / 2)) ?>+ días sin
         ninguna atención — ni captura, ni calificación, ni edición/reenvío. Mide atención, no ventas: cerrar no depende
         solo del asesor, pero tocarla sí. Descartarla con 👎 también cuenta (es una decisión) y la saca de esta columna.
-        <b>Señales 🔥 desatendidas</b>: el Radar avisó que el cliente se calentó (con 1+ día para reaccionar) y no hubo ninguna acción después: ni captura, ni calificación, ni venta.
+        <b>Señales 🔥 desatendidas</b>: cada vez que el cliente se calentó (episodio del Radar) sin ninguna acción en los <b>2 días siguientes</b> — ni captura, ni calificación, ni venta. Cada episodio se juzga solo: atender hoy no perdona la señal que se ignoró hace semanas. Rebotes entre buckets calientes del mismo episodio no cuentan doble.
         <br><b>Trabajo:</b>
         <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática.
         <b>Genera compromiso</b>: de las cotizaciones donde hubo plática, en cuántas quedó en algo (por cotización — re-declarar no infla).
