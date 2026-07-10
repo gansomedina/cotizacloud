@@ -19,7 +19,7 @@ class Mesa
     ];
 
     private const CAP_MESA     = 25;
-    private const CAP_MILAGROS = 3;
+    private const CAP_MILAGROS = 6;
 
     private static array $cache = [];
 
@@ -37,7 +37,7 @@ class Mesa
         if (!class_exists('Radar')) require_once MODULES_PATH . '/radar/Radar.php';
 
         $ciclo = Radar::ciclo_venta($empresa_id);
-        $p75   = ($ciclo['auto'] && !empty($ciclo['p75'])) ? max(1, (int)$ciclo['p75']) : 30;
+        $p75   = ($ciclo['auto'] && isset($ciclo['p75']) && $ciclo['p75'] !== null) ? max(1, (int)$ciclo['p75']) : 30;
 
         // Cierre más tardío de la historia de la empresa (línea de evidencia)
         $max_hist = (int)DB::val(
@@ -70,8 +70,10 @@ class Mesa
 
         if (!$cots) {
             return self::$cache[$ck] = [
-                'rows' => [], 'limpieza' => ['n' => 0, 'monto' => 0.0, 'linea_dias' => $linea_limpieza],
-                'ciclo' => $ciclo, 'resumen' => ['n' => 0, 'monto' => 0.0, 'sin_postura' => 0, 'mas_viejo_dias' => 0],
+                'rows' => [], 'p75' => $p75,
+                'limpieza' => ['n' => 0, 'monto' => 0.0, 'linea_dias' => $linea_limpieza],
+                'ciclo' => $ciclo, 'resumen' => ['n' => 0, 'monto' => 0.0, 'sin_postura' => 0,
+                                                 'mas_viejo_dias' => 0, 'atendidas' => 0, 'descartadas' => 0],
             ];
         }
 
@@ -119,6 +121,7 @@ class Mesa
             foreach (DB::query(
                 "SELECT cotizacion_id, estado FROM mesa_estados
                  WHERE empresa_id = ? AND cotizacion_id IN ($in) AND area = 'contacto'
+                   AND created_at >= NOW() - INTERVAL 30 DAY
                  ORDER BY id",
                 [$empresa_id]
             ) as $r) {
@@ -207,8 +210,12 @@ class Mesa
             $edad   = (int)$c['edad'];
             $bucket = $c['radar_bucket'];
             $es_hot = $bucket !== null && in_array($bucket, self::HOT, true);
-            $hot_reciente = $es_hot && $c['radar_bucket_at']
-                && (strtotime($c['radar_bucket_at']) >= $now - 7 * 86400);
+            // bucket_at solo se actualiza cuando el bucket CAMBIA: calor sostenido
+            // (cliente activo, bucket sin cambiar de nombre) también cuenta como reciente
+            $hot_reciente = $es_hot && (
+                ($c['radar_bucket_at'] && strtotime($c['radar_bucket_at']) >= $now - 7 * 86400)
+                || (int)($act_c[$cid]['v7'] ?? 0) > 0
+            );
             $postura    = $fb[$cid]['tipo'] ?? null;
             $descartada = ($postura === 'sin_interes');
             $dormida    = ((int)$c['visitas'] > 0 && (int)$c['dias_sin_vista'] >= 7);
@@ -223,14 +230,15 @@ class Mesa
                 continue;
             }
             // Fuera de toda ventana, sin calor reciente, sin revivir → limpieza
-            if ($fuera && !$hot_reciente && !isset($revividas[$cid])) {
+            // (descartada_hoy se respeta: prometimos visible un día)
+            if ($fuera && !$hot_reciente && !isset($revividas[$cid]) && !$descartada_hoy) {
                 if ($edad > $linea_limpieza) { $limpieza_n++; $limpieza_monto += (float)$c['total']; }
                 continue;
             }
 
             // Sin señal del cliente (nunca abrió) y sin calor → no es trabajo
             // de mesa (la tarjeta "Sin abrir" del dashboard ya la cubre)
-            if (!$es_hot && (int)$c['visitas'] === 0) continue;
+            if (!$es_hot && (int)$c['visitas'] === 0 && !$descartada_hoy) continue;
 
             // Categoría: mesa (capturas) + like del Radar (columna "Marcaste")
             if ($descartada && !isset($revividas[$cid])) {
@@ -260,7 +268,8 @@ class Mesa
                 'tier' => ($edad <= $p75 ? 1 : 2),
                 'decl' => $me[$cid] ?? [],
                 'atendida_hoy' => (function () use ($me, $cid) {
-                    foreach (($me[$cid] ?? []) as $d) {
+                    foreach (($me[$cid] ?? []) as $a => $d) {
+                        if ($a === 'feedback') continue; // un like solo no es atención
                         if (strtotime($d['at']) >= strtotime('today')) return true;
                     }
                     return false;
@@ -268,7 +277,8 @@ class Mesa
                 // Días desde la última declaración en la mesa (null = nunca)
                 'ult_decl_dias' => (function () use ($me, $cid) {
                     $max = 0;
-                    foreach (($me[$cid] ?? []) as $d) {
+                    foreach (($me[$cid] ?? []) as $a => $d) {
+                        if ($a === 'feedback') continue;
                         $t = strtotime($d['at']);
                         if ($t > $max) $max = $t;
                     }
@@ -327,7 +337,7 @@ class Mesa
         foreach ($rows as $r) {
             if (in_array($r['cat'], ['revivida','milagro'], true)) {
                 $t3++;
-                if ($t3 > 6) continue;
+                if ($t3 > self::CAP_MILAGROS) continue;
             }
             if (count($capped) >= self::CAP_MESA) break;
             $capped[] = $r;
@@ -360,5 +370,67 @@ class Mesa
     public static function resumen(int $empresa_id, int $vendedor_id): array
     {
         return self::armar($empresa_id, $vendedor_id)['resumen'];
+    }
+
+    /**
+     * Contador de recuperado — la prueba en pesos de la Mesa (empresa-wide).
+     *
+     * "Recuperado": ventas de los últimos N días cuya cotización YA estaba
+     * descartada ANTES de la venta (👎 del Radar o "Descartar" en la mesa) —
+     * dinero que sin la vigilancia de revividas se habría dado por muerto.
+     *
+     * "Trabajada": ventas cuya cotización tuvo al menos una declaración real
+     * en la mesa (contacto/compromiso/postura) antes de cerrar. Excluye las
+     * ya contadas como recuperadas para no sumar el mismo peso dos veces.
+     *
+     * Sub-conteo honesto: si el asesor cambió el 👎 a 👍 antes de cerrar, el
+     * feedback vigente ya no es sin_interes y esa venta NO cuenta como
+     * recuperada por esa vía (queda el rastro en mesa_estados si lo declaró ahí).
+     */
+    public static function recuperado(int $empresa_id, int $dias = 30): array
+    {
+        $dias  = max(1, (int)$dias);
+        $vacio = ['rec_n' => 0, 'rec_monto' => 0.0, 'trab_n' => 0, 'trab_monto' => 0.0, 'dias' => $dias];
+        try {
+            $rows = DB::query(
+                "SELECT v.total,
+                        (EXISTS (
+                            SELECT 1 FROM mesa_estados m
+                            WHERE m.cotizacion_id = v.cotizacion_id AND m.empresa_id = v.empresa_id
+                              AND m.created_at < v.created_at
+                              AND ((m.area = 'postura'  AND m.estado = 'descartada')
+                                OR (m.area = 'feedback' AND m.estado = 'sin_interes'))
+                        ) OR EXISTS (
+                            SELECT 1 FROM radar_feedback rf
+                            WHERE rf.cotizacion_id = v.cotizacion_id AND rf.empresa_id = v.empresa_id
+                              AND rf.tipo = 'sin_interes' AND rf.updated_at < v.created_at
+                        )) AS fue_descartada,
+                        EXISTS (
+                            SELECT 1 FROM mesa_estados m2
+                            WHERE m2.cotizacion_id = v.cotizacion_id AND m2.empresa_id = v.empresa_id
+                              AND m2.area IN ('contacto','compromiso','postura')
+                              AND m2.created_at < v.created_at
+                        ) AS fue_trabajada
+                 FROM ventas v
+                 WHERE v.empresa_id = ? AND v.estado != 'cancelada'
+                   AND v.cotizacion_id IS NOT NULL AND v.total > 0
+                   AND v.created_at >= NOW() - INTERVAL $dias DAY",
+                [$empresa_id]
+            );
+        } catch (Throwable $e) {
+            return $vacio; // mesa_estados aún no migrada
+        }
+
+        $out = $vacio;
+        foreach ($rows as $r) {
+            if ((int)$r['fue_descartada'] === 1) {
+                $out['rec_n']++;
+                $out['rec_monto'] += (float)$r['total'];
+            } elseif ((int)$r['fue_trabajada'] === 1) {
+                $out['trab_n']++;
+                $out['trab_monto'] += (float)$r['total'];
+            }
+        }
+        return $out;
     }
 }

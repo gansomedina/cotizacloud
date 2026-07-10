@@ -43,6 +43,11 @@ foreach ($coldB as $b) {
   else { $dsv=1; $v24=0; $mom=null; } // re_enganche/regreso/revivio/sobre_analisis: volvió reciente
   $states[] = ['visitas'=>3,'dsv'=>$dsv,'v24'=>$v24,'v7'=>2,'hot'=>0,'ips7'=>1,'bucket'=>$b,'uv'=>$dsv,'mom'=>$mom,'fit'=>0,'pc'=>null];
 }
+// HOT STALE: bucket caliente marcado hace días, cliente SIN abrir (dsv 3-6, v24=0)
+// — el punto ciego que dejó pasar C1/C2/C3 en la auditoría
+$states[] = ['visitas'=>3,'dsv'=>5,'v24'=>0,'v7'=>0,'hot'=>1,'ips7'=>1,'bucket'=>'validando_precio','uv'=>5,'mom'=>null,'fit'=>0,'pc'=>null];
+$states[] = ['visitas'=>3,'dsv'=>3,'v24'=>0,'v7'=>1,'hot'=>1,'ips7'=>1,'bucket'=>'probable_cierre','uv'=>3,'mom'=>null,'fit'=>0,'pc'=>'onfire'];
+$states[] = ['visitas'=>3,'dsv'=>6,'v24'=>0,'v7'=>0,'hot'=>1,'ips7'=>3,'bucket'=>'multi_persona','uv'=>6,'mom'=>null,'fit'=>0,'pc'=>null];
 // sin bucket: variar momentum/fit/dsv/edad para las ramas default
 $states[] = ['visitas'=>3,'dsv'=>4,'v24'=>0,'v7'=>2,'hot'=>0,'ips7'=>1,'bucket'=>null,'uv'=>4,'mom'=>'down','fit'=>0,'pc'=>null];
 $states[] = ['visitas'=>3,'dsv'=>3,'v24'=>0,'v7'=>4,'hot'=>0,'ips7'=>1,'bucket'=>null,'uv'=>3,'mom'=>null,'fit'=>70,'pc'=>null];
@@ -70,6 +75,14 @@ foreach (['no_contesta','hablamos'] as $ce) {
 }
 foreach (['decidiendo','objecion_precio','pidio_cambios','en_el_aire'] as $pe)
   $decls[] = ['con'=>null,'com'=>null,'pos'=>['estado'=>$pe,'at'=>$HOY]];
+// compromiso VIGENTE con timestamp histórico (con@H3+com@H3): activa las ramas
+// dcom>=2 de PACTO (humo/fuera) que antes jamás se ejercitaban
+$decls[] = ['con'=>['estado'=>'hablamos','at'=>$H3],'com'=>['estado'=>'compromiso','at'=>$H3],'pos'=>null];
+$decls[] = ['con'=>['estado'=>'hablamos','at'=>$H3],'com'=>['estado'=>'compromiso','at'=>$H3],'pos'=>['estado'=>'decidiendo','at'=>$HOY]];
+$decls[] = ['con'=>['estado'=>'hablamos','at'=>$H3],'com'=>['estado'=>'compromiso','at'=>$H3],'pos'=>['estado'=>'pidio_cambios','at'=>$H3]];
+// compromiso sin contacto (tc=0 → todo vigente)
+$decls[] = ['con'=>null,'com'=>['estado'=>'compromiso','at'=>$HOY],'pos'=>null];
+$decls[] = ['con'=>null,'com'=>['estado'=>'compromiso','at'=>$H3],'pos'=>null];
 
 $cats   = ['trabajo','interes_muriendo','ultimo_tramo'];
 $edades = [2,6,12,25];
@@ -122,6 +135,10 @@ foreach ($states as $rs) {
               $ult_decl=0; foreach([$dc['con'],$dc['com'],$dc['pos']] as $d) if($d)$ult_decl=max($ult_decl,strtotime($d['at']));
               $uv=$ctx['ultima_vista_at']?strtotime($ctx['ultima_vista_at']):0;
               $reabrio=$ult_decl>0 && $uv>$ult_decl;
+              // anclas por área (el motor narra reaperturas relativas al hecho específico)
+              $reabrio_com=$dc['com'] && $uv>strtotime($dc['com']['at']);
+              $reabrio_pos=$dc['pos'] && $uv>strtotime($dc['pos']['at']);
+              $reabrio_con=$dc['con'] && $uv>strtotime($dc['con']['at']);
               $tc=$dc['con']?strtotime($dc['con']['at']):0;
               $con_e=$dc['con']['estado']??null; $com_e=$dc['com']['estado']??null; $pos_e=$dc['pos']['estado']??null;
               $com_vig=$dc['com'] && strtotime($dc['com']['at'])>=$tc;

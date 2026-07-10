@@ -31,6 +31,7 @@ $mesa = Mesa::armar($empresa_id, $mesa_uid);
 $mr   = $mesa['resumen'];
 $mp75 = max(1, (int)$mesa['p75']);
 $mmoney = fn(float $n) => '$' . number_format($n, 0);
+$mrec = Mesa::recuperado($empresa_id); // empresa-wide: la prueba en pesos de la mesa
 
 $MESA_BUCKET_LBL = [
     'probable_cierre' => ['Probable cierre', '#dc2626'], 'onfire' => ['On fire', '#dc2626'],
@@ -133,7 +134,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           <button type="button" data-e="<?= $ek ?>" class="mpill<?= ($d['postura']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','<?= $ek ?>',this)"><?= e($el) ?></button>
           <?php endforeach; ?>
           <button type="button" data-e="descartada" class="mpill mdesc<?= ($d['postura']['estado'] ?? '') === 'descartada' ? ' on' : '' ?>" onclick="mesaRz(this)">Descartar</button>
-          <span class="mrz">
+          <span class="mrz<?= ($d['postura']['estado'] ?? '') === 'descartada' ? ' show' : '' ?>">
             <span class="mrz-l">¿motivo?</span>
             <?php foreach (['precio' => 'Muy caro', 'competencia' => 'Se fue con otro', 'despues' => 'Lo dejó para después', 'no_responde' => 'Dejó de responder', 'no_comprador' => 'No era comprador', 'otro' => 'Otro'] as $rk => $rl): ?>
             <button type="button" data-e="descartada" class="mpill mrz-b<?= ($d['postura']['estado'] ?? '') === 'descartada' && ($d['postura']['razon'] ?? '') === $rk ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this,'<?= $rk ?>')"><?= e($rl) ?></button>
@@ -163,6 +164,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <?php endif; ?>
       <?php else: ?>
         <span style="color:#16a34a;font-weight:700">✓ al corriente</span>
+      <?php endif; ?>
+      <?php if ($mrec['rec_monto'] > 0): ?>
+        · <span style="color:#15803d;font-weight:800">💰 <?= $mmoney($mrec['rec_monto']) ?> recuperado</span>
       <?php endif; ?>
     </span>
     <span style="margin-left:auto;color:#6a6a64;font-size:12px">tap para expandir ▾</span>
@@ -199,6 +203,21 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
          style="margin-left:10px;color:#1a5c38;font-weight:700;text-decoration:none;white-space:nowrap">📖 ¿Cómo funciona?</a>
     </div>
 
+    <?php if ($mrec['rec_n'] > 0 || $mrec['trab_n'] > 0): ?>
+    <div style="margin-bottom:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;font-size:13px;color:#14532d">
+      <?php if ($mrec['rec_n'] > 0): ?>
+      💰 <b>Recuperado por la Mesa (últimos <?= (int)$mrec['dias'] ?> días): <?= $mmoney($mrec['rec_monto']) ?></b>
+      — <?= (int)$mrec['rec_n'] ?> venta<?= $mrec['rec_n'] > 1 ? 's' : '' ?> que ya estaba<?= $mrec['rec_n'] > 1 ? 'n' : '' ?>
+      descartada<?= $mrec['rec_n'] > 1 ? 's' : '' ?> cuando el Radar avisó que el cliente revivió.
+      <?php endif; ?>
+      <?php if ($mrec['trab_n'] > 0): ?>
+      <?= $mrec['rec_n'] > 0 ? '<span style="color:#16a34a">·</span> ' : '' ?>Cerrado tras trabajarse aquí:
+      <b><?= $mmoney($mrec['trab_monto']) ?></b> (<?= (int)$mrec['trab_n'] ?> venta<?= $mrec['trab_n'] > 1 ? 's' : '' ?>).
+      <?php endif; ?>
+      <span style="color:#3f6212;font-size:12px">Datos de toda la empresa, no solo de este asesor.</span>
+    </div>
+    <?php endif; ?>
+
     <div id="mesa-pb" style="display:none;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a;line-height:1.6">
       <div style="font-weight:800;margin-bottom:6px">📖 Playbook de la Mesa de Trabajo</div>
       <p style="margin:0 0 8px"><b>Qué es.</b> Tu lista de trabajo del día. Se arma sola con 3 datos:
@@ -233,8 +252,13 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       y la jugada concreta para el siguiente toque.</p>
       <p style="margin:0 0 8px"><b>👍👎 Feedback Radar.</b> Tu calificación de la cotización — es la MISMA
       del Radar: lo que marcas aquí aparece allá y viceversa. En el Radar los botones solo salen en señales
-      calientes; aquí puedes calificar cualquiera. El 👎 la manda a \"Descartadas hoy\" (visible solo hoy, para que veas qué mataste); mañana sale de
+      calientes; aquí puedes calificar cualquiera. El 👎 la manda a "Descartadas hoy" (visible solo hoy, para que veas qué mataste); mañana sale de
       la mesa. El Radar la sigue vigilando y si el cliente revive, te la regresa con ⚡.</p>
+      <p style="margin:0 0 8px"><b>💰 Recuperado.</b> Suma las ventas de los últimos 30 días cuya cotización
+      YA estaba descartada (👎 o "Descartar") antes de cerrarse. Sin la mesa, ese dinero se daba por muerto —
+      el Radar detectó que el cliente volvió, te la regresó con ⚡, y se cerró. Es el retorno de la mesa en
+      pesos, de toda la empresa. "Cerrado tras trabajarse aquí" suma las demás ventas que pasaron por la mesa
+      (con capturas) antes de cerrar.</p>
       <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
       La meta del día es simple: dejar los pendientes en cero.</p>
     </div>
@@ -291,6 +315,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mrow:hover{background:#f4f4ef}
 #mesa-card .mrow.open{background:#fff}
 #mesa-card .mrow.milagro{background:#fefce8}
+#mesa-card .mrow.done{opacity:.78}
 #mesa-card .mdone-zone .mrow{opacity:.72}
 #mesa-card .mdot{width:9px;height:9px;border-radius:50%;flex:none}
 #mesa-card .mdot.off{background:transparent;border:1.5px solid #c9c9c2}
@@ -393,13 +418,24 @@ function mesaToast(msg){
 function mesaFb(cotId, tipo, btn){
   btn.disabled = true;
   fetch('/api/mesa/estado', {method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+    headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
     body: JSON.stringify({cotizacion_id:cotId, area:'feedback', estado:tipo})
   }).then(function(r){return r.json();}).then(function(d){
     btn.disabled = false;
     if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
     btn.parentElement.querySelectorAll('.fbi').forEach(function(x){x.classList.remove('on')});
     btn.classList.add('on');
+    // reflejar en la fila y actualizar el consejo recalculado por el API
+    var row = btn.closest('.mrow');
+    var drawer = row ? document.getElementById(row.dataset.drawer) : null;
+    if(drawer && d.sugerencia){
+      var sx = drawer.querySelector('.msx'); if(sx) sx.textContent = d.sugerencia;
+    }
+    if(tipo === 'sin_interes' && row){
+      row.style.opacity = '.72';
+      var s3 = row.querySelectorAll('.mdecl3 span')[2];
+      if(s3){ s3.textContent = 'Descartada'; s3.classList.add('f'); }
+    }
     mesaToast(tipo === 'con_interes'
       ? '👍 marcado — también quedó en el Radar'
       : '👎 marcado — pasa a \"Descartadas hoy\" y mañana sale de la mesa; si el cliente revive, vuelve sola');
@@ -420,7 +456,7 @@ function mesaLocks(drawer){
   if(a3) a3.classList.toggle('lock', !pos && !com && con !== 'no_contesta');
 }
 
-var MESA_SHORT = <?= json_encode($MESA_SHORT, JSON_UNESCAPED_UNICODE) ?>;
+var MESA_SHORT = <?= json_encode($MESA_SHORT, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 var MESA_IDX   = {contacto:0, compromiso:1, postura:2};
 
 // Descartar: despliega los motivos a la derecha (misma línea), sin popup
@@ -429,12 +465,13 @@ function mesaRz(btn){
 }
 function mesaTap(cotId, area, estado, btn, razon){
   razon = razon || null;
-  btn.disabled = true;
+  var areaBtns = btn.closest('.marea') ? btn.closest('.marea').querySelectorAll('.mpill') : [btn];
+  areaBtns.forEach(function(b){ b.disabled = true; });
   fetch('/api/mesa/estado', {method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+    headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
     body: JSON.stringify({cotizacion_id:cotId, area:area, estado:estado, razon:razon})
   }).then(function(r){return r.json();}).then(function(d){
-    btn.disabled = false;
+    areaBtns.forEach(function(b){ b.disabled = false; });
     if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
     var drawer = btn.closest('.mdrawer');
     var row = document.querySelector('#mesa-card .mrow[data-drawer="'+drawer.id+'"]');
@@ -458,7 +495,7 @@ function mesaTap(cotId, area, estado, btn, razon){
       if(slot0){ slot0.textContent = 'Hablamos'; slot0.classList.add('f'); }
       var conArea = drawer.querySelectorAll('.marea')[0];
       if(conArea) conArea.querySelectorAll('.mpill').forEach(function(x){
-        x.classList.toggle('on', x.textContent.trim() === 'Hablamos');
+        x.classList.toggle('on', x.dataset.e === 'hablamos');
       });
     }
     // sugerencia recalculada por el servidor (mezcla + Radar + arquetipo)
@@ -467,10 +504,11 @@ function mesaTap(cotId, area, estado, btn, razon){
       if(sx) sx.textContent = d.sugerencia;
     }
     mesaLocks(drawer);
-    if(!row.classList.contains('done')){
+    if(estado !== 'descartada' && !row.classList.contains('done')){
       row.classList.add('done');
+      var mc = row.querySelector('.mcheck'); if(mc) mc.textContent = '✓';
       mesaToast('✓ Atendida — al recargar pasa a "Atendidas hoy"');
     }
-  }).catch(function(){ btn.disabled = false; mesaToast('No se pudo guardar (red o sesión) — recarga e intenta de nuevo.'); });
+  }).catch(function(){ areaBtns.forEach(function(b){ b.disabled = false; }); mesaToast('No se pudo guardar (red o sesión) — recarga e intenta de nuevo.'); });
 }
 </script>

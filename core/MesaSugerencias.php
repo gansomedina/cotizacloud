@@ -43,10 +43,13 @@ class MesaSugerencias
         // Abrió hoy/ayer/antier: cliente ACTIVO aunque no esté leyendo ahorita.
         // Regla de hechos: jamás afirmar "no abre" si abrió hace <3 días.
         $reciente = $visitas > 0 && $dsv <= 2;
-        $viva     = $leyendo || $hot || $reciente;
+        // hot "fresco": bucket caliente Y apertura real <=2d (radar_bucket_at
+        // puede tener hasta 7 días — el flag solo NO prueba lectura actual)
+        $hot_fresco = $hot && $reciente;
+        $viva     = $leyendo || $reciente || $hot_fresco;
         // Evidencia de apertura para citar en la frase (siempre factual)
         $ev_abrio = $leyendo ? ($v24 > 1 ? "{$v24} veces hoy" : 'hoy')
-                  : ($dsv === 1 ? 'ayer' : ($dsv === 2 ? 'hace 2 días' : 'hace poco'));
+                  : ($dsv === 1 ? 'ayer' : ($dsv === 2 ? 'hace 2 días' : "hace {$dsv}d"));
 
         // ¿El cliente reabrió DESPUÉS de la última declaración?
         $ult_decl = 0;
@@ -101,7 +104,7 @@ class MesaSugerencias
             // El cliente revivió tras el descarte PERO puede haberse vuelto a callar.
             // Si ya lleva 3+ días sin abrir, no digas "mándale antes de que se enfríe"
             // (ya se enfrió): último empujón o descarte en firme.
-            if (!$hot && $dsv >= 3) {
+            if ($dsv >= 3) {
                 return $pk([
                     "El cliente reabrió esta cotización tras tu descarte pero ya lleva {$dsv}d sin volver — un último mensaje directo hoy, o descártala en firme.",
                     "Volvió sola después del descarte y otra vez se calló ({$dsv}d sin abrir) — hoy decides: un empujón directo o el descarte final.",
@@ -163,10 +166,10 @@ class MesaSugerencias
         if ($con_e === 'no_contesta') {
             // PLANTÓN: compromiso histórico roto
             if ($com_e === 'compromiso') {
-                if ($bucket === 'validando_precio' || $leyendo) {
+                if ($leyendo || $reciente) {
                     $f = $pk([
                         'Quedaron en un acuerdo, el cliente dejó de contestar pero volvió a abrir la cotización — mándale un mensaje retomando exactamente lo acordado.',
-                        'El cliente no contesta pero reabrió la cotización después del acuerdo — el acuerdo sigue vivo: escríbele hoy citando lo que quedaron.',
+                        'El cliente no contesta pero sigue abriendo la cotización — el acuerdo sigue vivo: escríbele hoy citando lo que quedaron.',
                         'El cliente dejó de contestar y aun así volvió a la cotización — el acuerdo le sigue interesando: mensaje hoy recordando punto por punto lo acordado.',
                     ]);
                 } else {
@@ -214,6 +217,12 @@ class MesaSugerencias
                         'El cliente no contesta, pero después de que lo buscaste volvió a abrir la cotización — escríbele una pregunta cerrada que responda con sí o no.',
                         'Tu mensaje no tuvo respuesta pero el cliente reabrió la cotización — sigue ahí: mándale hoy una pregunta directa de sí o no.',
                     ]);
+                } elseif ($visitas === 0 && $intentos_nc >= 2 && $edad >= 7) {
+                    $f = $pk([
+                        "El cliente nunca ha abierto la cotización y van {$intentos_nc} intentos sin respuesta — último intento hoy por otro canal y descártala con razón.",
+                        "Ni una apertura de la cotización y ya son {$intentos_nc} intentos sin que conteste — un último mensaje hoy; si sigue el silencio, descártala con razón.",
+                        "La cotización sigue sin abrirse y el cliente no responde tras {$intentos_nc} intentos — haz un último intento hoy y después descártala con razón.",
+                    ]);
                 } elseif ($intentos_nc >= 3) {
                     $f = $pk([
                         "Van {$intentos_nc} intentos sin respuesta del cliente — cambia de canal hoy: si le llamas, escríbele; si le escribes, llámale; o busca a otra persona del mismo cliente.",
@@ -231,6 +240,8 @@ class MesaSugerencias
                         'El cliente no te contestó — cambia de canal: mándale un mensaje corto con una pregunta que se conteste con sí o no; si ya le escribiste, márcale.',
                         'Sin respuesta del cliente — no repitas el mismo canal a la misma hora: otro medio, otra hora, y una pregunta de sí o no.',
                         'El cliente no respondió a tu último toque — intenta hoy por otro canal con una sola pregunta que pueda contestar con sí o no.',
+                        'Sin respuesta todavía — prueba hoy a otra hora y por otro medio; una pregunta corta, fácil de contestar.',
+                        'El cliente no ha contestado — el siguiente intento va por otro canal y con una pregunta que se responda en segundos.',
                     ]);
                 }
             }
@@ -239,6 +250,9 @@ class MesaSugerencias
         // ══ PACTO — compromiso vigente ══
         elseif ($com_vig && $com_e === 'compromiso') {
             $dcom = $dias($com);
+            // Reapertura anclada AL ACUERDO (no al max de declaraciones: una
+            // postura redeclarada hoy no puede borrar una reapertura real)
+            $reabrio_com = $uv > strtotime($com['at']);
             if ($pos_vig && $pos_e === 'en_el_aire') {
                 $f = $pk([
                     'Declaraste acuerdo y "en el aire" a la vez — no pueden ser las dos: si el acuerdo es real, ponle fecha hoy; si no, corrige la postura.',
@@ -253,19 +267,20 @@ class MesaSugerencias
                 ]);
                 $slots['precio'] = true;
             } elseif ($pos_vig && $pos_e === 'pidio_cambios') {
+                $reabrio_pos = $uv > strtotime($pos['at']);
                 if (empty($c['accion_post_cambios'])) {
                     $f = $pk([
                         'El cliente aceptó pero pidió cambios — la versión nueva de la cotización sale HOY: no llegues a la cita sin ella.',
                         'Quedaron en un acuerdo y el cliente pidió cambios — manda hoy mismo la cotización actualizada; no llegues al compromiso sin ella.',
                         'Hay acuerdo pero el cliente pidió ajustes — prepara y envía HOY la versión nueva de la cotización; el acuerdo se sostiene con ella.',
                     ]);
-                } elseif (!$reabrio && $dcom >= 2) {
+                } elseif (!$reabrio_pos) {
                     $f = $pk([
                         'Le mandaste la cotización actualizada y el cliente no la ha abierto — avísale por mensaje que ya está lista; no asumas que la vio.',
                         'El cliente no ha abierto la versión nueva de la cotización — mándale un mensaje hoy avisando que ya se la enviaste.',
                         'La cotización nueva sigue sin abrirse — escríbele al cliente: "ya te mandé la versión con tus cambios, échale un ojo".',
                     ]);
-                } else {
+                } else { // reabrio_pos: SÍ abrió la versión nueva
                     $f = $pk([
                         'El cliente pidió cambios y ya abrió la cotización nueva — no esperes su opinión: márcale hoy y pregunta "¿así ya cerramos?".',
                         'El cliente ya vio la versión nueva de la cotización — adelántate: llámale hoy y pregúntale directo si con esos cambios ya cerramos.',
@@ -273,14 +288,21 @@ class MesaSugerencias
                     ]);
                     $slots['cierre'] = true;
                 }
-            } elseif ($reabrio || $leyendo) {
+            } elseif ($reabrio_com) {
                 $f = $pk([
                     'Quedaron en un acuerdo y el cliente volvió a revisar la cotización — está cumpliendo su parte: confírmale el siguiente paso hoy.',
                     'Después del acuerdo el cliente reabrió la cotización — va en serio: mándale hoy el siguiente paso, no esperes a que te busque.',
                     'El cliente está revisando la cotización después del acuerdo — aprovecha: llámale hoy y amarra la fecha del siguiente paso.',
                 ]);
                 $slots['cierre'] = true;
-            } elseif ($dcom >= 2) {
+            } elseif ($leyendo) {
+                $f = $pk([
+                    'Hay acuerdo en curso y el cliente abrió la cotización hoy — confírmale el siguiente paso hoy mismo.',
+                    'El cliente abrió la cotización hoy con el acuerdo fresco — mándale el siguiente paso, no esperes a que te busque.',
+                    'Acuerdo en curso y apertura de hoy — llámale y amarra la fecha del siguiente paso.',
+                ]);
+                $slots['cierre'] = true;
+            } elseif ($dcom >= 2 && !$reciente) {
                 $f = $pk([
                     "Quedaron en un acuerdo hace {$dcom}d y el cliente no ha vuelto a abrir la cotización — mándale un mensaje hoy para confirmar que sigue en pie.",
                     "El acuerdo ya tiene {$dcom}d y el cliente ni se ha asomado a la cotización — recuérdaselo hoy citando exactamente lo que quedaron.",
@@ -314,7 +336,7 @@ class MesaSugerencias
                 ]);
                 $slots['decision'] = true;
             } elseif ($pos_vig && $pos_e === 'objecion_precio') {
-                if ($bucket === 'validando_precio') {
+                if ($bucket === 'validando_precio' && $viva) {
                     $f = $pk([
                         'El cliente no quiso comprometerse y está revisando el precio dentro de la cotización — la objeción es real: llégale hoy con 2 formas de pago.',
                         'El cliente rechazó el compromiso pero está comparando el precio en la cotización — le interesa: prepara opciones de pago y márcale hoy.',
@@ -332,8 +354,9 @@ class MesaSugerencias
                         'El cliente dijo caro y dejó de abrir la cotización — el precio es pretexto: llámale hoy y pregunta qué necesitaría la propuesta para interesarle.',
                         'El cliente se quejó del precio pero ni abre la cotización — el interés se apagó: pregúntale directo qué le falta, no le ofrezcas rebaja.',
                     ]);
+                    // sin slot precio: aquí la tesis es "el precio es pretexto"
                 }
-                $slots['precio'] = true;
+                if ($viva) $slots['precio'] = true; // objeción real solo con señal viva
             } elseif ($pos_vig && $pos_e === 'pidio_cambios') {
                 $f = empty($c['accion_post_cambios'])
                     ? $pk([
@@ -346,7 +369,7 @@ class MesaSugerencias
                         'El cliente ya tiene la cotización actualizada después de rechazar la anterior — márcale hoy: "¿con estos cambios sí cerramos?".',
                         'La cotización nueva ya está en manos del cliente — no esperes: llámale hoy y pregunta si así ya se decide.',
                     ]);
-            } elseif ($hot && in_array($bucket, ['onfire', 'inminente', 'probable_cierre'], true)) {
+            } elseif ($hot_fresco && in_array($bucket, ['onfire', 'inminente', 'probable_cierre'], true)) {
                 $f = $pk([
                     'El cliente te dijo que no pero el Radar trae la cotización ' . self::bnom($bucket) . ' — interés sí hay: pregúntale de frente qué le falta para cerrar.',
                     'El cliente rechazó el compromiso y aun así el Radar marca la cotización ' . self::bnom($bucket) . ' — el freno no es interés: llámale hoy y pregunta directo qué lo detiene.',
@@ -410,7 +433,7 @@ class MesaSugerencias
                     ]);
                 }
             } elseif ($pos_vig && $pos_e === 'objecion_precio') {
-                $f = $bucket === 'validando_precio'
+                $f = ($bucket === 'validando_precio' && $viva)
                     ? $pk([
                         'Hablaron, el precio quedó como duda y el cliente lo está revisando en la cotización — la objeción es real: llégale con formas de pago.',
                         'El cliente quedó dudando del precio y ahora lo valida dentro de la cotización — prepárale hoy opciones de pago; no defiendas el número.',
@@ -452,6 +475,8 @@ class MesaSugerencias
                     'No repitas la plática: mándale al cliente una propuesta por escrito con fecha y anticipo definidos, y que tu siguiente llamada solo pida el sí o el no.',
                     'La siguiente llamada necesita algo nuevo — mándale antes al cliente una propuesta cerrada con fecha y anticipo, y llama solo a confirmarla.',
                     'Otra plática igual no cierra nada — mándale hoy al cliente una propuesta escrita con fecha y anticipo; la siguiente llamada es solo para el sí o el no.',
+                    'Ya hablaron y no aterrizó nada — pon la propuesta por escrito hoy (fecha y anticipo) y que el cliente solo diga sí o no.',
+                    'Para que la próxima llamada sirva, primero mándale hoy una propuesta cerrada — sin propuesta enfrente, el cliente no decide.',
                 ]);
                 $slots['decision'] = true;
             }
@@ -469,21 +494,19 @@ class MesaSugerencias
                     'Hablaron — ¿y quedaron en algo? Registra el desenlace; si no quedaron en nada, esa es tu siguiente llamada.',
                     'Hubo plática pero no declaraste el resultado — captúralo hoy; si no quedaron en nada, llama al cliente para aterrizar un acuerdo.',
                     'La plática quedó sin registro — declara en qué terminó; y si terminó en nada, tu siguiente llamada es para quedar en algo concreto.',
+                    'Hablaste con el cliente pero no capturaste el resultado — regístralo ahora; sin eso la mesa no puede ayudarte a darle seguimiento.',
+                    'Falta el desenlace de tu plática — decláralo y, si no quedaron en nada, ese es justo tu pendiente de hoy.',
                 ]);
         }
 
-        // ══ JUICIO SIN TOQUE — postura sola ══
-        elseif ($pos_vig && !$con) {
-            $f = self::juicio_sin_toque($pos_e, $c, $viva, $dormida, $reabrio, $dsv, $bucket, $slots, $pk);
-        }
+        // ══ JUICIO SIN TOQUE — postura vigente (sola o con hablamos sin compromiso) ══
         elseif ($pos_vig) {
-            // hablamos + postura (sin compromiso declarado)
             $f = self::juicio_sin_toque($pos_e, $c, $viva, $dormida, $reabrio, $dsv, $bucket, $slots, $pk);
         }
 
         // ══ VIRGEN — nada declarado: fallback por Radar/categoría ══
         if ($f === null) {
-            $f = self::virgen($c, $bucket, $hot, $viva, $dormida, $dsv, $edad, $p75, $mediana, $ips7, $slots, $pk, $momentum, $fit);
+            $f = self::virgen($c, $bucket, $hot_fresco, $viva, $dormida, $dsv, $edad, $p75, $mediana, $ips7, $slots, $pk, $momentum, $fit);
         }
 
         // ══ CAPA 3 extra: alto importe — SOLO cuando nada está declarado
@@ -509,12 +532,12 @@ class MesaSugerencias
                         "El cliente \"decide\" desde hace {$dsv}d sin abrir la cotización — nadie decide sin releer: contáctalo hoy y pide una respuesta con fecha.",
                     ]);
                 }
-                if ($bucket === 'validando_precio') { $slots['precio'] = true; return $pk([
+                if ($bucket === 'validando_precio' && $viva) { $slots['precio'] = true; return $pk([
                     'El cliente está decidiendo y clavado en los precios de la cotización — te está comparando AHORA: mándale hoy tu razón #1 para elegirte.',
                     'El cliente está decidiendo y revisa una y otra vez los precios — te compara con otros: mándale hoy lo que solo tú le ofreces.',
                     'El cliente compara los precios de la cotización mientras decide — adelántate: mensaje hoy con tu mejor argumento para que te elija.',
                 ]); }
-                if ($bucket === 'multi_persona')    { return $pk([
+                if ($bucket === 'multi_persona' && $viva)    { return $pk([
                     'El cliente está decidiendo y varias personas revisan la cotización — arma a tu contacto para defenderte por dentro: mándale garantía y proceso por escrito.',
                     'Varias personas están viendo la cotización mientras el cliente decide — tu contacto te defiende allá adentro: dale hoy garantía y pasos por escrito.',
                     'La decisión no es de uno solo: varias personas ven la cotización — mándale hoy a tu contacto un resumen con garantía para que lo presente.',
@@ -530,22 +553,21 @@ class MesaSugerencias
                     'El cliente "está decidiendo" sin abrir la cotización — eso es un no lento: mándale hoy una razón nueva para retomarla.',
                 ]);
             case 'objecion_precio':
-                $slots['precio'] = true;
                 if ((int)($c['visitas'] ?? 0) === 0) return $pk([
                     'El cliente te dijo caro sin haber abierto la cotización ni una vez — está regateando de oídas: primero logra que la abra, luego hablan de precio.',
                     'El cliente dijo que está cara y jamás ha abierto la cotización — no negocies a ciegas: mándale hoy un motivo para que la lea primero.',
                     'El cliente se quejó del precio sin ver la cotización — el reclamo es de oídas: pídele hoy que la revise antes de hablar de números.',
                 ]);
-                if ($bucket === 'validando_precio') return $pk([
+                if ($bucket === 'validando_precio' && $viva) { $slots['precio'] = true; return $pk([
                     'El cliente te dijo caro y está validando el precio dentro de la cotización — la objeción es real: llégale con formas de pago, no defiendas el número.',
                     'El cliente dijo caro y se la pasa revisando los totales de la cotización — le interesa: prepara hoy 2 esquemas de pago del mismo total.',
                     'La queja de precio va en serio: el cliente compara los números de la cotización — márcale hoy con opciones de pago listas.',
-                ]);
-                if ($viva) return $pk([
+                ]); }
+                if ($viva) { $slots['precio'] = true; return $pk([
                     'El cliente dijo caro pero relee la cotización completa — no bajes el precio: reenvíasela hoy resaltando todo lo que incluye por ese precio.',
                     'El cliente dijo que está cara y aun así estudia toda la cotización — no bajes el precio: mejora cómo presentas el valor y reenvíasela hoy.',
                     'El cliente se quejó del precio pero lee la cotización de punta a punta — el interés está: reenvíasela hoy resaltando lo que incluye, sin tocar el precio.',
-                ]);
+                ]); }
                 return $pk([
                     'El cliente te dijo caro y no ha vuelto a abrir la cotización — el problema no es el precio, es el interés: pregúntale qué le falta a la propuesta.',
                     'El cliente dijo caro y dejó de ver la cotización — el precio es pretexto: llámale hoy y pregunta qué necesitaría para interesarle de verdad.',
@@ -585,9 +607,9 @@ class MesaSugerencias
                 ]);
         }
         return $pk([
-            'No has capturado en qué va el cliente — decláralo hoy; lo que no se registra se olvida.',
-            'Falta registrar el estado de esta cotización — captúralo hoy mismo; tu memoria de la semana no es confiable.',
-            'Aún no declaras en qué va el cliente — captúralo hoy; sin registro no hay seguimiento que sirva.',
+            'Actualiza el estado de esta cotización — captura hoy el resultado de tu último toque.',
+            'Dale un toque hoy a esta cotización y registra en qué quedó el cliente.',
+            'Esta cotización necesita un toque hoy — contáctalo y actualiza su estado al terminar.',
         ]);
     }
 
@@ -649,8 +671,9 @@ class MesaSugerencias
                 default                => ['el Radar trae la cotización caliente y no la has calificado', $pk(['dale el toque hoy y declara cómo lo ves.', 'contáctalo hoy y registra en qué quedó.', 'búscalo hoy y captura el resultado del toque.']), false],
             };
             if (in_array($b, ['validando_precio', 're_enganche_caliente'], true)) $slots['precio'] = true;
-            // Componer: evidencia de la fila + motivo + acción (1 número máx)
-            if ($ev && !$con_num) return $ev . ' y ' . $intro . ' — ' . $accion;
+            // Componer: evidencia POSITIVA + motivo + acción (1 número máx).
+            // Nunca pegar "lleva Nd sin volver" a un intro caliente en presente.
+            if ($ev && !$con_num && !str_contains($ev, 'sin volver')) return $ev . ' y ' . $intro . ' — ' . $accion;
             return ucfirst($intro) . ' — ' . $accion;
         }
         return match ($bucket) {
@@ -694,21 +717,29 @@ class MesaSugerencias
                     "El cliente lleva {$dsv}d sin abrir la cotización y ya salió de tu ventana — última jugada hoy: motivo nuevo con fecha límite; si no responde, descártala.",
                     "Van {$dsv}d sin aperturas y la cotización ya rebasó tu ventana — un último mensaje hoy con fecha límite; si sigue el silencio, descártala con razón.",
                     "El cliente tiene {$dsv}d sin abrir la cotización y el tiempo ya se pasó — hoy decides: mensaje final con fecha límite o descarte con razón.",
+                    "Cliente callado {$dsv}d y cotización vencida contra tu historial — un último mensaje con fecha límite y a lo que sigue.",
+                    "Ni aperturas en {$dsv}d ni tiempo a favor — cierra el caso hoy: última oferta con fecha o descarte con razón.",
                 ]),
                 $fuera             => $pk([
                     "La cotización ya pasó los {$p75} días en que normalmente cierras — el siguiente toque define: fecha de decisión o descarte, no otro \"¿cómo vamos?\".",
                     "Ya pasaron los {$p75} días en que sueles cerrar — llámale hoy al cliente para poner fecha de decisión; si no hay fecha, va para descarte.",
                     "Esta cotización ya tardó más de tus {$p75} días normales — el próximo contacto le pide al cliente una fecha, o se descarta.",
+                    "El tiempo de esta cotización ya venció contra tu propio historial — hoy le pones fecha límite al cliente o la descartas con razón.",
+                    "A esta edad tus cotizaciones ya no cierran solas — llámale hoy: fecha de decisión o la das de baja.",
                 ]),
                 $momentum === 'down' && !$dormida => $pk([
                     'El cliente abre la cotización cada vez menos — recupéralo con algo nuevo (una foto, un ajuste, un beneficio), no con un "¿ya lo pensó?".',
                     'El interés del cliente baja lectura tras lectura — tu siguiente mensaje necesita una razón nueva para que reabra la cotización.',
                     'Cada apertura de la cotización es más corta y más espaciada — mándale hoy algo distinto: un cambio, una foto o una fecha que expira.',
+                    'El cliente va soltando la cotización poco a poco — recupéralo hoy con una novedad real, no con un recordatorio.',
+                    'Las lecturas del cliente van en picada — cambia el juego hoy: ajuste, beneficio nuevo o fecha límite.',
                 ]),
                 $dormida           => $pk([
                     "El cliente lleva {$dsv}d sin volver a abrir la cotización — dale hoy un motivo nuevo para reabrirla; no un \"¿ya lo viste?\".",
                     "El cliente lleva {$dsv}d sin asomarse a la cotización — mándale algo que lo obligue a reabrirla: un cambio, una foto, una fecha que expira.",
                     "Van {$dsv}d sin una sola apertura de la cotización — escríbele hoy con una razón nueva para verla; el recordatorio solo ya no funciona.",
+                    "El cliente se durmió: {$dsv}d sin tocar la cotización — despiértalo con algo distinto: una foto, un ajuste o una fecha que vence.",
+                    "Silencio de {$dsv}d en la cotización — tu mensaje de hoy necesita traer algo nuevo que el anterior no tenía.",
                 ]),
                 $fit >= 60         => $pk([
                     'El patrón de lectura del cliente se parece al de los que sí compran (FIT alto) — no dejes enfriar la cotización: toque suave hoy.',
@@ -719,11 +750,15 @@ class MesaSugerencias
                     'La cotización está en tu mejor ventana de cierre — dale hoy un toque que termine en algo concreto: fecha, visita o anticipo.',
                     "La mayoría de tus ventas se cierran antes del día {$mediana} — el toque de hoy busca un acuerdo con el cliente, no un \"ahí la lleva\".",
                     'Estos son los días donde tus ventas se cierran — contacta hoy al cliente y sal con un compromiso chico: fecha, visita o anticipo.',
+                    'La cotización está fresca y es cuando más cierras — búscalo hoy y amarra el siguiente paso con fecha.',
+                    'Ahorita es cuando: tus cierres ocurren en estos primeros días — un toque hoy con propuesta de fecha o visita.',
                 ]),
                 default            => $pk([
                     "La cotización va en el día {$edad}, a medio camino de tu tiempo normal de cierre — el siguiente toque busca compromiso del cliente, no plática.",
                     'A esta altura, el que no amarra fecha pierde la venta — pídele hoy al cliente una definición chica: visita, anticipo o fecha.',
                     "La cotización ya va en el día {$edad} de tu ciclo — el toque de hoy pide algo concreto al cliente, no otro sondeo.",
+                    "El reloj corre: día {$edad} del ciclo — hoy toca pedirle al cliente una definición chica, no saludar.",
+                    'Va a media carrera — el siguiente contacto propone fecha o anticipo; un saludo suelto ya no suma.',
                 ]),
             },
         };
@@ -733,6 +768,9 @@ class MesaSugerencias
     private static function modular(string $f, string $arq, array $slots, bool $viva, bool $dormida, callable $pk): string
     {
         if ($arq === '' || $arq === 'muestra_chica' || $arq === 'motor_completo') return $f;
+        // El remate del arquetipo en TODAS las filas se vuelve muletilla.
+        // Aplicar solo en la mitad (determinístico por cotización+día).
+        if (($pk([0, 1])) === 1) return $f;
 
         switch ($arq) {
             case 'regalador':
@@ -773,7 +811,9 @@ class MesaSugerencias
             case 'sin_ritmo':
             case 'desconectado':
             case 'presente_pasivo':
-                $f = $pk(['Tu prioridad de hoy. ', 'Empieza el día aquí. ', 'Arranca el día por aquí. ']) . ucfirst($f);
+                $f .= ' ' . $pk(['Hazlo en tu primera hora — lo que no se hace temprano, no se hace.',
+                                 'Este toque va hoy antes de mediodía, no "al rato".',
+                                 'Agéndalo ahora mismo con hora — tu patrón es dejarlo pasar.']);
                 break;
             case 'sordo_a_senales':
                 if ($viva || !empty($slots['senal_viva'])) {
@@ -820,7 +860,7 @@ class MesaSugerencias
     private static function bnom(?string $b): string
     {
         return match ($b) {
-            'onfire' => 'On Fire desde ayer',
+            'onfire' => 'On Fire',
             'inminente' => 'en cierre inminente',
             default => 'en probable cierre',
         };
