@@ -133,7 +133,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           <button type="button" data-e="<?= $ek ?>" class="mpill<?= ($d['postura']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','<?= $ek ?>',this)"><?= e($el) ?></button>
           <?php endforeach; ?>
           <button type="button" data-e="descartada" class="mpill mdesc<?= ($d['postura']['estado'] ?? '') === 'descartada' ? ' on' : '' ?>" onclick="mesaRz(this)">Descartar</button>
-          <span class="mrz">
+          <span class="mrz<?= ($d['postura']['estado'] ?? '') === 'descartada' ? ' show' : '' ?>">
             <span class="mrz-l">¿motivo?</span>
             <?php foreach (['precio' => 'Muy caro', 'competencia' => 'Se fue con otro', 'despues' => 'Lo dejó para después', 'no_responde' => 'Dejó de responder', 'no_comprador' => 'No era comprador', 'otro' => 'Otro'] as $rk => $rl): ?>
             <button type="button" data-e="descartada" class="mpill mrz-b<?= ($d['postura']['estado'] ?? '') === 'descartada' && ($d['postura']['razon'] ?? '') === $rk ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this,'<?= $rk ?>')"><?= e($rl) ?></button>
@@ -233,7 +233,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       y la jugada concreta para el siguiente toque.</p>
       <p style="margin:0 0 8px"><b>👍👎 Feedback Radar.</b> Tu calificación de la cotización — es la MISMA
       del Radar: lo que marcas aquí aparece allá y viceversa. En el Radar los botones solo salen en señales
-      calientes; aquí puedes calificar cualquiera. El 👎 la manda a \"Descartadas hoy\" (visible solo hoy, para que veas qué mataste); mañana sale de
+      calientes; aquí puedes calificar cualquiera. El 👎 la manda a "Descartadas hoy" (visible solo hoy, para que veas qué mataste); mañana sale de
       la mesa. El Radar la sigue vigilando y si el cliente revive, te la regresa con ⚡.</p>
       <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
       La meta del día es simple: dejar los pendientes en cero.</p>
@@ -291,6 +291,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 #mesa-card .mrow:hover{background:#f4f4ef}
 #mesa-card .mrow.open{background:#fff}
 #mesa-card .mrow.milagro{background:#fefce8}
+#mesa-card .mrow.done{opacity:.78}
 #mesa-card .mdone-zone .mrow{opacity:.72}
 #mesa-card .mdot{width:9px;height:9px;border-radius:50%;flex:none}
 #mesa-card .mdot.off{background:transparent;border:1.5px solid #c9c9c2}
@@ -393,13 +394,24 @@ function mesaToast(msg){
 function mesaFb(cotId, tipo, btn){
   btn.disabled = true;
   fetch('/api/mesa/estado', {method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+    headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
     body: JSON.stringify({cotizacion_id:cotId, area:'feedback', estado:tipo})
   }).then(function(r){return r.json();}).then(function(d){
     btn.disabled = false;
     if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
     btn.parentElement.querySelectorAll('.fbi').forEach(function(x){x.classList.remove('on')});
     btn.classList.add('on');
+    // reflejar en la fila y actualizar el consejo recalculado por el API
+    var row = btn.closest('.mrow');
+    var drawer = row ? document.getElementById(row.dataset.drawer) : null;
+    if(drawer && d.sugerencia){
+      var sx = drawer.querySelector('.msx'); if(sx) sx.textContent = d.sugerencia;
+    }
+    if(tipo === 'sin_interes' && row){
+      row.style.opacity = '.72';
+      var s3 = row.querySelectorAll('.mdecl3 span')[2];
+      if(s3){ s3.textContent = 'Descartada'; s3.classList.add('f'); }
+    }
     mesaToast(tipo === 'con_interes'
       ? '👍 marcado — también quedó en el Radar'
       : '👎 marcado — pasa a \"Descartadas hoy\" y mañana sale de la mesa; si el cliente revive, vuelve sola');
@@ -420,7 +432,7 @@ function mesaLocks(drawer){
   if(a3) a3.classList.toggle('lock', !pos && !com && con !== 'no_contesta');
 }
 
-var MESA_SHORT = <?= json_encode($MESA_SHORT, JSON_UNESCAPED_UNICODE) ?>;
+var MESA_SHORT = <?= json_encode($MESA_SHORT, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 var MESA_IDX   = {contacto:0, compromiso:1, postura:2};
 
 // Descartar: despliega los motivos a la derecha (misma línea), sin popup
@@ -429,12 +441,13 @@ function mesaRz(btn){
 }
 function mesaTap(cotId, area, estado, btn, razon){
   razon = razon || null;
-  btn.disabled = true;
+  var areaBtns = btn.closest('.marea') ? btn.closest('.marea').querySelectorAll('.mpill') : [btn];
+  areaBtns.forEach(function(b){ b.disabled = true; });
   fetch('/api/mesa/estado', {method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+    headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
     body: JSON.stringify({cotizacion_id:cotId, area:area, estado:estado, razon:razon})
   }).then(function(r){return r.json();}).then(function(d){
-    btn.disabled = false;
+    areaBtns.forEach(function(b){ b.disabled = false; });
     if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
     var drawer = btn.closest('.mdrawer');
     var row = document.querySelector('#mesa-card .mrow[data-drawer="'+drawer.id+'"]');
@@ -458,7 +471,7 @@ function mesaTap(cotId, area, estado, btn, razon){
       if(slot0){ slot0.textContent = 'Hablamos'; slot0.classList.add('f'); }
       var conArea = drawer.querySelectorAll('.marea')[0];
       if(conArea) conArea.querySelectorAll('.mpill').forEach(function(x){
-        x.classList.toggle('on', x.textContent.trim() === 'Hablamos');
+        x.classList.toggle('on', x.dataset.e === 'hablamos');
       });
     }
     // sugerencia recalculada por el servidor (mezcla + Radar + arquetipo)
@@ -467,10 +480,11 @@ function mesaTap(cotId, area, estado, btn, razon){
       if(sx) sx.textContent = d.sugerencia;
     }
     mesaLocks(drawer);
-    if(!row.classList.contains('done')){
+    if(estado !== 'descartada' && !row.classList.contains('done')){
       row.classList.add('done');
+      var mc = row.querySelector('.mcheck'); if(mc) mc.textContent = '✓';
       mesaToast('✓ Atendida — al recargar pasa a "Atendidas hoy"');
     }
-  }).catch(function(){ btn.disabled = false; mesaToast('No se pudo guardar (red o sesión) — recarga e intenta de nuevo.'); });
+  }).catch(function(){ areaBtns.forEach(function(b){ b.disabled = false; }); mesaToast('No se pudo guardar (red o sesión) — recarga e intenta de nuevo.'); });
 }
 </script>

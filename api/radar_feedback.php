@@ -29,7 +29,7 @@ $usuario_id = Auth::id();
 
 // Verificar que la cotización existe y pertenece a la empresa
 $cot = DB::row(
-    "SELECT id, COALESCE(vendedor_id, usuario_id) AS vendedor_id
+    "SELECT id, estado, COALESCE(vendedor_id, usuario_id) AS vendedor_id
      FROM cotizaciones WHERE id=? AND empresa_id=?",
     [$cot_id, $empresa_id]
 );
@@ -44,12 +44,21 @@ if ((int)$cot['vendedor_id'] !== $usuario_id && !Auth::es_admin()) {
     exit;
 }
 
-// Upsert: insertar o actualizar feedback
+// Solo cotizaciones vivas — feedback post-desenlace inflaría el examen
+// de Seguimiento (con_interes sobre aceptada = acierto máximo garantizado)
+if (!in_array($cot['estado'], ['enviada', 'vista'], true)) {
+    echo json_encode(['ok' => false, 'error' => 'Cotización cerrada']);
+    exit;
+}
+
+// Upsert A NOMBRE DEL ASESOR dueño (misma identidad que la Mesa de Trabajo:
+// la llave es (cotizacion, usuario) — escribir como el vendedor garantiza UNA
+// sola marca por cotización aunque quien tapee sea el admin)
 DB::execute(
     "INSERT INTO radar_feedback (cotizacion_id, usuario_id, empresa_id, tipo)
      VALUES (?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE tipo = VALUES(tipo), updated_at = NOW()",
-    [$cot_id, $usuario_id, $empresa_id, $tipo]
+    [$cot_id, (int)$cot['vendedor_id'], $empresa_id, $tipo]
 );
 
 echo json_encode(['ok' => true, 'tipo' => $tipo]);

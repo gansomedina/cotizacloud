@@ -4,7 +4,7 @@
 // recalcula con la MEZCLA completa (MesaSugerencias) para swap instantáneo.
 defined('COTIZAAPP') or die;
 header('Content-Type: application/json; charset=utf-8');
-if (!Auth::logueado()) { http_response_code(401); echo json_encode(['ok'=>false]); exit; }
+if (!Auth::logueado()) { http_response_code(401); echo json_encode(['ok'=>false,'error'=>'sesion']); exit; }
 csrf_check();
 
 $b = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -26,55 +26,72 @@ if ($estado === 'descartada' && !in_array($razon, $RAZONES, true)) { echo json_e
 if ($estado !== 'descartada') $razon = null;
 
 $cot = DB::row(
-    "SELECT id, total, visitas, radar_bucket, radar_bucket_at, radar_senales, ultima_vista_at, created_at,
+    "SELECT id, estado, total, visitas, radar_bucket, radar_bucket_at, radar_senales, ultima_vista_at, created_at,
             DATEDIFF(NOW(), created_at) AS edad,
             DATEDIFF(NOW(), COALESCE(ultima_vista_at, created_at)) AS dias_sin_vista,
             COALESCE(vendedor_id, usuario_id) AS vend
      FROM cotizaciones WHERE id=? AND empresa_id=?", [$cot_id, EMPRESA_ID]);
 if (!$cot) { echo json_encode(['ok'=>false,'error'=>'no_encontrada']); exit; }
 if ((int)$cot['vend'] !== Auth::id() && !Auth::es_admin()) { echo json_encode(['ok'=>false,'error'=>'permiso']); exit; }
-
-// Historia insert-only
-DB::execute(
-    "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
-     VALUES (?,?,?,?,?,?,?)",
-    [$cot_id, Auth::id(), EMPRESA_ID, $area, $estado, $razon, $cot['radar_bucket']]
-);
-
-// Declarar CUALQUIER compromiso implica que hablaron (quedar en algo,
-// proponer o "nada concreto" requieren conversación). Si no hay contacto
-// capturado — o el último fue "No contestó" — el sistema marca "Hablamos"
-// solo. Las áreas NO son secuenciales; esta implicación es lógica.
-$auto_contacto = false;
-if ($area === 'compromiso') {
-    $ult_con = DB::val(
-        "SELECT estado FROM mesa_estados
-         WHERE cotizacion_id = ? AND area = 'contacto' ORDER BY id DESC LIMIT 1", [$cot_id]
-    );
-    if ($ult_con !== 'hablamos') {
-        DB::execute(
-            "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
-             VALUES (?,?,?,'contacto','hablamos',NULL,?)",
-            [$cot_id, Auth::id(), EMPRESA_ID, $cot['radar_bucket']]
-        );
-        $auto_contacto = true;
-    }
+// Solo cotizaciones vivas: declarar/feedbackear una aceptada/rechazada/suspendida
+// alteraría el examen de Seguimiento del termómetro con marcas post-desenlace
+if (!in_array($cot['estado'], ['enviada', 'vista'], true)) {
+    echo json_encode(['ok' => false, 'error' => 'cerrada']); exit;
 }
+
+// Los 3 writes van en transacción: un fallo parcial dejaría el tap guardado
+// pero sin proyección al Radar (o sin el contacto implícito) — estado divergente.
+$auto_contacto = false;
+try {
+    DB::beginTransaction();
+
+    // Declarar CUALQUIER compromiso implica que hablaron. El contacto implícito
+    // se inserta ANTES del compromiso para que su created_at sea <= al del
+    // compromiso (si quedara después, la regla de recencia degradaría el
+    // compromiso recién declarado a historia).
+    if ($area === 'compromiso') {
+        $ult_con = DB::val(
+            "SELECT estado FROM mesa_estados
+             WHERE cotizacion_id = ? AND area = 'contacto' ORDER BY id DESC LIMIT 1", [$cot_id]
+        );
+        if ($ult_con !== 'hablamos') {
+            DB::execute(
+                "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
+                 VALUES (?,?,?,'contacto','hablamos',NULL,?)",
+                [$cot_id, Auth::id(), EMPRESA_ID, $cot['radar_bucket']]
+            );
+            $auto_contacto = true;
+        }
+    }
+
+    // Historia insert-only
+    DB::execute(
+        "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
+         VALUES (?,?,?,?,?,?,?)",
+        [$cot_id, Auth::id(), EMPRESA_ID, $area, $estado, $razon, $cot['radar_bucket']]
+    );
 
 // Proyección compatible → radar_feedback (el examen del score no se toca)
 // Proyección → radar_feedback A NOMBRE DEL ASESOR dueño de la cotización.
 // La llave es (cotizacion, usuario): escribir como el vendedor garantiza UNA
 // sola marca que siempre se sobreescribe (un descarte voltea el 👍 a 👎),
 // sin importar si el tap lo dio el admin desde la mesa del asesor.
-$map = ['compromiso'=>'con_interes','decidiendo'=>'con_interes','objecion_precio'=>'con_interes',
-        'pidio_cambios'=>'con_interes','descartada'=>'sin_interes',
-        'con_interes'=>'con_interes','sin_interes'=>'sin_interes'];
-if (isset($map[$estado])) {
-    DB::execute(
-        "INSERT INTO radar_feedback (cotizacion_id, usuario_id, empresa_id, tipo)
-         VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE tipo=VALUES(tipo), updated_at=NOW()",
-        [$cot_id, (int)$cot['vend'], EMPRESA_ID, $map[$estado]]
-    );
+    $map = ['compromiso'=>'con_interes','decidiendo'=>'con_interes','objecion_precio'=>'con_interes',
+            'pidio_cambios'=>'con_interes','descartada'=>'sin_interes',
+            'con_interes'=>'con_interes','sin_interes'=>'sin_interes'];
+    if (isset($map[$estado])) {
+        DB::execute(
+            "INSERT INTO radar_feedback (cotizacion_id, usuario_id, empresa_id, tipo)
+             VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE tipo=VALUES(tipo), updated_at=NOW()",
+            [$cot_id, (int)$cot['vend'], EMPRESA_ID, $map[$estado]]
+        );
+    }
+
+    DB::commit();
+} catch (Throwable $e) {
+    try { DB::rollback(); } catch (Throwable $e2) {}
+    error_log('[Mesa tap] ' . $e->getMessage());
+    echo json_encode(['ok' => false, 'error' => 'guardar']); exit;
 }
 
 // ── Recalcular la sugerencia con la mezcla completa ──
@@ -92,7 +109,8 @@ try {
         $decl[$r['area']] = ['estado' => $r['estado'], 'at' => $r['created_at'], 'razon' => $r['razon']];
     }
     foreach (DB::query(
-        "SELECT estado FROM mesa_estados WHERE cotizacion_id = ? AND area = 'contacto' ORDER BY id",
+        "SELECT estado FROM mesa_estados WHERE cotizacion_id = ? AND area = 'contacto'
+           AND created_at >= NOW() - INTERVAL 30 DAY ORDER BY id",
         [$cot_id]
     ) as $r) {
         $nc = ($r['estado'] === 'hablamos') ? 0 : $nc + 1;
@@ -145,6 +163,28 @@ try {
         $accion_post_cambios = $ult_accion && strtotime($ult_accion) > strtotime($decl['postura']['at']);
     }
 
+    // Overlays reales (revivida/milagro) — sin esto el tip del tap contradice
+    // al de la recarga en las filas más urgentes de la mesa
+    $revivida_now = false; $milagro_now = false;
+    $descartada_ahora_pre = ($estado === 'descartada' || $estado === 'sin_interes');
+    if (!$descartada_ahora_pre) {
+        $fb_row = DB::row(
+            "SELECT tipo, updated_at FROM radar_feedback WHERE cotizacion_id = ? AND usuario_id = ?",
+            [$cot_id, (int)$cot['vend']]
+        );
+        if (($fb_row['tipo'] ?? '') === 'sin_interes') {
+            $hot_in = "'" . implode("','", Mesa::HOT) . "'";
+            $ult_hot = DB::val(
+                "SELECT MAX(created_at) FROM bucket_transitions
+                 WHERE cotizacion_id = ? AND bucket_nuevo IN ($hot_in)", [$cot_id]
+            );
+            $revivida_now = $ult_hot
+                && strtotime($ult_hot) > strtotime($fb_row['updated_at'])
+                && strtotime($ult_hot) >= time() - 7 * 86400;
+        }
+        $milagro_now = !$revivida_now && $es_hot && (int)$cot['edad'] > 2 * $p75;
+    }
+
     // Si el tap acaba de descartar (botón "Descartar" o 👎 de Feedback Radar),
     // el tip instantáneo debe reflejar el descarte, no un consejo de trabajo.
     $descartada_ahora = $estado === 'descartada' || $estado === 'sin_interes';
@@ -162,7 +202,7 @@ try {
         'fit_pct'   => (int)($sen['fit_pct'] ?? 0),
         'visitas' => (int)$cot['visitas'], 'dias_sin_vista' => (int)$cot['dias_sin_vista'],
         'ultima_vista_at' => $cot['ultima_vista_at'],
-        'revivida' => false, 'milagro' => false,
+        'revivida' => $revivida_now, 'milagro' => $milagro_now,
         'contacto' => $decl['contacto'] ?? null,
         'compromiso' => $decl['compromiso'] ?? null,
         'postura_decl' => $decl['postura'] ?? null,
