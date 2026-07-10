@@ -414,6 +414,7 @@ class Mesa
             'nombre' => '', 'hablamos' => 0, 'no_contesta' => 0,
             'hablamos_cots' => 0,
             'con_compromiso' => 0, 'no_quiso' => 0, 'sin_compromiso' => 0,
+            'compromiso_cots' => [],
             'comp_maduros' => 0, 'comp_cumplidos' => 0, 'comp_en_curso' => 0,
             'postura' => [], 'descartes' => 0, 'revividos' => 0,
             'rec_n' => 0, 'rec_monto' => 0.0,
@@ -575,24 +576,43 @@ class Mesa
                 $out[$u] ??= $base;
                 $out[$u]['hablamos_cots'] = (int)$r['hablamos_cots'];
             }
+            //    Filas por cotización (no agregado) para poder DESGLOSAR el
+            //    numerador en la UI: folio + paradero — un acuerdo puede haber
+            //    salido de la mesa (vendida/aceptada/descartada) y aun así
+            //    contar en el período; el dueño debe poder rastrearlo.
             foreach (DB::query(
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
-                        SUM(m.estado = 'compromiso')       AS con_compromiso,
-                        SUM(m.estado = 'propuse_no_quiso') AS no_quiso,
-                        SUM(m.estado = 'sin_compromiso')   AS sin_compromiso
+                        m.estado, c.numero, c.estado AS cot_estado, c.suspendida,
+                        EXISTS (SELECT 1 FROM ventas v
+                                WHERE v.cotizacion_id = c.id AND v.estado != 'cancelada') AS vendida,
+                        EXISTS (SELECT 1 FROM radar_feedback rf
+                                WHERE rf.cotizacion_id = c.id
+                                  AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                  AND rf.tipo = 'sin_interes') AS descartada
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
                        WHERE empresa_id = ? AND area = 'compromiso'
                          AND created_at >= NOW() - INTERVAL $dias DAY
                        GROUP BY cotizacion_id) td ON td.mid = m.id
-                 JOIN cotizaciones c ON c.id = m.cotizacion_id
-                 GROUP BY uid", [$empresa_id]
+                 JOIN cotizaciones c ON c.id = m.cotizacion_id", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
                 $out[$u] ??= $base;
-                $out[$u]['con_compromiso'] = (int)$r['con_compromiso'];
-                $out[$u]['no_quiso']       = (int)$r['no_quiso'];
-                $out[$u]['sin_compromiso'] = (int)$r['sin_compromiso'];
+                if ($r['estado'] === 'compromiso') {
+                    $out[$u]['con_compromiso']++;
+                    $out[$u]['compromiso_cots'][] = [
+                        'numero' => $r['numero'],
+                        'donde'  => ((int)$r['vendida'] ? 'vendida'
+                                  : ($r['cot_estado'] === 'aceptada' ? 'aceptada'
+                                  : ($r['cot_estado'] === 'rechazada' ? 'rechazada'
+                                  : ((int)$r['descartada'] ? 'descartada'
+                                  : ((int)$r['suspendida'] ? 'suspendida' : 'activa'))))),
+                    ];
+                } elseif ($r['estado'] === 'propuse_no_quiso') {
+                    $out[$u]['no_quiso']++;
+                } elseif ($r['estado'] === 'sin_compromiso') {
+                    $out[$u]['sin_compromiso']++;
+                }
             }
 
             // 3) Compromisos cumplidos: el cliente se movió en los 5 días

@@ -362,6 +362,15 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           <td style="padding:7px 8px;white-space:nowrap">
             <?php if ($ru['hablamos_cots']): ?><b><?= (int)$ru['con_compromiso'] ?></b> de <?= (int)$ru['hablamos_cots'] ?> con plática
               <span style="color:<?= $ru['con_compromiso'] / $ru['hablamos_cots'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos_cots']) ?>)</span>
+              <?php if ($ru['compromiso_cots']): ?>
+              <details style="display:inline-block;vertical-align:top"><summary style="cursor:pointer;color:#1a5c38;font-size:11px;list-style:none">¿cuáles?</summary>
+                <div style="font-size:11.5px;color:#4a4a46;padding:2px 0">
+                <?php foreach ($ru['compromiso_cots'] as $cc): ?>
+                  <div><?= e($cc['numero']) ?> — <span style="<?= $cc['donde'] === 'vendida' || $cc['donde'] === 'aceptada' ? 'color:#15803d;font-weight:700' : ($cc['donde'] === 'activa' ? '' : 'color:#b91c1c') ?>"><?= e($cc['donde']) ?><?= $cc['donde'] !== 'activa' ? ' (ya no está en la mesa)' : '' ?></span></div>
+                <?php endforeach; ?>
+                </div>
+              </details>
+              <?php endif; ?>
             <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
           </td>
           <td style="padding:7px 8px;white-space:nowrap">
@@ -403,7 +412,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <b>Señales 🔥 desatendidas</b>: cada vez que el cliente se calentó (episodio del Radar) sin ninguna acción en los <b>2 días siguientes</b> — ni captura, ni calificación. Cada episodio se juzga solo: atender hoy no perdona la señal que se ignoró hace semanas. Rebotes entre buckets calientes del mismo episodio no cuentan doble; las señales de las últimas 48h aún no se juzgan; si la cotización se cerró tras la señal (venta o respuesta del cliente), cuenta atendida — el desenlace llegó.
         <br><b>Trabajo:</b>
         <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática.
-        <b>Genera compromiso</b>: de las cotizaciones con conversación declarada en el período (plática o desenlace), en cuántas el acuerdo VIGENTE es "Quedamos en algo" — si después se cambió a "Nada"/"No quiso", cuenta como eso, igual que en la mesa.
+        <b>Genera compromiso</b>: de las cotizaciones con conversación declarada en el período (plática o desenlace), en cuántas el acuerdo VIGENTE es "Quedamos en algo" — si después se cambió a "Nada"/"No quiso", cuenta como eso, igual que en la mesa. El "¿cuáles?" desglosa folio y paradero: un acuerdo puede contar en el período aunque la cotización ya haya salido de la mesa (vendida, aceptada, descartada).
         <b>Cumplidos</b>: de los acuerdos con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio. "En curso" = acuerdos de hace menos de 5 días: aún no se califican, ni a favor ni en contra. Si la cotización se descarta, su acuerdo sale de este examen — pasa a juzgarse en "👎 que revivieron" y "Recuperado", no aquí.
         <b>¿Cómo lo ve?</b>: su última lectura declarada por cotización, dentro del período elegido.
         <b>👎 que revivieron</b>: descartes donde el cliente volvió a calentarse en cualquier momento posterior al descarte — muchos = está matando ventas vivas.
