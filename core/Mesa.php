@@ -572,7 +572,9 @@ class Mesa
             // 3) Compromisos cumplidos: el cliente se movió en los 5 días
             //    siguientes al "Quedamos en algo" (abrió la cotización con
             //    engagement real, o hubo venta). POR COTIZACIÓN: solo su
-            //    ÚLTIMO "Quedamos en algo" del período — re-tapear no infla.
+            //    "Quedamos en algo" VIGENTE del período: si después se cambió a
+            //    "Nada"/"No quiso", el acuerdo ya no existe y NO cuenta como
+            //    en curso — el reporte debe cuadrar con lo que la mesa muestra.
             //    Maduro = 5+ días; los frescos van como "en curso", no en contra.
             foreach (DB::query(
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
@@ -591,10 +593,11 @@ class Mesa
                         )) AS cumplidos
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
-                       WHERE empresa_id = ? AND area = 'compromiso' AND estado = 'compromiso'
+                       WHERE empresa_id = ? AND area = 'compromiso'
                          AND created_at >= NOW() - INTERVAL $dias DAY
                        GROUP BY cotizacion_id) tc ON tc.mid = m.id
                  JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 WHERE m.estado = 'compromiso'
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
