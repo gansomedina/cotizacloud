@@ -601,6 +601,10 @@ class Mesa
             //    "Quedamos en algo" VIGENTE del período: si después se cambió a
             //    "Nada"/"No quiso", el acuerdo ya no existe y NO cuenta como
             //    en curso — el reporte debe cuadrar con lo que la mesa muestra.
+            //    DESCARTADAS fuera: al descartar (👎 o postura descartada), el
+            //    acuerdo sale del examen — la cotización se juzga en descartes
+            //    (revividos/recuperado), no aquí. Ni "en curso" falso ni
+            //    "no cumplido" injusto por haberla matado a tiempo.
             //    Maduro = 5+ días; los frescos van como "en curso", no en contra.
             foreach (DB::query(
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
@@ -624,6 +628,13 @@ class Mesa
                        GROUP BY cotizacion_id) tc ON tc.mid = m.id
                  JOIN cotizaciones c ON c.id = m.cotizacion_id
                  WHERE m.estado = 'compromiso'
+                   AND NOT ((SELECT mp.estado FROM mesa_estados mp
+                             WHERE mp.cotizacion_id = m.cotizacion_id AND mp.area = 'postura'
+                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada')
+                   AND NOT EXISTS (SELECT 1 FROM radar_feedback rf
+                                   WHERE rf.cotizacion_id = m.cotizacion_id
+                                     AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                     AND rf.tipo = 'sin_interes')
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
