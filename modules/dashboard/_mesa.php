@@ -358,8 +358,8 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
             <?php else: ?><span style="color:#dc2626;font-weight:700">sin toques declarados</span><?php endif; ?>
           </td>
           <td style="padding:7px 8px;white-space:nowrap">
-            <?php if ($ru['hablamos']): ?><b><?= (int)$ru['con_compromiso'] ?></b> de <?= (int)$ru['hablamos'] ?> pláticas
-              <span style="color:<?= $ru['con_compromiso'] / $ru['hablamos'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos']) ?>)</span>
+            <?php if ($ru['hablamos_cots']): ?><b><?= (int)$ru['con_compromiso'] ?></b> de <?= (int)$ru['hablamos_cots'] ?> con plática
+              <span style="color:<?= $ru['con_compromiso'] / $ru['hablamos_cots'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos_cots']) ?>)</span>
             <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
           </td>
           <td style="padding:7px 8px;white-space:nowrap">
@@ -395,12 +395,14 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <b>Activas</b>: cotizaciones vivas asignadas (enviadas/vistas, sin venta).
         <b>Sin calificar</b>: activas donde el asesor no ha dado NINGÚN juicio (ni "¿Cómo lo ves?" ni 👍👎).
         <b>Sin trabajar</b>: activas sin una sola captura en la mesa — cartera que nadie está tocando, con su monto.
-        <b>Se le fueron</b>: pasaron la ventana de cierre (día <?= $mp75 ?>) sin una sola captura — envejecieron sin que las trabajara.
+        <b>Se le fueron</b>: pasaron la ventana de cierre (día <?= $mp75 ?>) y llevan <?= max(3, (int)ceil($mp75 / 2)) ?>+ días sin
+        ninguna atención — ni captura, ni calificación, ni edición/reenvío. Mide atención, no ventas: cerrar no depende
+        solo del asesor, pero tocarla sí. Descartarla con 👎 también cuenta (es una decisión) y la saca de esta columna.
         <b>Señales 🔥 desatendidas</b>: el Radar avisó que el cliente se calentó (con 1+ día para reaccionar) y no hubo ninguna acción después: ni captura, ni calificación, ni venta.
         <br><b>Trabajo:</b>
         <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática.
-        <b>Genera compromiso</b>: de las pláticas, cuántas amarraron "Quedamos en algo".
-        <b>Cumplidos</b>: de los acuerdos con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio.
+        <b>Genera compromiso</b>: de las cotizaciones donde hubo plática, en cuántas quedó en algo (por cotización — re-declarar no infla).
+        <b>Cumplidos</b>: de los acuerdos con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio. "En curso" = acuerdos de hace menos de 5 días: aún no se califican, ni a favor ni en contra.
         <b>¿Cómo lo ve?</b>: su última lectura declarada por cotización.
         <b>👎 que revivieron</b>: descartes donde el cliente volvió a calentarse después — muchos = está matando ventas vivas.
         <b>Recuperado</b>: ventas que ya estaban descartadas y aun así se cerraron.
