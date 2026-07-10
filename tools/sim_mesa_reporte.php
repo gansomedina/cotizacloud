@@ -135,7 +135,7 @@ function visita(int $cot, float $hace_d, int $vis = 5000, int $scr = 80): void {
         [$cot, $vis, $scr, $d($hace_d)]);
 }
 
-DB::execute("INSERT INTO usuarios VALUES (101,1,'Ana',1),(102,1,'Beto',1),(201,2,'Carla',1),(999,1,'Superadmin',1)");
+DB::execute("INSERT INTO usuarios VALUES (101,1,'Ana',1),(102,1,'Beto',1),(103,1,'Dora',1),(201,2,'Carla',1),(999,1,'Superadmin',1)");
 
 // ══ EMPRESA 1 — ANA (uid 101) ══════════════════════════════
 // A1 (1001): activa 5d, virgen. rf de TERCERO (999) NO debe calificarla.
@@ -192,6 +192,46 @@ tap(1011, 1, 'compromiso', 'compromiso', 3);
 // ══ EMPRESA 1 — BETO (uid 102): el que no hace nada ═══════
 cot(1009, 1, 102, 40000, 30);
 
+// ══ EMPRESA 1 — DORA (uid 103): escenarios adversariales de la auditoría ══
+// D1 (3001): descarte LEGACY vía postura (sin historia feedback) hace 15d,
+//   revivió hace 8d, re-👎 hace 7d → el revivido NO debe borrarse (ancla fallback postura)
+cot(3001, 1, 103, 11000, 25);
+tap(3001, 1, 'postura', 'descartada', 15, 'precio');
+fb(3001, 103, 1, 'sin_interes', 7);
+hotbt(3001, 8);
+// D2 (3002): ciclo VIEJO — 👎(-60) revivió(-50) corregido 👍(-49) re-👎(-5) sin revivir después
+//   → el bt de -50 NO debe contar (ancla del episodio vigente = -5)
+cot(3002, 1, 103, 17000, 70);
+tap(3002, 1, 'feedback', 'sin_interes', 60);
+tap(3002, 1, 'feedback', 'con_interes', 49);
+tap(3002, 1, 'feedback', 'sin_interes', 5);
+fb(3002, 103, 1, 'sin_interes', 5);
+hotbt(3002, 50);
+// D3 (3003): acuerdo VIGENTE viejo (-40) + plática nueva (-2) → cuenta A FAVOR (no deflacta)
+cot(3003, 1, 103, 13000, 45);
+tap(3003, 1, 'compromiso', 'compromiso', 40);
+tap(3003, 1, 'contacto', 'hablamos', 2);
+// D4 (3004): GAMING — acuerdo -20 sin movimiento del cliente, re-tap misma pill ayer
+//   → maduro NO cumplido (el reloj de racha no se reinicia; antes salía "en curso")
+cot(3004, 1, 103, 14000, 25);
+tap(3004, 1, 'contacto', 'hablamos', 20);
+tap(3004, 1, 'compromiso', 'compromiso', 20);
+tap(3004, 1, 'compromiso', 'compromiso', 1);
+// D5 (3005): postura Descartar (-15) + 👍 posterior (-14) → UNA sola definición:
+//   descartada para cartera (no 'se le fue') y para trabajo
+cot(3005, 1, 103, 16000, 30);
+tap(3005, 1, 'postura', 'descartada', 15, 'otro');
+tap(3005, 1, 'feedback', 'con_interes', 14);
+fb(3005, 103, 1, 'con_interes', 14);
+// V4 (3006): LATCH vía postura — 👎(-12) corregido tapeando postura Decidiendo(-11)
+//   (el writer nuevo también escribe la fila feedback con_interes) → venta -6 NO recuperada
+cot(3006, 1, 103, 12000, 20);
+tap(3006, 1, 'feedback', 'sin_interes', 12);
+tap(3006, 1, 'postura', 'decidiendo', 11);
+tap(3006, 1, 'feedback', 'con_interes', 11);
+fb(3006, 103, 1, 'con_interes', 11);
+venta(3006, 1, 12000, 6);
+
 // ══ EMPRESA 2 — CARLA (201): aislamiento ══════════════════
 cot(2001, 2, 201, 99000, 10);
 tap(2001, 2, 'contacto', 'hablamos', 2);
@@ -236,10 +276,23 @@ echo "═ BETO — el que no hace nada ═\n";
 chk('aparece con activas=1, sin_calificar=1, sin_trabajar=1 ($40k)', [$bet['activas'] ?? -1, $bet['sin_calificar'] ?? -1, $bet['sin_trabajar'] ?? -1, $bet['monto_sin_trabajar'] ?? -1], [1, 1, 1, 40000.0]);
 chk('se_fueron=1 ($40k), cero trabajo', [$bet['se_fueron'] ?? -1, $bet['hablamos'] ?? -1, $bet['hablamos_cots'] ?? -1], [1, 0, 0]);
 
+echo "═ DORA — escenarios adversariales de la auditoría ═\n";
+$dor = $rep['asesores'][103] ?? [];
+chk('D: cartera activas=5, sin_calificar=2 (D3,D4), sin_trabajar=0', [$dor['activas'] ?? -1, $dor['sin_calificar'] ?? -1, $dor['sin_trabajar'] ?? -1], [5, 2, 0]);
+chk('D5 (Descartar + 👍 después) NO es "se le fue" — definición única de descartada', $dor['se_fueron'] ?? -1, 0);
+chk('D: señal de D1 atendida (re-👎 a 1d), la de D2 fuera de período → 0 de 1', [$dor['hot_desatendidas'] ?? -1, $dor['hot_total'] ?? -1], [0, 1]);
+chk('D3: acuerdo vigente viejo + plática nueva cuenta A FAVOR → 2 de 2', [$dor['con_compromiso'] ?? -1, $dor['hablamos_cots'] ?? -1], [2, 2]);
+chk('D4: re-tap de la misma pill NO borra el reprobado → 1 maduro, 0 cumplidos, 0 en curso',
+    [$dor['comp_maduros'] ?? -1, $dor['comp_cumplidos'] ?? -1, $dor['comp_en_curso'] ?? -1], [1, 0, 0]);
+chk('D: revividos 1 de 2 (D1 sí por ancla fallback; el bt viejo de D2 NO arrastra)',
+    [$dor['revividos'] ?? -1, $dor['descartes'] ?? -1], [1, 2]);
+chk('D: postura = descartada 2 (D1, D5) + decidiendo 1 (V4)', $dor['postura'] ?? [], ['decidiendo' => 1, 'descartada' => 2]);
+chk('V4 (👎 corregido vía postura) NO recuperada para Dora', $dor['rec_n'] ?? -1, 0);
+
 echo "═ RECUPERADO empresa-wide ═\n";
 $rec = Mesa::recuperado(1, 30);
-chk('rec: $30,000 (1) — solo V2', [$rec['rec_n'], $rec['rec_monto']], [1, 30000.0]);
-chk('trabajada: $50,000 (1) — solo V1 (V3 sin capturas reales)', [$rec['trab_n'], $rec['trab_monto']], [1, 50000.0]);
+chk('rec: $30,000 (1) — solo V2; V3 y V4 (corregidas) NO', [$rec['rec_n'], $rec['rec_monto']], [1, 30000.0]);
+chk('trabajada: $62,000 (2) — V1 y V4', [$rec['trab_n'], $rec['trab_monto']], [2, 62000.0]);
 
 echo "═ AISLAMIENTO entre empresas ═\n";
 chk('empresa 1 no incluye a Carla', isset($rep['asesores'][201]), false);

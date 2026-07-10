@@ -80,6 +80,24 @@ try {
             'pidio_cambios'=>'con_interes','descartada'=>'sin_interes',
             'con_interes'=>'con_interes','sin_interes'=>'sin_interes'];
     if (isset($map[$estado])) {
+        // La HISTORIA de la marca también debe reflejar el cambio: si un tap de
+        // postura/compromiso corrige el 👎 vigente, sin esta fila la historia
+        // 'feedback' se queda con el sin_interes viejo y Recuperado contaría la
+        // venta como recuperada aunque el asesor la corrigió (rama mf). Solo se
+        // inserta cuando la marca CAMBIA (sin ruido por re-taps).
+        if ($area !== 'feedback') {
+            $fb_prev = DB::val(
+                "SELECT estado FROM mesa_estados
+                 WHERE cotizacion_id = ? AND area = 'feedback' ORDER BY id DESC LIMIT 1", [$cot_id]
+            );
+            if ($fb_prev !== $map[$estado]) {
+                DB::execute(
+                    "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
+                     VALUES (?,?,?,'feedback',?,NULL,?)",
+                    [$cot_id, Auth::id(), EMPRESA_ID, $map[$estado], $cot['radar_bucket']]
+                );
+            }
+        }
         DB::execute(
             "INSERT INTO radar_feedback (cotizacion_id, usuario_id, empresa_id, tipo)
              VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE tipo=VALUES(tipo), updated_at=NOW()",
