@@ -31,7 +31,9 @@ $mesa = Mesa::armar($empresa_id, $mesa_uid);
 $mr   = $mesa['resumen'];
 $mp75 = max(1, (int)$mesa['p75']);
 $mmoney = fn(float $n) => '$' . number_format($n, 0);
-$mrec = Mesa::recuperado($empresa_id); // empresa-wide: la prueba en pesos de la mesa
+$mesa_dias = (int)($_GET['mesa_dias'] ?? 30);
+if (!in_array($mesa_dias, [7, 15, 30, 60, 90], true)) $mesa_dias = 30;
+$mrec = Mesa::recuperado($empresa_id, $mesa_dias); // empresa-wide: la prueba en pesos de la mesa
 
 $MESA_BUCKET_LBL = [
     'probable_cierre' => ['Probable cierre', '#dc2626'], 'onfire' => ['On fire', '#dc2626'],
@@ -146,7 +148,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     <?php
 };
 ?>
-<details class="card" id="mesa-card" style="margin-bottom:16px" <?= isset($_GET['mesa_uid']) ? 'open' : '' ?>>
+<details class="card" id="mesa-card" style="margin-bottom:16px" <?= isset($_GET['mesa_uid']) || isset($_GET['mesa_dias']) ? 'open' : '' ?>>
   <summary style="cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;list-style:none">
     <span style="font-weight:800">📋 Mesa de trabajo</span>
     <span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:10px;font-weight:700">BETA · solo admin</span>
@@ -267,13 +269,21 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     </div>
 
     <?php
-    $mrep = Mesa::reporte($empresa_id);
+    $mrep = Mesa::reporte($empresa_id, $mesa_dias);
     $mpct = fn(int $n, int $d) => $d > 0 ? round(100 * $n / $d) . '%' : '—';
     ?>
-    <div id="mesa-rp" style="display:none;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a">
+    <div id="mesa-rp" style="display:<?= isset($_GET['mesa_dias']) ? 'block' : 'none' ?>;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a">
       <div style="font-weight:800;margin-bottom:2px">📊 Reporte del equipo</div>
-      <div style="color:#6a6a64;margin-bottom:10px">Qué cartera carga cada asesor, qué NO ha hecho con ella, y qué está
+      <div style="color:#6a6a64;margin-bottom:8px">Qué cartera carga cada asesor, qué NO ha hecho con ella, y qué está
         declarando en la mesa. Los taps que das desde la mesa de un asesor cuentan a nombre de ese asesor.</div>
+      <div style="margin-bottom:10px;font-size:12px;color:#6a6a64">Período:
+        <?php foreach ([7, 15, 30, 60, 90] as $md): $act = $md === $mesa_dias; ?>
+        <a href="?mesa_uid=<?= (int)$mesa_uid ?>&mesa_dias=<?= $md ?>#mesa-card"
+           style="margin-left:4px;padding:2px 10px;border-radius:12px;text-decoration:none;font-weight:700;
+                  <?= $act ? 'background:#1a5c38;color:#fff' : 'background:#f4f4f0;color:#4a4a46;border:1px solid #e2e2dc' ?>"><?= $md ?>d</a>
+        <?php endforeach; ?>
+        <span style="margin-left:8px;color:#a8a8a2">la cartera es la foto de HOY; el período aplica a señales, trabajo y recuperado</span>
+      </div>
       <?php if (!$mrep['asesores']): ?>
         <div style="color:#6a6a64">Sin cotizaciones activas ni capturas — el reporte se llena conforme hay cartera y se usa la mesa.</div>
       <?php else: ?>
@@ -348,8 +358,8 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
             <?php else: ?><span style="color:#dc2626;font-weight:700">sin toques declarados</span><?php endif; ?>
           </td>
           <td style="padding:7px 8px;white-space:nowrap">
-            <?php if ($ru['hablamos']): ?><b><?= (int)$ru['con_compromiso'] ?></b> de <?= (int)$ru['hablamos'] ?> pláticas
-              <span style="color:<?= $ru['con_compromiso'] / $ru['hablamos'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos']) ?>)</span>
+            <?php if ($ru['hablamos_cots']): ?><b><?= (int)$ru['con_compromiso'] ?></b> de <?= (int)$ru['hablamos_cots'] ?> con plática
+              <span style="color:<?= $ru['con_compromiso'] / $ru['hablamos_cots'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos_cots']) ?>)</span>
             <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
           </td>
           <td style="padding:7px 8px;white-space:nowrap">
@@ -385,12 +395,14 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <b>Activas</b>: cotizaciones vivas asignadas (enviadas/vistas, sin venta).
         <b>Sin calificar</b>: activas donde el asesor no ha dado NINGÚN juicio (ni "¿Cómo lo ves?" ni 👍👎).
         <b>Sin trabajar</b>: activas sin una sola captura en la mesa — cartera que nadie está tocando, con su monto.
-        <b>Se le fueron</b>: pasaron la ventana de cierre (día <?= $mp75 ?>) sin una sola captura — envejecieron sin que las trabajara.
-        <b>Señales 🔥 desatendidas</b>: el Radar avisó que el cliente se calentó (con 1+ día para reaccionar) y no hubo ninguna acción después: ni captura, ni calificación, ni venta.
+        <b>Se le fueron</b>: pasaron la ventana de cierre (día <?= $mp75 ?>) y llevan <?= max(3, (int)ceil($mp75 / 2)) ?>+ días sin
+        ninguna atención — ni captura, ni calificación, ni edición/reenvío. Mide atención, no ventas: cerrar no depende
+        solo del asesor, pero tocarla sí. Descartarla con 👎 también cuenta (es una decisión) y la saca de esta columna.
+        <b>Señales 🔥 desatendidas</b>: cada vez que el cliente se calentó (episodio del Radar) sin ninguna acción en los <b>2 días siguientes</b> — ni captura, ni calificación, ni venta. Cada episodio se juzga solo: atender hoy no perdona la señal que se ignoró hace semanas. Rebotes entre buckets calientes del mismo episodio no cuentan doble.
         <br><b>Trabajo:</b>
         <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática.
-        <b>Genera compromiso</b>: de las pláticas, cuántas amarraron "Quedamos en algo".
-        <b>Cumplidos</b>: de los acuerdos con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio.
+        <b>Genera compromiso</b>: de las cotizaciones donde hubo plática, en cuántas quedó en algo (por cotización — re-declarar no infla).
+        <b>Cumplidos</b>: de los acuerdos con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio. "En curso" = acuerdos de hace menos de 5 días: aún no se califican, ni a favor ni en contra.
         <b>¿Cómo lo ve?</b>: su última lectura declarada por cotización.
         <b>👎 que revivieron</b>: descartes donde el cliente volvió a calentarse después — muchos = está matando ventas vivas.
         <b>Recuperado</b>: ventas que ya estaban descartadas y aun así se cerraron.
