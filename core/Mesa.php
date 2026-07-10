@@ -394,7 +394,13 @@ class Mesa
      *                   buckets calientes no cuentan doble) y con ventana:
      *                   atender hoy no perdona la señal ignorada hace semanas
      *
-     * TRABAJO (últimos N días):
+     * TRABAJO (últimos N días) — PRINCIPIO ÚNICO (no desviarse al editar):
+     * el estado VIGENTE manda y el PARADERO decide dónde se juzga cada
+     * cotización: viva → compromiso/cumplidos; vendida/aceptada → sigue
+     * contando ahí (éxito del acuerdo); DESCARTADA → sale completa de las
+     * métricas de acuerdo (ni numerador ni denominador) y se juzga en
+     * revividos/recuperado. Los toques cuentan siempre (esfuerzo real).
+     *
      * - contacto:    conteo de toques declarados → % le contesta
      * - compromiso:  de las cotizaciones con plática, en cuántas quedó en algo
      *                → % genera compromiso. POR COTIZACIÓN, no por tap:
@@ -570,6 +576,13 @@ class Mesa
                  FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
                  WHERE m.empresa_id = ? AND m.created_at >= NOW() - INTERVAL $dias DAY
                    AND ((m.area = 'contacto' AND m.estado = 'hablamos') OR m.area = 'compromiso')
+                   AND NOT ((SELECT mp.estado FROM mesa_estados mp
+                             WHERE mp.cotizacion_id = m.cotizacion_id AND mp.area = 'postura'
+                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada')
+                   AND NOT EXISTS (SELECT 1 FROM radar_feedback rf
+                                   WHERE rf.cotizacion_id = m.cotizacion_id
+                                     AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                     AND rf.tipo = 'sin_interes')
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
@@ -584,17 +597,20 @@ class Mesa
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
                         m.estado, c.numero, c.estado AS cot_estado, c.suspendida,
                         EXISTS (SELECT 1 FROM ventas v
-                                WHERE v.cotizacion_id = c.id AND v.estado != 'cancelada') AS vendida,
-                        EXISTS (SELECT 1 FROM radar_feedback rf
-                                WHERE rf.cotizacion_id = c.id
-                                  AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
-                                  AND rf.tipo = 'sin_interes') AS descartada
+                                WHERE v.cotizacion_id = c.id AND v.estado != 'cancelada') AS vendida
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
                        WHERE empresa_id = ? AND area = 'compromiso'
                          AND created_at >= NOW() - INTERVAL $dias DAY
                        GROUP BY cotizacion_id) td ON td.mid = m.id
-                 JOIN cotizaciones c ON c.id = m.cotizacion_id", [$empresa_id]
+                 JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 WHERE NOT ((SELECT mp.estado FROM mesa_estados mp
+                             WHERE mp.cotizacion_id = m.cotizacion_id AND mp.area = 'postura'
+                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada')
+                   AND NOT EXISTS (SELECT 1 FROM radar_feedback rf2
+                                   WHERE rf2.cotizacion_id = m.cotizacion_id
+                                     AND rf2.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                     AND rf2.tipo = 'sin_interes')", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
                 $out[$u] ??= $base;
@@ -605,8 +621,7 @@ class Mesa
                         'donde'  => ((int)$r['vendida'] ? 'vendida'
                                   : ($r['cot_estado'] === 'aceptada' ? 'aceptada'
                                   : ($r['cot_estado'] === 'rechazada' ? 'rechazada'
-                                  : ((int)$r['descartada'] ? 'descartada'
-                                  : ((int)$r['suspendida'] ? 'suspendida' : 'activa'))))),
+                                  : ((int)$r['suspendida'] ? 'suspendida' : 'activa')))),
                     ];
                 } elseif ($r['estado'] === 'propuse_no_quiso') {
                     $out[$u]['no_quiso']++;
