@@ -373,11 +373,21 @@ class Mesa
     }
 
     /**
-     * Reporte del equipo — métricas por asesor de lo capturado en la mesa.
+     * Reporte del equipo — métricas por asesor de lo capturado en la mesa
+     * Y de lo que NO ha hecho (para eso evalúa el dueño).
      *
      * Atribución: por el asesor DUEÑO de la cotización (vendedor_id/usuario_id),
      * no por quién dio el tap — hoy tapea el admin pero el crédito va al asesor.
      *
+     * CARTERA (foto de hoy):
+     * - activas:        cotizaciones vivas asignadas (mismo universo que la mesa)
+     * - sin_calificar:  activas sin NINGÚN juicio (ni "¿Cómo lo ves?" ni 👍👎)
+     * - sin_trabajar:   activas sin UNA SOLA captura en la mesa + monto
+     * - se_fueron:      pasaron su ventana (p75) sin una sola captura + monto
+     * - hot_desatendidas: señales 🔥 del período (1+ día de edad) sin ninguna
+     *                   acción posterior (ni captura, ni feedback, ni venta)
+     *
+     * TRABAJO (últimos N días):
      * - contacto:    conteo de toques declarados → % le contesta
      * - compromiso:  de las pláticas (hablamos), cuántas amarraron "Quedamos
      *                en algo" → % genera compromiso (¿están generando compromisos?)
@@ -398,9 +408,93 @@ class Mesa
             'comp_maduros' => 0, 'comp_cumplidos' => 0, 'comp_en_curso' => 0,
             'postura' => [], 'descartes' => 0, 'revividos' => 0,
             'rec_n' => 0, 'rec_monto' => 0.0,
+            'activas' => 0, 'sin_calificar' => 0,
+            'sin_trabajar' => 0, 'monto_sin_trabajar' => 0.0,
+            'se_fueron' => 0, 'monto_se_fueron' => 0.0,
+            'hot_total' => 0, 'hot_desatendidas' => 0,
         ];
 
         try {
+            // Ventana real de la empresa (misma que usa la mesa)
+            if (!class_exists('Radar')) require_once MODULES_PATH . '/radar/Radar.php';
+            $ciclo = Radar::ciclo_venta($empresa_id);
+            $p75   = ($ciclo['auto'] && isset($ciclo['p75']) && $ciclo['p75'] !== null) ? max(1, (int)$ciclo['p75']) : 30;
+
+            // 0) CARTERA — la foto de hoy: qué tiene cada asesor y qué NO ha hecho.
+            //    "sin_trabajar" = ni una captura en la mesa NI un 👍👎 en el Radar.
+            //    "se_fueron" = pasaron la ventana (p75) sin una sola captura.
+            foreach (DB::query(
+                "SELECT uid, COUNT(*) AS activas,
+                        SUM(sin_calificar) AS sin_calificar,
+                        SUM(sin_trabajar)  AS sin_trabajar,
+                        SUM(CASE WHEN sin_trabajar THEN total ELSE 0 END) AS monto_sin_trabajar,
+                        SUM(fuera AND sin_trabajar) AS se_fueron,
+                        SUM(CASE WHEN fuera AND sin_trabajar THEN total ELSE 0 END) AS monto_se_fueron
+                 FROM (
+                    SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, c.total,
+                           (DATEDIFF(NOW(), c.created_at) > $p75) AS fuera,
+                           (NOT EXISTS (SELECT 1 FROM mesa_estados m
+                                        WHERE m.cotizacion_id = c.id
+                                          AND m.area IN ('contacto','compromiso','postura'))
+                            AND NOT EXISTS (SELECT 1 FROM radar_feedback rf
+                                            WHERE rf.cotizacion_id = c.id)) AS sin_trabajar,
+                           (NOT EXISTS (SELECT 1 FROM mesa_estados m2
+                                        WHERE m2.cotizacion_id = c.id AND m2.area = 'postura')
+                            AND NOT EXISTS (SELECT 1 FROM radar_feedback rf2
+                                            WHERE rf2.cotizacion_id = c.id)) AS sin_calificar
+                    FROM cotizaciones c
+                    WHERE c.empresa_id = ? AND c.estado IN ('enviada','vista')
+                      AND c.suspendida = 0 AND c.total > 0 AND c.accion_at IS NULL
+                      AND NOT EXISTS (SELECT 1 FROM ventas v
+                                      WHERE v.cotizacion_id = c.id AND v.estado != 'cancelada')
+                 ) cart
+                 GROUP BY uid", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid']; if (!$u) continue;
+                $out[$u] ??= $base;
+                $out[$u]['activas']            = (int)$r['activas'];
+                $out[$u]['sin_calificar']      = (int)$r['sin_calificar'];
+                $out[$u]['sin_trabajar']       = (int)$r['sin_trabajar'];
+                $out[$u]['monto_sin_trabajar'] = (float)$r['monto_sin_trabajar'];
+                $out[$u]['se_fueron']          = (int)$r['se_fueron'];
+                $out[$u]['monto_se_fueron']    = (float)$r['monto_se_fueron'];
+            }
+
+            // 0b) Señales calientes del período DESATENDIDAS: el Radar avisó
+            //     (transición a bucket hot, con 1+ día para reaccionar) y no
+            //     hubo NINGUNA acción después: ni captura, ni 👍👎, ni venta.
+            $hot_in_rep = "'" . implode("','", self::HOT) . "'";
+            foreach (DB::query(
+                "SELECT uid, COUNT(*) AS hot_total,
+                        SUM(NOT (ate_mesa OR ate_fb OR ate_venta)) AS hot_desatendidas
+                 FROM (
+                    SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
+                           EXISTS (SELECT 1 FROM mesa_estados m
+                                   WHERE m.cotizacion_id = s.cotizacion_id
+                                     AND m.created_at >= s.senal_at) AS ate_mesa,
+                           EXISTS (SELECT 1 FROM radar_feedback rf
+                                   WHERE rf.cotizacion_id = s.cotizacion_id
+                                     AND rf.updated_at >= s.senal_at) AS ate_fb,
+                           EXISTS (SELECT 1 FROM ventas v
+                                   WHERE v.cotizacion_id = s.cotizacion_id AND v.estado != 'cancelada'
+                                     AND v.created_at >= s.senal_at) AS ate_venta
+                    FROM (SELECT bt.cotizacion_id, MIN(bt.created_at) AS senal_at
+                          FROM bucket_transitions bt
+                          JOIN cotizaciones c2 ON c2.id = bt.cotizacion_id
+                          WHERE c2.empresa_id = ? AND bt.bucket_nuevo IN ($hot_in_rep)
+                            AND bt.created_at >= NOW() - INTERVAL $dias DAY
+                          GROUP BY bt.cotizacion_id
+                          HAVING MIN(bt.created_at) <= NOW() - INTERVAL 1 DAY) s
+                    JOIN cotizaciones c ON c.id = s.cotizacion_id
+                 ) sen
+                 GROUP BY uid", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid']; if (!$u) continue;
+                $out[$u] ??= $base;
+                $out[$u]['hot_total']        = (int)$r['hot_total'];
+                $out[$u]['hot_desatendidas'] = (int)$r['hot_desatendidas'];
+            }
+
             // 1) Contacto: cada declaración es un toque registrado
             foreach (DB::query(
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
