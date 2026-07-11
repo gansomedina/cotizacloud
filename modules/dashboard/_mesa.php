@@ -411,11 +411,11 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         solo del asesor, pero tocarla sí. Descartarla con 👎 también cuenta (es una decisión) y la saca de esta columna.
         <b>Señales 🔥 desatendidas</b>: cada vez que el cliente se calentó (episodio del Radar) sin ninguna acción en los <b>2 días siguientes</b> — ni captura, ni calificación. Cada episodio se juzga solo: atender hoy no perdona la señal que se ignoró hace semanas. Rebotes entre buckets calientes del mismo episodio no cuentan doble; las señales de las últimas 48h aún no se juzgan; si la cotización se cerró tras la señal (venta o respuesta del cliente), cuenta atendida — el desenlace llegó.
         <br><b>Trabajo:</b>
-        <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática.
+        <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática (declarar un acuerdo registra la plática implícita).
         <b>Genera compromiso</b>: de las cotizaciones con conversación declarada en el período, en cuántas el acuerdo VIGENTE es "Quedamos en algo". Regla pareja en toda la sección: las <b>descartadas salen completas</b> (ni a favor ni en contra — se juzgan en 👎 revividos y Recuperado); las <b>vendidas/aceptadas siguen contando</b> (son el éxito del acuerdo, el "¿cuáles?" las desglosa con folio); los <b>toques cuentan siempre</b> aunque la cotización luego se descarte — el esfuerzo fue real.
         <b>Cumplidos</b>: de los acuerdos con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio. "En curso" = acuerdos de hace menos de 5 días: aún no se califican, ni a favor ni en contra. Re-confirmar el mismo acuerdo NO reinicia su reloj — solo un cambio real de desenlace arranca un acuerdo nuevo. Si la cotización se descarta, su acuerdo sale de este examen — pasa a juzgarse en "👎 que revivieron" y "Recuperado", no aquí.
         <b>¿Cómo lo ve?</b>: su última lectura declarada por cotización, dentro del período elegido.
-        <b>👎 que revivieron</b>: descartes donde el cliente volvió a calentarse en cualquier momento posterior al descarte — muchos = está matando ventas vivas.
+        <b>👎 que revivieron</b>: descartes HECHOS en el período (fechados por cuándo se descartó, no por el último re-tap) donde el cliente volvió a calentarse después — muchos = está matando ventas vivas.
         <b>Recuperado</b>: ventas que ya estaban descartadas y aun así se cerraron.
       </div>
     <?php endif; ?>

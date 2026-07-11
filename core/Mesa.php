@@ -751,42 +751,44 @@ class Mesa
                 $out[$u]['postura'][$r['estado']] = (int)$r['n'];
             }
 
-            // 5) Descartes (👎 vigentes del período, DEL DUEÑO) que el cliente
-            //    recalentó después. Ancla: el PRIMER 'sin_interes' del EPISODIO
-            //    vigente (posterior al último 'con_interes' — un ciclo viejo de
-            //    descarte/corrección no arrastra revividos falsos); fallback a
-            //    la primera postura 'descartada' (descartes legacy sin historia
-            //    feedback) y al updated_at del rf. Re-confirmar el 👎 no borra
-            //    el revivido (updated_at se bumpea con cada re-tap).
+            // 5) Descartes DEL PERÍODO (del dueño) que el cliente recalentó
+            //    después. El descarte se FECHA por el inicio de su episodio
+            //    (primer 'sin_interes' posterior al último 'con_interes';
+            //    fallback: primera postura 'descartada'; fallback: updated_at)
+            //    — re-confirmar un 👎 viejo NO lo mete al período como si fuera
+            //    descarte nuevo, y no borra el revivido (updated_at se bumpea).
             //    Las VENDIDAS fuera (principio único): descartada-y-vendida se
             //    juzga en Recuperado — aquí duplicaría el denominador.
             $hot_in = "'" . implode("','", self::HOT) . "'";
             foreach (DB::query(
-                "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
-                        COUNT(*) AS descartes,
+                "SELECT uid, COUNT(*) AS descartes,
                         SUM(EXISTS (SELECT 1 FROM bucket_transitions bt
-                                    WHERE bt.cotizacion_id = rf.cotizacion_id
+                                    WHERE bt.cotizacion_id = x.cid
                                       AND bt.bucket_nuevo IN ($hot_in)
-                                      AND bt.created_at > COALESCE(
-                                          (SELECT MIN(mf.created_at) FROM mesa_estados mf
-                                           WHERE mf.cotizacion_id = rf.cotizacion_id
-                                             AND mf.area = 'feedback' AND mf.estado = 'sin_interes'
-                                             AND mf.created_at > COALESCE(
-                                                 (SELECT MAX(mc.created_at) FROM mesa_estados mc
-                                                  WHERE mc.cotizacion_id = rf.cotizacion_id
-                                                    AND mc.area = 'feedback' AND mc.estado = 'con_interes'),
-                                                 '2000-01-01')),
-                                          (SELECT MIN(mp3.created_at) FROM mesa_estados mp3
-                                           WHERE mp3.cotizacion_id = rf.cotizacion_id
-                                             AND mp3.area = 'postura' AND mp3.estado = 'descartada'),
-                                          rf.updated_at))) AS revividos
-                 FROM radar_feedback rf JOIN cotizaciones c ON c.id = rf.cotizacion_id
-                 WHERE rf.empresa_id = ? AND rf.tipo = 'sin_interes'
-                   AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
-                   AND rf.updated_at >= NOW() - INTERVAL $dias DAY
-                   AND NOT EXISTS (SELECT 1 FROM ventas v
-                                   WHERE v.cotizacion_id = rf.cotizacion_id
-                                     AND v.estado != 'cancelada')
+                                      AND bt.created_at > x.anc)) AS revividos
+                 FROM (
+                    SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, rf.cotizacion_id AS cid,
+                           COALESCE(
+                               (SELECT MIN(mf.created_at) FROM mesa_estados mf
+                                WHERE mf.cotizacion_id = rf.cotizacion_id
+                                  AND mf.area = 'feedback' AND mf.estado = 'sin_interes'
+                                  AND mf.created_at > COALESCE(
+                                      (SELECT MAX(mc.created_at) FROM mesa_estados mc
+                                       WHERE mc.cotizacion_id = rf.cotizacion_id
+                                         AND mc.area = 'feedback' AND mc.estado = 'con_interes'),
+                                      '2000-01-01')),
+                               (SELECT MIN(mp3.created_at) FROM mesa_estados mp3
+                                WHERE mp3.cotizacion_id = rf.cotizacion_id
+                                  AND mp3.area = 'postura' AND mp3.estado = 'descartada'),
+                               rf.updated_at) AS anc
+                    FROM radar_feedback rf JOIN cotizaciones c ON c.id = rf.cotizacion_id
+                    WHERE rf.empresa_id = ? AND rf.tipo = 'sin_interes'
+                      AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                      AND NOT EXISTS (SELECT 1 FROM ventas v
+                                      WHERE v.cotizacion_id = rf.cotizacion_id
+                                        AND v.estado != 'cancelada')
+                 ) x
+                 WHERE x.anc >= NOW() - INTERVAL $dias DAY
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;

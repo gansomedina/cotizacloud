@@ -189,6 +189,12 @@ cot(1011, 1, 101, 9000, 4);
 tap(1011, 1, 'contacto', 'hablamos', 3);
 tap(1011, 1, 'compromiso', 'compromiso', 3);
 
+// D6 (3007): 👎 VIEJO (episodio -45, fuera de período) re-tapeado hace 2d
+//   (updated_at bumpeado) → NO debe entrar a 'descartes del período'
+cot(3007, 1, 103, 19000, 60);
+tap(3007, 1, 'feedback', 'sin_interes', 45);
+fb(3007, 103, 1, 'sin_interes', 2);
+
 // ══ EMPRESA 1 — BETO (uid 102): el que no hace nada ═══════
 cot(1009, 1, 102, 40000, 30);
 
@@ -284,7 +290,7 @@ chk('D: señal de D1 atendida (re-👎 a 1d), la de D2 fuera de período → 0 d
 chk('D3: acuerdo vigente viejo + plática nueva cuenta A FAVOR → 2 de 2', [$dor['con_compromiso'] ?? -1, $dor['hablamos_cots'] ?? -1], [2, 2]);
 chk('D4: re-tap de la misma pill NO borra el reprobado → 1 maduro, 0 cumplidos, 0 en curso',
     [$dor['comp_maduros'] ?? -1, $dor['comp_cumplidos'] ?? -1, $dor['comp_en_curso'] ?? -1], [1, 0, 0]);
-chk('D: revividos 1 de 2 (D1 sí por ancla fallback; el bt viejo de D2 NO arrastra)',
+chk('D: revividos 1 de 2 (D1 ancla fallback; bt viejo de D2 no arrastra; D6 re-tapeado con episodio -45d NO entra al período)',
     [$dor['revividos'] ?? -1, $dor['descartes'] ?? -1], [1, 2]);
 chk('D: postura = descartada 2 (D1, D5) + decidiendo 1 (V4)', $dor['postura'] ?? [], ['decidiendo' => 1, 'descartada' => 2]);
 chk('V4 (👎 corregido vía postura) NO recuperada para Dora', $dor['rec_n'] ?? -1, 0);
