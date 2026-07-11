@@ -475,10 +475,13 @@ class Mesa
                                             WHERE cl.cotizacion_id = c.id AND cl.usuario_id IS NOT NULL
                                               AND COALESCE(cl.accion, cl.evento) IN ('editada','enviada')
                                               AND cl.created_at >= NOW() - INTERVAL $k DAY)) AS abandonada,
-                           EXISTS (SELECT 1 FROM radar_feedback rf4
-                                   WHERE rf4.cotizacion_id = c.id
-                                     AND rf4.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
-                                     AND rf4.tipo = 'sin_interes') AS descartada
+                           (EXISTS (SELECT 1 FROM radar_feedback rf4
+                                    WHERE rf4.cotizacion_id = c.id
+                                      AND rf4.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                      AND rf4.tipo = 'sin_interes')
+                            OR (SELECT mp0.estado FROM mesa_estados mp0
+                                WHERE mp0.cotizacion_id = c.id AND mp0.area = 'postura'
+                                ORDER BY mp0.id DESC LIMIT 1) <=> 'descartada') AS descartada
                     FROM cotizaciones c
                     WHERE c.empresa_id = ? AND c.estado IN ('enviada','vista')
                       AND c.suspendida = 0 AND c.total > 0 AND c.accion_at IS NULL
@@ -593,6 +596,11 @@ class Mesa
             //    numerador en la UI: folio + paradero — un acuerdo puede haber
             //    salido de la mesa (vendida/aceptada/descartada) y aun así
             //    contar en el período; el dueño debe poder rastrearlo.
+            //    El acuerdo se toma del estado VIGENTE del área SIN límite de
+            //    período (la leyenda promete "el acuerdo VIGENTE"): un acuerdo
+            //    longevo con plática nueva cuenta a favor, no en contra. La
+            //    membresía sí es del período: solo cotizaciones con conversación
+            //    declarada en él (mismo criterio que el denominador).
             foreach (DB::query(
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
                         m.estado, c.numero, c.estado AS cot_estado, c.suspendida,
@@ -601,10 +609,13 @@ class Mesa
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
                        WHERE empresa_id = ? AND area = 'compromiso'
-                         AND created_at >= NOW() - INTERVAL $dias DAY
                        GROUP BY cotizacion_id) td ON td.mid = m.id
                  JOIN cotizaciones c ON c.id = m.cotizacion_id
-                 WHERE NOT ((SELECT mp.estado FROM mesa_estados mp
+                 WHERE EXISTS (SELECT 1 FROM mesa_estados mx
+                               WHERE mx.cotizacion_id = m.cotizacion_id
+                                 AND mx.created_at >= NOW() - INTERVAL $dias DAY
+                                 AND ((mx.area = 'contacto' AND mx.estado = 'hablamos') OR mx.area = 'compromiso'))
+                   AND NOT ((SELECT mp.estado FROM mesa_estados mp
                              WHERE mp.cotizacion_id = m.cotizacion_id AND mp.area = 'postura'
                              ORDER BY mp.id DESC LIMIT 1) <=> 'descartada')
                    AND NOT EXISTS (SELECT 1 FROM radar_feedback rf2
@@ -641,21 +652,35 @@ class Mesa
             //    (revividos/recuperado), no aquí. Ni "en curso" falso ni
             //    "no cumplido" injusto por haberla matado a tiempo.
             //    Maduro = 5+ días; los frescos van como "en curso", no en contra.
+            //    RELOJ DE RACHA: la fecha del examen es la PRIMERA declaración
+            //    de la racha vigente del mismo estado — re-tapear "Quedamos en
+            //    algo" no reinicia los 5 días (si no, re-confirmar cada 4 días
+            //    borraría los reprobados para siempre). Solo un CAMBIO real de
+            //    desenlace arranca un acuerdo nuevo.
             foreach (DB::query(
-                "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
-                        SUM(m.created_at <= NOW() - INTERVAL 5 DAY) AS maduros,
-                        SUM(m.created_at >  NOW() - INTERVAL 5 DAY) AS en_curso,
-                        SUM(m.created_at <= NOW() - INTERVAL 5 DAY AND (
+                "SELECT uid,
+                        SUM(eff <= NOW() - INTERVAL 5 DAY) AS maduros,
+                        SUM(eff >  NOW() - INTERVAL 5 DAY) AS en_curso,
+                        SUM(eff <= NOW() - INTERVAL 5 DAY AND (
                             EXISTS (SELECT 1 FROM ventas v
-                                    WHERE v.cotizacion_id = m.cotizacion_id AND v.estado != 'cancelada'
-                                      AND v.created_at >= m.created_at
-                                      AND v.created_at <= m.created_at + INTERVAL 5 DAY)
+                                    WHERE v.cotizacion_id = ex.cotizacion_id AND v.estado != 'cancelada'
+                                      AND v.created_at >= eff
+                                      AND v.created_at <= eff + INTERVAL 5 DAY)
                          OR EXISTS (SELECT 1 FROM quote_sessions qs
-                                    WHERE qs.cotizacion_id = m.cotizacion_id AND qs.es_interno = 0
+                                    WHERE qs.cotizacion_id = ex.cotizacion_id AND qs.es_interno = 0
                                       AND NOT (COALESCE(qs.visible_ms,0) < 200 AND COALESCE(qs.scroll_max,0) < 35)
-                                      AND qs.created_at > m.created_at
-                                      AND qs.created_at <= m.created_at + INTERVAL 5 DAY)
+                                      AND qs.created_at > eff
+                                      AND qs.created_at <= eff + INTERVAL 5 DAY)
                         )) AS cumplidos
+                 FROM (
+                 SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, m.cotizacion_id,
+                        (SELECT MIN(m3.created_at) FROM mesa_estados m3
+                         WHERE m3.cotizacion_id = m.cotizacion_id AND m3.area = 'compromiso'
+                           AND m3.estado = 'compromiso'
+                           AND m3.created_at > COALESCE(
+                               (SELECT MAX(m4.created_at) FROM mesa_estados m4
+                                WHERE m4.cotizacion_id = m.cotizacion_id AND m4.area = 'compromiso'
+                                  AND m4.estado != 'compromiso'), '2000-01-01')) AS eff
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
                        WHERE empresa_id = ? AND area = 'compromiso'
@@ -670,6 +695,7 @@ class Mesa
                                    WHERE rf.cotizacion_id = m.cotizacion_id
                                      AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                                      AND rf.tipo = 'sin_interes')
+                 ) ex
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
@@ -696,9 +722,14 @@ class Mesa
             }
 
             // 5) Descartes (👎 vigentes del período, DEL DUEÑO) que el cliente
-            //    recalentó después. Ancla: el PRIMER 'sin_interes' de la
-            //    historia insert-only — re-confirmar el 👎 no borra el revivido
-            //    (radar_feedback.updated_at se bumpea con cada re-tap).
+            //    recalentó después. Ancla: el PRIMER 'sin_interes' del EPISODIO
+            //    vigente (posterior al último 'con_interes' — un ciclo viejo de
+            //    descarte/corrección no arrastra revividos falsos); fallback a
+            //    la primera postura 'descartada' (descartes legacy sin historia
+            //    feedback) y al updated_at del rf. Re-confirmar el 👎 no borra
+            //    el revivido (updated_at se bumpea con cada re-tap).
+            //    Las VENDIDAS fuera (principio único): descartada-y-vendida se
+            //    juzga en Recuperado — aquí duplicaría el denominador.
             $hot_in = "'" . implode("','", self::HOT) . "'";
             foreach (DB::query(
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
@@ -709,12 +740,23 @@ class Mesa
                                       AND bt.created_at > COALESCE(
                                           (SELECT MIN(mf.created_at) FROM mesa_estados mf
                                            WHERE mf.cotizacion_id = rf.cotizacion_id
-                                             AND mf.area = 'feedback' AND mf.estado = 'sin_interes'),
+                                             AND mf.area = 'feedback' AND mf.estado = 'sin_interes'
+                                             AND mf.created_at > COALESCE(
+                                                 (SELECT MAX(mc.created_at) FROM mesa_estados mc
+                                                  WHERE mc.cotizacion_id = rf.cotizacion_id
+                                                    AND mc.area = 'feedback' AND mc.estado = 'con_interes'),
+                                                 '2000-01-01')),
+                                          (SELECT MIN(mp3.created_at) FROM mesa_estados mp3
+                                           WHERE mp3.cotizacion_id = rf.cotizacion_id
+                                             AND mp3.area = 'postura' AND mp3.estado = 'descartada'),
                                           rf.updated_at))) AS revividos
                  FROM radar_feedback rf JOIN cotizaciones c ON c.id = rf.cotizacion_id
                  WHERE rf.empresa_id = ? AND rf.tipo = 'sin_interes'
                    AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                    AND rf.updated_at >= NOW() - INTERVAL $dias DAY
+                   AND NOT EXISTS (SELECT 1 FROM ventas v
+                                   WHERE v.cotizacion_id = rf.cotizacion_id
+                                     AND v.estado != 'cancelada')
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
