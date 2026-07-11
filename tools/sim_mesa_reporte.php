@@ -284,7 +284,7 @@ chk('se_fueron=1 ($40k), cero trabajo', [$bet['se_fueron'] ?? -1, $bet['hablamos
 
 echo "═ DORA — escenarios adversariales de la auditoría ═\n";
 $dor = $rep['asesores'][103] ?? [];
-chk('D: cartera activas=5, sin_calificar=2 (D3,D4), sin_trabajar=0', [$dor['activas'] ?? -1, $dor['sin_calificar'] ?? -1, $dor['sin_trabajar'] ?? -1], [5, 2, 0]);
+chk('D: cartera activas=6 (D1-D5 + D6), sin_calificar=2 (D3,D4), sin_trabajar=0', [$dor['activas'] ?? -1, $dor['sin_calificar'] ?? -1, $dor['sin_trabajar'] ?? -1], [6, 2, 0]);
 chk('D5 (Descartar + 👍 después) NO es "se le fue" — definición única de descartada', $dor['se_fueron'] ?? -1, 0);
 chk('D: señal de D1 atendida (re-👎 a 1d), la de D2 fuera de período → 0 de 1', [$dor['hot_desatendidas'] ?? -1, $dor['hot_total'] ?? -1], [0, 1]);
 chk('D3: acuerdo vigente viejo + plática nueva cuenta A FAVOR → 2 de 2', [$dor['con_compromiso'] ?? -1, $dor['hablamos_cots'] ?? -1], [2, 2]);
