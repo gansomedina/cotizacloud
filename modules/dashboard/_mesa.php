@@ -575,12 +575,15 @@ function mesaToast(msg){
 // Feedback Radar desde la mesa — se guarda a nombre del asesor dueño de la
 // cotización (una sola marca: el descarte voltea el 👍 a 👎 automáticamente)
 function mesaFb(cotId, tipo, btn){
-  btn.disabled = true;
+  // Ambos pulgares fuera durante el vuelo: 👍→👎 rápido serían dos fetch en
+  // carrera y la marca final dependería del orden de commit, no del último tap
+  var thumbs = btn.parentElement.querySelectorAll('.fbi');
+  thumbs.forEach(function(b){ b.disabled = true; });
   fetch('/api/mesa/estado', {method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
     body: JSON.stringify({cotizacion_id:cotId, area:'feedback', estado:tipo})
   }).then(function(r){return r.json();}).then(function(d){
-    btn.disabled = false;
+    thumbs.forEach(function(b){ b.disabled = false; });
     if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
     btn.parentElement.querySelectorAll('.fbi').forEach(function(x){x.classList.remove('on')});
     btn.classList.add('on');
@@ -592,13 +595,11 @@ function mesaFb(cotId, tipo, btn){
     }
     if(tipo === 'sin_interes' && row){
       row.style.opacity = '.72';
-      var s3 = row.querySelectorAll('.mdecl3 span')[2];
-      if(s3){ s3.textContent = 'Descartada'; s3.classList.add('f'); }
     }
     mesaToast(tipo === 'con_interes'
       ? '👍 marcado — también quedó en el Radar'
       : '👎 marcado — pasa a \"Descartadas hoy\" y mañana sale de la mesa; si el cliente revive, vuelve sola');
-  }).catch(function(){ btn.disabled = false; mesaToast('No se pudo guardar (red o sesión).'); });
+  }).catch(function(){ thumbs.forEach(function(b){ b.disabled = false; }); mesaToast('No se pudo guardar (red o sesión).'); });
 }
 
 // Candados 1→2→3: un área con valor siempre es editable; sin valor,

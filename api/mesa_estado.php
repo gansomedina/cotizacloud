@@ -26,7 +26,7 @@ if ($estado === 'descartada' && !in_array($razon, $RAZONES, true)) { echo json_e
 if ($estado !== 'descartada') $razon = null;
 
 $cot = DB::row(
-    "SELECT id, estado, total, visitas, radar_bucket, radar_bucket_at, radar_senales, ultima_vista_at, created_at,
+    "SELECT id, estado, suspendida, total, visitas, radar_bucket, radar_bucket_at, radar_senales, ultima_vista_at, created_at,
             DATEDIFF(NOW(), created_at) AS edad,
             DATEDIFF(NOW(), COALESCE(ultima_vista_at, created_at)) AS dias_sin_vista,
             COALESCE(vendedor_id, usuario_id) AS vend
@@ -35,9 +35,21 @@ if (!$cot) { echo json_encode(['ok'=>false,'error'=>'no_encontrada']); exit; }
 if ((int)$cot['vend'] !== Auth::id() && !Auth::es_admin()) { echo json_encode(['ok'=>false,'error'=>'permiso']); exit; }
 // Solo cotizaciones vivas: declarar/feedbackear una aceptada/rechazada/suspendida
 // alteraría el examen de Seguimiento del termómetro con marcas post-desenlace
-if (!in_array($cot['estado'], ['enviada', 'vista'], true)) {
+// (suspendida es COLUMNA, no estado — el guard de estado no la cubre)
+if (!in_array($cot['estado'], ['enviada', 'vista'], true) || (int)$cot['suspendida'] === 1) {
     echo json_encode(['ok' => false, 'error' => 'cerrada']); exit;
 }
+
+// Rate-limit por usuario: cada tap es una fila insert-only que cuenta como
+// "toque" en el reporte del equipo — sin tope, un script inflaría las métricas
+// con las que el dueño evalúa (mismo patrón que api/soporte.php)
+try {
+    $taps_min = (int)DB::val(
+        "SELECT COUNT(*) FROM mesa_estados
+         WHERE usuario_id = ? AND created_at >= NOW() - INTERVAL 1 MINUTE", [Auth::id()]
+    );
+    if ($taps_min >= 30) { echo json_encode(['ok' => false, 'error' => 'rate']); exit; }
+} catch (Throwable $e) {} // tabla aún no migrada
 
 // Los 3 writes van en transacción: un fallo parcial dejaría el tap guardado
 // pero sin proyección al Radar (o sin el contacto implícito) — estado divergente.
@@ -52,7 +64,8 @@ try {
     if ($area === 'compromiso') {
         $ult_con = DB::val(
             "SELECT estado FROM mesa_estados
-             WHERE cotizacion_id = ? AND area = 'contacto' ORDER BY id DESC LIMIT 1", [$cot_id]
+             WHERE cotizacion_id = ? AND empresa_id = ? AND area = 'contacto'
+             ORDER BY id DESC LIMIT 1", [$cot_id, EMPRESA_ID]
         );
         if ($ult_con !== 'hablamos') {
             DB::execute(
@@ -88,7 +101,8 @@ try {
         if ($area !== 'feedback') {
             $fb_prev = DB::val(
                 "SELECT estado FROM mesa_estados
-                 WHERE cotizacion_id = ? AND area = 'feedback' ORDER BY id DESC LIMIT 1", [$cot_id]
+                 WHERE cotizacion_id = ? AND empresa_id = ? AND area = 'feedback'
+                 ORDER BY id DESC LIMIT 1", [$cot_id, EMPRESA_ID]
             );
             if ($fb_prev !== $map[$estado]) {
                 DB::execute(
@@ -171,25 +185,34 @@ try {
     $ciclo = Radar::ciclo_venta(EMPRESA_ID);
     $p75   = (!empty($ciclo['auto']) && !empty($ciclo['p75'])) ? max(1, (int)$ciclo['p75']) : 30;
 
-    $es_hot = $cot['radar_bucket'] !== null
-        && in_array($cot['radar_bucket'], Mesa::HOT, true)
-        && $cot['radar_bucket_at']
-        && strtotime($cot['radar_bucket_at']) >= time() - 7 * 86400;
+    // MISMA regla que Mesa::armar (bucket_at solo cambia con el bucket:
+    // calor sostenido con visitas recientes también es hot reciente)
+    $es_hot_bucket = $cot['radar_bucket'] !== null && in_array($cot['radar_bucket'], Mesa::HOT, true);
+    $es_hot = $es_hot_bucket && (
+        ($cot['radar_bucket_at'] && strtotime($cot['radar_bucket_at']) >= time() - 7 * 86400)
+        || (int)($act['v7'] ?? 0) > 0
+    );
 
     $accion_post_cambios = false;
     if (($decl['postura']['estado'] ?? '') === 'pidio_cambios') {
         $accion_post_cambios = $ult_accion && strtotime($ult_accion) > strtotime($decl['postura']['at']);
     }
 
-    // Overlays reales (revivida/milagro) — sin esto el tip del tap contradice
-    // al de la recarga en las filas más urgentes de la mesa
+    // Overlays y CATEGORÍA con las MISMAS reglas que Mesa::armar — si el tip
+    // del tap usa reglas distintas, contradice al de la recarga en las filas
+    // más urgentes (revividas, milagros, interés muriendo, último tramo).
+    $fb_row = DB::row(
+        "SELECT tipo, updated_at FROM radar_feedback WHERE cotizacion_id = ? AND usuario_id = ?",
+        [$cot_id, (int)$cot['vend']]
+    );
     $revivida_now = false; $milagro_now = false;
-    $descartada_ahora_pre = ($estado === 'descartada' || $estado === 'sin_interes');
-    if (!$descartada_ahora_pre) {
-        $fb_row = DB::row(
-            "SELECT tipo, updated_at FROM radar_feedback WHERE cotizacion_id = ? AND usuario_id = ?",
-            [$cot_id, (int)$cot['vend']]
-        );
+    $descartada_ahora = ($estado === 'descartada' || $estado === 'sin_interes');
+    // descartada_hoy también si el 👎 vigente es de HOY (fila ya en esa sección
+    // recibiendo otro tap): igual que armar (fb updated_at >= hoy)
+    $descartada_hoy_fb = ($fb_row['tipo'] ?? '') === 'sin_interes'
+        && !empty($fb_row['updated_at'])
+        && strtotime($fb_row['updated_at']) >= strtotime('today');
+    if (!$descartada_ahora) {
         if (($fb_row['tipo'] ?? '') === 'sin_interes') {
             $hot_in = "'" . implode("','", Mesa::HOT) . "'";
             $ult_hot = DB::val(
@@ -203,10 +226,23 @@ try {
         $milagro_now = !$revivida_now && $es_hot && (int)$cot['edad'] > 2 * $p75;
     }
 
-    // Si el tap acaba de descartar (botón "Descartar" o 👎 de Feedback Radar),
-    // el tip instantáneo debe reflejar el descarte, no un consejo de trabajo.
-    $descartada_ahora = $estado === 'descartada' || $estado === 'sin_interes';
-    $cat_now = $descartada_ahora ? 'descartada_hoy' : 'trabajo';
+    // Cadena de categorías de Mesa::armar, replicada
+    $postura_vacia = empty($decl['postura']);
+    $dormida = (int)$cot['visitas'] > 0 && (int)$cot['dias_sin_vista'] >= 7;
+    if ($descartada_ahora || $descartada_hoy_fb) {
+        $cat_now = 'descartada_hoy';
+    } elseif ($revivida_now) {
+        $cat_now = 'revivida';
+    } elseif ($milagro_now) {
+        $cat_now = 'milagro';
+    } elseif (($fb_row['tipo'] ?? '') === 'con_interes' && $postura_vacia
+              && ($dormida || $cot['radar_bucket'] === 'enfriandose')) {
+        $cat_now = 'interes_muriendo';
+    } elseif (($fb_row['tipo'] ?? '') === 'con_interes' && $postura_vacia && (int)$cot['edad'] > $p75) {
+        $cat_now = 'ultimo_tramo';
+    } else {
+        $cat_now = 'trabajo'; // tras un tap siempre hay declaración — sin_postura no aplica
+    }
     $razon_now = ($decl['postura']['estado'] ?? '') === 'descartada'
         ? ($decl['postura']['razon'] ?? null) : null;
 

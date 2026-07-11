@@ -677,10 +677,10 @@ class Mesa
                         (SELECT MIN(m3.created_at) FROM mesa_estados m3
                          WHERE m3.cotizacion_id = m.cotizacion_id AND m3.area = 'compromiso'
                            AND m3.estado = 'compromiso'
-                           AND m3.created_at > COALESCE(
-                               (SELECT MAX(m4.created_at) FROM mesa_estados m4
+                           AND m3.id > COALESCE(
+                               (SELECT MAX(m4.id) FROM mesa_estados m4
                                 WHERE m4.cotizacion_id = m.cotizacion_id AND m4.area = 'compromiso'
-                                  AND m4.estado != 'compromiso'), '2000-01-01')) AS eff
+                                  AND m4.estado != 'compromiso'), 0)) AS eff
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
                        WHERE empresa_id = ? AND area = 'compromiso'
