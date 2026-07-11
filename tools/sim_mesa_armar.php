@@ -167,6 +167,25 @@ cot(13, 500, 22000, 5, ['estado' => 'aceptada', 'visitas' => 2]);
 cot(14, 500, 23000, 5, ['visitas' => 2]);
 DB::execute("INSERT INTO ventas (cotizacion_id, empresa_id, total, estado, created_at) VALUES (14,5,23000,'activa',?)", [$d(1)]);
 
+// M15 (15): CALOR SOSTENIDO revive — 👎 -5d, bucket hot desde -10d (SIN
+//   transición nueva), cliente ABRIÓ -2d → debe volver como revivida
+cot(15, 500, 24000, 30, ['bucket' => 'probable_cierre', 'bucket_at_d' => 10, 'visitas' => 5, 'vista_d' => 2]);
+fb(15, 500, 'sin_interes', 5);
+hotbt(15, 10);
+// M16 (16): LEGACY/reasignada — postura 'descartada' en mesa SIN rf del dueño
+//   → debe tratarse como descartada (fuera de la mesa, no 'trabajo' eterno)
+cot(16, 500, 25000, 12, ['visitas' => 2, 'vista_d' => 8]);
+tap(16, 'postura', 'descartada', 4);
+// M17 (17): fila 'feedback' de dueño ANTERIOR (uid 999) sin nada más →
+//   sigue siendo sin_postura (una marca ajena no es captura del asesor)
+cot(17, 500, 26000, 6, ['bucket' => 'probable_cierre', 'bucket_at_d' => 1, 'visitas' => 2, 'vista_d' => 1]);
+DB::execute("INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, created_at) VALUES (17,999,5,'feedback','con_interes',?)", [$d(3)]);
+// M18 (18): revivida con visitas=0 y bucket NULL (ghost cleanup) — 👎 -10d,
+//   transición hot -2d → NO debe desaparecer por el filtro de visitas
+cot(18, 500, 27000, 15, ['visitas' => 0]);
+fb(18, 500, 'sin_interes', 10);
+hotbt(18, 2);
+
 // ══ VENDEDOR 501 — CAPS: 8 milagros + 20 hot tier1 = 28 filas pre-cap ══
 for ($i = 1; $i <= 8; $i++) { // milagros: edad 50, hot fresco
     cot(100 + $i, 501, 5000 + $i, 50, ['bucket' => 'probable_cierre', 'bucket_at_d' => 1, 'visitas' => 2, 'vista_d' => 1]);
@@ -190,8 +209,8 @@ $by = [];
 foreach ($rows as $r) $by[(int)$r['id']] = $r;
 
 echo "═ VISIBILIDAD (quién entra y quién no) ═\n";
-chk('8 filas visibles (M1,M2,M4,M5,M7,M8,M9,M10)', array_values(array_map('intval', array_keys($by))) == [] ? -1 : count($rows), 8);
-chk('ids exactos', (function () use ($by) { $k = array_keys($by); sort($k); return $k; })(), [1, 2, 4, 5, 7, 8, 9, 10]);
+chk('11 filas visibles (M1,M2,M4,M5,M7,M8,M9,M10,M15,M17,M18)', count($rows), 11);
+chk('ids exactos', (function () use ($by) { $k = array_keys($by); sort($k); return $k; })(), [1, 2, 4, 5, 7, 8, 9, 10, 15, 17, 18]);
 chk('M3 (descartada 3d sin revivir) NO aparece', isset($by[3]), false);
 chk('M6 (fuera >2×p75 sin calor) NO aparece', isset($by[6]), false);
 chk('M11 (visitas=0 sin bucket) NO aparece', isset($by[11]), false);
@@ -206,6 +225,10 @@ chk('M7 = interes_muriendo (👍 + dormida 9d)', $by[7]['cat'] ?? '', 'interes_m
 chk('M8 = ultimo_tramo (👍 + fuera de ventana)', $by[8]['cat'] ?? '', 'ultimo_tramo');
 chk('M9 = trabajo (capturada)', $by[9]['cat'] ?? '', 'trabajo');
 chk('M10 = trabajo + atendida_hoy', [$by[10]['cat'] ?? '', $by[10]['atendida_hoy'] ?? null], ['trabajo', true]);
+chk('M15 = revivida por CALOR SOSTENIDO (sin transición nueva)', $by[15]['cat'] ?? '', 'revivida');
+chk('M16 (postura descartada sin rf) NO aparece — descarte de doble fuente', isset($by[16]), false);
+chk('M17 = sin_postura (la marca del dueño anterior no es captura)', $by[17]['cat'] ?? '', 'sin_postura');
+chk('M18 = revivida aunque visitas=0 y bucket NULL', $by[18]['cat'] ?? '', 'revivida');
 
 echo "═ FLAGS Y DATOS DE FILA ═\n";
 chk('M7 dormida = true', $by[7]['dormida'] ?? null, true);
@@ -219,17 +242,17 @@ chk('todas las filas tienen sugerencia no vacía', $sug_vacias, 0);
 
 echo "═ ORDEN ═\n";
 $ids_orden = array_map(fn($r) => (int)$r['id'], $rows);
-chk('revivida/milagro primero (M4 pc antes que M5 onfire)', array_slice($ids_orden, 0, 2), [4, 5]);
+chk('grupo 0 = revividas/milagros (M4, M15 pc; M5 onfire; M18 sin bucket)', array_slice($ids_orden, 0, 4), [15, 4, 5, 18]);
 $tier2_pos = array_search(8, $ids_orden); $tier1_max = max(array_search(1, $ids_orden), array_search(9, $ids_orden), array_search(10, $ids_orden));
 chk('tier 1 antes que tier 2 (M8 después de M1/M9/M10)', $tier2_pos > $tier1_max, true);
 
 echo "═ RESUMEN Y LIMPIEZA ═\n";
 $mr = $mesa['resumen'];
-chk('universo = 8', $mr['universo'] ?? -1, 8);
+chk('universo = 11', $mr['universo'] ?? -1, 11);
 chk('descartadas hoy = 1 (M2), atendidas = 1 (M10)', [$mr['descartadas'], $mr['atendidas']], [1, 1]);
-chk('n pendientes = 6', $mr['n'], 6);
-chk('monto pendientes = 88,000 (M1+M4+M5+M7+M8+M9)', $mr['monto'], 88000.0);
-chk('sin_postura = 1 (M1), mas_viejo = 5', [$mr['sin_postura'], $mr['mas_viejo_dias']], [1, 5]);
+chk('n pendientes = 9', $mr['n'], 9);
+chk('monto pendientes = 165,000 (+M15 24k, M17 26k, M18 27k)', $mr['monto'], 165000.0);
+chk('sin_postura = 2 (M1, M17), mas_viejo = 6', [$mr['sin_postura'], $mr['mas_viejo_dias']], [2, 6]);
 chk('limpieza: 1 cotización $15,000 (M6), línea 40', [$mesa['limpieza']['n'], $mesa['limpieza']['monto'], $mesa['limpieza']['linea_dias']], [1, 15000.0, 40]);
 
 echo "═ CAPS (vendedor 501: 8 milagros + 20 tier1 = 28) ═\n";

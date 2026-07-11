@@ -222,6 +222,13 @@ try {
             $revivida_now = $ult_hot
                 && strtotime($ult_hot) > strtotime($fb_row['updated_at'])
                 && strtotime($ult_hot) >= time() - 7 * 86400;
+            // Calor sostenido: sin transición nueva pero el cliente ABRIÓ
+            // después del descarte (misma regla que Mesa::armar)
+            if (!$revivida_now && $es_hot && $cot['ultima_vista_at']
+                && strtotime($cot['ultima_vista_at']) > strtotime($fb_row['updated_at'])
+                && strtotime($cot['ultima_vista_at']) >= time() - 7 * 86400) {
+                $revivida_now = true;
+            }
         }
         $milagro_now = !$revivida_now && $es_hot && (int)$cot['edad'] > 2 * $p75;
     }
