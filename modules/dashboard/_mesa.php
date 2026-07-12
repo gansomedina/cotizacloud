@@ -32,9 +32,10 @@ $mrec = Mesa::recuperado($empresa_id, $mesa_dias); // empresa-wide: la prueba en
 // Este include NO emite nada: llena $MESA_SHARED (empresa-wide: recuperado,
 // playbook, reporte, CSS/JS) y $MESA_BLOQUES[uid] (la mesa de cada asesor).
 $MESA_EMITIDO = false;
-$mesa_all = [];
+$mesa_all = []; $mesa_nombres = [];
 foreach ($mesa_vendedores as $mv) {
     $mesa_all[(int)$mv['id']] = Mesa::armar($empresa_id, (int)$mv['id']);
+    $mesa_nombres[(int)$mv['id']] = $mv['nombre'];
 }
 $mesa_first = reset($mesa_all);
 $mp75 = max(1, (int)$mesa_first['p75']);
@@ -161,6 +162,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 <details class="mesa-emb mesa-strip" id="mesa-emb-<?= (int)$mesa_vid ?>" <?= isset($_GET['mesa_uid']) && (int)$_GET['mesa_uid'] === (int)$mesa_vid ? 'open' : '' ?>>
   <summary class="mstrip">
     <span style="font-weight:800;color:#3f3f3a">📋 Mesa de trabajo</span>
+    <span style="color:#a8a8a2;font-size:11.5px"><?= e($mesa_nombres[$mesa_vid] ?? '') ?></span>
     <span>
       <?php if ($mr['n'] > 0 || !empty($mr['atendidas']) || !empty($mr['descartadas'])): ?>
         <b><?= (int)$mr['n'] ?></b> pendientes · <b><?= $mmoney($mr['monto']) ?></b> en juego<?php
@@ -251,8 +253,13 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       </span>
       <a href="#" onclick="event.preventDefault();var p=document.getElementById('mesa-pb');p.style.display=p.style.display==='none'?'block':'none'"
          style="margin-left:10px;color:#1a5c38;font-weight:700;text-decoration:none;white-space:nowrap">📖 ¿Cómo funciona?</a>
+      <?php if (isset($_GET['mesa_dias'])): ?>
       <a href="#" onclick="event.preventDefault();var p=document.getElementById('mesa-rp');p.style.display=p.style.display==='none'?'block':'none'"
          style="margin-left:8px;color:#1a5c38;font-weight:700;text-decoration:none;white-space:nowrap">📊 Reporte del equipo</a>
+      <?php else: ?>
+      <a href="?<?= e(http_build_query(array_merge($_GET, ['mesa_dias' => 30]))) ?>#mesa-shared"
+         style="margin-left:8px;color:#1a5c38;font-weight:700;text-decoration:none;white-space:nowrap">📊 Reporte del equipo</a>
+      <?php endif; ?>
     </div>
 
     <?php if ($mrec['rec_n'] > 0 || $mrec['trab_n'] > 0): ?>
@@ -317,17 +324,17 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       La meta del día es simple: dejar los pendientes en cero.</p>
     </div>
 
-    <?php
+    <?php if (isset($_GET['mesa_dias'])): // ~8 queries pesadas — solo bajo demanda
     $mrep = Mesa::reporte($empresa_id, $mesa_dias);
     $mpct = fn(int $n, int $d) => $d > 0 ? round(100 * $n / $d) . '%' : '—';
     ?>
-    <div id="mesa-rp" style="display:<?= isset($_GET['mesa_dias']) ? 'block' : 'none' ?>;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a">
+    <div id="mesa-rp" style="display:block;margin-bottom:12px;padding:14px 16px;background:#fff;border:1px solid #e2e2dc;border-radius:10px;font-size:12.5px;color:#3f3f3a">
       <div style="font-weight:800;margin-bottom:2px">📊 Reporte del equipo</div>
       <div style="color:#6a6a64;margin-bottom:8px">Qué cartera carga cada asesor, qué NO ha hecho con ella, y qué está
         declarando en la mesa. Los taps que das desde la mesa de un asesor cuentan a nombre de ese asesor.</div>
       <div style="margin-bottom:10px;font-size:12px;color:#6a6a64">Período:
         <?php foreach ([7, 15, 30, 60, 90] as $md): $act = $md === $mesa_dias; ?>
-        <a href="?mesa_dias=<?= $md ?>#mesa-shared"
+        <a href="?<?= e(http_build_query(array_merge($_GET, ['mesa_dias' => $md]))) ?>#mesa-shared"
            style="margin-left:4px;padding:2px 10px;border-radius:12px;text-decoration:none;font-weight:700;
                   <?= $act ? 'background:#1a5c38;color:#fff' : 'background:#f4f4f0;color:#4a4a46;border:1px solid #e2e2dc' ?>"><?= $md ?>d</a>
         <?php endforeach; ?>
@@ -456,7 +463,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
         <b>Se le fueron</b>: pasaron la ventana de cierre (día <?= $mp75 ?>) y llevan <?= max(3, (int)ceil($mp75 / 2)) ?>+ días sin
         ninguna atención — ni captura, ni calificación, ni edición/reenvío. Mide atención, no ventas: cerrar no depende
         solo del asesor, pero tocarla sí. Descartarla con 👎 también cuenta (es una decisión) y la saca de esta columna.
-        <b>Señales 🔥 desatendidas</b>: cada vez que el cliente se calentó (episodio del Radar) sin ninguna acción en los <b>2 días siguientes</b> — ni captura, ni calificación. Cada episodio se juzga solo: atender hoy no perdona la señal que se ignoró hace semanas. Rebotes entre buckets calientes del mismo episodio no cuentan doble; las señales de las últimas 48h aún no se juzgan; si la cotización se cerró tras la señal (venta o respuesta del cliente), cuenta atendida — el desenlace llegó.
+        <b>Señales 🔥 desatendidas</b>: cada vez que el cliente se calentó (episodio del Radar) sin ninguna acción en los <b>3 días siguientes</b> (cubre el fin de semana) — ni captura, ni calificación. Cada episodio se juzga solo: atender hoy no perdona la señal que se ignoró hace semanas. Rebotes entre buckets calientes del mismo episodio no cuentan doble; las señales de las últimas 72h aún no se juzgan; si la cotización se cerró tras la señal (venta o respuesta del cliente), cuenta atendida — el desenlace llegó.
         <br><b>Trabajo:</b>
         <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática (declarar un acuerdo registra la plática implícita).
         <b>Genera compromiso</b>: de las cotizaciones con conversación declarada en el período, en cuántas el acuerdo VIGENTE es "Quedamos en algo". Regla pareja en toda la sección: las <b>descartadas salen completas</b> (ni a favor ni en contra — se juzgan en 👎 revividos y Recuperado); las <b>vendidas/aceptadas siguen contando</b> (son el éxito del acuerdo, el "¿cuáles?" las desglosa con folio); los <b>toques cuentan siempre</b> aunque la cotización luego se descarte — el esfuerzo fue real.
@@ -467,6 +474,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       </div>
     <?php endif; ?>
     </div>
+    <?php endif; // reporte bajo demanda ?>
 
     
 </div>
@@ -572,6 +580,11 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 // Los bloques por asesor se emiten DESPUÉS de este script (dentro del
 // ranking) — el binding va diferido a DOMContentLoaded.
 document.addEventListener('DOMContentLoaded', function(){
+  // Deep link ?mesa_uid=X: el details llega abierto — llevar la vista ahí
+  var abierto = document.querySelector('details.mesa-emb.mesa-strip[open]');
+  if (abierto && location.search.indexOf('mesa_uid=') !== -1) {
+    abierto.scrollIntoView({block: 'start', behavior: 'smooth'});
+  }
   document.querySelectorAll('.mesa-emb .mrow').forEach(function(row){
     row.addEventListener('click', function(){
       var d = document.getElementById(row.dataset.drawer);
