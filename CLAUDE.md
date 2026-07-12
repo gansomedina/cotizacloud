@@ -3258,6 +3258,19 @@ las 6 trampas verificadas, cambios exactos (~60 líneas + migración) y
 checklist de rollout. Sub-proyecto previo: abrir la mesa a asesores
 (vista propia, sin reporte del equipo).
 
+### Decisiones 11 jul 2026 (rollout asesores evaluado con 3 agentes)
+- **El ❓ del Radar YA NO PENALIZA** (multiplicador radar_why eliminado del
+  Seguimiento — la mesa es el mecanismo de señales y valdrá el 25%). Cada tap
+  de mesa registra radar_why_click a nombre del asesor (mesa_estado.php) —
+  mantiene vivos diligente/teatro/g_ignora de DiagnosticoTips
+- Ventana de reacción de señales: 3 días (cubre viernes/sábado sin días hábiles)
+- Flag mesa_activa de 3 valores: 0 off / 1 UI asesores / 2 UI+score
+- 8 frases de la mesa reescritas (tono coach, no fiscal — auditoría psicología)
+- El rollout a asesores tiene su plan completo en docs/mesa_score_integracion.md
+  (bloqueantes: split assets JS/CSS, gate del reporte, MÓVIL 2 líneas con 👍👎
+  visibles; producto: contador con desglose, disuasión anunciada, recuperado
+  personal, espejo de su fila, push de revividas)
+
 ### Pendientes menores mesa
 - GRACIA_DIAS está en 7 "temporal testing" (ActividadScore.php:105) — volver a 15
 - Decisión futura: columna declarado_por en mesa_estados al abrir a asesores

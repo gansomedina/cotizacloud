@@ -12,8 +12,15 @@ s_mesa = 1.0  si  fallas <= max(1, floor(0.20 × pedidas))     // "80% con marge
        = 0.0  en caso contrario
        = 1.0  si  pedidas = 0                                  // sin examen no hay reprobado
 
-s_seguimiento = 0.75 × (fórmula actual completa: tarea×examen − pen_buckets, × radar_why)
+s_seguimiento = 0.75 × (tarea×examen − pen_buckets)
               + 0.25 × s_mesa
+```
+**El multiplicador ❓ (radar_why) YA NO EXISTE** — decisión CEO 11 jul, aplicada
+en código ese mismo día: la mesa es el mecanismo de "atiende tus señales".
+Cada tap de mesa registra `radar_why_click` a nombre del asesor dueño
+(mesa_estado.php, con throttle 5 min) — eso mantiene vivos los consumidores
+de `calientes_exploradas` en DiagnosticoTips (diligente, arquetipo teatro,
+voluntad, gate "las ignoras") sin insultar al que migró del Radar a la mesa.
 ```
 
 - **pedidas** = señales 🔥 del período con ventana de reacción cerrada (3+ días),
@@ -36,7 +43,25 @@ semana" dentro de `Mesa::cobertura_senales()` (sin config de usuario).
   actual al 100% (el 25% no existe). Flag explícito que el superadmin enciende
   por empresa al soltar la mesa a sus asesores.
 
-Impacto: 25% × 25 pts de Seguimiento = **6.25 pts del score total** en juego.
+Impacto: 25% × 25 pts = 6.25 pts del PROPORCIONAL; el score final los
+multiplica por w_proporcional → **~4.7 a 5.6 pts reales** según equipo/CR.
+
+### Divergencia de sets — escenario X/Y documentado (auditoría 11 jul)
+La mesa pide el set de 8 buckets; la tarea del 75% mide el set de 5. Casos
+reales: (X) asesor cubre 83% de la mesa pero pocas de sus atenciones caen en
+el set de 5 → mesa ✓ y tarea baja; (Y) feedback perfecto al set de 5 pero
+ignora los 3 buckets extra → tarea 1.0 y mesa en cero (−4.7/−5.6 pts).
+Intencional (la mesa redirige trabajo al set completo), PERO obliga a:
+- El widget de cobertura del asesor sale de `Mesa::cobertura_senales()`
+  (set de 8, episodios, 3d) — el número que ve = el número que lo examina.
+- La frase del reprobado nombra "la mesa" y "3 días", nunca "el Radar" ni
+  "tu seguimiento" a secas.
+- Aviso del rollout: "las señales de la mesa son MÁS que las del Radar".
+
+### tips_score — decisión
+Leer los tips de la mesa NO cuenta para dias_lectura (mediría 3 veces el
+mismo acto). Criterio de reapertura: al mes del rollout, si dias_lectura
+promedio de la piloto cae >40%, evaluar contar "día con cajón abierto".
 
 ## Estado actual del motor (verificado en código, no de memoria)
 
@@ -112,8 +137,10 @@ Impacto: 25% × 25 pts de Seguimiento = **6.25 pts del score total** en juego.
 
 ## Cambios exactos al implementar (estimado ~60 líneas + migración)
 
-1. **Migración** `add_mesa_score.sql`:
+1. **Migración** `add_mesa_score.sql` — flag de 3 valores (auditoría rollout:
+   permite la quincena de UI sin score con una sola columna):
    ```sql
+   -- 0 = off · 1 = UI asesores (sin score) · 2 = UI + score 25%
    ALTER TABLE empresas ADD COLUMN mesa_activa TINYINT(1) NOT NULL DEFAULT 0;
    ALTER TABLE usuario_score
      ADD COLUMN mesa_pedidas   INT UNSIGNED NOT NULL DEFAULT 0,
@@ -133,9 +160,23 @@ Impacto: 25% × 25 pts de Seguimiento = **6.25 pts del score total** en juego.
    }
    ```
    + persistir mesa_pedidas/atendidas/s_mesa en el INSERT (:1001) y snapshot.
-4. **DiagnosticoTips**: 1 frase nueva cuando `s_mesa === 0.0`
-   ("Atendiste X de Y señales en la mesa — el 25% de tu Seguimiento está en cero;
-   se recupera cubriendo el 80%").
+4. **DiagnosticoTips**: 3 variantes cuando `s_mesa === 0.0` (rotadas por seed,
+   generadas DESPUÉS del corte de max_frases — lección bonus_ticket), gates:
+   `mesa_activa && s_mesa===0.0 && pedidas>0`; la v3 exige fallas ≥ 2:
+   1. (reto) "Atendiste {X} de {Y} señales 🔥 de tu mesa — {N} se quedaron más
+      de 3 días esperando. Ese cuarto de tu Seguimiento está en cero. La mesa
+      te las forma sola cada mañana; tu parte es un toque el mismo día: con 8
+      de cada 10 lo recuperas completo."
+   2. (coach) "La mesa te pidió {Y} señales y llegaste a {X}. Una señal
+      caliente dura horas, no semanas: empieza el día por lo 🔥 de tu mesa —
+      un tap dentro de los 3 días cuenta, aunque el cliente no conteste.
+      Cubriendo el 80% ese punto vuelve solo."
+   3. (calle) "{Y} clientes te levantaron la mano y a {N} los dejaste colgados
+      más de 3 días. Nadie te pide cerrarlos, te pide aparecer: entra a tu
+      mesa, dales un toque y declara qué pasó. Ocho de cada diez y el cuarto
+      de tu Seguimiento regresa."
+   Ajustes de wording con mesa_activa en $ctx: sordo_a_senales v1 y
+   muestra_chica dicen "en tu mesa" en vez de "en el Radar".
 5. **Debug panel / executive**: línea "Mesa: X/Y → ✓/✗" en el desglose.
    ⚠️ OBLIGATORIO agregar las columnas nuevas al SELECT de
    `modules/superadmin/executive.php` — ya nos pasó con bonus_ticket:
@@ -148,6 +189,44 @@ Impacto: 25% × 25 pts de Seguimiento = **6.25 pts del score total** en juego.
 7. **Toggle superadmin**: switch "Mesa activa" en la ficha de empresa
    (`modules/superadmin/empresa.php`, mismo patrón que toggle_plan) para
    encender `mesa_activa` por empresa sin tocar BD a mano.
+
+## Hallazgos de la auditoría de rollout (11 jul, 3 agentes) — INTEGRAR al implementar
+
+**Bloqueantes técnicos:** (1) partir $MESA_SHARED en $MESA_ASSETS (CSS/JS/toast,
+para todos) + shared admin-only — si no, el primer tap del asesor truena con
+'mesaTap is not defined'; (2) el gate del reporte debe ser
+`$es_admin_dash && isset($_GET['mesa_dias'])` — si no, ?mesa_dias tecleado
+destapa el reporte del equipo al asesor; (3) MÓVIL: el CSS ≤640px oculta los
+👍👎 y el nombre del cliente se trunca a nada — el asesor vive en el teléfono;
+layout de 2 líneas obligatorio antes del rollout. Estimación real total:
+~165-185 líneas + migración (no las ~40 originales).
+
+**Producto (psicología de ventas):**
+- Contador de cobertura CON DESGLOSE en el strip del asesor: "🔥 Señales: 3 de
+  5 — 2 por vencer (F-1043 vence mañana)"; el tap abre la lista itemizada
+  (qué cuenta, qué vence, qué venció, la regla en una línea). La percepción
+  de justicia depende del desglose, no del margen.
+- DISUASIÓN ANUNCIADA (párrafo nuevo del playbook asesor): "La mesa no
+  califica lo que declaras — califica que trabajes tus señales. Lo que
+  declares se coteja solo con lo que el cliente hace… Declarar lo que de
+  verdad pasó siempre te da mejor consejo — y mejor score — que declarar lo
+  que se ve bien." + toast del descarte agrega "— y un descarte que el
+  cliente desmiente cuenta en tu contra".
+- Explicar que las fallas CADUCAN (rolling 15d): "cada quincena empieza
+  limpia" — sin esto, el reprobado deja de intentar (efecto acantilado).
+- 💰 Recuperado PERSONAL para el asesor ("tú recuperaste $X de cotizaciones
+  que dabas por muertas") — el gancho de adopción número uno.
+- Espejo: el asesor ve SU fila del reporte (solo la suya), con "Se te
+  fueron" reenmarcado a "Sin atención +Nd: 3 · $145,000 — aún vivas,
+  tócalas hoy". Lo que genera paranoia no es ver números malos: es saber
+  que el jefe ve un reporte que tú no puedes ver.
+- Su mesa ARRIBA del dashboard, abierta por default (no enterrada en un
+  details).
+- Push de revividas (⚡) — sin él, "si revive, vuelve sola" depende de que
+  el asesor entre a diario. Expectativa del rollout, no bloqueante.
+- Textos admin a ocultar/reescribir en su rama: badge "solo admin", "la mesa
+  de cada asesor está en su tarjeta", "Datos de toda la empresa", referencia
+  al 📊 Reporte en el strip, párrafo Recuperado del playbook.
 
 ## Sub-proyecto previo al rollout: abrir la mesa a ASESORES (falta especificar UI)
 

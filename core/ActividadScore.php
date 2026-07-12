@@ -625,18 +625,14 @@ class ActividadScore
                     [$usuario_id]
                 );
             }
-            // Grace period: si NADIE en la empresa ha clickeado ❓ (feature recién
-            // desplegada), no penalizar. Una vez que cualquier asesor clickea →
-            // la feature está activa para todos.
-            // Grace de usuario nuevo cubierto por early return arriba.
-            // Si tiene calientes, se mide directo.
-            $pct_why = $calientes_exploradas / $cots_calientes;
-            if ($pct_why >= 0.70) $radar_why_score = 1.0;
-            elseif ($pct_why >= 0.30) $radar_why_score = 0.85;
-            else $radar_why_score = 0.70;
+            // DECISIÓN CEO (11 jul 2026): el ❓ YA NO PENALIZA — la Mesa de
+            // Trabajo es el mecanismo de "atiende tus señales" y valdrá el 25%
+            // del Seguimiento. El conteo se conserva SOLO como dato informativo
+            // (debug panel) y para los consumidores de DiagnosticoTips, que se
+            // alimentan también de los taps de la mesa (mesa_estado registra
+            // radar_why_click). radar_why_score queda en 1.0 permanente.
         }
-        $s_seguimiento = $s_seguimiento * $radar_why_score;
-        $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
+        $radar_why_score = 1.0;
 
         // Guardar para debug
         $benchmark_radar = $cots_calientes; // para compatibilidad con debug display
