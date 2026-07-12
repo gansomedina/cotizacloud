@@ -88,12 +88,17 @@ try {
     try { DB::rollback(); } catch (Throwable $e2) {}
     // Solo tolerar mesa_estados sin migrar: en ese caso guardar el feedback solo
     if (stripos($e->getMessage(), 'mesa_estados') !== false) {
-        DB::execute(
-            "INSERT INTO radar_feedback (cotizacion_id, usuario_id, empresa_id, tipo)
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE tipo = VALUES(tipo), updated_at = NOW()",
-            [$cot_id, (int)$cot['vendedor_id'], $empresa_id, $tipo]
-        );
+        try {
+            DB::execute(
+                "INSERT INTO radar_feedback (cotizacion_id, usuario_id, empresa_id, tipo)
+                 VALUES (?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE tipo = VALUES(tipo), updated_at = NOW()",
+                [$cot_id, (int)$cot['vendedor_id'], $empresa_id, $tipo]
+            );
+        } catch (Throwable $e2) {
+            error_log('[Radar feedback retry] ' . $e2->getMessage());
+            echo json_encode(['ok' => false, 'error' => 'No se pudo guardar']); exit;
+        }
     } else {
         error_log('[Radar feedback] ' . $e->getMessage());
         echo json_encode(['ok' => false, 'error' => 'No se pudo guardar']); exit;

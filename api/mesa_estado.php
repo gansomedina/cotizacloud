@@ -33,6 +33,14 @@ $cot = DB::row(
      FROM cotizaciones WHERE id=? AND empresa_id=?", [$cot_id, EMPRESA_ID]);
 if (!$cot) { echo json_encode(['ok'=>false,'error'=>'no_encontrada']); exit; }
 if ((int)$cot['vend'] !== Auth::id() && !Auth::es_admin()) { echo json_encode(['ok'=>false,'error'=>'permiso']); exit; }
+// El flag mesa_activa gobierna también el WRITE path: un asesor de empresa
+// con la mesa apagada no debe poder sembrar declaraciones por POST directo
+if (!Auth::es_admin()) {
+    try {
+        $mesa_flag = (int)DB::val("SELECT mesa_activa FROM empresas WHERE id = ?", [EMPRESA_ID]);
+    } catch (Throwable $e) { $mesa_flag = 0; } // columna sin migrar = apagada
+    if ($mesa_flag < 1) { echo json_encode(['ok' => false, 'error' => 'mesa_off']); exit; }
+}
 // Solo cotizaciones vivas: declarar/feedbackear una aceptada/rechazada/suspendida
 // alteraría el examen de Seguimiento del termómetro con marcas post-desenlace
 // (suspendida es COLUMNA, no estado — el guard de estado no la cubre)
@@ -204,9 +212,12 @@ try {
         || (int)($act['v7'] ?? 0) > 0
     );
 
-    $accion_post_cambios = false;
+    $accion_post_cambios = false; $accion_post_cambios_at = null;
     if (($decl['postura']['estado'] ?? '') === 'pidio_cambios') {
-        $accion_post_cambios = $ult_accion && strtotime($ult_accion) > strtotime($decl['postura']['at']);
+        if ($ult_accion && strtotime($ult_accion) > strtotime($decl['postura']['at'])) {
+            $accion_post_cambios = true;
+            $accion_post_cambios_at = $ult_accion;
+        }
     }
 
     // Overlays y CATEGORÍA con las MISMAS reglas que Mesa::armar — si el tip
@@ -218,36 +229,48 @@ try {
     );
     $revivida_now = false; $milagro_now = false;
     $descartada_ahora = ($estado === 'descartada' || $estado === 'sin_interes');
+    // "Hoy" con el reloj de la BD (igual que armar): si los timezone de PHP
+    // y MySQL difieren, strtotime('today') clasifica distinto que la recarga
+    $hoy_db = (string)DB::val("SELECT CURDATE()");
     // descartada_hoy también si el 👎 vigente es de HOY (fila ya en esa sección
     // recibiendo otro tap): igual que armar (fb updated_at >= hoy)
     $descartada_hoy_fb = ($fb_row['tipo'] ?? '') === 'sin_interes'
         && !empty($fb_row['updated_at'])
-        && strtotime($fb_row['updated_at']) >= strtotime('today');
-    if (!$descartada_ahora) {
-        if (($fb_row['tipo'] ?? '') === 'sin_interes') {
-            $hot_in = "'" . implode("','", Mesa::HOT) . "'";
-            $ult_hot = DB::val(
-                "SELECT MAX(created_at) FROM bucket_transitions
-                 WHERE cotizacion_id = ? AND bucket_nuevo IN ($hot_in)", [$cot_id]
-            );
-            $revivida_now = $ult_hot
-                && strtotime($ult_hot) > strtotime($fb_row['updated_at'])
-                && strtotime($ult_hot) >= time() - 7 * 86400;
-            // Calor sostenido: sin transición nueva pero el cliente ABRIÓ
-            // después del descarte (misma regla que Mesa::armar)
-            if (!$revivida_now && $es_hot && $cot['ultima_vista_at']
-                && strtotime($cot['ultima_vista_at']) > strtotime($fb_row['updated_at'])
-                && strtotime($cot['ultima_vista_at']) >= time() - 7 * 86400) {
-                $revivida_now = true;
-            }
+        && substr($fb_row['updated_at'], 0, 10) === $hoy_db;
+    // Postura vigente 'descartada' (2ª fuente, igual que armar) — anulada por
+    // un juicio positivo POSTERIOR (feedback con_interes de historia o rf)
+    $post_desc_now = false; $post_desc_at = 0;
+    if (($decl['postura']['estado'] ?? '') === 'descartada') {
+        $post_desc_now = true;
+        $post_desc_at  = strtotime($decl['postura']['at']);
+        if (($decl['feedback']['estado'] ?? '') === 'con_interes'
+            && strtotime($decl['feedback']['at']) > $post_desc_at) $post_desc_now = false;
+        if (($fb_row['tipo'] ?? '') === 'con_interes'
+            && strtotime($fb_row['updated_at'] ?? '') > $post_desc_at) $post_desc_now = false;
+    }
+    $descartada_hoy_pos = $post_desc_now && substr($decl['postura']['at'], 0, 10) === $hoy_db;
+    $descartada_vig = ($fb_row['tipo'] ?? '') === 'sin_interes' || $post_desc_now;
+    if (!$descartada_ahora && $descartada_vig) {
+        // Revivida = VISTA REAL posterior al ÚLTIMO juicio (misma regla que
+        // armar) — las transiciones de bucket solas son flapping del Radar
+        $desc_at_now = max(
+            ($fb_row['tipo'] ?? '') === 'sin_interes' ? strtotime($fb_row['updated_at'] ?? '') : 0,
+            $post_desc_now ? $post_desc_at : 0
+        );
+        if ($desc_at_now && $cot['ultima_vista_at']
+            && strtotime($cot['ultima_vista_at']) > $desc_at_now
+            && strtotime($cot['ultima_vista_at']) >= time() - 7 * 86400) {
+            $revivida_now = true;
         }
-        $milagro_now = !$revivida_now && $es_hot && (int)$cot['edad'] > 2 * $p75;
+    }
+    if (!$descartada_ahora) {
+        $milagro_now = !$revivida_now && !$descartada_vig && $es_hot && (int)$cot['edad'] > 2 * $p75;
     }
 
     // Cadena de categorías de Mesa::armar, replicada
     $postura_vacia = empty($decl['postura']);
     $dormida = (int)$cot['visitas'] > 0 && (int)$cot['dias_sin_vista'] >= 7;
-    if ($descartada_ahora || $descartada_hoy_fb) {
+    if ($descartada_ahora || (!$revivida_now && ($descartada_hoy_fb || $descartada_hoy_pos))) {
         $cat_now = 'descartada_hoy';
     } elseif ($revivida_now) {
         $cat_now = 'revivida';
@@ -284,6 +307,7 @@ try {
         'vistas_7d'  => (int)($act['v7'] ?? 0),
         'ips_7d'     => (int)($act['ips7'] ?? 0),
         'accion_post_cambios' => $accion_post_cambios,
+        'accion_post_cambios_at' => $accion_post_cambios_at,
         'p75' => $p75, 'mediana' => (int)($ciclo['mediana'] ?? $p75),
         'ticket_empresa' => $ticket,
         'arquetipo' => $arquetipo,

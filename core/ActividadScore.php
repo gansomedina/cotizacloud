@@ -102,7 +102,7 @@ class ActividadScore
         );
     }
 
-    private const GRACIA_DIAS = 7; // temporal para testing — volver a 15
+    private const GRACIA_DIAS = 15;
 
     // ─── Calcular score completo de un usuario ───────────
     /**
@@ -178,8 +178,9 @@ class ActividadScore
             // Empresa con ciclo largo: extender período para capturar suficientes cierres
             // ttc=30d → periodo=45d, ttc=60d → periodo=60d (cap 60)
             $periodo = (int)min(max(self::PERIODO, $bench['time_to_close'] * 1.5), 60);
-            // Recalcular benchmarks con el período extendido
-            unset(self::$_bench[$empresa_id]);
+            // Recalcular benchmarks con el período extendido (la caché ahora
+            // es por empresa+período — la entrada de 15d queda intacta para
+            // periodo_efectivo y los demás vendedores)
             $bench = self::_benchmarks($empresa_id, $periodo);
         }
 
@@ -288,21 +289,18 @@ class ActividadScore
              AND estado IN ('borrador','enviada','vista')",
             [$usuario_id, $empresa_id]
         );
+        // Misma ventana y exclusión de imports que asignadas — pen_buckets divide
+        // contra asignadas del período, el numerador debe ser del mismo universo
         $buckets_estancados = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND radar_bucket IS NOT NULL AND radar_bucket != 'no_abierta'
              AND estado IN ('enviada','vista')
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND radar_updated_at < DATE_SUB(NOW(), INTERVAL 14 DAY)",
-            [$usuario_id, $empresa_id]
-        );
-        $vencidas_sin_accion = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
-             AND valida_hasta IS NOT NULL AND valida_hasta < CURDATE()
-             AND estado IN ('enviada','vista') AND accion_at IS NULL",
-            [$usuario_id, $empresa_id]
+            [$usuario_id, $empresa_id, $periodo]
         );
         $zona_muerta = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado IN ('enviada','vista')
              AND COALESCE(radar_updated_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 21 DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
@@ -412,8 +410,9 @@ class ActividadScore
         $tasa_apertura = $cot_vistas / $asignadas_validas;
 
         // No abiertas en 5+ días — sin ventana, penaliza mientras siga sin abrir
+        // (excluye días de importación masiva, igual que asignadas/vistas)
         $no_abiertas_5d = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp
+            "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado='enviada' AND visitas=0
              AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)",
             [$usuario_id, $empresa_id]
@@ -438,18 +437,23 @@ class ActividadScore
         $s_activacion_op = min(1.0, $s_activacion_op);
         $s_activacion = ($s_activacion_op * 0.5) + ($tips_score * 0.5);
 
-        // Tasa de cierre (se calcula antes de engagement/seguimiento)
+        // Tasa de cierre (se calcula antes de engagement/seguimiento).
+        // Clamp a 1.0: cierres se cuentan por accion_at y vistas por created_at
+        // — cerrar backlog viejo puede dar ratio >1 (ventanas distintas)
         $cot_vistas_safe = max($cot_vistas, 1);
-        $tasa_cierre = $cierres_total / $cot_vistas_safe;
+        $tasa_cierre = min($cierres_total / $cot_vistas_safe, 1.0);
 
-        // Ventas sin pago inicial (>5 días) — se usa en Engagement
+        // Ventas sin pago inicial (>5 días) — se usa en Engagement.
+        // Acotada al período: una venta vieja sin cobrar no debe anular
+        // Engagement para siempre (el denominador también es del período)
         $ventas_sin_pago = (int)DB::val(
             "SELECT COUNT(*) FROM ventas
              WHERE COALESCE(vendedor_id, usuario_id) = ? AND empresa_id = ?
              AND pagado = 0 AND estado NOT IN ('cancelada','entregada')
              AND total > 0
-             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)",
-            [$usuario_id, $empresa_id]
+             AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+            [$usuario_id, $empresa_id, $periodo]
         );
 
         // ═══════════════════════════════════════════════════
@@ -496,17 +500,23 @@ class ActividadScore
         // pen_bajo_benchmark: ventas del vendedor vs promedio empresa período anterior
         // Si vendes menos de lo que vendía la empresa por vendedor, penaliza
         $eng_pen_bajo_benchmark = 0.0;
+        // Superadmin excluido del benchmark (principio v5: no infla promedios)
         $ventas_emp_prev = (int)DB::val(
-            "SELECT COUNT(*) FROM ventas WHERE empresa_id=? AND estado != 'cancelada' AND pagado > 0
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND created_at < DATE_SUB(NOW(), INTERVAL ? DAY)",
+            "SELECT COUNT(*) FROM ventas v
+             LEFT JOIN usuarios u ON u.id = COALESCE(v.vendedor_id, v.usuario_id)
+             WHERE v.empresa_id=? AND v.estado != 'cancelada' AND v.pagado > 0
+             AND COALESCE(u.rol,'') != 'superadmin'
+             AND v.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND v.created_at < DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$empresa_id, $periodo * 2, $periodo]
         );
         $sellers_prev = (int)DB::val(
-            "SELECT COUNT(DISTINCT COALESCE(vendedor_id, usuario_id)) FROM ventas
-             WHERE empresa_id=? AND estado != 'cancelada' AND pagado > 0
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND created_at < DATE_SUB(NOW(), INTERVAL ? DAY)",
+            "SELECT COUNT(DISTINCT COALESCE(v.vendedor_id, v.usuario_id)) FROM ventas v
+             LEFT JOIN usuarios u ON u.id = COALESCE(v.vendedor_id, v.usuario_id)
+             WHERE v.empresa_id=? AND v.estado != 'cancelada' AND v.pagado > 0
+             AND COALESCE(u.rol,'') != 'superadmin'
+             AND v.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND v.created_at < DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$empresa_id, $periodo * 2, $periodo]
         );
         $bench_ventas = $sellers_prev > 0 ? $ventas_emp_prev / $sellers_prev : 0;
@@ -546,6 +556,7 @@ class ActividadScore
              FROM radar_feedback rf
              JOIN cotizaciones c ON c.id = rf.cotizacion_id
              WHERE rf.usuario_id=? AND rf.empresa_id=?
+             AND c.suspendida = 0
              AND EXISTS (
                 SELECT 1 FROM bucket_transitions bt
                 WHERE bt.cotizacion_id = c.id AND bt.bucket_nuevo IN $hot_buckets_sql
@@ -664,12 +675,14 @@ class ActividadScore
         }
         if ($mesa_flag_cache[$empresa_id] >= 2) {
             $cob = Mesa::cobertura_senales($empresa_id, $usuario_id, $periodo);
-            $mesa_pedidas   = $cob['pedidas'];
-            $mesa_atendidas = $cob['atendidas'];
-            $mesa_margen    = max(1, (int)floor(0.20 * $cob['pedidas']));
-            $s_mesa = ($cob['pedidas'] === 0 || $cob['fallas'] <= $mesa_margen) ? 1.0 : 0.0;
-            $s_seguimiento = 0.75 * $s_seguimiento + 0.25 * $s_mesa;
-            $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
+            if (empty($cob['error'])) { // fail-neutral: error SQL ≠ 25% regalado
+                $mesa_pedidas   = $cob['pedidas'];
+                $mesa_atendidas = $cob['atendidas'];
+                $mesa_margen    = max(1, (int)floor(0.20 * $cob['pedidas']));
+                $s_mesa = ($cob['pedidas'] === 0 || $cob['fallas'] <= $mesa_margen) ? 1.0 : 0.0;
+                $s_seguimiento = 0.75 * $s_seguimiento + 0.25 * $s_mesa;
+                $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
+            }
         }
 
         // Guardar para debug
@@ -903,12 +916,11 @@ class ActividadScore
         // Excluye admins, usuarios base, cuentas de sistema que no cotizan
         $team = DB::query(
             "SELECT u.id, COALESCE(us.score, 0) AS sc,
-                    COALESCE(us.s_activacion, 0) AS sa,
-                    COALESCE(us.s_seguimiento, 0) AS ss,
-                    COALESCE(us.s_conversion, 0) AS scv
+                    us.tasa_gestion AS tg
              FROM usuarios u
              LEFT JOIN usuario_score us ON us.usuario_id = u.id
              WHERE u.empresa_id = ? AND u.activo = 1
+             AND u.rol != 'superadmin'
              AND EXISTS (
                 SELECT 1 FROM cotizaciones c
                 WHERE COALESCE(c.vendedor_id, c.usuario_id) = u.id
@@ -921,18 +933,17 @@ class ActividadScore
         $team_size = count($team);
         $percentil = 0.50;
 
-        // Fix P14: usar score final guardado (no dimensiones sueltas) para comparar
-        // con el equipo. Esto es más justo porque el score final ya incluye momentum
-        // y penalizaciones. Para el usuario actual, usar su proporcional recién calculado.
+        // Comparar manzanas con manzanas: el usuario actual entra con su
+        // proporcional recién calculado y los demás con su tasa_gestion
+        // persistida (= su proporcional del último recálculo). El score/100
+        // no es comparable: ya trae momentum, percentil y bonuses.
         if ($team_size >= 2) {
             $scores_equipo = [];
             foreach ($team as $t) {
                 if ((int)$t['id'] === $usuario_id) {
                     $scores_equipo[] = ['s' => $proporcional, 'me' => true];
                 } else {
-                    // Usar tasa_gestion (proporcional guardado) en vez de reconstruir
-                    // desde dimensiones individuales que pueden estar desfasadas
-                    $s_other = (float)($t['sc'] ?? 0) / 100.0;
+                    $s_other = $t['tg'] !== null ? (float)$t['tg'] : (float)($t['sc'] ?? 0) / 100.0;
                     $scores_equipo[] = ['s' => $s_other, 'me' => false];
                 }
             }
@@ -1099,6 +1110,7 @@ class ActividadScore
         );
 
         return [
+            'usuario_id'        => $usuario_id,
             'score'             => $score,
             'nivel'             => $nivel,
             'dias_activos'      => $dias_activos,
@@ -1124,7 +1136,6 @@ class ActividadScore
             's_activacion_op'   => round($s_activacion_op, 3),
             'tips_score'        => round($tips_score, 2),
             'dias_lectura'      => $dias_lectura,
-            'dias_activos'      => $dias_activos,
             's_engagement'      => round($s_engagement, 3),
             'eng_pen_sin_pago'  => round($eng_pen_sin_pago, 3),
             'eng_pen_descuento' => round($eng_pen_descuento, 3),
@@ -1134,6 +1145,10 @@ class ActividadScore
             'ventas_totales'        => $ventas_totales,
             'ventas_con_descuento' => $ventas_con_descuento,
             's_seguimiento'     => round($s_seguimiento, 3),
+            's_mesa'            => ($s_mesa === null ? null : round($s_mesa, 2)),
+            'mesa_pedidas'      => $mesa_pedidas,
+            'mesa_atendidas'    => $mesa_atendidas,
+            'ventas_periodo'    => $ventas_totales,
             's_radar_health'    => round($s_radar_health, 3),
             'health_up'         => $health_up,
             'health_down'       => $health_down,
@@ -1219,7 +1234,7 @@ class ActividadScore
     {
         $periodo = self::PERIODO;
         $total = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0 AND suspendida=0 AND estado != 'borrador' AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)", [$empresa_id, $periodo]);
-        $cerr = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado IN ('aceptada','convertida') AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND total > 0 AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = cotizaciones.id AND v.pagado > 0 AND v.estado != 'cancelada')", [$empresa_id, $periodo]);
+        $cerr = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado IN ('aceptada','convertida','aceptada_cliente') AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY) AND total > 0 AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = cotizaciones.id AND v.pagado > 0 AND v.estado != 'cancelada')", [$empresa_id, $periodo]);
 
         $mes_actual = (int)date('n');
         $anio_actual = (int)date('Y');
@@ -1415,9 +1430,12 @@ class ActividadScore
             } elseif ($score >= 70) {
                 $frases[] = "$vist clientes abrieron tu cotización y ninguno compró. Cierre en 0%.";
             } elseif ($score >= 45) {
-                $frases[] = "0 ventas de $vist cotizaciones abiertas. La empresa promedia {$bench_cr_pct}% de cierre. Los números necesitan atención urgente.";
+                // Solo citar el promedio si el contexto lo trae de verdad (>0)
+                $ref = $bench_cr > 0 ? " La empresa promedia {$bench_cr_pct}% de cierre." : "";
+                $frases[] = "0 ventas de $vist cotizaciones abiertas.$ref Los números necesitan atención urgente.";
             } else {
-                $frases[] = "0 ventas de $vist cotizaciones abiertas. La empresa promedia {$bench_cr_pct}% de cierre.";
+                $ref = $bench_cr > 0 ? " La empresa promedia {$bench_cr_pct}% de cierre." : "";
+                $frases[] = "0 ventas de $vist cotizaciones abiertas.$ref";
             }
         } elseif ($cierres === 0) {
             $frases[] = "Sin cierres en el período.";
@@ -1457,7 +1475,7 @@ class ActividadScore
             } elseif ($score >= 70) {
                 $v = ["El Radar detectó $ign cliente" . ($ign > 1 ? 's' : '') . " con actividad reciente que no se " . ($ign > 1 ? 'han' : 'ha') . " atendido — ahí están las oportunidades más inmediatas.", "$ign cliente" . ($ign > 1 ? 's activos' : ' activo') . " en el Radar esperando seguimiento. Cada día que pasa baja la probabilidad de cierre."];
             } else {
-                $v = ["El Radar tiene $ign cliente" . ($ign > 1 ? 's activos' : ' activo') . " sin atender. Es lo más cercano a una venta que tienes ahora.", "$ign cliente" . ($ign > 1 ? 's' : '') . " con actividad en el Radar sin atender."];
+                $v = ["El Radar tiene $ign cliente" . ($ign > 1 ? 's activos' : ' activo') . " sin marcar con 👍/👎. Es lo más cercano a una venta que tienes ahora.", "$ign cliente" . ($ign > 1 ? 's' : '') . " con actividad en el Radar sin marcar (👍/👎)."];
             }
             $frases[] = $v[$rot % count($v)];
         }
@@ -1508,11 +1526,11 @@ class ActividadScore
         // La coletilla GLOBAL ("gran mes/excepcional") solo con momentum sano —
         // el hecho del cierre es verdadero siempre; el juicio del mes, no.
         if ($b_cierre >= 8) {
-            $frases[] = $mom >= 0.95
+            $frases[] = $mom > 0.95
                 ? "Tu tasa de cierre va muy por encima de tu histórico — mes excepcional."
                 : "Tu tasa de cierre va muy por encima de tu histórico.";
         } elseif ($b_cierre >= 4) {
-            $frases[] = $mom >= 0.95
+            $frases[] = $mom > 0.95
                 ? "Cerraste claramente por arriba de tu histórico — gran mes."
                 : "Cerraste claramente por arriba de tu histórico.";
         }
@@ -1529,7 +1547,10 @@ class ActividadScore
 
     private static function _benchmarks(int $empresa_id, int $periodo): array
     {
-        if (isset(self::$_bench[$empresa_id])) return self::$_bench[$empresa_id];
+        // Caché por empresa Y período — la misma empresa puede evaluarse con
+        // ventana 15 y extendida (45-60) en el mismo request; mezclar ventanas
+        // contamina benchmarks entre vendedores y entre score y widget
+        if (isset(self::$_bench[$empresa_id][$periodo])) return self::$_bench[$empresa_id][$periodo];
 
         // Tasa de cierre de la empresa (vistas → cierres) — excluir suspendidas y borradores
         $emp_vistas = (int)DB::val(
@@ -1547,7 +1568,10 @@ class ActividadScore
              AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = cotizaciones.id AND v.pagado > 0 AND v.estado != 'cancelada')",
             [$empresa_id, $periodo]
         );
-        $close_rate = $emp_vistas >= 5 ? $emp_cierres / $emp_vistas : 0.15;
+        // Techo 0.90: cierres van por accion_at y vistas por created_at —
+        // cerrar backlog puede dar ratio >1 y un close_rate >1 invierte los
+        // pesos del score final (w_proporcional negativo)
+        $close_rate = $emp_vistas >= 5 ? min($emp_cierres / $emp_vistas, 0.90) : 0.15;
 
         // Tasa de cierre HISTÓRICA — todo lo anterior a la ventana actual.
         // Referencia estable para Conversión: el desempeño actual no contamina
@@ -1571,7 +1595,7 @@ class ActividadScore
         // Con historial suficiente → usa el histórico. Sin historial (empresa
         // nueva) → cae al close_rate de la ventana actual (comportamiento previo).
         $close_rate_hist = $emp_vistas_hist >= 5
-            ? $emp_cierres_hist / $emp_vistas_hist
+            ? min($emp_cierres_hist / $emp_vistas_hist, 0.90)
             : $close_rate;
 
         // Tiempo promedio de cierre (días)
@@ -1585,55 +1609,19 @@ class ActividadScore
             [$empresa_id, $periodo]
         );
 
-        // Radar semanal promedio — excluir superadmin (contamina benchmarks de otras empresas)
-        $weeks = max($periodo / 7, 1);
-        $radar_users = (int)DB::val(
-            "SELECT COUNT(DISTINCT al.usuario_id) FROM actividad_log al
-             JOIN usuarios u ON u.id = al.usuario_id
-             WHERE al.empresa_id=? AND al.tipo='radar_view'
-             AND u.rol != 'superadmin'
-             AND al.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$empresa_id, $periodo]
-        );
-        $avg_radar = $radar_users >= 2 ? DB::val(
-            "SELECT AVG(cnt) FROM (
-                SELECT COUNT(*)/{$weeks} AS cnt FROM actividad_log al
-                JOIN usuarios u ON u.id = al.usuario_id
-                WHERE al.empresa_id=? AND al.tipo='radar_view'
-                AND u.rol != 'superadmin'
-                AND al.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                GROUP BY al.usuario_id
-             ) AS sub",
-            [$empresa_id, $periodo]
-        ) : null;
-
-        // Para empresas con 1 solo vendedor: pendiente análisis de mejor enfoque
-        // Por ahora usa el promedio propio o el default de 2.0
-
-        // Tasa de apertura de la empresa — excluir suspendidas y borradores
-        $emp_asig = (int)DB::val(
-            "SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND total > 0
-             AND suspendida = 0 AND estado != 'borrador'
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
-            [$empresa_id, $periodo]
-        );
-        $apertura = $emp_asig >= 5 ? $emp_vistas / max($emp_asig, 1) : 0.70;
-
         // Ticket promedio histórico de la empresa (todas las ventas, incluyendo actuales)
         $ticket_promedio = (float)(DB::val(
             "SELECT AVG(total) FROM ventas WHERE empresa_id=? AND estado != 'cancelada' AND total > 0 AND pagado > 0",
             [$empresa_id]
         ) ?? 0);
 
-        self::$_bench[$empresa_id] = [
+        self::$_bench[$empresa_id][$periodo] = [
             'close_rate'      => max((float)$close_rate, 0.03),
             'close_rate_hist' => max((float)$close_rate_hist, 0.03),
             'time_to_close'   => max((float)($avg_ttc ?? 14), 3),
-            'radar_weekly'    => max((float)($avg_radar ?? 2.0), 0.5),
-            'apertura'        => max((float)$apertura, 0.30),
             'ticket_promedio' => $ticket_promedio,
         ];
-        return self::$_bench[$empresa_id];
+        return self::$_bench[$empresa_id][$periodo];
     }
 
     // ─── Snapshot mensual para reportes ────────────────────
@@ -1661,9 +1649,8 @@ class ActividadScore
                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                      ON DUPLICATE KEY UPDATE
                       score=VALUES(score), nivel=VALUES(nivel),
-                      s_activacion=VALUES(s_activacion), s_engagement=VALUES(s_engagement),
-              eng_pen_sin_pago=VALUES(eng_pen_sin_pago), eng_pen_descuento=VALUES(eng_pen_descuento), eng_pen_enfriamiento=VALUES(eng_pen_enfriamiento),
-              s_seguimiento=VALUES(s_seguimiento),
+                      s_activacion=VALUES(s_activacion),
+                      s_seguimiento=VALUES(s_seguimiento),
                       s_conversion=VALUES(s_conversion),
                       cot_asignadas=VALUES(cot_asignadas), cot_vistas=VALUES(cot_vistas),
                       cot_dormidas=VALUES(cot_dormidas), conversiones=VALUES(conversiones),
@@ -1684,7 +1671,10 @@ class ActividadScore
                         $rank, $team_size,
                     ]
                 );
-            } catch (\Throwable $e) { /* tabla aún no migrada */ }
+            } catch (\Throwable $e) {
+                // El fallo silencioso ya congeló el histórico una vez — dejar rastro
+                error_log('[ActividadScore snapshot] ' . $e->getMessage());
+            }
         }
     }
 

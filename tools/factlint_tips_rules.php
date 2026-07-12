@@ -46,8 +46,10 @@ return [
   ['id'=>'ap_n_personas_dispositivos','cat'=>'aperturas-dinamica','rx'=>'/(?i)\\b(\\d+) (personas|dispositivos)\\b/u','req'=>'$ips7 >= 2 && (int)$1 === $ips7'],
   ['id'=>'na_edad_dia_n','cat'=>'negocio-arquetipo','rx'=>'/(?:va en|est[áa] en|lleg[óo] al|en el)\\s+d[ií]a\\s+(\\d+)/iu','req'=>'(int)$1 === $edad'],
   ['id'=>'na_fuera_ventana','cat'=>'negocio-arquetipo','rx'=>'/(?:fuera de tu ventana|sali[óo] de tu ventana|rebas[óo] tu ventana)/iu','req'=>'$edad > $p75'],
-  ['id'=>'na_ratio_el_doble','cat'=>'negocio-arquetipo','rx'=>'/[Vv]ale\\s+el doble de tu venta t[íi]pica/u','req'=>'$ratio !== null && $ratio >= 2 && round($ratio) == 2'],
-  ['id'=>'na_ratio_por_n','cat'=>'negocio-arquetipo','rx'=>'/[Vv]ale\\s+por\\s+(\\d+)\\s+de tu venta t[íi]pica/u','req'=>'$ratio !== null && round($ratio) == (int)$1 && round($ratio) >= 3'],
+  // x() usa floor (12-jul): nunca afirmar más de lo que el número sostiene
+  // (2.9× dice "el doble", 3.9× dice "por 3" — se queda corto, jamás exagera)
+  ['id'=>'na_ratio_el_doble','cat'=>'negocio-arquetipo','rx'=>'/[Vv]ale\\s+el doble de tu venta t[íi]pica/u','req'=>'$ratio !== null && floor($ratio) == 2'],
+  ['id'=>'na_ratio_por_n','cat'=>'negocio-arquetipo','rx'=>'/[Vv]ale\\s+por\\s+(\\d+)\\s+de tu venta t[íi]pica/u','req'=>'$ratio !== null && floor($ratio) == (int)$1 && (int)$1 >= 3'],
   ['id'=>'na_version_nueva_enviada','cat'=>'negocio-arquetipo','rx'=>'/(?:[Ll]e mandaste la (?:cotizaci[óo]n|versi[óo]n) (?:actualizada|nueva)|ya le mandaste la nueva|ya tiene la cotizaci[óo]n (?:actualizada|con sus cambios)|ya (?:abri[óo]|vio|revis[óo]) la (?:cotizaci[óo]n|versi[óo]n)(?: nueva| actualizada| con sus cambios)?|[Ll]a versi[óo]n nueva de la cotizaci[óo]n (?:sigue sin abrirse|ya est[áa] enviada)|no ha (?:abierto|visto) la (?:versi[óo]n nueva|cotizaci[óo]n con sus cambios)|La cotizaci[óo]n nueva ya est[áa] en manos del cliente)/u','req'=>'$accion_post_cambios === true'],
   ['id'=>'na_remate_arquetipo_hecho','cat'=>'negocio-arquetipo','rx'=>'/(?:Esta cotizaci[óo]n est[áa] viva|El cliente est[áa] activo: esta venta|Cotizaci[óo]n con se[ñn]al viva: dale prioridad)/u','req'=>'$leyendo || $hot || $reciente'],
   ['id'=>'na_remate_sordo_senal','cat'=>'negocio-arquetipo','rx'=>'/(?:El inter[ée]s del cliente se enfr[íi]a en horas|La se[ñn]al dura horas|Estas se[ñn]ales caducan el mismo d[íi]a)/u','req'=>'$leyendo || $hot || $reciente'],

@@ -58,6 +58,10 @@ class MesaSugerencias
         }
         $uv      = !empty($c['ultima_vista_at']) ? strtotime($c['ultima_vista_at']) : 0;
         $reabrio = $ult_decl > 0 && $uv > $ult_decl;
+        // "Ya vio la versión nueva" exige vista POSTERIOR al EDIT de la
+        // cotización — una vista entre la postura y el edit era la versión vieja
+        $apc_at    = !empty($c['accion_post_cambios_at']) ? strtotime($c['accion_post_cambios_at']) : 0;
+        $vio_nueva = $apc_at > 0 && $uv > $apc_at;
 
         // Días desde una declaración
         $dias = fn(?array $d) => $d ? max(0, (int)floor((time() - strtotime($d['at'])) / 86400)) : 0;
@@ -267,7 +271,7 @@ class MesaSugerencias
                 ]);
                 $slots['precio'] = true;
             } elseif ($pos_vig && $pos_e === 'pidio_cambios') {
-                $reabrio_pos = $uv > strtotime($pos['at']);
+                $reabrio_pos = $vio_nueva; // vista posterior al EDIT, no a la postura
                 if (empty($c['accion_post_cambios'])) {
                     $f = $pk([
                         'El cliente aceptó pero pidió cambios — la versión nueva de la cotización sale HOY: no llegues a la cita sin ella.',
@@ -348,6 +352,14 @@ class MesaSugerencias
                         'El cliente no quiso por precio y aun así sigue leyendo toda la cotización — no bajes el número: mejora cómo presentas el valor y reenvíasela hoy.',
                         'El cliente rechazó por precio pero estudia la cotización de arriba a abajo — le interesa: reenvíasela hoy resaltando lo que incluye, sin tocar el precio.',
                     ]);
+                } elseif ($reabrio) {
+                    // Volvió a abrirla DESPUÉS del no (aunque ya se enfrió) —
+                    // "dejó de abrir" sería falso
+                    $f = $pk([
+                        "El cliente dijo que no por precio pero volvió a abrir la cotización después (última vez hace {$dsv}d) — el interés no murió: retómalo hoy con valor, sin rebaja.",
+                        "Tras el no por precio el cliente reabrió la cotización, aunque lleva {$dsv}d callado — llámale hoy con 2 formas de pago del mismo total.",
+                        "El cliente rechazó por precio y aun así volvió a la cotización hace {$dsv}d — no está cerrado: reenvíale hoy la propuesta resaltando lo que incluye.",
+                    ]);
                 } else {
                     $f = $pk([
                         'El cliente dijo que no por precio y no ha vuelto a abrir la cotización — el problema no es el precio, es el interés: pregúntale qué le falta a la propuesta.',
@@ -418,7 +430,9 @@ class MesaSugerencias
                         "El cliente decide desde hace {$dsv}d sin abrir la cotización — nadie decide sin releer: contáctalo hoy y pide una respuesta con fecha.",
                     ]);
                     $slots['confronta'] = true;
-                } elseif ($reabrio || $leyendo) {
+                } elseif (($reabrio && $reciente) || $leyendo) {
+                    // "relee/sigue abriendo" en PRESENTE exige lectura reciente
+                    // (<=2d) — un reabrió de hace 10 días no es "está releyendo"
                     $f = $pk([
                         'Hablaron sin acuerdo pero el cliente está decidiendo y relee la cotización — agenda hoy la llamada de decisión, no esperes su veredicto.',
                         'El cliente lo está pensando y sigue abriendo la cotización — proponle hoy una llamada para decidir juntos; no esperes a que él te busque.',
@@ -547,6 +561,13 @@ class MesaSugerencias
                     'El cliente está decidiendo con la cotización abierta — llámale hoy y proponle resolver la última duda juntos; no esperes su respuesta a solas.',
                     'El cliente relee la cotización mientras decide — adelántate: agenda hoy una llamada corta para cerrar la decisión.',
                 ]); }
+                // Reabrió DESPUÉS de la marca pero ya se enfrió (dsv>=3 aquí,
+                // $viva atrapa lo reciente) — no afirmar "no ha vuelto a abrir"
+                if ($reabrio) { $slots['decision'] = true; return $pk([
+                    "El cliente sí reabrió la cotización después de tu marca, pero lleva {$dsv}d sin regresar — la decisión se enfría: llámale hoy y ponle fecha.",
+                    "Marcaste \"decidiendo\" y el cliente la reabrió, aunque van {$dsv}d desde esa lectura — retómalo hoy: pide una respuesta con fecha.",
+                    "El cliente volvió a la cotización tras tu marca y luego se calló ({$dsv}d) — no lo dejes decidir solo: contáctalo hoy con fecha límite.",
+                ]); }
                 return $pk([
                     'Marcaste "decidiendo" pero el cliente no ha vuelto a abrir la cotización — nadie decide sin releer: mándale hoy algo nuevo que lo haga decidir.',
                     'Dices que el cliente decide pero la cotización está fría — sin lecturas no hay decisión: dale hoy un motivo nuevo (dato, foto o fecha límite).',
@@ -568,6 +589,13 @@ class MesaSugerencias
                     'El cliente dijo que está cara y aun así estudia toda la cotización — no bajes el precio: mejora cómo presentas el valor y reenvíasela hoy.',
                     'El cliente se quejó del precio pero lee la cotización de punta a punta — el interés está: reenvíasela hoy resaltando lo que incluye, sin tocar el precio.',
                 ]); }
+                // Reabrió después del "caro" pero ya se enfrió — el hecho es
+                // "volvió y se calló", no "ni abre"
+                if ($reabrio) { $slots['precio'] = true; return $pk([
+                    "El cliente dijo caro y aun así volvió a abrir la cotización (última vez hace {$dsv}d) — el interés sigue: retómalo hoy con valor, no con rebaja.",
+                    "Tras el \"está caro\" el cliente reabrió la cotización, pero van {$dsv}d sin más lecturas — llámale hoy con formas de pago, sin bajar el número.",
+                    "El cliente se quejó del precio pero volvió a ver la cotización hace {$dsv}d — el precio no lo espantó del todo: márcale hoy con opciones de pago.",
+                ]); }
                 return $pk([
                     'El cliente te dijo caro y no ha vuelto a abrir la cotización — el problema no es el precio, es el interés: pregúntale qué le falta a la propuesta.',
                     'El cliente dijo caro y dejó de ver la cotización — el precio es pretexto: llámale hoy y pregunta qué necesitaría para interesarle de verdad.',
@@ -579,7 +607,7 @@ class MesaSugerencias
                     'El cliente pidió ajustes y no has actualizado la cotización — hazlos hoy y mándasela; el cliente decide sobre la versión nueva.',
                     'Los cambios que pidió el cliente siguen pendientes — sácalos HOY; cada día sin versión nueva enfría la venta.',
                 ]);
-                if ($reabrio) { $slots['cierre'] = true; return $pk([
+                if ($vio_nueva) { $slots['cierre'] = true; return $pk([
                     'El cliente ya abrió la cotización con sus cambios — no esperes su opinión: márcale hoy y pregunta "¿así ya cerramos?".',
                     'El cliente ya vio la versión nueva de la cotización — adelántate: llámale hoy y pregúntale si con esos cambios ya se decide.',
                     'El cliente ya revisó la cotización actualizada — mensaje o llamada hoy: "¿quedó como querías? ¿cerramos?".',
@@ -853,8 +881,10 @@ class MesaSugerencias
 
     private static function x(float $ratio): string
     {
-        $r = round($ratio);
-        return $r >= 3 ? "por {$r}" : ($r == 2 ? 'el doble' : 'más');
+        // floor, no round: una cotización de 2.5× NO "vale por 3" — nunca
+        // afirmar más de lo que el número sostiene
+        $r = (int)floor($ratio);
+        return $r >= 3 ? "por {$r}" : ($r === 2 ? 'el doble' : 'más');
     }
 
     private static function bnom(?string $b): string
