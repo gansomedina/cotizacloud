@@ -852,7 +852,10 @@ if ($plan_intento && in_array($plan_intento, ['lite','pro','business']) && $tria
 </script>
 <?php endif; ?>
 
-<!-- ══ MESA DE TRABAJO (v1 beta — solo admin) ══ -->
+<!-- ══ MESA DE TRABAJO (v2 beta — solo admin) ══
+     El include NO emite: llena $MESA_SHARED y $MESA_BLOQUES[uid],
+     que se colocan dentro del Ranking del equipo (abajo del tip de
+     cada asesor). Si el ranking no se renderiza, hay fallback abajo. -->
 <?php include __DIR__ . '/_mesa.php'; ?>
 
 <!-- ══ TERMÓMETRO + LEADERBOARD ══ -->
@@ -1029,6 +1032,7 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Índice algorítmico basado en datos de uso de la plataforma. Referencia de productividad comercial, no evaluación personal.</p>
       </div>
     </div>
+    <?php if (!empty($MESA_SHARED)) { echo $MESA_SHARED; $MESA_EMITIDO = true; } ?>
     <?php
     $rank = 0;
     foreach ($equipo_scores as $es):
@@ -1093,6 +1097,8 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
       </div>
       <?php endif; ?>
     </div>
+    <?php $mesa_row_uid = (int)($es['usuario_id'] ?? 0);
+    if (!empty($MESA_BLOQUES[$mesa_row_uid])) { echo $MESA_BLOQUES[$mesa_row_uid]; unset($MESA_BLOQUES[$mesa_row_uid]); } ?>
     <?php if (Auth::es_superadmin()): ?>
     <!-- Debug expandible por vendedor (solo superadmin) -->
     <div style="border-top:1px dashed var(--border);padding:2px 14px 2px 52px">
@@ -1135,8 +1141,22 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
     </div>
     <?php endif; ?>
     <?php endforeach; ?>
+    <?php if (!empty($MESA_BLOQUES)): // asesores con cartera activa pero sin fila de score ?>
+      <?php foreach ($MESA_BLOQUES as $mb_uid => $mb): ?>
+        <div style="padding:6px 14px 0 52px;font-size:11px;color:#a8a8a2">Asesor sin score en el período — su mesa:</div>
+        <?php echo $mb; ?>
+      <?php endforeach; $MESA_BLOQUES = []; ?>
+    <?php endif; ?>
     </div><!-- /lb-body -->
   </div>
+<?php endif; ?>
+
+<?php // Fallback: la mesa no puede desaparecer si el ranking no se pintó
+if (!empty($MESA_SHARED) && empty($MESA_EMITIDO)): ?>
+<div class="card" style="margin-bottom:16px;padding:4px 0 8px">
+  <?= $MESA_SHARED ?>
+  <?php foreach ($MESA_BLOQUES as $mb) echo $mb; $MESA_BLOQUES = []; ?>
+</div>
 <?php endif; ?>
 <?php endif; // termometro_visible ?>
 

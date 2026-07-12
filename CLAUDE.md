@@ -3231,6 +3231,38 @@ de demo de 15 min que cierra a Business. Arrancar Fase 1 con $50K.
 "Powered by CotizaCloud" en slugs públicos de SUBDOMINIO (no en dominios
 custom — ahí se respeta la marca del cliente). Gratis y compuesto.
 
+## Mesa de Trabajo — estado (11 jul 2026)
+
+### Construido y auditado (branch claude/analyze-domain-change-hmo-AkFAi)
+- Mesa v2 (cola por asesor, solo admin BETA), motor de tips MesaSugerencias
+  con fact-lint (0/492,804), reporte del equipo (cartera + trabajo declarado),
+  contador de recuperado, selector de período 7/15/30/60/90
+- 5 rondas de auditoría (agentes + reproducción en BD real) — todo corregido
+- 3 SIMULACIONES PERMANENTES contra MariaDB real (OBLIGATORIAS tras cualquier
+  cambio a Mesa/reporte/endpoints): tools/sim_mesa_armar.php (35 checks),
+  tools/sim_mesa_reporte.php (34 checks), tools/factlint_tips_v2.php
+  Requieren: MariaDB local, BD simtest, usuario sim/sim
+- Principio único del reporte: estado VIGENTE manda; paradero decide la
+  columna (viva→compromisos; vendida→cuenta como éxito; descartada→sale
+  completa, se juzga en revividos/recuperado); toques cuentan siempre
+- "Propuse, no quiso" y "En el aire" NO proyectan 👎 (decisión CEO:
+  estados de momento, no juicio terminal)
+
+### PENDIENTE APROBADO — Mesa al Termómetro (implementar al salir de beta)
+**Diseño completo en docs/mesa_score_integracion.md** — leerlo ANTES de
+implementar. Resumen: la mesa vale 25% del Seguimiento, BINARIO: cobertura
+de señales ≥80% (margen mínimo 1 falla) = 25%; abajo = 0. Neutral sin
+señales. Gate por empresa (columna mesa_activa, default 0). Helper único
+Mesa::cobertura_senales() para score Y reporte (no duplicar SQL). Incluye
+las 6 trampas verificadas, cambios exactos (~60 líneas + migración) y
+checklist de rollout. Sub-proyecto previo: abrir la mesa a asesores
+(vista propia, sin reporte del equipo).
+
+### Pendientes menores mesa
+- GRACIA_DIAS está en 7 "temporal testing" (ActividadScore.php:105) — volver a 15
+- Decisión futura: columna declarado_por en mesa_estados al abrir a asesores
+- Preguntas de producto resueltas: propuse_no_quiso NO proyecta 👎 ✓
+
 ## Plan Lite — diseño (pendiente implementación, sesión futura)
 
 ### Decisión del CEO
