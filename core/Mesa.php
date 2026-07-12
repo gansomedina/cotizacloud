@@ -917,10 +917,14 @@ class Mesa
                              WHERE mp.cotizacion_id = v.cotizacion_id AND mp.empresa_id = v.empresa_id
                                AND mp.area = 'postura' AND mp.created_at < v.created_at
                              ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'
-                             AND NOT ((SELECT mf2.estado FROM mesa_estados mf2
+                             AND NOT EXISTS (SELECT 1 FROM mesa_estados mf2
                                WHERE mf2.cotizacion_id = v.cotizacion_id AND mf2.empresa_id = v.empresa_id
-                                 AND mf2.area = 'feedback' AND mf2.created_at < v.created_at
-                               ORDER BY mf2.id DESC LIMIT 1) <=> 'con_interes'))
+                                 AND mf2.area = 'feedback' AND mf2.estado = 'con_interes'
+                                 AND mf2.created_at < v.created_at
+                                 AND mf2.created_at > (SELECT mp3.created_at FROM mesa_estados mp3
+                                   WHERE mp3.cotizacion_id = v.cotizacion_id AND mp3.empresa_id = v.empresa_id
+                                     AND mp3.area = 'postura' AND mp3.created_at < v.created_at
+                                   ORDER BY mp3.id DESC LIMIT 1)))
                             OR EXISTS (SELECT 1 FROM radar_feedback rf
                                     WHERE rf.cotizacion_id = v.cotizacion_id AND rf.empresa_id = v.empresa_id
                                       AND rf.usuario_id = COALESCE(c2.vendedor_id, c2.usuario_id)
@@ -993,10 +997,14 @@ class Mesa
                           WHERE mp.cotizacion_id = v.cotizacion_id AND mp.empresa_id = v.empresa_id
                             AND mp.area = 'postura' AND mp.created_at < v.created_at
                           ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'
-                          AND NOT ((SELECT mf2.estado FROM mesa_estados mf2
+                          AND NOT EXISTS (SELECT 1 FROM mesa_estados mf2
                             WHERE mf2.cotizacion_id = v.cotizacion_id AND mf2.empresa_id = v.empresa_id
-                              AND mf2.area = 'feedback' AND mf2.created_at < v.created_at
-                            ORDER BY mf2.id DESC LIMIT 1) <=> 'con_interes'))
+                              AND mf2.area = 'feedback' AND mf2.estado = 'con_interes'
+                              AND mf2.created_at < v.created_at
+                              AND mf2.created_at > (SELECT mp3.created_at FROM mesa_estados mp3
+                                WHERE mp3.cotizacion_id = v.cotizacion_id AND mp3.empresa_id = v.empresa_id
+                                  AND mp3.area = 'postura' AND mp3.created_at < v.created_at
+                                ORDER BY mp3.id DESC LIMIT 1)))
                          OR EXISTS (
                             SELECT 1 FROM radar_feedback rf
                             WHERE rf.cotizacion_id = v.cotizacion_id AND rf.empresa_id = v.empresa_id

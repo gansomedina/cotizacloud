@@ -536,6 +536,11 @@ class MesaSugerencias
     // ── Postura declarada sin (o con) contacto — auditada contra el Radar ──
     private static function juicio_sin_toque(?string $pos_e, array $c, bool $viva, bool $dormida, bool $reabrio, int $dsv, ?string $bucket, array &$slots, callable $pk): string
     {
+        // "Ya vio la versión nueva" exige vista POSTERIOR al EDIT — se recomputa
+        // aquí desde $c (este método no recibe el $vio_nueva de sugerir()).
+        $apc_at    = !empty($c['accion_post_cambios_at']) ? strtotime($c['accion_post_cambios_at']) : 0;
+        $uv        = !empty($c['ultima_vista_at']) ? strtotime($c['ultima_vista_at']) : 0;
+        $vio_nueva = $apc_at > 0 && $uv > $apc_at;
         switch ($pos_e) {
             case 'decidiendo':
                 if ($dormida && !$reabrio) {

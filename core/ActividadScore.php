@@ -11,7 +11,7 @@
 //    Conversión   (35%)  — close_rate + calidad + tendencia + consistencia
 //
 //  AUTO-AJUSTE:
-//    - Benchmarks por empresa: close_rate, TTC, radar_weekly, apertura
+//    - Benchmarks por empresa: close_rate, close_rate_hist, TTC, ticket_promedio
 //    - 1/close_rate amplifica penalizaciones fuertes
 //    - close_rate atenúa penalizaciones suaves
 //    - sqrt(1/CR) para penalizaciones moderadas
@@ -189,14 +189,19 @@ class ActividadScore
         // ═══════════════════════════════════════════════════
 
         // ── Detectar días de importación masiva (>20 cotizaciones en 1 día) ──
-        // Estas cotizaciones no son trabajo real del vendedor
+        // Estas cotizaciones no son trabajo real del vendedor. Ventana amplia
+        // (365d, no $periodo): no_abiertas_5d no tiene cota inferior de tiempo,
+        // así que un import viejo con cotizaciones sin abrir mataría Activación
+        // si su día no está en la lista de exclusión. Los consumidores acotados
+        // al período (asignadas/vistas/dormidas) ignoran las fechas viejas del
+        // NOT IN (ninguna fila vieja matchea su propio filtro de período).
         $import_dates = DB::query(
             "SELECT DATE(created_at) AS d, COUNT(*) AS n
              FROM cotizaciones
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND created_at >= DATE_SUB(NOW(), INTERVAL 365 DAY)
              GROUP BY DATE(created_at) HAVING n > 20",
-            [$usuario_id, $empresa_id, $periodo]
+            [$usuario_id, $empresa_id]
         );
         $excl_dates = array_map(fn($r) => "'" . $r['d'] . "'", $import_dates);
         $no_import = $excl_dates
