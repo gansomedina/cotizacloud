@@ -601,7 +601,8 @@ ob_start();
 .thermo-diag{font:400 14px var(--body);color:var(--t2);margin-top:10px;line-height:1.6}
 .td-more{font:600 13px var(--body);color:var(--g);text-decoration:none;white-space:nowrap}
 .td-more:hover{text-decoration:underline}
-@media(max-width:600px){.thermo{flex-direction:column;text-align:center;gap:10px}.thermo-bars{justify-content:center}}
+.thermo-wmesa{flex-wrap:wrap;align-items:flex-start}
+@media(max-width:600px){.thermo{flex-direction:column;text-align:center;gap:10px}.thermo-bars{justify-content:center}.thermo-wmesa{align-items:center}}
 
 /* LEADERBOARD */
 .lb{background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:16px;overflow:hidden}
@@ -937,7 +938,7 @@ $ts_ign   = max(0, $ts_cal - $ts_fb); // calientes sin feedback
 $ts_pen   = (float)($ts['penalizaciones'] ?? 0);
 $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
 ?>
-<div class="thermo"<?= !empty($MESA_ASESOR) ? ' style="flex-wrap:wrap;align-items:flex-start"' : '' ?>>
+<div class="thermo<?= !empty($MESA_ASESOR) ? ' thermo-wmesa' : '' ?>">
     <div class="thermo-gauge">
       <svg width="48" height="48" viewBox="0 0 48 48">
         <circle cx="24" cy="24" r="20" fill="none" stroke="var(--border)" stroke-width="4"/>
