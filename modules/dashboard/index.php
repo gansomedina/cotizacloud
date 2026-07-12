@@ -937,7 +937,7 @@ $ts_ign   = max(0, $ts_cal - $ts_fb); // calientes sin feedback
 $ts_pen   = (float)($ts['penalizaciones'] ?? 0);
 $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
 ?>
-<div class="thermo">
+<div class="thermo"<?= !empty($MESA_ASESOR) ? ' style="flex-wrap:wrap;align-items:flex-start"' : '' ?>>
     <div class="thermo-gauge">
       <svg width="48" height="48" viewBox="0 0 48 48">
         <circle cx="24" cy="24" r="20" fill="none" stroke="var(--border)" stroke-width="4"/>
@@ -1009,9 +1009,15 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <a href="#" id="td-m3" class="td-more" style="display:none" onclick="return tdExp(3)"> ver más →</a>
         <?php endif; ?>
       </div>
-      <?php // Mesa del asesor DENTRO de la tarjeta del score, abajo del tip
-      if (!empty($MESA_ASESOR)) { echo ($MESA_ASSETS ?? '') . $MESA_ASESOR; $MESA_EMITIDO = true; } ?>
     </div>
+    <?php // Mesa del asesor DENTRO de la tarjeta del score, abajo del tip —
+    // como hija de ancho COMPLETO de .thermo (flex-wrap), no dentro de la
+    // columna de texto: así el gauge se queda arriba junto al título y la
+    // mesa alinea con el mismo margen de toda la tarjeta
+    if (!empty($MESA_ASESOR)) {
+        echo '<div style="flex-basis:100%;min-width:0">' . ($MESA_ASSETS ?? '') . $MESA_ASESOR . '</div>';
+        $MESA_EMITIDO = true;
+    } ?>
   </div>
 
 <?php endif; ?>
