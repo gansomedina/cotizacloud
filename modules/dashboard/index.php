@@ -1009,6 +1009,8 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <a href="#" id="td-m3" class="td-more" style="display:none" onclick="return tdExp(3)"> ver más →</a>
         <?php endif; ?>
       </div>
+      <?php // Mesa del asesor DENTRO de la tarjeta del score, abajo del tip
+      if (!empty($MESA_ASESOR)) { echo ($MESA_ASSETS ?? '') . $MESA_ASESOR; $MESA_EMITIDO = true; } ?>
     </div>
   </div>
 
@@ -1016,9 +1018,14 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
 
 <style>.dbg-chev-open{transform:rotate(90deg)}.dbg-open{display:block!important}.dbg-row{display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:2px 0}.dbg-lbl{color:var(--t3)}.dbg-val{font-weight:600}.dbg-neg{color:var(--danger)}.dbg-sec{font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:10px 0 4px;padding-top:8px;border-top:1px solid var(--border)}</style>
 
-<?php // Mesa del ASESOR: su tarjeta completa (cobertura + su mesa) después
-// de su termómetro personal. Assets primero (funciones de los taps).
-if (!empty($MESA_ASESOR)) { echo ($MESA_ASSETS ?? '') . $MESA_ASESOR; $MESA_EMITIDO = true; } ?>
+<?php // Fallback (asesor en GRACIA: su termómetro aún no tiene tip donde
+// anidar la mesa) — se emite como tarjeta propia para no perderla
+if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
+    echo ($MESA_ASSETS ?? '') . '<div class="card" style="padding:14px 18px;margin-bottom:16px">'
+       . str_replace('border-top:1px solid #e2e2dc', 'border-top:none', str_replace('margin-top:12px;padding-top:12px;', '', $MESA_ASESOR))
+       . '</div>';
+    $MESA_EMITIDO = true;
+} ?>
 
 <?php if ($es_admin_dash && count($equipo_scores) > 0): ?>
   <div class="lb">
@@ -1181,7 +1188,10 @@ if (empty($MESA_EMITIDO)):
   <?php foreach ($MESA_BLOQUES as $mb) echo $mb; $MESA_BLOQUES = []; ?>
 </div>
     <?php elseif (!empty($MESA_ASESOR)): $MESA_EMITIDO = true;
-        echo ($MESA_ASSETS ?? '') . $MESA_ASESOR;
+        // Sin termómetro no hay tarjeta anfitriona — envolver en card propia
+        echo ($MESA_ASSETS ?? '') . '<div class="card" style="padding:14px 18px;margin-bottom:16px">'
+           . str_replace('border-top:1px solid #e2e2dc', 'border-top:none', str_replace('margin-top:12px;padding-top:12px;', '', $MESA_ASESOR))
+           . '</div>';
     endif; ?>
 <?php endif; ?>
 
