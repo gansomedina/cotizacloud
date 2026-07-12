@@ -1436,7 +1436,14 @@ class ActividadScore
         if ($cierres >= 2 && $sdto < $cierres) { $pct_dto = round(($cierres - $sdto) / $cierres * 100); if ($pct_dto >= 50 && $score < 80) $frases[] = "$pct_dto% de ventas con descuento."; }
 
         // ═══ 8. TENDENCIA ═══
-        if ($mom <= 0.80 && $score < 80) $frases[] = "Tendencia a la baja.";
+        // Arbitraje con los bonus (que se emiten DESPUÉS del corte): "Tendencia
+        // a la baja." junto a "gran mes" en el mismo párrafo es contradicción.
+        $b_cierre_pre = (int)($s['bonus_cierre'] ?? 0);
+        if ($mom <= 0.80 && $score < 80) {
+            $frases[] = $b_cierre_pre >= 4
+                ? "Tu actividad viene cayendo aunque el cierre va arriba."
+                : "Tendencia a la baja.";
+        }
 
         // Limitar
         if (count($frases) > $max_frases) $frases = array_slice($frases, 0, $max_frases);
@@ -1453,10 +1460,16 @@ class ActividadScore
             }
         }
         $b_cierre = (int)($s['bonus_cierre'] ?? 0);
+        // La coletilla GLOBAL ("gran mes/excepcional") solo con momentum sano —
+        // el hecho del cierre es verdadero siempre; el juicio del mes, no.
         if ($b_cierre >= 8) {
-            $frases[] = "Tu tasa de cierre va muy por encima de tu histórico — mes excepcional.";
+            $frases[] = $mom >= 0.95
+                ? "Tu tasa de cierre va muy por encima de tu histórico — mes excepcional."
+                : "Tu tasa de cierre va muy por encima de tu histórico.";
         } elseif ($b_cierre >= 4) {
-            $frases[] = "Cerraste claramente por arriba de tu histórico — gran mes.";
+            $frases[] = $mom >= 0.95
+                ? "Cerraste claramente por arriba de tu histórico — gran mes."
+                : "Cerraste claramente por arriba de tu histórico.";
         }
 
         // (Se quitaron la "acción final" genérica y la comparación mensual: eran filler

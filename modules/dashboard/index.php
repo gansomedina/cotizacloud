@@ -621,7 +621,7 @@ ob_start();
 .lb-info-inner ul{margin:4px 0;padding-left:18px}
 .lb-info-inner li{margin-bottom:2px}
 /* Leaderboard collapsible */
-#lb-body{overflow:hidden;max-height:2000px;transition:max-height .3s ease}
+#lb-body{overflow:hidden;max-height:20000px;transition:max-height .3s ease}
 #lb-body.lb-collapsed{max-height:0}
 .lb-chevron{flex-shrink:0;transition:transform .25s;transform:rotate(-90deg)}
 .lb-chevron.lb-chevron-open{transform:rotate(0)}
@@ -894,7 +894,7 @@ $ts_color = match($ts['nivel']) {
 };
 $ts_label = match($ts['nivel']) {
     'top'     => 'Excepcional',
-    'activo'  => 'Buen ritmo',
+    'activo'  => 'Buen nivel',
     'regular' => 'Puede mejorar',
     default   => 'Necesita atención',
 };
@@ -1151,14 +1151,16 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
   </div>
 <?php endif; ?>
 
-<?php // Fallback: la mesa no puede desaparecer si el ranking no se pintó
-if (!empty($MESA_SHARED) && empty($MESA_EMITIDO)): ?>
+<?php endif; // termometro_visible ?>
+
+<?php // Fallback FUERA del gate del termómetro: la mesa no puede desaparecer
+// aunque termometro_visible=0 o plan Lite — y las queries ya pagadas se usan
+if (!empty($MESA_SHARED) && empty($MESA_EMITIDO)): $MESA_EMITIDO = true; ?>
 <div class="card" style="margin-bottom:16px;padding:4px 0 8px">
   <?= $MESA_SHARED ?>
   <?php foreach ($MESA_BLOQUES as $mb) echo $mb; $MESA_BLOQUES = []; ?>
 </div>
 <?php endif; ?>
-<?php endif; // termometro_visible ?>
 
 <!-- ══ KPIs FINANCIEROS ══ -->
 <div class="slabel">Resumen financiero · <?= e($mes_lbl_cap) ?></div>

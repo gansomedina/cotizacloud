@@ -428,6 +428,53 @@ final class DiagnosticoTips
                 "La meseta se rompe con foco, no con esfuerzo repartido. Toma la etapa donde una mejora chica rinde más —normalmente pedir la decisión a tiempo— y vuélvela tu costumbre esta semana: a cada propuesta abierta, un siguiente paso con fecha. Una cosa bien hecha vale más que cinco a medias.",
             ],
         ];
+        // ── FACT-GATES (auditoría 11 jul 2026) ──────────────────
+        // Ninguna frase afirma una dirección o un hecho que la MISMA tarjeta
+        // contradice (la flecha ↑↓ del header sale de momentum; los chips de
+        // dormidas/feedback salen de los mismos campos). Mismo espíritu que
+        // el fact-lint de la Mesa: si el hecho no está, la frase no sale.
+        $g_baja   = $m['mom'] <= 0.95;   // puede afirmar "tendencia/marcador a la baja"
+        $g_alza   = $m['mom'] >= 0.95;   // puede afirmar "van ganando / mes ganado"
+        $g_tips   = $m['tips_s'] < 0.5;  // puede afirmar "dejaste de leer / ni revisas"
+        $g_dorm   = $m['dorm'] >= 1;     // puede afirmar "tibios / se enfriaron / juntando polvo"
+        $g_dorm2  = $m['dorm'] >= 2;     // "varios tibios"
+        $g_cayo   = $m['mom'] <= 1.05;   // "te apagaste" (pretérito de caída, no de recuperación)
+        $cob      = $m['cal'] > 0 ? $m['exp'] / $m['cal'] : 1.0;
+        $g_ignora = $cob < 0.7;          // "las ignoras / no lo trabajas"
+
+        // sin_ritmo: cada variante afirma tendencia-baja + no-lee + dormidas
+        $sr = [];
+        if ($g_baja && $g_tips && $g_dorm)  { $sr[] = $V['sin_ritmo'][0]; $sr[] = $V['sin_ritmo'][1]; }
+        if ($g_baja && $g_tips && $g_dorm2) { $sr[] = $V['sin_ritmo'][2]; }
+        if (!$sr) {
+            // Fallback neutro: SOLO hechos verificados individualmente, sin
+            // afirmar dirección global (el header puede estar diciendo ↑)
+            $fx = [];
+            if ($m['tips_s'] < 1.0) $fx[] = 'no estás leyendo el análisis a diario';
+            if ($m['dorm'] >= 1)    $fx[] = ($m['dorm'] === 1
+                ? 'traes un cliente que abrió sin que lo retomes'
+                : "traes {$m['dorm']} clientes que abrieron sin que los retomes");
+            if (!$fx && $m['nab'] >= 1) $fx[] = self::_pl($m['nab'], 'propuesta lleva', 'propuestas llevan') . ' 5+ días sin abrirse';
+            $sr[] = 'Tu base diaria trae fugas' . ($fx ? ': ' . implode(' y ', $fx) : '')
+                  . '. La rutina lo arregla: el análisis en la mañana y un toque a cada cliente que ya te vio. Sobre esa base, lo demás se acomoda.';
+        }
+        $V['sin_ritmo'] = $sr;
+
+        // desconectado v2 dice "te apagaste" (caída reciente) — con ↑ es recuperación
+        if (!$g_cayo) $V['desconectado'] = [$V['desconectado'][0], $V['desconectado'][2]];
+
+        // sembrador v1/v3 afirman abandono ("dejas tirado / juntando polvo") — exige dormidas
+        if (!$g_dorm) $V['sembrador'] = [$V['sembrador'][1]];
+
+        // sordo_a_senales: "las ignoras" exige cobertura baja; si responde a todas,
+        // la fuga es de LECTURA (calidad del juicio), no de atención
+        if (!$g_ignora) $V['sordo_a_senales'] = [
+            'Respondes a las señales del Radar, pero tu lectura del cliente está fallando: marcas interés donde no lo hay o descartas al que sí iba. Antes de calificar, valida con una pregunta directa al cliente — la marca vale por lo que aciertas, no por darla.',
+        ];
+
+        // motor_completo v3 presume racha ("van ganando / mes ganado") — exige momentum sano
+        if (!$g_alza) $V['motor_completo'] = [$V['motor_completo'][0], $V['motor_completo'][1]];
+
         $pool = $V[$arq] ?? $V['meseta'];
         return self::_pick($pool, $seed);
     }

@@ -40,13 +40,18 @@ class Mesa
         $p75   = ($ciclo['auto'] && isset($ciclo['p75']) && $ciclo['p75'] !== null) ? max(1, (int)$ciclo['p75']) : 30;
 
         // Cierre más tardío de la historia de la empresa (línea de evidencia)
-        $max_hist = (int)DB::val(
-            "SELECT COALESCE(MAX(DATEDIFF(v.created_at, c.created_at)), 0)
-             FROM ventas v JOIN cotizaciones c ON c.id = v.cotizacion_id
-             WHERE v.empresa_id = ? AND v.estado != 'cancelada'
-               AND DATEDIFF(v.created_at, c.created_at) >= 0",
-            [$empresa_id]
-        );
+        // — cacheado: con la mesa por-asesor, armar() corre N veces por carga
+        static $mh_cache = [];
+        if (!array_key_exists($empresa_id, $mh_cache)) {
+            $mh_cache[$empresa_id] = (int)DB::val(
+                "SELECT COALESCE(MAX(DATEDIFF(v.created_at, c.created_at)), 0)
+                 FROM ventas v JOIN cotizaciones c ON c.id = v.cotizacion_id
+                 WHERE v.empresa_id = ? AND v.estado != 'cancelada'
+                   AND DATEDIFF(v.created_at, c.created_at) >= 0",
+                [$empresa_id]
+            );
+        }
+        $max_hist = $mh_cache[$empresa_id];
         $linea_limpieza = max($max_hist, 2 * $p75); // nunca sugerir bajo 2×p75
 
         // Universo: activas del vendedor (mismos criterios que score/Radar)
@@ -207,7 +212,8 @@ class Mesa
 
         // "Hoy" del RELOJ DE LA BD (no de PHP): si los timezone difieren,
         // strtotime('today') haría desaparecer el descarte de hoy al instante
-        $hoy_db = (string)DB::val("SELECT CURDATE()");
+        static $hoy_cache = null;
+        $hoy_db = $hoy_cache ??= (string)DB::val("SELECT CURDATE()");
 
         // ── Clasificar por CATEGORÍA DE FALTA ────────────────
         // La mesa NO repite el Radar: solo muestra donde falta o se
@@ -531,12 +537,13 @@ class Mesa
             }
 
             // 0b) Señales calientes DESATENDIDAS — por EPISODIO y con ventana
-            //     de reacción. Episodio = transición a bucket hot sin otra
-            //     transición hot en los 2 días previos (rebotes entre buckets
-            //     calientes NO son señales nuevas). Atendida = acción (captura,
-            //     👍👎 o venta) DENTRO de los 2 días siguientes a la señal —
-            //     atender hoy no perdona la señal ignorada hace semanas.
-            //     Solo episodios con la ventana ya cerrada (2+ días de edad).
+            //     de reacción de 3 DÍAS (decisión CEO 11 jul: cubre la señal de
+            //     viernes/sábado para equipos de lunes a viernes sin lógica de
+            //     días hábiles). Episodio = transición a bucket hot sin otra
+            //     transición hot en los 3 días previos (rebotes NO son señales
+            //     nuevas). Atendida = acción (captura, 👍👎 o venta) DENTRO de
+            //     los 3 días siguientes — atender hoy no perdona la ignorada
+            //     hace semanas. Solo episodios con la ventana cerrada (3+ días).
             //     JUSTA: si la cotización se CERRÓ tras la señal (venta o
             //     respuesta del cliente), cuenta atendida — el desenlace llegó
             //     y los taps se bloquean en cerradas; no era atendible.
@@ -549,12 +556,12 @@ class Mesa
                            EXISTS (SELECT 1 FROM mesa_estados m
                                    WHERE m.cotizacion_id = s.cotizacion_id
                                      AND m.created_at >= s.senal_at
-                                     AND m.created_at <= s.senal_at + INTERVAL 2 DAY) AS ate_mesa,
+                                     AND m.created_at <= s.senal_at + INTERVAL 3 DAY) AS ate_mesa,
                            EXISTS (SELECT 1 FROM radar_feedback rf
                                    WHERE rf.cotizacion_id = s.cotizacion_id
                                      AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                                      AND rf.updated_at >= s.senal_at
-                                     AND rf.updated_at <= s.senal_at + INTERVAL 2 DAY) AS ate_fb,
+                                     AND rf.updated_at <= s.senal_at + INTERVAL 3 DAY) AS ate_fb,
                            EXISTS (SELECT 1 FROM ventas v
                                    WHERE v.cotizacion_id = s.cotizacion_id AND v.estado != 'cancelada'
                                      AND v.created_at >= s.senal_at) AS ate_venta,
@@ -565,12 +572,12 @@ class Mesa
                           WHERE c2.empresa_id = ? AND bt.bucket_nuevo IN ($hot_in_rep)
                             AND c2.suspendida = 0 AND c2.total > 0
                             AND bt.created_at >= NOW() - INTERVAL $dias DAY
-                            AND bt.created_at <= NOW() - INTERVAL 2 DAY
+                            AND bt.created_at <= NOW() - INTERVAL 3 DAY
                             AND NOT EXISTS (SELECT 1 FROM bucket_transitions bt2
                                             WHERE bt2.cotizacion_id = bt.cotizacion_id
                                               AND bt2.bucket_nuevo IN ($hot_in_rep)
                                               AND bt2.created_at < bt.created_at
-                                              AND bt2.created_at >= bt.created_at - INTERVAL 2 DAY)) s
+                                              AND bt2.created_at >= bt.created_at - INTERVAL 3 DAY)) s
                     JOIN cotizaciones c ON c.id = s.cotizacion_id
                  ) sen
                  GROUP BY uid", [$empresa_id]

@@ -16,11 +16,22 @@ s_seguimiento = 0.75 × (fórmula actual completa: tarea×examen − pen_buckets
               + 0.25 × s_mesa
 ```
 
-- **pedidas** = señales 🔥 del período con ventana de reacción cerrada (2+ días),
+- **pedidas** = señales 🔥 del período con ventana de reacción cerrada (3+ días),
   por EPISODIO (rebotes suprimidos) — la MISMA métrica "señales desatendidas"
   de `Mesa::reporte()` query 0b, ya simulada y validada.
 - **atendidas** = con captura de mesa, calificación 👍👎 del dueño, venta o
-  respuesta del cliente dentro de los 2 días siguientes a la señal.
+  respuesta del cliente dentro de los **3 días** siguientes a la señal
+  (decisión CEO 11 jul: 3d en vez de 2d cubre la señal de viernes/sábado
+  para equipos de lunes a viernes SIN lógica de días hábiles ni config).
+
+### Días laborales — decisión tomada (11 jul 2026)
+NO se implementa configuración de días laborales: la mayoría del termómetro
+mide al CLIENTE (que abre en domingo), el costo tocaría cada INTERVAL del
+motor, y va contra la filosofía sin-config. La ventana de 3 días + margen
+de 1 falla cubren el caso real. CRITERIO DE REAPERTURA: al mes del rollout
+del 25%, correr `SELECT DAYOFWEEK(senal)` sobre las desatendidas — si >30%
+nacieron viernes/sábado, implementar SOLO "la ventana no corre en fin de
+semana" dentro de `Mesa::cobertura_senales()` (sin config de usuario).
 - **Gate de empresa**: si `empresas.mesa_activa = 0` → Seguimiento = fórmula
   actual al 100% (el 25% no existe). Flag explícito que el superadmin enciende
   por empresa al soltar la mesa a sus asesores.
