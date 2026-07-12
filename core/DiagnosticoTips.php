@@ -84,12 +84,14 @@ final class DiagnosticoTips
         $x = $m['mesa_att']; $y = $m['mesa_ped']; $n = max(0, $y - $x);
         $pool = [
             "Atendiste {$x} de " . self::_pl($y, 'señal 🔥 de tu mesa', 'señales 🔥 de tu mesa')
-            . " — " . self::_pl($n, 'una se quedó', "{$n} se quedaron")
+            . " — " . ($n === 1 ? 'una se quedó' : "{$n} se quedaron")
             . " más de 3 días esperando. Ese cuarto de tu Seguimiento está en cero. La mesa te las forma sola cada mañana; tu parte es un toque el mismo día: con 8 de cada 10 lo recuperas completo.",
             "La mesa te pidió " . self::_pl($y, 'señal', 'señales') . " y llegaste a {$x}. Una señal caliente dura horas, no semanas: empieza el día por lo 🔥 de tu mesa antes que lo demás — un tap dentro de los 3 días cuenta, aunque el cliente no conteste. Cubriendo el 80% ese punto vuelve solo.",
         ];
         if ($n >= 2) {
-            $pool[] = "{$y} clientes te levantaron la mano y a {$n} los dejaste colgados más de 3 días. Nadie te pide cerrarlos, te pide aparecer: entra a tu mesa, dales un toque y declara qué pasó. Ocho de cada diez y el cuarto de tu Seguimiento regresa.";
+            // pedidas cuenta EPISODIOS de señal, no clientes — una misma
+            // cotización puede levantar la mano dos veces
+            $pool[] = "Te levantaron la mano {$y} veces y {$n} señales se quedaron colgadas más de 3 días. Nadie te pide cerrarlas, te pide aparecer: entra a tu mesa, dales un toque y declara qué pasó. Ocho de cada diez y el cuarto de tu Seguimiento regresa.";
         }
         return self::_pick($pool, $seed);
     }
@@ -321,15 +323,17 @@ final class DiagnosticoTips
     {
         $f = [];
         // Embudo
-        $vist = $m['vist'] === $m['asig'] ? 'todas' : (string)$m['vist'];
-        $abr  = $m['vist'] === 1 ? 'abrió' : 'abrieron';
+        $vist = $m['vist'] === $m['asig'] ? ($m['asig'] === 1 ? 'la abrió' : 'todas abrieron')
+              : (string)$m['vist'] . ($m['vist'] === 1 ? ' abrió' : ' abrieron');
         $cerr = $m['cierres'] === 1 ? 'cerraste 1' : "cerraste {$m['cierres']}";
-        $f[]  = "De " . self::_pl($m['asig'], 'propuesta', 'propuestas') . ", {$vist} {$abr} y {$cerr}.";
-        // Radar
+        $f[]  = "De " . self::_pl($m['asig'], 'propuesta', 'propuestas') . ", {$vist} y {$cerr}.";
+        // Radar — cal (5 buckets calientes) y h_down (10 buckets muertos) NO son
+        // subconjunto uno del otro: frases separadas, sin implicar "N de M"
         if ($m['cal'] > 0) {
-            $r = self::_pl($m['cal'], 'cliente se puso caliente', 'clientes se pusieron calientes');
-            if ($m['h_down'] > 0) $r .= "; " . self::_pl($m['h_down'], 'se enfrió sin cerrar', 'se enfriaron sin cerrar');
-            $f[] = ucfirst($r) . ".";
+            $f[] = ucfirst(self::_pl($m['cal'], 'cliente se puso caliente', 'clientes se pusieron calientes')) . ".";
+        }
+        if ($m['h_down'] > 0) {
+            $f[] = ucfirst(self::_pl($m['h_down'], 'cliente perdió su señal sin cerrar', 'clientes perdieron su señal sin cerrar')) . ".";
         }
         if ($m['dorm'] > 0) $f[] = ucfirst(self::_pl($m['dorm'], 'cliente abrió y no volvió', 'clientes abrieron y no volvieron')) . ".";
         if ($m['nab'] > 0)  $f[] = ucfirst(self::_pl($m['nab'], 'propuesta lleva', 'propuestas llevan')) . " 5+ días sin abrir.";
@@ -461,12 +465,14 @@ final class DiagnosticoTips
         // contradice (la flecha ↑↓ del header sale de momentum; los chips de
         // dormidas/feedback salen de los mismos campos). Mismo espíritu que
         // el fact-lint de la Mesa: si el hecho no está, la frase no sale.
+        // Estrictos en la frontera: el header pinta ↓ con mom<=0.95 y ↑ con
+        // mom>=1.05 — en el valor exacto la frase no debe contradecir la flecha
         $g_baja   = $m['mom'] <= 0.95;   // puede afirmar "tendencia/marcador a la baja"
-        $g_alza   = $m['mom'] >= 0.95;   // puede afirmar "van ganando / mes ganado"
+        $g_alza   = $m['mom'] > 0.95;    // puede afirmar "van ganando / mes ganado"
         $g_tips   = $m['tips_s'] < 0.5;  // puede afirmar "dejaste de leer / ni revisas"
         $g_dorm   = $m['dorm'] >= 1;     // puede afirmar "tibios / se enfriaron / juntando polvo"
         $g_dorm2  = $m['dorm'] >= 2;     // "varios tibios"
-        $g_cayo   = $m['mom'] <= 1.05;   // "te apagaste" (pretérito de caída, no de recuperación)
+        $g_cayo   = $m['mom'] < 1.05;    // "te apagaste" (pretérito de caída, no de recuperación)
         $cob      = $m['cal'] > 0 ? $m['exp'] / $m['cal'] : 1.0;
         $g_ignora = $cob < 0.7;          // "las ignoras / no lo trabajas"
 
@@ -479,9 +485,10 @@ final class DiagnosticoTips
             // afirmar dirección global (el header puede estar diciendo ↑)
             $fx = [];
             if ($m['tips_s'] < 1.0) $fx[] = 'no estás leyendo el análisis a diario';
+            // Observable: el CLIENTE no regresó en 7+ días (no si tú lo retomaste)
             if ($m['dorm'] >= 1)    $fx[] = ($m['dorm'] === 1
-                ? 'traes un cliente que abrió sin que lo retomes'
-                : "traes {$m['dorm']} clientes que abrieron sin que los retomes");
+                ? 'traes un cliente que abrió y no ha regresado en 7+ días'
+                : "traes {$m['dorm']} clientes que abrieron y no han regresado en 7+ días");
             if (!$fx && $m['nab'] >= 1) $fx[] = self::_pl($m['nab'], 'propuesta lleva', 'propuestas llevan') . ' 5+ días sin abrirse';
             $sr[] = 'Tu base diaria trae fugas' . ($fx ? ': ' . implode(' y ', $fx) : '')
                   . '. La rutina lo arregla: el análisis en la mañana y un toque a cada cliente que ya te vio. Sobre esa base, lo demás se acomoda.';
@@ -493,6 +500,11 @@ final class DiagnosticoTips
 
         // sembrador v1/v3 afirman abandono ("dejas tirado / juntando polvo") — exige dormidas
         if (!$g_dorm) $V['sembrador'] = [$V['sembrador'][1]];
+        // Con CERO aperturas, "los que ya vieron tu propuesta" es falso — el
+        // problema es la entrega, no la cosecha
+        if ($m['vist'] === 0) $V['sembrador'] = [
+            'Cotizas pero nadie ha abierto tu propuesta todavía. El problema no es tu cartera, es la entrega: reenvía por WhatsApp con un mensaje personal («te mandé la propuesta, ¿la pudiste ver?») — una cotización que no se abre no existe.',
+        ];
 
         // sordo_a_senales: "las ignoras" exige cobertura baja; si responde a todas,
         // la fuga es de LECTURA (calidad del juicio), no de atención

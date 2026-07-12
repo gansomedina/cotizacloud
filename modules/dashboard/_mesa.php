@@ -469,6 +469,15 @@ function mesaToast(msg){
   t.textContent = msg; t.classList.add('show');
   clearTimeout(mesaToastT); mesaToastT = setTimeout(function(){t.classList.remove('show')}, 2600);
 }
+// Códigos de error del API → mensajes humanos (no mostrar 'rate'/'cerrada' crudos)
+var MESA_ERR = {rate:'Vas muy rápido — espera un momento e intenta de nuevo',
+                cerrada:'Esta cotización ya está cerrada o suspendida',
+                permiso:'No tienes permiso sobre esta cotización',
+                mesa_off:'La mesa no está activa para tu empresa',
+                sesion:'Tu sesión expiró — recarga la página',
+                datos:'Datos inválidos', razon:'Falta la razón del descarte',
+                guardar:'Error al guardar — intenta de nuevo'};
+function mesaErr(code){ return MESA_ERR[code] || ('No se pudo guardar: ' + (code || 'error')); }
 
 // Feedback Radar desde la mesa — se guarda a nombre del asesor dueño de la
 // cotización (una sola marca: el descarte voltea el 👍 a 👎 automáticamente)
@@ -482,7 +491,7 @@ function mesaFb(cotId, tipo, btn){
     body: JSON.stringify({cotizacion_id:cotId, area:'feedback', estado:tipo})
   }).then(function(r){return r.json();}).then(function(d){
     thumbs.forEach(function(b){ b.disabled = false; });
-    if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
+    if(!d.ok){ mesaToast(mesaErr(d.error)); return; }
     btn.parentElement.querySelectorAll('.fbi').forEach(function(x){x.classList.remove('on')});
     btn.classList.add('on');
     // reflejar en la fila y actualizar el consejo recalculado por el API
@@ -530,7 +539,7 @@ function mesaTap(cotId, area, estado, btn, razon){
     body: JSON.stringify({cotizacion_id:cotId, area:area, estado:estado, razon:razon})
   }).then(function(r){return r.json();}).then(function(d){
     areaBtns.forEach(function(b){ b.disabled = false; });
-    if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
+    if(!d.ok){ mesaToast(mesaErr(d.error)); return; }
     var drawer = btn.closest('.mdrawer');
     var row = document.querySelector('.mesa-emb .mrow[data-drawer="'+drawer.id+'"]');
     // pill exclusivo dentro del área
@@ -765,6 +774,19 @@ function mesaTap(cotId, area, estado, btn, razon){
         <span style="color:#15803d;font-weight:800" title="Cotizaciones tuyas descartadas que aun así cerraste — últimos <?= (int)$mrec['dias'] ?> días">💰 Recuperaste <?= $mmoney($mrec['rec_monto']) ?></span>
       <?php endif; ?>
     </div>
+    <details style="margin-bottom:8px">
+      <summary style="cursor:pointer;color:#1a5c38;font-weight:700;font-size:11.5px;list-style:none">🧭 ¿Mesa o Radar? — en qué se diferencian</summary>
+      <div style="font-size:12px;color:#4a4a46;line-height:1.6;padding:6px 0 2px;max-width:720px">
+        <div style="margin-bottom:4px"><b>El Radar observa al cliente.</b> Clasifica cada cotización por lo que el cliente HACE
+          (Probable cierre, Validando precio, Enfriándose…). Es tu mapa completo: ahí ves todo, incluso lo que va bien.</div>
+        <div style="margin-bottom:4px"><b>La mesa es tu lista de trabajo de HOY.</b> Te forma solo las cotizaciones donde falta
+          TU siguiente jugada: señales 🔥 nuevas, las que revivieron tras un descarte y las que aún no calificas.
+          Lo que ya va bien no sale aquí — por eso la mesa se vacía cuando trabajas.</div>
+        <div><b>"Probable cierre" sigue siendo tu prioridad — eso no cambió.</b> Cuando una cotización se calienta,
+          la mesa te la pone al frente como señal 🔥 para que le des un toque el mismo día y declares qué pasó.
+          La mesa no reemplaza al Radar: te ahorra decidir por dónde empezar.</div>
+      </div>
+    </details>
     <?php if ($mesa_cob !== null):
         $cob_pend = 0;
         foreach ($mesa_cob_det as $cd) { if (!(int)$cd['cerrada'] && !(int)$cd['atendida']) $cob_pend++; }
@@ -791,7 +813,9 @@ function mesaTap(cotId, area, estado, btn, razon){
             <span style="color:#a8a8a2">señal <?= e(date('d/m', strtotime($cd['senal_at']))) ?></span>
             — <span style="color:<?= $co ?>;font-weight:700"><?= e($st) ?></span></div>
           <?php endforeach; ?>
-          <div style="color:#a8a8a2;margin-top:4px">Cuenta cubrir el 80% (con margen de 1 falla). Las señales de hace más de <?= (int)$mesa_per ?> días ya no cuentan — cada período empieza limpio.</div>
+          <div style="color:#a8a8a2;margin-top:4px"><?= (int)($empresa['mesa_activa'] ?? 0) >= 2
+              ? 'Cuenta para tu termómetro cubrir el 80% (con margen de 1 falla).'
+              : 'Pronto contará para tu termómetro: la meta es cubrir el 80% (con margen de 1 falla).' ?> Las señales de hace más de <?= (int)$mesa_per ?> días ya no cuentan — cada período empieza limpio.</div>
         </div>
       </details>
       <?php endif; ?>

@@ -37,6 +37,18 @@ if ($es_admin_dash) {
     $equipo_scores = ActividadScore::equipo($empresa_id);
     $diag_ctx = ActividadScore::diagnostico_ctx($empresa_id, count($equipo_scores));
 }
+// Contexto del diagnóstico para TODOS los roles — sin él, la tarjeta del
+// asesor inventaba benchmarks ("la empresa promedia 0% de cierre") y el
+// wording de la mesa nunca activaba para la audiencia del rollout
+if (!isset($diag_ctx)) {
+    $n_vend = (int)DB::val(
+        "SELECT COUNT(DISTINCT COALESCE(vendedor_id, usuario_id)) FROM cotizaciones
+         WHERE empresa_id = ? AND total > 0
+         AND created_at >= DATE_SUB(NOW(), INTERVAL 15 DAY)",
+        [$empresa_id]
+    );
+    $diag_ctx = ActividadScore::diagnostico_ctx($empresa_id, max(1, $n_vend));
+}
 
 
 

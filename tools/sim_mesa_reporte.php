@@ -152,13 +152,15 @@ tap(1003, 1, 'contacto', 'no_contesta', 4);
 tap(1003, 1, 'contacto', 'hablamos', 2);
 tap(1003, 1, 'compromiso', 'sin_compromiso', 2);
 hotbt(1003, 5);                                 // señal atendida (no_contesta a 1d)
-// A4 (1004): DESCARTADA hace 15d (postura + rf del dueño). Revivió hace 5d.
+// A4 (1004): DESCARTADA hace 15d (postura + rf del dueño). Revivió hace 5d
+//   con VISTA REAL (regla 12-jul: la transición sola es flapping, no revive).
 cot(1004, 1, 101, 18000, 25);
 tap(1004, 1, 'contacto', 'hablamos', 16);
 tap(1004, 1, 'compromiso', 'compromiso', 16);   // acuerdo previo al descarte — NO debe contar
 tap(1004, 1, 'postura', 'descartada', 15, 'precio');
 fb(1004, 101, 1, 'sin_interes', 15);
-hotbt(1004, 5);                                 // revivió → revividos+1; también señal desatendida
+hotbt(1004, 5);                                 // señal desatendida
+visita(1004, 5);                                // vista real post-descarte → revividos+1
 // A5 (1005): activa 3d, 👍 del dueño → calificada, trabajada.
 cot(1005, 1, 101, 8000, 3);
 fb(1005, 101, 1, 'con_interes', 1);
@@ -205,6 +207,7 @@ cot(3001, 1, 103, 11000, 25);
 tap(3001, 1, 'postura', 'descartada', 15, 'precio');
 fb(3001, 103, 1, 'sin_interes', 7);
 hotbt(3001, 8);
+visita(3001, 8);   // vista real post-descarte (la transición sola ya no revive)
 // D2 (3002): ciclo VIEJO — 👎(-60) revivió(-50) corregido 👍(-49) re-👎(-5) sin revivir después
 //   → el bt de -50 NO debe contar (ancla del episodio vigente = -5)
 cot(3002, 1, 103, 17000, 70);
@@ -285,7 +288,9 @@ chk('se_fueron=1 ($40k), cero trabajo', [$bet['se_fueron'] ?? -1, $bet['hablamos
 echo "═ DORA — escenarios adversariales de la auditoría ═\n";
 $dor = $rep['asesores'][103] ?? [];
 chk('D: cartera activas=6 (D1-D5 + D6), sin_calificar=2 (D3,D4), sin_trabajar=0', [$dor['activas'] ?? -1, $dor['sin_calificar'] ?? -1, $dor['sin_trabajar'] ?? -1], [6, 2, 0]);
-chk('D5 (Descartar + 👍 después) NO es "se le fue" — definición única de descartada', $dor['se_fueron'] ?? -1, 0);
+// Regla 12-jul: el 👍 posterior ANULA el descarte → D5 queda VIVA; viva y
+// abandonada 14d = "se le fue" (rendición de cuentas real, no limbo)
+chk('D5 (Descartar + 👍 después) queda VIVA → cuenta como "se le fue"', $dor['se_fueron'] ?? -1, 1);
 chk('D: señal de D1 atendida (re-👎 a 1d), la de D2 fuera de período → 0 de 1', [$dor['hot_desatendidas'] ?? -1, $dor['hot_total'] ?? -1], [0, 1]);
 chk('D3: acuerdo vigente viejo + plática nueva cuenta A FAVOR → 2 de 2', [$dor['con_compromiso'] ?? -1, $dor['hablamos_cots'] ?? -1], [2, 2]);
 chk('D4: re-tap de la misma pill NO borra el reprobado → 1 maduro, 0 cumplidos, 0 en curso',

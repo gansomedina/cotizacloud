@@ -179,36 +179,13 @@ class Mesa
             if ($us) $arquetipo = DiagnosticoTips::arquetipo($us);
         } catch (Throwable $e) {}
 
-        // Resurrección: descartadas cuyo cliente volvió a calentarse DESPUÉS del
-        // descarte. El descarte tiene DOS fuentes (misma definición que el
-        // reporte): 👎 del dueño en radar_feedback Y postura vigente
-        // 'descartada' en la mesa (cubre reasignaciones/legacy sin rf).
-        $revividas = []; $desc_anchor = [];
-        foreach ($fb as $cid => $f) {
-            if ($f['tipo'] === 'sin_interes') $desc_anchor[$cid] = strtotime($f['updated_at']);
-        }
-        foreach ($me as $cid => $areas) {
-            if (($areas['postura']['estado'] ?? '') === 'descartada') {
-                $t = strtotime($areas['postura']['at']);
-                $desc_anchor[$cid] = isset($desc_anchor[$cid]) ? min($desc_anchor[$cid], $t) : $t;
-            }
-        }
-        if ($desc_anchor) {
-            $din = implode(',', array_map('intval', array_keys($desc_anchor)));
-            $hot_in = "'" . implode("','", self::HOT) . "'";
-            foreach (DB::query(
-                "SELECT bt.cotizacion_id, MAX(bt.created_at) AS ult_hot
-                 FROM bucket_transitions bt
-                 WHERE bt.cotizacion_id IN ($din) AND bt.bucket_nuevo IN ($hot_in)
-                 GROUP BY bt.cotizacion_id", []
-            ) as $r) {
-                $cid = (int)$r['cotizacion_id'];
-                $t_hot = strtotime($r['ult_hot']);
-                if ($t_hot > $desc_anchor[$cid] && $t_hot >= time() - 7 * 86400) {
-                    $revividas[$cid] = true;
-                }
-            }
-        }
+        // Resurrección: descartadas cuyo cliente volvió DESPUÉS del descarte.
+        // Regla ÚNICA basada en VISTA REAL (se calcula dentro del loop con
+        // ultima_vista_at). Las transiciones de bucket NO bastan: un recálculo
+        // del Radar puede escribir una transición caliente→caliente sin
+        // actividad del cliente (flapping) y fabricar una ⚡ falsa — caso
+        // COT-2026-0246 verificado en producción (12 jul 2026).
+        $revividas = [];
 
         // "Hoy" del RELOJ DE LA BD (no de PHP): si los timezone difieren,
         // strtotime('today') haría desaparecer el descarte de hoy al instante
@@ -238,6 +215,17 @@ class Mesa
             // Descartada = 👎 del dueño O postura vigente 'descartada' (misma
             // definición doble que el reporte — reasignadas/legacy incluidas)
             $post_desc  = (($me[$cid]['postura']['estado'] ?? '') === 'descartada');
+            // Un juicio POSITIVO posterior anula la postura descartada: el tap
+            // de 👍/compromiso corrige el feedback pero nunca escribe postura —
+            // sin este guard la cotización corregida se trataba como muerta
+            // (desaparecía de la mesa e inflaba Recuperado)
+            if ($post_desc) {
+                $post_t = strtotime($me[$cid]['postura']['at']);
+                $fbh = $me[$cid]['feedback'] ?? null;
+                if ($fbh && $fbh['estado'] === 'con_interes' && strtotime($fbh['at']) > $post_t) $post_desc = false;
+                if ($postura === 'con_interes'
+                    && strtotime($fb[$cid]['updated_at'] ?? '') > $post_t) $post_desc = false;
+            }
             $descartada = ($postura === 'sin_interes') || $post_desc;
             $desc_at    = max(
                 $postura === 'sin_interes' ? strtotime($fb[$cid]['updated_at'] ?? '') : 0,
@@ -246,10 +234,10 @@ class Mesa
             $dormida    = ((int)$c['visitas'] > 0 && (int)$c['dias_sin_vista'] >= 7);
             $fuera      = $edad > 2 * $p75;
 
-            // Revivida por CALOR SOSTENIDO: bucket hot que no cambió de nombre
-            // no escribe transición — pero si el cliente ABRIÓ después del
-            // descarte (≤7d), la promesa "si la reabre, vuelve sola" aplica
-            if ($descartada && !isset($revividas[$cid]) && $es_hot && $desc_at
+            // Revivida = el cliente ABRIÓ después del descarte, dentro de los
+            // últimos 7 días. Ancla = el ÚLTIMO juicio del dueño ($desc_at es
+            // max de las dos fuentes): re-confirmar el 👎 apaga la ⚡.
+            if ($descartada && $desc_at
                 && $c['ultima_vista_at']
                 && strtotime($c['ultima_vista_at']) > $desc_at
                 && strtotime($c['ultima_vista_at']) >= $now - 7 * 86400) {
@@ -341,12 +329,15 @@ class Mesa
                     'vistas_24h' => (int)($act_c[$cid]['v24'] ?? 0),
                     'vistas_7d'  => (int)($act_c[$cid]['v7'] ?? 0),
                     'ips_7d'     => (int)($act_c[$cid]['ips7'] ?? 0),
-                    'accion_post_cambios' => (function () use ($me, $acc, $cid) {
+                    'accion_post_cambios' => ($apc_at = (function () use ($me, $acc, $cid) {
                         $pc = $me[$cid]['postura'] ?? null;
-                        if (!$pc || $pc['estado'] !== 'pidio_cambios') return false;
+                        if (!$pc || $pc['estado'] !== 'pidio_cambios') return null;
                         $ua = $acc[$cid] ?? null;
-                        return $ua && strtotime($ua) > strtotime($pc['at']);
-                    })(),
+                        // Retorna el TIMESTAMP del edit — "ya vio la versión
+                        // nueva" exige vista POSTERIOR al edit, no a la postura
+                        return ($ua && strtotime($ua) > strtotime($pc['at'])) ? $ua : null;
+                    })()) !== null,
+                    'accion_post_cambios_at' => $apc_at,
                     'p75' => $p75, 'mediana' => (int)($ciclo['mediana'] ?? $p75),
                     'ticket_empresa' => $ticket_empresa,
                     'arquetipo' => $arquetipo,
@@ -361,6 +352,9 @@ class Mesa
             $ga = in_array($a['cat'], ['revivida','milagro'], true) ? 0 : 1;
             $gb = in_array($b['cat'], ['revivida','milagro'], true) ? 0 : 1;
             if ($ga !== $gb) return $ga <=> $gb;
+            // Dentro del grupo urgente, la revivida manda sobre el milagro
+            // (es la promesa "si la reabre, vuelve sola" — no debe caerse del cap)
+            if ($ga === 0 && $a['cat'] !== $b['cat']) return $a['cat'] === 'revivida' ? -1 : 1;
             if ($ga === 1 && $a['tier'] !== $b['tier']) return $a['tier'] <=> $b['tier'];
             $ha = $prio_bucket[$a['bucket']] ?? 99;
             $hb = $prio_bucket[$b['bucket']] ?? 99;
@@ -376,7 +370,8 @@ class Mesa
                 $t3++;
                 if ($t3 > self::CAP_MILAGROS) continue;
             }
-            if (count($capped) >= self::CAP_MESA) break;
+            // Promesa "visible un día": descartada_hoy no se corta por el cap
+            if (count($capped) >= self::CAP_MESA && $r['cat'] !== 'descartada_hoy') continue;
             $capped[] = $r;
         }
         $rows = $capped;
@@ -460,7 +455,8 @@ class Mesa
                             AND NOT EXISTS (SELECT 1 FROM bucket_transitions bt2
                                             WHERE bt2.cotizacion_id = bt.cotizacion_id
                                               AND bt2.bucket_nuevo IN ($hot_in)
-                                              AND bt2.created_at < bt.created_at
+                                              AND (bt2.created_at < bt.created_at
+                                                   OR (bt2.created_at = bt.created_at AND bt2.id < bt.id))
                                               AND bt2.created_at >= bt.created_at - INTERVAL 3 DAY)) s
                     JOIN cotizaciones c ON c.id = s.cotizacion_id
                  ) sen
@@ -473,7 +469,15 @@ class Mesa
                     'fallas'    => (int)$r['fallas'],
                 ];
             }
-        } catch (Throwable $e) {}
+        } catch (Throwable $e) {
+            // FAIL-NEUTRAL, no fail-open: un error SQL no debe regalar el 25%
+            // del score. El flag 'error' hace que ActividadScore salte el blend.
+            error_log('[Mesa cobertura] ' . $e->getMessage());
+            if ($vendedor_id !== null) {
+                return ['pedidas' => 0, 'atendidas' => 0, 'fallas' => 0, 'error' => true];
+            }
+            return [];
+        }
         if ($vendedor_id !== null) {
             return $out[$vendedor_id] ?? ['pedidas' => 0, 'atendidas' => 0, 'fallas' => 0];
         }
@@ -517,7 +521,8 @@ class Mesa
                          AND NOT EXISTS (SELECT 1 FROM bucket_transitions bt2
                                          WHERE bt2.cotizacion_id = bt.cotizacion_id
                                            AND bt2.bucket_nuevo IN ($hot_in)
-                                           AND bt2.created_at < bt.created_at
+                                           AND (bt2.created_at < bt.created_at
+                                                OR (bt2.created_at = bt.created_at AND bt2.id < bt.id))
                                            AND bt2.created_at >= bt.created_at - INTERVAL 3 DAY)) s
                  JOIN cotizaciones c ON c.id = s.cotizacion_id
                  ORDER BY s.senal_at DESC", [$empresa_id, $vendedor_id]
@@ -541,7 +546,7 @@ class Mesa
      *                   últimos p75/2 días (mín. 3). Justa: mide atención,
      *                   nunca el resultado de la venta; descartarla con 👎
      *                   cuenta como decisión tomada y la excluye
-     * - hot_desatendidas: episodios 🔥 del período sin acción en los 2 días
+     * - hot_desatendidas: episodios 🔥 del período sin acción en los 3 días
      *                   siguientes a la señal. Por episodio (rebotes entre
      *                   buckets calientes no cuentan doble) y con ventana:
      *                   atender hoy no perdona la señal ignorada hace semanas
@@ -631,9 +636,14 @@ class Mesa
                                     WHERE rf4.cotizacion_id = c.id
                                       AND rf4.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                                       AND rf4.tipo = 'sin_interes')
-                            OR (SELECT mp0.estado FROM mesa_estados mp0
+                            OR ((SELECT mp0.estado FROM mesa_estados mp0
                                 WHERE mp0.cotizacion_id = c.id AND mp0.area = 'postura'
-                                ORDER BY mp0.id DESC LIMIT 1) <=> 'descartada') AS descartada
+                                ORDER BY mp0.id DESC LIMIT 1) <=> 'descartada'
+                                AND NOT EXISTS (SELECT 1 FROM mesa_estados mfp0
+                                     WHERE mfp0.cotizacion_id = c.id AND mfp0.area = 'feedback'
+                                       AND mfp0.estado = 'con_interes'
+                                       AND mfp0.id > (SELECT MAX(mp02.id) FROM mesa_estados mp02
+                                                      WHERE mp02.cotizacion_id = c.id AND mp02.area = 'postura')))) AS descartada
                     FROM cotizaciones c
                     WHERE c.empresa_id = ? AND c.estado IN ('enviada','vista')
                       AND c.suspendida = 0 AND c.total > 0 AND c.accion_at IS NULL
@@ -691,7 +701,12 @@ class Mesa
                    AND ((m.area = 'contacto' AND m.estado = 'hablamos') OR m.area = 'compromiso')
                    AND NOT ((SELECT mp.estado FROM mesa_estados mp
                              WHERE mp.cotizacion_id = m.cotizacion_id AND mp.area = 'postura'
-                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada')
+                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'
+                            AND NOT EXISTS (SELECT 1 FROM mesa_estados mfp
+                                 WHERE mfp.cotizacion_id = m.cotizacion_id AND mfp.area = 'feedback'
+                                   AND mfp.estado = 'con_interes'
+                                   AND mfp.id > (SELECT MAX(mp2.id) FROM mesa_estados mp2
+                                                 WHERE mp2.cotizacion_id = m.cotizacion_id AND mp2.area = 'postura')))
                    AND NOT EXISTS (SELECT 1 FROM radar_feedback rf
                                    WHERE rf.cotizacion_id = m.cotizacion_id
                                      AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
@@ -727,7 +742,12 @@ class Mesa
                                  AND ((mx.area = 'contacto' AND mx.estado = 'hablamos') OR mx.area = 'compromiso'))
                    AND NOT ((SELECT mp.estado FROM mesa_estados mp
                              WHERE mp.cotizacion_id = m.cotizacion_id AND mp.area = 'postura'
-                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada')
+                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'
+                            AND NOT EXISTS (SELECT 1 FROM mesa_estados mfp
+                                 WHERE mfp.cotizacion_id = m.cotizacion_id AND mfp.area = 'feedback'
+                                   AND mfp.estado = 'con_interes'
+                                   AND mfp.id > (SELECT MAX(mp2.id) FROM mesa_estados mp2
+                                                 WHERE mp2.cotizacion_id = m.cotizacion_id AND mp2.area = 'postura')))
                    AND NOT EXISTS (SELECT 1 FROM radar_feedback rf2
                                    WHERE rf2.cotizacion_id = m.cotizacion_id
                                      AND rf2.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
@@ -800,7 +820,12 @@ class Mesa
                  WHERE m.estado = 'compromiso'
                    AND NOT ((SELECT mp.estado FROM mesa_estados mp
                              WHERE mp.cotizacion_id = m.cotizacion_id AND mp.area = 'postura'
-                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada')
+                             ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'
+                            AND NOT EXISTS (SELECT 1 FROM mesa_estados mfp
+                                 WHERE mfp.cotizacion_id = m.cotizacion_id AND mfp.area = 'feedback'
+                                   AND mfp.estado = 'con_interes'
+                                   AND mfp.id > (SELECT MAX(mp2.id) FROM mesa_estados mp2
+                                                 WHERE mp2.cotizacion_id = m.cotizacion_id AND mp2.area = 'postura')))
                    AND NOT EXISTS (SELECT 1 FROM radar_feedback rf
                                    WHERE rf.cotizacion_id = m.cotizacion_id
                                      AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
@@ -839,13 +864,15 @@ class Mesa
             //    descarte nuevo, y no borra el revivido (updated_at se bumpea).
             //    Las VENDIDAS fuera (principio único): descartada-y-vendida se
             //    juzga en Recuperado — aquí duplicaría el denominador.
-            $hot_in = "'" . implode("','", self::HOT) . "'";
+            //    "Revivió" = VISTA REAL del cliente posterior al descarte (misma
+            //    regla que armar) — las transiciones de bucket solas son
+            //    recálculos del Radar, no actividad del cliente (flapping).
             foreach (DB::query(
                 "SELECT uid, COUNT(*) AS descartes,
-                        SUM(EXISTS (SELECT 1 FROM bucket_transitions bt
-                                    WHERE bt.cotizacion_id = x.cid
-                                      AND bt.bucket_nuevo IN ($hot_in)
-                                      AND bt.created_at > x.anc)) AS revividos
+                        SUM(EXISTS (SELECT 1 FROM quote_sessions qs
+                                    WHERE qs.cotizacion_id = x.cid AND qs.es_interno = 0
+                                      AND NOT (COALESCE(qs.visible_ms,0) < 200 AND COALESCE(qs.scroll_max,0) < 35)
+                                      AND qs.created_at > x.anc)) AS revividos
                  FROM (
                     SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, rf.cotizacion_id AS cid,
                            COALESCE(
@@ -886,10 +913,14 @@ class Mesa
                              WHERE mf.cotizacion_id = v.cotizacion_id AND mf.empresa_id = v.empresa_id
                                AND mf.area = 'feedback' AND mf.created_at < v.created_at
                              ORDER BY mf.id DESC LIMIT 1) <=> 'sin_interes'
-                            OR (SELECT mp.estado FROM mesa_estados mp
+                            OR ((SELECT mp.estado FROM mesa_estados mp
                              WHERE mp.cotizacion_id = v.cotizacion_id AND mp.empresa_id = v.empresa_id
                                AND mp.area = 'postura' AND mp.created_at < v.created_at
                              ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'
+                             AND NOT ((SELECT mf2.estado FROM mesa_estados mf2
+                               WHERE mf2.cotizacion_id = v.cotizacion_id AND mf2.empresa_id = v.empresa_id
+                                 AND mf2.area = 'feedback' AND mf2.created_at < v.created_at
+                               ORDER BY mf2.id DESC LIMIT 1) <=> 'con_interes'))
                             OR EXISTS (SELECT 1 FROM radar_feedback rf
                                     WHERE rf.cotizacion_id = v.cotizacion_id AND rf.empresa_id = v.empresa_id
                                       AND rf.usuario_id = COALESCE(c2.vendedor_id, c2.usuario_id)
@@ -912,12 +943,21 @@ class Mesa
         }
 
         if ($out) {
+            // Solo usuarios de ESTA empresa — un uid de otra empresa (ej. el
+            // superadmin que creó cotizaciones aquí) no debe mostrar su nombre
+            // ni aparecer como fila de asesor del reporte
             $uin = implode(',', array_map('intval', array_keys($out)));
-            foreach (DB::query("SELECT id, nombre, activo FROM usuarios WHERE id IN ($uin)", []) as $r) {
+            $validos = [];
+            foreach (DB::query(
+                "SELECT id, nombre, activo FROM usuarios
+                 WHERE id IN ($uin) AND empresa_id = ?", [$empresa_id]
+            ) as $r) {
+                $validos[(int)$r['id']] = true;
                 if (isset($out[(int)$r['id']])) {
                     $out[(int)$r['id']]['nombre'] = $r['nombre'] . ((int)($r['activo'] ?? 1) ? '' : ' (inactivo)');
                 }
             }
+            $out = array_intersect_key($out, $validos);
             uasort($out, fn($a, $b) => strcasecmp($a['nombre'], $b['nombre']));
         }
         return ['dias' => $dias, 'asesores' => $out];
@@ -949,10 +989,14 @@ class Mesa
                           WHERE mf.cotizacion_id = v.cotizacion_id AND mf.empresa_id = v.empresa_id
                             AND mf.area = 'feedback' AND mf.created_at < v.created_at
                           ORDER BY mf.id DESC LIMIT 1) <=> 'sin_interes'
-                         OR (SELECT mp.estado FROM mesa_estados mp
+                         OR ((SELECT mp.estado FROM mesa_estados mp
                           WHERE mp.cotizacion_id = v.cotizacion_id AND mp.empresa_id = v.empresa_id
                             AND mp.area = 'postura' AND mp.created_at < v.created_at
                           ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'
+                          AND NOT ((SELECT mf2.estado FROM mesa_estados mf2
+                            WHERE mf2.cotizacion_id = v.cotizacion_id AND mf2.empresa_id = v.empresa_id
+                              AND mf2.area = 'feedback' AND mf2.created_at < v.created_at
+                            ORDER BY mf2.id DESC LIMIT 1) <=> 'con_interes'))
                          OR EXISTS (
                             SELECT 1 FROM radar_feedback rf
                             WHERE rf.cotizacion_id = v.cotizacion_id AND rf.empresa_id = v.empresa_id
