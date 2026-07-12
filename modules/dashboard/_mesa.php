@@ -23,17 +23,21 @@ $mesa_vendedores = DB::query(
 );
 if (!$mesa_vendedores) return;
 
-$mesa_uid = (int)($_GET['mesa_uid'] ?? 0);
-$mesa_ids = array_map(fn($v) => (int)$v['id'], $mesa_vendedores);
-if (!in_array($mesa_uid, $mesa_ids, true)) $mesa_uid = $mesa_ids[0];
-
-$mesa = Mesa::armar($empresa_id, $mesa_uid);
-$mr   = $mesa['resumen'];
-$mp75 = max(1, (int)$mesa['p75']);
 $mmoney = fn(float $n) => '$' . number_format($n, 0);
 $mesa_dias = (int)($_GET['mesa_dias'] ?? 30);
 if (!in_array($mesa_dias, [7, 15, 30, 60, 90], true)) $mesa_dias = 30;
 $mrec = Mesa::recuperado($empresa_id, $mesa_dias); // empresa-wide: la prueba en pesos de la mesa
+
+// Una mesa POR ASESOR — se incrusta en su tarjeta del ranking, abajo del tip.
+// Este include NO emite nada: llena $MESA_SHARED (empresa-wide: recuperado,
+// playbook, reporte, CSS/JS) y $MESA_BLOQUES[uid] (la mesa de cada asesor).
+$MESA_EMITIDO = false;
+$mesa_all = [];
+foreach ($mesa_vendedores as $mv) {
+    $mesa_all[(int)$mv['id']] = Mesa::armar($empresa_id, (int)$mv['id']);
+}
+$mesa_first = reset($mesa_all);
+$mp75 = max(1, (int)$mesa_first['p75']);
 
 $MESA_BUCKET_LBL = [
     'probable_cierre' => ['Probable cierre', '#dc2626'], 'onfire' => ['On fire', '#dc2626'],
@@ -60,10 +64,6 @@ $MESA_SHORT = [
     'decidiendo' => 'Decidiendo', 'objecion_precio' => 'Precio', 'pidio_cambios' => 'Cambios',
     'en_el_aire' => 'En el aire', 'descartada' => 'Descartada',
 ];
-
-$mesa_desc = array_values(array_filter($mesa['rows'], fn($r) => $r['cat'] === 'descartada_hoy'));
-$mesa_pend = array_values(array_filter($mesa['rows'], fn($r) => empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
-$mesa_aten = array_values(array_filter($mesa['rows'], fn($r) => !empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
 
 $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT, $mmoney, $mp75) {
     $d  = $r['decl'] ?? [];
@@ -148,14 +148,23 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     <?php
 };
 ?>
-<details class="card" id="mesa-card" style="margin-bottom:16px" <?= isset($_GET['mesa_uid']) || isset($_GET['mesa_dias']) ? 'open' : '' ?>>
-  <summary style="cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;list-style:none">
-    <span style="font-weight:800">📋 Mesa de trabajo</span>
-    <span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:10px;font-weight:700">BETA · solo admin</span>
-    <span style="color:#4a4a46;font-size:13.5px">
+<?php
+// ── Bloque por asesor: franja expandible dentro de su tarjeta del ranking ──
+$MESA_BLOQUES = [];
+foreach ($mesa_all as $mesa_vid => $mesa):
+    $mr = $mesa['resumen'];
+    $mesa_desc = array_values(array_filter($mesa['rows'], fn($r) => $r['cat'] === 'descartada_hoy'));
+    $mesa_pend = array_values(array_filter($mesa['rows'], fn($r) => empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
+    $mesa_aten = array_values(array_filter($mesa['rows'], fn($r) => !empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
+    ob_start();
+?>
+<details class="mesa-emb mesa-strip" id="mesa-emb-<?= (int)$mesa_vid ?>" <?= isset($_GET['mesa_uid']) && (int)$_GET['mesa_uid'] === (int)$mesa_vid ? 'open' : '' ?>>
+  <summary class="mstrip">
+    <span style="font-weight:800;color:#3f3f3a">📋 Mesa de trabajo</span>
+    <span>
       <?php if ($mr['n'] > 0 || !empty($mr['atendidas']) || !empty($mr['descartadas'])): ?>
         <b><?= (int)$mr['n'] ?></b> pendientes · <b><?= $mmoney($mr['monto']) ?></b> en juego<?php
-          if (($mr['universo'] ?? 0) > count($mesa['rows'])): ?> <span style="color:#a8a8a2">(top <?= count($mesa['rows']) ?> de <?= (int)$mr['universo'] ?> — cartera completa en el 📊 Reporte)</span><?php endif; ?>
+          if (($mr['universo'] ?? 0) > count($mesa['rows'])): ?> <span style="color:#a8a8a2">(top <?= count($mesa['rows']) ?> de <?= (int)$mr['universo'] ?>)</span><?php endif; ?>
         <?php if ($mr['sin_postura'] > 0): ?>
           · <span style="color:#dc2626;font-weight:700"><?= (int)$mr['sin_postura'] ?> sin captura</span>
         <?php endif; ?>
@@ -168,26 +177,64 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <?php else: ?>
         <span style="color:#16a34a;font-weight:700">✓ al corriente</span>
       <?php endif; ?>
-      <?php if ($mrec['rec_monto'] > 0): ?>
-        · <span style="color:#15803d;font-weight:800" title="Toda la empresa, últimos <?= (int)$mrec['dias'] ?> días">💰 <?= $mmoney($mrec['rec_monto']) ?> recuperado (<?= (int)$mrec['dias'] ?>d)</span>
-      <?php endif; ?>
     </span>
-    <span style="margin-left:auto;color:#6a6a64;font-size:12px">tap para expandir ▾</span>
+    <span style="margin-left:auto;color:#a8a8a2;font-size:11px">tap para expandir ▾</span>
   </summary>
-  <div style="padding:0 16px 16px">
+  <div class="mstrip-body">
+    <?php if (!$mesa['rows']): ?>
+      <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Sin filas accionables hoy — la mesa solo muestra lo trabajable
+        (con señal del cliente o dentro de ventana). La cartera completa, incluidas las que nadie ha tocado, está en el 📊 Reporte.</div>
+    <?php else: ?>
 
-    <?php if (count($mesa_vendedores) > 1): ?>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-      <?php foreach ($mesa_vendedores as $mv): $act = (int)$mv['id'] === $mesa_uid; ?>
-        <a href="?mesa_uid=<?= (int)$mv['id'] ?>#mesa-card"
-           style="padding:5px 12px;border-radius:16px;font-size:12.5px;font-weight:600;text-decoration:none;
-                  <?= $act ? 'background:#1a5c38;color:#fff' : 'background:#f4f4f0;color:#4a4a46;border:1px solid #e2e2dc' ?>">
-          <?= e($mv['nombre']) ?></a>
-      <?php endforeach; ?>
+      <?php if ($mesa_pend): ?>
+      <div class="mhead">
+        <span class="mh-dot"></span><span class="mh-cot">Cotización</span><span class="mh-flag"></span><span class="mh-check"></span>
+        <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
+        <span class="mh-decl"><span class="s1">Contacto</span><span class="s2">Compromiso</span><span class="s3">Cómo lo ves</span></span>
+        <span class="mh-marc">Feedback<br>Radar</span>
+        <span class="mh-fresh">Actividad</span><span class="msp"></span><span class="mh-chev"></span>
+      </div>
+      <div class="mlist"><?php foreach ($mesa_pend as $r) $mesa_row($r); ?></div>
+      <?php else: ?>
+      <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Pendientes en cero — todo lo de hoy ya está atendido.</div>
+      <?php endif; ?>
+
+      <?php if ($mesa_aten): ?>
+      <div class="msect">✓ Atendidas hoy (<?= count($mesa_aten) ?>)</div>
+      <div class="mlist mdone-zone"><?php foreach ($mesa_aten as $r) $mesa_row($r); ?></div>
+      <?php endif; ?>
+
+      <?php if ($mesa_desc): ?>
+      <div class="msect" style="color:#b91c1c">🗑 Descartadas hoy (<?= count($mesa_desc) ?>) — mañana salen de la mesa</div>
+      <div class="mlist mdone-zone"><?php foreach ($mesa_desc as $r) $mesa_row($r); ?></div>
+      <?php endif; ?>
+
+    <?php endif; ?>
+
+    <?php if ($mesa['limpieza']['n'] >= 10): ?>
+    <div style="margin-top:12px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:12.5px;color:#7f1d1d">
+      🗑 <b><?= (int)$mesa['limpieza']['n'] ?></b> cotizaciones (<?= $mmoney($mesa['limpieza']['monto']) ?>) tienen más de
+      <b><?= (int)$mesa['limpieza']['linea_dias'] ?> días</b> — tu empresa jamás ha cerrado una de esa edad.
+      Ya no son pipeline, son ruido. <span style="color:#9a3412">(Suspensión en lote: próxima versión.)</span>
     </div>
     <?php endif; ?>
 
-    <?php $mc = $mesa['ciclo']; ?>
+
+  </div>
+</details>
+<?php $MESA_BLOQUES[(int)$mesa_vid] = ob_get_clean(); endforeach; ?>
+
+<?php ob_start(); // ── Bloque compartido (empresa-wide) — encabezado del ranking ── ?>
+<div class="mesa-emb" id="mesa-shared">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:#4a4a46;margin-bottom:6px">
+    <span style="font-weight:800;color:#3f3f3a">📋 Mesa de trabajo</span>
+    <span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:10px;font-weight:700">BETA · solo admin</span>
+    <span>la mesa de cada asesor está en su tarjeta, abajo del diagnóstico</span>
+    <?php if ($mrec['rec_monto'] > 0): ?>
+      <span style="color:#15803d;font-weight:800" title="Toda la empresa, últimos <?= (int)$mrec['dias'] ?> días">💰 <?= $mmoney($mrec['rec_monto']) ?> recuperado (<?= (int)$mrec['dias'] ?>d)</span>
+    <?php endif; ?>
+  </div>
+  <?php $mc = $mesa_first['ciclo']; ?>
     <div style="font-size:12px;color:#6a6a64;margin-bottom:10px">
       <?php if (!empty($mc['auto'])): ?>
       Ciclo real de la empresa: la mitad de tus ventas cierra en <b><?= (int)$mc['mediana'] ?>d</b>,
@@ -195,7 +242,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <?php endif; ?>
       Cada cotización vive en la mesa hasta el día <b><?= 2 * $mp75 ?></b> (2× tu ventana) — pasada tu ventana
       el consejo pide definición, no seguimiento eterno. El aviso de limpieza corre en el día
-      <b><?= (int)$mesa['limpieza']['linea_dias'] ?></b> (tu cierre más tardío registrado o 2× tu ventana, lo que sea mayor). Tapea una fila para trabajarla y actualízala en cada toque.
+      <b><?= (int)$mesa_first['limpieza']['linea_dias'] ?></b> (tu cierre más tardío registrado o 2× tu ventana, lo que sea mayor). Tapea una fila para trabajarla y actualízala en cada toque.
       <span style="white-space:nowrap;margin-left:6px">
         <span class="mleg" style="background:#dc2626"></span>caliente
         <span class="mleg" style="background:#d97706"></span>actividad reciente
@@ -280,7 +327,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         declarando en la mesa. Los taps que das desde la mesa de un asesor cuentan a nombre de ese asesor.</div>
       <div style="margin-bottom:10px;font-size:12px;color:#6a6a64">Período:
         <?php foreach ([7, 15, 30, 60, 90] as $md): $act = $md === $mesa_dias; ?>
-        <a href="?mesa_uid=<?= (int)$mesa_uid ?>&mesa_dias=<?= $md ?>#mesa-card"
+        <a href="?mesa_dias=<?= $md ?>#mesa-shared"
            style="margin-left:4px;padding:2px 10px;border-radius:12px;text-decoration:none;font-weight:700;
                   <?= $act ? 'background:#1a5c38;color:#fff' : 'background:#f4f4f0;color:#4a4a46;border:1px solid #e2e2dc' ?>"><?= $md ?>d</a>
         <?php endforeach; ?>
@@ -421,147 +468,119 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     <?php endif; ?>
     </div>
 
-    <?php if (!$mesa['rows']): ?>
-      <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Sin filas accionables hoy — la mesa solo muestra lo trabajable
-        (con señal del cliente o dentro de ventana). La cartera completa, incluidas las que nadie ha tocado, está en el 📊 Reporte.</div>
-    <?php else: ?>
-
-      <?php if ($mesa_pend): ?>
-      <div class="mhead">
-        <span class="mh-dot"></span><span class="mh-cot">Cotización</span><span class="mh-flag"></span><span class="mh-check"></span>
-        <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
-        <span class="mh-decl"><span class="s1">Contacto</span><span class="s2">Compromiso</span><span class="s3">Cómo lo ves</span></span>
-        <span class="mh-marc">Feedback<br>Radar</span>
-        <span class="mh-fresh">Actividad</span><span class="msp"></span><span class="mh-chev"></span>
-      </div>
-      <div class="mlist"><?php foreach ($mesa_pend as $r) $mesa_row($r); ?></div>
-      <?php else: ?>
-      <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Pendientes en cero — todo lo de hoy ya está atendido.</div>
-      <?php endif; ?>
-
-      <?php if ($mesa_aten): ?>
-      <div class="msect">✓ Atendidas hoy (<?= count($mesa_aten) ?>)</div>
-      <div class="mlist mdone-zone"><?php foreach ($mesa_aten as $r) $mesa_row($r); ?></div>
-      <?php endif; ?>
-
-      <?php if ($mesa_desc): ?>
-      <div class="msect" style="color:#b91c1c">🗑 Descartadas hoy (<?= count($mesa_desc) ?>) — mañana salen de la mesa</div>
-      <div class="mlist mdone-zone"><?php foreach ($mesa_desc as $r) $mesa_row($r); ?></div>
-      <?php endif; ?>
-
-    <?php endif; ?>
-
-    <?php if ($mesa['limpieza']['n'] >= 10): ?>
-    <div style="margin-top:12px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:12.5px;color:#7f1d1d">
-      🗑 <b><?= (int)$mesa['limpieza']['n'] ?></b> cotizaciones (<?= $mmoney($mesa['limpieza']['monto']) ?>) tienen más de
-      <b><?= (int)$mesa['limpieza']['linea_dias'] ?> días</b> — tu empresa jamás ha cerrado una de esa edad.
-      Ya no son pipeline, son ruido. <span style="color:#9a3412">(Suspensión en lote: próxima versión.)</span>
-    </div>
-    <?php endif; ?>
-
-  </div>
-</details>
-
+    
+</div>
 <style>
-#mesa-card .mlist{border:1px solid #eeeee9;border-radius:10px;overflow:hidden}
-#mesa-card .mhead{margin-bottom:5px}
-#mesa-card .mleg{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 4px 0 10px;vertical-align:baseline}
-#mesa-card .mleg.off{background:transparent;border:1.5px solid #c9c9c2;width:7px;height:7px}
-#mesa-card .mvolvio{display:block;font-size:10.5px;color:#92400e;font-weight:600}
-#mesa-card .mrow{display:flex;align-items:center;gap:10px;padding:2px 12px;min-height:38px;cursor:pointer;background:#fafaf8}
-#mesa-card .mrow + .mdrawer + .mrow, #mesa-card .mrow + .mrow{border-top:1px solid #eeeee9}
-#mesa-card .mdrawer + .mrow{border-top:1px solid #eeeee9}
-#mesa-card .mrow:hover{background:#f4f4ef}
-#mesa-card .mrow.open{background:#fff}
-#mesa-card .mrow.milagro{background:#fefce8}
-#mesa-card .mrow.done{opacity:.78}
-#mesa-card .mdone-zone .mrow{opacity:.72}
-#mesa-card .mdot{width:9px;height:9px;border-radius:50%;flex:none}
-#mesa-card .mdot.off{background:transparent;border:1.5px solid #c9c9c2}
-#mesa-card .mcli{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 380px;max-width:520px}
-#mesa-card .mcli a{color:#1a1a18;text-decoration:none}
-#mesa-card .mcli a:hover{color:#1a5c38;text-decoration:underline}
-#mesa-card .mfolio{font-weight:500;color:#a3a39d;font-size:11px;margin-left:6px}
-#mesa-card .mflag{font-size:11px;flex:none;width:18px;text-align:center}
-#mesa-card .mcheck{color:#16a34a;font-weight:800;flex:none;width:16px;text-align:center}
+.mesa-emb.mesa-strip{border-top:1px dashed #e2e2dc;background:#fdfdfb}
+.mesa-emb .mstrip{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 14px 8px 52px;font-size:12.5px;color:#4a4a46}
+.mesa-emb .mstrip::-webkit-details-marker{display:none}
+.mesa-emb .mstrip:hover{background:#f7f7f2}
+.mesa-emb .mstrip-body{padding:4px 16px 14px 52px}
+#mesa-shared{padding:10px 16px 4px;border-bottom:1px solid #eeeee9}
+@media (max-width:640px){.mesa-emb .mstrip{padding-left:14px}.mesa-emb .mstrip-body{padding-left:14px}}
+.mesa-emb .mlist{border:1px solid #eeeee9;border-radius:10px;overflow:hidden}
+.mesa-emb .mhead{margin-bottom:5px}
+.mesa-emb .mleg{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 4px 0 10px;vertical-align:baseline}
+.mesa-emb .mleg.off{background:transparent;border:1.5px solid #c9c9c2;width:7px;height:7px}
+.mesa-emb .mvolvio{display:block;font-size:10.5px;color:#92400e;font-weight:600}
+.mesa-emb .mrow{display:flex;align-items:center;gap:10px;padding:2px 12px;min-height:38px;cursor:pointer;background:#fafaf8}
+.mesa-emb .mrow + .mdrawer + .mrow, .mesa-emb .mrow + .mrow{border-top:1px solid #eeeee9}
+.mesa-emb .mdrawer + .mrow{border-top:1px solid #eeeee9}
+.mesa-emb .mrow:hover{background:#f4f4ef}
+.mesa-emb .mrow.open{background:#fff}
+.mesa-emb .mrow.milagro{background:#fefce8}
+.mesa-emb .mrow.done{opacity:.78}
+.mesa-emb .mdone-zone .mrow{opacity:.72}
+.mesa-emb .mdot{width:9px;height:9px;border-radius:50%;flex:none}
+.mesa-emb .mdot.off{background:transparent;border:1.5px solid #c9c9c2}
+.mesa-emb .mcli{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 380px;max-width:520px}
+.mesa-emb .mcli a{color:#1a1a18;text-decoration:none}
+.mesa-emb .mcli a:hover{color:#1a5c38;text-decoration:underline}
+.mesa-emb .mfolio{font-weight:500;color:#a3a39d;font-size:11px;margin-left:6px}
+.mesa-emb .mflag{font-size:11px;flex:none;width:18px;text-align:center}
+.mesa-emb .mcheck{color:#16a34a;font-weight:800;flex:none;width:16px;text-align:center}
 
-#mesa-card .mciclo{font-size:12px;color:#57534e;font-variant-numeric:tabular-nums;flex:none;width:92px;text-align:right;white-space:nowrap}
-#mesa-card .mciclo.late{color:#dc2626;font-weight:700}
-#mesa-card .mmoney{font-weight:700;font-variant-numeric:tabular-nums;flex:none;width:82px;text-align:right}
-#mesa-card .mdecl3{display:flex;gap:6px;flex:none}
-#mesa-card .mdecl3 span{font-size:10.5px;line-height:1.3;color:#c9c9c2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#mesa-card .mdecl3 .s1{width:80px}#mesa-card .mdecl3 .s2{width:88px}#mesa-card .mdecl3 .s3{width:86px}
-#mesa-card .mdecl3 span.f{color:#1a5c38;font-weight:700}
-#mesa-card .mmarc{flex:none;width:74px;display:flex;gap:2px;justify-content:center}
-#mesa-card .mmarc .fbi{border:none;background:none;cursor:pointer;font-size:13px;line-height:1;padding:3px 4px;filter:grayscale(1);opacity:.4;transition:all .12s}
-#mesa-card .mmarc .fbi:hover{filter:none;opacity:.8}
-#mesa-card .mmarc .fbi.on{filter:none;opacity:1}
-#mesa-card .mfresh{font-size:10.5px;flex:none;width:82px;text-align:right;color:#a8a8a2;white-space:nowrap}
-#mesa-card .mfresh.warn{color:#d97706;font-weight:700}
-#mesa-card .mfresh.bad{color:#dc2626;font-weight:700}
-#mesa-card .mfresh.ok{color:#16a34a;font-weight:700}
-#mesa-card .msp{flex:1}
-#mesa-card .mchev{color:#c9c9c2;flex:none;font-size:11px;transition:transform .15s}
-#mesa-card .mrow.open .mchev{transform:rotate(90deg)}
-#mesa-card .mdrawer{display:none;background:#fff;padding:12px 14px 14px 31px;border-top:1px solid #f4f4ef}
-#mesa-card .mdrawer.open{display:block}
-#mesa-card .mtag{font-size:11px;padding:2px 7px;border-radius:9px;font-weight:700;margin-right:6px}
-#mesa-card .msug{font-size:13px;color:#3f3f3a;margin-bottom:10px}
-#mesa-card .mlbl{color:#1a5c38;font-weight:800;margin-right:4px}
-#mesa-card .mareas{display:flex;flex-direction:column;gap:7px}
-#mesa-card .marea{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-#mesa-card .man{font-size:10.5px;font-weight:800;color:#8a8a84;text-transform:uppercase;letter-spacing:.05em;width:132px;flex:none;white-space:nowrap}
-#mesa-card .mpill{border:1px solid #e2e2dc;background:#fafaf8;color:#57534e;border-radius:999px;padding:4px 12px;cursor:pointer;font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;white-space:nowrap;line-height:1.4;transition:all .12s}
-#mesa-card .mpill:hover{border-color:#1a5c38;color:#1a5c38;background:#fff}
-#mesa-card .mpill.on{background:#1a5c38;border-color:#1a5c38;color:#fff}
-#mesa-card .mpill:disabled{opacity:.5}
-#mesa-card .mdesc{border-color:#fecaca;color:#b91c1c;background:#fff}
-#mesa-card .mdesc.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
-#mesa-card .mrz{display:none;align-items:baseline;gap:4px;flex-wrap:wrap;margin-left:8px;padding-left:10px;border-left:2px solid #fecaca}
-#mesa-card .mrz.show{display:inline-flex}
-#mesa-card .mrz-l{font-size:10.5px;color:#b91c1c;font-weight:800}
-#mesa-card .mrz-b{border-color:#fecaca}
-#mesa-card .mrz-b:hover{border-color:#b91c1c;color:#b91c1c}
-#mesa-card .mrz-b.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
-#mesa-card .marea .mlockmsg{display:none;font-size:10.5px;color:#a8a8a2;font-style:italic}
-#mesa-card .marea.lock .mpill{opacity:.35;pointer-events:none}
-#mesa-card .marea.lock .mlockmsg{display:inline}
-#mesa-card .mhead{display:flex;align-items:center;gap:10px;padding:0 12px;font-size:10px;font-weight:800;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em}
-#mesa-card .mhead .mh-dot{flex:none;width:9px}
-#mesa-card .mhead .mh-cot{flex:1 1 380px;max-width:520px;min-width:0}
-#mesa-card .mhead .mh-flag{flex:none;width:18px}
-#mesa-card .mhead .mh-check{flex:none;width:16px}
-#mesa-card .mhead .mh-ciclo{flex:none;width:92px;text-align:right}
-#mesa-card .mhead .mh-money{flex:none;width:82px;text-align:right}
-#mesa-card .mhead .mh-decl{display:flex;gap:6px;flex:none}
-#mesa-card .mhead .mh-decl .s1{width:80px}#mesa-card .mhead .mh-decl .s2{width:88px}#mesa-card .mhead .mh-decl .s3{width:86px}
-#mesa-card .mhead .mh-decl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#mesa-card .mhead .mh-marc{flex:none;width:74px;text-align:center;line-height:1.2}
-#mesa-card .mhead .mh-fresh{flex:none;width:82px;text-align:right}
-#mesa-card .mhead .mh-chev{flex:none;width:11px}
-#mesa-card .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.mesa-emb .mciclo{font-size:12px;color:#57534e;font-variant-numeric:tabular-nums;flex:none;width:92px;text-align:right;white-space:nowrap}
+.mesa-emb .mciclo.late{color:#dc2626;font-weight:700}
+.mesa-emb .mmoney{font-weight:700;font-variant-numeric:tabular-nums;flex:none;width:82px;text-align:right}
+.mesa-emb .mdecl3{display:flex;gap:6px;flex:none}
+.mesa-emb .mdecl3 span{font-size:10.5px;line-height:1.3;color:#c9c9c2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mesa-emb .mdecl3 .s1{width:80px}.mesa-emb .mdecl3 .s2{width:88px}.mesa-emb .mdecl3 .s3{width:86px}
+.mesa-emb .mdecl3 span.f{color:#1a5c38;font-weight:700}
+.mesa-emb .mmarc{flex:none;width:74px;display:flex;gap:2px;justify-content:center}
+.mesa-emb .mmarc .fbi{border:none;background:none;cursor:pointer;font-size:13px;line-height:1;padding:3px 4px;filter:grayscale(1);opacity:.4;transition:all .12s}
+.mesa-emb .mmarc .fbi:hover{filter:none;opacity:.8}
+.mesa-emb .mmarc .fbi.on{filter:none;opacity:1}
+.mesa-emb .mfresh{font-size:10.5px;flex:none;width:82px;text-align:right;color:#a8a8a2;white-space:nowrap}
+.mesa-emb .mfresh.warn{color:#d97706;font-weight:700}
+.mesa-emb .mfresh.bad{color:#dc2626;font-weight:700}
+.mesa-emb .mfresh.ok{color:#16a34a;font-weight:700}
+.mesa-emb .msp{flex:1}
+.mesa-emb .mchev{color:#c9c9c2;flex:none;font-size:11px;transition:transform .15s}
+.mesa-emb .mrow.open .mchev{transform:rotate(90deg)}
+.mesa-emb .mdrawer{display:none;background:#fff;padding:12px 14px 14px 31px;border-top:1px solid #f4f4ef}
+.mesa-emb .mdrawer.open{display:block}
+.mesa-emb .mtag{font-size:11px;padding:2px 7px;border-radius:9px;font-weight:700;margin-right:6px}
+.mesa-emb .msug{font-size:13px;color:#3f3f3a;margin-bottom:10px}
+.mesa-emb .mlbl{color:#1a5c38;font-weight:800;margin-right:4px}
+.mesa-emb .mareas{display:flex;flex-direction:column;gap:7px}
+.mesa-emb .marea{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.mesa-emb .man{font-size:10.5px;font-weight:800;color:#8a8a84;text-transform:uppercase;letter-spacing:.05em;width:132px;flex:none;white-space:nowrap}
+.mesa-emb .mpill{border:1px solid #e2e2dc;background:#fafaf8;color:#57534e;border-radius:999px;padding:4px 12px;cursor:pointer;font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;white-space:nowrap;line-height:1.4;transition:all .12s}
+.mesa-emb .mpill:hover{border-color:#1a5c38;color:#1a5c38;background:#fff}
+.mesa-emb .mpill.on{background:#1a5c38;border-color:#1a5c38;color:#fff}
+.mesa-emb .mpill:disabled{opacity:.5}
+.mesa-emb .mdesc{border-color:#fecaca;color:#b91c1c;background:#fff}
+.mesa-emb .mdesc.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.mesa-emb .mrz{display:none;align-items:baseline;gap:4px;flex-wrap:wrap;margin-left:8px;padding-left:10px;border-left:2px solid #fecaca}
+.mesa-emb .mrz.show{display:inline-flex}
+.mesa-emb .mrz-l{font-size:10.5px;color:#b91c1c;font-weight:800}
+.mesa-emb .mrz-b{border-color:#fecaca}
+.mesa-emb .mrz-b:hover{border-color:#b91c1c;color:#b91c1c}
+.mesa-emb .mrz-b.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.mesa-emb .marea .mlockmsg{display:none;font-size:10.5px;color:#a8a8a2;font-style:italic}
+.mesa-emb .marea.lock .mpill{opacity:.35;pointer-events:none}
+.mesa-emb .marea.lock .mlockmsg{display:inline}
+.mesa-emb .mhead{display:flex;align-items:center;gap:10px;padding:0 12px;font-size:10px;font-weight:800;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em}
+.mesa-emb .mhead .mh-dot{flex:none;width:9px}
+.mesa-emb .mhead .mh-cot{flex:1 1 380px;max-width:520px;min-width:0}
+.mesa-emb .mhead .mh-flag{flex:none;width:18px}
+.mesa-emb .mhead .mh-check{flex:none;width:16px}
+.mesa-emb .mhead .mh-ciclo{flex:none;width:92px;text-align:right}
+.mesa-emb .mhead .mh-money{flex:none;width:82px;text-align:right}
+.mesa-emb .mhead .mh-decl{display:flex;gap:6px;flex:none}
+.mesa-emb .mhead .mh-decl .s1{width:80px}.mesa-emb .mhead .mh-decl .s2{width:88px}.mesa-emb .mhead .mh-decl .s3{width:86px}
+.mesa-emb .mhead .mh-decl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mesa-emb .mhead .mh-marc{flex:none;width:74px;text-align:center;line-height:1.2}
+.mesa-emb .mhead .mh-fresh{flex:none;width:82px;text-align:right}
+.mesa-emb .mhead .mh-chev{flex:none;width:11px}
+.mesa-emb .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
 #mesa-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1a1a18;color:#fff;font-size:12.5px;padding:9px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:9999}
 #mesa-toast.show{opacity:.95}
 @media (max-width:640px){
-  #mesa-card .mfolio,#mesa-card .mfresh,#mesa-card .mmarc{display:none}
-  #mesa-card .mhead{display:none}
-  #mesa-card .mdecl3 .s2,#mesa-card .mdecl3 .s3{display:none}
-  #mesa-card .mdecl3 .s1{width:64px}
-  #mesa-card .mmoney{width:auto}
-  #mesa-card .mdrawer{padding-left:14px}
-  #mesa-card .man{width:100%}
+  .mesa-emb .mfolio,.mesa-emb .mfresh,.mesa-emb .mmarc{display:none}
+  .mesa-emb .mhead{display:none}
+  .mesa-emb .mdecl3 .s2,.mesa-emb .mdecl3 .s3{display:none}
+  .mesa-emb .mdecl3 .s1{width:64px}
+  .mesa-emb .mmoney{width:auto}
+  .mesa-emb .mdrawer{padding-left:14px}
+  .mesa-emb .man{width:100%}
 }
 </style>
 <div id="mesa-toast"></div>
 <script>
-document.querySelectorAll('#mesa-card .mrow').forEach(function(row){
-  row.addEventListener('click', function(){
-    var d = document.getElementById(row.dataset.drawer);
-    if(!d) return;
-    var was = d.classList.contains('open');
-    document.querySelectorAll('#mesa-card .mdrawer').forEach(function(x){x.classList.remove('open')});
-    document.querySelectorAll('#mesa-card .mrow').forEach(function(x){x.classList.remove('open')});
-    if(!was){ d.classList.add('open'); row.classList.add('open'); }
+// Los bloques por asesor se emiten DESPUÉS de este script (dentro del
+// ranking) — el binding va diferido a DOMContentLoaded.
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('.mesa-emb .mrow').forEach(function(row){
+    row.addEventListener('click', function(){
+      var d = document.getElementById(row.dataset.drawer);
+      if(!d) return;
+      var was = d.classList.contains('open');
+      document.querySelectorAll('.mesa-emb .mdrawer').forEach(function(x){x.classList.remove('open')});
+      document.querySelectorAll('.mesa-emb .mrow').forEach(function(x){x.classList.remove('open')});
+      if(!was){ d.classList.add('open'); row.classList.add('open'); }
+    });
   });
 });
 
@@ -634,7 +653,7 @@ function mesaTap(cotId, area, estado, btn, razon){
     areaBtns.forEach(function(b){ b.disabled = false; });
     if(!d.ok){ mesaToast('No se pudo guardar: ' + (d.error || 'error')); return; }
     var drawer = btn.closest('.mdrawer');
-    var row = document.querySelector('#mesa-card .mrow[data-drawer="'+drawer.id+'"]');
+    var row = document.querySelector('.mesa-emb .mrow[data-drawer="'+drawer.id+'"]');
     // pill exclusivo dentro del área
     var areaEl = btn.closest('.marea');
     areaEl.querySelectorAll('.mpill').forEach(function(x){x.classList.remove('on')});
@@ -672,3 +691,4 @@ function mesaTap(cotId, area, estado, btn, razon){
   }).catch(function(){ areaBtns.forEach(function(b){ b.disabled = false; }); mesaToast('No se pudo guardar (red o sesión) — recarga e intenta de nuevo.'); });
 }
 </script>
+<?php $MESA_SHARED = ob_get_clean(); ?>
