@@ -1386,15 +1386,19 @@ class ActividadScore
             $partes_neg = [];
             if ($tip_state === 'no') $partes_neg[] = 'no lees los tips';
             elseif ($tip_state === 'medio') $partes_neg[] = 'lees los tips a medias';
-            if ($why_state === 'no') $partes_neg[] = 'no exploras las señales del Radar';
-            elseif ($why_state === 'medio') $partes_neg[] = 'exploras a medias las señales del Radar';
+            $mesa_on_leg = (int)($ctx['mesa_activa'] ?? 0) >= 1;
+            $donde_sen = $mesa_on_leg ? 'de tu mesa' : 'del Radar';
+            if ($why_state === 'no') $partes_neg[] = "no exploras las señales {$donde_sen}";
+            elseif ($why_state === 'medio') $partes_neg[] = "exploras a medias las señales {$donde_sen}";
 
             if (!empty($partes_neg)) {
                 $first = mb_strtoupper(mb_substr($partes_neg[0], 0, 1)) . mb_substr($partes_neg[0], 1);
                 if (count($partes_neg) === 1) {
                     // Cierre con call to action si es solo ❓
                     if ($why_state !== 'ok') {
-                        $frases[] = $first . ' — usa el ❓ en tus cotizaciones calientes.';
+                        $frases[] = $first . ($mesa_on_leg
+                            ? ' — abre tu mesa y dales un toque a las calientes.'
+                            : ' — usa el ❓ en tus cotizaciones calientes.');
                     } else {
                         $frases[] = $first . ' — revisa el análisis completo.';
                     }

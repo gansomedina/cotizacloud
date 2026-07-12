@@ -236,7 +236,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 
     <?php endif; ?>
 
-    <?php if ($mesa['limpieza']['n'] >= 10): ?>
+    <?php if ($mesa_es_admin && $mesa['limpieza']['n'] >= 10): ?>
     <div style="margin-top:12px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;font-size:12.5px;color:#7f1d1d">
       🗑 <b><?= (int)$mesa['limpieza']['n'] ?></b> cotizaciones (<?= $mmoney($mesa['limpieza']['monto']) ?>) tienen más de
       <b><?= (int)$mesa['limpieza']['linea_dias'] ?> días</b> — tu empresa jamás ha cerrado una de esa edad.
@@ -258,8 +258,8 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       el 75% antes del día <b><?= (int)$mc['p75'] ?></b>.
       <?php endif; ?>
       Cada cotización vive en la mesa hasta el día <b><?= 2 * $mp75 ?></b> (2× tu ventana) — pasada tu ventana
-      el consejo pide definición, no seguimiento eterno. El aviso de limpieza corre en el día
-      <b><?= (int)$mesa_first['limpieza']['linea_dias'] ?></b> (tu cierre más tardío registrado o 2× tu ventana, lo que sea mayor). Tapea una fila para trabajarla y actualízala en cada toque.
+      el consejo pide definición, no seguimiento eterno.<?php if ($mesa_es_admin): ?> El aviso de limpieza corre en el día
+      <b><?= (int)$mesa_first['limpieza']['linea_dias'] ?></b> (tu cierre más tardío registrado o 2× tu ventana, lo que sea mayor).<?php endif; ?> Tapea una fila para trabajarla y actualízala en cada toque.
       <span style="white-space:nowrap;margin-left:6px">
         <span class="mleg" style="background:#dc2626"></span>caliente
         <span class="mleg" style="background:#d97706"></span>actividad reciente

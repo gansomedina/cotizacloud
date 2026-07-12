@@ -1026,7 +1026,7 @@ if (!empty($MESA_ASESOR)) { echo ($MESA_ASSETS ?? '') . $MESA_ASESOR; $MESA_EMIT
         <ul>
           <li><b>Activación (13%)</b> — ¿Las cotizaciones llegan al cliente? Penaliza no abiertas (×1/tasa cierre) y dormidas (escalado por tiempo promedio de cierre de la empresa).</li>
           <li><b>Engagement (17%)</b> — Capa de penalizaciones: ventas sin cobrar (×1/tasa cierre, fuerte), descuentos (×tasa cierre, suave), ventas por debajo del promedio de la empresa.</li>
-          <li><b>Seguimiento (25%)</b> — ¿Das feedback a las señales calientes del Radar? Se evalúa el esfuerzo (dar feedback) y el resultado (¿acertaste?). Con más feedbacks, la calidad pesa más que el esfuerzo.</li>
+          <li><b>Seguimiento (25%)</b> — ¿Trabajas tus señales calientes? Se evalúa el esfuerzo (dar feedback) y el resultado (¿acertaste?); con más feedbacks, la calidad pesa más que el esfuerzo. Con la Mesa de Trabajo activa, la cuarta parte de esta dimensión es cubrir las señales de tu mesa: 80% atendidas en 3 días (con margen de 1 falla) = completo; abajo = cero.</li>
           <li><b>Radar Health (10%)</b> — ¿Cuidas a los clientes con interés? Cuando una cotización se pone caliente, el cliente la está viendo con interés. Mide cuántas de esas se te mueren — el cliente desaparece del Radar sin que cierres. Entre menos sueltas, más alto.</li>
           <li><b>Conversión (35%)</b> — ¿Cierras ventas? Tasa de cierre vs empresa, calidad (cerrar ventas difíciles vale más), tendencia de volumen (ventas actuales vs período anterior), consistencia semanal.</li>
         </ul>
@@ -1126,7 +1126,7 @@ if (!empty($MESA_ASESOR)) { echo ($MESA_ASSETS ?? '') . $MESA_ASESOR; $MESA_EMIT
         <?php if (($es['s_mesa'] ?? null) !== null): ?>
         <div class="dbg-row"><span class="dbg-lbl">  mesa 25% (<?= (int)($es['mesa_atendidas'] ?? 0) ?>/<?= (int)($es['mesa_pedidas'] ?? 0) ?> señales)</span><span class="dbg-val <?= (float)$es['s_mesa'] > 0 ? '' : 'dbg-neg' ?>"><?= (float)$es['s_mesa'] > 0 ? '✓' : '✗ 0' ?></span></div>
         <?php endif; ?>
-        <div class="dbg-row"><span class="dbg-lbl">  ❓ exploradas <?= $dbg_why_exp ?>/<?= $dbg_cal_tot ?></span><span class="dbg-val"><?= $dbg_why_s < 1 ? '×'.round($dbg_why_s * 100).'%' : '—' ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">  exploradas (❓/mesa) <?= $dbg_why_exp ?>/<?= $dbg_cal_tot ?></span><span class="dbg-val"><?= $dbg_cal_tot > 0 ? round($dbg_why_exp / $dbg_cal_tot * 100) . '%' : '—' ?> <span style="opacity:.6">(ya no penaliza)</span></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Radar Health (10%)</span><span class="dbg-val"><?= round(($es['s_radar_health'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  calientes / muertas</span><span class="dbg-val"><?= (int)($es['health_up'] ?? $es['transiciones_up'] ?? 0) ?> / <?= (int)($es['health_down'] ?? $es['senales_ignoradas'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  tasa muerte caliente</span><span class="dbg-val dbg-neg"><?php $rhc=(int)($es['health_up']??$es['transiciones_up']??0);$rhm=(int)($es['health_down']??$es['senales_ignoradas']??0);echo $rhc>0?round($rhm/$rhc*100,1).'%':'—';?></span></div>
