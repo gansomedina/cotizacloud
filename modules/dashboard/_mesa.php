@@ -765,9 +765,10 @@ function mesaTap(cotId, area, estado, btn, razon){
 </div>
 <?php $MESA_SHARED = ob_get_clean(); ?>
 <?php else: ?>
-<?php ob_start(); // ── Tarjeta COMPLETA del asesor (su mesa + su cobertura) ── ?>
-<div class="card mesa-emb" id="mesa-shared" style="margin-bottom:16px;padding:12px 0 8px">
-  <div style="padding:0 16px">
+<?php ob_start(); // ── Bloque del asesor (su mesa + su cobertura) — vive DENTRO
+// de la tarjeta del termómetro, abajo del tip (no es tarjeta aparte) ── ?>
+<div class="mesa-emb" id="mesa-shared" style="margin-top:12px;padding-top:12px;border-top:1px solid #e2e2dc">
+  <div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:#4a4a46;margin-bottom:6px">
       <span style="font-weight:800;color:#3f3f3a;font-size:14px">📋 Tu mesa de trabajo</span>
       <?php if ($mrec['rec_monto'] > 0): ?>
