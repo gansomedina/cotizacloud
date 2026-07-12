@@ -105,6 +105,20 @@ class ActividadScore
     private const GRACIA_DIAS = 7; // temporal para testing — volver a 15
 
     // ─── Calcular score completo de un usuario ───────────
+    /**
+     * Período efectivo del score (15d, auto-extendible a 45-60 con ciclo
+     * largo) — expuesto para que el widget de cobertura del asesor use la
+     * MISMA ventana que lo examina (trampa #1 del doc de integración).
+     */
+    public static function periodo_efectivo(int $empresa_id): int
+    {
+        $bench = self::_benchmarks($empresa_id, self::PERIODO);
+        if ($bench['time_to_close'] > 20) {
+            return (int)min(max(self::PERIODO, $bench['time_to_close'] * 1.5), 60);
+        }
+        return self::PERIODO;
+    }
+
     public static function calcular(int $usuario_id, int $empresa_id): array
     {
         // ═══════════════════════════════════════════════════
@@ -625,18 +639,38 @@ class ActividadScore
                     [$usuario_id]
                 );
             }
-            // Grace period: si NADIE en la empresa ha clickeado ❓ (feature recién
-            // desplegada), no penalizar. Una vez que cualquier asesor clickea →
-            // la feature está activa para todos.
-            // Grace de usuario nuevo cubierto por early return arriba.
-            // Si tiene calientes, se mide directo.
-            $pct_why = $calientes_exploradas / $cots_calientes;
-            if ($pct_why >= 0.70) $radar_why_score = 1.0;
-            elseif ($pct_why >= 0.30) $radar_why_score = 0.85;
-            else $radar_why_score = 0.70;
+            // DECISIÓN CEO (11 jul 2026): el ❓ YA NO PENALIZA — la Mesa de
+            // Trabajo es el mecanismo de "atiende tus señales" y valdrá el 25%
+            // del Seguimiento. El conteo se conserva SOLO como dato informativo
+            // (debug panel) y para los consumidores de DiagnosticoTips, que se
+            // alimentan también de los taps de la mesa (mesa_estado registra
+            // radar_why_click). radar_why_score queda en 1.0 permanente.
         }
-        $s_seguimiento = $s_seguimiento * $radar_why_score;
-        $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
+        $radar_why_score = 1.0;
+
+        // ═══ MESA 25% del Seguimiento (docs/mesa_score_integracion.md) ═══
+        // Binario: cobertura de señales ≥80% (margen mínimo 1 falla) = 25%
+        // completo; abajo = 0. Neutral (1.0) sin señales — no se reprueba un
+        // examen que no existió. Gate: empresas.mesa_activa = 2 (0=off,
+        // 1=UI asesores sin score, 2=UI+score). FUENTE ÚNICA de cobertura:
+        // Mesa::cobertura_senales — el mismo número que ve el asesor.
+        $s_mesa = null; $mesa_pedidas = 0; $mesa_atendidas = 0;
+        static $mesa_flag_cache = [];
+        if (!array_key_exists($empresa_id, $mesa_flag_cache)) {
+            try {
+                $mesa_flag_cache[$empresa_id] = (int)DB::val(
+                    "SELECT mesa_activa FROM empresas WHERE id = ?", [$empresa_id]);
+            } catch (\Throwable $e) { $mesa_flag_cache[$empresa_id] = 0; } // columna sin migrar
+        }
+        if ($mesa_flag_cache[$empresa_id] >= 2) {
+            $cob = Mesa::cobertura_senales($empresa_id, $usuario_id, $periodo);
+            $mesa_pedidas   = $cob['pedidas'];
+            $mesa_atendidas = $cob['atendidas'];
+            $mesa_margen    = max(1, (int)floor(0.20 * $cob['pedidas']));
+            $s_mesa = ($cob['pedidas'] === 0 || $cob['fallas'] <= $mesa_margen) ? 1.0 : 0.0;
+            $s_seguimiento = 0.75 * $s_seguimiento + 0.25 * $s_mesa;
+            $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
+        }
 
         // Guardar para debug
         $benchmark_radar = $cots_calientes; // para compatibilidad con debug display
@@ -1008,8 +1042,9 @@ class ActividadScore
               s_seguimiento, s_radar_health, s_conversion, penalizaciones, bonuses,
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento, ema_engagement, ema_radar_health,
-              momentum, percentil, bonus_ticket, bonus_ticket_ventas, ticket_promedio, bonus_cierre)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+              momentum, percentil, bonus_ticket, bonus_ticket_ventas, ticket_promedio, bonus_cierre,
+              mesa_pedidas, mesa_atendidas, s_mesa)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -1036,6 +1071,7 @@ class ActividadScore
               ema_engagement=VALUES(ema_engagement), ema_radar_health=VALUES(ema_radar_health),
               momentum=VALUES(momentum), percentil=VALUES(percentil),
               bonus_ticket=VALUES(bonus_ticket), bonus_ticket_ventas=VALUES(bonus_ticket_ventas), ticket_promedio=VALUES(ticket_promedio), bonus_cierre=VALUES(bonus_cierre),
+              mesa_pedidas=VALUES(mesa_pedidas), mesa_atendidas=VALUES(mesa_atendidas), s_mesa=VALUES(s_mesa),
               updated_at=NOW()",
             [
                 $usuario_id, $empresa_id, $score, $nivel,
@@ -1058,6 +1094,7 @@ class ActividadScore
                 round($ema_eng, 3), round($ema_hlt, 3),
                 round($momentum, 2), round($percentil, 2),
                 $bonus_ticket, $bonus_ticket_ventas, round($ticket_prom, 2), $bonus_cierre,
+                $mesa_pedidas, $mesa_atendidas, ($s_mesa === null ? null : round($s_mesa, 2)),
             ]
         );
 
@@ -1229,6 +1266,10 @@ class ActividadScore
 
         return [
             'close_rate'         => $total > 0 ? $cerr / $total : 0.10,
+            'mesa_activa'        => (function () use ($empresa_id) {
+                try { return (int)DB::val("SELECT mesa_activa FROM empresas WHERE id = ?", [$empresa_id]); }
+                catch (\Throwable $e) { return 0; } // columna aún no migrada
+            })(),
             'team_size'          => $team_size,
             'avg_ventas_mes'     => $avg_ventas,
             'avg_monto_mes'      => $avg_monto,
@@ -1345,15 +1386,19 @@ class ActividadScore
             $partes_neg = [];
             if ($tip_state === 'no') $partes_neg[] = 'no lees los tips';
             elseif ($tip_state === 'medio') $partes_neg[] = 'lees los tips a medias';
-            if ($why_state === 'no') $partes_neg[] = 'no exploras las señales del Radar';
-            elseif ($why_state === 'medio') $partes_neg[] = 'exploras a medias las señales del Radar';
+            $mesa_on_leg = (int)($ctx['mesa_activa'] ?? 0) >= 1;
+            $donde_sen = $mesa_on_leg ? 'de tu mesa' : 'del Radar';
+            if ($why_state === 'no') $partes_neg[] = "no exploras las señales {$donde_sen}";
+            elseif ($why_state === 'medio') $partes_neg[] = "exploras a medias las señales {$donde_sen}";
 
             if (!empty($partes_neg)) {
                 $first = mb_strtoupper(mb_substr($partes_neg[0], 0, 1)) . mb_substr($partes_neg[0], 1);
                 if (count($partes_neg) === 1) {
                     // Cierre con call to action si es solo ❓
                     if ($why_state !== 'ok') {
-                        $frases[] = $first . ' — usa el ❓ en tus cotizaciones calientes.';
+                        $frases[] = $first . ($mesa_on_leg
+                            ? ' — abre tu mesa y dales un toque a las calientes.'
+                            : ' — usa el ❓ en tus cotizaciones calientes.');
                     } else {
                         $frases[] = $first . ' — revisa el análisis completo.';
                     }

@@ -255,7 +255,7 @@ class MesaSugerencias
             $reabrio_com = $uv > strtotime($com['at']);
             if ($pos_vig && $pos_e === 'en_el_aire') {
                 $f = $pk([
-                    'Declaraste acuerdo y "en el aire" a la vez — no pueden ser las dos: si el acuerdo es real, ponle fecha hoy; si no, corrige la postura.',
+                    'Hay acuerdo pero tú mismo la ves en el aire — la prueba es la fecha: si el cliente acepta ponerla hoy, el acuerdo es real; si la esquiva, tu instinto tenía razón.',
                     'Marcaste acuerdo y también "en el aire" — decide cuál es verdad: si hay acuerdo, ponle fecha hoy; si no lo hay, corrige tu postura.',
                     'Tienes un acuerdo declarado y a la vez "en el aire" — aclara hoy: un acuerdo real lleva fecha; si no la tiene, corrige la postura.',
                 ]);
@@ -413,9 +413,9 @@ class MesaSugerencias
             } elseif ($pos_vig && $pos_e === 'decidiendo') {
                 if ($dormida && !$reabrio) {
                     $f = $pk([
-                        "Dices que el cliente está decidiendo pero lleva {$dsv}d sin abrir la cotización — eso no es decidir, es enfriarse: pídele una definición esta semana.",
+                        "Van {$dsv}d sin que el cliente abra la cotización desde que quedó en decidiendo — nadie decide sin releer: ponle fecha a la decisión esta semana.",
                         "Marcaste \"decidiendo\" pero el cliente tiene {$dsv}d sin ver la cotización — se está enfriando: llámale y ponle fecha a la decisión.",
-                        "El cliente \"decide\" desde hace {$dsv}d sin abrir la cotización — nadie decide sin releer: contáctalo hoy y pide una respuesta con fecha.",
+                        "El cliente decide desde hace {$dsv}d sin abrir la cotización — nadie decide sin releer: contáctalo hoy y pide una respuesta con fecha.",
                     ]);
                     $slots['confronta'] = true;
                 } elseif ($reabrio || $leyendo) {
@@ -486,7 +486,7 @@ class MesaSugerencias
         elseif ($con_e === 'hablamos' && !$com_vig && !$pos_vig) {
             $f = $viva
                 ? $pk([
-                    'Hablaste con el cliente, no registraste en qué quedaron, y él sigue entrando a la cotización — captura el desenlace y dale el siguiente toque hoy.',
+                    'Hablaste con el cliente, no registraste en qué quedaron, y él sigue entrando a la cotización — registra en qué quedaron y dale el siguiente toque hoy.',
                     'El cliente sigue revisando la cotización pero no declaraste cómo terminó la plática — registra en qué quedaron y contáctalo hoy.',
                     'El cliente sigue moviéndose en la cotización y tú no capturaste el resultado de la plática — decláralo ahora y dale el siguiente toque hoy mismo.',
                 ])
@@ -495,7 +495,7 @@ class MesaSugerencias
                     'Hubo plática pero no declaraste el resultado — captúralo hoy; si no quedaron en nada, llama al cliente para aterrizar un acuerdo.',
                     'La plática quedó sin registro — declara en qué terminó; y si terminó en nada, tu siguiente llamada es para quedar en algo concreto.',
                     'Hablaste con el cliente pero no capturaste el resultado — regístralo ahora; sin eso la mesa no puede ayudarte a darle seguimiento.',
-                    'Falta el desenlace de tu plática — decláralo y, si no quedaron en nada, ese es justo tu pendiente de hoy.',
+                    'Falta registrar en qué quedó tu plática — decláralo y, si no quedaron en nada, ese es justo tu pendiente de hoy.',
                 ]);
         }
 
@@ -527,9 +527,9 @@ class MesaSugerencias
                 if ($dormida && !$reabrio) {
                     $slots['confronta'] = true;
                     return $pk([
-                        "Dices que el cliente está decidiendo pero lleva {$dsv}d sin abrir la cotización — eso no es decidir, es enfriarse: pídele una definición esta semana.",
+                        "Van {$dsv}d sin que el cliente abra la cotización desde que quedó en decidiendo — nadie decide sin releer: ponle fecha a la decisión esta semana.",
                         "Marcaste \"decidiendo\" pero el cliente tiene {$dsv}d sin ver la cotización — se está enfriando: llámale y ponle fecha a la decisión.",
-                        "El cliente \"decide\" desde hace {$dsv}d sin abrir la cotización — nadie decide sin releer: contáctalo hoy y pide una respuesta con fecha.",
+                        "El cliente decide desde hace {$dsv}d sin abrir la cotización — nadie decide sin releer: contáctalo hoy y pide una respuesta con fecha.",
                     ]);
                 }
                 if ($bucket === 'validando_precio' && $viva) { $slots['precio'] = true; return $pk([
@@ -591,7 +591,7 @@ class MesaSugerencias
                 ]);
             case 'en_el_aire':
                 if ($viva) { $slots['confronta'] = true; return $pk([
-                    'Tú ves la venta dudosa pero el cliente está releyendo la cotización — el que duda eres tú: márcale hoy y sal de la duda.',
+                    'Tú la ves dudosa pero el cliente la sigue releyendo — los datos están de tu lado: márcale hoy y sal de la duda.',
                     'Marcaste la venta como dudosa y el cliente sigue abriendo la cotización — el interés existe: llámale hoy y pregúntale directo en qué va.',
                     'Tú la das por dudosa pero el cliente vuelve a la cotización — no adivines: contacta hoy al cliente y pregunta si siguen.',
                 ]); }
@@ -630,7 +630,7 @@ class MesaSugerencias
             }
             return $pk([
                 'Marcaste 👍 pero el cliente se está apagando — mándale hoy un motivo concreto para retomar la cotización, o corrige tu marca.',
-                'Tu 👍 ya no coincide con el cliente: cada vez abre menos la cotización — dale hoy una razón nueva para volver, o quita el 👍.',
+                'Tu 👍 ya no coincide con el cliente: cada vez abre menos la cotización — dale hoy una razón nueva para volver, o acepta que se enfrió y descártala; un 👍 viejo no la mantiene viva.',
                 'El interés del cliente va de bajada aunque marcaste 👍 — escríbele hoy con algo nuevo (foto, ajuste, fecha) o corrige tu marca.',
             ]);
         }
@@ -813,7 +813,7 @@ class MesaSugerencias
             case 'presente_pasivo':
                 $f .= ' ' . $pk(['Hazlo en tu primera hora — lo que no se hace temprano, no se hace.',
                                  'Este toque va hoy antes de mediodía, no "al rato".',
-                                 'Agéndalo ahora mismo con hora — tu patrón es dejarlo pasar.']);
+                                 'Agéndalo ahora mismo con hora — lo que se queda para al rato es lo primero que se pierde.']);
                 break;
             case 'sordo_a_senales':
                 if ($viva || !empty($slots['senal_viva'])) {

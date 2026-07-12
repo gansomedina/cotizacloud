@@ -126,6 +126,17 @@ try {
     echo json_encode(['ok' => false, 'error' => 'guardar']); exit;
 }
 
+// Tapear ES explorar la señal (el cajón muestra bucket + sugerencia — información
+// equivalente o superior al ❓ del Radar). Se registra a nombre del ASESOR dueño
+// (misma identidad que el feedback): alimenta calientes_exploradas, que usan la
+// validación de diligencia, el arquetipo 'teatro' y la frase "las ignoras" de
+// DiagnosticoTips. Sin esto, migrar la rutina del Radar a la mesa insultaría
+// al asesor por usar la herramienta nueva. El consumidor cuenta DISTINCT ref_id
+// — duplicados inofensivos. Fuera de la transacción: si falla, el tap ya quedó.
+try {
+    ActividadScore::registrar((int)$cot['vend'], EMPRESA_ID, 'radar_why_click', $cot_id);
+} catch (Throwable $e) {}
+
 // ── Recalcular la sugerencia con la mezcla completa ──
 $sugerencia = null;
 try {

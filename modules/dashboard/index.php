@@ -1004,6 +1004,10 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
 
 <style>.dbg-chev-open{transform:rotate(90deg)}.dbg-open{display:block!important}.dbg-row{display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:2px 0}.dbg-lbl{color:var(--t3)}.dbg-val{font-weight:600}.dbg-neg{color:var(--danger)}.dbg-sec{font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:10px 0 4px;padding-top:8px;border-top:1px solid var(--border)}</style>
 
+<?php // Mesa del ASESOR: su tarjeta completa (cobertura + su mesa) después
+// de su termómetro personal. Assets primero (funciones de los taps).
+if (!empty($MESA_ASESOR)) { echo ($MESA_ASSETS ?? '') . $MESA_ASESOR; $MESA_EMITIDO = true; } ?>
+
 <?php if ($es_admin_dash && count($equipo_scores) > 0): ?>
   <div class="lb">
     <div class="lb-head" onclick="var b=document.getElementById('lb-body');b.classList.toggle('lb-collapsed');this.querySelector('.lb-chevron').classList.toggle('lb-chevron-open')" style="cursor:pointer;user-select:none">
@@ -1022,7 +1026,7 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <ul>
           <li><b>Activación (13%)</b> — ¿Las cotizaciones llegan al cliente? Penaliza no abiertas (×1/tasa cierre) y dormidas (escalado por tiempo promedio de cierre de la empresa).</li>
           <li><b>Engagement (17%)</b> — Capa de penalizaciones: ventas sin cobrar (×1/tasa cierre, fuerte), descuentos (×tasa cierre, suave), ventas por debajo del promedio de la empresa.</li>
-          <li><b>Seguimiento (25%)</b> — ¿Das feedback a las señales calientes del Radar? Se evalúa el esfuerzo (dar feedback) y el resultado (¿acertaste?). Con más feedbacks, la calidad pesa más que el esfuerzo.</li>
+          <li><b>Seguimiento (25%)</b> — ¿Trabajas tus señales calientes? Se evalúa el esfuerzo (dar feedback) y el resultado (¿acertaste?); con más feedbacks, la calidad pesa más que el esfuerzo. Con la Mesa de Trabajo activa, la cuarta parte de esta dimensión es cubrir las señales de tu mesa: 80% atendidas en 3 días (con margen de 1 falla) = completo; abajo = cero.</li>
           <li><b>Radar Health (10%)</b> — ¿Cuidas a los clientes con interés? Cuando una cotización se pone caliente, el cliente la está viendo con interés. Mide cuántas de esas se te mueren — el cliente desaparece del Radar sin que cierres. Entre menos sueltas, más alto.</li>
           <li><b>Conversión (35%)</b> — ¿Cierras ventas? Tasa de cierre vs empresa, calidad (cerrar ventas difíciles vale más), tendencia de volumen (ventas actuales vs período anterior), consistencia semanal.</li>
         </ul>
@@ -1032,7 +1036,7 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <p style="color:var(--t3);font-style:italic;margin-bottom:0">Nota: Índice algorítmico basado en datos de uso de la plataforma. Referencia de productividad comercial, no evaluación personal.</p>
       </div>
     </div>
-    <?php if (!empty($MESA_SHARED)) { echo $MESA_SHARED; $MESA_EMITIDO = true; } ?>
+    <?php if (!empty($MESA_SHARED)) { echo $MESA_SHARED . ($MESA_ASSETS ?? ''); $MESA_EMITIDO = true; } ?>
     <?php
     $rank = 0;
     foreach ($equipo_scores as $es):
@@ -1119,7 +1123,10 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <div class="dbg-row"><span class="dbg-lbl">  pen descuento</span><span class="dbg-val dbg-neg"><?= ($es['eng_pen_descuento'] ?? 0) > 0 ? '-'.round(($es['eng_pen_descuento'] ?? 0) * 100, 1).'%' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  pen bajo benchmark</span><span class="dbg-val dbg-neg"><?php $epbb = $es['eng_pen_bajo_benchmark'] ?? 0; if ($epbb > 0) { echo '-'.round($epbb * 100, 1).'% ('.($es['ventas_periodo'] ?? '?').' vs '.($es['bench_ventas'] ?? '?').')'; } else echo '—'; ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Seguimiento (25%)</span><span class="dbg-val"><?= round(($es['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
-        <div class="dbg-row"><span class="dbg-lbl">  ❓ exploradas <?= $dbg_why_exp ?>/<?= $dbg_cal_tot ?></span><span class="dbg-val"><?= $dbg_why_s < 1 ? '×'.round($dbg_why_s * 100).'%' : '—' ?></span></div>
+        <?php if (($es['s_mesa'] ?? null) !== null): ?>
+        <div class="dbg-row"><span class="dbg-lbl">  mesa 25% (<?= (int)($es['mesa_atendidas'] ?? 0) ?>/<?= (int)($es['mesa_pedidas'] ?? 0) ?> señales)</span><span class="dbg-val <?= (float)$es['s_mesa'] > 0 ? '' : 'dbg-neg' ?>"><?= (float)$es['s_mesa'] > 0 ? '✓' : '✗ 0' ?></span></div>
+        <?php endif; ?>
+        <div class="dbg-row"><span class="dbg-lbl">  exploradas (❓/mesa) <?= $dbg_why_exp ?>/<?= $dbg_cal_tot ?></span><span class="dbg-val"><?= $dbg_cal_tot > 0 ? round($dbg_why_exp / $dbg_cal_tot * 100) . '%' : '—' ?> <span style="opacity:.6">(ya no penaliza)</span></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Radar Health (10%)</span><span class="dbg-val"><?= round(($es['s_radar_health'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  calientes / muertas</span><span class="dbg-val"><?= (int)($es['health_up'] ?? $es['transiciones_up'] ?? 0) ?> / <?= (int)($es['health_down'] ?? $es['senales_ignoradas'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">  tasa muerte caliente</span><span class="dbg-val dbg-neg"><?php $rhc=(int)($es['health_up']??$es['transiciones_up']??0);$rhm=(int)($es['health_down']??$es['senales_ignoradas']??0);echo $rhc>0?round($rhm/$rhc*100,1).'%':'—';?></span></div>
@@ -1155,11 +1162,15 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
 
 <?php // Fallback FUERA del gate del termómetro: la mesa no puede desaparecer
 // aunque termometro_visible=0 o plan Lite — y las queries ya pagadas se usan
-if (!empty($MESA_SHARED) && empty($MESA_EMITIDO)): $MESA_EMITIDO = true; ?>
+if (empty($MESA_EMITIDO)):
+    if (!empty($MESA_SHARED)): $MESA_EMITIDO = true; ?>
 <div class="card" style="margin-bottom:16px;padding:4px 0 8px">
-  <?= $MESA_SHARED ?>
+  <?= $MESA_SHARED . ($MESA_ASSETS ?? '') ?>
   <?php foreach ($MESA_BLOQUES as $mb) echo $mb; $MESA_BLOQUES = []; ?>
 </div>
+    <?php elseif (!empty($MESA_ASESOR)): $MESA_EMITIDO = true;
+        echo ($MESA_ASSETS ?? '') . $MESA_ASESOR;
+    endif; ?>
 <?php endif; ?>
 
 <!-- ══ KPIs FINANCIEROS ══ -->

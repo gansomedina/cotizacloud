@@ -17,6 +17,8 @@ class DB {
     public static function execute($sql,$p=[]):void{$st=self::pdo()->prepare($sql);$st->execute($p);}
 }
 class Radar { public static function ciclo_venta($e){ return ['auto'=>true,'p75'=>20,'mediana'=>10]; } }
+class ActividadScore { public static function periodo_efectivo($e){ return 15; } }
+class Auth { public static function id(){ return 500; } public static function es_admin(){ return false; } }
 function e($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 function csrf_token(){ return 'test-token'; }
 require '/home/user/cotizacloud/core/DiagnosticoTips.php';
@@ -33,7 +35,7 @@ function chk($n,$g,$w){ global $fail; $ok=($g==$w); if(!$ok)$fail++; echo ($ok?"
 
 chk('el include NO emite nada directo', trim($emitido), '');
 chk('MESA_SHARED existe y trae el bloque compartido', isset($MESA_SHARED) && str_contains($MESA_SHARED, 'id="mesa-shared"'), true);
-chk('shared trae playbook, CSS y JS', str_contains($MESA_SHARED,'mesa-pb') && str_contains($MESA_SHARED,'.mesa-emb .mrow') && str_contains($MESA_SHARED,'function mesaTap'), true);
+chk('shared trae playbook; assets traen CSS y JS', str_contains($MESA_SHARED,'mesa-pb') && str_contains($MESA_ASSETS ?? '','.mesa-emb .mrow') && str_contains($MESA_ASSETS ?? '','function mesaTap'), true);
 chk('SIN ?mesa_dias el reporte NO se renderiza (M2: bajo demanda) y el link navega', !str_contains($MESA_SHARED,'id="mesa-rp"') && str_contains($MESA_SHARED,'mesa_dias=30'), true);
 chk('shared SIN chips de selector de vendedores', str_contains($MESA_SHARED, 'href="?mesa_uid='), false);
 chk('bloques por asesor: 500 y 501', (function($k){ sort($k); return $k; })(array_keys($MESA_BLOQUES ?? [])), [500, 501]);
@@ -43,7 +45,7 @@ chk('bloque 500: resumen con pendientes y monto', (bool)preg_match('/pendientes/
 chk('bloque 501: capeado top 25 de 28 declarado', str_contains($MESA_BLOQUES[501], 'top 25 de 28'), true);
 chk('sin referencias huérfanas a #mesa-card', str_contains($MESA_SHARED . implode('', $MESA_BLOQUES), '#mesa-card') || str_contains($MESA_SHARED . implode('', $MESA_BLOQUES), 'mesa-card'), false);
 chk('aviso de limpieza vive en el bloque del asesor', str_contains($MESA_BLOQUES[500], 'jamás ha cerrado') || !str_contains($MESA_SHARED, 'jamás ha cerrado'), true);
-chk('binding de filas diferido a DOMContentLoaded', str_contains($MESA_SHARED, "addEventListener('DOMContentLoaded'"), true);
+chk('binding de filas diferido a DOMContentLoaded', str_contains($MESA_ASSETS ?? '', "addEventListener('DOMContentLoaded'"), true);
 
 // ── Segundo render CON ?mesa_dias: el reporte debe aparecer ──
 $_GET['mesa_dias'] = '30';
@@ -53,6 +55,31 @@ include '/home/user/cotizacloud/modules/dashboard/_mesa.php';
 ob_end_clean();
 chk('CON ?mesa_dias el reporte SÍ se renderiza abierto', str_contains($MESA_SHARED ?? '', 'id="mesa-rp"') && str_contains($MESA_SHARED ?? '', 'Cartera hoy'), true);
 chk('pills de período preservan el estado (mesa_dias en el link)', str_contains($MESA_SHARED ?? '', 'mesa_dias=60'), true);
+
+// ── Tercer render: MODO ASESOR (uid 500, mesa_activa=1) ──
+unset($_GET['mesa_dias']);
+unset($MESA_SHARED, $MESA_BLOQUES, $MESA_ASESOR, $MESA_ASSETS, $MESA_EMITIDO);
+$es_admin_dash = 0;
+$empresa = ['mesa_activa' => 1];
+ob_start();
+include '/home/user/cotizacloud/modules/dashboard/_mesa.php';
+ob_end_clean();
+chk('ASESOR: tarjeta propia con su mesa', str_contains($MESA_ASESOR ?? '', 'Tu mesa de trabajo') && str_contains($MESA_ASESOR ?? '', 'mesa-emb-500'), true);
+chk('ASESOR: su mesa abierta por default', str_contains($MESA_ASESOR ?? '', '<details open class="mesa-emb mesa-strip"'), true);
+chk('ASESOR: widget de cobertura de señales presente', str_contains($MESA_ASESOR ?? '', 'Señales (últimos'), true);
+chk('ASESOR: SIN reporte del equipo ni recuperado empresa-wide', !str_contains($MESA_ASESOR ?? '', 'Reporte del equipo') && !str_contains($MESA_ASESOR ?? '', 'toda la empresa, no solo'), true);
+chk('ASESOR: sin bloques de otros asesores', !str_contains($MESA_ASESOR ?? '', 'mesa-emb-501'), true);
+chk('ASESOR: assets aparte (JS de taps disponible)', str_contains($MESA_ASSETS ?? '', 'function mesaTap') && str_contains($MESA_ASSETS ?? '', 'mesa-toast'), true);
+chk('ASESOR: playbook con disuasión reutilizado', str_contains($MESA_ASESOR ?? '', 'mesa-pb'), true);
+chk('ASESOR: shared de admin NO se construyó', empty($MESA_SHARED), true);
+
+// ── Cuarto render: asesor con mesa_activa=0 → NADA ──
+unset($MESA_SHARED, $MESA_BLOQUES, $MESA_ASESOR, $MESA_ASSETS);
+$empresa = ['mesa_activa' => 0];
+ob_start();
+include '/home/user/cotizacloud/modules/dashboard/_mesa.php';
+ob_end_clean();
+chk('ASESOR con flag=0: la mesa no existe para él', empty($MESA_ASESOR) && empty($MESA_SHARED), true);
 
 echo "\n".($fail ? "✗ $fail FALLAS" : "✓ RENDER OK")."\n";
 exit($fail ? 1 : 0);

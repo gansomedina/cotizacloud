@@ -366,6 +366,24 @@ tr:hover td{background:#fafaf8}
         <i data-feather="globe" style="width:16px;height:16px;color:var(--purple)"></i>
         <span style="font-size:13px;font-weight:700;color:var(--text)">Dominio custom</span>
     </div>
+    <!-- Mesa de Trabajo: rollout por empresa -->
+    <div style="margin-bottom:14px;padding:10px 12px;background:#f8f8f5;border:1px solid #e2e2dc;border-radius:8px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:6px">📋 Mesa de Trabajo (rollout)</div>
+      <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"
+            onsubmit="return confirm('¿Cambiar el estado de la Mesa para esta empresa?')">
+        <?= csrf_field() ?>
+        <input type="hidden" name="accion" value="mesa_activa">
+        <?php $mesa_flag_emp = (int)($emp['mesa_activa'] ?? 0); ?>
+        <select name="valor" style="padding:6px 10px;border:1px solid #d4d4ce;border-radius:6px;font-size:13px">
+          <option value="0" <?= $mesa_flag_emp === 0 ? 'selected' : '' ?>>0 — Apagada (solo admin la ve)</option>
+          <option value="1" <?= $mesa_flag_emp === 1 ? 'selected' : '' ?>>1 — UI asesores (SIN score — quincena de aprendizaje)</option>
+          <option value="2" <?= $mesa_flag_emp === 2 ? 'selected' : '' ?>>2 — UI + score (25% del Seguimiento activo)</option>
+        </select>
+        <button type="submit" class="btn btn-sm">Guardar</button>
+        <span style="font-size:11.5px;color:#8a8a84">Requiere migración add_mesa_score.sql. Avisar la regla del 80% ANTES de pasar a 2.</span>
+      </form>
+    </div>
+
     <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/dominio" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <?= csrf_field() ?>
         <input type="text" name="dominio_custom" value="<?= e($emp['dominio_custom'] ?? '') ?>"

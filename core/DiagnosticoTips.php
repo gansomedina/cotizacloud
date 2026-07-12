@@ -68,7 +68,30 @@ final class DiagnosticoTips
         $tono = self::_cuadrante($m, $e, $real, $vol);
         $arq  = self::_arquetipo($m, $e, $real);
 
-        return self::_componer($arq, $tono, $m, $e, $real, $boot, $seed);
+        $txt = self::_componer($arq, $tono, $m, $e, $real, $boot, $seed);
+        // Reprobado del 25% de la mesa — SIEMPRE anexado al final (nunca antes
+        // de un corte: lección bonus_ticket). Gates: s_mesa calculado (flag=2),
+        // reprobado, y hubo señales (con pedidas=0 s_mesa=1, imposible reprobar).
+        if ($m['s_mesa'] !== null && $m['s_mesa'] === 0.0 && $m['mesa_ped'] > 0) {
+            $txt .= ' ' . self::_frase_mesa($m, $seed);
+        }
+        return $txt;
+    }
+
+    // ── Frase del 25% reprobado: hechos + jugada, 3 ángulos ──
+    private static function _frase_mesa(array $m, int $seed): string
+    {
+        $x = $m['mesa_att']; $y = $m['mesa_ped']; $n = max(0, $y - $x);
+        $pool = [
+            "Atendiste {$x} de " . self::_pl($y, 'señal 🔥 de tu mesa', 'señales 🔥 de tu mesa')
+            . " — " . self::_pl($n, 'una se quedó', "{$n} se quedaron")
+            . " más de 3 días esperando. Ese cuarto de tu Seguimiento está en cero. La mesa te las forma sola cada mañana; tu parte es un toque el mismo día: con 8 de cada 10 lo recuperas completo.",
+            "La mesa te pidió " . self::_pl($y, 'señal', 'señales') . " y llegaste a {$x}. Una señal caliente dura horas, no semanas: empieza el día por lo 🔥 de tu mesa antes que lo demás — un tap dentro de los 3 días cuenta, aunque el cliente no conteste. Cubriendo el 80% ese punto vuelve solo.",
+        ];
+        if ($n >= 2) {
+            $pool[] = "{$y} clientes te levantaron la mano y a {$n} los dejaste colgados más de 3 días. Nadie te pide cerrarlos, te pide aparecer: entra a tu mesa, dales un toque y declara qué pasó. Ocho de cada diez y el cuarto de tu Seguimiento regresa.";
+        }
+        return self::_pick($pool, $seed);
     }
 
     // ── Normaliza TODA la fila ───────────────────────────────
@@ -112,6 +135,11 @@ final class DiagnosticoTips
             'bticket_v'  => (int)($s['bonus_ticket_ventas'] ?? 0),
             'bcierre'    => (int)($s['bonus_cierre'] ?? 0),
             'ticket'     => (float)($s['ticket_promedio'] ?? 0),
+            // Mesa de Trabajo (25% del Seguimiento cuando mesa_activa=2)
+            'mesa_on'    => (int)($ctx['mesa_activa'] ?? 0) >= 1,
+            's_mesa'     => array_key_exists('s_mesa', $s) && $s['s_mesa'] !== null ? (float)$s['s_mesa'] : null,
+            'mesa_ped'   => (int)($s['mesa_pedidas'] ?? 0),
+            'mesa_att'   => (int)($s['mesa_atendidas'] ?? 0),
             // Tendencia
             'mom'        => (float)($s['momentum'] ?? 1),
             'bench'      => $bench,
@@ -475,6 +503,20 @@ final class DiagnosticoTips
         // motor_completo v3 presume racha ("van ganando / mes ganado") — exige momentum sano
         if (!$g_alza) $V['motor_completo'] = [$V['motor_completo'][0], $V['motor_completo'][1]];
 
+        // Con la mesa activa, la jugada de señales es "abre tu mesa" (la mesa
+        // ya forma las señales solas — mandar al Radar sería la jugada vieja)
+        if (!empty($m['mesa_on'])) {
+            $V['sordo_a_senales'] = array_map(
+                fn($f) => str_replace(
+                    ['Cada mañana revisa quién se puso caliente y contáctalo el mismo día',
+                     'Empieza el día por los calientes de hoy'],
+                    ['Cada mañana abre tu mesa y dale un toque al que se puso caliente el mismo día',
+                     'Empieza el día por lo 🔥 de tu mesa'],
+                    $f),
+                $V['sordo_a_senales']
+            );
+        }
+
         $pool = $V[$arq] ?? $V['meseta'];
         return self::_pick($pool, $seed);
     }
@@ -488,9 +530,10 @@ final class DiagnosticoTips
         ], $seed);
         $sin_expl = max(0, $m['cal'] - $m['exp']);
         if ($sin_expl > 0) {
+            $donde = !empty($m['mesa_on']) ? 'en tu mesa' : 'en el Radar';
             $op .= ' ' . ($sin_expl === 1
-                ? "Y si ya tienes 1 caliente en el Radar, atiéndela hoy — no dejes ir lo poco activo que tienes."
-                : "Y si ya tienes {$sin_expl} calientes en el Radar, atiéndelas hoy — no dejes ir lo poco activo que tienes.");
+                ? "Y si ya tienes 1 caliente {$donde}, atiéndela hoy — no dejes ir lo poco activo que tienes."
+                : "Y si ya tienes {$sin_expl} calientes {$donde}, atiéndelas hoy — no dejes ir lo poco activo que tienes.");
         }
         return $op;
     }

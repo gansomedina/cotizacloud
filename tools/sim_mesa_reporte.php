@@ -300,6 +300,14 @@ $rec = Mesa::recuperado(1, 30);
 chk('rec: $30,000 (1) — solo V2; V3 y V4 (corregidas) NO', [$rec['rec_n'], $rec['rec_monto']], [1, 30000.0]);
 chk('trabajada: $62,000 (2) — V1 y V4', [$rec['trab_n'], $rec['trab_monto']], [2, 62000.0]);
 
+echo "═ HELPER cobertura_senales (fuente única del score/widget) ═\n";
+$cob_ana = Mesa::cobertura_senales(1, 101, 30);
+chk('Ana por-vendedor = su fila del reporte (4 pedidas, 2 atendidas, 2 fallas)',
+    [$cob_ana['pedidas'], $cob_ana['atendidas'], $cob_ana['fallas']], [4, 2, 2]);
+chk('vendedor sin señales → ceros', Mesa::cobertura_senales(1, 102, 30), ['pedidas' => 0, 'atendidas' => 0, 'fallas' => 0]);
+$det_ana = Mesa::cobertura_detalle(1, 101, 30);
+chk('detalle de Ana: 5 episodios (incluye el de ventana abierta)', count($det_ana), 5);
+
 echo "═ AISLAMIENTO entre empresas ═\n";
 chk('empresa 1 no incluye a Carla', isset($rep['asesores'][201]), false);
 $rep2 = Mesa::reporte(2, 30);

@@ -16,6 +16,18 @@ if (!$emp || $emp['slug'] === '_system') {
 
 $accion = $_POST['accion'] ?? 'toggle';
 
+// Mesa de Trabajo: rollout por empresa (0=off, 1=UI asesores, 2=UI+score 25%)
+if ($accion === 'mesa_activa') {
+    $val = (int)($_POST['valor'] ?? 0);
+    if (!in_array($val, [0, 1, 2], true)) $val = 0;
+    try {
+        DB::execute("UPDATE empresas SET mesa_activa = ? WHERE id = ?", [$val, $empresa_id]);
+    } catch (Throwable $e) {
+        error_log('[Mesa toggle] columna mesa_activa sin migrar — correr migrations/add_mesa_score.sql');
+    }
+    redirect('/superadmin/empresa/' . $empresa_id);
+}
+
 $duracion_dias = function() {
     $duracion = $_POST['duracion'] ?? '1_mes';
     return match ($duracion) {

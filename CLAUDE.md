@@ -3248,7 +3248,22 @@ custom — ahí se respeta la marca del cliente). Gratis y compuesto.
 - "Propuse, no quiso" y "En el aire" NO proyectan 👎 (decisión CEO:
   estados de momento, no juicio terminal)
 
-### PENDIENTE APROBADO — Mesa al Termómetro (implementar al salir de beta)
+### ✅ IMPLEMENTADO 11 jul — Mesa al Termómetro + rollout asesores
+Todo el plan de docs/mesa_score_integracion.md quedó EN CÓDIGO:
+- Migración migrations/add_mesa_score.sql (CORRER EN SERVIDOR antes del deploy)
+- Mesa::cobertura_senales() + cobertura_detalle() (fuente única) + recuperado personal
+- ActividadScore: blend 25% binario (gate mesa_activa=2), periodo_efectivo(),
+  persistencia mesa_pedidas/atendidas/s_mesa (INSERT 58/58 verificado)
+- DiagnosticoTips: 3 frases del reprobado con gates + wording "en tu mesa"
+- UI asesor: tarjeta propia tras su termómetro (gate mesa_activa>=1), cobertura
+  con desglose itemizado, recuperado personal, playbook con disuasión anunciada
+  y caducidad, mesa abierta por default, assets separados (JS/CSS), móvil 2
+  líneas con 👍👎 visibles, cero fugas (reporte/recuperado empresa = admin only)
+- Toggle superadmin en ficha de empresa (0/1/2) + debug panel + executive SELECT
+- Validado: sims 34+35, render 4 modos (admin ×2, asesor flag 1/0), tips-gates,
+  fact-lint 0. Checklist de rollout vive en el doc.
+
+### (histórico) PENDIENTE APROBADO — Mesa al Termómetro (implementar al salir de beta)
 **Diseño completo en docs/mesa_score_integracion.md** — leerlo ANTES de
 implementar. Resumen: la mesa vale 25% del Seguimiento, BINARIO: cobertura
 de señales ≥80% (margen mínimo 1 falla) = 25%; abajo = 0. Neutral sin
@@ -3257,6 +3272,19 @@ Mesa::cobertura_senales() para score Y reporte (no duplicar SQL). Incluye
 las 6 trampas verificadas, cambios exactos (~60 líneas + migración) y
 checklist de rollout. Sub-proyecto previo: abrir la mesa a asesores
 (vista propia, sin reporte del equipo).
+
+### Decisiones 11 jul 2026 (rollout asesores evaluado con 3 agentes)
+- **El ❓ del Radar YA NO PENALIZA** (multiplicador radar_why eliminado del
+  Seguimiento — la mesa es el mecanismo de señales y valdrá el 25%). Cada tap
+  de mesa registra radar_why_click a nombre del asesor (mesa_estado.php) —
+  mantiene vivos diligente/teatro/g_ignora de DiagnosticoTips
+- Ventana de reacción de señales: 3 días (cubre viernes/sábado sin días hábiles)
+- Flag mesa_activa de 3 valores: 0 off / 1 UI asesores / 2 UI+score
+- 8 frases de la mesa reescritas (tono coach, no fiscal — auditoría psicología)
+- El rollout a asesores tiene su plan completo en docs/mesa_score_integracion.md
+  (bloqueantes: split assets JS/CSS, gate del reporte, MÓVIL 2 líneas con 👍👎
+  visibles; producto: contador con desglose, disuasión anunciada, recuperado
+  personal, espejo de su fila, push de revividas)
 
 ### Pendientes menores mesa
 - GRACIA_DIAS está en 7 "temporal testing" (ActividadScore.php:105) — volver a 15
