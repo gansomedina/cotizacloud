@@ -1,4 +1,9 @@
-# Mesa → Termómetro: integración al Seguimiento (DISEÑO APROBADO, sin implementar)
+# Mesa → Termómetro: integración al Seguimiento — ✅ IMPLEMENTADO (11 jul 2026)
+
+**Estado:** código completo en la branch. FALTA en el servidor: correr
+`migrations/add_mesa_score.sql` ANTES del deploy. El rollout se controla con
+el toggle de la ficha de empresa del superadmin (0 → 1 → 2 según checklist).
+Con flag=0 (default): cero cambio visible para asesores y score intacto.
 
 **Decisión del CEO (11 jul 2026):** la mesa vale el **25% del Seguimiento**, binario
 y drástico: cobertura ≥80% = 25% completo; abajo = CERO. Con margen mínimo de 1

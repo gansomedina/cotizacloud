@@ -410,6 +410,122 @@ class Mesa
     }
 
     /**
+     * FUENTE ÚNICA de cobertura de señales 🔥 — la consumen el reporte del
+     * equipo, el score (25% del Seguimiento) y el widget del asesor. Si el
+     * número que el asesor ve difiere del que lo examina, es un bug.
+     *
+     * Episodio = transición a bucket hot (set Mesa::HOT) sin otra transición
+     * hot en los 3 días previos (rebotes no son señales nuevas). Solo se
+     * juzgan episodios con la ventana CERRADA (3+ días). Atendida = captura
+     * de mesa, 👍👎 del dueño o venta dentro de los 3 días — o cierre de la
+     * cotización después de la señal (venta/respuesta del cliente = el
+     * desenlace llegó; los taps se bloquean en cerradas).
+     *
+     * @return array $vendedor_id=null → [uid => ['pedidas','atendidas','fallas']]
+     *               $vendedor_id=int  → ['pedidas','atendidas','fallas']
+     */
+    public static function cobertura_senales(int $empresa_id, ?int $vendedor_id = null, int $dias = 30): array
+    {
+        $dias   = max(1, (int)$dias);
+        $hot_in = "'" . implode("','", self::HOT) . "'";
+        $uf     = $vendedor_id !== null
+            ? 'AND COALESCE(c2.vendedor_id, c2.usuario_id) = ' . (int)$vendedor_id : '';
+        $out = [];
+        try {
+            foreach (DB::query(
+                "SELECT uid, COUNT(*) AS pedidas,
+                        SUM(NOT (ate_mesa OR ate_fb OR ate_venta OR ate_cierre)) AS fallas
+                 FROM (
+                    SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
+                           EXISTS (SELECT 1 FROM mesa_estados m
+                                   WHERE m.cotizacion_id = s.cotizacion_id
+                                     AND m.created_at >= s.senal_at
+                                     AND m.created_at <= s.senal_at + INTERVAL 3 DAY) AS ate_mesa,
+                           EXISTS (SELECT 1 FROM radar_feedback rf
+                                   WHERE rf.cotizacion_id = s.cotizacion_id
+                                     AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                     AND rf.updated_at >= s.senal_at
+                                     AND rf.updated_at <= s.senal_at + INTERVAL 3 DAY) AS ate_fb,
+                           EXISTS (SELECT 1 FROM ventas v
+                                   WHERE v.cotizacion_id = s.cotizacion_id AND v.estado != 'cancelada'
+                                     AND v.created_at >= s.senal_at) AS ate_venta,
+                           (c.accion_at IS NOT NULL AND c.accion_at >= s.senal_at) AS ate_cierre
+                    FROM (SELECT bt.cotizacion_id, bt.created_at AS senal_at
+                          FROM bucket_transitions bt
+                          JOIN cotizaciones c2 ON c2.id = bt.cotizacion_id
+                          WHERE c2.empresa_id = ? AND bt.bucket_nuevo IN ($hot_in)
+                            AND c2.suspendida = 0 AND c2.total > 0 $uf
+                            AND bt.created_at >= NOW() - INTERVAL $dias DAY
+                            AND bt.created_at <= NOW() - INTERVAL 3 DAY
+                            AND NOT EXISTS (SELECT 1 FROM bucket_transitions bt2
+                                            WHERE bt2.cotizacion_id = bt.cotizacion_id
+                                              AND bt2.bucket_nuevo IN ($hot_in)
+                                              AND bt2.created_at < bt.created_at
+                                              AND bt2.created_at >= bt.created_at - INTERVAL 3 DAY)) s
+                    JOIN cotizaciones c ON c.id = s.cotizacion_id
+                 ) sen
+                 GROUP BY uid", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid'];
+                $out[$u] = [
+                    'pedidas'   => (int)$r['pedidas'],
+                    'atendidas' => (int)$r['pedidas'] - (int)$r['fallas'],
+                    'fallas'    => (int)$r['fallas'],
+                ];
+            }
+        } catch (Throwable $e) {}
+        if ($vendedor_id !== null) {
+            return $out[$vendedor_id] ?? ['pedidas' => 0, 'atendidas' => 0, 'fallas' => 0];
+        }
+        return $out;
+    }
+
+    /**
+     * Desglose de señales del asesor para SU widget de cobertura: cada
+     * episodio con folio, fecha y estado (atendida / vencida / por vencer).
+     * Incluye episodios con ventana ABIERTA (aún no se juzgan) para que el
+     * "vence mañana" sea accionable. Mismas reglas que cobertura_senales().
+     */
+    public static function cobertura_detalle(int $empresa_id, int $vendedor_id, int $dias = 30): array
+    {
+        $dias   = max(1, (int)$dias);
+        $hot_in = "'" . implode("','", self::HOT) . "'";
+        try {
+            return DB::query(
+                "SELECT s.cotizacion_id, c.numero, c.titulo, s.senal_at,
+                        (s.senal_at <= NOW() - INTERVAL 3 DAY) AS cerrada,
+                        (EXISTS (SELECT 1 FROM mesa_estados m
+                                 WHERE m.cotizacion_id = s.cotizacion_id
+                                   AND m.created_at >= s.senal_at
+                                   AND m.created_at <= s.senal_at + INTERVAL 3 DAY)
+                      OR EXISTS (SELECT 1 FROM radar_feedback rf
+                                 WHERE rf.cotizacion_id = s.cotizacion_id
+                                   AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                   AND rf.updated_at >= s.senal_at
+                                   AND rf.updated_at <= s.senal_at + INTERVAL 3 DAY)
+                      OR EXISTS (SELECT 1 FROM ventas v
+                                 WHERE v.cotizacion_id = s.cotizacion_id AND v.estado != 'cancelada'
+                                   AND v.created_at >= s.senal_at)
+                      OR (c.accion_at IS NOT NULL AND c.accion_at >= s.senal_at)) AS atendida
+                 FROM (SELECT bt.cotizacion_id, bt.created_at AS senal_at
+                       FROM bucket_transitions bt
+                       JOIN cotizaciones c2 ON c2.id = bt.cotizacion_id
+                       WHERE c2.empresa_id = ? AND bt.bucket_nuevo IN ($hot_in)
+                         AND c2.suspendida = 0 AND c2.total > 0
+                         AND COALESCE(c2.vendedor_id, c2.usuario_id) = ?
+                         AND bt.created_at >= NOW() - INTERVAL $dias DAY
+                         AND NOT EXISTS (SELECT 1 FROM bucket_transitions bt2
+                                         WHERE bt2.cotizacion_id = bt.cotizacion_id
+                                           AND bt2.bucket_nuevo IN ($hot_in)
+                                           AND bt2.created_at < bt.created_at
+                                           AND bt2.created_at >= bt.created_at - INTERVAL 3 DAY)) s
+                 JOIN cotizaciones c ON c.id = s.cotizacion_id
+                 ORDER BY s.senal_at DESC", [$empresa_id, $vendedor_id]
+            );
+        } catch (Throwable $e) { return []; }
+    }
+
+    /**
      * Reporte del equipo — métricas por asesor de lo capturado en la mesa
      * Y de lo que NO ha hecho (para eso evalúa el dueño).
      *
@@ -536,56 +652,13 @@ class Mesa
                 $out[$u]['monto_se_fueron']    = (float)$r['monto_se_fueron'];
             }
 
-            // 0b) Señales calientes DESATENDIDAS — por EPISODIO y con ventana
-            //     de reacción de 3 DÍAS (decisión CEO 11 jul: cubre la señal de
-            //     viernes/sábado para equipos de lunes a viernes sin lógica de
-            //     días hábiles). Episodio = transición a bucket hot sin otra
-            //     transición hot en los 3 días previos (rebotes NO son señales
-            //     nuevas). Atendida = acción (captura, 👍👎 o venta) DENTRO de
-            //     los 3 días siguientes — atender hoy no perdona la ignorada
-            //     hace semanas. Solo episodios con la ventana cerrada (3+ días).
-            //     JUSTA: si la cotización se CERRÓ tras la señal (venta o
-            //     respuesta del cliente), cuenta atendida — el desenlace llegó
-            //     y los taps se bloquean en cerradas; no era atendible.
-            $hot_in_rep = "'" . implode("','", self::HOT) . "'";
-            foreach (DB::query(
-                "SELECT uid, COUNT(*) AS hot_total,
-                        SUM(NOT (ate_mesa OR ate_fb OR ate_venta OR ate_cierre)) AS hot_desatendidas
-                 FROM (
-                    SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
-                           EXISTS (SELECT 1 FROM mesa_estados m
-                                   WHERE m.cotizacion_id = s.cotizacion_id
-                                     AND m.created_at >= s.senal_at
-                                     AND m.created_at <= s.senal_at + INTERVAL 3 DAY) AS ate_mesa,
-                           EXISTS (SELECT 1 FROM radar_feedback rf
-                                   WHERE rf.cotizacion_id = s.cotizacion_id
-                                     AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
-                                     AND rf.updated_at >= s.senal_at
-                                     AND rf.updated_at <= s.senal_at + INTERVAL 3 DAY) AS ate_fb,
-                           EXISTS (SELECT 1 FROM ventas v
-                                   WHERE v.cotizacion_id = s.cotizacion_id AND v.estado != 'cancelada'
-                                     AND v.created_at >= s.senal_at) AS ate_venta,
-                           (c.accion_at IS NOT NULL AND c.accion_at >= s.senal_at) AS ate_cierre
-                    FROM (SELECT bt.cotizacion_id, bt.created_at AS senal_at
-                          FROM bucket_transitions bt
-                          JOIN cotizaciones c2 ON c2.id = bt.cotizacion_id
-                          WHERE c2.empresa_id = ? AND bt.bucket_nuevo IN ($hot_in_rep)
-                            AND c2.suspendida = 0 AND c2.total > 0
-                            AND bt.created_at >= NOW() - INTERVAL $dias DAY
-                            AND bt.created_at <= NOW() - INTERVAL 3 DAY
-                            AND NOT EXISTS (SELECT 1 FROM bucket_transitions bt2
-                                            WHERE bt2.cotizacion_id = bt.cotizacion_id
-                                              AND bt2.bucket_nuevo IN ($hot_in_rep)
-                                              AND bt2.created_at < bt.created_at
-                                              AND bt2.created_at >= bt.created_at - INTERVAL 3 DAY)) s
-                    JOIN cotizaciones c ON c.id = s.cotizacion_id
-                 ) sen
-                 GROUP BY uid", [$empresa_id]
-            ) as $r) {
-                $u = (int)$r['uid']; if (!$u) continue;
+            // 0b) Señales calientes DESATENDIDAS — FUENTE ÚNICA (helper
+            //     cobertura_senales: mismas reglas para reporte, score y widget)
+            foreach (self::cobertura_senales($empresa_id, null, $dias) as $u => $cs) {
+                if (!$u) continue;
                 $out[$u] ??= $base;
-                $out[$u]['hot_total']        = (int)$r['hot_total'];
-                $out[$u]['hot_desatendidas'] = (int)$r['hot_desatendidas'];
+                $out[$u]['hot_total']        = $cs['pedidas'];
+                $out[$u]['hot_desatendidas'] = $cs['fallas'];
             }
 
             // 1) Contacto: cada declaración es un toque registrado
@@ -865,7 +938,7 @@ class Mesa
      * corrigió el 👎 a 👍 (o la postura descartada a otra) ANTES de cerrar,
      * la venta NO cuenta como recuperada — por ninguna de las 3 vías.
      */
-    public static function recuperado(int $empresa_id, int $dias = 30): array
+    public static function recuperado(int $empresa_id, int $dias = 30, ?int $vendedor_id = null): array
     {
         $dias  = max(1, (int)$dias);
         $vacio = ['rec_n' => 0, 'rec_monto' => 0.0, 'trab_n' => 0, 'trab_monto' => 0.0, 'dias' => $dias];
@@ -895,7 +968,8 @@ class Mesa
                  FROM ventas v JOIN cotizaciones c2 ON c2.id = v.cotizacion_id
                  WHERE v.empresa_id = ? AND v.estado != 'cancelada'
                    AND v.cotizacion_id IS NOT NULL AND v.total > 0
-                   AND v.created_at >= NOW() - INTERVAL $dias DAY",
+                   AND v.created_at >= NOW() - INTERVAL $dias DAY"
+                 . ($vendedor_id !== null ? ' AND COALESCE(c2.vendedor_id, c2.usuario_id) = ' . (int)$vendedor_id : ''),
                 [$empresa_id]
             );
         } catch (Throwable $e) {
