@@ -126,15 +126,43 @@ Impacto: 25% × 25 pts de Seguimiento = **6.25 pts del score total** en juego.
    ("Atendiste X de Y señales en la mesa — el 25% de tu Seguimiento está en cero;
    se recupera cubriendo el 80%").
 5. **Debug panel / executive**: línea "Mesa: X/Y → ✓/✗" en el desglose.
+   ⚠️ OBLIGATORIO agregar las columnas nuevas al SELECT de
+   `modules/superadmin/executive.php` — ya nos pasó con bonus_ticket:
+   columna que no está en el SELECT = warning/valor perdido en el panel.
 6. **Simulación**: extender `tools/sim_mesa_reporte.php` con checks del helper
    (pedidas/atendidas por vendedor) + escenarios del margen (3 señales/1 falla
-   pasa; 10/3 falla; 0 señales neutral).
+   pasa; 10/3 falla; 0 señales neutral). La mezcla 75/25 es aritmética
+   trivial — se cubre con un assert del blend, no requiere simular todo
+   ActividadScore.
+7. **Toggle superadmin**: switch "Mesa activa" en la ficha de empresa
+   (`modules/superadmin/empresa.php`, mismo patrón que toggle_plan) para
+   encender `mesa_activa` por empresa sin tocar BD a mano.
+
+## Sub-proyecto previo al rollout: abrir la mesa a ASESORES (falta especificar UI)
+
+El paso 3 del checklist NO es un switch — es un cambio de UI con reglas:
+- El asesor ve SOLO SU mesa: `$mesa_uid = Auth::id()` forzado, SIN chips de
+  otros vendedores.
+- El asesor NO ve: el 📊 Reporte del equipo (admin only), el aviso de
+  limpieza en lote, ni datos de otros asesores.
+- El asesor SÍ ve: sus filas, tips, taps, playbook, y su propia cobertura
+  ("vas 4 de 5 señales esta quincena") — para que el 80% no sea sorpresa.
+- Gate actual `$es_admin_dash` en `_mesa.php:13` pasa a:
+  admin → vista completa; asesor (si `empresas.mesa_activa`) → vista propia.
+- Los endpoints ya están listos para asesores (permiso vendedor-dueño,
+  rate-limit, atribución) — solo cambia el render.
+- Estimado: ~40 líneas en _mesa.php + gate en dashboard/index.php.
 
 ## Checklist del día del rollout (en orden)
 
-1. Correr migración `add_mesa_score.sql` en producción.
-2. Deploy del código (gate apagado en todas: cero cambio de scores).
-3. Abrir la mesa a asesores de la empresa piloto (UI — quitar gate solo-admin).
-4. 1 quincena de uso SIN score (los datos se acumulan; el reporte ya los muestra).
-5. Encender `mesa_activa=1` a la piloto; avisar al equipo la regla del 80%.
-6. Verificar leaderboard/debug esa semana; luego rollout por empresa.
+1. Regresar `GRACIA_DIAS` de 7 a 15 (pendiente independiente, hacerlo antes).
+2. Correr migración `add_mesa_score.sql` en producción.
+3. Deploy del código: helper + blend + UI asesor (gate apagado en todas las
+   empresas: CERO cambio de scores — verificable en el leaderboard ese día).
+4. Abrir la mesa a asesores de la empresa piloto (sub-proyecto UI de arriba).
+5. 1 quincena de uso SIN score (datos se acumulan; el reporte ya los muestra;
+   el asesor ya ve su cobertura para aprender la regla sin castigo).
+6. Encender `mesa_activa=1` a la piloto (toggle superadmin); avisar la regla
+   del 80% al equipo ANTES del primer corte.
+7. Verificar leaderboard/debug esa semana (el brinco de momentum de la
+   primera quincena es esperado); luego rollout por empresa.
