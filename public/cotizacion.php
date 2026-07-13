@@ -213,6 +213,10 @@ if ($visitor_id_cookie === '') {
 
 require_once MODULES_PATH . '/radar/Radar.php';
 
+// Descuento Inteligente vigente para esta visita — declarar ANTES de cualquier
+// goto skip_tracking (los internos saltan el tracking y dejarían $di_act sin definir)
+$di_act = null;
+
 // ── CAPA 0: Usuario logueado de esta empresa o superadmin ────────────
 // Es la verificación más importante y debe ser la primera.
 // Certeza absoluta: conocemos usuario_id, IP, UA y visitor_id.
@@ -240,7 +244,6 @@ if ($es_usuario_interno) {
 }
 
 // ── A partir de aquí: visitante no logueado ───────────────────────────
-$di_act = null; // Descuento Inteligente vigente para esta visita (si aplica)
 if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rechazada'])) {
     try {
         // ── CAPA 1: visitor_id ya conocido como interno ───────────────
