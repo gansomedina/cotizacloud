@@ -256,12 +256,20 @@ class ActividadScore
         );
         $pago_ok = "AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = cotizaciones.id AND v.pagado > 0 AND v.estado != 'cancelada')";
         $pago_ok_c = "AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = c.id AND v.pagado > 0 AND v.estado != 'cancelada')";
+        // Descuento Inteligente = "otro vendedor" (DI). Sus ventas son de la empresa,
+        // NO del asesor humano → se excluyen SOLO de las métricas personales del asesor.
+        // La vara/benchmark de empresa y las pantallas globales SÍ las cuentan (DI es un
+        // vendedor más). Filtro por estado='utilizado': si el admin quita el DI en ventas
+        // (→'cancelado'), la venta regresa automática a la matemática del asesor.
+        $no_di   = "AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones di WHERE di.cotizacion_id = cotizaciones.id AND di.estado='utilizado')";
+        $no_di_c = "AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones di WHERE di.cotizacion_id = c.id AND di.estado='utilizado')";
+        $no_di_v = "AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones di WHERE di.cotizacion_id = ventas.cotizacion_id AND di.estado='utilizado')";
 
         $cierres_total = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_import
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             $pago_ok",
+             $pago_ok $no_di",
             [$usuario_id, $empresa_id, $periodo]
         );
         // Cierres con apoyo del Radar: cotización tuvo algún bucket real en su historial.
@@ -271,7 +279,7 @@ class ActividadScore
             "SELECT COUNT(*) FROM cotizaciones c WHERE $cw $no_import
              AND c.estado IN ('aceptada','convertida','aceptada_cliente')
              AND c.accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             $pago_ok_c
+             $pago_ok_c $no_di_c
              AND EXISTS (
                 SELECT 1 FROM bucket_transitions bt
                 WHERE bt.cotizacion_id = c.id
@@ -286,7 +294,7 @@ class ActividadScore
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND cupon_pct = 0
              AND descuento_auto_pct = 0
-             $pago_ok",
+             $pago_ok $no_di",
             [$usuario_id, $empresa_id, $periodo]
         );
         $carga_activa = (int)DB::val(
@@ -393,7 +401,7 @@ class ActividadScore
              AND c.estado IN ('aceptada','convertida','aceptada_cliente')
              AND c.accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              $pago_ok_c
-             $no_import",
+             $no_import $no_di_c",
             [$usuario_id, $empresa_id, $periodo]
         );
 
@@ -457,7 +465,8 @@ class ActividadScore
              AND pagado = 0 AND estado NOT IN ('cancelada','entregada')
              AND total > 0
              AND created_at < DATE_SUB(NOW(), INTERVAL 5 DAY)
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             $no_di_v",
             [$usuario_id, $empresa_id, $periodo]
         );
 
@@ -471,7 +480,8 @@ class ActividadScore
             "SELECT COUNT(*) FROM ventas
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
              AND estado != 'cancelada' AND pagado > 0
-             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+             AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             $no_di_v",
             [$usuario_id, $empresa_id, $periodo]
         );
         $ventas_totales_safe = max($ventas_totales, 1);
@@ -780,7 +790,7 @@ class ActividadScore
              AND estado IN ('aceptada','convertida','aceptada_cliente')
              AND accion_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              AND total > 0 $no_import
-             $pago_ok",
+             $pago_ok $no_di",
             [$usuario_id, $empresa_id, $periodo]
         );
         $total_semanas = max(round($periodo / 7), 1);
@@ -998,7 +1008,8 @@ class ActividadScore
                 "SELECT total FROM ventas
                  WHERE COALESCE(vendedor_id, usuario_id) = ? AND empresa_id = ?
                    AND estado != 'cancelada' AND total > 0 AND pagado > 0
-                   AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
+                   AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                   $no_di_v",
                 [$usuario_id, $empresa_id, $periodo]
             );
             foreach ($ventas_periodo_montos as $vpm) {
