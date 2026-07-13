@@ -241,6 +241,31 @@ if ($es_admin) {
     );
 }
 
+// ── Descuento Inteligente por asesor (historial del período) ──
+// El DI dispara sobre la cotización del asesor pero la venta la cierra "DI"
+// (vendedor virtual). Aquí se ve, por asesor, cuánto negocio muerto recuperó
+// el sistema: ofrecidos, cerrados, monto recuperado y descuento otorgado.
+$di_por_asesor = [];
+if ($es_admin) {
+    try {
+        $di_por_asesor = DB::query(
+            "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS vid,
+                    COUNT(*)                                        AS di_ofrecidos,
+                    SUM(di.estado='utilizado')                      AS di_cerrados,
+                    SUM(CASE WHEN di.estado='utilizado' THEN di.nuevo_total ELSE 0 END) AS di_recuperado,
+                    SUM(CASE WHEN di.estado='utilizado' THEN di.monto_desc  ELSE 0 END) AS di_descontado
+             FROM desc_int_activaciones di
+             JOIN cotizaciones c ON c.id = di.cotizacion_id
+             WHERE di.empresa_id = ? AND di.created_at BETWEEN ? AND ?
+             GROUP BY vid",
+            [$empresa_id, $f_ini_dt, $f_fin_dt]
+        );
+    } catch (\Throwable $e) { $di_por_asesor = []; } // tabla sin migrar
+}
+// Nombre del asesor por vid (reusa $por_asesor) + índice de DI por vid
+$nombre_asesor = [];
+foreach ($por_asesor as $a) $nombre_asesor[(int)$a['usr_id']] = $a['asesor'];
+
 // ─────────────────────────────────────────────────────────────
 //  TAB 3: COTIZACIONES
 // ─────────────────────────────────────────────────────────────
@@ -918,6 +943,63 @@ ob_start();
       </table>
     </div>
   </div>
+
+  <?php if (!empty($di_por_asesor)):
+    $di_t_of = $di_t_ce = 0; $di_t_rec = $di_t_desc = 0.0;
+    foreach ($di_por_asesor as $d) {
+      $di_t_of += (int)$d['di_ofrecidos']; $di_t_ce += (int)$d['di_cerrados'];
+      $di_t_rec += (float)$d['di_recuperado']; $di_t_desc += (float)$d['di_descontado'];
+    }
+    // ordenar por recuperado desc
+    usort($di_por_asesor, fn($x,$y) => (float)$y['di_recuperado'] <=> (float)$x['di_recuperado']);
+  ?>
+  <div class="sec-lbl">✨ Descuento Inteligente <span style="font-weight:500;color:var(--t3);text-transform:none;letter-spacing:0">— ventas recuperadas del sistema (no cuentan al termómetro del asesor)</span></div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Asesor</th>
+            <th class="r">Ofrecidos</th>
+            <th class="r">Cerrados</th>
+            <th class="r">Tasa DI</th>
+            <th class="r">Recuperado</th>
+            <th class="r">Descuento otorgado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($di_por_asesor as $d):
+            $vid   = (int)$d['vid'];
+            $of    = (int)$d['di_ofrecidos'];
+            $ce    = (int)$d['di_cerrados'];
+            $tasa  = $of > 0 ? round($ce / $of * 100, 1) : 0;
+            $nom   = $nombre_asesor[$vid] ?? '—';
+          ?>
+          <tr>
+            <td><?= e($nom) ?></td>
+            <td class="tbl-num"><?= $of ?></td>
+            <td class="tbl-num" style="color:var(--g)"><?= $ce ?></td>
+            <td class="tbl-num"><?= rpp($tasa) ?></td>
+            <td class="tbl-num" style="color:var(--g)"><?= rp((float)$d['di_recuperado']) ?></td>
+            <td class="tbl-num" style="color:#b45309"><?= rp((float)$d['di_descontado']) ?></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+          <tr style="border-top:2px solid var(--border);font-weight:700">
+            <td>Total</td>
+            <td class="tbl-num"><?= $di_t_of ?></td>
+            <td class="tbl-num" style="color:var(--g)"><?= $di_t_ce ?></td>
+            <td class="tbl-num"><?= rpp($di_t_of > 0 ? round($di_t_ce/$di_t_of*100,1) : 0) ?></td>
+            <td class="tbl-num" style="color:var(--g)"><?= rp($di_t_rec) ?></td>
+            <td class="tbl-num" style="color:#b45309"><?= rp($di_t_desc) ?></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <?php endif; ?>
 
   <?php endif; ?>
 </div><!-- /panel-asesores -->
