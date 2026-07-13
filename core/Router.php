@@ -238,6 +238,7 @@ class Router
 
         self::get('/config',                              fn()   => self::app('config', 'index'));
         self::post('/config/empresa',                     fn()   => self::app('config', 'guardar_empresa'));
+        self::post('/config/desc-int',                    fn()   => self::app('config', 'desc_int_guardar'));
         self::post('/config/logo',                        fn()   => self::app_extra('config', 'logo', [], ['accion'=>'subir']));
         self::post('/config/logo/quitar',                 fn()   => self::app_extra('config', 'logo', [], ['accion'=>'quitar']));
         self::post('/config/articulo',                    fn()   => self::app('config', 'articulo'));

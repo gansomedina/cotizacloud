@@ -13,8 +13,10 @@
 //                       cierra. Descuento mayor (último intento).
 //
 //  Zonas (multiplicadores sobre p75 = ventana de la empresa):
-//    fin_vida = 2×p75         · dead = max(p90, 3×p75)        · techo = dead + 3×p75
-//    R1 = [fin_vida, dead)    · R2 = [dead, techo]            · >techo = fósil, no dispara
+//    R1_inicio = 1.5×p75      · dead = max(p90, 2.5×p75)      · techo = dead + 3×p75
+//    R1 = [R1_inicio, dead)   · R2 = [dead, techo]            · >techo = fósil, no dispara
+//    (R1 arranca antes porque las exclusiones B —trabajo del asesor + apertura
+//     del cliente— protegen la canibalización; validado con datos históricos)
 //
 //  Rendimiento: las anclas (p75/p90) escanean ventas → se cachean por
 //  empresa (TTL 24h) en desc_int_config. El slug solo hace lecturas
@@ -25,8 +27,8 @@ defined('COTIZAAPP') or die;
 class DescuentoInteligente
 {
     // ── Multiplicadores de zona (sobre p75). Ajustables aquí. ──
-    const MULT_R1_INICIO = 2;    // inicio recuperación = fin de vida comercial (2×p75)
-    const MULT_DEAD      = 3;    // inicio zona muerta (piso, además de p90)
+    const MULT_R1_INICIO = 1.5;  // inicio recuperación (1.5×p75)
+    const MULT_DEAD      = 2.5;  // inicio zona muerta (piso, además de p90)
     const MULT_TECHO     = 3;    // ancho de R2 sobre dead
 
     const MIN_VENTAS      = 5;    // sin muestra suficiente, la feature no corre
