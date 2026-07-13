@@ -421,52 +421,39 @@ class Mesa
      */
     public static function cobertura_senales(int $empresa_id, ?int $vendedor_id = null, int $dias = 30): array
     {
-        $dias   = max(1, (int)$dias);
-        $hot_in = "'" . implode("','", self::HOT) . "'";
-        $uf     = $vendedor_id !== null
-            ? 'AND COALESCE(c2.vendedor_id, c2.usuario_id) = ' . (int)$vendedor_id : '';
+        // USO DE LA MESA (herramienta obligatoria de uso diario). De las
+        // cotizaciones activas del asesor (su mesa), cuántas están ATENDIDAS =
+        // tienen feedback 👍👎 Y al menos una postura declarada (mesa_estados
+        // area='postura'). Los dos, obligatorios (decisión CEO). El score aplica
+        // binario 80% sobre esto. UNA sola query barata por empresa (antes: query
+        // pesada de señales calientes con dedupe — se eliminó). $dias ya no se usa.
+        $uf = $vendedor_id !== null
+            ? 'AND COALESCE(c.vendedor_id, c.usuario_id) = ' . (int)$vendedor_id : '';
         $out = [];
         try {
             foreach (DB::query(
-                "SELECT uid, COUNT(*) AS pedidas,
-                        SUM(NOT (ate_mesa OR ate_fb OR ate_venta OR ate_cierre)) AS fallas
-                 FROM (
-                    SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
-                           EXISTS (SELECT 1 FROM mesa_estados m
-                                   WHERE m.cotizacion_id = s.cotizacion_id
-                                     AND m.created_at >= s.senal_at
-                                     AND m.created_at <= s.senal_at + INTERVAL 3 DAY) AS ate_mesa,
-                           EXISTS (SELECT 1 FROM radar_feedback rf
-                                   WHERE rf.cotizacion_id = s.cotizacion_id
-                                     AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
-                                     AND rf.updated_at >= s.senal_at
-                                     AND rf.updated_at <= s.senal_at + INTERVAL 3 DAY) AS ate_fb,
-                           EXISTS (SELECT 1 FROM ventas v
-                                   WHERE v.cotizacion_id = s.cotizacion_id AND v.estado != 'cancelada'
-                                     AND v.created_at >= s.senal_at) AS ate_venta,
-                           (c.accion_at IS NOT NULL AND c.accion_at >= s.senal_at) AS ate_cierre
-                    FROM (SELECT bt.cotizacion_id, bt.created_at AS senal_at
-                          FROM bucket_transitions bt
-                          JOIN cotizaciones c2 ON c2.id = bt.cotizacion_id
-                          WHERE c2.empresa_id = ? AND bt.bucket_nuevo IN ($hot_in)
-                            AND c2.suspendida = 0 AND c2.total > 0 $uf
-                            AND bt.created_at >= NOW() - INTERVAL $dias DAY
-                            AND bt.created_at <= NOW() - INTERVAL 3 DAY
-                            AND NOT EXISTS (SELECT 1 FROM bucket_transitions bt2
-                                            WHERE bt2.cotizacion_id = bt.cotizacion_id
-                                              AND bt2.bucket_nuevo IN ($hot_in)
-                                              AND (bt2.created_at < bt.created_at
-                                                   OR (bt2.created_at = bt.created_at AND bt2.id < bt.id))
-                                              AND bt2.created_at >= bt.created_at - INTERVAL 3 DAY)) s
-                    JOIN cotizaciones c ON c.id = s.cotizacion_id
-                 ) sen
+                "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
+                        COUNT(*) AS pedidas,
+                        SUM(
+                          EXISTS(SELECT 1 FROM radar_feedback rf
+                                 WHERE rf.cotizacion_id = c.id
+                                   AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id))
+                          AND EXISTS(SELECT 1 FROM mesa_estados m
+                                     WHERE m.cotizacion_id = c.id AND m.area = 'postura')
+                        ) AS atendidas
+                 FROM cotizaciones c
+                 WHERE c.empresa_id = ? AND c.estado IN ('enviada','vista')
+                   AND c.suspendida = 0 AND c.total > 0 AND c.accion_at IS NULL
+                   AND NOT EXISTS (SELECT 1 FROM ventas v
+                                   WHERE v.cotizacion_id = c.id AND v.estado <> 'cancelada')
+                   $uf
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
-                $u = (int)$r['uid'];
-                $out[$u] = [
-                    'pedidas'   => (int)$r['pedidas'],
-                    'atendidas' => (int)$r['pedidas'] - (int)$r['fallas'],
-                    'fallas'    => (int)$r['fallas'],
+                $ped = (int)$r['pedidas']; $ate = (int)$r['atendidas'];
+                $out[(int)$r['uid']] = [
+                    'pedidas'   => $ped,
+                    'atendidas' => $ate,
+                    'fallas'    => $ped - $ate,
                 ];
             }
         } catch (Throwable $e) {
