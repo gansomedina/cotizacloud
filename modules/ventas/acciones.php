@@ -318,26 +318,42 @@ elseif ($accion === 'quitar-desc-int') {
     // La activación 'utilizado' de esta cotización tiene el monto exacto que
     // se descontó (con IVA). Restaurar = total + monto_desc revierte justo lo
     // que aplicó quote_action al aceptar (validado).
-    $act = null;
+    //
+    // Transaccional + FOR UPDATE: sin esto, dos POST concurrentes (o un abono
+    // que entre en medio) leían $venta stale y sumaban monto_desc dos veces /
+    // pisaban el saldo. El lock de la venta + re-lectura fresca + marcar la
+    // activación con WHERE estado='utilizado' garantizan una sola reversa.
+    DB::beginTransaction();
     try {
+        $v = DB::row("SELECT total, pagado FROM ventas WHERE id=? AND empresa_id=? FOR UPDATE",
+            [$venta_id, $empresa_id]);
+        if (!$v) { DB::rollback(); json_error('Venta no encontrada', 404); }
+
         $act = DB::row(
             "SELECT id, monto_desc FROM desc_int_activaciones
              WHERE cotizacion_id=? AND empresa_id=? AND estado='utilizado'
-             ORDER BY id DESC LIMIT 1",
+             ORDER BY id DESC LIMIT 1 FOR UPDATE",
             [(int)$venta['cotizacion_id'], $empresa_id]
         );
-    } catch (\Throwable $e) {}
-    if (!$act) json_error('Esta venta no tiene descuento inteligente aplicado', 422);
+        if (!$act) { DB::rollback(); json_error('Esta venta no tiene descuento inteligente aplicado', 422); }
 
-    $nuevo_total = round((float)$venta['total'] + (float)$act['monto_desc'], 2);
-    $nuevo_saldo = round($nuevo_total - (float)$venta['pagado'], 2);
+        // Marcar cancelado SOLO si sigue 'utilizado' — el que gana la carrera revierte.
+        $marcada = DB::execute("UPDATE desc_int_activaciones SET estado='cancelado' WHERE id=? AND estado='utilizado'",
+            [(int)$act['id']]);
+        if ($marcada < 1) { DB::rollback(); json_error('El descuento ya fue quitado', 422); }
 
-    DB::execute("UPDATE ventas SET total=?, saldo=?, updated_at=NOW() WHERE id=?",
-        [$nuevo_total, $nuevo_saldo, $venta_id]);
-    DB::execute("UPDATE desc_int_activaciones SET estado='cancelado' WHERE id=?", [(int)$act['id']]);
+        $nuevo_total = round((float)$v['total'] + (float)$act['monto_desc'], 2);
+        $nuevo_saldo = round($nuevo_total - (float)$v['pagado'], 2);
+        DB::execute("UPDATE ventas SET total=?, saldo=?, updated_at=NOW() WHERE id=?",
+            [$nuevo_total, $nuevo_saldo, $venta_id]);
 
-    VentaLog::registrar($venta_id, $empresa_id, 'descuento_quitado',
-        'Descuento inteligente quitado (+' . number_format((float)$act['monto_desc'], 2) . ')', Auth::id());
+        VentaLog::registrar($venta_id, $empresa_id, 'descuento_quitado',
+            'Descuento inteligente quitado (+' . number_format((float)$act['monto_desc'], 2) . ')', Auth::id());
+        DB::commit();
+    } catch (\Throwable $e) {
+        DB::rollback();
+        json_error('No se pudo quitar el descuento', 500);
+    }
     json_ok(['total'=>$nuevo_total, 'saldo'=>$nuevo_saldo]);
 }
 

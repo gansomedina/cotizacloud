@@ -87,20 +87,21 @@ if ($accion === 'aceptar') {
         try { $di_vig = DescuentoInteligente::vigente($cot_id); } catch (\Throwable $e) {}
 
         if ($di_vig) {
-            $base_no_extras = (float)DB::val(
-                "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas
-                 WHERE cotizacion_id=? AND COALESCE(es_extra,0)=0", [$cot_id]);
-            if ($base_no_extras <= 0) $base_no_extras = $subtotal_srv; // fallback
+            // ── Contrato firme: se cobra el precio CONGELADO que vio y aceptó el
+            //    cliente, NO se recomputa de líneas vivas. `nuevo_total` = base
+            //    descontada CON IVA, sin extras (frozen en la activación). Si el
+            //    asesor editó la cotización tras activar el DI, manda lo aceptado.
+            //    Los extras SÍ son actuales (add-ons aparte, mostrados por separado
+            //    en el banner). Usar el frozen también hace la reversa en ventas
+            //    exacta (nuevo_total + monto_desc = precio_original, sin drift). ──
+            $nuevo_base_congelado = round((float)$di_vig['nuevo_total'], 2);
             $extras_raw = (float)DB::val(
                 "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas
                  WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
-            $di_pct     = (float)$di_vig['pct'];
-            $desc_smart = round($base_no_extras * $di_pct / 100, 2);
-            $base_sin   = $base_no_extras - $desc_smart;
-            $total_sin  = ($imp_modo === 'suma') ? round($base_sin * (1 + $imp_pct / 100), 2) : round(max(0, $base_sin), 2);
-            $total_guardar = round($total_sin + $extras_raw, 2);
+            $total_guardar = round($nuevo_base_congelado + $extras_raw, 2);
             $cupon_codigo  = null; // el inteligente no se apila
-            DB::execute("UPDATE desc_int_activaciones SET estado='utilizado' WHERE id=?", [(int)$di_vig['id']]);
+            // WHERE estado='activo' evita doble-uso y carrera con vigente()→vencido.
+            DB::execute("UPDATE desc_int_activaciones SET estado='utilizado' WHERE id=? AND estado='activo'", [(int)$di_vig['id']]);
         } else {
             // Cupón — re-validar server-side (se aplica primero, igual que guardar.php)
             if ($cupon_codigo) {

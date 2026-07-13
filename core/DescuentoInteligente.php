@@ -36,10 +36,16 @@ class DescuentoInteligente
     const VIGENCIA_HORAS  = 24;
     const ANCLAS_TTL_HORAS = 24;
 
-    // Buckets que BLOQUEAN el descuento (la cotización sigue viva)
-    const HOT = ['probable_cierre', 'onfire', 'inminente', 'prediccion_alta',
-                 'lectura_comprometida', 'multi_persona', 'alto_importe',
-                 'validando_precio', 'pidio_cambios'];
+    // Buckets FRÍOS del Radar donde SÍ se permite DI: la cotización ya no está
+    // viva. Cualquier OTRO bucket no-null = viva (caliente, decisión activa o
+    // re-enganche) → bloquea. Es un allowlist (no blocklist) a prueba de futuro:
+    // si el Radar inventa un bucket nuevo, NO habilita DI por accidente.
+    //   frío   = enfriandose · hesitacion · no_abierta
+    //   vivo   = todo lo demás del Radar (Radar.php $PRIORIDAD), incl.
+    //            decision_activa, revivio, re_enganche_caliente, re_enganche,
+    //            revision_profunda, vistas_multiples, sobre_analisis, regreso,
+    //            comparando + toda la franja caliente.
+    const COLD = ['enfriandose', 'hesitacion', 'no_abierta'];
 
     // ── 1) Anclas por empresa — cacheadas en desc_int_config (TTL 24h) ──
     //    Devuelve ['n_ventas','p75','p90','dia_fin_vida','dia_dead','dia_techo']
@@ -163,9 +169,10 @@ class DescuentoInteligente
         }
         if ($pct <= 0) return null;
 
-        // Exclusión B: bucket vivo → sigue en juego, no descontar
+        // Exclusión B: solo se descuenta si el Radar la dejó FRÍA. Cualquier
+        // bucket no-null que no sea frío = sigue viva (caliente o re-enganche).
         $bucket = $cot['radar_bucket'] ?? null;
-        if ($bucket !== null && in_array($bucket, self::HOT, true)) return null;
+        if ($bucket !== null && !in_array($bucket, self::COLD, true)) return null;
 
         // El cliente NUNCA la vio → no hay a quién recuperar
         $vio = (int)DB::val(
@@ -223,8 +230,14 @@ class DescuentoInteligente
                  $total, $monto, $nuevo, $ev['edad'], $ev['dia_fin_vida'], $ev['dia_dead'],
                  $cot['radar_bucket'] ?? null, $expira, $visitor_id]);
         } catch (\Throwable $e) {
-            // UNIQUE cotización (carrera, doble-clic) → devolver la vigente.
-            // UNIQUE cliente (ya tiene en otra cot) → vigente(this) = null.
+            // 23000 = violación UNIQUE (esperada): cotización ya activada
+            // (carrera/doble-clic) → vigente(this) = la existente; o el cliente
+            // ya tiene una viva → vigente(this) = null. Cualquier otro error es
+            // un bug real (deadlock, tipo, FK): dejar rastro antes de fallar-seguro.
+            $code = (string)$e->getCode();
+            if ($code !== '23000' && stripos($e->getMessage(), 'duplicate') === false) {
+                error_log('[DI activar] error inesperado: ' . $e->getMessage());
+            }
             return self::vigente((int)$cot['id']);
         }
         return self::vigente((int)$cot['id']);
@@ -243,8 +256,12 @@ class DescuentoInteligente
         } catch (\Throwable $e) { return null; }
         if (!$a) return null;
         if ($a['estado'] === 'activo' && strtotime($a['expira_at']) < time()) {
-            DB::execute("UPDATE desc_int_activaciones SET estado='vencido' WHERE id=?", [$a['id']]);
-            return null;
+            // WHERE estado='activo' evita pisar un 'utilizado' que un accept
+            // simultáneo acabe de escribir (degradaría un descuento ya usado).
+            DB::execute("UPDATE desc_int_activaciones SET estado='vencido' WHERE id=? AND estado='activo'", [$a['id']]);
+            // Re-leer por si la carrera lo marcó 'utilizado' antes que nosotros.
+            $a2 = DB::row("SELECT * FROM desc_int_activaciones WHERE id=?", [$a['id']]);
+            return ($a2 && $a2['estado'] === 'utilizado') ? $a2 : null;
         }
         return $a;
     }
