@@ -1301,26 +1301,27 @@ if ($di_act && ($di_act['estado'] ?? '') === 'activo'
   $di_regla = (int)$di_act['regla'];
   $di_exp_ms = strtotime($di_act['expira_at']) * 1000;
   $di_titulo = $di_regla === 2
-    ? 'Una última oportunidad para retomar su proyecto'
+    ? 'Última oportunidad para su proyecto'
     : 'Su proyecto ha sido seleccionado';
+  $di_mon = $cot['moneda'] ?? 'MXN';
 ?>
-<div id="diBanner" style="position:fixed;left:0;right:0;bottom:0;z-index:520;background:<?= $th['g'] ?>;color:#fff;box-shadow:0 -4px 24px rgba(0,0,0,.25);padding:14px 16px calc(14px + env(safe-area-inset-bottom))">
-  <div style="max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-    <div style="flex:1;min-width:230px">
-      <div style="font:800 15px system-ui,sans-serif;letter-spacing:-.01em">🎉 <?= e($di_titulo) ?></div>
-      <div style="font:400 12.5px system-ui,sans-serif;opacity:.92;margin-top:2px">
-        Activamos un descuento especial del <b><?= number_format($di_pct, $di_pct == (int)$di_pct ? 0 : 1) ?>%</b> por las próximas 24 horas.
+<div id="diBanner" style="position:fixed;left:0;right:0;bottom:0;z-index:520;background:#fff;color:#1a1a1a;border-top:3px solid <?= $th['g'] ?>;box-shadow:0 -3px 16px rgba(0,0,0,.16);padding:9px 14px calc(9px + env(safe-area-inset-bottom))">
+  <div style="max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+    <div style="flex:1;min-width:240px">
+      <div style="font:800 14.5px system-ui,sans-serif;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🎉 <?= e($di_titulo) ?></div>
+      <div style="font:400 12px system-ui,sans-serif;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Activamos un descuento especial por las próximas 24 horas</div>
+      <div style="display:flex;align-items:baseline;gap:12px;margin-top:4px;white-space:nowrap;overflow:hidden">
+        <span style="font:600 16px system-ui,sans-serif;color:#8a8a8a;text-decoration:line-through">Antes <?= fmt_pub($di_antes, $di_mon) ?></span>
+        <span style="font:800 22px system-ui,sans-serif;color:<?= $th['g'] ?>">Ahora <?= fmt_pub($di_ahora, $di_mon) ?></span>
       </div>
-      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:8px">
-        <span style="font:500 13px system-ui,sans-serif;opacity:.8;text-decoration:line-through">Antes <?= fmt_pub($di_antes, $cot['moneda'] ?? 'MXN') ?></span>
-        <span style="font:800 22px system-ui,sans-serif">Ahora <?= fmt_pub($di_ahora, $cot['moneda'] ?? 'MXN') ?></span>
-        <span style="font:600 12.5px system-ui,sans-serif;background:rgba(255,255,255,.18);padding:2px 8px;border-radius:10px">Ahorras <?= fmt_pub($di_desc, $cot['moneda'] ?? 'MXN') ?></span>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:4px;flex-wrap:wrap">
+        <span style="font:700 12.5px system-ui,sans-serif;color:<?= $th['g'] ?>;background:<?= $th['glt'] ?>;border:1px solid <?= $th['gbd'] ?>;padding:2px 9px;border-radius:10px">Ahorras <?= fmt_pub($di_desc, $di_mon) ?></span>
+        <span style="font:600 13px system-ui,sans-serif;color:#1a1a1a">Vence en: <b id="diTimer" style="font-size:19px;font-variant-numeric:tabular-nums">--:--:--</b></span>
       </div>
-      <div style="font:600 12.5px system-ui,sans-serif;margin-top:6px;opacity:.95">⏳ Vence en <span id="diTimer" style="font-variant-numeric:tabular-nums">--:--:--</span></div>
     </div>
-    <div style="display:flex;gap:10px;flex-shrink:0">
-      <button onclick="openM('acceptOv')" style="background:#fff;color:<?= $th['g'] ?>;border:none;border-radius:10px;padding:12px 20px;font:800 14px system-ui,sans-serif;cursor:pointer">Aceptar cotización</button>
-      <button onclick="openM('rejectOv')" style="background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.6);border-radius:10px;padding:12px 16px;font:700 13px system-ui,sans-serif;cursor:pointer">Rechazar</button>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button onclick="openM('acceptOv')" style="background:<?= $th['g'] ?>;color:#fff;border:none;border-radius:10px;padding:11px 18px;font:800 14px system-ui,sans-serif;cursor:pointer">Aceptar cotización</button>
+      <button onclick="openM('rejectOv')" style="background:transparent;color:#444;border:1.5px solid #ccc;border-radius:10px;padding:11px 14px;font:700 13px system-ui,sans-serif;cursor:pointer">Rechazar</button>
     </div>
   </div>
 </div>
