@@ -150,6 +150,15 @@ class DescuentoInteligente
             [$cli, $eid]);
         if ($cots_cli > self::GENERICO_COTS) return null;
 
+        // Cliente que YA compró (tiene una venta no cancelada) NO es un lead muerto
+        // a recuperar — ya es cliente. No se le regala descuento. (Para exigir pago
+        // real en vez de solo aceptación, agregar AND v.pagado > 0.)
+        $ya_cliente = (int)DB::val(
+            "SELECT EXISTS(SELECT 1 FROM ventas v
+                WHERE v.cliente_id = ? AND v.empresa_id = ? AND v.estado <> 'cancelada')",
+            [$cli, $eid]);
+        if ($ya_cliente) return null;
+
         // No apilar. El descuento manual del asesor bloquea SOLO si sigue VIVO
         // (Option B: un manual vencido sin usarse es independiente — el
         // inteligente puede intentar de nuevo). Cupón asignado siempre bloquea.
