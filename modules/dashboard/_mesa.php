@@ -586,7 +586,6 @@ function mesaTap(cotId, area, estado, btn, razon){
 <div class="mesa-emb" id="mesa-shared">
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:#4a4a46;margin-bottom:6px">
     <span style="font-weight:800;color:#3f3f3a">📋 Mesa de trabajo</span>
-    <span style="font-size:11px;background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:10px;font-weight:700">BETA · solo admin</span>
     <span>la mesa de cada asesor está en su tarjeta, abajo del diagnóstico</span>
     <?php if ($mrec['rec_monto'] > 0): ?>
       <span style="color:#15803d;font-weight:800" title="Toda la empresa, últimos <?= (int)$mrec['dias'] ?> días">💰 <?= $mmoney($mrec['rec_monto']) ?> recuperado (<?= (int)$mrec['dias'] ?>d)</span>
