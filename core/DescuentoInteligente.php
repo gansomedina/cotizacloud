@@ -144,8 +144,13 @@ class DescuentoInteligente
             [$cli, $eid]);
         if ($cots_cli > self::GENERICO_COTS) return null;
 
-        // No apilar con descuento manual del asesor ni cupón
-        if (!empty($cot['descuento_auto_activo']) || !empty($cot['cupon_id'])) return null;
+        // No apilar. El descuento manual del asesor bloquea SOLO si sigue VIVO
+        // (Option B: un manual vencido sin usarse es independiente — el
+        // inteligente puede intentar de nuevo). Cupón asignado siempre bloquea.
+        $manual_vivo = !empty($cot['descuento_auto_activo'])
+            && (empty($cot['descuento_auto_expira'])
+                || strtotime($cot['descuento_auto_expira']) >= time());
+        if ($manual_vivo || !empty($cot['cupon_id'])) return null;
 
         // Zona por edad
         $edad = (int)floor((time() - strtotime($cot['created_at'])) / 86400);
