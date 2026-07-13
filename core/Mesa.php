@@ -422,13 +422,30 @@ class Mesa
     public static function cobertura_senales(int $empresa_id, ?int $vendedor_id = null, int $dias = 30): array
     {
         // USO DE LA MESA (herramienta obligatoria de uso diario). De las
-        // cotizaciones activas del asesor (su mesa), cuántas están ATENDIDAS =
-        // tienen feedback 👍👎 Y al menos una postura declarada (mesa_estados
+        // cotizaciones que el asesor VE en su mesa de hoy, cuántas están ATENDIDAS
+        // = tienen feedback 👍👎 Y al menos una postura declarada (mesa_estados
         // area='postura'). Los dos, obligatorios (decisión CEO). El score aplica
-        // binario 80% sobre esto. UNA sola query barata por empresa (antes: query
-        // pesada de señales calientes con dedupe — se eliminó). $dias ya no se usa.
+        // binario 80% sobre esto. UNA sola query barata por empresa.
+        //
+        // El universo replica lo que muestra armar() (no TODAS las activas): se
+        // excluyen las que la mesa esconde para no reprobar por lo que nunca vio —
+        //   · nunca abiertas y frías (visitas=0 y sin bucket caliente) → "Sin abrir"
+        //   · muy viejas sin calor (edad > 2×p75 y sin bucket caliente) → limpieza
+        // Se conservan si están calientes AHORA (radar_bucket ∈ HOT).
         $uf = $vendedor_id !== null
             ? 'AND COALESCE(c.vendedor_id, c.usuario_id) = ' . (int)$vendedor_id : '';
+        // p75 del ciclo (igual criterio que armar); cacheado por empresa
+        static $p75_cache = [];
+        if (!array_key_exists($empresa_id, $p75_cache)) {
+            try {
+                if (!class_exists('Radar')) require_once MODULES_PATH . '/radar/Radar.php';
+                $ciclo = Radar::ciclo_venta($empresa_id);
+                $p75_cache[$empresa_id] = ($ciclo['auto'] && isset($ciclo['p75']) && $ciclo['p75'] !== null)
+                    ? max(1, (int)$ciclo['p75']) : 30;
+            } catch (\Throwable $e) { $p75_cache[$empresa_id] = 30; }
+        }
+        $p75_dos = 2 * (int)$p75_cache[$empresa_id];
+        $hot_in  = "'" . implode("','", self::HOT) . "'";
         $out = [];
         try {
             foreach (DB::query(
@@ -446,6 +463,8 @@ class Mesa
                    AND c.suspendida = 0 AND c.total > 0 AND c.accion_at IS NULL
                    AND NOT EXISTS (SELECT 1 FROM ventas v
                                    WHERE v.cotizacion_id = c.id AND v.estado <> 'cancelada')
+                   AND (c.visitas > 0 OR c.radar_bucket IN ($hot_in))
+                   AND (DATEDIFF(NOW(), c.created_at) <= $p75_dos OR c.radar_bucket IN ($hot_in))
                    $uf
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
