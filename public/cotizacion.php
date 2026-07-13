@@ -240,6 +240,7 @@ if ($es_usuario_interno) {
 }
 
 // ── A partir de aquí: visitante no logueado ───────────────────────────
+$di_act = null; // Descuento Inteligente vigente para esta visita (si aplica)
 if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rechazada'])) {
     try {
         // ── CAPA 1: visitor_id ya conocido como interno ───────────────
@@ -288,6 +289,20 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         }
 
         if (!$session_existe) {
+            // ── Descuento Inteligente: evaluar/activar ANTES de registrar esta
+            //    visita — el check de "actividad reciente" mira sesiones PREVIAS,
+            //    no la actual (que aún no se inserta). Cliente real confirmado. ──
+            try {
+                $di_act = DescuentoInteligente::vigente((int)$cot['id']);
+                if (!$di_act && in_array($cot['estado'], ['enviada','vista'])) {
+                    $di_ev = DescuentoInteligente::evaluar($cot);
+                    if ($di_ev) {
+                        $di_precio = round($total_base - $subtotal_extras, 2);
+                        $di_act = DescuentoInteligente::activar($cot, $di_ev, $di_precio, $visitor_id_cookie ?: null);
+                    }
+                }
+            } catch (\Throwable $die) {}
+
             // Nueva sesión — registrar y contar visita
             DB::insert(
                 "INSERT INTO quote_sessions (cotizacion_id, ip, user_agent, visitor_id, activa)
@@ -323,6 +338,8 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
             // Sesión ya existe — solo actualizar timestamp (heartbeat)
             // NO incrementar visitas — evita el bug de vistas que suben al recargar
             DB::execute("UPDATE quote_sessions SET updated_at=NOW() WHERE id=?", [$session_existe['id']]);
+            // Cliente que regresa en la misma sesión — mostrar el descuento si ya disparó
+            try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
         }
 
     } catch (Exception $e) {
@@ -1269,10 +1286,70 @@ if ($fb_render):
   </div>
 </div>
 
+<?php
+// ═══ Banner de Descuento Inteligente (flotante, sigue el scroll) ═══
+if ($di_act && ($di_act['estado'] ?? '') === 'activo'
+    && in_array($estado, ['enviada','vista'])
+    && strtotime($di_act['expira_at']) > time()):
+  $di_antes = (float)$di_act['precio_original'];
+  $di_ahora = (float)$di_act['nuevo_total'];
+  $di_desc  = (float)$di_act['monto_desc'];
+  $di_pct   = (float)$di_act['pct'];
+  $di_regla = (int)$di_act['regla'];
+  $di_exp_ms = strtotime($di_act['expira_at']) * 1000;
+  $di_titulo = $di_regla === 2
+    ? 'Una última oportunidad para retomar su proyecto'
+    : 'Su proyecto ha sido seleccionado';
+?>
+<div id="diBanner" style="position:fixed;left:0;right:0;bottom:0;z-index:520;background:<?= $th['g'] ?>;color:#fff;box-shadow:0 -4px 24px rgba(0,0,0,.25);padding:14px 16px calc(14px + env(safe-area-inset-bottom))">
+  <div style="max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+    <div style="flex:1;min-width:230px">
+      <div style="font:800 15px system-ui,sans-serif;letter-spacing:-.01em">🎉 <?= e($di_titulo) ?></div>
+      <div style="font:400 12.5px system-ui,sans-serif;opacity:.92;margin-top:2px">
+        Activamos un descuento especial del <b><?= number_format($di_pct, $di_pct == (int)$di_pct ? 0 : 1) ?>%</b> por las próximas 24 horas.
+      </div>
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:8px">
+        <span style="font:500 13px system-ui,sans-serif;opacity:.8;text-decoration:line-through">Antes <?= fmt_pub($di_antes, $cot['moneda'] ?? 'MXN') ?></span>
+        <span style="font:800 22px system-ui,sans-serif">Ahora <?= fmt_pub($di_ahora, $cot['moneda'] ?? 'MXN') ?></span>
+        <span style="font:600 12.5px system-ui,sans-serif;background:rgba(255,255,255,.18);padding:2px 8px;border-radius:10px">Ahorras <?= fmt_pub($di_desc, $cot['moneda'] ?? 'MXN') ?></span>
+      </div>
+      <div style="font:600 12.5px system-ui,sans-serif;margin-top:6px;opacity:.95">⏳ Vence en <span id="diTimer" style="font-variant-numeric:tabular-nums">--:--:--</span></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-shrink:0">
+      <button onclick="openM('acceptOv')" style="background:#fff;color:<?= $th['g'] ?>;border:none;border-radius:10px;padding:12px 20px;font:800 14px system-ui,sans-serif;cursor:pointer">Aceptar cotización</button>
+      <button onclick="openM('rejectOv')" style="background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.6);border-radius:10px;padding:12px 16px;font:700 13px system-ui,sans-serif;cursor:pointer">Rechazar</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var exp = <?= $di_exp_ms ?>, el = document.getElementById('diTimer'), bn = document.getElementById('diBanner');
+  function tick(){
+    var s = Math.floor((exp - Date.now())/1000);
+    if (s <= 0){ if(bn) bn.style.display='none'; return; }
+    var h = Math.floor(s/3600), m = Math.floor((s%3600)/60), q = s%60;
+    el.textContent = (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(q<10?'0':'')+q;
+  }
+  tick(); setInterval(tick, 1000);
+  // No tapar el footer: dejar aire al final del body
+  document.body.style.paddingBottom = (bn ? bn.offsetHeight + 20 : 0) + 'px';
+})();
+</script>
+<?php endif; ?>
+
 <script>
 const SUB   = <?= (float)$subtotal ?>;
 const TAX   = {modo:'<?= $cot['impuesto_modo'] ?>',pct:<?= (float)$cot['impuesto_pct'] ?>};
 const AUTO  = {on:<?= $adc_on?'true':'false' ?>,pct:<?= (float)$adc_pct ?>,exp:new Date(<?= $adc_exp ? ($adc_exp * 1000) : 0 ?>)};
+<?php
+// Descuento Inteligente para el modal de aceptación (mismos números frozen del banner)
+$di_js = ($di_act && ($di_act['estado'] ?? '') === 'activo'
+          && in_array($estado, ['enviada','vista']) && strtotime($di_act['expira_at']) > time())
+    ? ['active'=>true, 'pct'=>(float)$di_act['pct'], 'antes'=>(float)$di_act['precio_original'],
+       'ahora'=>(float)$di_act['nuevo_total'], 'desc'=>(float)$di_act['monto_desc']]
+    : ['active'=>false];
+?>
+const DI = <?= json_encode($di_js) ?>;
 const COUPONS = <?= json_encode(array_map(fn($c) => [
     'code'       => $c['codigo'],
     'pct'        => (float)$c['pct_descuento'],
@@ -1389,16 +1466,24 @@ function calc(){
 // ─── Modales ─────────────────────────────────────────────
 function openM(id){
     if (id === 'acceptOv') {
-        const {tot,aa,ca} = calc();
-        let base = SUB - aa - ca;
-        let h = '<div class="sr"><span>Subtotal</span><span>'+fmt(SUB)+'</span></div>';
-        if (aa) h += '<div class="sr" style="color:var(--amb)"><span>Descuento especial</span><span>-'+fmt(aa)+'</span></div>';
-        if (ca && applied) h += '<div class="sr" style="color:var(--amb)"><span>Cupón '+applied.code+'</span><span>-'+fmt(ca)+'</span></div>';
-        if (TAX.modo === 'suma') {
-            let taxAmt = base * TAX.pct / 100;
-            h += '<div class="sr"><span><?= e($cot['impuesto_label'] ?: 'IVA') ?> ('+TAX.pct+'%)</span><span>'+fmt(taxAmt)+'</span></div>';
+        let h;
+        if (DI.active) {
+            // Descuento Inteligente activo — resumen con los números frozen del banner
+            h  = '<div class="sr"><span>Precio</span><span>'+fmt(DI.antes)+'</span></div>';
+            h += '<div class="sr" style="color:var(--amb)"><span>Descuento especial ('+DI.pct+'%)</span><span>-'+fmt(DI.desc)+'</span></div>';
+            h += '<div class="sr tot"><span>Total</span><span>'+fmt(DI.ahora)+'</span></div>';
+        } else {
+            const {tot,aa,ca} = calc();
+            let base = SUB - aa - ca;
+            h = '<div class="sr"><span>Subtotal</span><span>'+fmt(SUB)+'</span></div>';
+            if (aa) h += '<div class="sr" style="color:var(--amb)"><span>Descuento especial</span><span>-'+fmt(aa)+'</span></div>';
+            if (ca && applied) h += '<div class="sr" style="color:var(--amb)"><span>Cupón '+applied.code+'</span><span>-'+fmt(ca)+'</span></div>';
+            if (TAX.modo === 'suma') {
+                let taxAmt = base * TAX.pct / 100;
+                h += '<div class="sr"><span><?= e($cot['impuesto_label'] ?: 'IVA') ?> ('+TAX.pct+'%)</span><span>'+fmt(taxAmt)+'</span></div>';
+            }
+            h += '<div class="sr tot"><span>Total</span><span>'+fmt(tot)+'</span></div>';
         }
-        h += '<div class="sr tot"><span>Total</span><span>'+fmt(tot)+'</span></div>';
         // Mostrar texto_aceptar de config si existe, nada hardcodeado
         if (EMPRESA.texto_aceptar) {
             h += '<div class="acc-msg">'+EMPRESA.texto_aceptar.replace(/\n/g,'<br>')+'</div>';

@@ -308,6 +308,39 @@ elseif ($accion === 'vendedor') {
 }
 
 
+// ════════════════════════════════════════════════════════════
+//  QUITAR DESCUENTO INTELIGENTE (restaura el precio lleno)
+// ════════════════════════════════════════════════════════════
+elseif ($accion === 'quitar-desc-int') {
+    if (!Auth::es_admin() && !Auth::puede('aplicar_descuentos')) json_error('Sin permiso', 403);
+    if ($venta['estado'] === 'cancelada') json_error('Venta cancelada', 422);
+
+    // La activación 'utilizado' de esta cotización tiene el monto exacto que
+    // se descontó (con IVA). Restaurar = total + monto_desc revierte justo lo
+    // que aplicó quote_action al aceptar (validado).
+    $act = null;
+    try {
+        $act = DB::row(
+            "SELECT id, monto_desc FROM desc_int_activaciones
+             WHERE cotizacion_id=? AND empresa_id=? AND estado='utilizado'
+             ORDER BY id DESC LIMIT 1",
+            [(int)$venta['cotizacion_id'], $empresa_id]
+        );
+    } catch (\Throwable $e) {}
+    if (!$act) json_error('Esta venta no tiene descuento inteligente aplicado', 422);
+
+    $nuevo_total = round((float)$venta['total'] + (float)$act['monto_desc'], 2);
+    $nuevo_saldo = round($nuevo_total - (float)$venta['pagado'], 2);
+
+    DB::execute("UPDATE ventas SET total=?, saldo=?, updated_at=NOW() WHERE id=?",
+        [$nuevo_total, $nuevo_saldo, $venta_id]);
+    DB::execute("UPDATE desc_int_activaciones SET estado='cancelado' WHERE id=?", [(int)$act['id']]);
+
+    VentaLog::registrar($venta_id, $empresa_id, 'descuento_quitado',
+        'Descuento inteligente quitado (+' . number_format((float)$act['monto_desc'], 2) . ')', Auth::id());
+    json_ok(['total'=>$nuevo_total, 'saldo'=>$nuevo_saldo]);
+}
+
 else {
     json_error('Acción no reconocida: ' . $accion, 404);
 }
