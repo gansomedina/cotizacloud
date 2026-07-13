@@ -1316,7 +1316,7 @@ if ($di_act && ($di_act['estado'] ?? '') === 'activo'
       </div>
       <div style="display:flex;align-items:center;gap:12px;margin-top:4px;flex-wrap:wrap">
         <span style="font:700 12.5px system-ui,sans-serif;color:<?= $th['g'] ?>;background:<?= $th['glt'] ?>;border:1px solid <?= $th['gbd'] ?>;padding:2px 9px;border-radius:10px">Ahorras <?= fmt_pub($di_desc, $di_mon) ?></span>
-        <span style="font:600 13px system-ui,sans-serif;color:#1a1a1a">Vence en: <b id="diTimer" style="font-size:19px;font-variant-numeric:tabular-nums">--:--:--</b></span>
+        <span style="font:600 12.5px system-ui,sans-serif;color:#1a1a1a">Vence: <b id="diVence" style="font-size:13.5px"></b> <span style="color:#999">·</span> <b id="diTimer" style="font-size:17px;font-variant-numeric:tabular-nums;color:#b91c1c">--:--:--</b></span>
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0">
@@ -1328,6 +1328,17 @@ if ($di_act && ($di_act['estado'] ?? '') === 'activo'
 <script>
 (function(){
   var exp = <?= $di_exp_ms ?>, el = document.getElementById('diTimer'), bn = document.getElementById('diBanner');
+  // Fecha/hora exacta de vencimiento — queda como evidencia en cualquier captura
+  var vEl = document.getElementById('diVence');
+  if (vEl) {
+    try {
+      vEl.textContent = new Date(exp).toLocaleString('es-MX',
+        {day:'numeric', month:'short', hour:'numeric', minute:'2-digit'});
+    } catch(e) {
+      var d = new Date(exp);
+      vEl.textContent = d.getDate()+'/'+(d.getMonth()+1)+' '+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();
+    }
+  }
   function tick(){
     var s = Math.floor((exp - Date.now())/1000);
     if (s <= 0){ if(bn) bn.style.display='none'; return; }
