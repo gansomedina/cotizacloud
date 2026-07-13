@@ -83,6 +83,14 @@ $impuesto_nombre = $empresa['impuesto_nombre'] ?? 'IVA'; // viene de empresas
 
 // Descuento manual en ventas (puede no existir aún en BD)
 $desc_manual_amt  = (float)($venta['descuento_manual_amt'] ?? 0);
+// Descuento inteligente aplicado a esta venta (si lo hubo) — para poder quitarlo
+$desc_int_act = null;
+try {
+    $desc_int_act = DB::row(
+        "SELECT id, pct, monto_desc, regla FROM desc_int_activaciones
+         WHERE cotizacion_id=? AND empresa_id=? AND estado='utilizado' ORDER BY id DESC LIMIT 1",
+        [(int)$venta['cotizacion_id'], $empresa_id]);
+} catch (\Throwable $e) {}
 // Variables para PDF
 $pagado     = (float)$venta['pagado'];
 $saldo      = (float)$venta['saldo'];
@@ -867,6 +875,9 @@ function closeRec(){
       <?php if ($desc_auto_amt > 0): ?>
       <div class="fac-tot-row"><span class="fac-tot-lbl">Descuento<?= $desc_auto_pct > 0 ? ' ('.$desc_auto_pct.'%)' : '' ?></span><span class="fac-tot-val" style="color:#c05">-<?= format_money($desc_auto_amt, $empresa['moneda']) ?></span></div>
       <?php endif; ?>
+      <?php if ($desc_int_act): ?>
+      <div class="fac-tot-row"><span class="fac-tot-lbl">✨ Descuento inteligente (<?= (float)$desc_int_act['pct'] ?>%)<?php if ($puede_descuento && $venta['estado'] !== 'cancelada'): ?> <a href="#" onclick="quitarDescInt(event)" class="no-print" style="font-size:10px;color:#c05;text-decoration:underline;margin-left:4px">quitar</a><?php endif; ?></span><span class="fac-tot-val" style="color:#c05">-<?= format_money((float)$desc_int_act['monto_desc'], $empresa['moneda']) ?></span></div>
+      <?php endif; ?>
       <div class="fac-tot-row final"><span class="fac-tot-lbl">Total</span><span class="fac-tot-val"><?= format_money($total, $empresa['moneda']) ?></span></div>
       <div class="fac-saldo-box">
         <?php if ($saldo > 0): ?>
@@ -1541,6 +1552,16 @@ async function doCancelarVenta(){
   const d=await r.json();
   if(d.ok){closeSheet('shCancelar');location.reload();}
   else alert(d.error||'Error: '+d.error);
+}
+
+// ── Quitar descuento inteligente (restaura el precio lleno) ──
+async function quitarDescInt(ev){
+  ev.preventDefault();
+  if(!confirm('¿Quitar el descuento inteligente de esta venta? El total volverá al precio lleno.'))return;
+  const r=await fetch('/ventas/'+VENTA_ID+'/quitar-desc-int',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:'{}'});
+  const d=await r.json();
+  if(d.ok){location.reload();}
+  else alert(d.error||'Error al quitar el descuento');
 }
 
 // ── Tab catálogo/manual ──
