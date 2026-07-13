@@ -536,7 +536,9 @@ $comisiones = DB::query(
             u.nombre AS asesor_nombre,
             cl.nombre AS cliente_nombre,
             rx.ultimo_pago,
-            rx.pagado_recibos
+            rx.pagado_recibos,
+            EXISTS(SELECT 1 FROM desc_int_activaciones di
+                   WHERE di.cotizacion_id = v.cotizacion_id AND di.estado='utilizado') AS es_di
      FROM ventas v
      LEFT JOIN usuarios u ON u.id = COALESCE(v.vendedor_id, v.usuario_id)
      LEFT JOIN clientes cl ON cl.id = v.cliente_id
@@ -1824,7 +1826,7 @@ $total_comi_rows = $total_comi_abiertas; // solo abiertas (ya excluidas las paga
             <tr class="comi-row" data-comi-id="<?= (int)$f['id'] ?>" data-empresa="<?= $eid ?>">
                 <td style="font-weight:600"><?= e($asesor) ?></td>
                 <td>
-                    <div style="font-weight:600"><?= e($cliente) ?></div>
+                    <div style="font-weight:600"><?= e($cliente) ?><?php if (!empty($f['es_di'])): ?> <span title="Comisión de una venta cerrada con Descuento Inteligente" style="font:700 10px 'Inter',sans-serif;color:#b45309;background:#fef3c7;border:1px solid #f59e0b;border-radius:5px;padding:1px 6px;white-space:nowrap;vertical-align:middle;margin-left:4px">✨ DI</span><?php endif ?></div>
                     <div style="font-size:11px;color:var(--t3)"><?= e($titulo) ?> · #<?= e($f['numero']) ?></div>
                 </td>
                 <td class="r mono"><?= xf($contrato) ?></td>
