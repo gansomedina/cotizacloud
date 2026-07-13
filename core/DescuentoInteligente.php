@@ -201,12 +201,14 @@ class DescuentoInteligente
     }
 
     // ── 4) Activar — transaccional, los UNIQUE evitan doble/duplicado ──
-    //    Devuelve la fila de activación (nueva o la existente si hubo carrera),
-    //    o null si el cliente ya tiene una en otra cotización (UNIQUE cliente).
-    public static function activar(array $cot, array $ev, ?string $visitor_id = null): ?array
+    //    $precio_original = precio SIN extras (la base sobre la que aplica el
+    //    descuento). El slug lo calcula (total sin extras). Devuelve la fila de
+    //    activación (nueva o la existente si hubo carrera), o null si el cliente
+    //    ya tiene una en otra cotización (UNIQUE cliente).
+    public static function activar(array $cot, array $ev, float $precio_original, ?string $visitor_id = null): ?array
     {
         $eid   = (int)$cot['empresa_id'];
-        $total = (float)$cot['total'];
+        $total = round($precio_original, 2);
         $monto = round($total * $ev['pct'] / 100, 2);
         $nuevo = round($total - $monto, 2);
         $expira = date('Y-m-d H:i:s', time() + self::VIGENCIA_HORAS * 3600);

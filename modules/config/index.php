@@ -906,7 +906,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           </div>
         </div>
         <div style="font-size:12.5px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px">
-          📅 Actualmente aplicará <b>del día <?= $di_r1_ini ?> al día <?= $di_r1_fin ?></b> de creada la cotización.
+          📅 Actualmente aplicará <b>del día <?= $di_r1_ini ?> al día <?= $di_r1_fin ?></b> de creada la cotización, siempre y cuando el Radar la haya excluido de su interés (sin actividad reciente del cliente ni del asesor).
         </div>
       </div>
     </div>
@@ -936,7 +936,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           </div>
         </div>
         <div style="font-size:12.5px;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 12px">
-          📅 Actualmente aplicará <b>del día <?= $di_r2_ini ?> al día <?= $di_r2_fin ?></b> de creada la cotización.
+          📅 Actualmente aplicará <b>del día <?= $di_r2_ini ?> al día <?= $di_r2_fin ?></b> de creada la cotización, siempre y cuando el Radar la haya excluido de su interés (sin actividad reciente del cliente ni del asesor).
         </div>
       </div>
     </div>

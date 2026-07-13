@@ -75,42 +75,62 @@ if ($accion === 'aceptar') {
         );
         $subtotal_srv = $lineas_sub > 0 ? $lineas_sub : (float)$cot_data['subtotal'];
 
-        // Cupón — re-validar server-side (se aplica primero, igual que guardar.php)
-        $cupon_amt_srv = 0;
-        if ($cupon_codigo) {
-            $cupon_real = DB::row(
-                "SELECT id, porcentaje, monto_fijo FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
-                [EMPRESA_ID, $cupon_codigo]
-            );
-            if ($cupon_real) {
-                // Cupón de monto fijo o por porcentaje (mismo cálculo que guardar.php)
-                if ($cupon_real['monto_fijo'] !== null) {
-                    $cupon_amt_srv = round(min((float)$cupon_real['monto_fijo'], $subtotal_srv), 2);
-                } else {
-                    $cupon_pct = (float)$cupon_real['porcentaje'];
-                    $cupon_amt_srv = round($subtotal_srv * $cupon_pct / 100, 2);
-                }
-            }
-        }
-
-        // Descuento automático sobre el subtotal DESPUÉS del cupón
-        // (mismo orden que guardar.php: cupón primero, descuento sobre el resto)
-        $base_after_cupon = $subtotal_srv - $cupon_amt_srv;
-        $desc_auto_srv = 0;
-        if (!empty($cot_data['descuento_auto_activo'])) {
-            $exp = $cot_data['descuento_auto_expira'] ? strtotime($cot_data['descuento_auto_expira']) : 0;
-            if (!$exp || $exp > time()) {
-                $desc_auto_srv = round($base_after_cupon * (float)$cot_data['descuento_auto_pct'] / 100, 2);
-            }
-        }
-
-        $base_srv = $base_after_cupon - $desc_auto_srv;
         $imp_modo = $cot_data['impuesto_modo'] ?? 'ninguno';
         $imp_pct  = (float)($cot_data['impuesto_pct'] ?? 0);
-        if ($imp_modo === 'suma') {
-            $total_guardar = round($base_srv * (1 + $imp_pct / 100), 2);
+        $cupon_amt_srv = 0; $desc_auto_srv = 0;
+
+        // ── Descuento Inteligente: si hay uno VIGENTE, MANDA. Aplica sobre el
+        //    precio SIN extras (mismo criterio que el banner) e ignora
+        //    cupón/manual (que por precedencia no existen si el inteligente
+        //    disparó). % congelado en la activación (server-authoritative). ──
+        $di_vig = null;
+        try { $di_vig = DescuentoInteligente::vigente($cot_id); } catch (\Throwable $e) {}
+
+        if ($di_vig) {
+            $base_no_extras = (float)DB::val(
+                "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas
+                 WHERE cotizacion_id=? AND COALESCE(es_extra,0)=0", [$cot_id]);
+            if ($base_no_extras <= 0) $base_no_extras = $subtotal_srv; // fallback
+            $extras_raw = (float)DB::val(
+                "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas
+                 WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
+            $di_pct     = (float)$di_vig['pct'];
+            $desc_smart = round($base_no_extras * $di_pct / 100, 2);
+            $base_sin   = $base_no_extras - $desc_smart;
+            $total_sin  = ($imp_modo === 'suma') ? round($base_sin * (1 + $imp_pct / 100), 2) : round(max(0, $base_sin), 2);
+            $total_guardar = round($total_sin + $extras_raw, 2);
+            $cupon_codigo  = null; // el inteligente no se apila
+            DB::execute("UPDATE desc_int_activaciones SET estado='utilizado' WHERE id=?", [(int)$di_vig['id']]);
         } else {
-            $total_guardar = round(max(0, $base_srv), 2);
+            // Cupón — re-validar server-side (se aplica primero, igual que guardar.php)
+            if ($cupon_codigo) {
+                $cupon_real = DB::row(
+                    "SELECT id, porcentaje, monto_fijo FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
+                    [EMPRESA_ID, $cupon_codigo]
+                );
+                if ($cupon_real) {
+                    if ($cupon_real['monto_fijo'] !== null) {
+                        $cupon_amt_srv = round(min((float)$cupon_real['monto_fijo'], $subtotal_srv), 2);
+                    } else {
+                        $cupon_pct = (float)$cupon_real['porcentaje'];
+                        $cupon_amt_srv = round($subtotal_srv * $cupon_pct / 100, 2);
+                    }
+                }
+            }
+            // Descuento automático sobre el subtotal DESPUÉS del cupón
+            $base_after_cupon = $subtotal_srv - $cupon_amt_srv;
+            if (!empty($cot_data['descuento_auto_activo'])) {
+                $exp = $cot_data['descuento_auto_expira'] ? strtotime($cot_data['descuento_auto_expira']) : 0;
+                if (!$exp || $exp > time()) {
+                    $desc_auto_srv = round($base_after_cupon * (float)$cot_data['descuento_auto_pct'] / 100, 2);
+                }
+            }
+            $base_srv = $base_after_cupon - $desc_auto_srv;
+            if ($imp_modo === 'suma') {
+                $total_guardar = round($base_srv * (1 + $imp_pct / 100), 2);
+            } else {
+                $total_guardar = round(max(0, $base_srv), 2);
+            }
         }
 
         // 1. Actualizar estado cotización
