@@ -240,7 +240,11 @@ class DescuentoInteligente
             }
             return self::vigente((int)$cot['id']);
         }
-        return self::vigente((int)$cot['id']);
+        // INSERT exitoso = activación RECIÉN creada. Marca `_nueva` para que el
+        // caller dispare la notificación solo la 1ª vez (no en cada reapertura).
+        $row = self::vigente((int)$cot['id']);
+        if ($row) $row['_nueva'] = true;
+        return $row;
     }
 
     // ── 5) Activación vigente — lazy expiry, SIN cron ──

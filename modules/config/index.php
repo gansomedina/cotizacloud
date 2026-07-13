@@ -530,6 +530,16 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
       </div>
+      <div class="field-row h">
+        <div>
+          <div class="field-lbl">Descuento Inteligente activado</div>
+          <div class="field-sub">Aviso cuando el sistema le ofrece un descuento a un cliente en una cotización dormida</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_notif_di" <?= ($ncfg['desc_inteligente'] ?? true)?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
     </div>
   </div>
 
@@ -1876,6 +1886,7 @@ async function guardarEmpresa() {
             abono_registrado:     document.getElementById('e_notif_abono').checked,
             radar_alerta:         document.getElementById('e_notif_radar').checked,
             feedback_recibido:    document.getElementById('e_notif_feedback').checked,
+            desc_inteligente:     document.getElementById('e_notif_di').checked,
         },
         cot_vigencia_dias:  parseInt(document.getElementById('e_cot_vigencia_dias').value) || 30,
         allow_precio_edit:  document.getElementById('e_allow_precio_edit').checked ? 1 : 0,
