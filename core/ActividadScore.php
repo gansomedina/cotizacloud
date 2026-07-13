@@ -693,35 +693,10 @@ class ActividadScore
             if (empty($cob['error'])) { // fail-neutral: error SQL ≠ 25% regalado
                 $mesa_pedidas   = $cob['pedidas'];
                 $mesa_atendidas = $cob['atendidas'];
-
-                // Guardar el snapshot de HOY (1 por asesor por día, upsert). Así
-                // no se recalcula sobre 15 días: se persiste lo del día y el score
-                // promedia los días guardados (reloj checador).
-                try {
-                    DB::execute(
-                        "INSERT INTO mesa_diario (usuario_id, empresa_id, fecha, pedidas, atendidas)
-                         VALUES (?,?,CURDATE(),?,?)
-                         ON DUPLICATE KEY UPDATE pedidas=VALUES(pedidas), atendidas=VALUES(atendidas)",
-                        [$usuario_id, $empresa_id, $mesa_pedidas, $mesa_atendidas]);
-                } catch (\Throwable $e) { error_log('[mesa_diario] ' . $e->getMessage()); }
-
-                // s_mesa = PROMEDIO POR DÍA: de los días guardados del período,
-                // ¿en cuántos tuvo la mesa al día (≥80%, margen 1)? fracción [0..1].
-                $dias_mesa = DB::query(
-                    "SELECT pedidas, atendidas FROM mesa_diario
-                     WHERE usuario_id = ? AND fecha >= DATE_SUB(CURDATE(), INTERVAL ? DAY)",
-                    [$usuario_id, $periodo]);
-                if ($dias_mesa) {
-                    $dias_ok = 0.0;
-                    foreach ($dias_mesa as $d) {
-                        $p = (int)$d['pedidas']; $a = (int)$d['atendidas'];
-                        $margen = max(1, (int)floor(0.20 * $p));
-                        $dias_ok += ($p === 0 || ($p - $a) <= $margen) ? 1.0 : 0.0;
-                    }
-                    $s_mesa = $dias_ok / count($dias_mesa);
-                } else {
-                    $s_mesa = 1.0; // sin historial aún → neutro (no reprueba examen inexistente)
-                }
+                // Estado actual (lo más simple): de la mesa visible del asesor,
+                // ¿está ≥80% atendida AHORA? (feedback + postura, margen 1). Binario.
+                $mesa_margen    = max(1, (int)floor(0.20 * $cob['pedidas']));
+                $s_mesa = ($cob['pedidas'] === 0 || $cob['fallas'] <= $mesa_margen) ? 1.0 : 0.0;
                 $s_seguimiento = 0.75 * $s_seguimiento + 0.25 * $s_mesa;
                 $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
             }
