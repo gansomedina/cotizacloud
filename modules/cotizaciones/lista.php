@@ -33,6 +33,21 @@ if ($estado !== 'todas') {
     }
 }
 if (!Auth::puede('ver_todas_cots')) { $where[] = "(c.usuario_id = ? OR c.vendedor_id = ?)"; $params[] = $usuario['id']; $params[] = $usuario['id']; }
+// Deep-link desde Reportes: filtrar por un asesor concreto (solo quien ve todo).
+$asesor_f = (int)($_GET['asesor'] ?? 0);
+if ($asesor_f > 0 && Auth::puede('ver_todas_cots')) {
+    $where[] = "(c.usuario_id = ? OR c.vendedor_id = ?)"; $params[] = $asesor_f; $params[] = $asesor_f;
+}
+// Filtro Descuento Inteligente: 'si' = tiene o tuvo · 'vigente' = activo · 'cerrado' = utilizado
+$di_f = $_GET['di'] ?? 'todas';
+if (!in_array($di_f, ['todas','si','vigente','cerrado'])) $di_f = 'todas';
+if ($di_f === 'si') {
+    $where[] = "EXISTS (SELECT 1 FROM desc_int_activaciones di WHERE di.cotizacion_id = c.id)";
+} elseif ($di_f === 'vigente') {
+    $where[] = "EXISTS (SELECT 1 FROM desc_int_activaciones di WHERE di.cotizacion_id = c.id AND di.estado='activo')";
+} elseif ($di_f === 'cerrado') {
+    $where[] = "EXISTS (SELECT 1 FROM desc_int_activaciones di WHERE di.cotizacion_id = c.id AND di.estado='utilizado')";
+}
 if ($busqueda !== '') {
     $where[] = "(c.titulo LIKE ? OR c.numero LIKE ? OR cl.nombre LIKE ? OR cl.telefono LIKE ?)";
     $like = '%'.$busqueda.'%';
@@ -331,12 +346,21 @@ ob_start();
            value="<?= e($busqueda) ?>" onkeydown="if(event.key==='Enter')filtrar('q',this.value)">
     <button onclick="filtrar('q',document.getElementById('srchCot').value)" style="padding:6px 14px;border-radius:var(--r-sm);border:1px solid var(--g);background:var(--g);color:#fff;font:600 13px var(--body);cursor:pointer;flex-shrink:0">Buscar</button>
   </div>
-  <select class="sort-select" onchange="filtrar('orden',this.value)">
-    <option value="reciente"   <?= $orden==='reciente'   ?'selected':'' ?>>Más recientes</option>
-    <option value="antigua"    <?= $orden==='antigua'    ?'selected':'' ?>>Más antiguas</option>
-    <option value="monto_desc" <?= $orden==='monto_desc' ?'selected':'' ?>>Mayor monto</option>
-    <option value="monto_asc"  <?= $orden==='monto_asc'  ?'selected':'' ?>>Menor monto</option>
-    <option value="cliente"    <?= $orden==='cliente'    ?'selected':'' ?>>Cliente A–Z</option>
+  <?php $di_none = ($di_f === 'todas'); // si hay filtro DI, ese manda en el "selected" ?>
+  <select class="sort-select" onchange="cotSel(this.value)">
+    <optgroup label="Ordenar">
+      <option value="orden:reciente"   <?= $di_none && $orden==='reciente'   ?'selected':'' ?>>Más recientes</option>
+      <option value="orden:antigua"    <?= $di_none && $orden==='antigua'    ?'selected':'' ?>>Más antiguas</option>
+      <option value="orden:monto_desc" <?= $di_none && $orden==='monto_desc' ?'selected':'' ?>>Mayor monto</option>
+      <option value="orden:monto_asc"  <?= $di_none && $orden==='monto_asc'  ?'selected':'' ?>>Menor monto</option>
+      <option value="orden:cliente"    <?= $di_none && $orden==='cliente'    ?'selected':'' ?>>Cliente A–Z</option>
+    </optgroup>
+    <optgroup label="Descuento Inteligente">
+      <option value="di:si"      <?= $di_f==='si'      ?'selected':'' ?>>✨ Con DI</option>
+      <option value="di:vigente" <?= $di_f==='vigente' ?'selected':'' ?>>✨ DI vigente</option>
+      <option value="di:cerrado" <?= $di_f==='cerrado' ?'selected':'' ?>>✨ DI cerrado</option>
+      <option value="di:todas"   <?= '' ?>>✨ Quitar filtro DI</option>
+    </optgroup>
   </select>
 </div>
 
@@ -348,7 +372,7 @@ $chips = ['todas'=>'Todas','enviada'=>'Enviada','vista'=>'Vista','aceptada'=>'Ac
 foreach ($chips as $k => $lbl):
     $cnt = $conteos[$k] ?? 0;
     if ($k !== 'todas' && $cnt === 0) continue;
-    $qs = http_build_query(['estado'=>$k,'q'=>$busqueda,'orden'=>$orden]);
+    $qs = http_build_query(array_filter(['estado'=>$k,'q'=>$busqueda,'orden'=>$orden,'di'=>($di_f!=='todas'?$di_f:''),'asesor'=>($asesor_f?:'')]));
 ?>
   <a href="/cotizaciones?<?= $qs ?>" class="chip <?= $estado===$k?'active':'' ?>">
     <?= $lbl ?> <span class="chip-count"><?= $cnt ?></span>
@@ -554,7 +578,7 @@ foreach ($chips as $k => $lbl):
 </div>
 
 <?php if ($pag['total_pags'] > 1):
-  $qb = http_build_query(['estado'=>$estado,'q'=>$busqueda,'orden'=>$orden]);
+  $qb = http_build_query(array_filter(['estado'=>$estado,'q'=>$busqueda,'orden'=>$orden,'di'=>($di_f!=='todas'?$di_f:''),'asesor'=>($asesor_f?:'')]));
 ?>
 <div class="pag-wrap">
   <div class="pag-info">Mostrando <?= $pag['offset']+1 ?>–<?= min($pag['offset']+$por_pag,$pag['total']) ?> de <?= number_format($pag['total']) ?></div>
@@ -576,6 +600,8 @@ foreach ($chips as $k => $lbl):
 
 <script>
 function filtrar(k,v){const p=new URLSearchParams(window.location.search);if(v)p.set(k,v);else p.delete(k);if(k!=='p')p.delete('p');window.location='/cotizaciones?'+p.toString()}
+// Selector combinado: "orden:xxx" cambia el orden, "di:xxx" el filtro de Descuento Inteligente
+function cotSel(val){const i=val.indexOf(':');filtrar(val.slice(0,i), val.slice(i+1))}
 const CSRF_TOKEN='<?= csrf_token() ?>';
 
 function toggleCot(id, e) {

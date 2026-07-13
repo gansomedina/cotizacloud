@@ -977,8 +977,8 @@ ob_start();
           ?>
           <tr>
             <td><?= e($nom) ?></td>
-            <td class="tbl-num"><?= $of ?></td>
-            <td class="tbl-num" style="color:var(--g)"><?= $ce ?></td>
+            <td class="tbl-num"><?php if ($of > 0): ?><a href="/cotizaciones?di=si&asesor=<?= $vid ?>" title="Ver las cotizaciones con DI de este asesor" style="color:inherit;text-decoration:underline dotted"><?= $of ?></a><?php else: ?><?= $of ?><?php endif ?></td>
+            <td class="tbl-num" style="color:var(--g)"><?php if ($ce > 0): ?><a href="/cotizaciones?di=cerrado&asesor=<?= $vid ?>" title="Ver las cotizaciones cerradas con DI de este asesor" style="color:inherit;text-decoration:underline dotted"><?= $ce ?></a><?php else: ?><?= $ce ?><?php endif ?></td>
             <td class="tbl-num"><?= rpp($tasa) ?></td>
             <td class="tbl-num" style="color:var(--g)"><?= rp((float)$d['di_recuperado']) ?></td>
             <td class="tbl-num" style="color:#b45309"><?= rp((float)$d['di_descontado']) ?></td>
