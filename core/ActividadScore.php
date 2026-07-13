@@ -693,6 +693,8 @@ class ActividadScore
             if (empty($cob['error'])) { // fail-neutral: error SQL ≠ 25% regalado
                 $mesa_pedidas   = $cob['pedidas'];
                 $mesa_atendidas = $cob['atendidas'];
+                // Estado actual (lo más simple): de la mesa visible del asesor,
+                // ¿está ≥80% atendida AHORA? (feedback + postura, margen 1). Binario.
                 $mesa_margen    = max(1, (int)floor(0.20 * $cob['pedidas']));
                 $s_mesa = ($cob['pedidas'] === 0 || $cob['fallas'] <= $mesa_margen) ? 1.0 : 0.0;
                 $s_seguimiento = 0.75 * $s_seguimiento + 0.25 * $s_mesa;
