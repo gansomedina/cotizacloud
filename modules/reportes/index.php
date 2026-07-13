@@ -1097,11 +1097,21 @@ ob_start();
 
   <?php endif; ?>
 
-  <?php if (!empty($di_candidatos)): ?>
+  <?php if (!empty($di_candidatos)):
+    $di_n1 = 0; $di_n2 = 0;
+    foreach ($di_candidatos as $d) { if ((int)$d['regla']===1) $di_n1++; else $di_n2++; }
+  ?>
   <div class="sec-lbl">🎯 Candidatos a Descuento Inteligente <span style="font-weight:500;color:var(--t3);text-transform:none;letter-spacing:0">— cumplen todas las reglas; solo falta que el cliente vuelva a abrirlas</span></div>
   <div class="card">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--border)">
+      <button type="button" class="dic-fchip on" data-f="all" onclick="dicFilter('all',this)">Todas <span style="opacity:.7"><?= count($di_candidatos) ?></span></button>
+      <button type="button" class="dic-fchip" data-f="1" onclick="dicFilter('1',this)">R1 · Recuperación <span style="opacity:.7"><?= $di_n1 ?></span></button>
+      <button type="button" class="dic-fchip" data-f="2" onclick="dicFilter('2',this)">R2 · Zona muerta <span style="opacity:.7"><?= $di_n2 ?></span></button>
+      <div style="flex:1"></div>
+      <button type="button" id="dicCopyBtn" onclick="dicCopyTels()" style="padding:7px 14px;border-radius:8px;border:1px solid var(--g);background:var(--g);color:#fff;font:700 12px var(--body);cursor:pointer">📋 Copiar teléfonos</button>
+    </div>
     <div class="tbl-wrap">
-      <table class="tbl">
+      <table class="tbl" id="dicTable">
         <thead>
           <tr>
             <th>Regla</th>
@@ -1119,8 +1129,9 @@ ob_start();
             $r1 = ((int)$dcnd['regla'] === 1);
             $rlbl = $r1 ? 'R1 · Recuperación' : 'R2 · Zona muerta';
             $rcol = $r1 ? '#b45309' : 'var(--danger)';
+            $tel  = trim((string)($dcnd['telefono'] ?? ''));
           ?>
-          <tr>
+          <tr class="dic-row" data-regla="<?= (int)$dcnd['regla'] ?>" data-tel="<?= e($tel) ?>">
             <td style="font-weight:700;color:<?= $rcol ?>"><?= $rlbl ?></td>
             <td class="tbl-num" style="font-weight:800;color:var(--g)"><?= number_format((float)$dcnd['descuento_pct'],0) ?>%</td>
             <td class="tbl-num" style="color:var(--t3)"><?= (int)$dcnd['dias_creada'] ?></td>
@@ -1129,7 +1140,7 @@ ob_start();
               <div style="font-size:11px;color:var(--t3)">#<?= e($dcnd['numero']) ?></div>
             </td>
             <td><?= e($dcnd['cliente'] ?? '—') ?></td>
-            <td class="mono"><?= e($dcnd['telefono'] ?: '—') ?></td>
+            <td class="mono"><?= $tel !== '' ? e($tel) : '—' ?></td>
             <td style="color:var(--t2)"><?= e($dcnd['asesor'] ?? '—') ?></td>
             <td style="color:var(--t3);font-size:12px"><?= e($dcnd['radar_bucket'] ?: 'sin bucket') ?></td>
           </tr>
@@ -1141,6 +1152,41 @@ ob_start();
       Son ventas dadas por muertas que el sistema recuperará automáticamente en cuanto el cliente reabra su cotización. No se ofrece a clientes que ya compraron.
     </div>
   </div>
+  <style>
+    .dic-fchip{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--white);font:600 12px var(--body);color:var(--t2);cursor:pointer}
+    .dic-fchip.on{background:var(--g);border-color:var(--g);color:#fff}
+  </style>
+  <script>
+  (function(){
+    var cur = 'all';
+    window.dicFilter = function(f, btn){
+      cur = f;
+      document.querySelectorAll('.dic-fchip').forEach(function(b){ b.classList.toggle('on', b===btn); });
+      document.querySelectorAll('#dicTable .dic-row').forEach(function(tr){
+        tr.style.display = (f==='all' || tr.getAttribute('data-regla')===f) ? '' : 'none';
+      });
+    };
+    window.dicCopyTels = function(){
+      var tels = [];
+      document.querySelectorAll('#dicTable .dic-row').forEach(function(tr){
+        if (tr.style.display === 'none') return;
+        var t = (tr.getAttribute('data-tel')||'').trim();
+        if (t) tels.push(t);
+      });
+      if (!tels.length){ alert('No hay teléfonos en esta vista.'); return; }
+      var txt = tels.join('\n');
+      var btn = document.getElementById('dicCopyBtn');
+      var done = function(){ var o=btn.textContent; btn.textContent='✓ '+tels.length+' copiados'; setTimeout(function(){btn.textContent=o;},1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(done, function(){ dicFallbackCopy(txt); done(); });
+      } else { dicFallbackCopy(txt); done(); }
+    };
+    function dicFallbackCopy(txt){
+      var ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);
+    }
+  })();
+  </script>
   <?php endif; ?>
 
   <?php if (!empty($score_mensual)): ?>
