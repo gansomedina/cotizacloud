@@ -266,6 +266,31 @@ if ($es_admin) {
 $nombre_asesor = [];
 foreach ($por_asesor as $a) $nombre_asesor[(int)$a['usr_id']] = $a['asesor'];
 
+// ── Promedio mensual del score APC por asesor (de score_diario) ──
+// El score vivo es una ventana móvil de 15d que se sobrescribe; aquí se
+// promedia el punto diario capturado al abrir el dashboard. Últimos 6 meses.
+$score_mensual = [];
+if ($es_admin) {
+    try {
+        $score_mensual = DB::query(
+            "SELECT DATE_FORMAT(sd.fecha,'%Y-%m') AS mes,
+                    sd.usuario_id,
+                    u.nombre AS asesor,
+                    ROUND(AVG(sd.score),1) AS score_prom,
+                    MIN(sd.score) AS score_min,
+                    MAX(sd.score) AS score_max,
+                    COUNT(*) AS dias
+             FROM score_diario sd
+             JOIN usuarios u ON u.id = sd.usuario_id
+             WHERE sd.empresa_id = ?
+               AND sd.fecha >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+             GROUP BY mes, sd.usuario_id
+             ORDER BY mes DESC, score_prom DESC",
+            [$empresa_id]
+        );
+    } catch (\Throwable $e) { $score_mensual = []; } // tabla sin migrar
+}
+
 // ─────────────────────────────────────────────────────────────
 //  TAB 3: COTIZACIONES
 // ─────────────────────────────────────────────────────────────
@@ -999,6 +1024,44 @@ ob_start();
     </div>
   </div>
 
+  <?php endif; ?>
+
+  <?php if (!empty($score_mensual)): ?>
+  <div class="sec-lbl">📈 Promedio mensual del score <span style="font-weight:500;color:var(--t3);text-transform:none;letter-spacing:0">— media de los puntos diarios (se captura al abrir el dashboard)</span></div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Mes</th>
+            <th>Asesor</th>
+            <th class="r">Score promedio</th>
+            <th class="r">Mín–Máx</th>
+            <th class="r">Días con dato</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php $sm_mes_prev = null; foreach ($score_mensual as $sm):
+            $mes_lbl = date('M Y', strtotime($sm['mes'].'-01'));
+            $sp = (float)$sm['score_prom'];
+            $sp_col = $sp >= 75 ? 'var(--g)' : ($sp >= 60 ? '#b45309' : ($sp >= 40 ? 'var(--t2)' : 'var(--danger)'));
+            $nueva_mes = ($sm['mes'] !== $sm_mes_prev); $sm_mes_prev = $sm['mes'];
+          ?>
+          <tr<?= $nueva_mes ? ' style="border-top:2px solid var(--border)"' : '' ?>>
+            <td style="color:var(--t3)"><?= $nueva_mes ? e($mes_lbl) : '' ?></td>
+            <td><?= e($sm['asesor'] ?? '—') ?></td>
+            <td class="tbl-num" style="font-weight:800;color:<?= $sp_col ?>"><?= number_format($sp,1) ?></td>
+            <td class="tbl-num" style="color:var(--t3)"><?= (int)$sm['score_min'] ?>–<?= (int)$sm['score_max'] ?></td>
+            <td class="tbl-num" style="color:var(--t3)"><?= (int)$sm['dias'] ?></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:10px 14px;font:400 11.5px var(--body);color:var(--t3)">
+      El dato se empieza a acumular desde hoy: cada día que abras el dashboard se guarda 1 punto por asesor. A más días, más fiel el promedio.
+    </div>
+  </div>
   <?php endif; ?>
 
   <?php endif; ?>

@@ -1217,6 +1217,9 @@ class ActividadScore
         }
         // Actualizar snapshot mensual para reportes históricos
         self::snapshot_mensual($empresa_id);
+        // Punto diario (1 por asesor por día) → base del promedio mensual real.
+        // Sin cron: se registra cada vez que un admin abre el dashboard/radar.
+        self::snapshot_diario($empresa_id);
     }
 
     // ─── Obtener score guardado (sin recalcular) ──────────
@@ -1690,6 +1693,40 @@ class ActividadScore
             } catch (\Throwable $e) {
                 // El fallo silencioso ya congeló el histórico una vez — dejar rastro
                 error_log('[ActividadScore snapshot] ' . $e->getMessage());
+            }
+        }
+    }
+
+    // ─── Snapshot diario para promedio mensual ─────────────
+    // 1 fila por asesor por día (UNIQUE usuario_id+fecha). Upsert: si el admin
+    // abre el dashboard varias veces al día, solo se actualiza el punto de HOY
+    // (gana el último). El promedio mensual = AVG(score) de estos puntos diarios.
+    // Sin cron: depende de que se abra el dashboard/radar (recalcular_empresa).
+    public static function snapshot_diario(int $empresa_id): void
+    {
+        $hoy = date('Y-m-d');
+        foreach (self::equipo($empresa_id) as $s) {
+            try {
+                DB::execute(
+                    "INSERT INTO score_diario
+                        (usuario_id, empresa_id, fecha, score, nivel,
+                         s_activacion, s_seguimiento, s_conversion)
+                     VALUES (?,?,?,?,?,?,?,?)
+                     ON DUPLICATE KEY UPDATE
+                        score=VALUES(score), nivel=VALUES(nivel),
+                        s_activacion=VALUES(s_activacion),
+                        s_seguimiento=VALUES(s_seguimiento),
+                        s_conversion=VALUES(s_conversion)",
+                    [
+                        (int)$s['usuario_id'], $empresa_id, $hoy,
+                        (int)$s['score'], $s['nivel'],
+                        (float)($s['s_activacion'] ?? 0),
+                        (float)($s['s_seguimiento'] ?? 0),
+                        (float)($s['s_conversion'] ?? 0),
+                    ]
+                );
+            } catch (\Throwable $e) {
+                error_log('[ActividadScore snapshot_diario] ' . $e->getMessage());
             }
         }
     }
