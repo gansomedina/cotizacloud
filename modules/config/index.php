@@ -75,6 +75,11 @@ $cupones = DB::query(
     [$empresa_id]
 );
 
+// ─── Descuentos Inteligentes (config + anclas calculadas) ────
+$di_cfg = DescuentoInteligente::config($empresa_id)
+    ?: ['r1_activa'=>0,'r1_pct'=>0,'r2_activa'=>0,'r2_pct'=>0];
+$di_anc = DescuentoInteligente::anclas($empresa_id); // null si <5 ventas cerradas
+
 // ─── Usuarios ────────────────────────────────────────────────
 $usuarios = DB::query(
     "SELECT u.*, (SELECT MAX(us.created_at) FROM user_sessions us WHERE us.usuario_id=u.id) AS ultimo_login
@@ -266,6 +271,12 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 /* ─── Save btn ───────────────────────────────────────────── */
 .save-btn{padding:10px 24px;border-radius:var(--r-sm);border:none;background:var(--g);font:700 14px var(--body);color:#fff;cursor:pointer;transition:opacity .15s}
 .save-btn:hover{opacity:.88}
+.di-switch{position:relative;display:inline-block;width:46px;height:26px;flex-shrink:0}
+.di-switch input{opacity:0;width:0;height:0}
+.di-slider{position:absolute;cursor:pointer;inset:0;background:#cbd5e1;border-radius:26px;transition:.2s}
+.di-slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.di-switch input:checked+.di-slider{background:var(--g)}
+.di-switch input:checked+.di-slider:before{transform:translateX(20px)}
 
 /* ─── Sheets ─────────────────────────────────────────────── */
 .sh-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
@@ -846,6 +857,97 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
       </div>
       <button class="save-btn" style="margin-top:12px" onclick="guardarDescDefaults()">Guardar defaults</button>
     </div>
+  </div>
+
+  <!-- ═══ Descuentos Inteligentes ═══ -->
+  <div class="sec" style="margin-top:28px">
+    <div class="sec-title">✨ Descuentos Inteligentes <span style="font:600 11px var(--body);color:#7c3aed;background:#f3effe;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:6px">CotizaCloud IA</span></div>
+    <div style="font-size:13px;color:var(--t3);margin-bottom:16px;max-width:640px">
+      CotizaCloud IA analiza tu historial y activa descuentos automáticos <b>solo</b> cuando una
+      cotización ya salió de tus periodos habituales de cierre <b>y</b> el cliente vuelve a abrirla.
+      Nunca se activa mientras la sigues trabajando o el cliente sigue interesado. Tú decides el porcentaje.
+    </div>
+
+    <?php if (!$di_anc): ?>
+    <div class="card" style="padding:16px 20px;background:#fbfaf7">
+      <div style="font-size:13px;color:var(--t2)">
+        📊 Aún no hay suficiente historial para calcular tus periodos. Necesitas al menos
+        <b>5 ventas cerradas</b>. En cuanto las tengas, aquí aparecerán tus rangos automáticamente.
+      </div>
+    </div>
+    <?php else:
+      $di_r1_ini = (int)$di_anc['dia_fin_vida'];
+      $di_r1_fin = (int)$di_anc['dia_dead'];
+      $di_r2_ini = (int)$di_anc['dia_dead'];
+      $di_r2_fin = (int)$di_anc['dia_techo'];
+    ?>
+    <!-- Regla 1 -->
+    <div class="card" style="padding:18px 20px;margin-bottom:14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:260px">
+          <div style="font:700 14px var(--body);color:var(--text)">Descuento fuera de la vida comercial</div>
+          <div style="font-size:12.5px;color:var(--t3);margin-top:4px;line-height:1.5">
+            Para cotizaciones que ya pasaron tu periodo normal de cierre pero todavía no llegan a la
+            zona donde históricamente ya no compran. Ideal para recuperar clientes que mostraron
+            interés y dejaron pasar el momento.
+          </div>
+        </div>
+        <label class="di-switch">
+          <input type="checkbox" id="di_r1_activa" <?= (int)$di_cfg['r1_activa']?'checked':'' ?>>
+          <span class="di-slider"></span>
+        </label>
+      </div>
+      <div class="field-row h" style="margin-top:14px;align-items:flex-end">
+        <div class="field-group">
+          <label class="field-lbl">Porcentaje de descuento</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input class="num-in" id="di_r1_pct" type="number" min="0" max="100" step="0.5" value="<?= (float)$di_cfg['r1_pct'] ?>" style="width:80px">
+            <span style="font-size:13px;color:var(--t3)">%</span>
+          </div>
+        </div>
+        <div style="font-size:12.5px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px">
+          📅 Actualmente aplicará <b>del día <?= $di_r1_ini ?> al día <?= $di_r1_fin ?></b> de creada la cotización.
+        </div>
+      </div>
+    </div>
+
+    <!-- Regla 2 -->
+    <div class="card" style="padding:18px 20px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:260px">
+          <div style="font:700 14px var(--body);color:var(--text)">Último intento — zona donde ya no compran</div>
+          <div style="font-size:12.5px;color:var(--t3);margin-top:4px;line-height:1.5">
+            Para oportunidades que estadísticamente ya estaban perdidas. Un descuento especial como
+            último intento, sin tocar cotizaciones que todavía tenían posibilidad normal de cierre.
+            Suele ser un porcentaje mayor.
+          </div>
+        </div>
+        <label class="di-switch">
+          <input type="checkbox" id="di_r2_activa" <?= (int)$di_cfg['r2_activa']?'checked':'' ?>>
+          <span class="di-slider"></span>
+        </label>
+      </div>
+      <div class="field-row h" style="margin-top:14px;align-items:flex-end">
+        <div class="field-group">
+          <label class="field-lbl">Porcentaje de descuento</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input class="num-in" id="di_r2_pct" type="number" min="0" max="100" step="0.5" value="<?= (float)$di_cfg['r2_pct'] ?>" style="width:80px">
+            <span style="font-size:13px;color:var(--t3)">%</span>
+          </div>
+        </div>
+        <div style="font-size:12.5px;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 12px">
+          📅 Actualmente aplicará <b>del día <?= $di_r2_ini ?> al día <?= $di_r2_fin ?></b> de creada la cotización.
+        </div>
+      </div>
+    </div>
+
+    <button class="save-btn" style="margin-top:14px" onclick="guardarDescInt()">Guardar Descuentos Inteligentes</button>
+    <div style="font-size:11.5px;color:var(--t3);margin-top:8px;max-width:640px">
+      El descuento se activa una sola vez por cliente y dura 24 horas desde que el cliente abre la
+      cotización. Los cambios aplican solo a nuevas activaciones — los descuentos ya activos conservan
+      su porcentaje y vigencia.
+    </div>
+    <?php endif; ?>
   </div>
 
 </div><!-- /panel-cupones -->
@@ -1729,6 +1831,26 @@ async function guardarDescDefaults() {
         });
         const d = await r.json();
         if (d.ok) flashOk('Defaults guardados');
+        else alert(d.error || 'Error al guardar.');
+    } catch(e) { alert('Error de conexión.'); }
+}
+
+// ── Guardar Descuentos Inteligentes ──────────────────────────
+async function guardarDescInt() {
+    const payload = {
+        r1_activa: document.getElementById('di_r1_activa').checked ? 1 : 0,
+        r1_pct:    parseFloat(document.getElementById('di_r1_pct').value) || 0,
+        r2_activa: document.getElementById('di_r2_activa').checked ? 1 : 0,
+        r2_pct:    parseFloat(document.getElementById('di_r2_pct').value) || 0,
+    };
+    try {
+        const r = await fetch('/config/desc-int', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+            body: JSON.stringify(payload)
+        });
+        const d = await r.json();
+        if (d.ok) flashOk('Descuentos Inteligentes guardados');
         else alert(d.error || 'Error al guardar.');
     } catch(e) { alert('Error de conexión.'); }
 }
