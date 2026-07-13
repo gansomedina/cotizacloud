@@ -1319,12 +1319,10 @@ if ($di_act && ($di_act['estado'] ?? '') === 'activo'
         <span style="font:600 12px system-ui,sans-serif;color:#1a1a1a;white-space:nowrap">Vence <b id="diVence" style="font-size:12.5px"></b> <span style="color:#999">·</span> <b id="diTimer" style="font-size:16px;font-variant-numeric:tabular-nums;color:#b91c1c">--:--:--</b></span>
       </div>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">
-      <div style="display:flex;gap:8px">
-        <button onclick="openM('acceptOv')" style="background:<?= $th['g'] ?>;color:#fff;border:none;border-radius:10px;padding:11px 18px;font:800 14px system-ui,sans-serif;cursor:pointer">Aceptar cotización</button>
-        <button onclick="openM('rejectOv')" style="background:transparent;color:#444;border:1.5px solid #ccc;border-radius:10px;padding:11px 14px;font:700 13px system-ui,sans-serif;cursor:pointer">Rechazar</button>
-      </div>
-      <div style="font:400 9px system-ui,sans-serif;color:#999">*Aplican términos y condiciones</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <div style="font:400 9px system-ui,sans-serif;color:#aaa;text-align:right;max-width:78px;line-height:1.25">*Aplican términos y condiciones</div>
+      <button onclick="openM('acceptOv')" style="background:<?= $th['g'] ?>;color:#fff;border:none;border-radius:10px;padding:11px 18px;font:800 14px system-ui,sans-serif;cursor:pointer">Aceptar cotización</button>
+      <button onclick="openM('rejectOv')" style="background:transparent;color:#444;border:1.5px solid #ccc;border-radius:10px;padding:11px 14px;font:700 13px system-ui,sans-serif;cursor:pointer">Rechazar</button>
     </div>
   </div>
 </div>
