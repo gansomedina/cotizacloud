@@ -310,6 +310,44 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
                 }
             } catch (\Throwable $die) {}
 
+            // ── Notificación de DI recién activado (push + email a la empresa) ──
+            // DIFERIDA vía register_shutdown_function + fastcgi_finish_request: el
+            // slug se pinta al instante y el envío ocurre en segundo plano (no
+            // relentiza al cliente). Solo la 1ª vez (marca `_nueva` de activar()).
+            if (!empty($di_act['_nueva'])) {
+                $din_cotid  = (int)$cot['id'];
+                $din_eid    = (int)$cot['empresa_id'];
+                $din_titulo = (string)($cot['titulo'] ?? '');
+                $din_cliid  = (int)($cot['cliente_id'] ?? 0);
+                $din_pct    = (float)$di_act['pct'];
+                register_shutdown_function(function () use ($din_cotid, $din_eid, $din_titulo, $din_cliid, $din_pct) {
+                    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+                    try {
+                        if (empty(notif_config($din_eid)['desc_inteligente'])) return;
+                        $cli = $din_cliid ? (DB::val("SELECT nombre FROM clientes WHERE id=?", [$din_cliid]) ?: 'un cliente') : 'un cliente';
+                        $titulo = $din_titulo !== '' ? $din_titulo : ('Cotización #' . $din_cotid);
+                        $pct = rtrim(rtrim(number_format($din_pct, 2), '0'), '.');
+                        try {
+                            PushNotification::enviar_a_empresa(
+                                $din_eid, 'desc_inteligente',
+                                '✨ Descuento Inteligente activado',
+                                'Se le ofreció un ' . $pct . '% a ' . $cli . ' en: ' . $titulo . '. Dale seguimiento.',
+                                ['cotizacion_id' => $din_cotid, 'url' => '/cotizaciones/' . $din_cotid]
+                            );
+                        } catch (\Throwable $e) {}
+                        try {
+                            $em = DB::row("SELECT nombre, notif_email FROM empresas WHERE id=?", [$din_eid]);
+                            $to = $em['notif_email'] ?? '';
+                            if ($to) {
+                                $body = '<p>El sistema activó un <b>Descuento Inteligente</b> del <b>' . $pct . '%</b> para <b>' . e($cli) . '</b> en la cotización <b>' . e($titulo) . '</b>.</p>'
+                                      . '<p>Estaba dormida; se le ofreció el descuento por 24 horas para intentar recuperarla. Dale seguimiento.</p>';
+                                Mailer::enviar($to, $em['nombre'] ?? '', '✨ Descuento Inteligente activado — ' . $titulo, $body);
+                            }
+                        } catch (\Throwable $e) {}
+                    } catch (\Throwable $e) {}
+                });
+            }
+
             // Nueva sesión — registrar y contar visita
             DB::insert(
                 "INSERT INTO quote_sessions (cotizacion_id, ip, user_agent, visitor_id, activa)

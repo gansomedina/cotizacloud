@@ -575,6 +575,7 @@ function notif_config(int $empresa_id): array
         'abono_registrado'     => true,
         'radar_alerta'         => true,
         'feedback_recibido'    => true,
+        'desc_inteligente'     => true,
     ];
 
     $result = array_merge($defaults, $cfg);
