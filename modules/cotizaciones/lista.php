@@ -48,6 +48,21 @@ if ($di_f === 'si') {
 } elseif ($di_f === 'cerrado') {
     $where[] = "EXISTS (SELECT 1 FROM desc_int_activaciones di WHERE di.cotizacion_id = c.id AND di.estado='utilizado')";
 }
+// Filtro "Con descuento" — agrupa TODO lo de descuentos EXCEPTO DI (DI vive en su
+// propia tabla, no toca estas columnas, así que queda fuera solo): cupón asignado,
+// cupón aplicado (monto), descuento automático, o intento de cupón (eventos JS).
+$desc_f = $_GET['desc'] ?? 'todas';
+if (!in_array($desc_f, ['todas','si'])) $desc_f = 'todas';
+if ($desc_f === 'si') {
+    $where[] = "(
+        (c.cupon_codigo IS NOT NULL AND c.cupon_codigo != '')
+        OR c.cupon_monto > 0
+        OR c.descuento_auto_activo = 1
+        OR c.descuento_auto_amt > 0
+        OR EXISTS (SELECT 1 FROM quote_events qe WHERE qe.cotizacion_id = c.id
+                   AND qe.tipo IN ('coupon_validate_click','coupon_valid','coupon_invalid'))
+    )";
+}
 if ($busqueda !== '') {
     $where[] = "(c.titulo LIKE ? OR c.numero LIKE ? OR cl.nombre LIKE ? OR cl.telefono LIKE ?)";
     $like = '%'.$busqueda.'%';
@@ -346,21 +361,15 @@ ob_start();
            value="<?= e($busqueda) ?>" onkeydown="if(event.key==='Enter')filtrar('q',this.value)">
     <button onclick="filtrar('q',document.getElementById('srchCot').value)" style="padding:6px 14px;border-radius:var(--r-sm);border:1px solid var(--g);background:var(--g);color:#fff;font:600 13px var(--body);cursor:pointer;flex-shrink:0">Buscar</button>
   </div>
-  <?php $di_none = ($di_f === 'todas'); // si hay filtro DI, ese manda en el "selected" ?>
+  <?php $di_on = ($di_f !== 'todas'); $desc_on = ($desc_f === 'si'); $ord_on = !$di_on && !$desc_on; ?>
   <select class="sort-select" onchange="cotSel(this.value)">
-    <optgroup label="Ordenar">
-      <option value="orden:reciente"   <?= $di_none && $orden==='reciente'   ?'selected':'' ?>>Más recientes</option>
-      <option value="orden:antigua"    <?= $di_none && $orden==='antigua'    ?'selected':'' ?>>Más antiguas</option>
-      <option value="orden:monto_desc" <?= $di_none && $orden==='monto_desc' ?'selected':'' ?>>Mayor monto</option>
-      <option value="orden:monto_asc"  <?= $di_none && $orden==='monto_asc'  ?'selected':'' ?>>Menor monto</option>
-      <option value="orden:cliente"    <?= $di_none && $orden==='cliente'    ?'selected':'' ?>>Cliente A–Z</option>
-    </optgroup>
-    <optgroup label="Descuento Inteligente">
-      <option value="di:si"      <?= $di_f==='si'      ?'selected':'' ?>>✨ Con DI</option>
-      <option value="di:vigente" <?= $di_f==='vigente' ?'selected':'' ?>>✨ DI vigente</option>
-      <option value="di:cerrado" <?= $di_f==='cerrado' ?'selected':'' ?>>✨ DI cerrado</option>
-      <option value="di:todas"   <?= '' ?>>✨ Quitar filtro DI</option>
-    </optgroup>
+    <option value="orden:reciente"   <?= $ord_on && $orden==='reciente'   ?'selected':'' ?>>Más recientes</option>
+    <option value="orden:antigua"    <?= $ord_on && $orden==='antigua'    ?'selected':'' ?>>Más antiguas</option>
+    <option value="orden:monto_desc" <?= $ord_on && $orden==='monto_desc' ?'selected':'' ?>>Mayor monto</option>
+    <option value="orden:monto_asc"  <?= $ord_on && $orden==='monto_asc'  ?'selected':'' ?>>Menor monto</option>
+    <option value="orden:cliente"    <?= $ord_on && $orden==='cliente'    ?'selected':'' ?>>Cliente A–Z</option>
+    <option value="di:si"   <?= $di_on   ?'selected':'' ?>>✨ Con DI</option>
+    <option value="desc:si" <?= $desc_on ?'selected':'' ?>>🏷 Con descuento</option>
   </select>
 </div>
 
@@ -372,7 +381,7 @@ $chips = ['todas'=>'Todas','enviada'=>'Enviada','vista'=>'Vista','aceptada'=>'Ac
 foreach ($chips as $k => $lbl):
     $cnt = $conteos[$k] ?? 0;
     if ($k !== 'todas' && $cnt === 0) continue;
-    $qs = http_build_query(array_filter(['estado'=>$k,'q'=>$busqueda,'orden'=>$orden,'di'=>($di_f!=='todas'?$di_f:''),'asesor'=>($asesor_f?:'')]));
+    $qs = http_build_query(array_filter(['estado'=>$k,'q'=>$busqueda,'orden'=>$orden,'di'=>($di_f!=='todas'?$di_f:''),'desc'=>($desc_f==='si'?'si':''),'asesor'=>($asesor_f?:'')]));
 ?>
   <a href="/cotizaciones?<?= $qs ?>" class="chip <?= $estado===$k?'active':'' ?>">
     <?= $lbl ?> <span class="chip-count"><?= $cnt ?></span>
@@ -578,7 +587,7 @@ foreach ($chips as $k => $lbl):
 </div>
 
 <?php if ($pag['total_pags'] > 1):
-  $qb = http_build_query(array_filter(['estado'=>$estado,'q'=>$busqueda,'orden'=>$orden,'di'=>($di_f!=='todas'?$di_f:''),'asesor'=>($asesor_f?:'')]));
+  $qb = http_build_query(array_filter(['estado'=>$estado,'q'=>$busqueda,'orden'=>$orden,'di'=>($di_f!=='todas'?$di_f:''),'desc'=>($desc_f==='si'?'si':''),'asesor'=>($asesor_f?:'')]));
 ?>
 <div class="pag-wrap">
   <div class="pag-info">Mostrando <?= $pag['offset']+1 ?>–<?= min($pag['offset']+$por_pag,$pag['total']) ?> de <?= number_format($pag['total']) ?></div>
@@ -600,8 +609,17 @@ foreach ($chips as $k => $lbl):
 
 <script>
 function filtrar(k,v){const p=new URLSearchParams(window.location.search);if(v)p.set(k,v);else p.delete(k);if(k!=='p')p.delete('p');window.location='/cotizaciones?'+p.toString()}
-// Selector combinado: "orden:xxx" cambia el orden, "di:xxx" el filtro de Descuento Inteligente
-function cotSel(val){const i=val.indexOf(':');filtrar(val.slice(0,i), val.slice(i+1))}
+// Selector combinado: "di:si" o "desc:si" son filtros mutuamente excluyentes;
+// cualquier "orden:xxx" ordena Y quita ambos filtros (ordenar = volver a todas).
+function cotSel(val){
+  const i=val.indexOf(':'), k=val.slice(0,i), v=val.slice(i+1);
+  const p=new URLSearchParams(window.location.search);
+  if(k==='di'){ p.set('di',v); p.delete('desc'); }
+  else if(k==='desc'){ p.set('desc',v); p.delete('di'); }
+  else { p.set('orden',v); p.delete('di'); p.delete('desc'); }
+  p.delete('p');
+  window.location='/cotizaciones?'+p.toString();
+}
 const CSRF_TOKEN='<?= csrf_token() ?>';
 
 function toggleCot(id, e) {
