@@ -1318,6 +1318,7 @@ if ($di_act && ($di_act['estado'] ?? '') === 'activo'
         <span style="font:700 12.5px system-ui,sans-serif;color:<?= $th['g'] ?>;background:<?= $th['glt'] ?>;border:1px solid <?= $th['gbd'] ?>;padding:2px 9px;border-radius:10px">Ahorras <?= fmt_pub($di_desc, $di_mon) ?></span>
         <span style="font:600 12.5px system-ui,sans-serif;color:#1a1a1a">Vence: <b id="diVence" style="font-size:13.5px"></b> <span style="color:#999">·</span> <b id="diTimer" style="font-size:17px;font-variant-numeric:tabular-nums;color:#b91c1c">--:--:--</b></span>
       </div>
+      <div style="font:400 9.5px system-ui,sans-serif;color:#999;margin-top:2px">*Aplican términos y condiciones</div>
     </div>
     <div style="display:flex;gap:8px;flex-shrink:0">
       <button onclick="openM('acceptOv')" style="background:<?= $th['g'] ?>;color:#fff;border:none;border-radius:10px;padding:11px 18px;font:800 14px system-ui,sans-serif;cursor:pointer">Aceptar cotización</button>
