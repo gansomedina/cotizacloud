@@ -291,6 +291,77 @@ if ($es_admin) {
     } catch (\Throwable $e) { $score_mensual = []; } // tabla sin migrar
 }
 
+// ── Candidatos a Descuento Inteligente (pipeline muerto listo para recuperar) ──
+// Cotizaciones que YA cumplen todas las reglas del motor (zona R1/R2, frías, sin
+// descuento, cliente NO comprador, ya vistas y enfriadas); solo falta que el
+// cliente vuelva a abrirlas para que dispare el DI. Replica evaluar() 1:1.
+$di_candidatos = [];
+if ($es_admin) {
+    try {
+        $di_candidatos = DB::query(
+            "SELECT t.regla, t.pct AS descuento_pct, t.edad AS dias_creada,
+                    t.numero, t.titulo, t.total, t.radar_bucket,
+                    cl.nombre AS cliente, cl.telefono,
+                    COALESCE(uv.nombre, u.nombre) AS asesor
+             FROM (
+               SELECT c.id, c.numero, c.titulo, c.total, c.radar_bucket, c.empresa_id,
+                      c.cliente_id, c.usuario_id, c.vendedor_id,
+                      TIMESTAMPDIFF(DAY, c.created_at, NOW()) AS edad,
+                      CASE
+                        WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) >= dc.dia_fin_vida
+                             AND TIMESTAMPDIFF(DAY,c.created_at,NOW()) <  dc.dia_dead
+                             AND dc.r1_activa=1 AND dc.r1_pct>0 THEN 1
+                        WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) >= dc.dia_dead
+                             AND TIMESTAMPDIFF(DAY,c.created_at,NOW()) <= dc.dia_techo
+                             AND dc.r2_activa=1 AND dc.r2_pct>0 THEN 2
+                        ELSE 0
+                      END AS regla,
+                      CASE WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) < dc.dia_dead
+                           THEN dc.r1_pct ELSE dc.r2_pct END AS pct,
+                      CASE WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) < dc.dia_dead
+                           THEN GREATEST(1, CEIL(dc.p75/2)) ELSE GREATEST(1, dc.p75) END AS win_days
+               FROM cotizaciones c
+               JOIN desc_int_config dc ON dc.empresa_id = c.empresa_id
+               WHERE c.empresa_id = ?
+                 AND dc.p75 IS NOT NULL AND dc.n_ventas >= 5
+                 AND (dc.r1_activa=1 OR dc.r2_activa=1)
+                 AND c.estado IN ('enviada','vista')
+                 AND c.cliente_id IS NOT NULL AND c.cliente_id > 0
+                 AND (COALESCE(c.descuento_auto_activo,0)=0
+                      OR (c.descuento_auto_expira IS NOT NULL AND c.descuento_auto_expira < NOW()))
+                 AND c.cupon_id IS NULL
+                 AND (c.radar_bucket IS NULL OR c.radar_bucket IN ('enfriandose','hesitacion','no_abierta'))
+                 AND (SELECT COUNT(*) FROM cotizaciones cx
+                      WHERE cx.cliente_id=c.cliente_id AND cx.empresa_id=c.empresa_id
+                        AND cx.estado IN ('enviada','vista')) <= 10
+                 AND EXISTS (SELECT 1 FROM quote_sessions qs
+                             WHERE qs.cotizacion_id=c.id AND qs.es_interno=0
+                               AND NOT (COALESCE(qs.visible_ms,0)<200 AND COALESCE(qs.scroll_max,0)<35))
+                 AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones di WHERE di.cotizacion_id=c.id)
+                 AND NOT EXISTS (SELECT 1 FROM ventas v
+                                 WHERE v.cliente_id = c.cliente_id AND v.estado <> 'cancelada')
+             ) t
+             LEFT JOIN clientes cl ON cl.id = t.cliente_id
+             LEFT JOIN usuarios u  ON u.id = t.usuario_id
+             LEFT JOIN usuarios uv ON uv.id = t.vendedor_id
+             WHERE t.regla > 0
+               AND NOT EXISTS (SELECT 1 FROM quote_sessions qs
+                     WHERE qs.cotizacion_id=t.id AND qs.es_interno=0
+                       AND NOT (COALESCE(qs.visible_ms,0)<200 AND COALESCE(qs.scroll_max,0)<35)
+                       AND qs.created_at >= NOW() - INTERVAL t.win_days DAY)
+               AND NOT EXISTS (SELECT 1 FROM cotizacion_log a
+                     WHERE a.cotizacion_id=t.id AND a.usuario_id IS NOT NULL
+                       AND COALESCE(a.accion,a.evento) IN ('editada','enviada')
+                       AND a.created_at >= NOW() - INTERVAL t.win_days DAY)
+               AND NOT EXISTS (SELECT 1 FROM radar_feedback rf
+                     WHERE rf.cotizacion_id=t.id
+                       AND rf.updated_at >= NOW() - INTERVAL t.win_days DAY)
+             ORDER BY t.regla, t.edad DESC",
+            [$empresa_id]
+        );
+    } catch (\Throwable $e) { $di_candidatos = []; } // tabla sin migrar
+}
+
 // ─────────────────────────────────────────────────────────────
 //  TAB 3: COTIZACIONES
 // ─────────────────────────────────────────────────────────────
@@ -1024,6 +1095,52 @@ ob_start();
     </div>
   </div>
 
+  <?php endif; ?>
+
+  <?php if (!empty($di_candidatos)): ?>
+  <div class="sec-lbl">🎯 Candidatos a Descuento Inteligente <span style="font-weight:500;color:var(--t3);text-transform:none;letter-spacing:0">— cumplen todas las reglas; solo falta que el cliente vuelva a abrirlas</span></div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Regla</th>
+            <th class="r">Descuento</th>
+            <th class="r">Días</th>
+            <th>Cotización</th>
+            <th>Cliente</th>
+            <th>Teléfono</th>
+            <th>Asesor</th>
+            <th>Radar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($di_candidatos as $dcnd):
+            $r1 = ((int)$dcnd['regla'] === 1);
+            $rlbl = $r1 ? 'R1 · Recuperación' : 'R2 · Zona muerta';
+            $rcol = $r1 ? '#b45309' : 'var(--danger)';
+          ?>
+          <tr>
+            <td style="font-weight:700;color:<?= $rcol ?>"><?= $rlbl ?></td>
+            <td class="tbl-num" style="font-weight:800;color:var(--g)"><?= number_format((float)$dcnd['descuento_pct'],0) ?>%</td>
+            <td class="tbl-num" style="color:var(--t3)"><?= (int)$dcnd['dias_creada'] ?></td>
+            <td>
+              <div style="font-weight:600"><?= e($dcnd['titulo'] ?: ('Cotización '.$dcnd['numero'])) ?></div>
+              <div style="font-size:11px;color:var(--t3)">#<?= e($dcnd['numero']) ?></div>
+            </td>
+            <td><?= e($dcnd['cliente'] ?? '—') ?></td>
+            <td class="mono"><?= e($dcnd['telefono'] ?: '—') ?></td>
+            <td style="color:var(--t2)"><?= e($dcnd['asesor'] ?? '—') ?></td>
+            <td style="color:var(--t3);font-size:12px"><?= e($dcnd['radar_bucket'] ?: 'sin bucket') ?></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:10px 14px;font:400 11.5px var(--body);color:var(--t3)">
+      Son ventas dadas por muertas que el sistema recuperará automáticamente en cuanto el cliente reabra su cotización. No se ofrece a clientes que ya compraron.
+    </div>
+  </div>
   <?php endif; ?>
 
   <?php if (!empty($score_mensual)): ?>
