@@ -297,7 +297,11 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
             //    no la actual (que aún no se inserta). Cliente real confirmado. ──
             try {
                 $di_act = DescuentoInteligente::vigente((int)$cot['id']);
-                if (!$di_act && in_array($cot['estado'], ['enviada','vista'])) {
+                // Gate de giro: inmuebles usa su propio template (cotizacion_inmueble.php)
+                // que NO renderiza el banner de DI — no activar ahí (consumiría el
+                // slot único del cliente y aplicaría descuento sin mostrarlo).
+                $di_giro = DB::val("SELECT giro FROM empresas WHERE id=?", [(int)$cot['empresa_id']]) ?: 'servicios';
+                if (!$di_act && $di_giro !== 'inmuebles' && in_array($cot['estado'], ['enviada','vista'])) {
                     $di_ev = DescuentoInteligente::evaluar($cot);
                     if ($di_ev) {
                         $di_precio = round($total_base - $subtotal_extras, 2);
@@ -1314,6 +1318,9 @@ if ($di_act && ($di_act['estado'] ?? '') === 'activo'
         <span style="font:600 16px system-ui,sans-serif;color:#8a8a8a;text-decoration:line-through">Antes <?= fmt_pub($di_antes, $di_mon) ?></span>
         <span style="font:800 22px system-ui,sans-serif;color:<?= $th['g'] ?>">Ahora <?= fmt_pub($di_ahora, $di_mon) ?></span>
       </div>
+      <?php if ($subtotal_extras > 0): ?>
+      <div style="font:600 11.5px system-ui,sans-serif;color:#555;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">+ extras <?= fmt_pub($subtotal_extras, $di_mon) ?> · Total a pagar <b style="color:<?= $th['g'] ?>"><?= fmt_pub($di_ahora + $subtotal_extras, $di_mon) ?></b></div>
+      <?php endif; ?>
       <div style="display:flex;align-items:center;gap:9px;margin-top:4px;flex-wrap:wrap">
         <span style="font:700 12px system-ui,sans-serif;color:<?= $th['g'] ?>;background:<?= $th['glt'] ?>;border:1px solid <?= $th['gbd'] ?>;padding:2px 8px;border-radius:10px">Ahorras <?= fmt_pub($di_desc, $di_mon) ?></span>
         <span style="font:600 12px system-ui,sans-serif;color:#1a1a1a;white-space:nowrap">Vence <b id="diVence" style="font-size:12.5px"></b> <span style="color:#999">·</span> <b id="diTimer" style="font-size:16px;font-variant-numeric:tabular-nums;color:#b91c1c">--:--:--</b></span>
@@ -1358,7 +1365,8 @@ const AUTO  = {on:<?= $adc_on?'true':'false' ?>,pct:<?= (float)$adc_pct ?>,exp:n
 $di_js = ($di_act && ($di_act['estado'] ?? '') === 'activo'
           && in_array($estado, ['enviada','vista']) && strtotime($di_act['expira_at']) > time())
     ? ['active'=>true, 'pct'=>(float)$di_act['pct'], 'antes'=>(float)$di_act['precio_original'],
-       'ahora'=>(float)$di_act['nuevo_total'], 'desc'=>(float)$di_act['monto_desc']]
+       'ahora'=>(float)$di_act['nuevo_total'], 'desc'=>(float)$di_act['monto_desc'],
+       'extras'=>(float)$subtotal_extras, 'total'=>round((float)$di_act['nuevo_total'] + (float)$subtotal_extras, 2)]
     : ['active'=>false];
 ?>
 const DI = <?= json_encode($di_js) ?>;
@@ -1483,7 +1491,13 @@ function openM(id){
             // Descuento Inteligente activo — resumen con los números frozen del banner
             h  = '<div class="sr"><span>Precio</span><span>'+fmt(DI.antes)+'</span></div>';
             h += '<div class="sr" style="color:var(--amb)"><span>Descuento especial ('+DI.pct+'%)</span><span>-'+fmt(DI.desc)+'</span></div>';
-            h += '<div class="sr tot"><span>Total</span><span>'+fmt(DI.ahora)+'</span></div>';
+            if (DI.extras > 0) {
+                h += '<div class="sr"><span>Subtotal con descuento</span><span>'+fmt(DI.ahora)+'</span></div>';
+                h += '<div class="sr"><span>Extras</span><span>+'+fmt(DI.extras)+'</span></div>';
+                h += '<div class="sr tot"><span>Total a pagar</span><span>'+fmt(DI.total)+'</span></div>';
+            } else {
+                h += '<div class="sr tot"><span>Total</span><span>'+fmt(DI.ahora)+'</span></div>';
+            }
         } else {
             const {tot,aa,ca} = calc();
             let base = SUB - aa - ca;

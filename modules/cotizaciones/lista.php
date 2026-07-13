@@ -82,6 +82,8 @@ $rows = DB::query(
             c.radar_bucket, c.radar_score, c.radar_senales, c.suspendida,
             c.cupon_codigo, c.cupon_monto,
             c.descuento_auto_activo, c.descuento_auto_amt,
+            (SELECT di.estado FROM desc_int_activaciones di
+             WHERE di.cotizacion_id = c.id ORDER BY di.id DESC LIMIT 1) AS di_estado,
             (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_validate_click') AS cupon_intentos,
             (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_valid') AS cupon_validos,
             (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_invalid') AS cupon_invalidos,
@@ -417,6 +419,20 @@ foreach ($chips as $k => $lbl):
         if (!empty($rs['pc_source'])) $bucket_badge = $rs['pc_source'];
     }
     $radar  = $estado_activo ? radar_badge($bucket_badge, (int)($c['radar_score'] ?? 0), $vistas) : '';
+
+    // Descuento Inteligente: badge si la cotización TIENE o TUVO uno.
+    // Ámbar = vigente/usado (relevante ahora) · gris = venció o se quitó (histórico).
+    $di_html = '';
+    if (!empty($c['di_estado'])) {
+        $di_map = [
+            'activo'    => ['DI vigente — banner mostrándose al cliente',      '#b45309', '#fef3c7'],
+            'utilizado' => ['El cliente cerró con Descuento Inteligente',      '#b45309', '#fef3c7'],
+            'vencido'   => ['Tuvo Descuento Inteligente (venció sin usarse)',  '#a8a29e', '#f5f5f4'],
+            'cancelado' => ['Tuvo Descuento Inteligente (quitado por admin)',  '#a8a29e', '#f5f5f4'],
+        ];
+        [$di_ttl, $di_col, $di_bg] = $di_map[$c['di_estado']] ?? ['Descuento Inteligente', '#b45309', '#fef3c7'];
+        $di_html = '<span title="'.e($di_ttl).'" style="font:600 11px var(--body);color:'.$di_col.';background:'.$di_bg.';border-radius:5px;padding:2px 7px;white-space:nowrap">✨ DI</span>';
+    }
     $ed_url = '/cotizaciones/'.(int)$c['id'];
   ?>
   <div class="cot-row" id="row-<?= (int)$c['id'] ?>" onclick="toggleCot(<?= (int)$c['id'] ?>,event)">
@@ -444,6 +460,7 @@ foreach ($chips as $k => $lbl):
             <span class="cot-vistas" title="<?= $vistas ?> vista<?= $vistas != 1 ? 's' : '' ?> del cliente"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
           <?php endif ?>
           <?= $cupon_html ?>
+          <?= $di_html ?>
         </div>
       </div>
       <!-- MOBILE: panel expandido (oculto por defecto) -->
@@ -506,6 +523,7 @@ foreach ($chips as $k => $lbl):
           <span class="cot-vistas-badge" title="<?= $vistas ?> vista<?= $vistas != 1 ? 's' : '' ?> del cliente"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
         <?php endif ?>
         <?= $cupon_html ?>
+        <?= $di_html ?>
       </div>
     </div>
 

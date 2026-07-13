@@ -52,6 +52,8 @@ $ventas = DB::query(
             v.total, v.pagado, v.saldo, v.created_at,
             cl.nombre AS cnombre, cl.telefono AS ctel,
             COALESCE(uv.nombre, u.nombre) AS vendedor,
+            EXISTS(SELECT 1 FROM desc_int_activaciones di
+                   WHERE di.cotizacion_id = v.cotizacion_id AND di.estado='utilizado') AS es_di,
             (SELECT COUNT(*) FROM recibos r WHERE r.venta_id=v.id AND r.cancelado=0) AS num_pagos
      FROM ventas v
      LEFT JOIN clientes cl ON cl.id = v.cliente_id
@@ -86,6 +88,9 @@ ob_start();
 .s-pagada{background:var(--g-bg);color:var(--g)}.s-pagada .status-dot{background:var(--g)}
 .s-entregada{background:var(--blue-bg);color:var(--blue)}.s-entregada .status-dot{background:var(--blue)}
 .s-cancelada{background:var(--danger-bg);color:var(--danger)}.s-cancelada .status-dot{background:var(--danger)}
+
+/* BADGE Descuento Inteligente */
+.di-badge{display:inline-flex;align-items:center;gap:2px;font:700 10px var(--body);color:var(--amb);background:var(--amb-bg);border:1px solid var(--amb);border-radius:5px;padding:1px 6px;vertical-align:middle;letter-spacing:.02em;white-space:nowrap;margin-left:6px}
 
 /* FILTROS */
 .filter-bar{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
@@ -254,7 +259,7 @@ foreach ($elabels as $k => $lbl):
   <!-- Col 1: folio + título -->
   <div class="venta-info">
     <div class="venta-num"><?= e($v['numero'] ?? 'VTA-'.$v['id']) ?></div>
-    <div class="venta-title"><?= e($v['titulo']) ?></div>
+    <div class="venta-title"><?= e($v['titulo']) ?><?php if (!empty($v['es_di'])): ?><span class="di-badge" title="Venta cerrada con Descuento Inteligente">✨ DI</span><?php endif ?></div>
     <div class="venta-client"><?= e($v['cnombre'] ?? '—') ?> · <?= $fecha_f ?></div>
     <div class="progress-wrap">
       <div class="progress-bar"><div class="progress-fill" style="width:<?= $pct ?>%"></div></div>
