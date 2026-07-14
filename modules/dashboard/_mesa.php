@@ -89,7 +89,11 @@ $MESA_SHORT = [
     'en_el_aire' => 'En el aire', 'descartada' => 'Descartada',
 ];
 
-$mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT, $mmoney, $mp75) {
+// Límites del picker de agenda (el backend re-valida: futura, ≤ 6 meses)
+$mag_min = date('Y-m-d', strtotime('+1 day'));
+$mag_max = date('Y-m-d', strtotime('+183 days'));
+
+$mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT, $mmoney, $mp75, $mag_min, $mag_max) {
     $d  = $r['decl'] ?? [];
     $bl = $r['bucket'] ? ($MESA_BUCKET_LBL[$r['bucket']] ?? [$r['bucket'], '#64748b']) : null;
     $es_milagro = $r['revivida'] || $r['milagro'];
@@ -135,7 +139,8 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     </div>
     <div class="mdrawer" id="md<?= (int)$r['id'] ?>">
       <div class="msug">
-        <?php if ($r['revivida']): ?><span class="mtag" style="background:#fef3c7;color:#92400e">⚡ revivió tras descarte</span>
+        <?php if (!empty($r['agenda_fecha'])): ?><span class="mtag" style="background:#dbeafe;color:#1d4ed8">📅 la agendaste para <?= e(date('d/m/Y', strtotime($r['agenda_fecha']))) ?></span>
+        <?php elseif ($r['revivida']): ?><span class="mtag" style="background:#fef3c7;color:#92400e">⚡ revivió tras descarte</span>
         <?php elseif ($bl && $r['es_hot']): ?><span class="mtag" style="background:<?= $bl[1] ?>18;color:<?= $bl[1] ?>"><?= e($bl[0]) ?></span><?php endif; ?>
         <span class="mlbl">→</span><span class="msx"><?= e($r['sugerencia']) ?></span>
       </div>
@@ -168,6 +173,18 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           </span>
           <span class="mlockmsg">primero el paso anterior</span></div>
       </div>
+      <div class="magenda">
+        <span class="man">📅 Agendar</span>
+        <?php if (!empty($r['agenda_fecha'])): ?>
+        <span class="magcur">Agendada para <b><?= e(date('d/m/Y', strtotime($r['agenda_fecha']))) ?></b></span>
+        <button type="button" class="mpill" onclick="mesaDesagendar(<?= (int)$r['id'] ?>,this)">Traer a hoy</button>
+        <span class="maghint">El cliente pidió seguimiento para ~esa fecha — ya reapareció en tu mesa.</span>
+        <?php else: ?>
+        <input type="date" class="magin" id="mag<?= (int)$r['id'] ?>" min="<?= $mag_min ?>" max="<?= $mag_max ?>">
+        <button type="button" class="mpill" onclick="mesaAgendar(<?= (int)$r['id'] ?>,this)">Guardar fecha</button>
+        <span class="maghint">Para clientes que compran más adelante (obra, entrega, presupuesto futuro). La saco de tu mesa y no te penaliza; vuelve sola 7 días antes de la fecha.</span>
+        <?php endif; ?>
+      </div>
     </div>
     <?php
 };
@@ -187,7 +204,8 @@ foreach ($mesa_all as $mesa_vid => $mesa):
     <span style="font-weight:800;color:#3f3f3a">📋 Mesa de trabajo</span>
     <span style="color:#a8a8a2;font-size:11.5px"><?= e($mesa_nombres[$mesa_vid] ?? '') ?></span>
     <span>
-      <?php if ($mr['n'] > 0 || !empty($mr['atendidas']) || !empty($mr['descartadas'])): ?>
+      <?php $mesa_ag_n = count($mesa['agendadas']); ?>
+      <?php if ($mr['n'] > 0 || !empty($mr['atendidas']) || !empty($mr['descartadas']) || $mesa_ag_n > 0): ?>
         <b><?= (int)$mr['n'] ?></b> pendientes · <b><?= $mmoney($mr['monto']) ?></b> en juego<?php
           if (($mr['universo'] ?? 0) > count($mesa['rows'])): ?> <span style="color:#a8a8a2">(top <?= count($mesa['rows']) ?> de <?= (int)$mr['universo'] ?>)</span><?php endif; ?>
         <?php if ($mr['sin_postura'] > 0): ?>
@@ -198,6 +216,9 @@ foreach ($mesa_all as $mesa_vid => $mesa):
         <?php endif; ?>
         <?php if (!empty($mr['descartadas'])): ?>
           · <span style="color:#b91c1c;font-weight:700">🗑 <?= (int)$mr['descartadas'] ?> descartada<?= $mr['descartadas'] > 1 ? 's' : '' ?> hoy</span>
+        <?php endif; ?>
+        <?php if ($mesa_ag_n > 0): ?>
+          · <span style="color:#1d4ed8;font-weight:700">📅 <?= $mesa_ag_n ?> agendada<?= $mesa_ag_n > 1 ? 's' : '' ?></span>
         <?php endif; ?>
       <?php else: ?>
         <span style="color:#16a34a;font-weight:700">✓ al corriente</span>
@@ -234,6 +255,21 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       <div class="mlist mdone-zone"><?php foreach ($mesa_desc as $r) $mesa_row($r); ?></div>
       <?php endif; ?>
 
+    <?php endif; ?>
+
+    <?php if (!empty($mesa['agendadas'])): ?>
+    <div class="msect" style="color:#1d4ed8">📅 Agendadas (<?= count($mesa['agendadas']) ?>) — fuera de la mesa hasta 7 días antes de su fecha</div>
+    <div class="maglist">
+      <?php foreach ($mesa['agendadas'] as $ag): ?>
+      <div class="magrow">
+        <a href="/cotizaciones/<?= (int)$ag['id'] ?>"><?= e($ag['titulo'] ?: $ag['cliente']) ?></a>
+        <span class="magfolio"><?= e($ag['numero']) ?><?= $ag['cliente'] && $ag['titulo'] ? ' · ' . e($ag['cliente']) : '' ?></span>
+        <span class="magf">para <b><?= e(date('d/m/Y', strtotime($ag['fecha']))) ?></b> · en <?= (int)$ag['dias_para'] ?>d</span>
+        <span class="magm"><?= $mmoney($ag['total']) ?></span>
+        <button type="button" class="mpill" onclick="mesaDesagendar(<?= (int)$ag['id'] ?>,this)">Traer a hoy</button>
+      </div>
+      <?php endforeach; ?>
+    </div>
     <?php endif; ?>
 
     <?php if ($mesa_es_admin && $mesa['limpieza']['n'] >= 10): ?>
@@ -332,6 +368,12 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       Declarar lo que de verdad pasó siempre te da mejor consejo — y mejor score — que declarar lo
       que se ve bien. Y las fallas CADUCAN: las señales de hace más de 15 días ya no cuentan —
       cada período empieza limpio.</p>
+      <p style="margin:0 0 8px"><b>📅 Agendar.</b> ¿El cliente compra más adelante? (le entregan la casa en 2 meses,
+      arranca la obra en marzo, tiene el presupuesto el próximo trimestre). Abre la fila y ponle una fecha: la cotización
+      <b>sale de tu mesa y deja de contar</b> mientras tanto — no te penaliza por no tocarla. Vuelve sola a tu mesa
+      <b>7 días antes</b> de la fecha, ya re-anclada, para que la retomes a tiempo. Tope: hasta 6 meses, y no puedes
+      reagendar la misma dentro de 15 días (para que no sea un botón de "esconder"). Mientras está agendada la ves en la
+      bandeja <b>📅 Agendadas</b> y puedes traerla a hoy cuando quieras.</p>
       <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
       La meta del día es simple: dejar los pendientes en cero.</p>
     </div>
@@ -424,6 +466,19 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mhead .mh-fresh{flex:none;width:82px;text-align:right}
 .mesa-emb .mhead .mh-chev{flex:none;width:11px}
 .mesa-emb .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.mesa-emb .magenda{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px dashed #eeeee9}
+.mesa-emb .magin{border:1px solid #e2e2dc;border-radius:8px;padding:4px 9px;font:600 12px 'Plus Jakarta Sans',system-ui,sans-serif;color:#3f3f3a;background:#fff}
+.mesa-emb .maghint{font-size:10.5px;color:#a8a8a2;font-style:italic;flex:1 1 100%;line-height:1.45}
+.mesa-emb .magcur{font-size:12px;color:#1d4ed8;font-weight:600}
+.mesa-emb .maglist{border:1px solid #dbeafe;border-radius:10px;overflow:hidden;background:#f8faff}
+.mesa-emb .magrow{display:flex;align-items:center;gap:10px;padding:7px 12px;font-size:12.5px;border-top:1px solid #eef4ff}
+.mesa-emb .magrow:first-child{border-top:none}
+.mesa-emb .magrow a{color:#1a1a18;text-decoration:none;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 220px;min-width:0}
+.mesa-emb .magrow a:hover{color:#1a5c38;text-decoration:underline}
+.mesa-emb .magfolio{color:#a3a39d;font-size:11px;white-space:nowrap}
+.mesa-emb .magf{color:#1d4ed8;white-space:nowrap;font-size:11.5px}
+.mesa-emb .magm{font-weight:700;font-variant-numeric:tabular-nums;margin-left:auto;white-space:nowrap}
+@media (max-width:640px){.mesa-emb .magrow{flex-wrap:wrap;row-gap:3px}.mesa-emb .magfolio{display:none}.mesa-emb .magm{margin-left:0}}
 #mesa-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1a1a18;color:#fff;font-size:12.5px;padding:9px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:9999}
 #mesa-toast.show{opacity:.95}
 @media (max-width:640px){
@@ -476,6 +531,8 @@ var MESA_ERR = {rate:'Vas muy rápido — espera un momento e intenta de nuevo',
                 mesa_off:'La mesa no está activa para tu empresa',
                 sesion:'Tu sesión expiró — recarga la página',
                 datos:'Datos inválidos', razon:'Falta la razón del descarte',
+                no_encontrada:'No se encontró la cotización',
+                fecha_invalida:'Fecha inválida',
                 guardar:'Error al guardar — intenta de nuevo'};
 function mesaErr(code){ return MESA_ERR[code] || ('No se pudo guardar: ' + (code || 'error')); }
 
@@ -577,6 +634,36 @@ function mesaTap(cotId, area, estado, btn, razon){
       mesaToast('✓ Atendida — al recargar pasa a "Atendidas hoy"');
     }
   }).catch(function(){ areaBtns.forEach(function(b){ b.disabled = false; }); mesaToast('No se pudo guardar (red o sesión) — recarga e intenta de nuevo.'); });
+}
+
+// Agenda: parquea la cotización con una fecha futura (sale de la mesa y del
+// score; vuelve sola 7 días antes). El backend re-valida futura/≤6m/cooldown.
+function mesaAgendar(cotId, btn){
+  var inp = document.getElementById('mag' + cotId);
+  var fecha = inp ? inp.value : '';
+  if(!fecha){ mesaToast('Elige una fecha primero'); if(inp) inp.focus(); return; }
+  btn.disabled = true;
+  fetch('/api/mesa/agendar', {method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+    body: JSON.stringify({cotizacion_id:cotId, fecha:fecha})
+  }).then(function(r){return r.json();}).then(function(d){
+    btn.disabled = false;
+    if(!d.ok){ mesaToast(d.msg || mesaErr(d.error)); return; }
+    mesaToast('📅 Agendada — sale de tu mesa y vuelve sola 7 días antes. Recargando…');
+    setTimeout(function(){ location.reload(); }, 1400);
+  }).catch(function(){ btn.disabled = false; mesaToast('No se pudo guardar (red o sesión).'); });
+}
+function mesaDesagendar(cotId, btn){
+  btn.disabled = true;
+  fetch('/api/mesa/agendar', {method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+    body: JSON.stringify({cotizacion_id:cotId, cancelar:1})
+  }).then(function(r){return r.json();}).then(function(d){
+    btn.disabled = false;
+    if(!d.ok){ mesaToast(d.msg || mesaErr(d.error)); return; }
+    mesaToast('Regresó a tu mesa. Recargando…');
+    setTimeout(function(){ location.reload(); }, 900);
+  }).catch(function(){ btn.disabled = false; mesaToast('No se pudo guardar (red o sesión).'); });
 }
 </script>
 <?php $MESA_ASSETS = ob_get_clean(); ?>
