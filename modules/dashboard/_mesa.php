@@ -265,7 +265,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
     <?php endif; ?>
 
     <?php if ($mesa_frias): ?>
-    <div class="msect" style="color:#0369a1">❄️ Frías (<?= count($mesa_frias) ?>) — ya trabajadas y fuera de tu ventana; aquí descansan sin quitarte el foco</div>
+    <div class="msect" style="color:#0369a1">❄️ Frías (<?= count($mesa_frias) ?>) — ya trabajadas y fuera de tu ventana; descansan aquí sin quitarte el foco hasta el día <?= 2 * $mp75 ?> (2× tu ventana) y luego salen solas</div>
     <div class="mlist mfrias-zone"><?php foreach ($mesa_frias as $r) $mesa_row($r); ?></div>
     <?php endif; ?>
 
