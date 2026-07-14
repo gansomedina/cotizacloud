@@ -214,7 +214,12 @@ foreach ($mesa_all as $mesa_vid => $mesa):
     <span style="font-weight:800;color:#3f3f3a">📋 Mesa de trabajo</span>
     <span style="color:#a8a8a2;font-size:11.5px"><?= e($mesa_nombres[$mesa_vid] ?? '') ?></span>
     <span>
-      <?php $mesa_ag_n = count($mesa['agendadas']); $mesa_fr_n = (int)($mr['frias'] ?? 0);
+      <?php // Agendadas del título = parqueadas a futuro + las que ya reaparecieron
+            // (cat='agendada', vueltas a la mesa) — así el contador refleja TODAS
+            // las que agendaste, no solo las que están fuera.
+            $mesa_ag_reap = count(array_filter($mesa['rows'], fn($r) => ($r['cat'] ?? '') === 'agendada'));
+            $mesa_ag_park = count($mesa['agendadas']);
+            $mesa_ag_n = $mesa_ag_park + $mesa_ag_reap; $mesa_fr_n = (int)($mr['frias'] ?? 0);
             $n_sin = count($mesa_sin); $n_seg = count($mesa_seg); ?>
       <?php if ($n_sin > 0 || $n_seg > 0 || !empty($mr['atendidas']) || !empty($mr['descartadas']) || $mesa_ag_n > 0 || $mesa_fr_n > 0): ?>
         <?php if ($n_sin > 0): ?><b style="color:#b45309"><?= $n_sin ?></b> por trabajar<?php else: ?><span style="color:#16a34a;font-weight:700">✓ por trabajar en cero</span><?php endif; ?><?php if ($n_seg > 0): ?> · <b><?= $n_seg ?></b> en seguimiento<?php endif; ?> · <b><?= $mmoney($mr['monto']) ?></b> en juego<?php
@@ -226,7 +231,8 @@ foreach ($mesa_all as $mesa_vid => $mesa):
           · <span style="color:#b91c1c;font-weight:700">🗑 <?= (int)$mr['descartadas'] ?> descartada<?= $mr['descartadas'] > 1 ? 's' : '' ?> hoy</span>
         <?php endif; ?>
         <?php if ($mesa_ag_n > 0): ?>
-          · <span style="color:#1d4ed8;font-weight:700">📅 <?= $mesa_ag_n ?> agendada<?= $mesa_ag_n > 1 ? 's' : '' ?></span>
+          · <span style="color:#1d4ed8;font-weight:700">📅 <?= $mesa_ag_n ?> agendada<?= $mesa_ag_n > 1 ? 's' : '' ?><?php
+            if ($mesa_ag_reap > 0): ?> (<?= $mesa_ag_reap ?> ya <?= $mesa_ag_reap > 1 ? 'volvieron' : 'volvió' ?>)<?php endif; ?></span>
         <?php endif; ?>
         <?php if ($mesa_fr_n > 0): ?>
           · <span style="color:#0369a1;font-weight:700">❄️ <?= $mesa_fr_n ?> fría<?= $mesa_fr_n > 1 ? 's' : '' ?></span>
