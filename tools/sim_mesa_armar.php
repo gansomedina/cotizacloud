@@ -266,5 +266,26 @@ chk('universo = 28', $m2['resumen']['universo'] ?? -1, 28);
 chk('milagros capeados a 6', $cats['milagro'] ?? 0, 6);
 chk('tier1 completo = 20', $cats['sin_postura'] ?? 0, 20);
 
+echo "═ FRÍAS (vendedor 502) ═\n";
+// F1: vieja (35>20), fría, TRABAJADA (fb+postura) → Fría (sale de principal y del score)
+cot(8501, 502, 10000, 35, ['visitas' => 2, 'vista_d' => 30]);
+fb(8501, 502, 'con_interes', 30); tap(8501, 'postura', 'decidiendo', 30);
+// F2: vieja (35>20), fría, SIN trabajar (solo contacto) → principal (falla, castiga)
+cot(8502, 502, 20000, 35, ['visitas' => 2, 'vista_d' => 30]);
+tap(8502, 'contacto', 'hablamos', 30);
+// F3: fresca (10<20), trabajada → principal (atendida)
+cot(8503, 502, 30000, 10, ['visitas' => 2, 'vista_d' => 8]);
+fb(8503, 502, 'con_interes', 7); tap(8503, 'postura', 'decidiendo', 7);
+$mf   = Mesa::armar(5, 502);
+$mfby = [];
+foreach ($mf['rows'] as $r) $mfby[$r['numero']] = $r;
+chk('F1 vieja+trabajada → es_fria', $mfby['COT-8501']['es_fria'] ?? null, true);
+chk('F2 vieja+sin trabajar → principal (no fría)', $mfby['COT-8502']['es_fria'] ?? null, false);
+chk('F3 fresca+trabajada → principal (no fría)', $mfby['COT-8503']['es_fria'] ?? null, false);
+chk('resumen.frias = 1', $mf['resumen']['frias'] ?? -1, 1);
+$cf = Mesa::cobertura_senales(5, 502);
+chk('cobertura excluye Frías: pedidas=2 (F2,F3), atendidas=1 (F3), fallas=1 (F2)',
+    [$cf['pedidas'], $cf['atendidas'], $cf['fallas']], [2, 1, 1]);
+
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

@@ -196,9 +196,11 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
 $MESA_BLOQUES = [];
 foreach ($mesa_all as $mesa_vid => $mesa):
     $mr = $mesa['resumen'];
-    $mesa_desc = array_values(array_filter($mesa['rows'], fn($r) => $r['cat'] === 'descartada_hoy'));
-    $mesa_pend = array_values(array_filter($mesa['rows'], fn($r) => empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
-    $mesa_aten = array_values(array_filter($mesa['rows'], fn($r) => !empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
+    // Frías (viejas ya trabajadas) van a su propia sección — fuera de la principal.
+    $mesa_frias = array_values(array_filter($mesa['rows'], fn($r) => !empty($r['es_fria'])));
+    $mesa_desc = array_values(array_filter($mesa['rows'], fn($r) => empty($r['es_fria']) && $r['cat'] === 'descartada_hoy'));
+    $mesa_pend = array_values(array_filter($mesa['rows'], fn($r) => empty($r['es_fria']) && empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
+    $mesa_aten = array_values(array_filter($mesa['rows'], fn($r) => empty($r['es_fria']) && !empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
     ob_start();
 ?>
 <details class="mesa-emb mesa-strip" id="mesa-emb-<?= (int)$mesa_vid ?>" <?= isset($_GET['mesa_uid']) && (int)$_GET['mesa_uid'] === (int)$mesa_vid ? 'open' : '' ?>>
@@ -206,8 +208,8 @@ foreach ($mesa_all as $mesa_vid => $mesa):
     <span style="font-weight:800;color:#3f3f3a">📋 Mesa de trabajo</span>
     <span style="color:#a8a8a2;font-size:11.5px"><?= e($mesa_nombres[$mesa_vid] ?? '') ?></span>
     <span>
-      <?php $mesa_ag_n = count($mesa['agendadas']); ?>
-      <?php if ($mr['n'] > 0 || !empty($mr['atendidas']) || !empty($mr['descartadas']) || $mesa_ag_n > 0): ?>
+      <?php $mesa_ag_n = count($mesa['agendadas']); $mesa_fr_n = (int)($mr['frias'] ?? 0); ?>
+      <?php if ($mr['n'] > 0 || !empty($mr['atendidas']) || !empty($mr['descartadas']) || $mesa_ag_n > 0 || $mesa_fr_n > 0): ?>
         <b><?= (int)$mr['n'] ?></b> pendientes · <b><?= $mmoney($mr['monto']) ?></b> en juego<?php
           if (($mr['universo'] ?? 0) > count($mesa['rows'])): ?> <span style="color:#a8a8a2">(top <?= count($mesa['rows']) ?> de <?= (int)$mr['universo'] ?>)</span><?php endif; ?>
         <?php if ($mr['sin_postura'] > 0): ?>
@@ -221,6 +223,9 @@ foreach ($mesa_all as $mesa_vid => $mesa):
         <?php endif; ?>
         <?php if ($mesa_ag_n > 0): ?>
           · <span style="color:#1d4ed8;font-weight:700">📅 <?= $mesa_ag_n ?> agendada<?= $mesa_ag_n > 1 ? 's' : '' ?></span>
+        <?php endif; ?>
+        <?php if ($mesa_fr_n > 0): ?>
+          · <span style="color:#0369a1;font-weight:700">❄️ <?= $mesa_fr_n ?> fría<?= $mesa_fr_n > 1 ? 's' : '' ?></span>
         <?php endif; ?>
       <?php else: ?>
         <span style="color:#16a34a;font-weight:700">✓ al corriente</span>
@@ -257,6 +262,11 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       <div class="mlist mdone-zone"><?php foreach ($mesa_desc as $r) $mesa_row($r); ?></div>
       <?php endif; ?>
 
+    <?php endif; ?>
+
+    <?php if ($mesa_frias): ?>
+    <div class="msect" style="color:#0369a1">❄️ Frías (<?= count($mesa_frias) ?>) — ya trabajadas y fuera de tu ventana; aquí descansan sin quitarte el foco</div>
+    <div class="mlist mfrias-zone"><?php foreach ($mesa_frias as $r) $mesa_row($r); ?></div>
     <?php endif; ?>
 
     <?php if (!empty($mesa['agendadas'])): ?>
@@ -405,6 +415,8 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mrow.milagro{background:#fefce8}
 .mesa-emb .mrow.done{opacity:.78}
 .mesa-emb .mdone-zone .mrow{opacity:.72}
+.mesa-emb .mfrias-zone{border-color:#dbeafe}
+.mesa-emb .mfrias-zone .mrow{opacity:.66;background:#f7fafd}
 .mesa-emb .mdot{width:9px;height:9px;border-radius:50%;flex:none}
 .mesa-emb .mdot.off{background:transparent;border:1.5px solid #c9c9c2}
 .mesa-emb .mcli{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 380px;max-width:520px}

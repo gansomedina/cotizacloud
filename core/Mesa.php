@@ -327,10 +327,21 @@ class Mesa
                 $cat = 'trabajo';            // capturada → a trabajarla
             }
 
+            // FRÍAS: pasada de tu ventana, fría (no la ve nadie) y YA trabajada
+            // (feedback 👍👎 + postura). Se sacan de la lista PRINCIPAL para
+            // despejar pantalla y NO cuentan para el score. Las viejas SIN
+            // trabajar se QUEDAN en la principal (fallan → castigo hasta que las
+            // trabajes o descartes). Las activas (caliente/revivió/agendada) y
+            // las descartadas-hoy nunca son frías.
+            $trabajada = ($postura !== null) && !empty($me[$cid]['postura']);
+            $es_fria = ($edad > $p75) && !$hot_reciente && $trabajada
+                && !in_array($cat, ['revivida', 'milagro', 'agendada', 'descartada_hoy'], true);
+
             $rows[] = [
                 'id' => $cid, 'numero' => $c['numero'], 'titulo' => $c['titulo'],
                 'cliente' => $c['cliente'] ?: '—', 'telefono' => $c['cli_tel'],
                 'total' => (float)$c['total'], 'edad' => $edad, 'cat' => $cat,
+                'es_fria' => $es_fria,
                 'agenda_fecha' => ($ag_reaparecida ? ($ag[$cid]['fecha'] ?? null) : null),
                 'bucket' => $bucket, 'es_hot' => $es_hot,
                 'visitas' => (int)$c['visitas'], 'dias_sin_vista' => (int)$c['dias_sin_vista'],
@@ -423,10 +434,11 @@ class Mesa
         }
         $rows = $capped;
 
-        $sin_postura = 0; $monto = 0.0; $mas_viejo = 0; $atendidas = 0; $descartadas = 0;
+        $sin_postura = 0; $monto = 0.0; $mas_viejo = 0; $atendidas = 0; $descartadas = 0; $frias = 0;
         foreach ($rows as $r) {
+            if (!empty($r['es_fria']))          { $frias++; continue; } // sección aparte, no son pendientes
             if ($r['cat'] === 'descartada_hoy') { $descartadas++; continue; }
-            if ($r['atendida_hoy']) { $atendidas++; continue; }
+            if ($r['atendida_hoy'])             { $atendidas++; continue; }
             $monto += $r['total'];
             if ($r['cat'] === 'sin_postura') {
                 $sin_postura++;
@@ -440,9 +452,9 @@ class Mesa
             'agendadas'=> $agendadas,
             'limpieza' => ['n' => $limpieza_n, 'monto' => $limpieza_monto, 'linea_dias' => $linea_limpieza],
             'ciclo'    => $ciclo,
-            'resumen'  => ['n' => count($rows) - $atendidas - $descartadas, 'monto' => $monto,
-                           'atendidas' => $atendidas, 'descartadas' => $descartadas, 'universo' => $universo,
-                           'sin_postura' => $sin_postura, 'mas_viejo_dias' => $mas_viejo],
+            'resumen'  => ['n' => count($rows) - $atendidas - $descartadas - $frias, 'monto' => $monto,
+                           'atendidas' => $atendidas, 'descartadas' => $descartadas, 'frias' => $frias,
+                           'universo' => $universo, 'sin_postura' => $sin_postura, 'mas_viejo_dias' => $mas_viejo],
         ];
     }
 
@@ -469,104 +481,50 @@ class Mesa
      */
     public static function cobertura_senales(int $empresa_id, ?int $vendedor_id = null, int $dias = 30): array
     {
-        // USO DE LA MESA (herramienta obligatoria de uso diario). De las
-        // cotizaciones que el asesor VE en su mesa de hoy, cuántas están ATENDIDAS
-        // = tienen feedback 👍👎 Y al menos una postura declarada (mesa_estados
-        // area='postura'). Los dos, obligatorios (decisión CEO). El score aplica
-        // binario 80% sobre esto. UNA sola query barata por empresa.
-        //
-        // El universo replica lo que muestra armar() (no TODAS las activas): se
-        // excluyen las que la mesa esconde para no reprobar por lo que nunca vio —
-        //   · nunca abiertas y frías (visitas=0 y sin bucket caliente) → "Sin abrir"
-        //   · muy viejas sin calor (edad > 2×p75 y sin bucket caliente) → limpieza
-        // Se conservan si están calientes AHORA (radar_bucket ∈ HOT).
-        $uf = $vendedor_id !== null
-            ? 'AND COALESCE(c.vendedor_id, c.usuario_id) = ' . (int)$vendedor_id : '';
-        // p75 del ciclo (igual criterio que armar); cacheado por empresa
-        static $p75_cache = [];
-        if (!array_key_exists($empresa_id, $p75_cache)) {
-            try {
-                if (!class_exists('Radar')) require_once MODULES_PATH . '/radar/Radar.php';
-                $ciclo = Radar::ciclo_venta($empresa_id);
-                $p75_cache[$empresa_id] = ($ciclo['auto'] && isset($ciclo['p75']) && $ciclo['p75'] !== null)
-                    ? max(1, (int)$ciclo['p75']) : 30;
-            } catch (\Throwable $e) { $p75_cache[$empresa_id] = 30; }
-        }
-        $p75_dos = 2 * (int)$p75_cache[$empresa_id];
-        $p75_uno = (int)$p75_cache[$empresa_id]; // bono de edición (opción B)
-        $hot_in  = "'" . implode("','", self::HOT) . "'";
-        // Agenda: futura (fecha−hoy > 7) = parqueada, NO cuenta. Reaparecida
-        // (−2×p75 ≤ fecha−hoy ≤ 7) = cuenta aunque sea vieja. Misma ventana que armar.
-        // Solo se aplica si la columna existe (blindaje ante despliegue sin migrar).
-        static $has_agenda = null;
-        if ($has_agenda === null) {
-            try { DB::val("SELECT agenda_fecha FROM cotizaciones LIMIT 1"); $has_agenda = true; }
-            catch (\Throwable $e) { $has_agenda = false; }
-        }
-        if ($has_agenda) {
-            $ag_fut_where = "AND NOT (c.agenda_fecha IS NOT NULL AND DATEDIFF(c.agenda_fecha, CURDATE()) > 7)";
-            $ag_reap_or   = "OR (c.agenda_fecha IS NOT NULL AND DATEDIFF(c.agenda_fecha, CURDATE()) BETWEEN -$p75_dos AND 7)";
-            $ag_fresh_rf  = "AND (c.agenda_fecha IS NULL OR rf.updated_at > c.agenda_at)";
-            $ag_fresh_m   = "AND (c.agenda_fecha IS NULL OR m.created_at > c.agenda_at)";
-        } else {
-            $ag_fut_where = $ag_reap_or = $ag_fresh_rf = $ag_fresh_m = '';
-        }
-        $out = [];
+        // FUENTE ÚNICA (decisión CEO): el score/tip/widget cuentan EXACTAMENTE
+        // las filas que MUESTRA la mesa (Mesa::armar), MENOS las "Frías" (viejas
+        // ya trabajadas que se despejan a su sección aparte). "Lo que se juzga =
+        // lo que se ve en la lista principal". Antes era un query aparte con
+        // filtros propios y no cuadraba con la mesa (caso "41 vs 17").
+        //   pedidas   = filas de la mesa que NO son Frías
+        //   atendidas = de ésas, las que tienen feedback 👍👎 (radar_feedback del
+        //               dueño) Y postura declarada (mesa_estados area='postura').
+        // ($dias se conserva en la firma por compatibilidad; armar define la ventana.)
+        $medir = function (int $vid) use ($empresa_id): array {
+            $mesa = self::armar($empresa_id, $vid);
+            $ped = 0; $ate = 0;
+            foreach ($mesa['rows'] as $r) {
+                if (!empty($r['es_fria'])) continue; // Frías: fuera del examen
+                $ped++;
+                $tiene_fb   = (($r['postura'] ?? null) !== null);    // 👍👎 del dueño
+                $tiene_post = !empty($r['decl']['postura'] ?? null); // postura declarada
+                if ($tiene_fb && $tiene_post) $ate++;
+            }
+            return ['pedidas' => $ped, 'atendidas' => $ate, 'fallas' => $ped - $ate];
+        };
         try {
-            foreach (DB::query(
-                "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
-                        COUNT(*) AS pedidas,
-                        SUM(
-                          EXISTS(SELECT 1 FROM radar_feedback rf
-                                 WHERE rf.cotizacion_id = c.id
-                                   AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
-                                   $ag_fresh_rf)
-                          AND EXISTS(SELECT 1 FROM mesa_estados m
-                                     WHERE m.cotizacion_id = c.id AND m.area = 'postura'
-                                       $ag_fresh_m)
-                        ) AS atendidas
-                 FROM cotizaciones c
-                 WHERE c.empresa_id = ? AND c.estado IN ('enviada','vista')
-                   AND c.suspendida = 0 AND c.total > 0 AND c.accion_at IS NULL
-                   AND NOT EXISTS (SELECT 1 FROM ventas v
-                                   WHERE v.cotizacion_id = c.id AND v.estado <> 'cancelada')
-                   $ag_fut_where
-                   AND (c.visitas > 0 OR c.radar_bucket IN ($hot_in) $ag_reap_or)
-                   AND (DATEDIFF(NOW(), c.created_at) <= $p75_dos
-                        OR EXISTS (SELECT 1 FROM cotizacion_log cl
-                                   WHERE cl.cotizacion_id = c.id AND cl.usuario_id IS NOT NULL
-                                     AND COALESCE(cl.accion, cl.evento) IN ('editada','enviada')
-                                     AND cl.created_at >= NOW() - INTERVAL $p75_uno DAY)
-                        OR c.radar_bucket IN ($hot_in)
-                        $ag_reap_or)
-                   $uf
-                 GROUP BY uid", [$empresa_id]
-            ) as $r) {
-                // Sin tope: el score juzga la LISTA COMPLETA (decisión CEO,
-                // opción A). La mesa ya muestra todas, así que "lo que se juzga =
-                // lo que se ve". El Seguimiento es proporcional (3 escalones), así
-                // que cubrir poco de mucho baja gradual, no reprueba en seco.
-                $ped = (int)$r['pedidas'];
-                $ate = min((int)$r['atendidas'], $ped);
-                $out[(int)$r['uid']] = [
-                    'pedidas'   => $ped,
-                    'atendidas' => $ate,
-                    'fallas'    => $ped - $ate,
-                ];
-            }
-        } catch (Throwable $e) {
-            // FAIL-NEUTRAL, no fail-open: un error SQL no debe regalar el 25%
-            // del score. El flag 'error' hace que ActividadScore salte el blend.
-            error_log('[Mesa cobertura] ' . $e->getMessage());
             if ($vendedor_id !== null) {
-                return ['pedidas' => 0, 'atendidas' => 0, 'fallas' => 0, 'error' => true];
+                return $medir($vendedor_id);
             }
-            return [];
+            // Equipo: un medir() por vendedor con cartera activa. armar() cachea
+            // por (empresa, vendedor) → sin trabajo doble con el render de la mesa.
+            $out = [];
+            foreach (DB::query(
+                "SELECT DISTINCT COALESCE(vendedor_id, usuario_id) AS uid
+                 FROM cotizaciones
+                 WHERE empresa_id = ? AND estado IN ('enviada','vista') AND suspendida = 0",
+                [$empresa_id]) as $r) {
+                $out[(int)$r['uid']] = $medir((int)$r['uid']);
+            }
+            return $out;
+        } catch (\Throwable $e) {
+            // FAIL-NEUTRAL, no fail-open: un error no debe regalar el 25% del
+            // score. El flag 'error' hace que ActividadScore salte el blend.
+            error_log('[Mesa cobertura] ' . $e->getMessage());
+            return $vendedor_id !== null
+                ? ['pedidas' => 0, 'atendidas' => 0, 'fallas' => 0, 'error' => true]
+                : [];
         }
-        if ($vendedor_id !== null) {
-            return $out[$vendedor_id] ?? ['pedidas' => 0, 'atendidas' => 0, 'fallas' => 0];
-        }
-        return $out;
     }
 
     /**
