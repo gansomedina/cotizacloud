@@ -82,6 +82,13 @@ if ($req_uri === '/sw.js') {
 
 require_once __DIR__ . '/config.php';
 
+// Zona horaria de la app: los usuarios están en Hermosillo (UTC-7). DEBE ir
+// ANTES de cualquier query — DB.php sincroniza MySQL con date('P'), así NOW()
+// y CURDATE() cortan a la medianoche LOCAL, no la del servidor. Sin esto, el
+// trabajo hecho de noche (después de ~9pm) se sellaba con la fecha del día
+// siguiente. config.php puede sobrescribir con define('APP_TIMEZONE', ...).
+date_default_timezone_set(defined('APP_TIMEZONE') ? APP_TIMEZONE : 'America/Hermosillo');
+
 // Iniciar sesión y detectar empresa
 Auth::init();
 

@@ -356,7 +356,10 @@ class Mesa
                     }
                     return false;
                 })(),
-                // Días desde la última declaración en la mesa (null = nunca)
+                // Días desde la última declaración en la mesa (null = nunca).
+                // Días de CALENDARIO, no horas/24: trabajo de ayer 8pm debe decir
+                // "hace 1d", no "hoy" solo porque no han pasado 24h completas.
+                // Consistente con dias_sin_vista (DATEDIFF, también calendario).
                 'ult_decl_dias' => (function () use ($me, $cid) {
                     $max = 0;
                     foreach (($me[$cid] ?? []) as $a => $d) {
@@ -364,7 +367,7 @@ class Mesa
                         $t = strtotime($d['at']);
                         if ($t > $max) $max = $t;
                     }
-                    return $max ? (int)floor((time() - $max) / 86400) : null;
+                    return $max ? (int)round((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', $max))) / 86400) : null;
                 })(),
                 'revivida' => ($cat === 'revivida'),
                 'milagro'  => ($cat === 'milagro'),
