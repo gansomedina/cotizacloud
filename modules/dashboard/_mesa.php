@@ -882,12 +882,18 @@ function mesaDesagendar(cotId, btn){
     <?php if ($mesa_cob !== null):
         $cob_pend = 0;
         foreach ($mesa_cob_det as $cd) { if (!(int)$cd['cerrada'] && !(int)$cd['atendida']) $cob_pend++; }
-        $cob_ok = $mesa_cob['pedidas'] === 0
-               || $mesa_cob['fallas'] <= max(1, (int)floor(0.20 * $mesa_cob['pedidas']));
+        // MISMO cálculo que el score (proporcional 3 escalones — fuente única):
+        // <50% bajo · 50–80% medio (0.5) · ≥80% completo. Mesa vacía = al día.
+        $cob_vacia = ($mesa_cob['pedidas'] === 0);
+        $cob_cov   = !$cob_vacia ? $mesa_cob['atendidas'] / $mesa_cob['pedidas'] : 1.0;
+        $cob_pct   = (int)round($cob_cov * 100);
+        $cob_niv   = $cob_vacia ? 'ok' : ($cob_cov >= 0.80 ? 'ok' : ($cob_cov >= 0.50 ? 'medio' : 'bajo'));
+        $cob_col   = $cob_niv === 'ok' ? '#15803d' : ($cob_niv === 'medio' ? '#b45309' : '#b91c1c');
+        $cob_tag   = $cob_niv === 'ok' ? '✓ completo' : ($cob_niv === 'medio' ? 'medio (cuenta 50%)' : 'bajo (no cuenta)');
     ?>
     <div style="margin-bottom:8px;font-size:12.5px">
-      <span style="font-weight:700;color:<?= $cob_ok ? '#15803d' : '#b91c1c' ?>">
-        🔥 Señales (últimos <?= (int)$mesa_per ?>d): <?= (int)$mesa_cob['atendidas'] ?> de <?= (int)$mesa_cob['pedidas'] ?> atendidas<?= $cob_ok ? ' ✓' : '' ?></span>
+      <span style="font-weight:700;color:<?= $cob_col ?>">
+        🔥 Señales (últimos <?= (int)$mesa_per ?>d): <?php if ($cob_vacia): ?>sin pendientes ✓<?php else: ?><?= (int)$mesa_cob['atendidas'] ?> de <?= (int)$mesa_cob['pedidas'] ?> atendidas (<?= $cob_pct ?>%) · <?= $cob_tag ?><?php endif; ?></span>
       <?php if ($cob_pend > 0): ?>
         · <span style="color:#d97706;font-weight:700"><?= $cob_pend ?> por vencer</span>
       <?php endif; ?>
@@ -906,8 +912,8 @@ function mesaDesagendar(cotId, btn){
             — <span style="color:<?= $co ?>;font-weight:700"><?= e($st) ?></span></div>
           <?php endforeach; ?>
           <div style="color:#a8a8a2;margin-top:4px"><?= (int)($empresa['mesa_activa'] ?? 0) >= 2
-              ? 'Cuenta para tu termómetro cubrir el 80% (con margen de 1 falla).'
-              : 'Pronto contará para tu termómetro: la meta es cubrir el 80% (con margen de 1 falla).' ?> Las señales de hace más de <?= (int)$mesa_per ?> días ya no cuentan — cada período empieza limpio.</div>
+              ? 'Cuenta para tu termómetro: cubrir ≥80% = completo · 50–80% = medio (mitad) · menos de 50% = no cuenta.'
+              : 'Pronto contará para tu termómetro: ≥80% = completo · 50–80% = medio · menos de 50% = no cuenta.' ?> Las señales de hace más de <?= (int)$mesa_per ?> días ya no cuentan — cada período empieza limpio.</div>
         </div>
       </details>
       <?php endif; ?>

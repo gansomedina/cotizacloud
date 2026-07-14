@@ -409,7 +409,9 @@ class Mesa
             return ($b['total'] <=> $a['total']) ?: ($a['id'] <=> $b['id']);
         });
 
-        // Caps: milagros/revividas 6, mesa 25
+        // Sin tope de mesa: se muestra la LISTA COMPLETA (decisión CEO — cortar
+        // a 25 confundía "cuántas tengo" y no cuadraba con el score). Se conserva
+        // un tope SOLO para milagros/revividas (que no inunden la cabecera).
         $universo = count($rows);
         $t3 = 0; $capped = [];
         foreach ($rows as $r) {
@@ -417,9 +419,6 @@ class Mesa
                 $t3++;
                 if ($t3 > self::CAP_MILAGROS) continue;
             }
-            // Promesa "visible un día": descartada_hoy no se corta por el cap.
-            // Las agendadas reaparecidas tampoco (el cliente pidió seguimiento ahora).
-            if (count($capped) >= self::CAP_MESA && $r['cat'] !== 'descartada_hoy' && $r['cat'] !== 'agendada') continue;
             $capped[] = $r;
         }
         $rows = $capped;
@@ -543,11 +542,11 @@ class Mesa
                    $uf
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
-                // El score NO puede exigir más de lo que la mesa MUESTRA: la mesa
-                // topa en CAP_MESA (25). Un asesor con 98 activas solo ve/trabaja
-                // 25 — pedirle las 98 es reprobarlo por lo que nunca se le mostró.
-                // Capeamos pedidas al tope; atendidas no puede pasar de pedidas.
-                $ped = min((int)$r['pedidas'], self::CAP_MESA);
+                // Sin tope: el score juzga la LISTA COMPLETA (decisión CEO,
+                // opción A). La mesa ya muestra todas, así que "lo que se juzga =
+                // lo que se ve". El Seguimiento es proporcional (3 escalones), así
+                // que cubrir poco de mucho baja gradual, no reprueba en seco.
+                $ped = (int)$r['pedidas'];
                 $ate = min((int)$r['atendidas'], $ped);
                 $out[(int)$r['uid']] = [
                     'pedidas'   => $ped,

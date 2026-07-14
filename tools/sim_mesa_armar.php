@@ -257,12 +257,14 @@ chk('sin_postura = 2 (M1, M17), mas_viejo = 6', [$mr['sin_postura'], $mr['mas_vi
 chk('limpieza: 1 cotización $15,000 (M6), línea 40', [$mesa['limpieza']['n'], $mesa['limpieza']['monto'], $mesa['limpieza']['linea_dias']], [1, 15000.0, 40]);
 
 echo "═ CAPS (vendedor 501: 8 milagros + 20 tier1 = 28) ═\n";
+// Sin tope de mesa: se muestran TODAS (6 milagros por CAP_MILAGROS + 20 tier1 = 26).
+// Solo milagros/revividas siguen topados a 6 para no inundar la cabecera.
 $m2 = Mesa::armar(5, 501);
 $cats = array_count_values(array_column($m2['rows'], 'cat'));
-chk('total capeado a 25', count($m2['rows']), 25);
-chk('universo pre-cap = 28', $m2['resumen']['universo'] ?? -1, 28);
+chk('lista completa: 6 milagros + 20 tier1 = 26 (sin tope de mesa)', count($m2['rows']), 26);
+chk('universo = 28', $m2['resumen']['universo'] ?? -1, 28);
 chk('milagros capeados a 6', $cats['milagro'] ?? 0, 6);
-chk('resto tier1 = 19', $cats['sin_postura'] ?? 0, 19);
+chk('tier1 completo = 20', $cats['sin_postura'] ?? 0, 20);
 
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

@@ -1052,7 +1052,7 @@ if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
         <ul>
           <li><b>Activación (13%)</b> — ¿Las cotizaciones llegan al cliente? Penaliza no abiertas (×1/tasa cierre) y dormidas (escalado por tiempo promedio de cierre de la empresa).</li>
           <li><b>Engagement (17%)</b> — Capa de penalizaciones: ventas sin cobrar (×1/tasa cierre, fuerte), descuentos (×tasa cierre, suave), ventas por debajo del promedio de la empresa.</li>
-          <li><b>Seguimiento (25%) = tu mesa</b> — Con la Mesa de Trabajo activa, ESTA dimensión ES tu mesa: atiende (feedback 👍👎 <b>+</b> postura) al menos el <b>80%</b> de las cotizaciones de tu mesa = completo; abajo = <b>cero</b>. Atender 0 reprueba aunque sea 1 sola cotización. <span style="opacity:.7">(Empresas sin mesa: se mide el feedback en tus cotizaciones calientes.)</span></li>
+          <li><b>Seguimiento (25%) = tu mesa</b> — Con la Mesa de Trabajo activa, ESTA dimensión ES tu mesa (lista completa): atiende (feedback 👍👎 <b>+</b> postura) el <b>≥80%</b> = completo · <b>50–80%</b> = medio (cuenta la mitad) · <b>menos de 50%</b> = no cuenta. <span style="opacity:.7">(Empresas sin mesa: se mide el feedback en tus cotizaciones calientes.)</span></li>
           <li><b>Radar Health (10%)</b> — ¿Cuidas a los clientes con interés? Cuando una cotización se pone caliente, el cliente la está viendo con interés. Mide cuántas de esas se te mueren — el cliente desaparece del Radar sin que cierres. Entre menos sueltas, más alto.</li>
           <li><b>Conversión (35%)</b> — ¿Cierras ventas? Tasa de cierre vs empresa, calidad (cerrar ventas difíciles vale más), tendencia de volumen (ventas actuales vs período anterior), consistencia semanal.</li>
         </ul>
@@ -1150,7 +1150,13 @@ if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
         <div class="dbg-row"><span class="dbg-lbl">  pen bajo benchmark</span><span class="dbg-val dbg-neg"><?php $epbb = $es['eng_pen_bajo_benchmark'] ?? 0; if ($epbb > 0) { echo '-'.round($epbb * 100, 1).'% ('.($es['ventas_periodo'] ?? '?').' vs '.($es['bench_ventas'] ?? '?').')'; } else echo '—'; ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Seguimiento (25%) = mesa</span><span class="dbg-val"><?= round(($es['s_seguimiento'] ?? 0) * 100, 1) ?>%</span></div>
         <?php if (($es['s_mesa'] ?? null) !== null): ?>
-        <div class="dbg-row"><span class="dbg-lbl">  mesa: <?= (int)($es['mesa_atendidas'] ?? 0) ?>/<?= (int)($es['mesa_pedidas'] ?? 0) ?> atendidas (≥80%)</span><span class="dbg-val <?= (float)$es['s_mesa'] > 0 ? '' : 'dbg-neg' ?>"><?= (float)$es['s_mesa'] > 0 ? '✓ completo' : '✗ 0' ?></span></div>
+        <?php
+          $_mp = (int)($es['mesa_pedidas'] ?? 0); $_ma = (int)($es['mesa_atendidas'] ?? 0);
+          $_mcov = $_mp > 0 ? round(100 * $_ma / $_mp) : 100;
+          $_sm = (float)$es['s_mesa'];
+          $_mtag = $_sm >= 1.0 ? '✓ completo (100%)' : ($_sm >= 0.5 ? '~ medio (50%)' : '✗ bajo (0%)');
+        ?>
+        <div class="dbg-row"><span class="dbg-lbl">  mesa: <?= $_ma ?>/<?= $_mp ?> atendidas (<?= $_mcov ?>%)</span><span class="dbg-val <?= $_sm > 0 ? '' : 'dbg-neg' ?>"><?= $_mtag ?></span></div>
         <?php endif; ?>
         <div class="dbg-row"><span class="dbg-lbl">Radar Health (10%)</span><span class="dbg-val"><?= round(($es['s_radar_health'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">  calientes / muertas</span><span class="dbg-val"><?= (int)($es['health_up'] ?? $es['transiciones_up'] ?? 0) ?> / <?= (int)($es['health_down'] ?? $es['senales_ignoradas'] ?? 0) ?></span></div>
