@@ -191,6 +191,17 @@ class DescuentoInteligente
             [(int)$cot['id']]);
         if (!$vio) return null;
 
+        // DORMANCIA DEL CLIENTE (reset por interés): si te vio hace poco, hay
+        // interés → es un MILAGRO (lo trabaja el asesor), NO un DI. El DI solo
+        // dispara si el cliente estuvo callado MÁS que tu ventana de mesa (2×p75)
+        // desde su última vista. Cada vista real resetea el reloj sola: evaluar()
+        // corre ANTES de sellar la visita actual (public/cotizacion.php:370), así
+        // que ultima_vista_at = la vista PREVIA. Sin esto, el DI se rendía (regalaba
+        // %) mientras la mesa aún la tenía en juego (R1 arranca en 1.5×p75).
+        $uv   = $cot['ultima_vista_at'] ?? null;
+        $dorm = $uv ? (int)floor((time() - strtotime($uv)) / 86400) : 0;
+        if ($dorm <= 2 * (int)$anc['p75']) return null; // te vio dentro de tu ventana → milagro, no DI
+
         // Exclusión B: actividad reciente en el window (cliente O asesor) → viva
         $reciente = (int)DB::val(
             "SELECT
