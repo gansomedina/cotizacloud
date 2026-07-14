@@ -302,6 +302,12 @@ class Mesa
                 continue;
             }
 
+            // Día 0 (creada HOY) todavía no es seguimiento: la acabas de mandar,
+            // el seguimiento arranca al día 1. Entra a la mesa con edad >= 1, la
+            // haya abierto el cliente o no (y así tampoco cuenta en el score el
+            // mismo día). Se respetan descartada-hoy / revivida / agendada.
+            if ($edad === 0 && !$descartada_hoy && !isset($revividas[$cid]) && !$ag_reaparecida) continue;
+
             // Sin señal del cliente (nunca abrió) y sin calor → no es trabajo
             // de mesa (la tarjeta "Sin abrir" del dashboard ya la cubre).
             // Las revividas y las agendadas-reaparecidas se respetan.
