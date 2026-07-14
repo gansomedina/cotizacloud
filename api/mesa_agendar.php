@@ -46,8 +46,11 @@ if ($cancelar) {
 $ts = strtotime($fecha . ' 00:00:00');
 if (!$ts || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) { echo json_encode(['ok'=>false,'error'=>'fecha_invalida']); exit; }
 $hoy   = strtotime(date('Y-m-d') . ' 00:00:00');
+$piso  = $hoy + 15 * 86400;  // mínimo 15 días — la agenda es para compra a futuro,
+                             // no para posponer el seguimiento unos días (reaparece
+                             // 7 días antes; con menos de 15 no alcanza a parquearse)
 $tope  = $hoy + 183 * 86400; // ~6 meses
-if ($ts <= $hoy)  { echo json_encode(['ok'=>false,'error'=>'fecha_pasada','msg'=>'La fecha debe ser futura.']); exit; }
+if ($ts < $piso)  { echo json_encode(['ok'=>false,'error'=>'fecha_cerca','msg'=>'La fecha debe ser de al menos 15 días. La agenda es para clientes que compran más adelante, no para posponer el seguimiento.']); exit; }
 if ($ts > $tope)  { echo json_encode(['ok'=>false,'error'=>'fecha_lejana','msg'=>'Máximo 6 meses.']); exit; }
 
 // Cooldown 15 días: no re-agendar si la última agenda fue hace < 15 días

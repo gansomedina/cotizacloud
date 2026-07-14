@@ -89,8 +89,10 @@ $MESA_SHORT = [
     'en_el_aire' => 'En el aire', 'descartada' => 'Descartada',
 ];
 
-// Límites del picker de agenda (el backend re-valida: futura, ≤ 6 meses)
-$mag_min = date('Y-m-d', strtotime('+1 day'));
+// Límites del picker de agenda (el backend re-valida: 15 días … 6 meses).
+// Piso de 15 días: la agenda es para compra a futuro, no para posponer unos
+// días — reaparece 7 días antes, con menos de 15 no alcanza a parquearse.
+$mag_min = date('Y-m-d', strtotime('+15 days'));
 $mag_max = date('Y-m-d', strtotime('+183 days'));
 
 $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT, $mmoney, $mp75, $mag_min, $mag_max) {
@@ -182,7 +184,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <?php else: ?>
         <input type="date" class="magin" id="mag<?= (int)$r['id'] ?>" min="<?= $mag_min ?>" max="<?= $mag_max ?>">
         <button type="button" class="mpill" onclick="mesaAgendar(<?= (int)$r['id'] ?>,this)">Guardar fecha</button>
-        <span class="maghint">Para clientes que compran más adelante (obra, entrega, presupuesto futuro). La saco de tu mesa y no te penaliza; vuelve sola 7 días antes de la fecha.</span>
+        <span class="maghint">Para clientes que compran más adelante (obra, entrega, presupuesto futuro): mínimo 15 días, máximo 6 meses. La saco de tu mesa y no te penaliza; vuelve sola 7 días antes de la fecha.</span>
         <?php endif; ?>
       </div>
     </div>
@@ -371,9 +373,10 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       <p style="margin:0 0 8px"><b>📅 Agendar.</b> ¿El cliente compra más adelante? (le entregan la casa en 2 meses,
       arranca la obra en marzo, tiene el presupuesto el próximo trimestre). Abre la fila y ponle una fecha: la cotización
       <b>sale de tu mesa y deja de contar</b> mientras tanto — no te penaliza por no tocarla. Vuelve sola a tu mesa
-      <b>7 días antes</b> de la fecha, ya re-anclada, para que la retomes a tiempo. Tope: hasta 6 meses, y no puedes
-      reagendar la misma dentro de 15 días (para que no sea un botón de "esconder"). Mientras está agendada la ves en la
-      bandeja <b>📅 Agendadas</b> y puedes traerla a hoy cuando quieras.</p>
+      <b>7 días antes</b> de la fecha, ya re-anclada, para que la retomes a tiempo. La fecha va de <b>15 días</b> a
+      <b>6 meses</b> (menos de 15 no es agenda, es posponer el seguimiento), y no puedes reagendar la misma dentro de
+      15 días (para que no sea un botón de "esconder"). Mientras está agendada la ves en la bandeja
+      <b>📅 Agendadas</b> y puedes traerla a hoy cuando quieras.</p>
       <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
       La meta del día es simple: dejar los pendientes en cero.</p>
     </div>
@@ -533,6 +536,8 @@ var MESA_ERR = {rate:'Vas muy rápido — espera un momento e intenta de nuevo',
                 datos:'Datos inválidos', razon:'Falta la razón del descarte',
                 no_encontrada:'No se encontró la cotización',
                 fecha_invalida:'Fecha inválida',
+                fecha_cerca:'La fecha debe ser de al menos 15 días',
+                fecha_lejana:'Máximo 6 meses',
                 guardar:'Error al guardar — intenta de nuevo'};
 function mesaErr(code){ return MESA_ERR[code] || ('No se pudo guardar: ' + (code || 'error')); }
 
