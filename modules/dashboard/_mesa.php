@@ -201,6 +201,12 @@ foreach ($mesa_all as $mesa_vid => $mesa):
     $mesa_desc = array_values(array_filter($mesa['rows'], fn($r) => empty($r['es_fria']) && $r['cat'] === 'descartada_hoy'));
     $mesa_pend = array_values(array_filter($mesa['rows'], fn($r) => empty($r['es_fria']) && empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
     $mesa_aten = array_values(array_filter($mesa['rows'], fn($r) => empty($r['es_fria']) && !empty($r['atendida_hoy']) && $r['cat'] !== 'descartada_hoy'));
+    // Pendientes se parte en dos, ALINEADO al score: cubierta = feedback 👍👎 +
+    // postura (= atendida de cobertura). "Por trabajar" = tus fallas (súbelas);
+    // "En seguimiento" = ya cuentan, solo hay que nutrirlas hasta que cierren.
+    $es_cov    = fn($r) => (($r['postura'] ?? null) !== null) && !empty($r['decl']['postura'] ?? null);
+    $mesa_sin  = array_values(array_filter($mesa_pend, fn($r) => !$es_cov($r)));
+    $mesa_seg  = array_values(array_filter($mesa_pend, $es_cov));
     ob_start();
 ?>
 <details class="mesa-emb mesa-strip" id="mesa-emb-<?= (int)$mesa_vid ?>" <?= isset($_GET['mesa_uid']) && (int)$_GET['mesa_uid'] === (int)$mesa_vid ? 'open' : '' ?>>
@@ -208,13 +214,11 @@ foreach ($mesa_all as $mesa_vid => $mesa):
     <span style="font-weight:800;color:#3f3f3a">📋 Mesa de trabajo</span>
     <span style="color:#a8a8a2;font-size:11.5px"><?= e($mesa_nombres[$mesa_vid] ?? '') ?></span>
     <span>
-      <?php $mesa_ag_n = count($mesa['agendadas']); $mesa_fr_n = (int)($mr['frias'] ?? 0); ?>
-      <?php if ($mr['n'] > 0 || !empty($mr['atendidas']) || !empty($mr['descartadas']) || $mesa_ag_n > 0 || $mesa_fr_n > 0): ?>
-        <b><?= (int)$mr['n'] ?></b> pendientes · <b><?= $mmoney($mr['monto']) ?></b> en juego<?php
+      <?php $mesa_ag_n = count($mesa['agendadas']); $mesa_fr_n = (int)($mr['frias'] ?? 0);
+            $n_sin = count($mesa_sin); $n_seg = count($mesa_seg); ?>
+      <?php if ($n_sin > 0 || $n_seg > 0 || !empty($mr['atendidas']) || !empty($mr['descartadas']) || $mesa_ag_n > 0 || $mesa_fr_n > 0): ?>
+        <?php if ($n_sin > 0): ?><b style="color:#b45309"><?= $n_sin ?></b> por trabajar<?php else: ?><span style="color:#16a34a;font-weight:700">✓ por trabajar en cero</span><?php endif; ?><?php if ($n_seg > 0): ?> · <b><?= $n_seg ?></b> en seguimiento<?php endif; ?> · <b><?= $mmoney($mr['monto']) ?></b> en juego<?php
           if (($mr['universo'] ?? 0) > count($mesa['rows'])): ?> <span style="color:#a8a8a2">(top <?= count($mesa['rows']) ?> de <?= (int)$mr['universo'] ?>)</span><?php endif; ?>
-        <?php if ($mr['sin_postura'] > 0): ?>
-          · <span style="color:#dc2626;font-weight:700"><?= (int)$mr['sin_postura'] ?> sin captura</span>
-        <?php endif; ?>
         <?php if (!empty($mr['atendidas'])): ?>
           · <span style="color:#16a34a;font-weight:700">✓ <?= (int)$mr['atendidas'] ?> atendida<?= $mr['atendidas'] > 1 ? 's' : '' ?> hoy</span>
         <?php endif; ?>
@@ -239,7 +243,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
         (con señal del cliente o dentro de ventana). La cartera completa, incluidas las que nadie ha tocado, está en el 📊 Reporte.</div>
     <?php else: ?>
 
-      <?php if ($mesa_pend): ?>
+      <?php if ($mesa_sin || $mesa_seg): ?>
       <div class="mhead">
         <span class="mh-dot"></span><span class="mh-cot">Cotización</span><span class="mh-flag"></span><span class="mh-check"></span>
         <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
@@ -247,8 +251,19 @@ foreach ($mesa_all as $mesa_vid => $mesa):
         <span class="mh-marc">Feedback<br>Radar</span>
         <span class="mh-fresh">Actividad</span><span class="msp"></span><span class="mh-chev"></span>
       </div>
-      <div class="mlist"><?php foreach ($mesa_pend as $r) $mesa_row($r); ?></div>
-      <?php else: ?>
+      <?php endif; ?>
+
+      <?php if ($mesa_sin): ?>
+      <div class="msect" style="color:#b45309">🔴 Por trabajar (<?= count($mesa_sin) ?>) — dales feedback 👍👎 + postura; estas son las que te faltan</div>
+      <div class="mlist"><?php foreach ($mesa_sin as $r) $mesa_row($r); ?></div>
+      <?php endif; ?>
+
+      <?php if ($mesa_seg): ?>
+      <div class="msect" style="color:#15803d">🌱 En seguimiento (<?= count($mesa_seg) ?>) — ya calificadas; nútrelas hasta que cierren</div>
+      <div class="mlist"><?php foreach ($mesa_seg as $r) $mesa_row($r); ?></div>
+      <?php endif; ?>
+
+      <?php if (!$mesa_sin && !$mesa_seg): ?>
       <div style="color:#16a34a;padding:12px 0;font-weight:600">✓ Pendientes en cero — todo lo de hoy ya está atendido.</div>
       <?php endif; ?>
 
@@ -387,8 +402,20 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       <b>6 meses</b> (menos de 15 no es agenda, es posponer el seguimiento), y no puedes reagendar la misma dentro de
       15 días (para que no sea un botón de "esconder"). Mientras está agendada la ves en la bandeja
       <b>📅 Agendadas</b> y puedes traerla a hoy cuando quieras.</p>
+      <p style="margin:0 0 8px"><b>🔴 Por trabajar vs 🌱 En seguimiento.</b> Tu lista se parte en dos:
+      <b>Por trabajar</b> son las que aún NO tienen feedback 👍👎 + postura — es tu pendiente real y lo que
+      te falta para el score; empieza por ahí. <b>En seguimiento</b> son las que ya calificaste: cuentan a tu
+      favor y solo hay que nutrirlas hasta que cierren. No las re-trabajes de gancho todos los días.</p>
+      <p style="margin:0 0 8px"><b>⏱ La columna "Actividad" te marca el ritmo.</b>
+      <b>hoy / hace 1-2d</b> = fresca, déjala cocinar. <b>hace 3d+</b> se pone <span style="color:#dc2626;font-weight:700">roja</span>:
+      necesita un nuevo toque, se está enfriando. <b>sin actualizar</b> = nunca la has tocado, máxima prioridad.
+      Mañana no re-trabajas todo: atiendes las nuevas sin tocar, las que se pusieron rojas y las que el Radar marque calientes.</p>
+      <p style="margin:0 0 8px"><b>¿Qué pasa mañana con lo de hoy?</b> Las que trabajaste hoy vuelven a
+      <b>En seguimiento</b> (con "hace 1d", frescas) — NO se castigan, conservan su calificación y siguen contando.
+      Un trato no se cierra por tocarlo una vez; se nutre hasta que cae. Las que crucen tu ventana ya trabajadas
+      pasan solas a <b>❄️ Frías</b>.</p>
       <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
-      La meta del día es simple: dejar los pendientes en cero.</p>
+      La meta del día es simple: dejar el "Por trabajar" en cero.</p>
     </div>
 
     <?php $MESA_PLAYBOOK = ob_get_clean(); ?>
