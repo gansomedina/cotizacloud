@@ -232,7 +232,15 @@ class Mesa
                 $post_desc ? strtotime($me[$cid]['postura']['at']) : 0
             );
             $dormida    = ((int)$c['visitas'] > 0 && (int)$c['dias_sin_vista'] >= 7);
-            $fuera      = $edad > 2 * $p75;
+            // Bono por edición (opción B): editar/reenviar le da otra ventana,
+            // contada desde la ÚLTIMA edición ($acc = 'editada'/'enviada') — así
+            // RE-editar vuelve a sumar desde esa nueva fecha. Solo edición (no
+            // vistas del cliente). La edad desde creación NO cambia; sale solo si
+            // YA pasó SU ventana de creación (2×p75) Y su ventana de edición
+            // (p75 desde la última edición). Abuso frenado por el score.
+            $bono_edit = $p75;
+            $dias_edit = !empty($acc[$cid]) ? (int)floor(($now - strtotime($acc[$cid])) / 86400) : PHP_INT_MAX;
+            $fuera      = ($edad > 2 * $p75) && ($dias_edit > $bono_edit);
 
             // Revivida = el cliente ABRIÓ después del descarte, dentro de los
             // últimos 7 días. Ancla = el ÚLTIMO juicio del dueño ($desc_at es
@@ -445,6 +453,7 @@ class Mesa
             } catch (\Throwable $e) { $p75_cache[$empresa_id] = 30; }
         }
         $p75_dos = 2 * (int)$p75_cache[$empresa_id];
+        $p75_uno = (int)$p75_cache[$empresa_id]; // bono de edición (opción B)
         $hot_in  = "'" . implode("','", self::HOT) . "'";
         $out = [];
         try {
@@ -464,11 +473,21 @@ class Mesa
                    AND NOT EXISTS (SELECT 1 FROM ventas v
                                    WHERE v.cotizacion_id = c.id AND v.estado <> 'cancelada')
                    AND (c.visitas > 0 OR c.radar_bucket IN ($hot_in))
-                   AND (DATEDIFF(NOW(), c.created_at) <= $p75_dos OR c.radar_bucket IN ($hot_in))
+                   AND (DATEDIFF(NOW(), c.created_at) <= $p75_dos
+                        OR EXISTS (SELECT 1 FROM cotizacion_log cl
+                                   WHERE cl.cotizacion_id = c.id AND cl.usuario_id IS NOT NULL
+                                     AND COALESCE(cl.accion, cl.evento) IN ('editada','enviada')
+                                     AND cl.created_at >= NOW() - INTERVAL $p75_uno DAY)
+                        OR c.radar_bucket IN ($hot_in))
                    $uf
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
-                $ped = (int)$r['pedidas']; $ate = (int)$r['atendidas'];
+                // El score NO puede exigir más de lo que la mesa MUESTRA: la mesa
+                // topa en CAP_MESA (25). Un asesor con 98 activas solo ve/trabaja
+                // 25 — pedirle las 98 es reprobarlo por lo que nunca se le mostró.
+                // Capeamos pedidas al tope; atendidas no puede pasar de pedidas.
+                $ped = min((int)$r['pedidas'], self::CAP_MESA);
+                $ate = min((int)$r['atendidas'], $ped);
                 $out[(int)$r['uid']] = [
                     'pedidas'   => $ped,
                     'atendidas' => $ate,
