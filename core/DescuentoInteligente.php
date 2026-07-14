@@ -27,9 +27,12 @@ defined('COTIZAAPP') or die;
 class DescuentoInteligente
 {
     // ── Multiplicadores de zona (sobre p75). Ajustables aquí. ──
-    const MULT_R1_INICIO = 1.5;  // inicio recuperación (1.5×p75)
-    const MULT_DEAD      = 2.5;  // inicio zona muerta (piso, además de p90)
-    const MULT_TECHO     = 3;    // ancho de R2 sobre dead
+    // El DI arranca DESPUÉS de la ventana de mesa (2×p75). Mientras la mesa la
+    // tiene en juego (0–2×p75) es milagro/trabajo del asesor, NO DI. Con p75=10:
+    //   mesa 0–20 · R1 (recuperación) 21–30 · R2 (muerto) 31–55 · fósil 56+.
+    const MULT_R1_INICIO = 2.0;  // R1 empieza JUSTO después de la mesa (2×p75), con > estricto → día 21
+    const MULT_DEAD      = 3.0;  // R2 empieza en 3×p75 (piso, además de p90) → día 31
+    const MULT_TECHO     = 2.5;  // ancho de R2 sobre dead: dead + 2.5×p75 → día 55
 
     const MIN_VENTAS      = 5;    // sin muestra suficiente, la feature no corre
     const GENERICO_COTS   = 10;   // cliente con >N cotizaciones vivas = cajón genérico
@@ -169,9 +172,11 @@ class DescuentoInteligente
 
         // Zona por edad
         $edad = (int)floor((time() - strtotime($cot['created_at'])) / 86400);
-        if ($edad >= $anc['dia_fin_vida'] && $edad < $anc['dia_dead'] && (int)$cfg['r1_activa']) {
+        // R1 = (dia_fin_vida, dia_dead]  ·  R2 = (dia_dead, dia_techo]. El > estricto
+        // en el borde inferior hace que R1 empiece el día DESPUÉS de la mesa (día 21).
+        if ($edad > $anc['dia_fin_vida'] && $edad <= $anc['dia_dead'] && (int)$cfg['r1_activa']) {
             $regla = 1; $pct = (float)$cfg['r1_pct']; $window = max(1, (int)ceil($anc['p75'] / 2));
-        } elseif ($edad >= $anc['dia_dead'] && $edad <= $anc['dia_techo'] && (int)$cfg['r2_activa']) {
+        } elseif ($edad > $anc['dia_dead'] && $edad <= $anc['dia_techo'] && (int)$cfg['r2_activa']) {
             $regla = 2; $pct = (float)$cfg['r2_pct']; $window = max(1, (int)$anc['p75']);
         } else {
             return null; // aún viva, fósil, o regla apagada
