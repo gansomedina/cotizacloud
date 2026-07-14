@@ -409,7 +409,9 @@ class Mesa
             return ($b['total'] <=> $a['total']) ?: ($a['id'] <=> $b['id']);
         });
 
-        // Caps: milagros/revividas 6, mesa 25
+        // Sin tope de mesa: se muestra la LISTA COMPLETA (decisión CEO — cortar
+        // a 25 confundía "cuántas tengo" y no cuadraba con el score). Se conserva
+        // un tope SOLO para milagros/revividas (que no inunden la cabecera).
         $universo = count($rows);
         $t3 = 0; $capped = [];
         foreach ($rows as $r) {
@@ -417,9 +419,6 @@ class Mesa
                 $t3++;
                 if ($t3 > self::CAP_MILAGROS) continue;
             }
-            // Promesa "visible un día": descartada_hoy no se corta por el cap.
-            // Las agendadas reaparecidas tampoco (el cliente pidió seguimiento ahora).
-            if (count($capped) >= self::CAP_MESA && $r['cat'] !== 'descartada_hoy' && $r['cat'] !== 'agendada') continue;
             $capped[] = $r;
         }
         $rows = $capped;
