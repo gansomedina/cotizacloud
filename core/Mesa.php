@@ -277,6 +277,12 @@ class Mesa
             $bono_edit = $p75;
             $dias_edit = !empty($acc[$cid]) ? (int)floor(($now - strtotime($acc[$cid])) / 86400) : PHP_INT_MAX;
             $fuera      = ($edad > 2 * $p75) && ($dias_edit > $bono_edit);
+            // Milagro incluye el BORDE exacto (edad == 2×p75): una cotización
+            // caliente justo en el filo también es "revivió" (⚡). Se usa SOLO en
+            // la categoría milagro, NO en $fuera — $fuera gatea limpieza/descarte
+            // y con >= una fría en el filo desaparecería sin avisar. Cerrar el
+            // borde aquí es cosmético-correcto; tocar $fuera sería un bug.
+            $fuera_mil  = ($edad >= 2 * $p75) && ($dias_edit > $bono_edit);
 
             // Revivida = el cliente ABRIÓ después del descarte, dentro de los
             // últimos 7 días. Ancla = el ÚLTIMO juicio del dueño ($desc_at es
@@ -320,12 +326,14 @@ class Mesa
                 $cat = 'descartada_hoy';     // visible solo hoy; mañana sale de la mesa
             } elseif (isset($revividas[$cid])) {
                 $cat = 'revivida';           // descartada y el cliente volvió vivo AHORA
-            } elseif ($fuera && $hot_reciente) {
-                $cat = 'milagro';            // fuera de ciclo pero viéndola AHORA
+            } elseif ($fuera_mil && $hot_reciente) {
+                $cat = 'milagro';            // fuera de ciclo (o justo en el filo) pero viéndola AHORA
             } elseif ($postura === 'con_interes' && empty($me[$cid]['postura']) && ($dormida || $bucket === 'enfriandose')) {
                 $cat = 'interes_muriendo';   // tu 👍 dice interés y el cliente se apaga
-            } elseif ($postura === 'con_interes' && empty($me[$cid]['postura']) && $edad > $p75) {
-                $cat = 'ultimo_tramo';       // 👍 pero saliendo de tu ventana
+            } elseif ($postura === 'con_interes' && empty($me[$cid]['postura']) && $edad > $p75 && !$hot_reciente) {
+                $cat = 'ultimo_tramo';       // 👍 pero saliendo de tu ventana Y frío
+                                             // (si está caliente AHORA, no lo descartes:
+                                             //  cae a 'trabajo' y el consejo usa la señal viva)
             } elseif (empty(array_diff_key($me[$cid] ?? [], ['feedback' => 1])) && $postura === null) {
                 $cat = 'sin_postura';        // nada capturado ni marcado aún
                                              // (filas 'feedback' de dueños anteriores no cuentan como captura)
