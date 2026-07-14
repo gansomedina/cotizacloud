@@ -409,10 +409,10 @@ final class DiagnosticoTips
                 "Traes buena mano pero cero banca. Cambia el orden: dedica la primera parte del día a generar, no a cerrar. Así nunca amaneces sin con qué trabajar.",
                 "Vives de rachas porque no siembras mientras cosechas. Un toque nuevo diario y dejas de rezarle al mes. Eres bueno cerrando, malo llenando — llena.",
             ],
-            'cerrador_desperdiciado' => [
-                "Lo que atiendes lo cierras, pero dejas morir gente que ya había mostrado interés — eso es dinero a la basura. Regrésales con un pretexto nuevo: «salió algo que le queda justo a lo que buscaba, ¿lo retomamos?». No los perdiste, los dejaste.",
-                "Tienes cierre pero eres desperdiciado: dejas morir clientes vivos. Aparta un rato hoy solo para rescatar tibios — reactívalos con novedad, no con «sigo pendiente».",
-                "El que ya abrió y dejaste ir no está muerto, está dormido. Despiértalo con un motivo nuevo para volver. Traer uno de vuelta cuesta menos que conseguir uno de cero.",
+            'cerrador_desperdiciado' => [ // cierra fuerte (C alto); único margen = tibios que se enfrían (H bajo). Tono: felicita + upside, NO regaño
+                "Eres de los que cierran lo que tocan — esa es tu fuerza y ya la tienes. El único margen que te queda es fácil: algunos que ya habían mostrado interés se están enfriando antes de que los retomes. No es un problema, es dinero esperándote. Regrésales con un pretexto nuevo: «salió algo que le queda justo a lo que buscaba, ¿lo retomamos?». Ya hiciste lo difícil.",
+                "Tu cierre está sólido, no se toca. Lo único que te falta para redondear está arriba del embudo: hay tibios que se enfrían solos porque no alcanzas a retomarlos a tiempo. Aparta un rato hoy para reactivarlos con novedad (no con «sigo pendiente») — son las ventas más baratas que vas a hacer esta semana.",
+                "El que ya abrió y se enfrió no está perdido, está dormido — y tú cierras lo que trabajas. Despiértalo con un motivo nuevo para volver: traer uno de vuelta te cuesta menos que conseguir uno de cero, y con tu cierre casi siempre paga. Es la palanca que te falta, y es la más sencilla.",
             ],
             'sordo_a_senales' => [ // cierra bien pero NO capitaliza las señales calientes
                 "Cierras a los que ya vienen convencidos, pero ignoras las señales: cuando un cliente revisa tu propuesta con interés, el sistema te lo marca y no lo trabajas. Ahí se te escapan los cierres más fáciles. Cada mañana revisa quién se puso caliente y contáctalo el mismo día: «vi que estuvo revisando la propuesta, ¿qué duda le resuelvo para que decida?». El que ya te levantó la mano está a un paso.",
