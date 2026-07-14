@@ -88,10 +88,10 @@ final class DiagnosticoTips
             "Trabajaste {$x} de " . self::_pl($y, 'cotización de tu mesa', 'cotizaciones de tu mesa')
             . " — " . ($n === 1 ? 'una se quedó' : "{$n} se quedaron")
             . " sin tocar. Tu Seguimiento ES tu mesa, y hoy está en cero. Cada una necesita feedback 👍👎 + postura; cubre el 80% y vuelve completo.",
-            "Tu mesa tiene {$y} " . self::_pl($y, 'cotización', 'cotizaciones') . " y trabajaste {$x}. El Seguimiento es tu mesa: entra, dale a cada una feedback 👍👎 + postura (aunque sea para descartarla) y con el 80% tu Seguimiento vuelve completo.",
+            "Tu mesa tiene " . self::_pl($y, 'cotización', 'cotizaciones') . " y trabajaste {$x}. El Seguimiento es tu mesa: entra, dale a cada una feedback 👍👎 + postura (aunque sea para descartarla) y con el 80% tu Seguimiento vuelve completo.",
         ];
         if ($n >= 2) {
-            $pool[] = "Tienes {$n} " . self::_pl($n, 'cotización', 'cotizaciones') . " de tu mesa sin tocar. Nadie te pide cerrarlas, te pide trabajarlas: entra, dales feedback 👍👎 + postura y declara qué pasó. Ocho de cada diez y tu Seguimiento regresa.";
+            $pool[] = "Tienes " . self::_pl($n, 'cotización', 'cotizaciones') . " de tu mesa sin tocar. Nadie te pide cerrarlas, te pide trabajarlas: entra, dales feedback 👍👎 + postura y declara qué pasó. Ocho de cada diez y tu Seguimiento regresa.";
         }
         return self::_pick($pool, $seed);
     }
