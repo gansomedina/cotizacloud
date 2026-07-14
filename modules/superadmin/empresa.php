@@ -377,7 +377,7 @@ tr:hover td{background:#fafaf8}
         <select name="valor" style="padding:6px 10px;border:1px solid #d4d4ce;border-radius:6px;font-size:13px">
           <option value="0" <?= $mesa_flag_emp === 0 ? 'selected' : '' ?>>0 — Apagada (solo admin la ve)</option>
           <option value="1" <?= $mesa_flag_emp === 1 ? 'selected' : '' ?>>1 — UI asesores (SIN score — quincena de aprendizaje)</option>
-          <option value="2" <?= $mesa_flag_emp === 2 ? 'selected' : '' ?>>2 — UI + score (25% del Seguimiento activo)</option>
+          <option value="2" <?= $mesa_flag_emp === 2 ? 'selected' : '' ?>>2 — UI + score (Seguimiento = la mesa)</option>
         </select>
         <button type="submit" class="btn btn-sm">Guardar</button>
         <span style="font-size:11.5px;color:#8a8a84">Requiere migración add_mesa_score.sql. Avisar la regla del 80% ANTES de pasar a 2.</span>

@@ -78,20 +78,20 @@ final class DiagnosticoTips
         return $txt;
     }
 
-    // ── Frase del 25% reprobado: hechos + jugada, 3 ángulos ──
+    // ── Frase del Seguimiento reprobado (= la mesa): hechos + jugada ──
     private static function _frase_mesa(array $m, int $seed): string
     {
+        // mesa_ped = cotizaciones de la mesa visible; mesa_att = las que tienen
+        // feedback 👍👎 + postura. Tu Seguimiento ES esto (100%), no un cuarto.
         $x = $m['mesa_att']; $y = $m['mesa_ped']; $n = max(0, $y - $x);
         $pool = [
-            "Atendiste {$x} de " . self::_pl($y, 'señal 🔥 de tu mesa', 'señales 🔥 de tu mesa')
+            "Trabajaste {$x} de " . self::_pl($y, 'cotización de tu mesa', 'cotizaciones de tu mesa')
             . " — " . ($n === 1 ? 'una se quedó' : "{$n} se quedaron")
-            . " más de 3 días esperando. Ese cuarto de tu Seguimiento está en cero. La mesa te las forma sola cada mañana; tu parte es un toque el mismo día: con 8 de cada 10 lo recuperas completo.",
-            "La mesa te pidió " . self::_pl($y, 'señal', 'señales') . " y llegaste a {$x}. Una señal caliente dura horas, no semanas: empieza el día por lo 🔥 de tu mesa antes que lo demás — un tap dentro de los 3 días cuenta, aunque el cliente no conteste. Cubriendo el 80% ese punto vuelve solo.",
+            . " sin tocar. Tu Seguimiento ES tu mesa, y hoy está en cero. Cada una necesita feedback 👍👎 + postura; cubre el 80% y vuelve completo.",
+            "Tu mesa tiene {$y} " . self::_pl($y, 'cotización', 'cotizaciones') . " y trabajaste {$x}. El Seguimiento es tu mesa: entra, dale a cada una feedback 👍👎 + postura (aunque sea para descartarla) y con el 80% tu Seguimiento vuelve completo.",
         ];
         if ($n >= 2) {
-            // pedidas cuenta EPISODIOS de señal, no clientes — una misma
-            // cotización puede levantar la mano dos veces
-            $pool[] = "Te levantaron la mano {$y} veces y {$n} señales se quedaron colgadas más de 3 días. Nadie te pide cerrarlas, te pide aparecer: entra a tu mesa, dales un toque y declara qué pasó. Ocho de cada diez y el cuarto de tu Seguimiento regresa.";
+            $pool[] = "Tienes {$n} " . self::_pl($n, 'cotización', 'cotizaciones') . " de tu mesa sin tocar. Nadie te pide cerrarlas, te pide trabajarlas: entra, dales feedback 👍👎 + postura y declara qué pasó. Ocho de cada diez y tu Seguimiento regresa.";
         }
         return self::_pick($pool, $seed);
     }
