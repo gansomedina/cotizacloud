@@ -482,7 +482,12 @@ class Mesa
                    $uf
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
-                $ped = (int)$r['pedidas']; $ate = (int)$r['atendidas'];
+                // El score NO puede exigir más de lo que la mesa MUESTRA: la mesa
+                // topa en CAP_MESA (25). Un asesor con 98 activas solo ve/trabaja
+                // 25 — pedirle las 98 es reprobarlo por lo que nunca se le mostró.
+                // Capeamos pedidas al tope; atendidas no puede pasar de pedidas.
+                $ped = min((int)$r['pedidas'], self::CAP_MESA);
+                $ate = min((int)$r['atendidas'], $ped);
                 $out[(int)$r['uid']] = [
                     'pedidas'   => $ped,
                     'atendidas' => $ate,
