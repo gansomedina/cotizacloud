@@ -41,7 +41,7 @@ chk('shared SIN chips de selector de vendedores', str_contains($MESA_SHARED, 'hr
 chk('bloques por asesor: 500 y 501', (function($k){ sort($k); return $k; })(array_keys($MESA_BLOQUES ?? [])), [500, 501]);
 chk('bloque 500: details con id propio y franja', str_contains($MESA_BLOQUES[500], 'id="mesa-emb-500"') && str_contains($MESA_BLOQUES[500], 'class="mstrip"'), true);
 chk('bloque 500: trae filas (mrow) y cajones (mdrawer)', substr_count($MESA_BLOQUES[500], 'class="mrow') >= 8 && str_contains($MESA_BLOQUES[500], 'mdrawer'), true);
-chk('bloque 500: resumen con pendientes y monto', (bool)preg_match('/pendientes/', $MESA_BLOQUES[500]), true);
+chk('bloque 500: resumen con por trabajar / en juego', (bool)preg_match('/por trabajar|en seguimiento|en juego/', $MESA_BLOQUES[500]), true);
 chk('bloque 501: lista completa, solo 2 milagros ocultos por CAP_MILAGROS (top 26 de 28)', str_contains($MESA_BLOQUES[501], 'top 26 de 28'), true);
 chk('sin referencias huérfanas a #mesa-card', str_contains($MESA_SHARED . implode('', $MESA_BLOQUES), '#mesa-card') || str_contains($MESA_SHARED . implode('', $MESA_BLOQUES), 'mesa-card'), false);
 chk('aviso de limpieza vive en el bloque del asesor', str_contains($MESA_BLOQUES[500], 'jamás ha cerrado') || !str_contains($MESA_SHARED, 'jamás ha cerrado'), true);
