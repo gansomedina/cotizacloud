@@ -133,6 +133,11 @@ function visita(int $cot, float $hace_d, int $vis = 5000, int $scr = 80): void {
     global $d;
     DB::execute("INSERT INTO quote_sessions (cotizacion_id, es_interno, visible_ms, scroll_max, created_at) VALUES (?,0,?,?,?)",
         [$cot, $vis, $scr, $d($hace_d)]);
+    // En producción una visita real del cliente incrementa el contador de la
+    // cotización — es lo que lee el filtro de "mesa VISIBLE" (visitas>0) de
+    // cobertura_senales/armar. El helper debe reflejarlo para no dejar la
+    // cotización invisible en la mesa aunque el cliente la haya abierto.
+    DB::execute("UPDATE cotizaciones SET visitas = visitas + 1 WHERE id = ?", [$cot]);
 }
 
 DB::execute("INSERT INTO usuarios VALUES (101,1,'Ana',1),(102,1,'Beto',1),(103,1,'Dora',1),(201,2,'Carla',1),(999,1,'Superadmin',1)");
@@ -264,9 +269,14 @@ chk('sin_calificar = 5 (A1 con rf de tercero SÍ cuenta, A2, A3, C1, C2)', $ana[
 chk('sin_trabajar = 2 (A1, A2) $30,000', [$ana['sin_trabajar'] ?? -1, $ana['monto_sin_trabajar'] ?? -1], [2, 30000.0]);
 chk('se_fueron = 1 (solo A2: A3 tocada hace 2d, A4 descartada) $20,000', [$ana['se_fueron'] ?? -1, $ana['monto_se_fueron'] ?? -1], [1, 20000.0]);
 
-echo "═ ANA — Señales 🔥 ═\n";
-chk('hot_total = 4 (A2, A3, A4, V1; la de A1 <2d fuera; rebote A2 suprimido)', $ana['hot_total'] ?? -1, 4);
-chk('desatendidas = 2 (A2 nunca tocada, A4 revivió sin caso; A3 tap a 1d, V1 venta)', $ana['hot_desatendidas'] ?? -1, 2);
+echo "═ ANA — Señales 🔥 (= cobertura_senales: mesa VISIBLE) ═\n";
+// Tras el rework "Seguimiento = mesa", hot_total/desatendidas del reporte se
+// alimentan de cobertura_senales (fuente única), NO de episodios crudos de
+// bucket_transitions. Universo = mesa VISIBLE (visitas>0 o bucket caliente).
+// Ana visibles: 1004 (visita 5d) y 1010 (visita 6d); el resto sigue sin abrir.
+// Atendida = feedback del dueño + postura: 1004 (👎 + descartada) sí; 1010 no.
+chk('hot_total = 2 (visibles 1004 y 1010; las nunca abiertas no entran)', $ana['hot_total'] ?? -1, 2);
+chk('desatendidas = 1 (1010 sin feedback+postura; 1004 atendida)', $ana['hot_desatendidas'] ?? -1, 1);
 
 echo "═ ANA — Trabajo declarado ═\n";
 chk('toques: 5 hablamos / 1 no_contesta', [$ana['hablamos'] ?? -1, $ana['no_contesta'] ?? -1], [5, 1]);
@@ -307,8 +317,8 @@ chk('trabajada: $62,000 (2) — V1 y V4', [$rec['trab_n'], $rec['trab_monto']], 
 
 echo "═ HELPER cobertura_senales (fuente única del score/widget) ═\n";
 $cob_ana = Mesa::cobertura_senales(1, 101, 30);
-chk('Ana por-vendedor = su fila del reporte (4 pedidas, 2 atendidas, 2 fallas)',
-    [$cob_ana['pedidas'], $cob_ana['atendidas'], $cob_ana['fallas']], [4, 2, 2]);
+chk('Ana por-vendedor = su fila del reporte (2 visibles, 1 atendida, 1 falla)',
+    [$cob_ana['pedidas'], $cob_ana['atendidas'], $cob_ana['fallas']], [2, 1, 1]);
 chk('vendedor sin señales → ceros', Mesa::cobertura_senales(1, 102, 30), ['pedidas' => 0, 'atendidas' => 0, 'fallas' => 0]);
 $det_ana = Mesa::cobertura_detalle(1, 101, 30);
 chk('detalle de Ana: 5 episodios (incluye el de ventana abierta)', count($det_ana), 5);
