@@ -75,7 +75,7 @@ class Mesa
 
         if (!$cots) {
             return self::$cache[$ck] = [
-                'rows' => [], 'p75' => $p75,
+                'rows' => [], 'p75' => $p75, 'agendadas' => [],
                 'limpieza' => ['n' => 0, 'monto' => 0.0, 'linea_dias' => $linea_limpieza],
                 'ciclo' => $ciclo, 'resumen' => ['n' => 0, 'monto' => 0.0, 'sin_postura' => 0, 'universo' => 0,
                                                  'mas_viejo_dias' => 0, 'atendidas' => 0, 'descartadas' => 0],
@@ -135,6 +135,18 @@ class Mesa
                 else $nc[$cid] = ($nc[$cid] ?? 0) + 1;
             }
         } catch (Throwable $e) {} // tabla aún no migrada
+
+        // Agenda de seguimiento (parqueo con fecha probable). try/catch por si la
+        // columna aún no está migrada — sin ella la mesa funciona igual (sin agenda).
+        $ag = [];
+        try {
+            foreach (DB::query(
+                "SELECT id, agenda_fecha, agenda_at FROM cotizaciones
+                 WHERE id IN ($in) AND agenda_fecha IS NOT NULL", []
+            ) as $r) {
+                $ag[(int)$r['id']] = ['fecha' => $r['agenda_fecha'], 'at' => $r['agenda_at']];
+            }
+        } catch (Throwable $e) {} // columna agenda_fecha aún no migrada
 
         // Actividad reciente del cliente (respeta Escudo + filtro ghost)
         $act_c = [];
@@ -197,12 +209,36 @@ class Mesa
         // contradice la ACCIÓN/JUICIO del asesor. Lo que va bien, no sale.
         $rows = [];
         $limpieza_n = 0; $limpieza_monto = 0.0;
+        $agendadas = []; // parqueadas a futuro (bandeja aparte, fuera de la mesa diaria)
         $now = time();
 
         foreach ($cots as $c) {
             $cid    = (int)$c['id'];
             $sen    = $c['radar_senales'] ? (json_decode($c['radar_senales'], true) ?: []) : [];
             $edad   = (int)$c['edad'];
+
+            // ── Agenda de seguimiento ──────────────────────────────────────
+            // Futura (hoy < fecha−7): parqueada → bandeja, fuera de la mesa.
+            // En ventana (fecha−7 … fecha+2×p75): reaparece, re-anclada a la fecha.
+            // Vencida (hoy > fecha+2×p75): cae a reglas normales.
+            $ag_reaparecida = false;
+            if (isset($ag[$cid])) {
+                $ag_fecha_ts = strtotime($ag[$cid]['fecha'] . ' 00:00:00');
+                $ag_p75      = ($ciclo['auto'] && isset($ciclo['p75']) && $ciclo['p75'] !== null) ? max(1, (int)$ciclo['p75']) : 30;
+                $ag_reap_ts  = $ag_fecha_ts - 7 * 86400;
+                $ag_exp_ts   = $ag_fecha_ts + 2 * $ag_p75 * 86400;
+                if ($now < $ag_reap_ts) {
+                    // Parqueada a futuro → a la bandeja, no entra a la mesa
+                    $agendadas[] = [
+                        'id' => $cid, 'numero' => $c['numero'], 'titulo' => $c['titulo'],
+                        'cliente' => $c['cliente'] ?: '—', 'telefono' => $c['cli_tel'],
+                        'total' => (float)$c['total'], 'fecha' => $ag[$cid]['fecha'],
+                        'dias_para' => (int)ceil(($ag_fecha_ts - $now) / 86400),
+                    ];
+                    continue;
+                }
+                if ($now <= $ag_exp_ts) $ag_reaparecida = true; // reaparece, se fuerza a la mesa
+            }
             $bucket = $c['radar_bucket'];
             $es_hot = $bucket !== null && in_array($bucket, self::HOT, true);
             // bucket_at solo se actualiza cuando el bucket CAMBIA: calor sostenido
@@ -255,24 +291,26 @@ class Mesa
             // Descartada HOY (día del reloj de la BD): visible un día en su sección
             $descartada_hoy = $descartada && $desc_at && date('Y-m-d', $desc_at) === $hoy_db;
             // Descartada de días anteriores sin revivir → fuera (el Radar la vigila)
-            if ($descartada && !isset($revividas[$cid]) && !$descartada_hoy) {
+            if ($descartada && !isset($revividas[$cid]) && !$descartada_hoy && !$ag_reaparecida) {
                 if ($edad > $linea_limpieza && !$hot_reciente) { $limpieza_n++; $limpieza_monto += (float)$c['total']; }
                 continue;
             }
             // Fuera de toda ventana, sin calor reciente, sin revivir → limpieza
-            // (descartada_hoy se respeta: prometimos visible un día)
-            if ($fuera && !$hot_reciente && !isset($revividas[$cid]) && !$descartada_hoy) {
+            // (descartada_hoy se respeta: prometimos visible un día · agenda reaparecida manda)
+            if ($fuera && !$hot_reciente && !isset($revividas[$cid]) && !$descartada_hoy && !$ag_reaparecida) {
                 if ($edad > $linea_limpieza) { $limpieza_n++; $limpieza_monto += (float)$c['total']; }
                 continue;
             }
 
             // Sin señal del cliente (nunca abrió) y sin calor → no es trabajo
             // de mesa (la tarjeta "Sin abrir" del dashboard ya la cubre).
-            // Las revividas se respetan (ghost cleanup puede dejar visitas=0)
-            if (!$es_hot && (int)$c['visitas'] === 0 && !$descartada_hoy && !isset($revividas[$cid])) continue;
+            // Las revividas y las agendadas-reaparecidas se respetan.
+            if (!$es_hot && (int)$c['visitas'] === 0 && !$descartada_hoy && !isset($revividas[$cid]) && !$ag_reaparecida) continue;
 
-            // Categoría: mesa (capturas) + like del Radar (columna "Marcaste")
-            if ($descartada && !isset($revividas[$cid])) {
+            // Categoría: agenda reaparecida manda; luego mesa (capturas) + like del Radar
+            if ($ag_reaparecida) {
+                $cat = 'agendada';           // el cliente pidió seguimiento para ~ahora
+            } elseif ($descartada && !isset($revividas[$cid])) {
                 $cat = 'descartada_hoy';     // visible solo hoy; mañana sale de la mesa
             } elseif (isset($revividas[$cid])) {
                 $cat = 'revivida';           // descartada y el cliente volvió vivo AHORA
@@ -293,6 +331,7 @@ class Mesa
                 'id' => $cid, 'numero' => $c['numero'], 'titulo' => $c['titulo'],
                 'cliente' => $c['cliente'] ?: '—', 'telefono' => $c['cli_tel'],
                 'total' => (float)$c['total'], 'edad' => $edad, 'cat' => $cat,
+                'agenda_fecha' => ($ag_reaparecida ? ($ag[$cid]['fecha'] ?? null) : null),
                 'bucket' => $bucket, 'es_hot' => $es_hot,
                 'visitas' => (int)$c['visitas'], 'dias_sin_vista' => (int)$c['dias_sin_vista'],
                 'postura' => $postura, 'ultima_accion' => $acc[$cid] ?? null,
@@ -378,8 +417,9 @@ class Mesa
                 $t3++;
                 if ($t3 > self::CAP_MILAGROS) continue;
             }
-            // Promesa "visible un día": descartada_hoy no se corta por el cap
-            if (count($capped) >= self::CAP_MESA && $r['cat'] !== 'descartada_hoy') continue;
+            // Promesa "visible un día": descartada_hoy no se corta por el cap.
+            // Las agendadas reaparecidas tampoco (el cliente pidió seguimiento ahora).
+            if (count($capped) >= self::CAP_MESA && $r['cat'] !== 'descartada_hoy' && $r['cat'] !== 'agendada') continue;
             $capped[] = $r;
         }
         $rows = $capped;
@@ -398,6 +438,7 @@ class Mesa
         return self::$cache[$ck] = [
             'rows'     => $rows,
             'p75'      => $p75,
+            'agendadas'=> $agendadas,
             'limpieza' => ['n' => $limpieza_n, 'monto' => $limpieza_monto, 'linea_dias' => $linea_limpieza],
             'ciclo'    => $ciclo,
             'resumen'  => ['n' => count($rows) - $atendidas - $descartadas, 'monto' => $monto,
@@ -455,6 +496,22 @@ class Mesa
         $p75_dos = 2 * (int)$p75_cache[$empresa_id];
         $p75_uno = (int)$p75_cache[$empresa_id]; // bono de edición (opción B)
         $hot_in  = "'" . implode("','", self::HOT) . "'";
+        // Agenda: futura (fecha−hoy > 7) = parqueada, NO cuenta. Reaparecida
+        // (−2×p75 ≤ fecha−hoy ≤ 7) = cuenta aunque sea vieja. Misma ventana que armar.
+        // Solo se aplica si la columna existe (blindaje ante despliegue sin migrar).
+        static $has_agenda = null;
+        if ($has_agenda === null) {
+            try { DB::val("SELECT agenda_fecha FROM cotizaciones LIMIT 1"); $has_agenda = true; }
+            catch (\Throwable $e) { $has_agenda = false; }
+        }
+        if ($has_agenda) {
+            $ag_fut_where = "AND NOT (c.agenda_fecha IS NOT NULL AND DATEDIFF(c.agenda_fecha, CURDATE()) > 7)";
+            $ag_reap_or   = "OR (c.agenda_fecha IS NOT NULL AND DATEDIFF(c.agenda_fecha, CURDATE()) BETWEEN -$p75_dos AND 7)";
+            $ag_fresh_rf  = "AND (c.agenda_fecha IS NULL OR rf.updated_at > c.agenda_at)";
+            $ag_fresh_m   = "AND (c.agenda_fecha IS NULL OR m.created_at > c.agenda_at)";
+        } else {
+            $ag_fut_where = $ag_reap_or = $ag_fresh_rf = $ag_fresh_m = '';
+        }
         $out = [];
         try {
             foreach (DB::query(
@@ -463,22 +520,26 @@ class Mesa
                         SUM(
                           EXISTS(SELECT 1 FROM radar_feedback rf
                                  WHERE rf.cotizacion_id = c.id
-                                   AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id))
+                                   AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                   $ag_fresh_rf)
                           AND EXISTS(SELECT 1 FROM mesa_estados m
-                                     WHERE m.cotizacion_id = c.id AND m.area = 'postura')
+                                     WHERE m.cotizacion_id = c.id AND m.area = 'postura'
+                                       $ag_fresh_m)
                         ) AS atendidas
                  FROM cotizaciones c
                  WHERE c.empresa_id = ? AND c.estado IN ('enviada','vista')
                    AND c.suspendida = 0 AND c.total > 0 AND c.accion_at IS NULL
                    AND NOT EXISTS (SELECT 1 FROM ventas v
                                    WHERE v.cotizacion_id = c.id AND v.estado <> 'cancelada')
-                   AND (c.visitas > 0 OR c.radar_bucket IN ($hot_in))
+                   $ag_fut_where
+                   AND (c.visitas > 0 OR c.radar_bucket IN ($hot_in) $ag_reap_or)
                    AND (DATEDIFF(NOW(), c.created_at) <= $p75_dos
                         OR EXISTS (SELECT 1 FROM cotizacion_log cl
                                    WHERE cl.cotizacion_id = c.id AND cl.usuario_id IS NOT NULL
                                      AND COALESCE(cl.accion, cl.evento) IN ('editada','enviada')
                                      AND cl.created_at >= NOW() - INTERVAL $p75_uno DAY)
-                        OR c.radar_bucket IN ($hot_in))
+                        OR c.radar_bucket IN ($hot_in)
+                        $ag_reap_or)
                    $uf
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
