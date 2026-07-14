@@ -674,11 +674,11 @@ class ActividadScore
         }
         $radar_why_score = 1.0;
 
-        // ═══ MESA 25% del Seguimiento (docs/mesa_score_integracion.md) ═══
-        // Binario: cobertura de señales ≥80% (margen mínimo 1 falla) = 25%
-        // completo; abajo = 0. Neutral (1.0) sin señales — no se reprueba un
-        // examen que no existió. Gate: empresas.mesa_activa = 2 (0=off,
-        // 1=UI asesores sin score, 2=UI+score). FUENTE ÚNICA de cobertura:
+        // ═══ SEGUIMIENTO = LA MESA (decisión CEO) ═══
+        // Con mesa_activa >= 2, el Seguimiento ES la mesa (100%), no el feedback
+        // en calientes (esa medida se calcula arriba pero ya no define Seguimiento;
+        // sigue viva solo para empresas SIN mesa). Gate: empresas.mesa_activa
+        // (0=off, 1=UI asesores sin score, 2=UI+score). FUENTE ÚNICA de cobertura:
         // Mesa::cobertura_senales — el mismo número que ve el asesor.
         $s_mesa = null; $mesa_pedidas = 0; $mesa_atendidas = 0;
         static $mesa_flag_cache = [];
@@ -688,17 +688,24 @@ class ActividadScore
                     "SELECT mesa_activa FROM empresas WHERE id = ?", [$empresa_id]);
             } catch (\Throwable $e) { $mesa_flag_cache[$empresa_id] = 0; } // columna sin migrar
         }
+        // SEGUIMIENTO = LA MESA (decisión CEO). Si la empresa usa la mesa
+        // (mesa_activa >= 2), el Seguimiento ES la cobertura de la mesa, no la
+        // medida vieja de feedback-en-calientes (esa se sigue calculando arriba
+        // porque otras cosas del panel la usan, pero ya NO define el Seguimiento).
+        // Binario: mesa ≥80% atendida (feedback + postura) = 100%; abajo = 0.
+        //   · Mesa vacía (pedidas=0) → neutro (no hay examen).
+        //   · Atendió 0 con pedidas>0 → reprueba SIEMPRE (no hizo nada; el margen
+        //     no lo salva). Arregla el caso "1 pedida, 0 atendidas = pasaba".
+        //   · Atendió algo → margen del 20% (mínimo 1) perdona el resto.
         if ($mesa_flag_cache[$empresa_id] >= 2) {
             $cob = Mesa::cobertura_senales($empresa_id, $usuario_id, $periodo);
-            if (empty($cob['error'])) { // fail-neutral: error SQL ≠ 25% regalado
+            if (empty($cob['error'])) { // fail-neutral: error SQL ≠ Seguimiento regalado
                 $mesa_pedidas   = $cob['pedidas'];
                 $mesa_atendidas = $cob['atendidas'];
-                // Estado actual (lo más simple): de la mesa visible del asesor,
-                // ¿está ≥80% atendida AHORA? (feedback + postura, margen 1). Binario.
                 $mesa_margen    = max(1, (int)floor(0.20 * $cob['pedidas']));
-                $s_mesa = ($cob['pedidas'] === 0 || $cob['fallas'] <= $mesa_margen) ? 1.0 : 0.0;
-                $s_seguimiento = 0.75 * $s_seguimiento + 0.25 * $s_mesa;
-                $s_seguimiento = max(0.0, min(1.0, $s_seguimiento));
+                $s_mesa = ($cob['pedidas'] === 0
+                           || ($cob['atendidas'] > 0 && $cob['fallas'] <= $mesa_margen)) ? 1.0 : 0.0;
+                $s_seguimiento = $s_mesa;
             }
         }
 
