@@ -322,11 +322,21 @@ class MesaSugerencias
                     "El cliente va en serio pero ya pasaron los {$p75} días en que sueles cerrar — llámale hoy y amarra una fecha de decisión concreta.",
                 ]);
                 $slots['decision'] = true;
-            } else {
+            } elseif ($dcom >= 1) {
+                // Quedaron AYER (o antier) y el cliente no se ha movido: ya hiciste
+                // tu parte. No repitas "mándale hoy" — dale espacio y observa; lo
+                // único pendiente es que el acuerdo tenga fecha por escrito.
                 $f = $pk([
-                    'Hay acuerdo con el cliente — prepara hoy tu parte y ponle fecha; si en 2 días él no abre la cotización, mándale un mensaje para confirmarlo.',
-                    'Amarra el acuerdo por escrito hoy: mándale al cliente qué quedó y para cuándo — lo que no queda por escrito se olvida en una semana.',
-                    'El acuerdo está fresco — mándale hoy al cliente un resumen escrito de lo que quedaron y la fecha; un acuerdo sin fecha se enfría.',
+                    'Quedaron hace ' . $dcom . 'd y el cliente no se ha movido — ya hiciste tu parte. Hoy dale espacio y observa si reabre o responde; lo único pendiente es que el acuerdo tenga fecha por escrito.',
+                    'El acuerdo es de hace ' . $dcom . 'd — un par de días es normal. No lo satures: si ya quedó la fecha, espera su reacción; si no, mándale solo el resumen con la fecha y ahí lo dejas.',
+                    'Acordaron hace ' . $dcom . 'd — no lo persigas todavía. Observa hoy si el cliente reabre la cotización; el único pendiente tuyo es dejar la fecha por escrito.',
+                ]);
+            } else {
+                // dcom == 0: quedaron HOY — formalízalo mientras está fresco
+                $f = $pk([
+                    'Quedaron HOY — formalízalo mientras está fresco: mándale al cliente un resumen escrito de lo acordado y la fecha. Un acuerdo sin fecha se enfría.',
+                    'Acuerdo de hoy — amárralo por escrito ahora: qué quedó y para cuándo. Lo que no queda por escrito se olvida en una semana.',
+                    'El acuerdo está fresco (hoy) — mándale el resumen con la fecha y luego dale espacio para que responda; un acuerdo sin fecha se enfría.',
                 ]);
                 $slots['cierre'] = true;
             }
@@ -397,10 +407,21 @@ class MesaSugerencias
                     'El cliente dijo que no y aun así vuelve a la cotización — hay una duda escondida: escríbele hoy preguntando qué le falta para animarse.',
                 ]);
                 $slots['confronta'] = true;
+            } elseif ($dias($com) >= 1) {
+                // Propusiste hace días, el cliente dijo que no y sigue callado: ya
+                // preguntaste. No repitas "llámale hoy" — dale aire; el cliente
+                // pelotea. Solo si NUNCA le sacaste el motivo, un intento distinto.
+                $dpnq = $dias($com);
+                $f = $pk([
+                    "El no fue hace {$dpnq}d y el cliente sigue sin moverse — ya jugaste tu carta. Dale aire hoy; si aún no sabes el motivo real, mándale UN mensaje distinto (no el mismo), y si calla, es un no.",
+                    "Propusiste hace {$dpnq}d, dijo que no y no ha vuelto — el balón está de su lado. No lo persigas hoy: si nunca te dio la razón, un último intento por otro ángulo; si ya, déjalo enfriar y evalúa descartarla.",
+                    "Hace {$dpnq}d que dijo que no y no se asoma — insistir hoy con lo mismo lo aleja. Si te falta entender qué lo frenó, pregúntalo distinto; si ya lo sabes y no cambió, esta va para descarte.",
+                ]);
             } else {
+                // El no fue HOY — averigua el motivo mientras está fresco
                 $f = $pk([
                     'El cliente no quiso y no sabes por qué — tu siguiente llamada es para averiguar la razón, no para intentar cerrar.',
-                    'Propusiste, el cliente dijo que no y no te dio el motivo — llámale hoy solo para entender qué lo detuvo; el cierre viene después.',
+                    'Propusiste hoy, el cliente dijo que no y no te dio el motivo — pregúntale hoy mismo qué lo detuvo; el cierre viene después.',
                     'Hubo un no sin explicación — antes de volver a proponer, pregúntale al cliente qué fue lo que no le convenció.',
                 ]);
             }
