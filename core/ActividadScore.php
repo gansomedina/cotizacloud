@@ -689,22 +689,24 @@ class ActividadScore
             } catch (\Throwable $e) { $mesa_flag_cache[$empresa_id] = 0; } // columna sin migrar
         }
         // SEGUIMIENTO = LA MESA (decisión CEO). Si la empresa usa la mesa
-        // (mesa_activa >= 2), el Seguimiento ES la cobertura de la mesa, no la
-        // medida vieja de feedback-en-calientes (esa se sigue calculando arriba
-        // porque otras cosas del panel la usan, pero ya NO define el Seguimiento).
-        // Binario: mesa ≥80% atendida (feedback + postura) = 100%; abajo = 0.
-        //   · Mesa vacía (pedidas=0) → neutro (no hay examen).
-        //   · Atendió 0 con pedidas>0 → reprueba SIEMPRE (no hizo nada; el margen
-        //     no lo salva). Arregla el caso "1 pedida, 0 atendidas = pasaba".
-        //   · Atendió algo → margen del 20% (mínimo 1) perdona el resto.
+        // (mesa_activa >= 2), el Seguimiento ES la cobertura de la mesa (lista
+        // COMPLETA, sin tope — opción A), no la medida vieja de feedback-en-
+        // calientes (esa se sigue calculando arriba porque otras cosas del panel
+        // la usan, pero ya NO define el Seguimiento).
+        // PROPORCIONAL 3 escalones: cobertura = atendidas/pedidas (atendida =
+        // feedback 👍👎 + postura).
+        //   · <50%        → 0.0   (incluye "atendió 0")
+        //   · 50% a 80%   → 0.50
+        //   · ≥80%        → 1.0
+        //   · Mesa vacía (pedidas=0) → 1.0 neutro (no hay examen).
         if ($mesa_flag_cache[$empresa_id] >= 2) {
             $cob = Mesa::cobertura_senales($empresa_id, $usuario_id, $periodo);
             if (empty($cob['error'])) { // fail-neutral: error SQL ≠ Seguimiento regalado
                 $mesa_pedidas   = $cob['pedidas'];
                 $mesa_atendidas = $cob['atendidas'];
-                $mesa_margen    = max(1, (int)floor(0.20 * $cob['pedidas']));
-                $s_mesa = ($cob['pedidas'] === 0
-                           || ($cob['atendidas'] > 0 && $cob['fallas'] <= $mesa_margen)) ? 1.0 : 0.0;
+                $cov = $cob['pedidas'] > 0 ? $cob['atendidas'] / $cob['pedidas'] : 1.0;
+                $s_mesa = $cob['pedidas'] === 0 ? 1.0
+                        : ($cov >= 0.80 ? 1.0 : ($cov >= 0.50 ? 0.50 : 0.0));
                 $s_seguimiento = $s_mesa;
             }
         }

@@ -380,7 +380,7 @@ tr:hover td{background:#fafaf8}
           <option value="2" <?= $mesa_flag_emp === 2 ? 'selected' : '' ?>>2 — UI + score (Seguimiento = la mesa)</option>
         </select>
         <button type="submit" class="btn btn-sm">Guardar</button>
-        <span style="font-size:11.5px;color:#8a8a84">Requiere migración add_mesa_score.sql. Avisar la regla del 80% ANTES de pasar a 2.</span>
+        <span style="font-size:11.5px;color:#8a8a84">Requiere migración add_mesa_score.sql. Avisar la regla ANTES de pasar a 2: cobertura de la mesa ≥80% = completo · 50–80% = medio · menos = no cuenta.</span>
       </form>
     </div>
 
