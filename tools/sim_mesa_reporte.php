@@ -44,15 +44,16 @@ class Radar {
     public static function ciclo_venta($e) { return ['auto' => true, 'p75' => 20, 'mediana' => 10]; }
 }
 
+require __DIR__ . '/../core/MesaSugerencias.php';
 require __DIR__ . '/../core/Mesa.php';
 
 // ── Esquema mínimo con las columnas que las queries usan ──
 $ddl = <<<SQL
-DROP TABLE IF EXISTS cotizaciones, ventas, mesa_estados, radar_feedback,
+DROP TABLE IF EXISTS cotizaciones, clientes, ventas, mesa_estados, radar_feedback,
                      bucket_transitions, quote_sessions, usuarios, cotizacion_log;
 CREATE TABLE cotizaciones (
   id INT UNSIGNED PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
-  usuario_id INT UNSIGNED NOT NULL, vendedor_id INT UNSIGNED NULL,
+  usuario_id INT UNSIGNED NOT NULL, vendedor_id INT UNSIGNED NULL, cliente_id INT UNSIGNED NULL,
   numero VARCHAR(30), titulo VARCHAR(100), total DECIMAL(12,2) NOT NULL DEFAULT 0,
   estado VARCHAR(20) NOT NULL DEFAULT 'enviada', visitas INT NOT NULL DEFAULT 0,
   suspendida TINYINT NOT NULL DEFAULT 0, accion_at DATETIME NULL,
@@ -60,6 +61,7 @@ CREATE TABLE cotizaciones (
   ultima_vista_at DATETIME NULL, radar_senales TEXT NULL,
   created_at DATETIME NOT NULL
 );
+CREATE TABLE clientes (id INT UNSIGNED PRIMARY KEY, nombre VARCHAR(100), telefono VARCHAR(30));
 CREATE TABLE ventas (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, cotizacion_id INT UNSIGNED,
   empresa_id INT UNSIGNED NOT NULL, total DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -133,11 +135,14 @@ function visita(int $cot, float $hace_d, int $vis = 5000, int $scr = 80): void {
     global $d;
     DB::execute("INSERT INTO quote_sessions (cotizacion_id, es_interno, visible_ms, scroll_max, created_at) VALUES (?,0,?,?,?)",
         [$cot, $vis, $scr, $d($hace_d)]);
-    // En producción una visita real del cliente incrementa el contador de la
-    // cotización — es lo que lee el filtro de "mesa VISIBLE" (visitas>0) de
-    // cobertura_senales/armar. El helper debe reflejarlo para no dejar la
-    // cotización invisible en la mesa aunque el cliente la haya abierto.
-    DB::execute("UPDATE cotizaciones SET visitas = visitas + 1 WHERE id = ?", [$cot]);
+    // En producción una visita real del cliente (a) incrementa el contador
+    // visitas (filtro "mesa VISIBLE") y (b) sella ultima_vista_at — que es lo que
+    // armar lee para detectar "revivió tras descarte". El helper debe reflejar
+    // ambas para que la mesa vea la apertura tal como en producción.
+    DB::execute("UPDATE cotizaciones
+                 SET visitas = visitas + 1,
+                     ultima_vista_at = GREATEST(COALESCE(ultima_vista_at, '1970-01-01 00:00:00'), ?)
+                 WHERE id = ?", [$d($hace_d), $cot]);
 }
 
 DB::execute("INSERT INTO usuarios VALUES (101,1,'Ana',1),(102,1,'Beto',1),(103,1,'Dora',1),(201,2,'Carla',1),(999,1,'Superadmin',1)");
@@ -301,7 +306,10 @@ chk('D: cartera activas=6 (D1-D5 + D6), sin_calificar=2 (D3,D4), sin_trabajar=0'
 // Regla 12-jul: el 👍 posterior ANULA el descarte → D5 queda VIVA; viva y
 // abandonada 14d = "se le fue" (rendición de cuentas real, no limbo)
 chk('D5 (Descartar + 👍 después) queda VIVA → cuenta como "se le fue"', $dor['se_fueron'] ?? -1, 1);
-chk('D: señal de D1 atendida (re-👎 a 1d), la de D2 fuera de período → 0 de 1', [$dor['hot_desatendidas'] ?? -1, $dor['hot_total'] ?? -1], [0, 1]);
+// Con cobertura = mesa (armar), Dora no tiene NINGUNA fila en su mesa: todas
+// son descartadas-viejas (D1/D2), nunca-abiertas (D3/D4/D5, visitas=0) o
+// vendida (V4). Universo de mesa = 0 → hot_total/desatendidas = 0.
+chk('D: sin filas de mesa (descartadas viejas / nunca abiertas) → 0 de 0', [$dor['hot_desatendidas'] ?? -1, $dor['hot_total'] ?? -1], [0, 0]);
 chk('D3: acuerdo vigente viejo + plática nueva cuenta A FAVOR → 2 de 2', [$dor['con_compromiso'] ?? -1, $dor['hablamos_cots'] ?? -1], [2, 2]);
 chk('D4: re-tap de la misma pill NO borra el reprobado → 1 maduro, 0 cumplidos, 0 en curso',
     [$dor['comp_maduros'] ?? -1, $dor['comp_cumplidos'] ?? -1, $dor['comp_en_curso'] ?? -1], [1, 0, 0]);

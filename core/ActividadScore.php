@@ -1718,16 +1718,21 @@ class ActividadScore
         $hoy = date('Y-m-d');
         foreach (self::equipo($empresa_id) as $s) {
             try {
+                // Foto del día = la MÁS ALTA (decisión CEO): solo se actualiza si
+                // el score nuevo supera al ya registrado hoy. Se guarda la FILA
+                // COMPLETA de ese mejor momento (no se mezclan dimensiones de
+                // fotos distintas). El promedio mensual = AVG de estas fotos.
                 DB::execute(
                     "INSERT INTO score_diario
                         (usuario_id, empresa_id, fecha, score, nivel,
                          s_activacion, s_seguimiento, s_conversion)
                      VALUES (?,?,?,?,?,?,?,?)
                      ON DUPLICATE KEY UPDATE
-                        score=VALUES(score), nivel=VALUES(nivel),
-                        s_activacion=VALUES(s_activacion),
-                        s_seguimiento=VALUES(s_seguimiento),
-                        s_conversion=VALUES(s_conversion)",
+                        nivel        = IF(VALUES(score) > score, VALUES(nivel), nivel),
+                        s_activacion = IF(VALUES(score) > score, VALUES(s_activacion), s_activacion),
+                        s_seguimiento= IF(VALUES(score) > score, VALUES(s_seguimiento), s_seguimiento),
+                        s_conversion = IF(VALUES(score) > score, VALUES(s_conversion), s_conversion),
+                        score        = IF(VALUES(score) > score, VALUES(score), score)",
                     [
                         (int)$s['usuario_id'], $empresa_id, $hoy,
                         (int)$s['score'], $s['nivel'],
