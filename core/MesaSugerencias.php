@@ -63,8 +63,10 @@ class MesaSugerencias
         $apc_at    = !empty($c['accion_post_cambios_at']) ? strtotime($c['accion_post_cambios_at']) : 0;
         $vio_nueva = $apc_at > 0 && $uv > $apc_at;
 
-        // Días desde una declaración
-        $dias = fn(?array $d) => $d ? max(0, (int)floor((time() - strtotime($d['at'])) / 86400)) : 0;
+        // Días de CALENDARIO desde una declaración (no horas/24): una captura de
+        // ayer por la noche es "hace 1d", no "hoy/fresco" solo porque no han
+        // pasado 24h. Consistente con la columna Actividad y con dias_sin_vista.
+        $dias = fn(?array $d) => $d ? max(0, (int)round((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', strtotime($d['at'])))) / 86400)) : 0;
 
         // ── Contexto de negocio ──
         $edad    = (int)($c['edad'] ?? 0);
