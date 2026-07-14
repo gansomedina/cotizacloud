@@ -324,8 +324,10 @@ class Mesa
                 $cat = 'milagro';            // fuera de ciclo pero viéndola AHORA
             } elseif ($postura === 'con_interes' && empty($me[$cid]['postura']) && ($dormida || $bucket === 'enfriandose')) {
                 $cat = 'interes_muriendo';   // tu 👍 dice interés y el cliente se apaga
-            } elseif ($postura === 'con_interes' && empty($me[$cid]['postura']) && $edad > $p75) {
-                $cat = 'ultimo_tramo';       // 👍 pero saliendo de tu ventana
+            } elseif ($postura === 'con_interes' && empty($me[$cid]['postura']) && $edad > $p75 && !$hot_reciente) {
+                $cat = 'ultimo_tramo';       // 👍 pero saliendo de tu ventana Y frío
+                                             // (si está caliente AHORA, no lo descartes:
+                                             //  cae a 'trabajo' y el consejo usa la señal viva)
             } elseif (empty(array_diff_key($me[$cid] ?? [], ['feedback' => 1])) && $postura === null) {
                 $cat = 'sin_postura';        // nada capturado ni marcado aún
                                              // (filas 'feedback' de dueños anteriores no cuentan como captura)
