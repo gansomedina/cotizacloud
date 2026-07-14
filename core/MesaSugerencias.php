@@ -462,6 +462,17 @@ class MesaSugerencias
                         'El cliente está decidiendo con la cotización en la mano — llámale hoy y ofrécele resolver la última duda; la decisión se cierra contigo enfrente.',
                     ]);
                     $slots['decision'] = true;
+                } elseif ($dias($pos) >= 1) {
+                    // Ya marcaste "decidiendo" hace días y el cliente no se movió:
+                    // no repitas "mándale algo nuevo" — a un decisor no lo mueve más
+                    // info. Dale espacio; si se estanca, el toque es por una fecha.
+                    $dp = $dias($pos);
+                    $f = $pk([
+                        "Marcaste \"decidiendo\" hace {$dp}d y el cliente no se ha movido — no le mandes más info, eso no mueve a un decisor. Dale espacio hoy; si sigue quieto, el siguiente toque es por una fecha, no por otro dato.",
+                        "El cliente quedó en pensarlo hace {$dp}d — ya le diste con qué. Observa si reabre; no repitas el envío. Si se estanca, pídele una respuesta con fecha.",
+                        "Van {$dp}d de \"lo está pensando\" sin señales — insistir con más material lo satura. Aire hoy; si no se mueve, una fecha límite y a lo que sigue.",
+                    ]);
+                    $slots['confronta'] = true;
                 } else {
                     $f = $pk([
                         'Hablaron sin acuerdo y el cliente "lo está pensando" — mándale hoy algo nuevo que lo ayude a decidir: un caso, una foto, una fecha límite.',
@@ -507,13 +518,22 @@ class MesaSugerencias
                     'Hablaron sin acuerdo y aun así el cliente relee la cotización — no lo dejes enfriar: llámale hoy y proponle dos fechas para arrancar.',
                 ]);
                 $slots['decision'] = true;
+            } elseif ($dias($com) >= 1) {
+                // Hablaron hace días sin cerrar: el pendiente es UNA propuesta por
+                // escrito, no otra plática. Si ya la mandaste, observa; si no, esa
+                // es la única acción de hoy. No repitas "vuelve a proponer".
+                $dp = $dias($com);
+                $f = $pk([
+                    "Hablaron hace {$dp}d y no aterrizó — si ya le mandaste la propuesta por escrito (fecha y anticipo), dale espacio hoy: la siguiente llamada solo pide sí o no. Si no se la mandaste, esa es tu única acción de hoy.",
+                    "La plática fue hace {$dp}d sin cerrar nada — no repitas la charla. ¿Ya está la propuesta por escrito? Si sí, espera su respuesta; si no, mándala hoy y ahí lo dejas.",
+                    "Van {$dp}d desde que hablaron sin quedar en nada — el pendiente es UNA propuesta cerrada por escrito, no otra plática. Si ya la enviaste, hoy solo observas.",
+                ]);
+                $slots['decision'] = true;
             } else {
                 $f = $pk([
                     'No repitas la plática: mándale al cliente una propuesta por escrito con fecha y anticipo definidos, y que tu siguiente llamada solo pida el sí o el no.',
                     'La siguiente llamada necesita algo nuevo — mándale antes al cliente una propuesta cerrada con fecha y anticipo, y llama solo a confirmarla.',
-                    'Otra plática igual no cierra nada — mándale hoy al cliente una propuesta escrita con fecha y anticipo; la siguiente llamada es solo para el sí o el no.',
                     'Ya hablaron y no aterrizó nada — pon la propuesta por escrito hoy (fecha y anticipo) y que el cliente solo diga sí o no.',
-                    'Para que la próxima llamada sirva, primero mándale hoy una propuesta cerrada — sin propuesta enfrente, el cliente no decide.',
                 ]);
                 $slots['decision'] = true;
             }
@@ -564,6 +584,8 @@ class MesaSugerencias
         $apc_at    = !empty($c['accion_post_cambios_at']) ? strtotime($c['accion_post_cambios_at']) : 0;
         $uv        = !empty($c['ultima_vista_at']) ? strtotime($c['ultima_vista_at']) : 0;
         $vio_nueva = $apc_at > 0 && $uv > $apc_at;
+        // Días de calendario desde que marcaste esta postura (recencia de TU acción)
+        $dpos = self::dcal(!empty($c['postura_decl']['at']) ? strtotime($c['postura_decl']['at']) : 0);
         switch ($pos_e) {
             case 'decidiendo':
                 if ($dormida && !$reabrio) {
@@ -596,8 +618,13 @@ class MesaSugerencias
                     "Marcaste \"decidiendo\" y el cliente la reabrió, aunque van {$dsv}d desde esa lectura — retómalo hoy: pide una respuesta con fecha.",
                     "El cliente volvió a la cotización tras tu marca y luego se calló ({$dsv}d) — no lo dejes decidir solo: contáctalo hoy con fecha límite.",
                 ]); }
+                if ($dpos >= 1) { $slots['confronta'] = true; return $pk([
+                    "Marcaste \"decidiendo\" hace {$dpos}d y el cliente no ha reabierto la cotización — un \"lo pienso\" que no se mueve es un no lento. Ya le diste con qué: hoy no más info, pídele una respuesta con fecha.",
+                    "Van {$dpos}d de \"decidiendo\" sin que el cliente reabra — no repitas el envío, eso ya no lo mueve. El toque de hoy es por una definición con fecha, sí o no.",
+                    "El cliente \"decide\" desde hace {$dpos}d sin abrir la cotización — deja de alimentar la espera: ponle fecha a la decisión o acéptalo como no.",
+                ]); }
                 return $pk([
-                    'Marcaste "decidiendo" pero el cliente no ha vuelto a abrir la cotización — nadie decide sin releer: mándale hoy algo nuevo que lo haga decidir.',
+                    'Marcaste "decidiendo" hoy pero el cliente no ha vuelto a abrir la cotización — nadie decide sin releer: mándale algo nuevo que lo haga decidir.',
                     'Dices que el cliente decide pero la cotización está fría — sin lecturas no hay decisión: dale hoy un motivo nuevo (dato, foto o fecha límite).',
                     'El cliente "está decidiendo" sin abrir la cotización — eso es un no lento: mándale hoy una razón nueva para retomarla.',
                 ]);
@@ -656,6 +683,11 @@ class MesaSugerencias
                     "Van {$dsv}d sin una sola apertura y tú ya la ves dudosa — mándale hoy un mensaje con fecha límite; si el cliente no responde, descártala con razón.",
                     "La cotización tiene {$dsv}d sin abrirse y tu propia postura es de duda — decide hoy: fecha límite al cliente o descarte con razón.",
                 ]);
+                if ($dpos >= 1) { $slots['confronta'] = true; return $pk([
+                    "Llevas {$dpos}d con esta venta \"en el aire\" y el cliente no se mueve — sentarte en la duda no la resuelve: hoy UNA pregunta directa (qué falta para decidir) o ponle fecha límite.",
+                    "Van {$dpos}d de duda sin definir — si ya le preguntaste y no contestó, no insistas igual: fecha límite y, si calla, a descarte. Si nunca preguntaste, esa es la de hoy.",
+                    "La marcaste \"en el aire\" hace {$dpos}d — una duda que no se resuelve se pudre. Hoy sales de ella: pregunta directa o fecha límite, no otra semana de espera.",
+                ]); }
                 return $pk([
                     'Tienes la venta en duda — una pregunta directa al cliente hoy vale más que otra semana de espera: pregúntale qué falta para decidir.',
                     'La venta sigue sin rumbo — mándale hoy al cliente una pregunta concreta: qué necesita para tomar la decisión.',
@@ -905,6 +937,13 @@ class MesaSugerencias
                 break;
         }
         return $f;
+    }
+
+    // Días de CALENDARIO desde un timestamp (0 = hoy/nunca). Igual criterio que
+    // el cierre $dias de sugerir() y que la columna Actividad.
+    private static function dcal(int $ts): int
+    {
+        return $ts > 0 ? max(0, (int)round((strtotime(date('Y-m-d')) - strtotime(date('Y-m-d', $ts))) / 86400)) : 0;
     }
 
     private static function x(float $ratio): string
