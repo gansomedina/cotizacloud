@@ -139,16 +139,17 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       </span>
       <?php $sg = $r['seguimiento'] ?? null;
             $sg_ult = $udd === null ? 'sin declaraciones' : ($udd === 0 ? 'última declaración hoy' : "última declaración hace {$udd}d");
+            $sg_f = $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d");
             $sg_h = (int)($r['venc_huella'] ?? 0);
             $sg_hf = $sg_h > 0 ? ' <small style="opacity:.75" title="Acumuló ' . $sg_h . 'd de seguimiento vencido en el período — no se borra al ponerse al corriente; se drena con los días">⏰' . $sg_h . 'd</small>' : '';
             if (!empty($r['cita_vencida'])): ?>
-      <span class="mfresh bad" title="La CITA venció el <?= e($sg['vence']) ?> sin actualizarse — solo baja registrando el desenlace (Quedamos / No quiso / Nada), descartándola, o Hablamos + re-citar si la pospusieron. <?= e($sg_ult) ?>">🔴 cita vencida <?= (int)$sg['dias'] ?>d</span>
+      <span class="mfresh bad" title="La CITA venció el <?= e($sg['vence']) ?> sin actualizarse — solo baja registrando el desenlace (Quedamos / No quiso / Nada), descartándola, o Hablamos + re-citar si la pospusieron. <?= e($sg_ult) ?>"><?= e($sg_f) ?> · 🔴 cita vencida <?= (int)$sg['dias'] ?>d</span>
       <?php elseif ($sg && $sg['estado'] === 'vencida'): ?>
-      <span class="mfresh bad" title="El siguiente toque venció el <?= e($sg['vence']) ?> — se pone al corriente con un contacto declarado (Hablamos / No contestó). <?= e($sg_ult) ?>">🔴 vencida <?= (int)$sg['dias'] ?>d</span>
+      <span class="mfresh bad" title="El siguiente toque venció el <?= e($sg['vence']) ?> — se pone al corriente con un contacto declarado (Hablamos / No contestó). <?= e($sg_ult) ?>"><?= e($sg_f) ?> · 🔴 vencida <?= (int)$sg['dias'] ?>d</span>
       <?php elseif ($sg && $sg['estado'] === 'hoy'): ?>
-      <span class="mfresh warn" title="El siguiente toque vence HOY — un contacto declarado la pone al corriente. <?= e($sg_ult) ?>">🟠 vence HOY<?= $sg_hf ?></span>
+      <span class="mfresh warn" title="El siguiente toque vence HOY — un contacto declarado la pone al corriente. <?= e($sg_ult) ?>"><?= e($sg_f) ?> · 🟠 vence HOY<?= $sg_hf ?></span>
       <?php elseif ($sg): ?>
-      <span class="mfresh<?= $udd === 0 ? ' ok' : '' ?>" title="Al corriente — el siguiente toque vence el <?= e($sg['vence']) ?>. <?= e($sg_ult) ?>">vence <?= e(date('d/m', strtotime($sg['vence']))) ?><?= $sg_hf ?></span>
+      <span class="mfresh<?= $udd === 0 ? ' ok' : '' ?>" title="Al corriente — el siguiente toque vence el <?= e($sg['vence']) ?>. <?= e($sg_ult) ?>"><?= e($sg_f) ?> · vence <?= e(date('d/m', strtotime($sg['vence']))) ?><?= $sg_hf ?></span>
       <?php else: ?>
       <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
         <?= $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d") ?></span>
