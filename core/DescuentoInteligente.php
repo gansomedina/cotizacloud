@@ -144,6 +144,16 @@ class DescuentoInteligente
         $anc = self::anclas($eid);
         if (!$anc) return null; // sin muestra suficiente
 
+        // AGENDADA: el cliente pidió retomar en una fecha futura — es territorio
+        // de la mesa/agenda, no del DI. Parqueada implica dormancia garantizada,
+        // pero NO es un lead muerto a recuperar: regalarle % rompe la promesa de
+        // la cita. Bloquea mientras la agenda gobierna la cotización: hasta
+        // fecha + 2×p75 (la misma ventana con que la mesa la re-ancla al volver).
+        if (!empty($cot['agenda_fecha'])
+            && strtotime($cot['agenda_fecha'] . ' 00:00:00') + 2 * (int)$anc['p75'] * 86400 >= time()) {
+            return null;
+        }
+
         // Cliente válido: no NULL, no genérico (cajón de mostrador)
         $cli = (int)($cot['cliente_id'] ?? 0);
         if ($cli <= 0) return null;
@@ -207,7 +217,11 @@ class DescuentoInteligente
         $dorm = $uv ? (int)floor((time() - strtotime($uv)) / 86400) : 0;
         if ($dorm <= 2 * (int)$anc['p75']) return null; // te vio dentro de tu ventana → milagro, no DI
 
-        // Exclusión B: actividad reciente en el window (cliente O asesor) → viva
+        // Exclusión B: actividad reciente en el window (cliente O asesor) → viva.
+        // El asesor cuenta por: ediciones/reenvíos (cotizacion_log), feedback 👍👎
+        // (radar_feedback) Y CUALQUIER tap de la mesa (mesa_estados — hablamos,
+        // no_contesta, compromisos, posturas): declarar trabajo ES gestión activa;
+        // sin esto el DI disparaba dos días después de una llamada declarada.
         $reciente = (int)DB::val(
             "SELECT
                EXISTS(SELECT 1 FROM quote_sessions qs
@@ -219,8 +233,10 @@ class DescuentoInteligente
                    AND COALESCE(a.accion, a.evento) IN ('editada','enviada')
                    AND a.created_at >= NOW() - INTERVAL ? DAY)
                OR EXISTS(SELECT 1 FROM radar_feedback rf
-                 WHERE rf.cotizacion_id = ? AND rf.updated_at >= NOW() - INTERVAL ? DAY)",
-            [(int)$cot['id'], $window, (int)$cot['id'], $window, (int)$cot['id'], $window]);
+                 WHERE rf.cotizacion_id = ? AND rf.updated_at >= NOW() - INTERVAL ? DAY)
+               OR EXISTS(SELECT 1 FROM mesa_estados me
+                 WHERE me.cotizacion_id = ? AND me.created_at >= NOW() - INTERVAL ? DAY)",
+            [(int)$cot['id'], $window, (int)$cot['id'], $window, (int)$cot['id'], $window, (int)$cot['id'], $window]);
         if ($reciente) return null;
 
         return [

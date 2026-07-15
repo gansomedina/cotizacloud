@@ -66,10 +66,36 @@ elseif ($accion === 'cancelar') {
         json_error('Debes cancelar todos los abonos antes de cancelar la venta. (' . $abonos_activos . ' abonos activos)');
     }
 
-    DB::execute(
-        "UPDATE ventas SET estado='cancelada', notas_internas=CONCAT(COALESCE(notas_internas,''), '\n[Cancelada: ', ?, ']'), updated_at=NOW() WHERE id=?",
-        [$motivo, $venta_id]
-    );
+    // La venta y su Descuento Inteligente se liberan JUNTOS: sin esto la
+    // activación queda 'utilizado' huérfana (quitar-desc-int rechaza ventas
+    // canceladas), el cliente queda bloqueado de DI para siempre por
+    // uk_cliente_vivo y la cotización nunca regresa a la mesa — 'cancelado'
+    // es el único camino de regreso.
+    DB::beginTransaction();
+    try {
+        DB::execute(
+            "UPDATE ventas SET estado='cancelada', notas_internas=CONCAT(COALESCE(notas_internas,''), '\n[Cancelada: ', ?, ']'), updated_at=NOW() WHERE id=?",
+            [$motivo, $venta_id]
+        );
+        if (!empty($venta['cotizacion_id'])) {
+            try {
+                DB::execute(
+                    "UPDATE desc_int_activaciones SET estado='cancelado'
+                     WHERE cotizacion_id=? AND estado='utilizado'",
+                    [(int)$venta['cotizacion_id']]
+                );
+            } catch (Throwable $e) {
+                // tabla sin migrar = no hay activaciones que liberar; cualquier
+                // otro error se loguea pero no bloquea la cancelación de la venta
+                error_log('[Venta cancelar][DI] ' . $e->getMessage());
+            }
+        }
+        DB::commit();
+    } catch (Throwable $e) {
+        try { DB::rollback(); } catch (Throwable $e2) {}
+        error_log('[Venta cancelar] ' . $e->getMessage());
+        json_error('No se pudo cancelar la venta', 500);
+    }
 
     json_ok(['estado' => 'cancelada']);
 }
