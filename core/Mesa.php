@@ -571,7 +571,7 @@ class Mesa
         $dias   = max(1, (int)$dias);
         $hot_in = "'" . implode("','", self::HOT) . "'";
         try {
-            return DB::query(
+            return self::_sin_di($empresa_id, DB::query(
                 "SELECT s.cotizacion_id, c.numero, c.titulo, s.senal_at,
                         (s.senal_at <= NOW() - INTERVAL 3 DAY) AS cerrada,
                         (EXISTS (SELECT 1 FROM mesa_estados m
@@ -602,8 +602,26 @@ class Mesa
                                            AND bt2.created_at >= bt.created_at - INTERVAL 3 DAY)) s
                  JOIN cotizaciones c ON c.id = s.cotizacion_id
                  ORDER BY s.senal_at DESC", [$empresa_id, $vendedor_id]
-            );
+            ));
         } catch (Throwable $e) { return []; }
+    }
+
+    /** Filtra del desglose las cotizaciones con DI (Opción B) — el contador
+     *  (cobertura_senales, derivado de armar) ya las excluye; sin este filtro
+     *  el desglose listaba señales de cotizaciones que el X/Y no cuenta. */
+    private static function _sin_di(int $empresa_id, array $rows): array
+    {
+        if (!$rows) return $rows;
+        try {
+            $di = [];
+            foreach (DB::query(
+                "SELECT DISTINCT cotizacion_id FROM desc_int_activaciones
+                 WHERE empresa_id = ? AND estado <> 'cancelado'", [$empresa_id]) as $dr) {
+                $di[(int)$dr['cotizacion_id']] = true;
+            }
+            if ($di) $rows = array_values(array_filter($rows, fn($r) => !isset($di[(int)$r['cotizacion_id']])));
+        } catch (\Throwable $e) {} // tabla sin migrar → sin filtro
+        return $rows;
     }
 
     /**
@@ -899,18 +917,29 @@ class Mesa
                  SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, m.cotizacion_id,
                         (SELECT MIN(m3.created_at) FROM mesa_estados m3
                          WHERE m3.cotizacion_id = m.cotizacion_id AND m3.area = 'compromiso'
-                           AND m3.estado = m.estado
+                           AND m3.estado IN ('compromiso','nos_citamos')
                            AND m3.id > COALESCE(
                                (SELECT MAX(m4.id) FROM mesa_estados m4
                                 WHERE m4.cotizacion_id = m.cotizacion_id AND m4.area = 'compromiso'
-                                  AND m4.estado != m.estado), 0)) AS eff
+                                  AND m4.estado NOT IN ('compromiso','nos_citamos')), 0)) AS eff
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
                        WHERE empresa_id = ? AND area = 'compromiso'
-                         AND created_at >= NOW() - INTERVAL $dias DAY
                        GROUP BY cotizacion_id) tc ON tc.mid = m.id
                  JOIN cotizaciones c ON c.id = m.cotizacion_id
                  WHERE m.estado IN ('compromiso','nos_citamos')
+                   -- MISMA membresía que 'Genera compromiso' (bloque 2b): acuerdo
+                   -- VIGENTE de toda la historia + conversación declarada en el
+                   -- período. Antes tc exigía la fila DENTRO del período: un
+                   -- acuerdo viejo con plática nueva contaba en la columna de al
+                   -- lado pero escapaba a este examen para siempre.
+                   -- Y la racha compromiso↔nos_citamos es UNA sola para el reloj
+                   -- (la frontera la marcan solo los estados NO examinables):
+                   -- alternar entre los dos positivos ya no reinicia los 5 días.
+                   AND EXISTS (SELECT 1 FROM mesa_estados mx
+                               WHERE mx.cotizacion_id = m.cotizacion_id
+                                 AND mx.created_at >= NOW() - INTERVAL $dias DAY
+                                 AND ((mx.area = 'contacto' AND mx.estado = 'hablamos') OR mx.area = 'compromiso'))
                    AND NOT ((SELECT mp.estado FROM mesa_estados mp
                              WHERE mp.cotizacion_id = m.cotizacion_id AND mp.area = 'postura'
                              ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'
@@ -987,9 +1016,49 @@ class Mesa
                       AND NOT EXISTS (SELECT 1 FROM ventas v
                                       WHERE v.cotizacion_id = rf.cotizacion_id
                                         AND v.estado != 'cancelada')
+                    UNION ALL
+                    -- DOBLE FUENTE (igual que armar/cartera): descartes hechos
+                    -- SOLO con el pill Descartar (postura vigente 'descartada'
+                    -- sin 👎 del dueño). Desde que los taps ya no proyectan la
+                    -- manita (15-jul), sin esta rama el descarte-por-pill era
+                    -- invisible para '👎 que revivieron' aunque armar sí lo
+                    -- revive y Recuperado sí lo cuenta.
+                    SELECT COALESCE(c2.vendedor_id, c2.usuario_id) AS uid, mp.cotizacion_id AS cid,
+                           (SELECT MIN(mp2.created_at) FROM mesa_estados mp2
+                            WHERE mp2.cotizacion_id = mp.cotizacion_id
+                              AND mp2.area = 'postura' AND mp2.estado = 'descartada'
+                              AND mp2.created_at > COALESCE(
+                                  (SELECT MAX(mc2.created_at) FROM mesa_estados mc2
+                                   WHERE mc2.cotizacion_id = mp.cotizacion_id
+                                     AND mc2.area = 'feedback' AND mc2.estado = 'con_interes'),
+                                  '2000-01-01')) AS anc
+                    FROM mesa_estados mp
+                    JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
+                          WHERE empresa_id = ? AND area = 'postura'
+                          GROUP BY cotizacion_id) tp ON tp.mid = mp.id
+                    JOIN cotizaciones c2 ON c2.id = mp.cotizacion_id
+                    WHERE mp.estado = 'descartada'
+                      -- sin 👍 posterior que anule el descarte (misma regla que armar)
+                      AND NOT EXISTS (SELECT 1 FROM mesa_estados mfp
+                                      WHERE mfp.cotizacion_id = mp.cotizacion_id
+                                        AND mfp.area = 'feedback' AND mfp.estado = 'con_interes'
+                                        AND mfp.id > mp.id)
+                      AND NOT EXISTS (SELECT 1 FROM radar_feedback rf3
+                                      WHERE rf3.cotizacion_id = mp.cotizacion_id
+                                        AND rf3.usuario_id = COALESCE(c2.vendedor_id, c2.usuario_id)
+                                        AND rf3.tipo = 'con_interes'
+                                        AND rf3.updated_at > mp.created_at)
+                      -- si además hay 👎 del dueño, ya la contó la rama de arriba
+                      AND NOT EXISTS (SELECT 1 FROM radar_feedback rf2
+                                      WHERE rf2.cotizacion_id = mp.cotizacion_id
+                                        AND rf2.usuario_id = COALESCE(c2.vendedor_id, c2.usuario_id)
+                                        AND rf2.tipo = 'sin_interes')
+                      AND NOT EXISTS (SELECT 1 FROM ventas v2
+                                      WHERE v2.cotizacion_id = mp.cotizacion_id
+                                        AND v2.estado != 'cancelada')
                  ) x
                  WHERE x.anc >= NOW() - INTERVAL $dias DAY
-                 GROUP BY uid", [$empresa_id]
+                 GROUP BY uid", [$empresa_id, $empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
                 $out[$u] ??= $base;

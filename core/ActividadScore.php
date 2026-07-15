@@ -581,6 +581,9 @@ class ActividadScore
         );
 
         $fb_total = count($fb_data);
+        // 📵 sin_info: cuenta como señal ATENDIDA (tasa_completado usa fb_total)
+        // pero NO como juicio — no debe inflar el peso del examen (w_examen).
+        $fb_sin_info = count(array_filter($fb_data, fn($f) => $f['tipo'] === 'sin_info'));
         $aciertos = 0.0;
         $fallos = 0.0;
         $inv_cr = 1.0 / $close_rate_safe; // 1/close_rate para escalar
@@ -636,7 +639,10 @@ class ActividadScore
         // Poca data → tarea (dar feedback) importa más (esfuerzo)
         // Mucha data → examen (calidad) importa más (resultado medible)
         $w_tarea  = 1.0;
-        $w_examen = max($fb_total, 1);  // 1fb→50/50, 5fb→17/83, 10fb→9/91
+        // El peso del examen crece con los JUICIOS (👍👎), no con los 📵:
+        // sin_info no aporta evidencia de calidad — sin restarlo, cada 📵
+        // amplificaba la calidad existente y diluía la tarea (neutralidad rota)
+        $w_examen = max($fb_total - $fb_sin_info, 1);  // 1fb→50/50, 5fb→17/83, 10fb→9/91
         $w_seg_total = $w_tarea + $w_examen;
 
         $s_seguimiento = ($tasa_completado * $w_tarea + $calidad_fb * $w_examen) / $w_seg_total
