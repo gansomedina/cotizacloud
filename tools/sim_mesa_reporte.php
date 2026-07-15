@@ -59,7 +59,7 @@ CREATE TABLE cotizaciones (
   estado VARCHAR(20) NOT NULL DEFAULT 'enviada', visitas INT NOT NULL DEFAULT 0,
   suspendida TINYINT NOT NULL DEFAULT 0, accion_at DATETIME NULL,
   radar_bucket VARCHAR(40) NULL, radar_bucket_at DATETIME NULL,
-  ultima_vista_at DATETIME NULL, radar_senales TEXT NULL,
+  ultima_vista_at DATETIME NULL, radar_senales TEXT NULL, agenda_fecha DATE NULL, agenda_at DATETIME NULL,
   created_at DATETIME NOT NULL
 );
 CREATE TABLE clientes (id INT UNSIGNED PRIMARY KEY, nombre VARCHAR(100), telefono VARCHAR(30));

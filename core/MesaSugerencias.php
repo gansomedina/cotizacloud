@@ -49,7 +49,7 @@ class MesaSugerencias
         $viva     = $leyendo || $reciente || $hot_fresco;
         // Evidencia de apertura para citar en la frase (siempre factual)
         $ev_abrio = $leyendo ? ($v24 > 1 ? "{$v24} veces hoy" : 'hoy')
-                  : ($dsv === 1 ? 'ayer' : ($dsv === 2 ? 'hace 2 días' : "hace {$dsv}d"));
+                  : ($dsv === 0 ? 'hoy' : ($dsv === 1 ? 'ayer' : ($dsv === 2 ? 'hace 2 días' : "hace {$dsv}d")));
 
         // ¿El cliente reabrió DESPUÉS de la última declaración?
         $ult_decl = 0;
@@ -74,6 +74,10 @@ class MesaSugerencias
         $mediana = max(1, (int)($c['mediana'] ?? $p75));
         $fuera   = $edad > $p75;
         $intentos_nc = (int)($c['intentos_nc'] ?? 0);
+        // Reloj de seguimiento (Fase A): las ramas de ESPERA solo aplican con
+        // el reloj al corriente — si el límite es hoy o ya pasó, aconsejar
+        // "dale espacio" contradice el chip 🔴 y el castigo que corre a diario.
+        $seg_ok = (($c['seguimiento']['estado'] ?? 'ok') === 'ok');
         $ratio = null;
         if (!empty($c['ticket_empresa']) && (float)$c['ticket_empresa'] > 0) {
             $ratio = (float)$c['total'] / (float)$c['ticket_empresa'];
@@ -189,10 +193,11 @@ class MesaSugerencias
             }
             // PLANTÓN DE CITA: fijaron cita y el cliente dejó de contestar
             elseif ($com_e === 'nos_citamos') {
+                $reabrio_tras_cita = $uv > strtotime($com['at']);
                 if ($leyendo || $reciente) {
                     $f = $pk([
                         "Tenían cita y el cliente dejó de contestar, pero abrió la cotización {$ev_abrio} — la cita le sigue interesando: mándale un mensaje reconfirmándola con día y hora.",
-                        "El cliente no contesta pero abrió la cotización {$ev_abrio} después de fijar la cita — reconfírmala hoy por mensaje con día y hora.",
+                        "El cliente no contesta pero abrió la cotización {$ev_abrio}" . ($reabrio_tras_cita ? " después de fijar la cita" : "") . " — reconfírmala hoy por mensaje con día y hora.",
                         "Fijaron cita, el cliente calló, y aun así volvió a la cotización — sigue en juego: mensaje hoy reconfirmando la cita.",
                     ]);
                     $slots['senal_viva'] = true;
@@ -255,9 +260,9 @@ class MesaSugerencias
                     ]);
                 } elseif ($dormida) {
                     $f = $pk([
-                        "El cliente no contesta y lleva {$dsv}d sin abrir la cotización — reinténtalo mañana por OTRO canal; si tampoco responde, prepárate para descartarla.",
-                        "El cliente ni contesta ni ha abierto la cotización en {$dsv}d — mañana dale un toque por un canal distinto; si sigue el silencio, va rumbo a descarte.",
-                        "Sin respuesta y {$dsv}d sin una sola apertura de la cotización — cambia de canal mañana; si tampoco funciona, descártala con razón.",
+                        "El cliente no contesta y lleva {$dsv}d sin abrir la cotización — reinténtalo hoy o mañana a más tardar por OTRO canal; si tampoco responde, prepárate para descartarla.",
+                        "El cliente ni contesta ni ha abierto la cotización en {$dsv}d — dale un toque hoy o mañana por un canal distinto; si sigue el silencio, va rumbo a descarte.",
+                        "Sin respuesta y {$dsv}d sin una sola apertura de la cotización — cambia de canal hoy mismo; si tampoco funciona, descártala con razón.",
                     ]);
                 } else {
                     $f = $pk([
@@ -341,14 +346,23 @@ class MesaSugerencias
                     "El cliente va en serio pero ya pasaron los {$p75} días en que sueles cerrar — llámale hoy y amarra una fecha de decisión concreta.",
                 ]);
                 $slots['decision'] = true;
-            } elseif ($dcom >= 1) {
+            } elseif ($dcom >= 1 && $seg_ok) {
                 // Quedaron AYER (o antier) y el cliente no se ha movido: ya hiciste
-                // tu parte. No repitas "mándale hoy" — dale espacio y observa; lo
-                // único pendiente es que el acuerdo tenga fecha por escrito.
+                // tu parte. SOLO con el reloj al corriente — vencido, el consejo
+                // es el toque, no el espacio.
+                $slots['espera'] = true;
                 $f = $pk([
                     'Quedaron hace ' . $dcom . 'd y el cliente no se ha movido — ya hiciste tu parte. Hoy dale espacio y observa si reabre o responde; lo único pendiente es que el acuerdo tenga fecha por escrito.',
                     'El acuerdo es de hace ' . $dcom . 'd — un par de días es normal. No lo satures: si ya quedó la fecha, espera su reacción; si no, mándale solo el resumen con la fecha y ahí lo dejas.',
                     'Acordaron hace ' . $dcom . 'd — no lo persigas todavía. Observa hoy si el cliente reabre la cotización; el único pendiente tuyo es dejar la fecha por escrito.',
+                ]);
+            } elseif ($dcom >= 1) {
+                // Acuerdo con el reloj vencido/al límite: el espacio se acabó —
+                // el toque declarado es lo que lo pone al corriente
+                $f = $pk([
+                    "El acuerdo tiene {$dcom}d y tu seguimiento ya llegó a su límite — un mensaje corto HOY (\u00bfsigue en pie lo que quedamos?) te pone al corriente.",
+                    "Quedaron hace {$dcom}d y la cotización ya pide toque — mensaje breve hoy confirmando lo acordado; con eso queda al corriente.",
+                    "Pasaron {$dcom}d del acuerdo y el reloj de seguimiento venció — escríbele hoy citando lo que quedaron.",
                 ]);
             } else {
                 // dcom == 0: quedaron HOY — formalízalo mientras está fresco
@@ -367,7 +381,11 @@ class MesaSugerencias
         elseif ($com_vig && $com_e === 'nos_citamos') {
             $dcita = $dias($com);
             $reabrio_cita = $uv > strtotime($com['at']);
-            if ($dcita >= 5) {
+            // El "registra el desenlace" sigue a la CADENCIA real de la cita
+            // (ceil(mediana), topada a 5): con ciclo corto el chip se pone rojo
+            // al dia 3 y el tip debe pedir el desenlace ahi, no al 5 fijo
+            $lim_cita = max(2, min(5, (int)ceil((float)($c['mediana'] ?? 7))));
+            if ($dcita >= $lim_cita) {
                 $f = $pk([
                     "Declaraste la cita hace {$dcita}d — si ya se dieron, registra hoy el desenlace (¿quedaron en algo, no quiso, nada?); si sigue pendiente, reconfírmala por mensaje.",
                     "La cita se fijó hace {$dcita}d — actualízala: si ya ocurrió, captura el resultado; si el cliente la movió, decláralo de nuevo — una cita eterna no dice nada.",
@@ -376,7 +394,7 @@ class MesaSugerencias
             } elseif ($reabrio_cita || $leyendo) {
                 $f = $pk([
                     'Tienen cita fijada y el cliente volvió a abrir la cotización — va en serio: confírmale la cita hoy y prepara la conversación sobre lo que él está revisando.',
-                    'El cliente abrió la cotización después de fijar la cita — llega preparado: confírmala hoy y lleva respuestas para lo que estuvo mirando.',
+                    ($reabrio_cita ? 'El cliente abrió la cotización después de fijar la cita' : 'El cliente está revisando la cotización con la cita fijada') . ' — llega preparado: confírmala hoy y lleva respuestas para lo que estuvo mirando.',
                     'Cita en pie y el cliente revisando la cotización — confírmala hoy por mensaje; a la cita se llega con la cotización lista.',
                 ]);
                 $slots['cierre'] = true;
@@ -466,11 +484,21 @@ class MesaSugerencias
                 // preguntaste. No repitas "llámale hoy" — dale aire; el cliente
                 // pelotea. Solo si NUNCA le sacaste el motivo, un intento distinto.
                 $dpnq = $dias($com);
+                if (!$seg_ok) {
+                    // Reloj vencido: el aire se acabó — un toque corto lo pone
+                    // al corriente y de paso cierra el capítulo
+                    $f = $pk([
+                        "El no fue hace {$dpnq}d y tu seguimiento llegó a su límite — un último mensaje corto hoy; si calla, descártala con razón y tu 👎.",
+                        "Propusiste hace {$dpnq}d, dijo que no y el reloj de seguimiento ya venció — toque breve hoy por otro ángulo; sin respuesta, es descarte con razón y 👎.",
+                    ]);
+                } else {
+                $slots['espera'] = true;
                 $f = $pk([
                     "El no fue hace {$dpnq}d y el cliente sigue sin moverse — ya jugaste tu carta. Dale aire hoy; si aún no sabes el motivo real, mándale UN mensaje distinto (no el mismo), y si calla, es un no.",
                     "Propusiste hace {$dpnq}d, dijo que no y no ha vuelto — el balón está de su lado. No lo persigas hoy: si nunca te dio la razón, un último intento por otro ángulo; si ya, déjalo enfriar y evalúa descartarla.",
                     "Hace {$dpnq}d que dijo que no y no se asoma — insistir hoy con lo mismo lo aleja. Si te falta entender qué lo frenó, pregúntalo distinto; si ya lo sabes y no cambió, esta va para descarte.",
                 ]);
+                }
             } else {
                 // El no fue HOY — averigua el motivo mientras está fresco
                 $f = $pk([
@@ -516,6 +544,15 @@ class MesaSugerencias
                         'El cliente está decidiendo con la cotización en la mano — llámale hoy y ofrécele resolver la última duda; la decisión se cierra contigo enfrente.',
                     ]);
                     $slots['decision'] = true;
+                } elseif ($dias($pos) >= 1 && !$seg_ok) {
+                    // Reloj vencido: el espacio se acabó — el toque de hoy es
+                    // por una FECHA de decisión (y te pone al corriente)
+                    $dp = $dias($pos);
+                    $f = $pk([
+                        "Lleva {$dp}d decidiendo y tu seguimiento llegó a su límite — mensaje corto hoy pidiendo fecha de respuesta; con eso quedas al corriente.",
+                        "El \"decidiendo\" ya tiene {$dp}d y el reloj de seguimiento venció — el toque de hoy no es más info: es pedirle fecha para su respuesta.",
+                    ]);
+                    $slots['decision'] = true;
                 } elseif ($dias($pos) >= 1) {
                     // Ya marcaste "decidiendo" hace días y el cliente no se movió:
                     // no repitas "mándale algo nuevo" — a un decisor no lo mueve más
@@ -526,7 +563,7 @@ class MesaSugerencias
                         "El cliente quedó en pensarlo hace {$dp}d — ya le diste con qué. Observa si reabre; no repitas el envío. Si se estanca, pídele una respuesta con fecha.",
                         "Van {$dp}d de \"lo está pensando\" sin señales — insistir con más material lo satura. Aire hoy; si no se mueve, una fecha límite y a lo que sigue.",
                     ]);
-                    $slots['confronta'] = true;
+                    $slots['espera'] = true;
                 } else {
                     $f = $pk([
                         'Hablaron sin acuerdo y el cliente "lo está pensando" — mándale hoy algo nuevo que lo ayude a decidir: un caso, una foto, una fecha límite.',
@@ -577,12 +614,21 @@ class MesaSugerencias
                 // escrito, no otra plática. Si ya la mandaste, observa; si no, esa
                 // es la única acción de hoy. No repitas "vuelve a proponer".
                 $dp = $dias($com);
+                if (!$seg_ok) {
+                    // Reloj vencido: la propuesta por escrito ES el toque de hoy
+                    $f = $pk([
+                        "Hablaron hace {$dp}d sin aterrizar y tu seguimiento llegó a su límite — mensaje corto hoy con la propuesta cerrada (fecha y anticipo); con eso quedas al corriente.",
+                        "Van {$dp}d sin nada concreto y el reloj de seguimiento venció — el toque de hoy es la propuesta por escrito que pida sí o no.",
+                    ]);
+                    $slots['decision'] = true;
+                } else {
+                $slots['espera'] = true;
                 $f = $pk([
                     "Hablaron hace {$dp}d y no aterrizó — si ya le mandaste la propuesta por escrito (fecha y anticipo), dale espacio hoy: la siguiente llamada solo pide sí o no. Si no se la mandaste, esa es tu única acción de hoy.",
                     "La plática fue hace {$dp}d sin cerrar nada — no repitas la charla. ¿Ya está la propuesta por escrito? Si sí, espera su respuesta; si no, mándala hoy y ahí lo dejas.",
                     "Van {$dp}d desde que hablaron sin quedar en nada — el pendiente es UNA propuesta cerrada por escrito, no otra plática. Si ya la enviaste, hoy solo observas.",
                 ]);
-                $slots['decision'] = true;
+                }
             } else {
                 $f = $pk([
                     'No repitas la plática: mándale al cliente una propuesta por escrito con fecha y anticipo definidos, y que tu siguiente llamada solo pida el sí o el no.',
@@ -910,6 +956,8 @@ class MesaSugerencias
     private static function modular(string $f, string $arq, array $slots, bool $viva, bool $dormida, callable $pk): string
     {
         if ($arq === '' || $arq === 'muestra_chica' || $arq === 'motor_completo') return $f;
+        // Una frase de espera con remate de acción se contradice a sí misma
+        if (!empty($slots['espera'])) return $f;
         // El remate del arquetipo en TODAS las filas se vuelve muletilla.
         // Aplicar solo en la mitad (determinístico por cotización+día).
         if (($pk([0, 1])) === 1) return $f;

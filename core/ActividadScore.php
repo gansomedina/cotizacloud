@@ -1076,11 +1076,14 @@ class ActividadScore
         $castigo_seguimiento = 0;
         if (($mesa_flag_cache[$empresa_id] ?? 0) >= 2) {
             try {
+                // Ventana FIJA de 15 días (hoy-14) — la misma de la huella y
+                // del diseño ('~2 semanas para drenar un -5'); NO usar $periodo:
+                // en ciclo largo se extiende a 45-60d y el castigo se eterniza
                 $mesa_dias_vencidos = (int)DB::val(
                     "SELECT COUNT(*) FROM mesa_vencidos
                      WHERE empresa_id = ? AND usuario_id = ?
-                       AND fecha >= CURDATE() - INTERVAL ? DAY",
-                    [$empresa_id, $usuario_id, max(0, $periodo - 1)]);
+                       AND fecha >= CURDATE() - INTERVAL 14 DAY",
+                    [$empresa_id, $usuario_id]);
             } catch (\Throwable $e) {} // tabla sin migrar → sin castigo
             if     ($mesa_dias_vencidos >= 14) $castigo_seguimiento = 8;
             elseif ($mesa_dias_vencidos >= 7)  $castigo_seguimiento = 5;
@@ -1602,6 +1605,16 @@ class ActividadScore
             $frases[] = $mom > 0.95
                 ? "Cerraste claramente por arriba de tu histórico — gran mes."
                 : "Cerraste claramente por arriba de tu histórico.";
+        }
+
+        // ═══ CASTIGO por seguimiento vencido — también tras el corte (la
+        //     disuasión ANUNCIADA: si te resta puntos, tienes que verlo).
+        //     El -2 es silencioso a propósito (solo debug del superadmin). ═══
+        $c_seg = (int)($s['castigo_seguimiento'] ?? 0);
+        if ($c_seg >= 5) {
+            $c_dias = (int)($s['mesa_dias_vencidos'] ?? 0);
+            $frases[] = "⏰ Acumulas {$c_dias} días-cotización de seguimiento vencido en tu mesa — te está restando hasta {$c_seg} puntos"
+                      . ($c_seg >= 8 ? ": las vencidas van primero, un contacto declarado las pone al corriente." : ".");
         }
 
         // (Se quitaron la "acción final" genérica y la comparación mensual: eran filler
