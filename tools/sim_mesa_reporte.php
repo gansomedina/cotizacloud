@@ -271,6 +271,18 @@ visita(1501, 4);
 //   ni reprobada aún). citas=2 en total.
 cot(1502, 1, 105, 12000, 8);
 tap(1502, 1, 'compromiso', 'nos_citamos', 2);
+// CA3 (1503): ANTI-GAMING — alternar 'Quedamos'(-8d) → 'Nos citamos'(-4d) NO
+//   reinicia el reloj del examen: la racha positiva es UNA sola → eff=-8d →
+//   maduro NO cumplido (sin el fix, cada rebote lo dejaba 'en curso' eterno).
+cot(1503, 1, 105, 20000, 15);
+tap(1503, 1, 'compromiso', 'compromiso', 8);
+tap(1503, 1, 'compromiso', 'nos_citamos', 4);
+// CA4 (1504): descarte SOLO por pill (postura 'descartada', SIN 👎 — desde
+//   15-jul los taps no proyectan la manita) + el cliente revivió con vista
+//   real → debe contar en '👎 que revivieron' vía la rama de doble fuente.
+cot(1504, 1, 105, 9000, 12);
+tap(1504, 1, 'postura', 'descartada', 6, 'otro');
+visita(1504, 3);
 
 // A6 (1099): activa 25d virgen — SIN DI sería +1 activa, +1 sin_trabajar,
 //   +1 se_fueron ($99k). Con DI ACTIVO, Opción B la saca de la cartera del
@@ -297,11 +309,13 @@ chk('A6 con DI ACTIVO NO infla la cartera — Opción B (sin DI sería 8)', $ana
 
 echo "═ CARO — Citas (nos_citamos) ═\n";
 $caro = $rep['asesores'][105] ?? [];
-chk('citas = 2 (CA1 y CA2 vigentes) · con_compromiso = 0 (la cita no es "Quedamos")',
-    [$caro['citas'] ?? -1, $caro['con_compromiso'] ?? -1], [2, 0]);
-chk('la cita entra al examen: 1 madura (CA1), 1 cumplida (abrió a los 4d), 1 en curso (CA2)',
-    [$caro['comp_maduros'] ?? -1, $caro['comp_cumplidos'] ?? -1, $caro['comp_en_curso'] ?? -1], [1, 1, 1]);
-chk('la cita implica plática: hablamos_cots = 2', $caro['hablamos_cots'] ?? -1, 2);
+chk('citas = 3 (CA1, CA2, CA3 vigentes) · con_compromiso = 0 (la cita no es "Quedamos")',
+    [$caro['citas'] ?? -1, $caro['con_compromiso'] ?? -1], [3, 0]);
+chk('examen: 2 maduras (CA1 y CA3 anti-gaming eff=-8d), 1 cumplida (CA1 abrió a los 4d), 1 en curso (CA2)',
+    [$caro['comp_maduros'] ?? -1, $caro['comp_cumplidos'] ?? -1, $caro['comp_en_curso'] ?? -1], [2, 1, 1]);
+chk('la cita implica plática: hablamos_cots = 3', $caro['hablamos_cots'] ?? -1, 3);
+chk('CA4 descarte SOLO-pill (sin 👎) cuenta y su revivido también: descartes=1, revividos=1',
+    [$caro['descartes'] ?? -1, $caro['revividos'] ?? -1], [1, 1]);
 chk('sin_calificar = 5 (A1 con rf de tercero SÍ cuenta, A2, A3, C1, C2)', $ana['sin_calificar'] ?? -1, 5);
 chk('sin_trabajar = 2 (A1, A2) $30,000', [$ana['sin_trabajar'] ?? -1, $ana['monto_sin_trabajar'] ?? -1], [2, 30000.0]);
 chk('se_fueron = 1 (solo A2: A3 tocada hace 2d, A4 descartada) $20,000', [$ana['se_fueron'] ?? -1, $ana['monto_se_fueron'] ?? -1], [1, 20000.0]);
@@ -343,8 +357,8 @@ chk('D5 (Descartar + 👍 después) queda VIVA → cuenta como "se le fue"', $do
 // vendida (V4). Universo de mesa = 0 → hot_total/desatendidas = 0.
 chk('D: sin filas de mesa (descartadas viejas / nunca abiertas) → 0 de 0', [$dor['hot_desatendidas'] ?? -1, $dor['hot_total'] ?? -1], [0, 0]);
 chk('D3: acuerdo vigente viejo + plática nueva cuenta A FAVOR → 2 de 2', [$dor['con_compromiso'] ?? -1, $dor['hablamos_cots'] ?? -1], [2, 2]);
-chk('D4: re-tap de la misma pill NO borra el reprobado → 1 maduro, 0 cumplidos, 0 en curso',
-    [$dor['comp_maduros'] ?? -1, $dor['comp_cumplidos'] ?? -1, $dor['comp_en_curso'] ?? -1], [1, 0, 0]);
+chk('D4 re-tap no borra reprobado + D3 acuerdo viejo con plática nueva ENTRA al examen → 2 maduros, 0 cumplidos',
+    [$dor['comp_maduros'] ?? -1, $dor['comp_cumplidos'] ?? -1, $dor['comp_en_curso'] ?? -1], [2, 0, 0]);
 chk('D: revividos 1 de 2 (D1 ancla fallback; bt viejo de D2 no arrastra; D6 re-tapeado con episodio -45d NO entra al período)',
     [$dor['revividos'] ?? -1, $dor['descartes'] ?? -1], [1, 2]);
 chk('D: postura = descartada 2 (D1, D5) + decidiendo 1 (V4)', $dor['postura'] ?? [], ['decidiendo' => 1, 'descartada' => 2]);

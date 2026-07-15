@@ -68,9 +68,11 @@ elseif ($accion === 'cancelar') {
 
     // La venta y su Descuento Inteligente se liberan JUNTOS: sin esto la
     // activación queda 'utilizado' huérfana (quitar-desc-int rechaza ventas
-    // canceladas), el cliente queda bloqueado de DI para siempre por
-    // uk_cliente_vivo y la cotización nunca regresa a la mesa — 'cancelado'
-    // es el único camino de regreso.
+    // canceladas) y el cliente queda bloqueado de DI para siempre por
+    // uk_cliente_vivo. OJO: esto NO regresa la cotización a la mesa — sigue
+    // con estado 'aceptada'/'convertida' y accion_at seteado (fuera del
+    // universo de Mesa::armar); revertir el estado de la cotización al
+    // cancelar la venta es una decisión de producto pendiente.
     DB::beginTransaction();
     try {
         DB::execute(

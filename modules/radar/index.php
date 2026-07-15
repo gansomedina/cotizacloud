@@ -376,11 +376,21 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 $why_id = 'why-' . $cot_id_fb . '-' . substr(md5($bkt_key ?? ''), 0, 4);
                 $why_btn = "<button class='fb-btn why-btn' onclick=\"event.preventDefault();event.stopPropagation();toggleWhy('{$why_id}',{$cot_id_fb})\" title='¿Por qué aparece aquí?' style='font-size:10px'>❓</button>";
             }
+            // 📵 solo si la empresa tiene mesa (su candado exige "No contestó"
+            // declarado EN la mesa — sin mesa sería un callejón sin salida)
+            static $mesa_on_fb = null;
+            if ($mesa_on_fb === null) {
+                try { $mesa_on_fb = (int)DB::val("SELECT mesa_activa FROM empresas WHERE id = ?", [EMPRESA_ID]) >= 1; }
+                catch (Throwable $e) { $mesa_on_fb = false; }
+            }
             $cls_ni = $r_fb_tipo === 'sin_info' ? 'fb-active' : '';
+            $btn_ni = $mesa_on_fb
+                ? "<button class='fb-btn {$cls_ni}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_info',this)\" title='Sin comunicación — el cliente no responde tus intentos; requiere \"No contestó\" marcado en tu mesa'>📵</button>"
+                : '';
             $fb_html = "<div class='fb-btns' style='flex-shrink:0'>"
                 . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'con_interes',this)\" title='Con interés'>👍</button>"
                 . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_interes',this)\" title='Sin interés'>👎</button>"
-                . "<button class='fb-btn {$cls_ni}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_info',this)\" title='Sin info — el cliente no responde tus intentos; requiere \"No contestó\" marcado en tu mesa'>📵</button>"
+                . $btn_ni
                 . $why_btn
                 . "</div>";
         }
@@ -979,7 +989,8 @@ async function compAction(accion, tipo, valor, btn) {
   <span style="font:400 11px var(--body);color:var(--t3);margin-left:auto;display:flex;align-items:center;gap:8px">
     <span>👍 Con interés</span>
     <span>👎 Sin interés</span>
-    <span title="El cliente no responde tus intentos — cuenta como evaluación sin juzgarlo; requiere &quot;No contestó&quot; en tu mesa">📵 Sin comunicación</span>
+    <?php $mesa_on_leg = false; try { $mesa_on_leg = (int)DB::val("SELECT mesa_activa FROM empresas WHERE id = ?", [EMPRESA_ID]) >= 1; } catch (Throwable $e) {} ?>
+    <?php if ($mesa_on_leg): ?><span title="El cliente no responde tus intentos — cuenta como evaluación sin juzgarlo; requiere &quot;No contestó&quot; en tu mesa">📵 Sin comunicación</span><?php endif; ?>
   </span>
 </div>
 
