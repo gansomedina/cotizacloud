@@ -1062,6 +1062,32 @@ class ActividadScore
         }
         $score = min($score + $bonus_cierre, 100);
 
+        // ═══════════════════════════════════════════════════
+        //  CASTIGO POR SEGUIMIENTO VENCIDO (ciclo Fase C)
+        //  Espejo de los boosters: puntos DIRECTOS que se restan del score
+        //  final. Métrica: días-vencidos acumulados en la ventana rolling
+        //  (mesa_vencidos, escrita por Mesa::armar) — tocar detiene la
+        //  acumulación pero NO la borra; los días viejos salen solos de la
+        //  ventana (~2 semanas para drenar un -5). Un solo nivel, el mayor.
+        //  Gate: mesa_activa = 2 (el mismo del blend s_mesa — sin mesa con
+        //  score no hay reloj que exigir).
+        // ═══════════════════════════════════════════════════
+        $mesa_dias_vencidos = 0;
+        $castigo_seguimiento = 0;
+        if (($mesa_flag_cache[$empresa_id] ?? 0) >= 2) {
+            try {
+                $mesa_dias_vencidos = (int)DB::val(
+                    "SELECT COUNT(*) FROM mesa_vencidos
+                     WHERE empresa_id = ? AND usuario_id = ?
+                       AND fecha >= CURDATE() - INTERVAL ? DAY",
+                    [$empresa_id, $usuario_id, max(0, $periodo - 1)]);
+            } catch (\Throwable $e) {} // tabla sin migrar → sin castigo
+            if     ($mesa_dias_vencidos >= 14) $castigo_seguimiento = 8;
+            elseif ($mesa_dias_vencidos >= 7)  $castigo_seguimiento = 5;
+            elseif ($mesa_dias_vencidos >= 3)  $castigo_seguimiento = 2;
+        }
+        $score = max($score - $castigo_seguimiento, 0);
+
         // Nivel
         if ($score >= 86) $nivel = 'top';
         elseif ($score >= 61) $nivel = 'activo';
@@ -1090,8 +1116,8 @@ class ActividadScore
               tasa_gestion,
               ema_gestion, ema_presencia, ema_conversion, ema_activacion, ema_seguimiento, ema_engagement, ema_radar_health,
               momentum, percentil, bonus_ticket, bonus_ticket_ventas, ticket_promedio, bonus_cierre,
-              mesa_pedidas, mesa_atendidas, s_mesa)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+              mesa_pedidas, mesa_atendidas, s_mesa, mesa_dias_vencidos, castigo_seguimiento)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
               score=VALUES(score), nivel=VALUES(nivel),
               dias_activos=VALUES(dias_activos), acciones=VALUES(acciones),
@@ -1119,6 +1145,7 @@ class ActividadScore
               momentum=VALUES(momentum), percentil=VALUES(percentil),
               bonus_ticket=VALUES(bonus_ticket), bonus_ticket_ventas=VALUES(bonus_ticket_ventas), ticket_promedio=VALUES(ticket_promedio), bonus_cierre=VALUES(bonus_cierre),
               mesa_pedidas=VALUES(mesa_pedidas), mesa_atendidas=VALUES(mesa_atendidas), s_mesa=VALUES(s_mesa),
+              mesa_dias_vencidos=VALUES(mesa_dias_vencidos), castigo_seguimiento=VALUES(castigo_seguimiento),
               updated_at=NOW()",
             [
                 $usuario_id, $empresa_id, $score, $nivel,
@@ -1142,6 +1169,7 @@ class ActividadScore
                 round($momentum, 2), round($percentil, 2),
                 $bonus_ticket, $bonus_ticket_ventas, round($ticket_prom, 2), $bonus_cierre,
                 $mesa_pedidas, $mesa_atendidas, ($s_mesa === null ? null : round($s_mesa, 2)),
+                $mesa_dias_vencidos, $castigo_seguimiento,
             ]
         );
 
@@ -1194,6 +1222,8 @@ class ActividadScore
             'bonus_ticket'      => $bonus_ticket,
             'bonus_ticket_ventas' => $bonus_ticket_ventas,
             'bonus_cierre'      => $bonus_cierre,
+            'mesa_dias_vencidos'  => $mesa_dias_vencidos,
+            'castigo_seguimiento' => $castigo_seguimiento,
             'ticket_promedio'   => round($ticket_prom, 2),
             'tasa_gestion'      => round($proporcional, 3),
             'momentum'          => round($momentum, 2),
