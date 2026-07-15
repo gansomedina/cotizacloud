@@ -402,8 +402,9 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       declaras — califica que trabajes tus señales. Un "quedamos en algo" se confirma si el cliente
       se mueve en 5 días, y un descarte que el cliente desmiente reabriéndola cuenta en tu contra.
       Declarar lo que de verdad pasó siempre te da mejor consejo — y mejor score — que declarar lo
-      que se ve bien. Y las fallas CADUCAN: las señales de hace más de 15 días ya no cuentan —
-      cada período empieza limpio.</p>
+      que se ve bien. Y las fallas no son eternas: una cotización vieja que YA trabajaste
+      (manita + postura) se va a ❄️ Frías y deja de contar; la que ignoras por completo sigue
+      contando en tu contra hasta que la trabajes o la descartes.</p>
       <p style="margin:0 0 8px"><b>📅 Agendar.</b> ¿El cliente compra más adelante? (le entregan la casa en 2 meses,
       arranca la obra en marzo, tiene el presupuesto el próximo trimestre). Abre la fila y ponle una fecha: la cotización
       <b>sale de tu mesa y deja de contar</b> mientras tanto — no te penaliza por no tocarla. Vuelve sola a tu mesa
@@ -780,7 +781,7 @@ function mesaDesagendar(cotId, btn){
            style="margin-left:4px;padding:2px 10px;border-radius:12px;text-decoration:none;font-weight:700;
                   <?= $act ? 'background:#1a5c38;color:#fff' : 'background:#f4f4f0;color:#4a4a46;border:1px solid #e2e2dc' ?>"><?= $md ?>d</a>
         <?php endforeach; ?>
-        <span style="margin-left:8px;color:#a8a8a2">la cartera es la foto de HOY; el período aplica a señales, trabajo y recuperado</span>
+        <span style="margin-left:8px;color:#a8a8a2">la cartera y las señales 🔥 son la foto de HOY (lo que la mesa muestra); el período aplica a trabajo y recuperado</span>
       </div>
       <?php if (!$mrep['asesores']): ?>
         <div style="color:#6a6a64">Sin cotizaciones activas ni capturas — el reporte se llena conforme hay cartera y se usa la mesa.</div>
@@ -905,7 +906,7 @@ function mesaDesagendar(cotId, btn){
         <b>Se le fueron</b>: pasaron la ventana de cierre (día <?= $mp75 ?>) y llevan <?= max(3, (int)ceil($mp75 / 2)) ?>+ días sin
         ninguna atención — ni captura, ni calificación, ni edición/reenvío. Mide atención, no ventas: cerrar no depende
         solo del asesor, pero tocarla sí. Descartarla con 👎 también cuenta (es una decisión) y la saca de esta columna.
-        <b>Señales 🔥 desatendidas</b>: cada vez que el cliente se calentó (episodio del Radar) sin ninguna acción en los <b>3 días siguientes</b> (cubre el fin de semana) — ni captura, ni calificación. Cada episodio se juzga solo: atender hoy no perdona la señal que se ignoró hace semanas. Rebotes entre buckets calientes del mismo episodio no cuentan doble; las señales de las últimas 72h aún no se juzgan; si la cotización se cerró tras la señal (venta o respuesta del cliente), cuenta atendida — el desenlace llegó.
+        <b>Señales 🔥 desatendidas</b>: las filas que HOY están en la mesa del asesor sin calificar por completo — calificar es la manita (👍/👎/📵) <b>y</b> la postura ("¿Cómo lo ves?"). Es la foto de hoy, no del período: al descartar, la fila sale mañana; las viejas YA trabajadas se van a ❄️ Frías y dejan de contar; las ignoradas siguen contando. Es el mismo número que examina el 25% del Seguimiento en el termómetro — lo que el dueño ve aquí y lo que califica al asesor es UNA sola cuenta.
         <br><b>Trabajo:</b>
         <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática (declarar un acuerdo registra la plática implícita).
         <b>Genera compromiso</b>: de las cotizaciones con conversación declarada en el período, en cuántas el acuerdo VIGENTE es "Quedamos en algo"; las 📅 <b>citas</b> ("Nos citamos" — física, virtual o telefónica) se cuentan aparte y entran al mismo examen de cumplidos. Regla pareja en toda la sección: las <b>descartadas salen completas</b> (ni a favor ni en contra — se juzgan en 👎 revividos y Recuperado); las <b>vendidas/aceptadas siguen contando</b> (son el éxito del acuerdo, el "¿cuáles?" las desglosa con folio); los <b>toques cuentan siempre</b> aunque la cotización luego se descarte — el esfuerzo fue real.
@@ -959,7 +960,7 @@ function mesaDesagendar(cotId, btn){
     ?>
     <div style="margin-bottom:8px;font-size:12.5px">
       <span style="font-weight:700;color:<?= $cob_col ?>">
-        🔥 Señales (últimos <?= (int)$mesa_per ?>d): <?php if ($cob_vacia): ?>sin pendientes ✓<?php else: ?><?= (int)$mesa_cob['atendidas'] ?> de <?= (int)$mesa_cob['pedidas'] ?> atendidas (<?= $cob_pct ?>%) · <?= $cob_tag ?><?php endif; ?></span>
+        🔥 Señales de tu mesa: <?php if ($cob_vacia): ?>sin pendientes ✓<?php else: ?><?= (int)$mesa_cob['atendidas'] ?> de <?= (int)$mesa_cob['pedidas'] ?> atendidas (<?= $cob_pct ?>%) · <?= $cob_tag ?><?php endif; ?></span>
       <?php if ($cob_pend > 0): ?>
         · <span style="color:#d97706;font-weight:700"><?= $cob_pend ?> por vencer</span>
       <?php endif; ?>
@@ -979,7 +980,7 @@ function mesaDesagendar(cotId, btn){
           <?php endforeach; ?>
           <div style="color:#a8a8a2;margin-top:4px"><?= (int)($empresa['mesa_activa'] ?? 0) >= 2
               ? 'Cuenta para tu termómetro: cubrir ≥80% = completo · 50–80% = medio (mitad) · menos de 50% = no cuenta.'
-              : 'Pronto contará para tu termómetro: ≥80% = completo · 50–80% = medio · menos de 50% = no cuenta.' ?> Las señales de hace más de <?= (int)$mesa_per ?> días ya no cuentan — cada período empieza limpio.</div>
+              : 'Pronto contará para tu termómetro: ≥80% = completo · 50–80% = medio · menos de 50% = no cuenta.' ?> Las viejas que YA trabajaste (manita + postura) se van a ❄️ Frías y dejan de contar; las que ignoras siguen contando hasta que las trabajes o descartes.</div>
         </div>
       </details>
       <?php endif; ?>

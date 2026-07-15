@@ -66,7 +66,7 @@ include '/home/user/cotizacloud/modules/dashboard/_mesa.php';
 ob_end_clean();
 chk('ASESOR: tarjeta propia con su mesa', str_contains($MESA_ASESOR ?? '', 'Tu mesa de trabajo') && str_contains($MESA_ASESOR ?? '', 'mesa-emb-500'), true);
 chk('ASESOR: su mesa abierta por default', str_contains($MESA_ASESOR ?? '', '<details open class="mesa-emb mesa-strip"'), true);
-chk('ASESOR: widget de cobertura de señales presente', str_contains($MESA_ASESOR ?? '', 'Señales (últimos'), true);
+chk('ASESOR: widget de cobertura de señales presente', str_contains($MESA_ASESOR ?? '', 'Señales de tu mesa'), true);
 chk('ASESOR: SIN reporte del equipo ni recuperado empresa-wide', !str_contains($MESA_ASESOR ?? '', 'Reporte del equipo') && !str_contains($MESA_ASESOR ?? '', 'toda la empresa, no solo'), true);
 chk('ASESOR: sin bloques de otros asesores', !str_contains($MESA_ASESOR ?? '', 'mesa-emb-501'), true);
 chk('ASESOR: assets aparte (JS de taps disponible)', str_contains($MESA_ASSETS ?? '', 'function mesaTap') && str_contains($MESA_ASSETS ?? '', 'mesa-toast'), true);
