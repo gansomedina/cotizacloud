@@ -51,7 +51,7 @@ require __DIR__ . '/../core/Mesa.php';
 $ddl = <<<SQL
 DROP TABLE IF EXISTS cotizaciones, ventas, mesa_estados, radar_feedback,
                      bucket_transitions, quote_sessions, usuarios, cotizacion_log, clientes,
-                     desc_int_activaciones;
+                     desc_int_activaciones, mesa_vencidos;
 CREATE TABLE cotizaciones (
   id INT UNSIGNED PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
   usuario_id INT UNSIGNED NOT NULL, vendedor_id INT UNSIGNED NULL, cliente_id INT UNSIGNED NULL,
@@ -98,6 +98,11 @@ CREATE TABLE desc_int_activaciones (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
   cotizacion_id INT UNSIGNED NOT NULL, estado VARCHAR(12) NOT NULL DEFAULT 'activo',
   expira_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE mesa_vencidos (
+  cotizacion_id INT UNSIGNED NOT NULL, usuario_id INT UNSIGNED NOT NULL,
+  empresa_id INT UNSIGNED NOT NULL, fecha DATE NOT NULL,
+  PRIMARY KEY (cotizacion_id, fecha)
 );
 SQL;
 foreach (array_filter(array_map('trim', explode(';', $ddl))) as $stmt) DB::pdo()->exec($stmt);
@@ -339,6 +344,38 @@ chk('R3 virgen → sin reloj', isset($mvby['COT-9603']) && ($mvby['COT-9603']['s
 chk('resumen.vencidas = 1', $mv['resumen']['vencidas'] ?? -1, 1);
 $mv_ids = array_map(fn($r) => (int)$r['id'], $mv['rows']);
 chk('la vencida (R1) va PRIMERO en el orden', $mv_ids[0], 9601);
+chk('R1 registró su racha vencida en mesa_vencidos (2 días, idempotente)',
+    (int)DB::val("SELECT COUNT(*) FROM mesa_vencidos WHERE cotizacion_id = 9601"), 2);
+
+echo "═ CITA FIRME + HUELLA (vendedores 505/506 — Fase B) ═\n";
+// C1 (9701): cita hace 12d (cad mediana=10 → venció hace 2d) + RE-TAP pelón
+//   hace 1d → NO re-ancla (anti-gaming): sigue CITA VENCIDA 2d
+cot(9701, 506, 15000, 14, ['visitas' => 2, 'vista_d' => 5]);
+tap(9701, 'compromiso', 'nos_citamos', 12);
+tap(9701, 'compromiso', 'nos_citamos', 1);
+// C2 (9702): cita hace 12d + Hablamos hace 1d + re-cita hace 0.5d (pospuesta
+//   DE VERDAD: hablaron y re-fijaron) → re-anclada al Hablamos → al corriente
+cot(9702, 506, 25000, 14, ['visitas' => 2, 'vista_d' => 5]);
+tap(9702, 'compromiso', 'nos_citamos', 12);
+tap(9702, 'contacto', 'hablamos', 1);
+tap(9702, 'compromiso', 'nos_citamos', 0.5);
+$mc   = Mesa::armar(5, 506);
+$mcby = [];
+foreach ($mc['rows'] as $r) $mcby[$r['numero']] = $r;
+chk('C1 re-tap pelón NO re-ancla → cita vencida 2d + flag cita_vencida',
+    [$mcby['COT-9701']['seguimiento']['estado'] ?? '', $mcby['COT-9701']['seguimiento']['dias'] ?? -1, $mcby['COT-9701']['cita_vencida'] ?? null],
+    ['vencida', 2, true]);
+chk('C2 Hablamos + re-cita (pospuesta real) → re-anclada, al corriente',
+    [$mcby['COT-9702']['seguimiento']['estado'] ?? '', $mcby['COT-9702']['cita_vencida'] ?? null], ['ok', false]);
+// H1 (9801): huella — estuvo vencida 2d (preseed) pero HOY está al corriente
+DB::execute("INSERT INTO mesa_vencidos VALUES (9801,505,5,?),(9801,505,5,?)", [date('Y-m-d', time() - 4 * 86400), date('Y-m-d', time() - 3 * 86400)]);
+cot(9801, 505, 12000, 8, ['visitas' => 2, 'vista_d' => 3]);
+tap(9801, 'contacto', 'hablamos', 1);
+$mh = Mesa::armar(5, 505);
+$mhby = [];
+foreach ($mh['rows'] as $r) $mhby[$r['numero']] = $r;
+chk('H1 al corriente PERO con huella ⏰2d (no se borra al tocar)',
+    [$mhby['COT-9801']['seguimiento']['estado'] ?? '', $mhby['COT-9801']['venc_huella'] ?? -1], ['ok', 2]);
 
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

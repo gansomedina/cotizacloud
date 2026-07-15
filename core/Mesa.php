@@ -95,6 +95,36 @@ class Mesa
             $fb[(int)$r['cotizacion_id']] = $r;
         }
 
+        // ── Ciclo de seguimiento Fase B ──────────────────────────────────
+        // (a) Ancla FIRME de las citas: inicio de la racha vigente de
+        // 'nos_citamos' (re-tapear la pill NO la mueve — anti-gaming). La
+        // re-cita válida se resuelve en el loop: Hablamos POSTERIOR + re-tap.
+        $cita_anc = [];
+        try {
+            foreach (DB::query(
+                "SELECT m.cotizacion_id, MIN(m.created_at) AS anc
+                 FROM mesa_estados m
+                 WHERE m.empresa_id = ? AND m.area = 'compromiso' AND m.estado = 'nos_citamos'
+                   AND m.cotizacion_id IN ($in)
+                   AND m.id > COALESCE((SELECT MAX(m4.id) FROM mesa_estados m4
+                        WHERE m4.cotizacion_id = m.cotizacion_id AND m4.area = 'compromiso'
+                          AND m4.estado <> 'nos_citamos'), 0)
+                 GROUP BY m.cotizacion_id", [$empresa_id]) as $r) {
+                $cita_anc[(int)$r['cotizacion_id']] = $r['anc'];
+            }
+        } catch (\Throwable $e) {}
+        // (b) Huella: días vencidos ya registrados en la ventana de 15d
+        // ("estuvo vencida Nd" — no se borra al ponerse al corriente)
+        $venc_hist = [];
+        try {
+            foreach (DB::query(
+                "SELECT cotizacion_id, COUNT(*) AS n FROM mesa_vencidos
+                 WHERE cotizacion_id IN ($in) AND fecha >= CURDATE() - INTERVAL 14 DAY
+                 GROUP BY cotizacion_id", []) as $r) {
+                $venc_hist[(int)$r['cotizacion_id']] = (int)$r['n'];
+            }
+        } catch (\Throwable $e) {} // tabla sin migrar → sin huella
+
         // Última acción del asesor sobre la cotización (editada/reenviada)
         $acc = [];
         foreach (DB::query(
@@ -210,6 +240,7 @@ class Mesa
         $rows = [];
         $limpieza_n = 0; $limpieza_monto = 0.0;
         $agendadas = []; // parqueadas a futuro (bandeja aparte, fuera de la mesa diaria)
+        $venc_ins = []; // días vencidos por registrar (mesa_vencidos, Fase B)
         $now = time();
 
         // Descuento Inteligente: la cotización que TUVO DI sale de la mesa para
@@ -376,15 +407,29 @@ class Mesa
             // del ciclo de venta (fallback 7 sin mediana). Frías y descartadas
             // sin exigencia. Agendada reaparecida: re-anclada a su reaparición
             // (fecha-7d) — vuelve con reloj fresco, no vencida de origen.
-            $seg = null;
+            $seg = null; $es_cita = false;
             if (!$es_fria && $cat !== 'descartada_hoy') {
-                $con_d = $me[$cid]['contacto'] ?? null;
-                $ancla = $con_d ? (int)strtotime($con_d['at']) : 0;
-                if (!$ancla) {
-                    foreach (($me[$cid] ?? []) as $a2 => $d2) {
-                        if ($a2 === 'feedback') continue;
-                        $t2 = (int)strtotime($d2['at']);
-                        if ($t2 > $ancla) $ancla = $t2;
+                $con_d   = $me[$cid]['contacto'] ?? null;
+                $es_cita = (($me[$cid]['compromiso']['estado'] ?? '') === 'nos_citamos')
+                        && isset($cita_anc[$cid]);
+                if ($es_cita) {
+                    // CITA = FIRME: ancla al inicio de la racha; solo la re-ancla
+                    // una re-cita VÁLIDA (Hablamos estrictamente posterior a la
+                    // racha + re-declaración de la cita tras ese Hablamos — la
+                    // pospusieron de verdad). El > estricto descarta el Hablamos
+                    // implícito del mismo segundo en que se declaró la cita.
+                    $ancla  = (int)strtotime($cita_anc[$cid]);
+                    $con_at = ($con_d && $con_d['estado'] === 'hablamos') ? (int)strtotime($con_d['at']) : 0;
+                    $com_at = (int)strtotime($me[$cid]['compromiso']['at']);
+                    if ($con_at > $ancla && $com_at >= $con_at) $ancla = $con_at;
+                } else {
+                    $ancla = $con_d ? (int)strtotime($con_d['at']) : 0;
+                    if (!$ancla) {
+                        foreach (($me[$cid] ?? []) as $a2 => $d2) {
+                            if ($a2 === 'feedback') continue;
+                            $t2 = (int)strtotime($d2['at']);
+                            if ($t2 > $ancla) $ancla = $t2;
+                        }
                     }
                 }
                 if ($ag_reaparecida && !empty($ag[$cid]['fecha'])) {
@@ -393,11 +438,19 @@ class Mesa
                 if ($ancla) {
                     $med = (!empty($ciclo['auto']) && !empty($ciclo['mediana']))
                          ? max(1, (int)ceil($ciclo['mediana'])) : 7;
-                    $cad = (($con_d['estado'] ?? '') === 'no_contesta') ? 2 : $med;
+                    $cad = (!$es_cita && ($con_d['estado'] ?? '') === 'no_contesta') ? 2 : $med;
                     $vence_ymd  = date('Y-m-d', strtotime(date('Y-m-d', $ancla)) + $cad * 86400);
                     $dias_venc  = (int)round((strtotime($hoy_db) - strtotime($vence_ymd)) / 86400);
                     $seg = ['estado' => $dias_venc > 0 ? 'vencida' : ($dias_venc === 0 ? 'hoy' : 'ok'),
                             'dias'   => max(0, $dias_venc), 'vence' => $vence_ymd];
+                    // Registrar la racha vencida (idempotente, capada a la ventana
+                    // de 15d) — alimenta la huella y el castigo del score (Fase C)
+                    if ($dias_venc > 0) {
+                        $d_from = max(strtotime($vence_ymd) + 86400, strtotime($hoy_db) - 14 * 86400);
+                        for ($ts = $d_from; $ts <= strtotime($hoy_db); $ts += 86400) {
+                            $venc_ins[] = '(' . $cid . ',' . $vendedor_id . ',' . $empresa_id . ",'" . date('Y-m-d', $ts) . "')";
+                        }
+                    }
                 }
             }
 
@@ -407,6 +460,8 @@ class Mesa
                 'total' => (float)$c['total'], 'edad' => $edad, 'cat' => $cat,
                 'es_fria' => $es_fria,
                 'seguimiento' => $seg,
+                'cita_vencida' => $es_cita && ($seg['estado'] ?? '') === 'vencida',
+                'venc_huella' => $venc_hist[$cid] ?? 0,
                 'agenda_fecha' => ($ag_reaparecida ? ($ag[$cid]['fecha'] ?? null) : null),
                 'bucket' => $bucket, 'es_hot' => $es_hot,
                 'visitas' => (int)$c['visitas'], 'dias_sin_vista' => (int)$c['dias_sin_vista'],
@@ -469,6 +524,15 @@ class Mesa
                     'arquetipo' => $arquetipo,
                 ]),
             ];
+        }
+
+        // Registrar los días vencidos detectados (idempotente por PK cot+fecha;
+        // tabla sin migrar → se ignora). Escritura-en-lectura, mismo patrón que
+        // el ghost cleanup del dashboard.
+        if ($venc_ins) {
+            try {
+                DB::execute("INSERT IGNORE INTO mesa_vencidos (cotizacion_id, usuario_id, empresa_id, fecha) VALUES " . implode(',', $venc_ins));
+            } catch (\Throwable $e) {}
         }
 
         // Orden: revividas/milagros arriba → en ventana → cerrándose;
