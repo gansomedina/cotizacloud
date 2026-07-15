@@ -144,6 +144,7 @@ try {
 // ── Recalcular la sugerencia con la mezcla completa ──
 $sugerencia = null;
 $fb_hint = false;
+$calificada = false;
 try {
     // Última declaración por área (incluye la recién insertada)
     $decl = []; $nc = 0;
@@ -229,6 +230,9 @@ try {
     // se le avisa para que decida él si su juicio cambió.
     $fb_hint = in_array($estado, ['compromiso','nos_citamos','decidiendo','objecion_precio','pidio_cambios'], true)
         && (($fb_row['tipo'] ?? '') === 'sin_interes');
+    // Calificada = manita + postura (los 2 elementos) — el JS solo marca
+    // "✓ Atendida" cuando esto es true (igual que armar/cobertura)
+    $calificada = (($fb_row['tipo'] ?? null) !== null) && !empty($decl['postura']);
     $revivida_now = false; $milagro_now = false;
     $descartada_ahora = ($estado === 'descartada' || $estado === 'sin_interes');
     // "Hoy" con el reloj de la BD (igual que armar): si los timezone de PHP
@@ -319,4 +323,4 @@ try {
     error_log('[Mesa sugerencia] ' . $e->getMessage());
 }
 
-echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia, 'auto_contacto' => $auto_contacto, 'fb_hint' => $fb_hint]);
+echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia, 'auto_contacto' => $auto_contacto, 'fb_hint' => $fb_hint, 'calificada' => $calificada]);

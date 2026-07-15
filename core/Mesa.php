@@ -469,9 +469,15 @@ class Mesa
                 'dormida' => $dormida,
                 'tier' => ($edad <= $p75 ? 1 : 2),
                 'decl' => $me[$cid] ?? [],
-                'atendida_hoy' => (function () use ($me, $cid, $hoy_db) {
+                // "Atendida hoy" = TRABAJADA HOY y CALIFICADA (manita 👍👎📵 +
+                // postura) — decisión CEO: la tarjeta no está calificada sin
+                // los 2 elementos; tocarla sin calificarla NO la marca ✓ (la
+                // cobertura la seguiría contando como falla y la pantalla
+                // diría lo contrario). La manita de hoy también cuenta como
+                // actividad (es el toque que completa la calificación).
+                'atendida_hoy' => (function () use ($me, $cid, $hoy_db, $postura) {
+                    if ($postura === null || empty($me[$cid]['postura'])) return false;
                     foreach (($me[$cid] ?? []) as $a => $d) {
-                        if ($a === 'feedback') continue; // un like solo no es atención
                         if (substr($d['at'], 0, 10) === $hoy_db) return true;
                     }
                     return false;

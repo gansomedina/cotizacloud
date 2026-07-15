@@ -647,10 +647,15 @@ function mesaFb(cotId, tipo, btn){
     if(tipo === 'sin_interes' && row){
       row.style.opacity = '.72';
     }
+    // La manita puede COMPLETAR la calificación (manita + postura) → ✓
+    if(tipo !== 'sin_interes' && d.calificada && row && !row.classList.contains('done')){
+      row.classList.add('done');
+      var mc2 = row.querySelector('.mcheck'); if(mc2) mc2.textContent = '✓';
+    }
     mesaToast(tipo === 'con_interes'
-      ? '👍 marcado — también quedó en el Radar'
+      ? (d.calificada ? '👍 marcado — ✓ atendida (también quedó en el Radar)' : '👍 marcado — también quedó en el Radar; falta tu postura en "¿Cómo lo ves?" para que cuente como atendida')
       : (tipo === 'sin_info'
-        ? '📵 Sin comunicación — cuenta como evaluación; remata con tu lectura en "¿Cómo lo ves?" y cuando logres contacto cámbialo a 👍/👎'
+        ? (d.calificada ? '📵 Sin comunicación — ✓ atendida; cuando logres contacto cámbialo a 👍/👎' : '📵 Sin comunicación — cuenta como evaluación; remata con tu lectura en "¿Cómo lo ves?" y cuando logres contacto cámbialo a 👍/👎')
         : '👎 marcado — pasa a \"Descartadas hoy\" y mañana sale de la mesa; si el cliente revive, vuelve sola — y un descarte que el cliente desmiente cuenta en tu contra'));
   }).catch(function(){ thumbs.forEach(function(b){ b.disabled = false; }); mesaToast('No se pudo guardar (red o sesión).'); });
 }
@@ -717,10 +722,14 @@ function mesaTap(cotId, area, estado, btn, razon){
       if(sx) sx.textContent = d.sugerencia;
     }
     mesaLocks(drawer);
-    if(estado !== 'descartada' && !row.classList.contains('done')){
+    // ✓ SOLO calificada (manita + postura) — tocarla sin calificar no marca
+    if(estado !== 'descartada' && d.calificada && !row.classList.contains('done')){
       row.classList.add('done');
       var mc = row.querySelector('.mcheck'); if(mc) mc.textContent = '✓';
       mesaToast('✓ Atendida — al recargar pasa a "Atendidas hoy"');
+    } else if(area === 'postura' && estado !== 'descartada' && !d.calificada){
+      // declaró postura pero falta la manita — el momento exacto de avisar
+      mesaToast('Postura guardada — falta la manita 👍👎/📵 para que cuente como atendida');
     }
     // Tap positivo con 👎 vigente: los taps ya NO corrigen la manita — se avisa
     if(d.fb_hint){

@@ -165,9 +165,15 @@ cot(9, 500, 18000, 6, ['visitas' => 2, 'vista_d' => 2]);
 tap(9, 'contacto', 'no_contesta', 3);
 tap(9, 'contacto', 'no_contesta', 2);
 tap(9, 'contacto', 'hablamos', 1);
-// M10 (10): ATENDIDA_HOY — captura hoy (hace 1 hora)
+// M10 (10): ATENDIDA_HOY — captura hoy + CALIFICADA (manita + postura):
+//   desde el fix 15-jul, tocarla sin calificar ya NO marca atendida
 cot(10, 500, 19000, 7, ['visitas' => 1, 'vista_d' => 1]);
 tap(10, 'contacto', 'hablamos', 0.04);
+tap(10, 'postura', 'decidiendo', 0.04);
+fb(10, 500, 'con_interes', 0.04);
+// M21 (21): tocada HOY pero SIN manita ni postura → NO atendida (sigue pendiente)
+cot(21, 500, 1000, 5, ['visitas' => 2, 'vista_d' => 2]);
+tap(21, 'contacto', 'hablamos', 0.04);
 // M11 (11): visitas=0 sin bucket → FUERA (la cubre "Sin abrir" del dashboard)
 cot(11, 500, 20000, 5, ['visitas' => 0]);
 // M12 (12): suspendida → FUERA del universo
@@ -231,8 +237,8 @@ $by = [];
 foreach ($rows as $r) $by[(int)$r['id']] = $r;
 
 echo "═ VISIBILIDAD (quién entra y quién no) ═\n";
-chk('11 filas visibles (M1,M2,M4,M5,M7,M8,M9,M10,M15,M17,M20)', count($rows), 11);
-chk('ids exactos', (function () use ($by) { $k = array_keys($by); sort($k); return $k; })(), [1, 2, 4, 5, 7, 8, 9, 10, 15, 17, 20]);
+chk('12 filas visibles (M1,M2,M4,M5,M7,M8,M9,M10,M15,M17,M20,M21)', count($rows), 12);
+chk('ids exactos', (function () use ($by) { $k = array_keys($by); sort($k); return $k; })(), [1, 2, 4, 5, 7, 8, 9, 10, 15, 17, 20, 21]);
 chk('M3 (descartada 3d sin revivir) NO aparece', isset($by[3]), false);
 chk('M6 (fuera >2×p75 sin calor) NO aparece', isset($by[6]), false);
 chk('M11 (visitas=0 sin bucket) NO aparece', isset($by[11]), false);
@@ -248,7 +254,8 @@ chk('M5 = milagro', $by[5]['cat'] ?? '', 'milagro');
 chk('M7 = interes_muriendo (👍 + dormida 9d)', $by[7]['cat'] ?? '', 'interes_muriendo');
 chk('M8 = ultimo_tramo (👍 + fuera de ventana)', $by[8]['cat'] ?? '', 'ultimo_tramo');
 chk('M9 = trabajo (capturada)', $by[9]['cat'] ?? '', 'trabajo');
-chk('M10 = trabajo + atendida_hoy', [$by[10]['cat'] ?? '', $by[10]['atendida_hoy'] ?? null], ['trabajo', true]);
+chk('M10 = trabajo + atendida_hoy (calificada + tocada hoy)', [$by[10]['cat'] ?? '', $by[10]['atendida_hoy'] ?? null], ['trabajo', true]);
+chk('M21 tocada HOY sin manita/postura → NO atendida (regla 2 elementos)', [$by[21]['cat'] ?? '', $by[21]['atendida_hoy'] ?? null], ['trabajo', false]);
 chk('M15 = revivida por CALOR SOSTENIDO (sin transición nueva)', $by[15]['cat'] ?? '', 'revivida');
 chk('M16 (postura descartada sin rf) NO aparece — descarte de doble fuente', isset($by[16]), false);
 chk('M17 = sin_postura (la marca del dueño anterior no es captura)', $by[17]['cat'] ?? '', 'sin_postura');
@@ -272,10 +279,10 @@ chk('tier 1 antes que tier 2 (M8 después de M1/M9/M10)', $tier2_pos > $tier1_ma
 
 echo "═ RESUMEN Y LIMPIEZA ═\n";
 $mr = $mesa['resumen'];
-chk('universo = 11 (+M20; M19 con DI fuera del universo)', $mr['universo'] ?? -1, 11);
+chk('universo = 12 (+M20, +M21; M19 con DI fuera)', $mr['universo'] ?? -1, 12);
 chk('descartadas hoy = 1 (M2), atendidas = 1 (M10)', [$mr['descartadas'], $mr['atendidas']], [1, 1]);
-chk('n pendientes = 9 (+M20 milagro; M19 con DI fuera)', $mr['n'], 9);
-chk('monto pendientes = 167,000 (138k + M20 29k; M19 con DI fuera)', $mr['monto'], 167000.0);
+chk('n pendientes = 10 (+M20 milagro, +M21 tocada sin calificar; M19 con DI fuera)', $mr['n'], 10);
+chk('monto pendientes = 168,000 (138k + M20 29k + M21 1k)', $mr['monto'], 168000.0);
 chk('sin_postura = 2 (M1, M17), mas_viejo = 6', [$mr['sin_postura'], $mr['mas_viejo_dias']], [2, 6]);
 chk('limpieza: 1 cotización $15,000 (M6), línea 40', [$mesa['limpieza']['n'], $mesa['limpieza']['monto'], $mesa['limpieza']['linea_dias']], [1, 15000.0, 40]);
 
