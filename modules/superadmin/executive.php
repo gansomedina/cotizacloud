@@ -428,7 +428,9 @@ $asesores = DB::query(
             us.radar_views, us.radar_benchmark, us.ventas_sin_pago, us.ventas_periodo, us.bench_ventas,
             us.tasa_cierre, us.momentum, us.penalizaciones, us.bonuses,
             us.bonus_ticket, us.bonus_ticket_ventas, us.no_abiertas_5d,
-            us.mesa_pedidas, us.mesa_atendidas, us.s_mesa
+            us.bonus_cierre, us.ticket_promedio,
+            us.mesa_pedidas, us.mesa_atendidas, us.s_mesa,
+            us.mesa_dias_vencidos, us.castigo_seguimiento
      FROM usuarios u
      LEFT JOIN usuario_score us ON us.usuario_id = u.id AND us.empresa_id = u.empresa_id
      WHERE u.empresa_id IN ({$emp_ids}) AND u.empresa_id != 7 AND u.activo = 1 AND u.rol = 'asesor'

@@ -112,7 +112,10 @@ class Mesa
                  GROUP BY m.cotizacion_id", [$empresa_id]) as $r) {
                 $cita_anc[(int)$r['cotizacion_id']] = $r['anc'];
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            $cita_anc_fail = true; // sin anclas de cita: leer sin castigar
+            error_log('[Mesa cita_anc] ' . $e->getMessage());
+        }
         // (b) Huella: días vencidos ya registrados en la ventana de 15d
         // ("estuvo vencida Nd" — no se borra al ponerse al corriente)
         $venc_hist = [];
@@ -419,9 +422,11 @@ class Mesa
                     // pospusieron de verdad). El > estricto descarta el Hablamos
                     // implícito del mismo segundo en que se declaró la cita.
                     $ancla  = (int)strtotime($cita_anc[$cid]);
-                    $con_at = ($con_d && $con_d['estado'] === 'hablamos') ? (int)strtotime($con_d['at']) : 0;
+                    $con_at = ($con_d && $con_d['estado'] === 'hablamos'
+                               && ($con_d['razon'] ?? null) !== 'auto') // el implícito del endpoint NO re-ancla
+                             ? (int)strtotime($con_d['at']) : 0;
                     $com_at = (int)strtotime($me[$cid]['compromiso']['at']);
-                    if ($con_at > $ancla && $com_at >= $con_at) $ancla = $con_at;
+                    if ($con_at > $ancla && $com_at > $con_at) $ancla = $con_at;
                 } else {
                     $ancla = $con_d ? (int)strtotime($con_d['at']) : 0;
                     if (!$ancla) {
@@ -443,14 +448,13 @@ class Mesa
                     $dias_venc  = (int)round((strtotime($hoy_db) - strtotime($vence_ymd)) / 86400);
                     $seg = ['estado' => $dias_venc > 0 ? 'vencida' : ($dias_venc === 0 ? 'hoy' : 'ok'),
                             'dias'   => max(0, $dias_venc), 'vence' => $vence_ymd];
-                    // Registrar la racha vencida (idempotente, capada a la ventana
-                    // de 15d) — alimenta la huella y el castigo del score (Fase C)
-                    if ($dias_venc > 0) {
-                        $d_from = max(strtotime($vence_ymd) + 86400, strtotime($hoy_db) - 14 * 86400);
-                        for ($ts = $d_from; $ts <= strtotime($hoy_db); $ts += 86400) {
-                            $venc_ins[] = '(' . $cid . ',' . $vendedor_id . ',' . $empresa_id . ",'" . date('Y-m-d', $ts) . "')";
-                        }
-                    }
+                    // El registro en mesa_vencidos es SOLO DEL DÍA DE HOY y se
+                    // hace después del cap (loop del resumen): el backfill
+                    // retroactivo castigaba días en que la fila no tenía reloj
+                    // (revividas, frías recalentadas, reasignaciones) y días de
+                    // filas que el cap dejó fuera de la vista. El reloj se
+                    // recalcula sin memoria; mesa_vencidos es memoria permanente
+                    // — solo debe escribir lo que HOY es verdad y visible.
                 }
             }
 
@@ -500,6 +504,7 @@ class Mesa
                 'fuera_ventana' => ($edad > $p75),
                 'sugerencia' => MesaSugerencias::sugerir([
                     'cot_id' => $cid,
+                    'seguimiento' => $seg,
                     'total' => (float)$c['total'], 'edad' => $edad, 'cat' => $cat,
                     'bucket' => $bucket, 'es_hot' => $es_hot && $hot_reciente,
                     'pc_source' => $sen['pc_source'] ?? null,
@@ -530,15 +535,6 @@ class Mesa
                     'arquetipo' => $arquetipo,
                 ]),
             ];
-        }
-
-        // Registrar los días vencidos detectados (idempotente por PK cot+fecha;
-        // tabla sin migrar → se ignora). Escritura-en-lectura, mismo patrón que
-        // el ghost cleanup del dashboard.
-        if ($venc_ins) {
-            try {
-                DB::execute("INSERT IGNORE INTO mesa_vencidos (cotizacion_id, usuario_id, empresa_id, fecha) VALUES " . implode(',', $venc_ins));
-            } catch (\Throwable $e) {}
         }
 
         // Orden: revividas/milagros arriba → en ventana → cerrándose;
@@ -582,13 +578,28 @@ class Mesa
             if ($r['cat'] === 'descartada_hoy') { $descartadas++; continue; }
             // Vencidas ANTES del skip de atendida_hoy: un tap de postura hoy
             // marca atendida pero NO es toque — la fila puede seguir vencida
-            if (($r['seguimiento']['estado'] ?? '') === 'vencida') $vencidas++;
+            if (($r['seguimiento']['estado'] ?? '') === 'vencida') {
+                $vencidas++;
+                // Registrar SOLO hoy, SOLO filas visibles (post-cap): lo que
+                // se castiga = lo que se ve. Idempotente por PK (cot, fecha).
+                $venc_ins[] = '(' . (int)$r['id'] . ',' . $vendedor_id . ',' . $empresa_id . ",'" . $hoy_db . "')";
+            }
             if ($r['atendida_hoy'])             { $atendidas++; continue; }
             $monto += $r['total'];
             if ($r['cat'] === 'sin_postura') {
                 $sin_postura++;
                 if ($r['edad'] > $mas_viejo) $mas_viejo = $r['edad'];
             }
+        }
+
+        // Registrar los días vencidos de HOY (idempotente por PK cot+fecha;
+        // tabla sin migrar → se ignora; si el query de anclas de cita falló,
+        // NO escribir — leer sin castigar, un error transitorio de BD no debe
+        // dejar castigo permanente). Escritura-en-lectura (patrón ghost cleanup).
+        if ($venc_ins && empty($cita_anc_fail)) {
+            try {
+                DB::execute("INSERT IGNORE INTO mesa_vencidos (cotizacion_id, usuario_id, empresa_id, fecha) VALUES " . implode(',', $venc_ins));
+            } catch (\Throwable $e) {}
         }
 
         return self::$cache[$ck] = [
@@ -861,6 +872,10 @@ class Mesa
                       -- se_fueron) igual que sale de la mesa. 'cancelado' regresa.
                       AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da
                                       WHERE da.cotizacion_id = c.id AND da.estado <> 'cancelado')
+                      -- Agendada parqueada: fuera de la cartera igual que de la
+                      -- mesa ('la saco de tu mesa y no te penaliza') — vuelve a
+                      -- contar cuando reaparece (fecha-7d)
+                      AND (c.agenda_fecha IS NULL OR c.agenda_fecha - INTERVAL 7 DAY <= CURDATE())
                  ) cart
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
@@ -970,6 +985,7 @@ class Mesa
                 if ($r['estado'] === 'compromiso') {
                     $out[$u]['con_compromiso']++;
                     $out[$u]['compromiso_cots'][] = [
+                        'tipo'   => 'compromiso',
                         'numero' => $r['numero'],
                         'donde'  => ((int)$r['vendida'] ? 'vendida'
                                   : ($r['cot_estado'] === 'aceptada' ? 'aceptada'
@@ -982,6 +998,7 @@ class Mesa
                     // es juicio independiente del asesor, decisión CEO)
                     $out[$u]['citas']++;
                     $out[$u]['compromiso_cots'][] = [
+                        'tipo'   => 'cita',
                         'numero' => $r['numero'],
                         'donde'  => ((int)$r['vendida'] ? 'vendida'
                                   : ($r['cot_estado'] === 'aceptada' ? 'aceptada'
@@ -1121,7 +1138,12 @@ class Mesa
                                       '2000-01-01')),
                                (SELECT MIN(mp3.created_at) FROM mesa_estados mp3
                                 WHERE mp3.cotizacion_id = rf.cotizacion_id
-                                  AND mp3.area = 'postura' AND mp3.estado = 'descartada'),
+                                  AND mp3.area = 'postura' AND mp3.estado = 'descartada'
+                                  AND mp3.created_at > COALESCE(
+                                      (SELECT MAX(mc3.created_at) FROM mesa_estados mc3
+                                       WHERE mc3.cotizacion_id = rf.cotizacion_id
+                                         AND mc3.area = 'feedback' AND mc3.estado = 'con_interes'),
+                                      '2000-01-01')),
                                rf.updated_at) AS anc
                     FROM radar_feedback rf JOIN cotizaciones c ON c.id = rf.cotizacion_id
                     WHERE rf.empresa_id = ? AND rf.tipo = 'sin_interes'
@@ -1137,14 +1159,14 @@ class Mesa
                     -- invisible para '👎 que revivieron' aunque armar sí lo
                     -- revive y Recuperado sí lo cuenta.
                     SELECT COALESCE(c2.vendedor_id, c2.usuario_id) AS uid, mp.cotizacion_id AS cid,
-                           (SELECT MIN(mp2.created_at) FROM mesa_estados mp2
+                           COALESCE((SELECT MIN(mp2.created_at) FROM mesa_estados mp2
                             WHERE mp2.cotizacion_id = mp.cotizacion_id
                               AND mp2.area = 'postura' AND mp2.estado = 'descartada'
                               AND mp2.created_at > COALESCE(
                                   (SELECT MAX(mc2.created_at) FROM mesa_estados mc2
                                    WHERE mc2.cotizacion_id = mp.cotizacion_id
                                      AND mc2.area = 'feedback' AND mc2.estado = 'con_interes'),
-                                  '2000-01-01')) AS anc
+                                  '2000-01-01')), mp.created_at) AS anc
                     FROM mesa_estados mp
                     JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
                           WHERE empresa_id = ? AND area = 'postura'

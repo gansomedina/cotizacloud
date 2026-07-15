@@ -44,7 +44,11 @@ if ($cancelar) {
 
 // ── Agendar: validar fecha ──
 $ts = strtotime($fecha . ' 00:00:00');
-if (!$ts || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) { echo json_encode(['ok'=>false,'error'=>'fecha_invalida']); exit; }
+if (!$ts || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)
+    // strtotime hace rollover (2026-02-31 → marzo): validar calendario real
+    || !checkdate((int)substr($fecha, 5, 2), (int)substr($fecha, 8, 2), (int)substr($fecha, 0, 4))) {
+    echo json_encode(['ok'=>false,'error'=>'fecha_invalida']); exit;
+}
 $hoy   = strtotime(date('Y-m-d') . ' 00:00:00');
 $piso  = $hoy + 15 * 86400;  // mínimo 15 días — la agenda es para compra a futuro,
                              // no para posponer el seguimiento unos días (reaparece

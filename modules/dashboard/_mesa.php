@@ -247,7 +247,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
           · <span style="color:#16a34a;font-weight:700">✓ <?= (int)$mr['atendidas'] ?> atendida<?= $mr['atendidas'] > 1 ? 's' : '' ?> hoy</span>
         <?php endif; ?>
         <?php if (!empty($mr['vencidas'])): ?>
-          · <span style="color:#dc2626;font-weight:700" title="Filas que pasaron su límite de seguimiento — un contacto declarado las pone al corriente">⏰ <?= (int)$mr['vencidas'] ?> sin seguimiento</span>
+          · <span style="color:#dc2626;font-weight:700" title="Filas que pasaron su límite de seguimiento — un contacto declarado las pone al corriente; si es una CITA, registra el desenlace o re-cítala tras hablar">⏰ <?= (int)$mr['vencidas'] ?> sin seguimiento</span>
         <?php endif; ?>
         <?php if (!empty($mr['descartadas'])): ?>
           · <span style="color:#b91c1c;font-weight:700">🗑 <?= (int)$mr['descartadas'] ?> descartada<?= $mr['descartadas'] > 1 ? 's' : '' ?> hoy</span>
@@ -435,15 +435,17 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       <b>Por trabajar</b> son las que aún NO tienen feedback 👍👎 + postura — es tu pendiente real y lo que
       te falta para el score; empieza por ahí. <b>En seguimiento</b> son las que ya calificaste: cuentan a tu
       favor y solo hay que nutrirlas hasta que cierren. No las re-trabajes de gancho todos los días.</p>
-      <p style="margin:0 0 8px"><b>⏱ La columna "Actividad" te marca el ritmo.</b>
-      <b>hoy / hace 1-2d</b> = fresca, déjala cocinar. <b>hace 3d+</b> se pone <span style="color:#dc2626;font-weight:700">roja</span>:
-      necesita un nuevo toque, se está enfriando. <b>sin actualizar</b> = nunca la has tocado, máxima prioridad.
-      Mañana no re-trabajas todo: atiendes las nuevas sin tocar, las que se pusieron rojas y las que el Radar marque calientes.</p>
+      <p style="margin:0 0 8px"><b>⏱ La columna "Actividad" te marca el ritmo.</b> Cada cotización trae su
+      <b>límite de seguimiento</b>: si el cliente no contesta, el siguiente intento va a los <b>2 días</b>; en lo demás,
+      a la mitad de tu ciclo de venta. Pasarte del límite la pone <b>🔴 sin seguimiento</b> y cada día acumula
+      descuento de puntos a tu termómetro. Te pones al corriente con un <b>contacto declarado</b> (Hablamos / No contestó);
+      la <b>cita</b> es aparte: solo se resuelve registrando el desenlace o re-citando tras hablar. El ⏰ es tu huella:
+      los días vencidos que ya acumulaste — no se borran al tocar, se drenan solos con los días.</p>
       <p style="margin:0 0 8px"><b>¿Qué pasa mañana con lo de hoy?</b> Las que trabajaste hoy vuelven a
       <b>En seguimiento</b> (con "hace 1d", frescas) — NO se castigan, conservan su calificación y siguen contando.
       Un trato no se cierra por tocarlo una vez; se nutre hasta que cae. Las que crucen tu ventana ya trabajadas
       pasan solas a <b>❄️ Frías</b>.</p>
-      <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que declaras hoy baja a su propia sección al recargar.
+      <p style="margin:0"><b>✓ Atendidas hoy.</b> Lo que trabajas hoy Y calificas (manita 👍👎/📵 + postura) baja a su propia sección al recargar.
       La meta del día es simple: dejar el "Por trabajar" en cero.</p>
     </div>
 
@@ -644,16 +646,14 @@ function mesaFb(cotId, tipo, btn){
     if(drawer && d.sugerencia){
       var sx = drawer.querySelector('.msx'); if(sx) sx.textContent = d.sugerencia;
     }
-    if(tipo === 'sin_interes' && row){
-      row.style.opacity = '.72';
-    }
+    if(row){ row.style.opacity = (tipo === 'sin_interes') ? '.72' : ''; }
     // La manita puede COMPLETAR la calificación (manita + postura) → ✓
     if(tipo !== 'sin_interes' && d.calificada && row && !row.classList.contains('done')){
       row.classList.add('done');
       var mc2 = row.querySelector('.mcheck'); if(mc2) mc2.textContent = '✓';
     }
     mesaToast(tipo === 'con_interes'
-      ? (d.calificada ? '👍 marcado — ✓ atendida (también quedó en el Radar)' : '👍 marcado — también quedó en el Radar; falta tu postura en "¿Cómo lo ves?" para que cuente como atendida')
+      ? (d.calificada ? '👍 marcado — ✓ atendida; al recargar pasa a \"Atendidas hoy\" (también quedó en el Radar)' : '👍 marcado — también quedó en el Radar; falta tu postura en "¿Cómo lo ves?" para que cuente como atendida')
       : (tipo === 'sin_info'
         ? (d.calificada ? '📵 Sin comunicación — ✓ atendida; cuando logres contacto cámbialo a 👍/👎' : '📵 Sin comunicación — cuenta como evaluación; remata con tu lectura en "¿Cómo lo ves?" y cuando logres contacto cámbialo a 👍/👎')
         : '👎 marcado — pasa a \"Descartadas hoy\" y mañana sale de la mesa; si el cliente revive, vuelve sola — y un descarte que el cliente desmiente cuenta en tu contra'));
@@ -704,9 +704,13 @@ function mesaTap(cotId, area, estado, btn, razon){
     // columnita con el label corto
     var slot = row.querySelectorAll('.mdecl3 span')[MESA_IDX[area]];
     if(slot){ slot.textContent = MESA_SHORT[estado] || estado; slot.classList.add('f'); }
-    // frescura
+    // frescura/reloj: SOLO un toque real la pone al corriente (contacto
+    // declarado o el implícito del compromiso) — un tap de postura NO re-ancla
+    // el reloj del servidor; y la cita firme solo baja con el desenlace
     var fr = row.querySelector('.mfresh');
-    if(fr){ fr.textContent = 'hoy'; fr.className = 'mfresh ok'; }
+    if(fr && (area === 'contacto' || d.auto_contacto) && fr.textContent.indexOf('cita') === -1){
+      fr.textContent = 'hoy \u00b7 al corriente'; fr.className = 'mfresh ok';
+    }
     // compromiso sin contacto → el sistema marcó "Hablamos" solo
     if(d.auto_contacto){
       var slot0 = row.querySelectorAll('.mdecl3 span')[0];
@@ -888,12 +892,12 @@ function mesaDesagendar(cotId, btn){
           </td>
           <td style="padding:7px 8px;white-space:nowrap">
             <?php if ($ru['hablamos_cots']): ?><b><?= (int)$ru['con_compromiso'] ?></b> de <?= (int)$ru['hablamos_cots'] ?> con plática
-              <span style="color:<?= $ru['con_compromiso'] / $ru['hablamos_cots'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos_cots']) ?>)</span><?php if (!empty($ru['citas'])): ?> · <b style="color:#1a5c38">📅 <?= (int)$ru['citas'] ?> cita<?= (int)$ru['citas'] > 1 ? 's' : '' ?></b><?php endif; ?>
+              <span style="color:<?= ($ru['con_compromiso'] + ($ru['citas'] ?? 0)) / $ru['hablamos_cots'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos_cots']) ?>)</span><?php if (!empty($ru['citas'])): ?> · <b style="color:#1a5c38">📅 <?= (int)$ru['citas'] ?> cita<?= (int)$ru['citas'] > 1 ? 's' : '' ?></b><?php endif; ?>
               <?php if ($ru['compromiso_cots']): ?>
               <details style="display:inline-block;vertical-align:top"><summary style="cursor:pointer;color:#1a5c38;font-size:11px;list-style:none">¿cuáles?</summary>
                 <div style="font-size:11.5px;color:#4a4a46;padding:2px 0">
                 <?php foreach ($ru['compromiso_cots'] as $cc): ?>
-                  <div><?= e($cc['numero']) ?> — <span style="<?= $cc['donde'] === 'vendida' || $cc['donde'] === 'aceptada' ? 'color:#15803d;font-weight:700' : ($cc['donde'] === 'activa' ? '' : 'color:#b91c1c') ?>"><?= e($cc['donde']) ?><?= $cc['donde'] !== 'activa' ? ' (ya no está en la mesa)' : '' ?></span></div>
+                  <div><?= ($cc['tipo'] ?? '') === 'cita' ? '📅 ' : '' ?><?= e($cc['numero']) ?> — <span style="<?= $cc['donde'] === 'vendida' || $cc['donde'] === 'aceptada' ? 'color:#15803d;font-weight:700' : ($cc['donde'] === 'activa' ? '' : 'color:#b91c1c') ?>"><?= e($cc['donde']) ?><?= $cc['donde'] !== 'activa' ? ' (ya no está en la mesa)' : '' ?></span></div>
                 <?php endforeach; ?>
                 </div>
               </details>

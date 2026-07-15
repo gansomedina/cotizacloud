@@ -59,7 +59,7 @@ CREATE TABLE cotizaciones (
   estado VARCHAR(20) NOT NULL DEFAULT 'vista', visitas INT NOT NULL DEFAULT 0,
   suspendida TINYINT NOT NULL DEFAULT 0, accion_at DATETIME NULL,
   radar_bucket VARCHAR(40) NULL, radar_bucket_at DATETIME NULL,
-  ultima_vista_at DATETIME NULL, radar_senales TEXT NULL, created_at DATETIME NOT NULL
+  ultima_vista_at DATETIME NULL, radar_senales TEXT NULL, agenda_fecha DATE NULL, agenda_at DATETIME NULL, created_at DATETIME NOT NULL
 );
 CREATE TABLE clientes (id INT UNSIGNED PRIMARY KEY, nombre VARCHAR(100), telefono VARCHAR(30));
 CREATE TABLE ventas (
@@ -351,8 +351,8 @@ chk('R3 virgen → sin reloj', isset($mvby['COT-9603']) && ($mvby['COT-9603']['s
 chk('resumen.vencidas = 1', $mv['resumen']['vencidas'] ?? -1, 1);
 $mv_ids = array_map(fn($r) => (int)$r['id'], $mv['rows']);
 chk('la vencida (R1) va PRIMERO en el orden', $mv_ids[0], 9601);
-chk('R1 registró su racha vencida en mesa_vencidos (2 días, idempotente)',
-    (int)DB::val("SELECT COUNT(*) FROM mesa_vencidos WHERE cotizacion_id = 9601"), 2);
+chk('R1 registró SOLO HOY en mesa_vencidos (sin backfill retroactivo — fix 2ª auditoría)',
+    (int)DB::val("SELECT COUNT(*) FROM mesa_vencidos WHERE cotizacion_id = 9601"), 1);
 
 echo "═ CITA FIRME + HUELLA (vendedores 505/506 — Fase B) ═\n";
 // C1 (9701): cita hace 12d (cad mediana=10 → venció hace 2d) + RE-TAP pelón

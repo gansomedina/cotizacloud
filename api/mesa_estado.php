@@ -26,7 +26,7 @@ if ($estado === 'descartada' && !in_array($razon, $RAZONES, true)) { echo json_e
 if ($estado !== 'descartada') $razon = null;
 
 $cot = DB::row(
-    "SELECT id, estado, suspendida, total, visitas, radar_bucket, radar_bucket_at, radar_senales, ultima_vista_at, created_at,
+    "SELECT id, estado, suspendida, total, visitas, radar_bucket, radar_bucket_at, radar_senales, ultima_vista_at, created_at, agenda_fecha,
             DATEDIFF(NOW(), created_at) AS edad,
             DATEDIFF(NOW(), COALESCE(ultima_vista_at, created_at)) AS dias_sin_vista,
             COALESCE(vendedor_id, usuario_id) AS vend
@@ -94,9 +94,9 @@ try {
         if ($ult_con !== 'hablamos') {
             DB::execute(
                 "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
-                 VALUES (?,?,?,'contacto','hablamos',NULL,?)",
+                 VALUES (?,?,?,'contacto','hablamos','auto',?)",
                 [$cot_id, Auth::id(), EMPRESA_ID, $cot['radar_bucket']]
-            );
+            ); // razon='auto': implícito — NO re-ancla la cita firme (Mesa.php)
             $auto_contacto = true;
         }
     }
@@ -270,13 +270,24 @@ try {
         }
     }
     if (!$descartada_ahora) {
-        $milagro_now = !$revivida_now && !$descartada_vig && $es_hot && (int)$cot['edad'] > 2 * $p75;
+        // MISMAS reglas que armar ($fuera_mil): borde >= y bono de edición
+        $dias_edit = $ult_accion ? (int)floor((time() - strtotime($ult_accion)) / 86400) : PHP_INT_MAX;
+        $milagro_now = !$revivida_now && !$descartada_vig && $es_hot
+            && (int)$cot['edad'] >= 2 * $p75 && $dias_edit > $p75;
     }
 
     // Cadena de categorías de Mesa::armar, replicada
     $postura_vacia = empty($decl['postura']);
     $dormida = (int)$cot['visitas'] > 0 && (int)$cot['dias_sin_vista'] >= 7;
-    if ($descartada_ahora || (!$revivida_now && ($descartada_hoy_fb || $descartada_hoy_pos))) {
+    // Agendada reaparecida MANDA (igual que armar): ventana fecha-7d ... fecha+2×p75
+    $ag_reap_now = false;
+    if (!empty($cot['agenda_fecha'])) {
+        $ag_ts = strtotime($cot['agenda_fecha'] . ' 00:00:00');
+        $ag_reap_now = time() >= $ag_ts - 7 * 86400 && time() <= $ag_ts + 2 * $p75 * 86400;
+    }
+    if ($ag_reap_now && !$descartada_ahora) {
+        $cat_now = 'agendada';
+    } elseif ($descartada_ahora || (!$revivida_now && ($descartada_hoy_fb || $descartada_hoy_pos))) {
         $cat_now = 'descartada_hoy';
     } elseif ($revivida_now) {
         $cat_now = 'revivida';
@@ -285,8 +296,8 @@ try {
     } elseif (($fb_row['tipo'] ?? '') === 'con_interes' && $postura_vacia
               && ($dormida || $cot['radar_bucket'] === 'enfriandose')) {
         $cat_now = 'interes_muriendo';
-    } elseif (($fb_row['tipo'] ?? '') === 'con_interes' && $postura_vacia && (int)$cot['edad'] > $p75) {
-        $cat_now = 'ultimo_tramo';
+    } elseif (($fb_row['tipo'] ?? '') === 'con_interes' && $postura_vacia && (int)$cot['edad'] > $p75 && !$es_hot) {
+        $cat_now = 'ultimo_tramo'; // caliente AHORA no se manda a definición (igual que armar)
     } else {
         $cat_now = 'trabajo'; // tras un tap siempre hay declaración — sin_postura no aplica
     }
