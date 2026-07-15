@@ -137,8 +137,22 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           title="Sin comunicación — intentaste y el cliente no responde: cuenta como evaluación sin juzgarlo. Solo con &quot;No contestó&quot; marcado; cuando logres contacto, cámbialo a 👍/👎"
           onclick="mesaFb(<?= (int)$r['id'] ?>,'sin_info',this)">📵</button>
       </span>
+      <?php $sg = $r['seguimiento'] ?? null;
+            $sg_ult = $udd === null ? 'sin declaraciones' : ($udd === 0 ? 'última declaración hoy' : "última declaración hace {$udd}d");
+            $sg_h = (int)($r['venc_huella'] ?? 0);
+            $sg_hf = $sg_h > 0 ? ' <small style="opacity:.75" title="Acumuló ' . $sg_h . 'd de seguimiento vencido en el período — no se borra al ponerse al corriente; se drena con los días">⏰' . $sg_h . 'd</small>' : '';
+            if (!empty($r['cita_vencida'])): ?>
+      <span class="mfresh bad" title="La CITA venció el <?= e($sg['vence']) ?> sin actualizarse — solo baja registrando el desenlace (Quedamos / No quiso / Nada), descartándola, o Hablamos + re-citar si la pospusieron. <?= e($sg_ult) ?>">🔴 cita vencida <?= (int)$sg['dias'] ?>d</span>
+      <?php elseif ($sg && $sg['estado'] === 'vencida'): ?>
+      <span class="mfresh bad" title="El siguiente toque venció el <?= e($sg['vence']) ?> — se pone al corriente con un contacto declarado (Hablamos / No contestó). <?= e($sg_ult) ?>">🔴 vencida <?= (int)$sg['dias'] ?>d</span>
+      <?php elseif ($sg && $sg['estado'] === 'hoy'): ?>
+      <span class="mfresh warn" title="El siguiente toque vence HOY — un contacto declarado la pone al corriente. <?= e($sg_ult) ?>">🟠 vence HOY<?= $sg_hf ?></span>
+      <?php elseif ($sg): ?>
+      <span class="mfresh<?= $udd === 0 ? ' ok' : '' ?>" title="Al corriente — el siguiente toque vence el <?= e($sg['vence']) ?>. <?= e($sg_ult) ?>">vence <?= e(date('d/m', strtotime($sg['vence']))) ?><?= $sg_hf ?></span>
+      <?php else: ?>
       <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
         <?= $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d") ?></span>
+      <?php endif; ?>
       <span class="msp"></span>
       <span class="mchev">▶</span>
     </div>
@@ -160,7 +174,8 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           <?php foreach ($MESA_AREAS['contacto'] as $ek => $el): ?>
           <button type="button" data-e="<?= $ek ?>" class="mpill<?= ($d['contacto']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','<?= $ek ?>',this)"><?= e($el) ?></button>
           <?php endforeach; ?></div>
-        <div class="marea<?= $lock2 ? ' lock' : '' ?>" data-area="compromiso"><span class="man">2 · Compromiso</span>
+        <div class="marea<?= $lock2 ? ' lock' : '' ?>" data-area="compromiso"<?= !empty($r['cita_vencida']) ? ' style="border:1px solid #dc2626;border-radius:6px;padding:4px 6px;background:#fef2f2"' : '' ?>><span class="man">2 · Compromiso</span>
+          <?php if (!empty($r['cita_vencida'])): ?><span style="display:block;color:#b91c1c;font-weight:700;font-size:12px;margin:2px 0">❓ ¿Qué pasó con la cita? — registra el desenlace; si la pospusieron: Hablamos + re-citar</span><?php endif; ?>
           <?php foreach ($MESA_AREAS['compromiso'] as $ek => $el): ?>
           <button type="button" data-e="<?= $ek ?>" class="mpill<?= ($d['compromiso']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','<?= $ek ?>',this)"><?= e($el) ?></button>
           <?php endforeach; ?>
@@ -229,6 +244,9 @@ foreach ($mesa_all as $mesa_vid => $mesa):
           if (($mr['universo'] ?? 0) > count($mesa['rows'])): ?> <span style="color:#a8a8a2">(top <?= count($mesa['rows']) ?> de <?= (int)$mr['universo'] ?>)</span><?php endif; ?>
         <?php if (!empty($mr['atendidas'])): ?>
           · <span style="color:#16a34a;font-weight:700">✓ <?= (int)$mr['atendidas'] ?> atendida<?= $mr['atendidas'] > 1 ? 's' : '' ?> hoy</span>
+        <?php endif; ?>
+        <?php if (!empty($mr['vencidas'])): ?>
+          · <span style="color:#dc2626;font-weight:700" title="Filas cuyo siguiente toque ya venció — un contacto declarado las pone al corriente">⏰ <?= (int)$mr['vencidas'] ?> vencida<?= $mr['vencidas'] > 1 ? 's' : '' ?></span>
         <?php endif; ?>
         <?php if (!empty($mr['descartadas'])): ?>
           · <span style="color:#b91c1c;font-weight:700">🗑 <?= (int)$mr['descartadas'] ?> descartada<?= $mr['descartadas'] > 1 ? 's' : '' ?> hoy</span>

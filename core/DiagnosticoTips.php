@@ -136,6 +136,8 @@ final class DiagnosticoTips
             'bticket'    => (int)($s['bonus_ticket'] ?? 0),
             'bticket_v'  => (int)($s['bonus_ticket_ventas'] ?? 0),
             'bcierre'    => (int)($s['bonus_cierre'] ?? 0),
+            'castigo_seg'=> (int)($s['castigo_seguimiento'] ?? 0),
+            'dias_venc'  => (int)($s['mesa_dias_vencidos'] ?? 0),
             'ticket'     => (float)($s['ticket_promedio'] ?? 0),
             // Mesa de Trabajo (25% del Seguimiento cuando mesa_activa=2)
             'mesa_on'    => (int)($ctx['mesa_activa'] ?? 0) >= 1,
@@ -342,6 +344,12 @@ final class DiagnosticoTips
         // Boosters (mérito por dinero)
         if ($m['bticket'] >= 5) $f[] = ($m['bticket_v'] === 1 ? 'Cerraste una venta grande' : "Cerraste {$m['bticket_v']} ventas grandes") . " (arriba de tu ticket promedio).";
         if ($m['bcierre'] >= 4) $f[] = "Tu tasa de cierre viene por arriba de tu histórico.";
+        // Castigo por seguimiento vencido (ciclo Fase C) — el -2 es silencioso
+        if ($m['castigo_seg'] >= 8) {
+            $f[] = "⏰ Acumulas {$m['dias_venc']} días de seguimiento vencido en tu mesa — te está costando {$m['castigo_seg']} puntos: las vencidas van primero, un contacto declarado las pone al corriente.";
+        } elseif ($m['castigo_seg'] >= 5) {
+            $f[] = "⏰ Acumulas {$m['dias_venc']} días de seguimiento vencido en tu mesa — te está costando {$m['castigo_seg']} puntos.";
+        }
         // Cierre sucio (solo con ventas reales)
         if ($m['cierres'] >= 1 || $m['vper'] >= 1) {
             if ($m['vsp'] > 0) $f[] = ucfirst(self::_pl($m['vsp'], 'venta cerrada sin cobrar', 'ventas cerradas sin cobrar')) . ".";

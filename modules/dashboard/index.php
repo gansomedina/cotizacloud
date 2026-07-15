@@ -1166,6 +1166,7 @@ if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
         <div class="dbg-row"><span class="dbg-lbl">Bonuses</span><span class="dbg-val"><?= round(($es['bonuses'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Bonus ticket</span><span class="dbg-val"><?= (int)($es['bonus_ticket'] ?? 0) > 0 ? '+'.($es['bonus_ticket']).' pts ('.(int)($es['bonus_ticket_ventas'] ?? 0).' venta'.((int)($es['bonus_ticket_ventas'] ?? 0) != 1 ? 's' : '').')' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Bonus cierre</span><span class="dbg-val"><?= (int)($es['bonus_cierre'] ?? 0) > 0 ? '+'.($es['bonus_cierre']).' pts' : '—' ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Castigo seguimiento</span><span class="dbg-val"><?= (int)($es['castigo_seguimiento'] ?? 0) > 0 ? '-'.($es['castigo_seguimiento']).' pts ('.(int)($es['mesa_dias_vencidos'] ?? 0).'d vencidos en el período)' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Proporcional (×<?= round(($es['w_proporcional'] ?? 0.9) * 100) ?>%)</span><span class="dbg-val"><?= round(($es['tasa_gestion'] ?? 0) * 100, 1) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Momentum (×<?= round(($es['w_momentum'] ?? 0.1) * 100) ?>%)</span><span class="dbg-val"><?= number_format($es['momentum'] ?? 1, 2) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Percentil (×<?= round(($es['w_percentil'] ?? 0) * 100) ?>%)</span><span class="dbg-val"><?= round(($es['percentil'] ?? 0) * 100) ?>%</span></div>
