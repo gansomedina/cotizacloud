@@ -652,7 +652,7 @@ class Mesa
         $base = [
             'nombre' => '', 'hablamos' => 0, 'no_contesta' => 0,
             'hablamos_cots' => 0,
-            'con_compromiso' => 0, 'no_quiso' => 0, 'sin_compromiso' => 0,
+            'con_compromiso' => 0, 'citas' => 0, 'no_quiso' => 0, 'sin_compromiso' => 0,
             'compromiso_cots' => [],
             'comp_maduros' => 0, 'comp_cumplidos' => 0, 'comp_en_curso' => 0,
             'postura' => [], 'descartes' => 0, 'revividos' => 0,
@@ -845,6 +845,18 @@ class Mesa
                                   : ($r['cot_estado'] === 'rechazada' ? 'rechazada'
                                   : ((int)$r['suspendida'] ? 'suspendida' : 'activa')))),
                     ];
+                } elseif ($r['estado'] === 'nos_citamos') {
+                    // Cita fijada (física/virtual/telefónica) — desenlace propio
+                    // para medir quién GENERA citas; no proyecta 👍 (la manita
+                    // es juicio independiente del asesor, decisión CEO)
+                    $out[$u]['citas']++;
+                    $out[$u]['compromiso_cots'][] = [
+                        'numero' => $r['numero'],
+                        'donde'  => ((int)$r['vendida'] ? 'vendida'
+                                  : ($r['cot_estado'] === 'aceptada' ? 'aceptada'
+                                  : ($r['cot_estado'] === 'rechazada' ? 'rechazada'
+                                  : ((int)$r['suspendida'] ? 'suspendida' : 'activa')))),
+                    ];
                 } elseif ($r['estado'] === 'propuse_no_quiso') {
                     $out[$u]['no_quiso']++;
                 } elseif ($r['estado'] === 'sin_compromiso') {
@@ -887,18 +899,18 @@ class Mesa
                  SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, m.cotizacion_id,
                         (SELECT MIN(m3.created_at) FROM mesa_estados m3
                          WHERE m3.cotizacion_id = m.cotizacion_id AND m3.area = 'compromiso'
-                           AND m3.estado = 'compromiso'
+                           AND m3.estado = m.estado
                            AND m3.id > COALESCE(
                                (SELECT MAX(m4.id) FROM mesa_estados m4
                                 WHERE m4.cotizacion_id = m.cotizacion_id AND m4.area = 'compromiso'
-                                  AND m4.estado != 'compromiso'), 0)) AS eff
+                                  AND m4.estado != m.estado), 0)) AS eff
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
                        WHERE empresa_id = ? AND area = 'compromiso'
                          AND created_at >= NOW() - INTERVAL $dias DAY
                        GROUP BY cotizacion_id) tc ON tc.mid = m.id
                  JOIN cotizaciones c ON c.id = m.cotizacion_id
-                 WHERE m.estado = 'compromiso'
+                 WHERE m.estado IN ('compromiso','nos_citamos')
                    AND NOT ((SELECT mp.estado FROM mesa_estados mp
                              WHERE mp.cotizacion_id = m.cotizacion_id AND mp.area = 'postura'
                              ORDER BY mp.id DESC LIMIT 1) <=> 'descartada'

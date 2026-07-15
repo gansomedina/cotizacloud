@@ -15,9 +15,9 @@ $razon  = trim((string)($b['razon'] ?? '')) ?: null;
 
 $AREAS = [
     'contacto'   => ['no_contesta','hablamos'],
-    'compromiso' => ['compromiso','propuse_no_quiso','sin_compromiso'],
+    'compromiso' => ['compromiso','nos_citamos','propuse_no_quiso','sin_compromiso'],
     'postura'    => ['decidiendo','objecion_precio','pidio_cambios','en_el_aire','descartada'],
-    'feedback'   => ['con_interes','sin_interes'],   // 👍/👎 homologado con el Radar
+    'feedback'   => ['con_interes','sin_interes','sin_info'],   // 👍/👎/📵 homologado con el Radar
 ];
 $VALIDOS = $AREAS[$area] ?? [];
 $RAZONES = ['precio','competencia','despues','no_responde','no_comprador','otro'];
@@ -46,6 +46,22 @@ if (!Auth::es_admin()) {
 // (suspendida es COLUMNA, no estado — el guard de estado no la cubre)
 if (!in_array($cot['estado'], ['enviada', 'vista'], true) || (int)$cot['suspendida'] === 1) {
     echo json_encode(['ok' => false, 'error' => 'cerrada']); exit;
+}
+
+// 📵 Sin info SOLO con contacto vigente 'no_contesta': si hablaste con el
+// cliente, tienes con qué juzgar (👍👎). Sin el candado, 📵 sería la vía
+// floja para farmear cobertura sin comprometerse nunca a un juicio.
+if ($estado === 'sin_info') {
+    $ult_con = null;
+    try {
+        $ult_con = DB::val(
+            "SELECT estado FROM mesa_estados
+             WHERE cotizacion_id = ? AND empresa_id = ? AND area = 'contacto'
+             ORDER BY id DESC LIMIT 1", [$cot_id, EMPRESA_ID]);
+    } catch (Throwable $e) {}
+    if ($ult_con !== 'no_contesta') {
+        echo json_encode(['ok' => false, 'error' => 'sin_info_gate']); exit;
+    }
 }
 
 // Rate-limit por usuario: cada tap es una fila insert-only que cuenta como
@@ -97,9 +113,12 @@ try {
 // La llave es (cotizacion, usuario): escribir como el vendedor garantiza UNA
 // sola marca que siempre se sobreescribe (un descarte voltea el 👍 a 👎),
 // sin importar si el tap lo dio el admin desde la mesa del asesor.
+    // 'nos_citamos' NO proyecta a propósito (decisión CEO): la manita es el
+    // juicio INDEPENDIENTE del asesor — puede citarse con el cliente y aun
+    // así verlo 👎. Ningún tap de cita debe sobreescribir ese juicio.
     $map = ['compromiso'=>'con_interes','decidiendo'=>'con_interes','objecion_precio'=>'con_interes',
             'pidio_cambios'=>'con_interes','descartada'=>'sin_interes',
-            'con_interes'=>'con_interes','sin_interes'=>'sin_interes'];
+            'con_interes'=>'con_interes','sin_interes'=>'sin_interes','sin_info'=>'sin_info'];
     if (isset($map[$estado])) {
         // La HISTORIA de la marca también debe reflejar el cambio: si un tap de
         // postura/compromiso corrige el 👎 vigente, sin esta fila la historia

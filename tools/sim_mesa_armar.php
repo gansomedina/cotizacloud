@@ -305,5 +305,21 @@ $cf = Mesa::cobertura_senales(5, 502);
 chk('cobertura excluye Frías: pedidas=2 (F2,F3), atendidas=1 (F3), fallas=1 (F2)',
     [$cf['pedidas'], $cf['atendidas'], $cf['fallas']], [2, 1, 1]);
 
+echo "═ SIN INFO 📵 (vendedor 503) ═\n";
+// S1: fb sin_info + postura declarada → manita+postura = ATENDIDA, NO descartada
+cot(9501, 503, 15000, 8, ['visitas' => 2, 'vista_d' => 3]);
+fb(9501, 503, 'sin_info', 2); tap(9501, 'postura', 'en_el_aire', 2);
+// S2: fb sin_info SOLO (sin postura) → pedida NO atendida, NO descartada
+cot(9502, 503, 25000, 8, ['visitas' => 2, 'vista_d' => 3]);
+fb(9502, 503, 'sin_info', 2);
+$ms   = Mesa::armar(5, 503);
+$msby = [];
+foreach ($ms['rows'] as $r) $msby[$r['numero']] = $r;
+chk('S1 y S2 visibles (sin_info NO descarta)', [isset($msby['COT-9501']), isset($msby['COT-9502'])], [true, true]);
+chk('S1/S2 NO son descartada_hoy', [($msby['COT-9501']['cat'] ?? '') === 'descartada_hoy', ($msby['COT-9502']['cat'] ?? '') === 'descartada_hoy'], [false, false]);
+$cs = Mesa::cobertura_senales(5, 503);
+chk('cobertura sin_info: pedidas=2, atendidas=1 (S1 manita+postura), fallas=1 (S2 sin postura)',
+    [$cs['pedidas'], $cs['atendidas'], $cs['fallas']], [2, 1, 1]);
+
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

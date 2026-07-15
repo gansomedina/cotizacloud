@@ -360,7 +360,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         // Mostrar badge de señalado para superadmin (aunque no tenga botones)
         if ($r_fb_tipo && Auth::es_superadmin() && !$show_fb_td && !$already_shown) {
             $GLOBALS['fb_shown'][$cot_id_fb] = true;
-            $fb_lbl = $r_fb_tipo === 'con_interes' ? '👍' : '👎';
+            $fb_lbl = $r_fb_tipo === 'con_interes' ? '👍' : ($r_fb_tipo === 'sin_info' ? '📵' : '👎');
             $fb_who = $r_fb_asesor ? ' '.htmlspecialchars($r_fb_asesor) : '';
             $fb_html = "<span class='fb-badge' title='Señalado por{$fb_who}' style='font-size:12px;opacity:.7'>{$fb_lbl}</span>";
         }
@@ -376,9 +376,11 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 $why_id = 'why-' . $cot_id_fb . '-' . substr(md5($bkt_key ?? ''), 0, 4);
                 $why_btn = "<button class='fb-btn why-btn' onclick=\"event.preventDefault();event.stopPropagation();toggleWhy('{$why_id}',{$cot_id_fb})\" title='¿Por qué aparece aquí?' style='font-size:10px'>❓</button>";
             }
+            $cls_ni = $r_fb_tipo === 'sin_info' ? 'fb-active' : '';
             $fb_html = "<div class='fb-btns' style='flex-shrink:0'>"
                 . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'con_interes',this)\" title='Con interés'>👍</button>"
                 . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_interes',this)\" title='Sin interés'>👎</button>"
+                . "<button class='fb-btn {$cls_ni}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_info',this)\" title='Sin info — el cliente no responde tus intentos; requiere \"No contestó\" marcado en tu mesa'>📵</button>"
                 . $why_btn
                 . "</div>";
         }
@@ -1320,7 +1322,11 @@ async function radarFb(cotId, tipo, btn) {
                 b.classList.remove('fb-active','fb-pos','fb-neg');
             });
             btn.classList.add('fb-active');
-            btn.classList.add(tipo === 'con_interes' ? 'fb-pos' : 'fb-neg');
+            if (tipo === 'con_interes') btn.classList.add('fb-pos');
+            else if (tipo === 'sin_interes') btn.classList.add('fb-neg');
+            // sin_info es neutral: activo sin color de juicio
+        } else if (d.error) {
+            alert(d.error); // p.ej. el candado de 📵 (requiere "No contestó")
         }
     } catch(e) {}
 }

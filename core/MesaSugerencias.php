@@ -187,6 +187,23 @@ class MesaSugerencias
                 }
                 $slots['senal_viva'] = $leyendo;
             }
+            // PLANTÓN DE CITA: fijaron cita y el cliente dejó de contestar
+            elseif ($com_e === 'nos_citamos') {
+                if ($leyendo || $reciente) {
+                    $f = $pk([
+                        "Tenían cita y el cliente dejó de contestar, pero abrió la cotización {$ev_abrio} — la cita le sigue interesando: mándale un mensaje reconfirmándola con día y hora.",
+                        "El cliente no contesta pero abrió la cotización {$ev_abrio} después de fijar la cita — reconfírmala hoy por mensaje con día y hora.",
+                        "Fijaron cita, el cliente calló, y aun así volvió a la cotización — sigue en juego: mensaje hoy reconfirmando la cita.",
+                    ]);
+                    $slots['senal_viva'] = true;
+                } else {
+                    $f = $pk([
+                        'Tenían cita y el cliente dejó de contestar — mándale hoy un mensaje directo: "¿sigue en pie nuestra cita?", sin reclamar.',
+                        'La cita quedó fijada y el cliente ya no respondió — confirma hoy por mensaje si la cita sigue en pie; sin reclamo.',
+                        'Después de fijar la cita el cliente guardó silencio — mensaje corto hoy: "¿confirmamos la cita?", y decide con su respuesta.',
+                    ]);
+                }
+            }
             // RECHAZO + EVASIÓN
             elseif ($com_e === 'propuse_no_quiso') {
                 $f = $viva
@@ -234,6 +251,7 @@ class MesaSugerencias
                         "Van {$intentos_nc} intentos sin respuesta del cliente — cambia de canal hoy: si le llamas, escríbele; si le escribes, llámale; o busca a otra persona del mismo cliente.",
                         "Ya son {$intentos_nc} intentos y el cliente no responde — cambia de canal: otro medio, otra hora, o busca a otra persona de su empresa.",
                         "El cliente lleva {$intentos_nc} intentos sin contestarte — no repitas el mismo canal: cámbialo hoy o consigue el teléfono de otra persona del mismo cliente.",
+                        "Van {$intentos_nc} intentos sin respuesta — mientras insistes por otro canal, márcala 📵 Sin info con tu lectura en \"¿Cómo lo ves?\": tu trabajo cuenta aunque el cliente no conteste.",
                     ]);
                 } elseif ($dormida) {
                     $f = $pk([
@@ -248,6 +266,7 @@ class MesaSugerencias
                         'El cliente no respondió a tu último toque — intenta hoy por otro canal con una sola pregunta que pueda contestar con sí o no.',
                         'Sin respuesta todavía — prueba hoy a otra hora y por otro medio; una pregunta corta, fácil de contestar.',
                         'El cliente no ha contestado — el siguiente intento va por otro canal y con una pregunta que se responda en segundos.',
+                        'El cliente no contesta — reintenta por otro canal y márcala 📵 Sin info mientras: cuenta como evaluación; cuando logres contacto la cambias a 👍/👎.',
                     ]);
                 }
             }
@@ -339,6 +358,41 @@ class MesaSugerencias
                     'El acuerdo está fresco (hoy) — mándale el resumen con la fecha y luego dale espacio para que responda; un acuerdo sin fecha se enfría.',
                 ]);
                 $slots['cierre'] = true;
+            }
+        }
+
+        // ══ CITA — nos citamos vigente ══
+        // Sin fecha capturada (la pill no la pide): los tiempos se miden desde
+        // la DECLARACIÓN. Nunca afirmar que la cita ya ocurrió — no lo sabemos.
+        elseif ($com_vig && $com_e === 'nos_citamos') {
+            $dcita = $dias($com);
+            $reabrio_cita = $uv > strtotime($com['at']);
+            if ($dcita >= 5) {
+                $f = $pk([
+                    "Declaraste la cita hace {$dcita}d — si ya se dieron, registra hoy el desenlace (¿quedaron en algo, no quiso, nada?); si sigue pendiente, reconfírmala por mensaje.",
+                    "La cita se fijó hace {$dcita}d — actualízala: si ya ocurrió, captura el resultado; si el cliente la movió, decláralo de nuevo — una cita eterna no dice nada.",
+                    "Han pasado {$dcita}d desde que fijaron la cita — o ya pasó (registra el desenlace hoy) o sigue en el aire (reconfírmala por mensaje).",
+                ]);
+            } elseif ($reabrio_cita || $leyendo) {
+                $f = $pk([
+                    'Tienen cita fijada y el cliente volvió a abrir la cotización — va en serio: confírmale la cita hoy y prepara la conversación sobre lo que él está revisando.',
+                    'El cliente abrió la cotización después de fijar la cita — llega preparado: confírmala hoy y lleva respuestas para lo que estuvo mirando.',
+                    'Cita en pie y el cliente revisando la cotización — confírmala hoy por mensaje; a la cita se llega con la cotización lista.',
+                ]);
+                $slots['cierre'] = true;
+            } elseif ($dcita >= 1) {
+                $f = $pk([
+                    "Fijaron cita hace {$dcita}d — confírmala con un mensaje corto un día antes y llega con la cotización lista para cerrar ahí mismo.",
+                    "La cita ya está fijada (hace {$dcita}d) — mándale una confirmación breve; a la cita se llega con la cotización abierta o impresa.",
+                    "Cita agendada hace {$dcita}d — confírmasela por mensaje y prepara 2 formas de pago del mismo total por si la conversación llega al precio.",
+                ]);
+            } else {
+                // dcita == 0: la fijaron HOY — amarrarla por escrito
+                $f = $pk([
+                    'Fijaron cita HOY — mándale la confirmación por escrito ahora (día, hora y lugar o medio): una cita sin confirmación por escrito se cae.',
+                    'La cita quedó hoy — amárrala por escrito de inmediato: día, hora y dónde (o por dónde); lo confirmado por escrito se respeta más.',
+                    'Cita fijada hoy — confírmala por mensaje ahora mismo con día y hora; llegado el día, llega con la cotización lista.',
+                ]);
             }
         }
 

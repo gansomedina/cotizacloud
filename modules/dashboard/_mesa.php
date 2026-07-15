@@ -79,12 +79,12 @@ $MESA_BUCKET_LBL = [
 // Áreas: opciones (label completo en el cajón) y label corto (columnita)
 $MESA_AREAS = [
     'contacto'   => ['no_contesta' => 'No contestó', 'hablamos' => 'Hablamos'],
-    'compromiso' => ['compromiso' => 'Quedamos en algo', 'propuse_no_quiso' => 'Propuse, no quiso', 'sin_compromiso' => 'Nada concreto'],
+    'compromiso' => ['compromiso' => 'Quedamos en algo', 'nos_citamos' => 'Nos citamos', 'propuse_no_quiso' => 'Propuse, no quiso', 'sin_compromiso' => 'Nada concreto'],
     'postura'    => ['decidiendo' => 'Decidiendo', 'objecion_precio' => 'Objeción precio', 'pidio_cambios' => 'Pidió cambios', 'en_el_aire' => 'En el aire', 'descartada' => 'Descartar'],
 ];
 $MESA_SHORT = [
     'no_contesta' => 'No contestó', 'hablamos' => 'Hablamos',
-    'compromiso' => 'Quedamos', 'propuse_no_quiso' => 'No quiso', 'sin_compromiso' => 'Nada',
+    'compromiso' => 'Quedamos', 'nos_citamos' => 'Cita', 'propuse_no_quiso' => 'No quiso', 'sin_compromiso' => 'Nada',
     'decidiendo' => 'Decidiendo', 'objecion_precio' => 'Precio', 'pidio_cambios' => 'Cambios',
     'en_el_aire' => 'En el aire', 'descartada' => 'Descartada',
 ];
@@ -133,6 +133,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <button type="button" class="fbi<?= $r['postura'] === 'sin_interes' ? ' on' : '' ?>"
           title="Sin interés — se descarta de la mesa; si el cliente revive, vuelve sola"
           onclick="mesaFb(<?= (int)$r['id'] ?>,'sin_interes',this)">👎</button>
+        <button type="button" class="fbi<?= $r['postura'] === 'sin_info' ? ' on' : '' ?>"
+          title="Sin info — intentaste y el cliente no responde: cuenta como evaluación sin juzgarlo. Solo con &quot;No contestó&quot; marcado; cuando logres contacto, cámbialo a 👍/👎"
+          onclick="mesaFb(<?= (int)$r['id'] ?>,'sin_info',this)">📵</button>
       </span>
       <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
         <?= $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d") ?></span>
@@ -583,13 +586,25 @@ var MESA_ERR = {rate:'Vas muy rápido — espera un momento e intenta de nuevo',
                 fecha_invalida:'Fecha inválida',
                 fecha_cerca:'La fecha debe ser de al menos 15 días',
                 fecha_lejana:'Máximo 6 meses',
+                sin_info_gate:'📵 es para clientes que no responden — marca primero "No contestó" en Contacto; si ya hablaron, califícalo 👍/👎.',
                 guardar:'Error al guardar — intenta de nuevo'};
 function mesaErr(code){ return MESA_ERR[code] || ('No se pudo guardar: ' + (code || 'error')); }
 
 // Feedback Radar desde la mesa — se guarda a nombre del asesor dueño de la
 // cotización (una sola marca: el descarte voltea el 👍 a 👎 automáticamente)
 function mesaFb(cotId, tipo, btn){
-  // Ambos pulgares fuera durante el vuelo: 👍→👎 rápido serían dos fetch en
+  // 📵 solo aplica a clientes que no responden: pre-check en el cliente (el
+  // servidor re-valida) para explicar el candado sin viaje a la red
+  if(tipo === 'sin_info'){
+    var row0 = btn.closest('.mrow');
+    var dr0 = row0 ? document.getElementById(row0.dataset.drawer) : null;
+    var conOn = dr0 ? dr0.querySelector('.marea[data-area="contacto"] .mpill.on') : null;
+    if(!conOn || conOn.dataset.e !== 'no_contesta'){
+      mesaToast('📵 es para clientes que no responden — marca primero "No contestó" en Contacto; si ya hablaron, califícalo 👍/👎.');
+      return;
+    }
+  }
+  // Pulgares fuera durante el vuelo: dos taps rápidos serían dos fetch en
   // carrera y la marca final dependería del orden de commit, no del último tap
   var thumbs = btn.parentElement.querySelectorAll('.fbi');
   thumbs.forEach(function(b){ b.disabled = true; });
@@ -612,7 +627,9 @@ function mesaFb(cotId, tipo, btn){
     }
     mesaToast(tipo === 'con_interes'
       ? '👍 marcado — también quedó en el Radar'
-      : '👎 marcado — pasa a \"Descartadas hoy\" y mañana sale de la mesa; si el cliente revive, vuelve sola — y un descarte que el cliente desmiente cuenta en tu contra');
+      : (tipo === 'sin_info'
+        ? '📵 Sin info — cuenta como evaluación; remata con tu lectura en "¿Cómo lo ves?" y cuando logres contacto cámbialo a 👍/👎'
+        : '👎 marcado — pasa a \"Descartadas hoy\" y mañana sale de la mesa; si el cliente revive, vuelve sola — y un descarte que el cliente desmiente cuenta en tu contra'));
   }).catch(function(){ thumbs.forEach(function(b){ b.disabled = false; }); mesaToast('No se pudo guardar (red o sesión).'); });
 }
 
@@ -836,7 +853,7 @@ function mesaDesagendar(cotId, btn){
           </td>
           <td style="padding:7px 8px;white-space:nowrap">
             <?php if ($ru['hablamos_cots']): ?><b><?= (int)$ru['con_compromiso'] ?></b> de <?= (int)$ru['hablamos_cots'] ?> con plática
-              <span style="color:<?= $ru['con_compromiso'] / $ru['hablamos_cots'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos_cots']) ?>)</span>
+              <span style="color:<?= $ru['con_compromiso'] / $ru['hablamos_cots'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos_cots']) ?>)</span><?php if (!empty($ru['citas'])): ?> · <b style="color:#1a5c38">📅 <?= (int)$ru['citas'] ?> cita<?= (int)$ru['citas'] > 1 ? 's' : '' ?></b><?php endif; ?>
               <?php if ($ru['compromiso_cots']): ?>
               <details style="display:inline-block;vertical-align:top"><summary style="cursor:pointer;color:#1a5c38;font-size:11px;list-style:none">¿cuáles?</summary>
                 <div style="font-size:11.5px;color:#4a4a46;padding:2px 0">
@@ -887,7 +904,7 @@ function mesaDesagendar(cotId, btn){
         <b>Señales 🔥 desatendidas</b>: cada vez que el cliente se calentó (episodio del Radar) sin ninguna acción en los <b>3 días siguientes</b> (cubre el fin de semana) — ni captura, ni calificación. Cada episodio se juzga solo: atender hoy no perdona la señal que se ignoró hace semanas. Rebotes entre buckets calientes del mismo episodio no cuentan doble; las señales de las últimas 72h aún no se juzgan; si la cotización se cerró tras la señal (venta o respuesta del cliente), cuenta atendida — el desenlace llegó.
         <br><b>Trabajo:</b>
         <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática (declarar un acuerdo registra la plática implícita).
-        <b>Genera compromiso</b>: de las cotizaciones con conversación declarada en el período, en cuántas el acuerdo VIGENTE es "Quedamos en algo". Regla pareja en toda la sección: las <b>descartadas salen completas</b> (ni a favor ni en contra — se juzgan en 👎 revividos y Recuperado); las <b>vendidas/aceptadas siguen contando</b> (son el éxito del acuerdo, el "¿cuáles?" las desglosa con folio); los <b>toques cuentan siempre</b> aunque la cotización luego se descarte — el esfuerzo fue real.
+        <b>Genera compromiso</b>: de las cotizaciones con conversación declarada en el período, en cuántas el acuerdo VIGENTE es "Quedamos en algo"; las 📅 <b>citas</b> ("Nos citamos" — física, virtual o telefónica) se cuentan aparte y entran al mismo examen de cumplidos. Regla pareja en toda la sección: las <b>descartadas salen completas</b> (ni a favor ni en contra — se juzgan en 👎 revividos y Recuperado); las <b>vendidas/aceptadas siguen contando</b> (son el éxito del acuerdo, el "¿cuáles?" las desglosa con folio); los <b>toques cuentan siempre</b> aunque la cotización luego se descarte — el esfuerzo fue real.
         <b>Cumplidos</b>: de los acuerdos con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio. "En curso" = acuerdos de hace menos de 5 días: aún no se califican, ni a favor ni en contra. Re-confirmar el mismo acuerdo NO reinicia su reloj — solo un cambio real de desenlace arranca un acuerdo nuevo. Si la cotización se descarta, su acuerdo sale de este examen — pasa a juzgarse en "👎 que revivieron" y "Recuperado", no aquí.
         <b>¿Cómo lo ve?</b>: su última lectura declarada por cotización, dentro del período elegido.
         <b>👎 que revivieron</b>: descartes HECHOS en el período (fechados por cuándo se descartó, no por el último re-tap) donde el cliente volvió a calentarse después — muchos = está matando ventas vivas.
