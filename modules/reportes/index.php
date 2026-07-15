@@ -300,12 +300,12 @@ if ($es_admin) {
     try {
         $di_candidatos = DB::query(
             "SELECT t.regla, t.pct AS descuento_pct, t.edad AS dias_creada,
-                    t.numero, t.titulo, t.total, t.radar_bucket,
+                    t.numero, t.titulo, t.total, t.radar_bucket, t.slug,
                     cl.nombre AS cliente, cl.telefono,
                     COALESCE(uv.nombre, u.nombre) AS asesor
              FROM (
                SELECT c.id, c.numero, c.titulo, c.total, c.radar_bucket, c.empresa_id,
-                      c.cliente_id, c.usuario_id, c.vendedor_id,
+                      c.cliente_id, c.usuario_id, c.vendedor_id, c.slug,
                       TIMESTAMPDIFF(DAY, c.created_at, NOW()) AS edad,
                       CASE
                         WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) >= dc.dia_fin_vida
@@ -1109,6 +1109,7 @@ ob_start();
       <button type="button" class="dic-fchip" data-f="2" onclick="dicFilter('2',this)">R2 · Zona muerta <span style="opacity:.7"><?= $di_n2 ?></span></button>
       <div style="flex:1"></div>
       <button type="button" id="dicCopyBtn" onclick="dicCopyTels()" style="padding:7px 14px;border-radius:8px;border:1px solid var(--g);background:var(--g);color:#fff;font:700 12px var(--body);cursor:pointer">📋 Copiar teléfonos</button>
+      <button type="button" id="dicCopyLnkBtn" onclick="dicCopyTelLinks()" style="padding:7px 14px;border-radius:8px;border:1px solid var(--g);background:#fff;color:var(--g);font:700 12px var(--body);cursor:pointer" title="Copia una línea por cliente: teléfono|link público real de su cotización — lista para campañas/WhatsApp masivo">🔗 Copiar tel + links</button>
     </div>
     <div class="tbl-wrap">
       <table class="tbl" id="dicTable">
@@ -1131,7 +1132,7 @@ ob_start();
             $rcol = $r1 ? '#b45309' : 'var(--danger)';
             $tel  = trim((string)($dcnd['telefono'] ?? ''));
           ?>
-          <tr class="dic-row" data-regla="<?= (int)$dcnd['regla'] ?>" data-tel="<?= e($tel) ?>">
+          <tr class="dic-row" data-regla="<?= (int)$dcnd['regla'] ?>" data-tel="<?= e($tel) ?>" data-link="<?= e(!empty($dcnd['slug']) ? url_publica('c/' . $dcnd['slug']) : '') ?>">
             <td style="font-weight:700;color:<?= $rcol ?>"><?= $rlbl ?></td>
             <td class="tbl-num" style="font-weight:800;color:var(--g)"><?= number_format((float)$dcnd['descuento_pct'],0) ?>%</td>
             <td class="tbl-num" style="color:var(--t3)"><?= (int)$dcnd['dias_creada'] ?></td>
@@ -1177,6 +1178,22 @@ ob_start();
       var txt = tels.join('\n');
       var btn = document.getElementById('dicCopyBtn');
       var done = function(){ var o=btn.textContent; btn.textContent='✓ '+tels.length+' copiados'; setTimeout(function(){btn.textContent=o;},1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(done, function(){ dicFallbackCopy(txt); done(); });
+      } else { dicFallbackCopy(txt); done(); }
+    };
+    window.dicCopyTelLinks = function(){
+      var lineas = [];
+      document.querySelectorAll('#dicTable .dic-row').forEach(function(tr){
+        if (tr.style.display === 'none') return;
+        var t = (tr.getAttribute('data-tel')||'').trim();
+        var l = (tr.getAttribute('data-link')||'').trim();
+        if (t && l) lineas.push(t + '|' + l);
+      });
+      if (!lineas.length){ alert('No hay teléfonos con link en esta vista.'); return; }
+      var txt = lineas.join('\n');
+      var btn = document.getElementById('dicCopyLnkBtn');
+      var done = function(){ var o=btn.textContent; btn.textContent='✓ '+lineas.length+' copiados'; setTimeout(function(){btn.textContent=o;},1800); };
       if (navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(txt).then(done, function(){ dicFallbackCopy(txt); done(); });
       } else { dicFallbackCopy(txt); done(); }
