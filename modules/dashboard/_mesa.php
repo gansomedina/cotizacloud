@@ -475,7 +475,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mfrias-zone .mrow{opacity:.66;background:#f7fafd}
 .mesa-emb .mdot{width:9px;height:9px;border-radius:50%;flex:none}
 .mesa-emb .mdot.off{background:transparent;border:1.5px solid #c9c9c2}
-.mesa-emb .mcli{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 380px}
+.mesa-emb .mcli{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 380px;max-width:560px}
 .mesa-emb .mcli a{color:#1a1a18;text-decoration:none}
 .mesa-emb .mcli a:hover{color:#1a5c38;text-decoration:underline}
 .mesa-emb .mfolio{font-weight:500;color:#a3a39d;font-size:11px;margin-left:6px}
@@ -485,15 +485,15 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mciclo{font-size:12px;color:#57534e;font-variant-numeric:tabular-nums;flex:none;width:92px;text-align:right;white-space:nowrap}
 .mesa-emb .mciclo.late{color:#dc2626;font-weight:700}
 .mesa-emb .mmoney{font-weight:700;font-variant-numeric:tabular-nums;flex:none;width:82px;text-align:right}
-.mesa-emb .mdecl3{display:flex;gap:6px;flex:none}
+.mesa-emb .mdecl3{display:flex;gap:6px;flex:1 1 254px;max-width:430px;min-width:0}
 .mesa-emb .mdecl3 span{font-size:10.5px;line-height:1.3;color:#c9c9c2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mesa-emb .mdecl3 .s1{width:80px}.mesa-emb .mdecl3 .s2{width:88px}.mesa-emb .mdecl3 .s3{width:86px}
+.mesa-emb .mdecl3 .s1,.mesa-emb .mdecl3 .s2,.mesa-emb .mdecl3 .s3{flex:1 1 0;min-width:0}
 .mesa-emb .mdecl3 span.f{color:#1a5c38;font-weight:700}
 .mesa-emb .mmarc{flex:none;width:74px;display:flex;gap:2px;justify-content:center}
 .mesa-emb .mmarc .fbi{border:none;background:none;cursor:pointer;font-size:13px;line-height:1;padding:3px 4px;filter:grayscale(1);opacity:.4;transition:all .12s}
 .mesa-emb .mmarc .fbi:hover{filter:none;opacity:.8}
 .mesa-emb .mmarc .fbi.on{filter:none;opacity:1}
-.mesa-emb .mfresh{font-size:10.5px;flex:none;width:150px;text-align:right;color:#a8a8a2;white-space:nowrap}
+.mesa-emb .mfresh{font-size:11px;flex:1 1 190px;max-width:320px;text-align:right;color:#a8a8a2;white-space:nowrap;overflow:hidden}
 .mesa-emb .mfresh.warn{color:#d97706;font-weight:700}
 .mesa-emb .mfresh.bad{color:#dc2626;font-weight:700}
 .mesa-emb .mfresh.ok{color:#16a34a;font-weight:700}
@@ -525,16 +525,16 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .marea.lock .mlockmsg{display:inline}
 .mesa-emb .mhead{display:flex;align-items:center;gap:10px;padding:0 12px;font-size:10px;font-weight:800;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em}
 .mesa-emb .mhead .mh-dot{flex:none;width:9px}
-.mesa-emb .mhead .mh-cot{flex:1 1 380px;min-width:0}
+.mesa-emb .mhead .mh-cot{flex:1 1 380px;max-width:560px;min-width:0}
 .mesa-emb .mhead .mh-flag{flex:none;width:18px}
 .mesa-emb .mhead .mh-check{flex:none;width:16px}
 .mesa-emb .mhead .mh-ciclo{flex:none;width:92px;text-align:right}
 .mesa-emb .mhead .mh-money{flex:none;width:82px;text-align:right}
-.mesa-emb .mhead .mh-decl{display:flex;gap:6px;flex:none}
-.mesa-emb .mhead .mh-decl .s1{width:80px}.mesa-emb .mhead .mh-decl .s2{width:88px}.mesa-emb .mhead .mh-decl .s3{width:86px}
+.mesa-emb .mhead .mh-decl{display:flex;gap:6px;flex:1 1 254px;max-width:430px;min-width:0}
+.mesa-emb .mhead .mh-decl .s1,.mesa-emb .mhead .mh-decl .s2,.mesa-emb .mhead .mh-decl .s3{flex:1 1 0;min-width:0}
 .mesa-emb .mhead .mh-decl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mesa-emb .mhead .mh-marc{flex:none;width:74px;text-align:center;line-height:1.2}
-.mesa-emb .mhead .mh-fresh{flex:none;width:150px;text-align:right}
+.mesa-emb .mhead .mh-fresh{flex:1 1 190px;max-width:320px;text-align:right}
 .mesa-emb .mhead .mh-chev{flex:none;width:11px}
 .mesa-emb .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
 .mesa-emb .magenda{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px dashed #eeeee9}
@@ -560,7 +560,8 @@ foreach ($mesa_all as $mesa_vid => $mesa):
   .mesa-emb .mrow{flex-wrap:wrap;row-gap:2px;padding-top:6px;padding-bottom:6px}
   .mesa-emb .mcli{flex:1 1 calc(100% - 70px);min-width:0}
   .mesa-emb .mdecl3 .s2,.mesa-emb .mdecl3 .s3{display:none}
-  .mesa-emb .mdecl3 .s1{width:64px}
+  .mesa-emb .mdecl3{flex:none;max-width:none}
+  .mesa-emb .mdecl3 .s1{flex:none;width:64px}
   .mesa-emb .mmoney{width:auto}
   .mesa-emb .mmarc{width:auto}
   .mesa-emb .mdrawer{padding-left:14px}
