@@ -31,8 +31,8 @@ le dispara el siguiente toque. La inteligencia existe (tips); falta el RELOJ y l
 
 - Ya existe: `Radar::ciclo_venta()` → `mediana` (días creación→venta, clamp 1-180).
 - Se consume **cerrada hacia arriba**: `cadencia_base = max(1, (int)ceil(mediana))`.
-- Empresa sin mediana (<3 ventas): 🔶 fallback propuesto = 7 días (documentado como
-  arranque; en cuanto hay 3 ventas se vuelve auto).
+- Empresa sin mediana (<3 ventas): fallback = 7 días ✅ (aprobado CEO 15-jul;
+  en cuanto hay 3 ventas se vuelve auto).
 
 ## 4. La regla de oro anti-reset: el toque vive en CONTACTO
 
@@ -55,10 +55,11 @@ le dispara el siguiente toque. La inteligencia existe (tips); falta el RELOJ y l
 | Quedamos en algo | ceil(mediana) | 🔴 vencida (toque la pone al corriente) |
 | Decidiendo / Objeción precio / Pidió cambios / En el aire | ceil(mediana) | 🔴 vencida |
 
-🔶 Tensión a decidir: el examen de cumplidos madura a los 5 días; si la mediana > 5, el
-toque "preventivo" del acuerdo vencería DESPUÉS de que el examen ya reprobó. Opciones:
-(a) dejarlo así (el examen mide al cliente, el toque mide al asesor — relojes distintos);
-(b) para compromiso/cita topar a `min(5, ceil(mediana))`. Recomendación: (a) en v1, medir.
+RESUELTO (recomendación adoptada por default, CEO delegó): **relojes separados** —
+el examen de cumplidos (5 días) mide AL CLIENTE (¿se movió?); el vencimiento de toque
+(mediana) mide AL ASESOR (¿lo trabajaste?). No se acoplan. Con el castigo directo del
+score (§7) esta tensión desaparece en la práctica: el examen alimenta el reporte del
+dueño, el vencimiento alimenta el castigo — canales distintos. Revisar en Fase D.
 
 ## 6. Exigencia GRÁFICA (sin push — todo en la mesa)
 
@@ -71,20 +72,27 @@ toque "preventivo" del acuerdo vencería DESPUÉS de que el examen ya reprobó. 
    muestra `⏰ estuvo vencida Nd` el resto del período (los días acumulados no se
    borran — ver score). Nada de "toco y quedó limpio".
 
-## 7. Exigencia en el SCORE (no reseteable)
+## 7. Exigencia en el SCORE — castigo DIRECTO estilo boosters (decisión CEO 15-jul)
 
-- **Métrica**: `dias_vencidos` acumulados por fila en el período rolling (15d del
-  termómetro). Tocar DETIENE la acumulación; NO la borra. El período la purga solo.
-- **Penalización auto-ajustable** (cero valores fijos):
-  `pen_seguimiento = min(dias_vencidos_total / (pedidas × cadencia_base), tope)`
-  — "qué fracción del tiempo exigido estuviste vencido".
-- 🔶 Dónde pega (recomendación): dentro del bloque s_mesa del Seguimiento:
-  `s_mesa_final = s_mesa_cobertura − pen_seguimiento` (piso 0). La regla
-  manita+postura queda INTACTA; la puntualidad es una resta encima.
-- 🔶 Tope propuesto: 0.5 (la impuntualidad puede costarte hasta la mitad del s_mesa,
-  nunca todo — la cobertura sigue siendo lo principal).
-- Persistir en usuario_score (`mesa_dias_vencidos`, `pen_seguimiento`) para el debug
-  panel del superadmin.
+Espejo de los bonus existentes (bonus_ticket +2/+5/+8 · bonus_cierre +4/+8):
+**puntos directos que se RESTAN del score final**, sin fórmula intermedia.
+La cobertura (manita+postura, 3 niveles) y todo el Seguimiento quedan INTACTOS —
+el castigo vive donde viven los bonus: en el score final.
+
+- **Métrica (no reseteable)**: `dias_vencidos` acumulados por el asesor en el
+  período rolling de 15d (suma de todas sus filas vencidas). Tocar DETIENE la
+  acumulación; NO la borra — el período la purga solo.
+- **Castigo por niveles** (un solo nivel vigente, el mayor — como bonus_cierre):
+  | Días vencidos acumulados | Castigo | Visibilidad |
+  |---|---|---|
+  | 3+  | −2 | silencioso (solo debug panel) |
+  | 7+  | −5 | frase en el diagnóstico |
+  | 14+ | −8 (tope) | frase fuerte |
+- Piso del score: 0. 🔶 Umbrales/valores por afinar con datos reales (Fase D).
+- Frase del diagnóstico (fact-lint aplica): "⏰ Traes N días de seguimiento
+  vencido — te está costando X puntos del termómetro".
+- Persistir en usuario_score: `mesa_dias_vencidos` + `castigo_seguimiento`
+  (debug panel del superadmin, como los bonus).
 
 ## 8. Hasta cuándo (límites del ciclo — ya existen)
 
