@@ -251,7 +251,7 @@ class MesaSugerencias
                         "Van {$intentos_nc} intentos sin respuesta del cliente — cambia de canal hoy: si le llamas, escríbele; si le escribes, llámale; o busca a otra persona del mismo cliente.",
                         "Ya son {$intentos_nc} intentos y el cliente no responde — cambia de canal: otro medio, otra hora, o busca a otra persona de su empresa.",
                         "El cliente lleva {$intentos_nc} intentos sin contestarte — no repitas el mismo canal: cámbialo hoy o consigue el teléfono de otra persona del mismo cliente.",
-                        "Van {$intentos_nc} intentos sin respuesta — mientras insistes por otro canal, márcala 📵 Sin info con tu lectura en \"¿Cómo lo ves?\": tu trabajo cuenta aunque el cliente no conteste.",
+                        "Van {$intentos_nc} intentos sin respuesta — mientras insistes por otro canal, márcala 📱 Sin info con tu lectura en \"¿Cómo lo ves?\": tu trabajo cuenta aunque el cliente no conteste.",
                     ]);
                 } elseif ($dormida) {
                     $f = $pk([
@@ -266,7 +266,7 @@ class MesaSugerencias
                         'El cliente no respondió a tu último toque — intenta hoy por otro canal con una sola pregunta que pueda contestar con sí o no.',
                         'Sin respuesta todavía — prueba hoy a otra hora y por otro medio; una pregunta corta, fácil de contestar.',
                         'El cliente no ha contestado — el siguiente intento va por otro canal y con una pregunta que se responda en segundos.',
-                        'El cliente no contesta — reintenta por otro canal y márcala 📵 Sin info mientras: cuenta como evaluación; cuando logres contacto la cambias a 👍/👎.',
+                        'El cliente no contesta — reintenta por otro canal y márcala 📱 Sin info mientras: cuenta como evaluación; cuando logres contacto la cambias a 👍/👎.',
                     ]);
                 }
             }

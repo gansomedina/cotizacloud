@@ -1,4 +1,4 @@
--- Tercera manita: 📵 "Sin info" — el asesor intentó contactar y el cliente no
+-- Tercera manita: 📱 "Sin info" — el asesor intentó contactar y el cliente no
 -- respondió: no hay juicio honesto posible (👍👎 sería inventado). Cuenta como
 -- evaluación para la cobertura de la mesa (manita + postura = calificada),
 -- es NEUTRAL en la calidad del termómetro (no hay juicio que validar) y NO

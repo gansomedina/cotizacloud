@@ -135,7 +135,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           onclick="mesaFb(<?= (int)$r['id'] ?>,'sin_interes',this)">👎</button>
         <button type="button" class="fbi<?= $r['postura'] === 'sin_info' ? ' on' : '' ?>"
           title="Sin info — intentaste y el cliente no responde: cuenta como evaluación sin juzgarlo. Solo con &quot;No contestó&quot; marcado; cuando logres contacto, cámbialo a 👍/👎"
-          onclick="mesaFb(<?= (int)$r['id'] ?>,'sin_info',this)">📵</button>
+          onclick="mesaFb(<?= (int)$r['id'] ?>,'sin_info',this)">📱</button>
       </span>
       <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
         <?= $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d") ?></span>
@@ -586,21 +586,21 @@ var MESA_ERR = {rate:'Vas muy rápido — espera un momento e intenta de nuevo',
                 fecha_invalida:'Fecha inválida',
                 fecha_cerca:'La fecha debe ser de al menos 15 días',
                 fecha_lejana:'Máximo 6 meses',
-                sin_info_gate:'📵 es para clientes que no responden — marca primero "No contestó" en Contacto; si ya hablaron, califícalo 👍/👎.',
+                sin_info_gate:'📱 es para clientes que no responden — marca primero "No contestó" en Contacto; si ya hablaron, califícalo 👍/👎.',
                 guardar:'Error al guardar — intenta de nuevo'};
 function mesaErr(code){ return MESA_ERR[code] || ('No se pudo guardar: ' + (code || 'error')); }
 
 // Feedback Radar desde la mesa — se guarda a nombre del asesor dueño de la
 // cotización (una sola marca: el descarte voltea el 👍 a 👎 automáticamente)
 function mesaFb(cotId, tipo, btn){
-  // 📵 solo aplica a clientes que no responden: pre-check en el cliente (el
+  // 📱 solo aplica a clientes que no responden: pre-check en el cliente (el
   // servidor re-valida) para explicar el candado sin viaje a la red
   if(tipo === 'sin_info'){
     var row0 = btn.closest('.mrow');
     var dr0 = row0 ? document.getElementById(row0.dataset.drawer) : null;
     var conOn = dr0 ? dr0.querySelector('.marea[data-area="contacto"] .mpill.on') : null;
     if(!conOn || conOn.dataset.e !== 'no_contesta'){
-      mesaToast('📵 es para clientes que no responden — marca primero "No contestó" en Contacto; si ya hablaron, califícalo 👍/👎.');
+      mesaToast('📱 es para clientes que no responden — marca primero "No contestó" en Contacto; si ya hablaron, califícalo 👍/👎.');
       return;
     }
   }
@@ -628,7 +628,7 @@ function mesaFb(cotId, tipo, btn){
     mesaToast(tipo === 'con_interes'
       ? '👍 marcado — también quedó en el Radar'
       : (tipo === 'sin_info'
-        ? '📵 Sin info — cuenta como evaluación; remata con tu lectura en "¿Cómo lo ves?" y cuando logres contacto cámbialo a 👍/👎'
+        ? '📱 Sin info — cuenta como evaluación; remata con tu lectura en "¿Cómo lo ves?" y cuando logres contacto cámbialo a 👍/👎'
         : '👎 marcado — pasa a \"Descartadas hoy\" y mañana sale de la mesa; si el cliente revive, vuelve sola — y un descarte que el cliente desmiente cuenta en tu contra'));
   }).catch(function(){ thumbs.forEach(function(b){ b.disabled = false; }); mesaToast('No se pudo guardar (red o sesión).'); });
 }
@@ -699,6 +699,10 @@ function mesaTap(cotId, area, estado, btn, razon){
       row.classList.add('done');
       var mc = row.querySelector('.mcheck'); if(mc) mc.textContent = '✓';
       mesaToast('✓ Atendida — al recargar pasa a "Atendidas hoy"');
+    }
+    // Tap positivo con 👎 vigente: los taps ya NO corrigen la manita — se avisa
+    if(d.fb_hint){
+      mesaToast('Ojo: tu 👎 sigue puesto en esta cotización — si tu juicio cambió, cámbialo tú a 👍; ningún tap lo cambia por ti.');
     }
   }).catch(function(){ areaBtns.forEach(function(b){ b.disabled = false; }); mesaToast('No se pudo guardar (red o sesión) — recarga e intenta de nuevo.'); });
 }

@@ -617,7 +617,7 @@ class ActividadScore
                 }
                 // sin_interes + <5 días = no evaluable (ya filtrado arriba)
             }
-            // 'sin_info' (📵, cliente no responde) = NEUTRAL: sí cuenta como
+            // 'sin_info' (📱, cliente no responde) = NEUTRAL: sí cuenta como
             // señal atendida (fb_total → tasa_completado) pero no hay juicio
             // que validar — ni acierto ni fallo.
         }

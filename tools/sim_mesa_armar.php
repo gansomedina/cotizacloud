@@ -305,7 +305,7 @@ $cf = Mesa::cobertura_senales(5, 502);
 chk('cobertura excluye Frías: pedidas=2 (F2,F3), atendidas=1 (F3), fallas=1 (F2)',
     [$cf['pedidas'], $cf['atendidas'], $cf['fallas']], [2, 1, 1]);
 
-echo "═ SIN INFO 📵 (vendedor 503) ═\n";
+echo "═ SIN INFO 📱 (vendedor 503) ═\n";
 // S1: fb sin_info + postura declarada → manita+postura = ATENDIDA, NO descartada
 cot(9501, 503, 15000, 8, ['visitas' => 2, 'vista_d' => 3]);
 fb(9501, 503, 'sin_info', 2); tap(9501, 'postura', 'en_el_aire', 2);

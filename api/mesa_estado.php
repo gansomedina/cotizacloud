@@ -17,7 +17,7 @@ $AREAS = [
     'contacto'   => ['no_contesta','hablamos'],
     'compromiso' => ['compromiso','nos_citamos','propuse_no_quiso','sin_compromiso'],
     'postura'    => ['decidiendo','objecion_precio','pidio_cambios','en_el_aire','descartada'],
-    'feedback'   => ['con_interes','sin_interes','sin_info'],   // 👍/👎/📵 homologado con el Radar
+    'feedback'   => ['con_interes','sin_interes','sin_info'],   // 👍/👎/📱 homologado con el Radar
 ];
 $VALIDOS = $AREAS[$area] ?? [];
 $RAZONES = ['precio','competencia','despues','no_responde','no_comprador','otro'];
@@ -48,8 +48,8 @@ if (!in_array($cot['estado'], ['enviada', 'vista'], true) || (int)$cot['suspendi
     echo json_encode(['ok' => false, 'error' => 'cerrada']); exit;
 }
 
-// 📵 Sin info SOLO con contacto vigente 'no_contesta': si hablaste con el
-// cliente, tienes con qué juzgar (👍👎). Sin el candado, 📵 sería la vía
+// 📱 Sin info SOLO con contacto vigente 'no_contesta': si hablaste con el
+// cliente, tienes con qué juzgar (👍👎). Sin el candado, 📱 sería la vía
 // floja para farmear cobertura sin comprometerse nunca a un juicio.
 if ($estado === 'sin_info') {
     $ult_con = null;
@@ -108,41 +108,18 @@ try {
         [$cot_id, Auth::id(), EMPRESA_ID, $area, $estado, $razon, $cot['radar_bucket']]
     );
 
-// Proyección compatible → radar_feedback (el examen del score no se toca)
-// Proyección → radar_feedback A NOMBRE DEL ASESOR dueño de la cotización.
-// La llave es (cotizacion, usuario): escribir como el vendedor garantiza UNA
-// sola marca que siempre se sobreescribe (un descarte voltea el 👍 a 👎),
-// sin importar si el tap lo dio el admin desde la mesa del asesor.
-    // 'nos_citamos' NO proyecta a propósito (decisión CEO): la manita es el
-    // juicio INDEPENDIENTE del asesor — puede citarse con el cliente y aun
-    // así verlo 👎. Ningún tap de cita debe sobreescribir ese juicio.
-    $map = ['compromiso'=>'con_interes','decidiendo'=>'con_interes','objecion_precio'=>'con_interes',
-            'pidio_cambios'=>'con_interes','descartada'=>'sin_interes',
-            'con_interes'=>'con_interes','sin_interes'=>'sin_interes','sin_info'=>'sin_info'];
-    if (isset($map[$estado])) {
-        // La HISTORIA de la marca también debe reflejar el cambio: si un tap de
-        // postura/compromiso corrige el 👎 vigente, sin esta fila la historia
-        // 'feedback' se queda con el sin_interes viejo y Recuperado contaría la
-        // venta como recuperada aunque el asesor la corrigió (rama mf). Solo se
-        // inserta cuando la marca CAMBIA (sin ruido por re-taps).
-        if ($area !== 'feedback') {
-            $fb_prev = DB::val(
-                "SELECT estado FROM mesa_estados
-                 WHERE cotizacion_id = ? AND empresa_id = ? AND area = 'feedback'
-                 ORDER BY id DESC LIMIT 1", [$cot_id, EMPRESA_ID]
-            );
-            if ($fb_prev !== $map[$estado]) {
-                DB::execute(
-                    "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
-                     VALUES (?,?,?,'feedback',?,NULL,?)",
-                    [$cot_id, Auth::id(), EMPRESA_ID, $map[$estado], $cot['radar_bucket']]
-                );
-            }
-        }
+    // La manita (radar_feedback) es el JUICIO INDEPENDIENTE del asesor
+    // (decisión CEO 15-jul): NINGÚN tap de compromiso/postura la escribe ni
+    // la corrige por él — solo los pulgares 👍/👎/📱 (área 'feedback'). El
+    // pill Descartar sigue sacando la fila de la mesa por la POSTURA misma
+    // (doble fuente en armar); para que la cobertura la califique hace falta
+    // TAMBIÉN la manita. Se escribe a nombre del ASESOR dueño: la llave es
+    // (cotizacion, usuario) — una sola marca aunque quien tapee sea el admin.
+    if ($area === 'feedback') {
         DB::execute(
             "INSERT INTO radar_feedback (cotizacion_id, usuario_id, empresa_id, tipo)
              VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE tipo=VALUES(tipo), updated_at=NOW()",
-            [$cot_id, (int)$cot['vend'], EMPRESA_ID, $map[$estado]]
+            [$cot_id, (int)$cot['vend'], EMPRESA_ID, $estado]
         );
     }
 
@@ -166,6 +143,7 @@ try {
 
 // ── Recalcular la sugerencia con la mezcla completa ──
 $sugerencia = null;
+$fb_hint = false;
 try {
     // Última declaración por área (incluye la recién insertada)
     $decl = []; $nc = 0;
@@ -246,6 +224,11 @@ try {
         "SELECT tipo, updated_at FROM radar_feedback WHERE cotizacion_id = ? AND usuario_id = ?",
         [$cot_id, (int)$cot['vend']]
     );
+    // Recordatorio (NO auto-corrección): tap positivo con 👎 vigente — desde
+    // que los taps ya no proyectan la manita, nadie la cambia por el asesor;
+    // se le avisa para que decida él si su juicio cambió.
+    $fb_hint = in_array($estado, ['compromiso','nos_citamos','decidiendo','objecion_precio','pidio_cambios'], true)
+        && (($fb_row['tipo'] ?? '') === 'sin_interes');
     $revivida_now = false; $milagro_now = false;
     $descartada_ahora = ($estado === 'descartada' || $estado === 'sin_interes');
     // "Hoy" con el reloj de la BD (igual que armar): si los timezone de PHP
@@ -336,4 +319,4 @@ try {
     error_log('[Mesa sugerencia] ' . $e->getMessage());
 }
 
-echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia, 'auto_contacto' => $auto_contacto]);
+echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia, 'auto_contacto' => $auto_contacto, 'fb_hint' => $fb_hint]);
