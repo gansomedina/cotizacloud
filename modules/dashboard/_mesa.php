@@ -141,15 +141,15 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
             $sg_ult = $udd === null ? 'sin declaraciones' : ($udd === 0 ? 'última declaración hoy' : "última declaración hace {$udd}d");
             $sg_f = $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d");
             $sg_h = (int)($r['venc_huella'] ?? 0);
-            $sg_hf = $sg_h > 0 ? ' <small style="opacity:.75" title="Acumuló ' . $sg_h . 'd de seguimiento vencido en el período — no se borra al ponerse al corriente; se drena con los días">⏰' . $sg_h . 'd</small>' : '';
+            $sg_hf = $sg_h > 0 ? ' <small style="opacity:.75" title="Acumuló ' . $sg_h . 'd sin seguimiento en el período — no se borra al ponerse al corriente; se drena con los días">⏰' . $sg_h . 'd</small>' : '';
             if (!empty($r['cita_vencida'])): ?>
-      <span class="mfresh bad" title="La CITA venció el <?= e($sg['vence']) ?> sin actualizarse — solo baja registrando el desenlace (Quedamos / No quiso / Nada), descartándola, o Hablamos + re-citar si la pospusieron. <?= e($sg_ult) ?>"><?= e($sg_f) ?> · 🔴 cita vencida <?= (int)$sg['dias'] ?>d</span>
+      <span class="mfresh bad" title="La cita pasó su límite (<?= e($sg['vence']) ?>) sin actualizarse — solo baja registrando el desenlace (Quedamos / No quiso / Nada), descartándola, o Hablamos + re-citar si la pospusieron. <?= e($sg_ult) ?>"><?= e($sg_f) ?> · 🔴 cita sin actualizar <?= (int)$sg['dias'] ?>d</span>
       <?php elseif ($sg && $sg['estado'] === 'vencida'): ?>
-      <span class="mfresh bad" title="El siguiente toque venció el <?= e($sg['vence']) ?> — se pone al corriente con un contacto declarado (Hablamos / No contestó). <?= e($sg_ult) ?>"><?= e($sg_f) ?> · 🔴 vencida <?= (int)$sg['dias'] ?>d</span>
+      <span class="mfresh bad" title="Pasó su límite de seguimiento (<?= e($sg['vence']) ?>) — un contacto declarado (Hablamos / No contestó) la pone al corriente. <?= e($sg_ult) ?>"><?= e($sg_f) ?> · 🔴 sin seguimiento <?= (int)$sg['dias'] ?>d</span>
       <?php elseif ($sg && $sg['estado'] === 'hoy'): ?>
-      <span class="mfresh warn" title="El siguiente toque vence HOY — un contacto declarado la pone al corriente. <?= e($sg_ult) ?>"><?= e($sg_f) ?> · 🟠 vence HOY<?= $sg_hf ?></span>
+      <span class="mfresh warn" title="HOY es el límite de seguimiento — un contacto declarado la pone al corriente. <?= e($sg_ult) ?>"><?= e($sg_f) ?> · 🟠 límite HOY<?= $sg_hf ?></span>
       <?php elseif ($sg): ?>
-      <span class="mfresh<?= $udd === 0 ? ' ok' : '' ?>" title="Al corriente — el siguiente toque vence el <?= e($sg['vence']) ?>. <?= e($sg_ult) ?>"><?= e($sg_f) ?> · vence <?= e(date('d/m', strtotime($sg['vence']))) ?><?= $sg_hf ?></span>
+      <span class="mfresh<?= $udd === 0 ? ' ok' : '' ?>" title="Al corriente — límite de seguimiento: <?= e($sg['vence']) ?>. <?= e($sg_ult) ?>"><?= e($sg_f) ?> · límite <?= e(date('d/m', strtotime($sg['vence']))) ?><?= $sg_hf ?></span>
       <?php else: ?>
       <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
         <?= $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d") ?></span>
@@ -247,7 +247,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
           · <span style="color:#16a34a;font-weight:700">✓ <?= (int)$mr['atendidas'] ?> atendida<?= $mr['atendidas'] > 1 ? 's' : '' ?> hoy</span>
         <?php endif; ?>
         <?php if (!empty($mr['vencidas'])): ?>
-          · <span style="color:#dc2626;font-weight:700" title="Filas cuyo siguiente toque ya venció — un contacto declarado las pone al corriente">⏰ <?= (int)$mr['vencidas'] ?> vencida<?= $mr['vencidas'] > 1 ? 's' : '' ?></span>
+          · <span style="color:#dc2626;font-weight:700" title="Filas que pasaron su límite de seguimiento — un contacto declarado las pone al corriente">⏰ <?= (int)$mr['vencidas'] ?> sin seguimiento</span>
         <?php endif; ?>
         <?php if (!empty($mr['descartadas'])): ?>
           · <span style="color:#b91c1c;font-weight:700">🗑 <?= (int)$mr['descartadas'] ?> descartada<?= $mr['descartadas'] > 1 ? 's' : '' ?> hoy</span>
