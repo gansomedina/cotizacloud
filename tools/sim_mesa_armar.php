@@ -321,5 +321,24 @@ $cs = Mesa::cobertura_senales(5, 503);
 chk('cobertura sin_info: pedidas=2, atendidas=1 (S1 manita+postura), fallas=1 (S2 sin postura)',
     [$cs['pedidas'], $cs['atendidas'], $cs['fallas']], [2, 1, 1]);
 
+echo "═ RELOJ DE SEGUIMIENTO ⏰ (vendedor 504 — Fase A) ═\n";
+// R1 (9601): no_contesta hace 4d → cadencia 2 → venció hace 2d → VENCIDA
+cot(9601, 504, 10000, 8, ['visitas' => 2, 'vista_d' => 3]);
+tap(9601, 'contacto', 'no_contesta', 4);
+// R2 (9602): compromiso hace 2d (ancla fallback) → cadencia ceil(mediana=10) → vence en 8d → OK
+cot(9602, 504, 20000, 8, ['visitas' => 2, 'vista_d' => 3]);
+tap(9602, 'compromiso', 'compromiso', 2);
+// R3 (9603): virgen (sin declaraciones) → SIN reloj (la exige "Por trabajar")
+cot(9603, 504, 30000, 8, ['visitas' => 2, 'vista_d' => 3]);
+$mv   = Mesa::armar(5, 504);
+$mvby = [];
+foreach ($mv['rows'] as $r) $mvby[$r['numero']] = $r;
+chk('R1 no_contesta 4d → vencida 2d', [$mvby['COT-9601']['seguimiento']['estado'] ?? '', $mvby['COT-9601']['seguimiento']['dias'] ?? -1], ['vencida', 2]);
+chk('R2 compromiso 2d → al corriente (cadencia mediana 10)', $mvby['COT-9602']['seguimiento']['estado'] ?? '', 'ok');
+chk('R3 virgen → sin reloj', isset($mvby['COT-9603']) && ($mvby['COT-9603']['seguimiento'] ?? 'x') !== 'x' ? 'con reloj' : (isset($mvby['COT-9603']) ? 'sin reloj' : 'no visible'), 'sin reloj');
+chk('resumen.vencidas = 1', $mv['resumen']['vencidas'] ?? -1, 1);
+$mv_ids = array_map(fn($r) => (int)$r['id'], $mv['rows']);
+chk('la vencida (R1) va PRIMERO en el orden', $mv_ids[0], 9601);
+
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

@@ -61,6 +61,22 @@ el examen de cumplidos (5 días) mide AL CLIENTE (¿se movió?); el vencimiento 
 score (§7) esta tensión desaparece en la práctica: el examen alimenta el reporte del
 dueño, el vencimiento alimenta el castigo — canales distintos. Revisar en Fase D.
 
+## 5b. Aclaraciones selladas (CEO 15-jul, 2ª ronda)
+
+1. **Apertura del cliente NO pone al corriente al asesor** — alimenta el otro reloj
+   (examen/Radar/categorías) y SUBE la urgencia (vencida + leyendo ahora = tope de la
+   mesa). En no-contesta, que el cliente lea sin contestar no detiene la cadencia.
+2. **Nunca-trabajadas NO acumulan castigo directo** — ya las castiga la cobertura
+   (Por trabajar = falla). El castigo directo es por ABANDONAR lo empezado. Sin doble golpe.
+3. **"Nada concreto" y "Propuse, no quiso" también llevan cadencia** (mediana) — el
+   no de hoy no es el de mañana; solo descartar/agendar/vender apaga la exigencia.
+4. **La cita roja también baja con "Hablamos" nuevo + re-citar** (la pospusieron de
+   verdad — exige toque real declarado, visible al dueño como toque).
+5. **Recuperación del castigo = decaimiento natural**: cada día vencido es un evento
+   con fecha; el castigo suma los de los últimos 15 días. Trabajar detiene la
+   acumulación; el tiempo drena los viejos (~2 semanas para limpiar un −5). Sin
+   resets manuales.
+
 ## 6. Exigencia GRÁFICA (sin push — todo en la mesa)
 
 1. **Chip por fila**: `🔴 vencido hace Nd` / `🟠 vence hoy` / nada (al corriente).
