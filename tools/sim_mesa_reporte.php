@@ -50,7 +50,8 @@ require __DIR__ . '/../core/Mesa.php';
 // ── Esquema mínimo con las columnas que las queries usan ──
 $ddl = <<<SQL
 DROP TABLE IF EXISTS cotizaciones, clientes, ventas, mesa_estados, radar_feedback,
-                     bucket_transitions, quote_sessions, usuarios, cotizacion_log;
+                     bucket_transitions, quote_sessions, usuarios, cotizacion_log,
+                     desc_int_activaciones;
 CREATE TABLE cotizaciones (
   id INT UNSIGNED PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
   usuario_id INT UNSIGNED NOT NULL, vendedor_id INT UNSIGNED NULL, cliente_id INT UNSIGNED NULL,
@@ -98,6 +99,11 @@ CREATE TABLE cotizacion_log (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, cotizacion_id INT UNSIGNED NOT NULL,
   usuario_id INT UNSIGNED NULL, accion VARCHAR(30) NULL, evento VARCHAR(30) NULL,
   created_at DATETIME NOT NULL
+);
+CREATE TABLE desc_int_activaciones (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
+  cotizacion_id INT UNSIGNED NOT NULL, estado VARCHAR(12) NOT NULL DEFAULT 'activo',
+  expira_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 SQL;
 foreach (array_filter(array_map('trim', explode(';', $ddl))) as $stmt) DB::pdo()->exec($stmt);
@@ -255,6 +261,12 @@ venta(3006, 1, 12000, 6);
 cot(2001, 2, 201, 99000, 10);
 tap(2001, 2, 'contacto', 'hablamos', 2);
 
+// A6 (1099): activa 25d virgen — SIN DI sería +1 activa, +1 sin_trabajar,
+//   +1 se_fueron ($99k). Con DI ACTIVO, Opción B la saca de la cartera del
+//   reporte igual que de la mesa: activas/sin_trabajar/se_fueron NO se mueven.
+cot(1099, 1, 101, 99000, 25);
+DB::execute("INSERT INTO desc_int_activaciones (empresa_id, cotizacion_id, estado, expira_at, created_at) VALUES (1,1099,'activo',?,?)", [$d(-1), $d(0.5)]);
+
 // ── EXPECTATIVAS calculadas a mano ─────────────────────────
 $fail = 0;
 function chk(string $name, $got, $want): void {
@@ -269,7 +281,8 @@ $ana = $rep['asesores'][101] ?? [];
 $bet = $rep['asesores'][102] ?? [];
 
 echo "═ ANA — Cartera (foto de hoy) ═\n";
-chk('activas = 7 (A1-A5, C1, C2; las vendidas fuera)', $ana['activas'] ?? -1, 7);
+chk('activas = 7 (A1-A5, C1, C2; A6 con DI y vendidas fuera)', $ana['activas'] ?? -1, 7);
+chk('A6 con DI ACTIVO NO infla la cartera — Opción B (sin DI sería 8)', $ana['activas'] ?? -1, 7);
 chk('sin_calificar = 5 (A1 con rf de tercero SÍ cuenta, A2, A3, C1, C2)', $ana['sin_calificar'] ?? -1, 5);
 chk('sin_trabajar = 2 (A1, A2) $30,000', [$ana['sin_trabajar'] ?? -1, $ana['monto_sin_trabajar'] ?? -1], [2, 30000.0]);
 chk('se_fueron = 1 (solo A2: A3 tocada hace 2d, A4 descartada) $20,000', [$ana['se_fueron'] ?? -1, $ana['monto_se_fueron'] ?? -1], [1, 20000.0]);

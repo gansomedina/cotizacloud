@@ -212,8 +212,24 @@ class Mesa
         $agendadas = []; // parqueadas a futuro (bandeja aparte, fuera de la mesa diaria)
         $now = time();
 
+        // Descuento Inteligente: la cotización que TUVO DI sale de la mesa para
+        // siempre — cuando el DI dispara, el sistema tomó el control con el
+        // descuento; deja de ser seguimiento manual del asesor. Excluye display
+        // Y score (cobertura_senales deriva de estas filas). Las 'cancelado'
+        // (venta que usó el DI y luego se revirtió, ventas/acciones.php) NO se
+        // excluyen: la oportunidad revivió → vuelve a la mesa del asesor.
+        $di_fuera = [];
+        try {
+            foreach (DB::query(
+                "SELECT DISTINCT cotizacion_id FROM desc_int_activaciones
+                 WHERE empresa_id = ? AND estado <> 'cancelado'", [$empresa_id]) as $da) {
+                $di_fuera[(int)$da['cotizacion_id']] = true;
+            }
+        } catch (\Throwable $e) {} // tabla sin migrar → sin exclusión (fail-open seguro)
+
         foreach ($cots as $c) {
             $cid    = (int)$c['id'];
+            if (isset($di_fuera[$cid])) continue; // tuvo DI → fuera de la mesa y del score
             $sen    = $c['radar_senales'] ? (json_decode($c['radar_senales'], true) ?: []) : [];
             $edad   = (int)$c['edad'];
 
@@ -709,6 +725,11 @@ class Mesa
                       AND c.suspendida = 0 AND c.total > 0 AND c.accion_at IS NULL
                       AND NOT EXISTS (SELECT 1 FROM ventas v
                                       WHERE v.cotizacion_id = c.id AND v.estado != 'cancelada')
+                      -- DI (Opción B): tuvo Descuento Inteligente → el sistema la
+                      -- tomó; fuera de la cartera del reporte (activas/sin_trabajar/
+                      -- se_fueron) igual que sale de la mesa. 'cancelado' regresa.
+                      AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da
+                                      WHERE da.cotizacion_id = c.id AND da.estado <> 'cancelado')
                  ) cart
                  GROUP BY uid", [$empresa_id]
             ) as $r) {

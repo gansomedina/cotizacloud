@@ -50,7 +50,8 @@ require __DIR__ . '/../core/Mesa.php';
 //    el try/catch de armar debe tragarse ese error) ──
 $ddl = <<<SQL
 DROP TABLE IF EXISTS cotizaciones, ventas, mesa_estados, radar_feedback,
-                     bucket_transitions, quote_sessions, usuarios, cotizacion_log, clientes;
+                     bucket_transitions, quote_sessions, usuarios, cotizacion_log, clientes,
+                     desc_int_activaciones;
 CREATE TABLE cotizaciones (
   id INT UNSIGNED PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
   usuario_id INT UNSIGNED NOT NULL, vendedor_id INT UNSIGNED NULL, cliente_id INT UNSIGNED NULL,
@@ -92,6 +93,11 @@ CREATE TABLE usuarios (id INT UNSIGNED PRIMARY KEY, empresa_id INT UNSIGNED NOT 
 CREATE TABLE cotizacion_log (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, cotizacion_id INT UNSIGNED NOT NULL,
   usuario_id INT UNSIGNED NULL, accion VARCHAR(30) NULL, evento VARCHAR(30) NULL, created_at DATETIME NOT NULL
+);
+CREATE TABLE desc_int_activaciones (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
+  cotizacion_id INT UNSIGNED NOT NULL, estado VARCHAR(12) NOT NULL DEFAULT 'activo',
+  expira_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 SQL;
 foreach (array_filter(array_map('trim', explode(';', $ddl))) as $stmt) DB::pdo()->exec($stmt);
@@ -186,6 +192,16 @@ DB::execute("INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, ar
 cot(18, 500, 27000, 15, ['visitas' => 0]);
 fb(18, 500, 'sin_interes', 10);
 hotbt(18, 2);
+// M19 (19): MILAGRO pero con DI ACTIVO → Opción B: el sistema la tomó, sale
+//   de la mesa (y del score) aunque el cliente la esté viendo caliente.
+cot(19, 500, 28000, 45, ['bucket' => 'onfire', 'bucket_at_d' => 2, 'visitas' => 6, 'vista_d' => 2]);
+DB::execute("INSERT INTO quote_sessions (cotizacion_id, es_interno, visible_ms, scroll_max, created_at) VALUES (19,0,5000,80,?)", [$d(2)]);
+DB::execute("INSERT INTO desc_int_activaciones (empresa_id, cotizacion_id, estado, expira_at, created_at) VALUES (5,19,'activo',?,?)", [$d(-1), $d(0.5)]);
+// M20 (20): MILAGRO con DI 'cancelado' (venta revertida) → la oportunidad
+//   revivió, SÍ vuelve a la mesa (excepción de la Opción B).
+cot(20, 500, 29000, 45, ['bucket' => 'onfire', 'bucket_at_d' => 2, 'visitas' => 6, 'vista_d' => 2]);
+DB::execute("INSERT INTO quote_sessions (cotizacion_id, es_interno, visible_ms, scroll_max, created_at) VALUES (20,0,5000,80,?)", [$d(2)]);
+DB::execute("INSERT INTO desc_int_activaciones (empresa_id, cotizacion_id, estado, expira_at, created_at) VALUES (5,20,'cancelado',?,?)", [$d(1), $d(2)]);
 
 // ══ VENDEDOR 501 — CAPS: 8 milagros + 20 hot tier1 = 28 filas pre-cap ══
 for ($i = 1; $i <= 8; $i++) { // milagros: edad 50, hot fresco
@@ -210,12 +226,14 @@ $by = [];
 foreach ($rows as $r) $by[(int)$r['id']] = $r;
 
 echo "═ VISIBILIDAD (quién entra y quién no) ═\n";
-chk('10 filas visibles (M1,M2,M4,M5,M7,M8,M9,M10,M15,M17)', count($rows), 10);
-chk('ids exactos', (function () use ($by) { $k = array_keys($by); sort($k); return $k; })(), [1, 2, 4, 5, 7, 8, 9, 10, 15, 17]);
+chk('11 filas visibles (M1,M2,M4,M5,M7,M8,M9,M10,M15,M17,M20)', count($rows), 11);
+chk('ids exactos', (function () use ($by) { $k = array_keys($by); sort($k); return $k; })(), [1, 2, 4, 5, 7, 8, 9, 10, 15, 17, 20]);
 chk('M3 (descartada 3d sin revivir) NO aparece', isset($by[3]), false);
 chk('M6 (fuera >2×p75 sin calor) NO aparece', isset($by[6]), false);
 chk('M11 (visitas=0 sin bucket) NO aparece', isset($by[11]), false);
 chk('M12/M13/M14 (suspendida/aceptada/vendida) NO aparecen', isset($by[12]) || isset($by[13]) || isset($by[14]), false);
+chk('M19 (milagro con DI ACTIVO) NO aparece — Opción B', isset($by[19]), false);
+chk('M20 (milagro con DI CANCELADO) SÍ aparece — excepción B', $by[20]['cat'] ?? '', 'milagro');
 
 echo "═ CATEGORÍAS ═\n";
 chk('M1 = sin_postura', $by[1]['cat'] ?? '', 'sin_postura');
@@ -243,16 +261,16 @@ chk('todas las filas tienen sugerencia no vacía', $sug_vacias, 0);
 
 echo "═ ORDEN ═\n";
 $ids_orden = array_map(fn($r) => (int)$r['id'], $rows);
-chk('grupo 0 = revividas/milagros (M4, M15 pc; M5 onfire) y luego grupo 1', array_slice($ids_orden, 0, 4), [15, 4, 5, 17]);
+chk('grupo 0 = revividas/milagros (M15,M4 revividas; M20,M5 milagros)', array_slice($ids_orden, 0, 4), [15, 4, 20, 5]);
 $tier2_pos = array_search(8, $ids_orden); $tier1_max = max(array_search(1, $ids_orden), array_search(9, $ids_orden), array_search(10, $ids_orden));
 chk('tier 1 antes que tier 2 (M8 después de M1/M9/M10)', $tier2_pos > $tier1_max, true);
 
 echo "═ RESUMEN Y LIMPIEZA ═\n";
 $mr = $mesa['resumen'];
-chk('universo = 10', $mr['universo'] ?? -1, 10);
+chk('universo = 11 (+M20; M19 con DI fuera del universo)', $mr['universo'] ?? -1, 11);
 chk('descartadas hoy = 1 (M2), atendidas = 1 (M10)', [$mr['descartadas'], $mr['atendidas']], [1, 1]);
-chk('n pendientes = 8', $mr['n'], 8);
-chk('monto pendientes = 138,000 (+M15 24k, M17 26k; M18 fuera)', $mr['monto'], 138000.0);
+chk('n pendientes = 9 (+M20 milagro; M19 con DI fuera)', $mr['n'], 9);
+chk('monto pendientes = 167,000 (138k + M20 29k; M19 con DI fuera)', $mr['monto'], 167000.0);
 chk('sin_postura = 2 (M1, M17), mas_viejo = 6', [$mr['sin_postura'], $mr['mas_viejo_dias']], [2, 6]);
 chk('limpieza: 1 cotización $15,000 (M6), línea 40', [$mesa['limpieza']['n'], $mesa['limpieza']['monto'], $mesa['limpieza']['linea_dias']], [1, 15000.0, 40]);
 
