@@ -277,7 +277,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
         <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
         <span class="mh-decl"><span class="s1">Contacto</span><span class="s2">Compromiso</span><span class="s3">Cómo lo ves</span></span>
         <span class="mh-marc">Feedback<br>Radar</span>
-        <span class="mh-fresh" title="Tu frescura y el límite de seguimiento de cada cotización — pasarse del límite descuenta puntos del termómetro">Actividad (Monitorea y Cuida tu Score)</span><span class="msp"></span><span class="mh-chev"></span>
+        <span class="mh-fresh" title="Tu frescura y el límite de seguimiento de cada cotización — pasarse del límite descuenta puntos del termómetro">Actividad<br>(cuida tu score)</span><span class="msp"></span><span class="mh-chev"></span>
       </div>
       <?php endif; ?>
 
@@ -475,7 +475,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mfrias-zone .mrow{opacity:.66;background:#f7fafd}
 .mesa-emb .mdot{width:9px;height:9px;border-radius:50%;flex:none}
 .mesa-emb .mdot.off{background:transparent;border:1.5px solid #c9c9c2}
-.mesa-emb .mcli{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 380px;max-width:520px}
+.mesa-emb .mcli{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 380px}
 .mesa-emb .mcli a{color:#1a1a18;text-decoration:none}
 .mesa-emb .mcli a:hover{color:#1a5c38;text-decoration:underline}
 .mesa-emb .mfolio{font-weight:500;color:#a3a39d;font-size:11px;margin-left:6px}
@@ -493,11 +493,11 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mmarc .fbi{border:none;background:none;cursor:pointer;font-size:13px;line-height:1;padding:3px 4px;filter:grayscale(1);opacity:.4;transition:all .12s}
 .mesa-emb .mmarc .fbi:hover{filter:none;opacity:.8}
 .mesa-emb .mmarc .fbi.on{filter:none;opacity:1}
-.mesa-emb .mfresh{font-size:10.5px;flex:none;width:82px;text-align:right;color:#a8a8a2;white-space:nowrap}
+.mesa-emb .mfresh{font-size:10.5px;flex:none;width:150px;text-align:right;color:#a8a8a2;white-space:nowrap}
 .mesa-emb .mfresh.warn{color:#d97706;font-weight:700}
 .mesa-emb .mfresh.bad{color:#dc2626;font-weight:700}
 .mesa-emb .mfresh.ok{color:#16a34a;font-weight:700}
-.mesa-emb .msp{flex:1}
+.mesa-emb .msp{flex:none}
 .mesa-emb .mchev{color:#c9c9c2;flex:none;font-size:11px;transition:transform .15s}
 .mesa-emb .mrow.open .mchev{transform:rotate(90deg)}
 .mesa-emb .mdrawer{display:none;background:#fff;padding:12px 14px 14px 31px;border-top:1px solid #f4f4ef}
@@ -525,7 +525,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .marea.lock .mlockmsg{display:inline}
 .mesa-emb .mhead{display:flex;align-items:center;gap:10px;padding:0 12px;font-size:10px;font-weight:800;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em}
 .mesa-emb .mhead .mh-dot{flex:none;width:9px}
-.mesa-emb .mhead .mh-cot{flex:1 1 380px;max-width:520px;min-width:0}
+.mesa-emb .mhead .mh-cot{flex:1 1 380px;min-width:0}
 .mesa-emb .mhead .mh-flag{flex:none;width:18px}
 .mesa-emb .mhead .mh-check{flex:none;width:16px}
 .mesa-emb .mhead .mh-ciclo{flex:none;width:92px;text-align:right}
@@ -534,7 +534,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mhead .mh-decl .s1{width:80px}.mesa-emb .mhead .mh-decl .s2{width:88px}.mesa-emb .mhead .mh-decl .s3{width:86px}
 .mesa-emb .mhead .mh-decl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mesa-emb .mhead .mh-marc{flex:none;width:74px;text-align:center;line-height:1.2}
-.mesa-emb .mhead .mh-fresh{flex:none;width:82px;text-align:right}
+.mesa-emb .mhead .mh-fresh{flex:none;width:150px;text-align:right}
 .mesa-emb .mhead .mh-chev{flex:none;width:11px}
 .mesa-emb .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
 .mesa-emb .magenda{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px dashed #eeeee9}
@@ -565,6 +565,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
   .mesa-emb .mmarc{width:auto}
   .mesa-emb .mdrawer{padding-left:14px}
   .mesa-emb .man{width:100%}
+  .mesa-emb .msp{flex:1}
 }
 </style>
 <div id="mesa-toast"></div>
