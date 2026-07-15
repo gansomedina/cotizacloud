@@ -52,7 +52,7 @@ if (!in_array($cot['estado'], ['enviada', 'vista'], true) || (int)$cot['suspendi
     exit;
 }
 
-// 📱 Sin info SOLO con contacto vigente 'no_contesta' (mismo candado que la
+// 📵 Sin info SOLO con contacto vigente 'no_contesta' (mismo candado que la
 // Mesa): si hablaste con el cliente, tienes con qué juzgar 👍👎.
 if ($tipo === 'sin_info') {
     $ult_con = null;
@@ -63,7 +63,7 @@ if ($tipo === 'sin_info') {
              ORDER BY id DESC LIMIT 1", [$cot_id, $empresa_id]);
     } catch (Throwable $e) {}
     if ($ult_con !== 'no_contesta') {
-        echo json_encode(['ok' => false, 'error' => "Marca primero \"No contestó\" en tu mesa — 📱 es para clientes que no responden; si ya hablaron, califícalo 👍/👎"]);
+        echo json_encode(['ok' => false, 'error' => "Marca primero \"No contestó\" en tu mesa — 📵 es para clientes que no responden; si ya hablaron, califícalo 👍/👎"]);
         exit;
     }
 }

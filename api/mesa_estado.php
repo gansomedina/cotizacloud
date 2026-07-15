@@ -17,7 +17,7 @@ $AREAS = [
     'contacto'   => ['no_contesta','hablamos'],
     'compromiso' => ['compromiso','nos_citamos','propuse_no_quiso','sin_compromiso'],
     'postura'    => ['decidiendo','objecion_precio','pidio_cambios','en_el_aire','descartada'],
-    'feedback'   => ['con_interes','sin_interes','sin_info'],   // 👍/👎/📱 homologado con el Radar
+    'feedback'   => ['con_interes','sin_interes','sin_info'],   // 👍/👎/📵 homologado con el Radar
 ];
 $VALIDOS = $AREAS[$area] ?? [];
 $RAZONES = ['precio','competencia','despues','no_responde','no_comprador','otro'];
@@ -48,8 +48,8 @@ if (!in_array($cot['estado'], ['enviada', 'vista'], true) || (int)$cot['suspendi
     echo json_encode(['ok' => false, 'error' => 'cerrada']); exit;
 }
 
-// 📱 Sin info SOLO con contacto vigente 'no_contesta': si hablaste con el
-// cliente, tienes con qué juzgar (👍👎). Sin el candado, 📱 sería la vía
+// 📵 Sin info SOLO con contacto vigente 'no_contesta': si hablaste con el
+// cliente, tienes con qué juzgar (👍👎). Sin el candado, 📵 sería la vía
 // floja para farmear cobertura sin comprometerse nunca a un juicio.
 if ($estado === 'sin_info') {
     $ult_con = null;
@@ -110,7 +110,7 @@ try {
 
     // La manita (radar_feedback) es el JUICIO INDEPENDIENTE del asesor
     // (decisión CEO 15-jul): NINGÚN tap de compromiso/postura la escribe ni
-    // la corrige por él — solo los pulgares 👍/👎/📱 (área 'feedback'). El
+    // la corrige por él — solo los pulgares 👍/👎/📵 (área 'feedback'). El
     // pill Descartar sigue sacando la fila de la mesa por la POSTURA misma
     // (doble fuente en armar); para que la cobertura la califique hace falta
     // TAMBIÉN la manita. Se escribe a nombre del ASESOR dueño: la llave es

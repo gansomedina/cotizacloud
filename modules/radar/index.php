@@ -360,7 +360,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         // Mostrar badge de señalado para superadmin (aunque no tenga botones)
         if ($r_fb_tipo && Auth::es_superadmin() && !$show_fb_td && !$already_shown) {
             $GLOBALS['fb_shown'][$cot_id_fb] = true;
-            $fb_lbl = $r_fb_tipo === 'con_interes' ? '👍' : ($r_fb_tipo === 'sin_info' ? '📱' : '👎');
+            $fb_lbl = $r_fb_tipo === 'con_interes' ? '👍' : ($r_fb_tipo === 'sin_info' ? '📵' : '👎');
             $fb_who = $r_fb_asesor ? ' '.htmlspecialchars($r_fb_asesor) : '';
             $fb_html = "<span class='fb-badge' title='Señalado por{$fb_who}' style='font-size:12px;opacity:.7'>{$fb_lbl}</span>";
         }
@@ -380,7 +380,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             $fb_html = "<div class='fb-btns' style='flex-shrink:0'>"
                 . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'con_interes',this)\" title='Con interés'>👍</button>"
                 . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_interes',this)\" title='Sin interés'>👎</button>"
-                . "<button class='fb-btn {$cls_ni}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_info',this)\" title='Sin info — el cliente no responde tus intentos; requiere \"No contestó\" marcado en tu mesa'>📱</button>"
+                . "<button class='fb-btn {$cls_ni}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_info',this)\" title='Sin info — el cliente no responde tus intentos; requiere \"No contestó\" marcado en tu mesa'>📵</button>"
                 . $why_btn
                 . "</div>";
         }
@@ -979,6 +979,7 @@ async function compAction(accion, tipo, valor, btn) {
   <span style="font:400 11px var(--body);color:var(--t3);margin-left:auto;display:flex;align-items:center;gap:8px">
     <span>👍 Con interés</span>
     <span>👎 Sin interés</span>
+    <span title="El cliente no responde tus intentos — cuenta como evaluación sin juzgarlo; requiere &quot;No contestó&quot; en tu mesa">📵 Sin comunicación</span>
   </span>
 </div>
 
@@ -1326,7 +1327,7 @@ async function radarFb(cotId, tipo, btn) {
             else if (tipo === 'sin_interes') btn.classList.add('fb-neg');
             // sin_info es neutral: activo sin color de juicio
         } else if (d.error) {
-            alert(d.error); // p.ej. el candado de 📱 (requiere "No contestó")
+            alert(d.error); // p.ej. el candado de 📵 (requiere "No contestó")
         }
     } catch(e) {}
 }
