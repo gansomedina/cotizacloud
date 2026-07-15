@@ -277,7 +277,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
         <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
         <span class="mh-decl"><span class="s1">Contacto</span><span class="s2">Compromiso</span><span class="s3">Cómo lo ves</span></span>
         <span class="mh-marc">Feedback<br>Radar</span>
-        <span class="mh-fresh">Actividad</span><span class="msp"></span><span class="mh-chev"></span>
+        <span class="mh-fresh" title="Tu frescura y el límite de seguimiento de cada cotización — pasarse del límite descuenta puntos del termómetro">Actividad (Monitorea y Cuida tu Score)</span><span class="msp"></span><span class="mh-chev"></span>
       </div>
       <?php endif; ?>
 
