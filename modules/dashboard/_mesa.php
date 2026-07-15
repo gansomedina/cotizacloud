@@ -277,7 +277,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
         <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
         <span class="mh-decl"><span class="s1">Contacto</span><span class="s2">Compromiso</span><span class="s3">Cómo lo ves</span></span>
         <span class="mh-marc">Feedback<br>Radar</span>
-        <span class="mh-fresh" title="Tu frescura y el límite de seguimiento de cada cotización — pasarse del límite descuenta puntos del termómetro">Actividad<br>(cuida tu score)</span><span class="msp"></span><span class="mh-chev"></span>
+        <span class="mh-fresh" title="Tu frescura y el límite de seguimiento de cada cotización — pasarse del límite descuenta puntos del termómetro">Actividad (cuida tu score)</span><span class="msp"></span><span class="mh-chev"></span>
       </div>
       <?php endif; ?>
 
@@ -493,7 +493,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mmarc .fbi{border:none;background:none;cursor:pointer;font-size:13px;line-height:1;padding:3px 4px;filter:grayscale(1);opacity:.4;transition:all .12s}
 .mesa-emb .mmarc .fbi:hover{filter:none;opacity:.8}
 .mesa-emb .mmarc .fbi.on{filter:none;opacity:1}
-.mesa-emb .mfresh{font-size:11px;flex:1 1 190px;max-width:320px;text-align:right;color:#a8a8a2;white-space:nowrap;overflow:hidden}
+.mesa-emb .mfresh{font-size:11px;flex:1 1 190px;max-width:320px;text-align:center;color:#a8a8a2;white-space:nowrap;overflow:hidden}
 .mesa-emb .mfresh.warn{color:#d97706;font-weight:700}
 .mesa-emb .mfresh.bad{color:#dc2626;font-weight:700}
 .mesa-emb .mfresh.ok{color:#16a34a;font-weight:700}
@@ -534,7 +534,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mhead .mh-decl .s1,.mesa-emb .mhead .mh-decl .s2,.mesa-emb .mhead .mh-decl .s3{flex:1 1 0;min-width:0}
 .mesa-emb .mhead .mh-decl span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mesa-emb .mhead .mh-marc{flex:none;width:74px;text-align:center;line-height:1.2}
-.mesa-emb .mhead .mh-fresh{flex:1 1 190px;max-width:320px;text-align:right}
+.mesa-emb .mhead .mh-fresh{flex:1 1 190px;max-width:320px;text-align:center;white-space:nowrap;overflow:hidden}
 .mesa-emb .mhead .mh-chev{flex:none;width:11px}
 .mesa-emb .msect{margin-top:14px;margin-bottom:6px;font-size:11px;color:#16a34a;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
 .mesa-emb .magenda{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px dashed #eeeee9}
