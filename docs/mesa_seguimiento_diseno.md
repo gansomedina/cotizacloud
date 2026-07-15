@@ -137,3 +137,14 @@ toque real sí · cita vencida exige desenlace · acumulado no se borra · fact-
 - Peak Sales Recruiting / MTD Sales Training — estadísticas de seguimiento
 - Salesloft Big Book of Sales Cadences / Kaspr / Martal — espaciado 2-3 días, multicanal
 - Adrián Bravo (adrianbravo.ventas) — seguimiento sin presión, aporte de valor por toque
+
+## 11. Validación del examen de 5 días (15-jul-2026, datos reales)
+
+SQL de reacción post-compromiso/cita corrido en producción: **4 de 4 reacciones
+dentro de los 5 días, promedio 1.0 día** — el cliente que quedó en algo se asoma
+al día siguiente. El 5 fijo queda VALIDADO direccionalmente (si acaso, generoso).
+Muestra chica (n=4): re-correr el mismo SQL en Fase D cuando total ≥ 30; si el
+promedio se sostiene en ~1-2 días, evaluar apretar a 3-4. NO anclar a la mediana
+(el examen mide reacción humana al compromiso, no ciclo de venta — con mediana
+grande perdería sentido). El mismo 5 vive en el Termómetro v5 (validación de
+feedback): cualquier cambio va a los dos lugares a la vez.
