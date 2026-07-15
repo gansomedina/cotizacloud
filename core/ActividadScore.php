@@ -609,7 +609,7 @@ class ActividadScore
                 } else {
                     $fallos += 1.0;       // con_interes + no regresa (5d+) = fallo
                 }
-            } else { // sin_interes
+            } elseif ($fb['tipo'] === 'sin_interes') {
                 if ($es_aceptada) {
                     $fallos += $inv_cr;   // sin_interes + acepta = fallo grave
                 } elseif ($dias_desde_fb >= 5 && !$cliente_regreso) {
@@ -617,6 +617,9 @@ class ActividadScore
                 }
                 // sin_interes + <5 días = no evaluable (ya filtrado arriba)
             }
+            // 'sin_info' (📱, cliente no responde) = NEUTRAL: sí cuenta como
+            // señal atendida (fb_total → tasa_completado) pero no hay juicio
+            // que validar — ni acierto ni fallo.
         }
 
         // Tasa de completado: feedback dado / cotizaciones calientes

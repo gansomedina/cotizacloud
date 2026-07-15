@@ -19,7 +19,7 @@ $body = json_decode(file_get_contents('php://input'), true) ?? [];
 $cot_id = (int)($body['cotizacion_id'] ?? 0);
 $tipo   = $body['tipo'] ?? '';
 
-if (!$cot_id || !in_array($tipo, ['con_interes', 'sin_interes'])) {
+if (!$cot_id || !in_array($tipo, ['con_interes', 'sin_interes', 'sin_info'])) {
     echo json_encode(['ok' => false, 'error' => 'Datos inválidos']);
     exit;
 }
@@ -50,6 +50,22 @@ if ((int)$cot['vendedor_id'] !== $usuario_id && !Auth::es_admin()) {
 if (!in_array($cot['estado'], ['enviada', 'vista'], true) || (int)$cot['suspendida'] === 1) {
     echo json_encode(['ok' => false, 'error' => 'Cotización cerrada']);
     exit;
+}
+
+// 📱 Sin info SOLO con contacto vigente 'no_contesta' (mismo candado que la
+// Mesa): si hablaste con el cliente, tienes con qué juzgar 👍👎.
+if ($tipo === 'sin_info') {
+    $ult_con = null;
+    try {
+        $ult_con = DB::val(
+            "SELECT estado FROM mesa_estados
+             WHERE cotizacion_id = ? AND empresa_id = ? AND area = 'contacto'
+             ORDER BY id DESC LIMIT 1", [$cot_id, $empresa_id]);
+    } catch (Throwable $e) {}
+    if ($ult_con !== 'no_contesta') {
+        echo json_encode(['ok' => false, 'error' => "Marca primero \"No contestó\" en tu mesa — 📱 es para clientes que no responden; si ya hablaron, califícalo 👍/👎"]);
+        exit;
+    }
 }
 
 // Rate-limit por usuario (mismo criterio que mesa_estado.php)

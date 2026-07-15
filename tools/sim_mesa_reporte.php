@@ -151,7 +151,7 @@ function visita(int $cot, float $hace_d, int $vis = 5000, int $scr = 80): void {
                  WHERE id = ?", [$d($hace_d), $cot]);
 }
 
-DB::execute("INSERT INTO usuarios VALUES (101,1,'Ana',1),(102,1,'Beto',1),(103,1,'Dora',1),(201,2,'Carla',1),(999,1,'Superadmin',1)");
+DB::execute("INSERT INTO usuarios VALUES (101,1,'Ana',1),(102,1,'Beto',1),(103,1,'Dora',1),(105,1,'Caro',1),(201,2,'Carla',1),(999,1,'Superadmin',1)");
 
 // ══ EMPRESA 1 — ANA (uid 101) ══════════════════════════════
 // A1 (1001): activa 5d, virgen. rf de TERCERO (999) NO debe calificarla.
@@ -261,6 +261,17 @@ venta(3006, 1, 12000, 6);
 cot(2001, 2, 201, 99000, 10);
 tap(2001, 2, 'contacto', 'hablamos', 2);
 
+// ══ CARO (105) — CITAS: "Nos citamos" cuenta aparte y entra a cumplidos ══
+// CA1 (1501): cita declarada hace 6d (madura) + el cliente abrió 4d después
+//   de fijarla (dentro de los 5d) → citas=1, maduro=1, cumplido=1.
+cot(1501, 1, 105, 30000, 12);
+tap(1501, 1, 'compromiso', 'nos_citamos', 6);
+visita(1501, 4);
+// CA2 (1502): cita declarada hace 2d, sin movimiento → en curso (ni cumplida
+//   ni reprobada aún). citas=2 en total.
+cot(1502, 1, 105, 12000, 8);
+tap(1502, 1, 'compromiso', 'nos_citamos', 2);
+
 // A6 (1099): activa 25d virgen — SIN DI sería +1 activa, +1 sin_trabajar,
 //   +1 se_fueron ($99k). Con DI ACTIVO, Opción B la saca de la cartera del
 //   reporte igual que de la mesa: activas/sin_trabajar/se_fueron NO se mueven.
@@ -283,6 +294,14 @@ $bet = $rep['asesores'][102] ?? [];
 echo "═ ANA — Cartera (foto de hoy) ═\n";
 chk('activas = 7 (A1-A5, C1, C2; A6 con DI y vendidas fuera)', $ana['activas'] ?? -1, 7);
 chk('A6 con DI ACTIVO NO infla la cartera — Opción B (sin DI sería 8)', $ana['activas'] ?? -1, 7);
+
+echo "═ CARO — Citas (nos_citamos) ═\n";
+$caro = $rep['asesores'][105] ?? [];
+chk('citas = 2 (CA1 y CA2 vigentes) · con_compromiso = 0 (la cita no es "Quedamos")',
+    [$caro['citas'] ?? -1, $caro['con_compromiso'] ?? -1], [2, 0]);
+chk('la cita entra al examen: 1 madura (CA1), 1 cumplida (abrió a los 4d), 1 en curso (CA2)',
+    [$caro['comp_maduros'] ?? -1, $caro['comp_cumplidos'] ?? -1, $caro['comp_en_curso'] ?? -1], [1, 1, 1]);
+chk('la cita implica plática: hablamos_cots = 2', $caro['hablamos_cots'] ?? -1, 2);
 chk('sin_calificar = 5 (A1 con rf de tercero SÍ cuenta, A2, A3, C1, C2)', $ana['sin_calificar'] ?? -1, 5);
 chk('sin_trabajar = 2 (A1, A2) $30,000', [$ana['sin_trabajar'] ?? -1, $ana['monto_sin_trabajar'] ?? -1], [2, 30000.0]);
 chk('se_fueron = 1 (solo A2: A3 tocada hace 2d, A4 descartada) $20,000', [$ana['se_fueron'] ?? -1, $ana['monto_se_fueron'] ?? -1], [1, 20000.0]);
