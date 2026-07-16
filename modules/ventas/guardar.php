@@ -89,7 +89,23 @@ try {
     $imp_pct   = (float)($cot['impuesto_pct'] ?? 0);
     $imp_modo  = $cot['impuesto_modo'] ?? 'ninguno';
 
-    $base = $subtotal_lineas - $cupon_amt - $desc_auto_amt;
+    // ── DI 'utilizado': el descuento del contrato MANDA y no se apila ──
+    // (misma precedencia que el accept: el inteligente ignora cupón/manual).
+    // Antes este recálculo era CIEGO al DI: guardar la venta pisaba el total
+    // del contrato con líneas − descuentos normales (caso COT-2026-0185).
+    $di_monto_vta = 0.0;
+    try {
+        $di_monto_vta = (float)DB::val(
+            "SELECT monto_desc FROM desc_int_activaciones
+             WHERE cotizacion_id = ? AND estado = 'utilizado'", [$cot_id]);
+    } catch (\Throwable $e) {}
+    if ($di_monto_vta > 0) {
+        $cupon_amt = 0.0;
+        $desc_auto_amt = 0.0;
+        $base = $subtotal_lineas - $di_monto_vta;
+    } else {
+        $base = $subtotal_lineas - $cupon_amt - $desc_auto_amt;
+    }
     if ($imp_modo === 'suma') {
         $nuevo_total = round($base * (1 + $imp_pct / 100), 2);
     } else {

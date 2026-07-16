@@ -184,6 +184,35 @@ try {
     );
 
     // Reemplazar líneas
+    // ── DI ACTIVO: RE-CONGELAR sobre el precio vigente ──────────────────
+    // El "contrato firme" congelaba el precio de la ACTIVACIÓN; si el asesor
+    // editaba después, el accept cobraba el congelado viejo — incluso MÁS
+    // CARO que el precio de lista nuevo (caso real COT-2026-0185: líneas
+    // bajaron de $100,488 a $89,554 y el accept cobró $92,449). Regla nueva:
+    // el DI activo siempre refleja el precio VIGENTE (mismo %, base nueva) —
+    // banner, página y accept dicen lo mismo. 'utilizado' no se toca (venta
+    // ya cerrada). Base = precio sin extras, con IVA si el modo es suma
+    // (misma fórmula con que el slug activó).
+    try {
+        $di_row = DB::row(
+            "SELECT id, pct FROM desc_int_activaciones WHERE cotizacion_id = ? AND estado = 'activo'",
+            [$cot_id]);
+        if ($di_row) {
+            $extras_sum = 0.0;
+            foreach ($lineas as $l) { if (!empty($l['es_extra'])) $extras_sum += (float)$l['subtotal']; }
+            $base_di = max(0, ($subtotal - $extras_sum) - $cupon_monto - $desc_auto_amt);
+            $precio_di = $impuesto_modo === 'suma'
+                       ? round($base_di * (1 + $impuesto_pct / 100), 2)
+                       : round($base_di, 2);
+            $monto_di = round($precio_di * (float)$di_row['pct'] / 100, 2);
+            DB::execute(
+                "UPDATE desc_int_activaciones
+                 SET precio_original = ?, monto_desc = ?, nuevo_total = ?
+                 WHERE id = ? AND estado = 'activo'",
+                [$precio_di, $monto_di, round($precio_di - $monto_di, 2), (int)$di_row['id']]);
+        }
+    } catch (\Throwable $e) {} // tabla sin migrar → sin DI que re-congelar
+
     DB::execute("DELETE FROM cotizacion_lineas WHERE cotizacion_id = ?", [$cot_id]);
     foreach ($lineas as $linea) {
         $es_extra = (int)($linea['es_extra'] ?? 0);
