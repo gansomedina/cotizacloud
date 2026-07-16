@@ -423,6 +423,17 @@ if ($di_act === null && $interno_detectado) {
     try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
 }
 
+// ── Cupón bloqueado si TIENE O TUVO un DI (decisión CEO 16-jul): el descuento
+// del sistema no convive con cupones — ni siquiera tecleable. Cualquier registro
+// DI (activo, utilizado, vencido, cancelado) oculta la sección de cupón; el
+// accept lo ignora también server-side (quote_action.php). ──
+$di_existe = false;
+try {
+    $di_existe = (bool)DB::val(
+        "SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id = ? LIMIT 1",
+        [(int)$cot['id']]);
+} catch (\Throwable $die) {}
+
 // ─── Helpers locales ─────────────────────────────────────
 function fmt_pub(float $n, string $moneda = 'MXN'): string {
     return '$' . number_format($n, 2, '.', ',');
@@ -1046,8 +1057,8 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <div data-adc="off" style="display:none"></div>
   <?php endif; ?>
 
-  <!-- CUPÓN -->
-  <?php if (!empty($cupones) && $es_activa): ?>
+  <!-- CUPÓN (oculto si la cotización tiene o tuvo DI — no se apilan) -->
+  <?php if (!empty($cupones) && $es_activa && !$di_existe): ?>
   <div id="coupLbl"><div class="slbl">¿Tienes un código de descuento?</div></div>
   <div class="coup" id="coupSec">
     <div class="coup-b" id="coupFld">

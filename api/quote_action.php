@@ -103,6 +103,17 @@ if ($accion === 'aceptar') {
             // WHERE estado='activo' evita doble-uso y carrera con vigente()→vencido.
             DB::execute("UPDATE desc_int_activaciones SET estado='utilizado' WHERE id=? AND estado='activo'", [(int)$di_vig['id']]);
         } else {
+            // ── Cupón bloqueado si la cotización TIENE O TUVO un DI (decisión CEO
+            //    16-jul): sin DI vigente (p.ej. venció sin usarse) se cobra precio
+            //    COMPLETO — el cupón tampoco aplica. Espeja el gate del slug que
+            //    oculta la sección de cupón cuando existe cualquier registro DI. ──
+            if ($cupon_codigo) {
+                try {
+                    if (DB::val("SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id = ? LIMIT 1", [$cot_id])) {
+                        $cupon_codigo = null;
+                    }
+                } catch (\Throwable $e) {} // tabla sin migrar → sin bloqueo
+            }
             // Cupón — re-validar server-side (se aplica primero, igual que guardar.php)
             if ($cupon_codigo) {
                 $cupon_real = DB::row(
