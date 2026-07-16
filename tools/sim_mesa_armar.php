@@ -118,10 +118,10 @@ function cot(int $id, int $uid, float $total, float $edad, array $x = []): void 
          $x['bucket'] ?? null, isset($x['bucket_at_d']) ? $GLOBALS['d']($x['bucket_at_d']) : null,
          isset($x['vista_d']) ? $GLOBALS['d']($x['vista_d']) : null, $d($edad)]);
 }
-function tap(int $cot, string $area, string $estado, float $hace_d): void {
+function tap(int $cot, string $area, string $estado, float $hace_d, ?string $razon = null): void {
     global $d;
-    DB::execute("INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, created_at)
-                 VALUES (?,900,5,?,?,?)", [$cot, $area, $estado, $d($hace_d)]);
+    DB::execute("INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, created_at)
+                 VALUES (?,900,5,?,?,?,?)", [$cot, $area, $estado, $razon, $d($hace_d)]);
 }
 function fb(int $cot, int $uid, string $tipo, float $upd_d): void {
     global $d;
@@ -366,6 +366,16 @@ cot(9702, 506, 25000, 14, ['visitas' => 2, 'vista_d' => 5]);
 tap(9702, 'compromiso', 'nos_citamos', 12);
 tap(9702, 'contacto', 'hablamos', 1);
 tap(9702, 'compromiso', 'nos_citamos', 0.5);
+// C3 (9703): REGRESIÓN del implícito 24h (verificación 16-jul) — cita hace 12d
+//   + Hablamos REAL hace 3d + re-cita HOY con su implícito razon='auto' (el
+//   endpoint lo inserta porque el Hablamos real tiene >24h). El auto TAPA al
+//   real como contacto vigente; el re-anclaje debe mirar el último Hablamos
+//   NO-auto ($con_real) → re-anclada al -3d → al corriente. Sin el fix: vencida.
+cot(9703, 506, 18000, 14, ['visitas' => 2, 'vista_d' => 5]);
+tap(9703, 'compromiso', 'nos_citamos', 12);
+tap(9703, 'contacto', 'hablamos', 3);
+tap(9703, 'contacto', 'hablamos', 0.02, 'auto'); // implícito del endpoint, HOY
+tap(9703, 'compromiso', 'nos_citamos', 0.01);
 $mc   = Mesa::armar(5, 506);
 $mcby = [];
 foreach ($mc['rows'] as $r) $mcby[$r['numero']] = $r;
@@ -374,6 +384,8 @@ chk('C1 re-tap pelón NO re-ancla → cita vencida 2d + flag cita_vencida',
     ['vencida', 2, true]);
 chk('C2 Hablamos + re-cita (pospuesta real) → re-anclada, al corriente',
     [$mcby['COT-9702']['seguimiento']['estado'] ?? '', $mcby['COT-9702']['cita_vencida'] ?? null], ['ok', false]);
+chk('C3 pospuesta real + implícito auto encima → el auto NO tapa al Hablamos real: re-anclada, al corriente',
+    [$mcby['COT-9703']['seguimiento']['estado'] ?? '', $mcby['COT-9703']['cita_vencida'] ?? null], ['ok', false]);
 // H1 (9801): huella — estuvo vencida 2d (preseed) pero HOY está al corriente
 DB::execute("INSERT INTO mesa_vencidos VALUES (9801,505,5,?),(9801,505,5,?)", [date('Y-m-d', time() - 4 * 86400), date('Y-m-d', time() - 3 * 86400)]);
 cot(9801, 505, 12000, 8, ['visitas' => 2, 'vista_d' => 3]);

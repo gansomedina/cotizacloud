@@ -86,12 +86,19 @@ try {
     // compromiso (si quedara después, la regla de recencia degradaría el
     // compromiso recién declarado a historia).
     if ($area === 'compromiso') {
-        $ult_con = DB::val(
-            "SELECT estado FROM mesa_estados
+        // Se inserta el implícito si el último 'hablamos' NO es de las últimas
+        // 24h (antes: solo si el vigente no era 'hablamos' — un "Hablamos" de
+        // hace 40 días bloqueaba el implícito y el reporte mostraba "sin toques
+        // declarados" junto a "1 de 1 con plática": auditoría 16-jul, finding 1.
+        // Declarar un compromiso HOY implica que hablaron HOY). El tope de 24h
+        // conserva la deduplicación de taps del mismo día.
+        $con_24h = DB::val(
+            "SELECT 1 FROM mesa_estados
              WHERE cotizacion_id = ? AND empresa_id = ? AND area = 'contacto'
-             ORDER BY id DESC LIMIT 1", [$cot_id, EMPRESA_ID]
+               AND estado = 'hablamos' AND created_at >= NOW() - INTERVAL 1 DAY
+             LIMIT 1", [$cot_id, EMPRESA_ID]
         );
-        if ($ult_con !== 'hablamos') {
+        if (!$con_24h) {
             DB::execute(
                 "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
                  VALUES (?,?,?,'contacto','hablamos','auto',?)",

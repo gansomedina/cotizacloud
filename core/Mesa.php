@@ -141,7 +141,7 @@ class Mesa
         }
 
         // Estados declarados en la mesa (última declaración por área)
-        $me = []; $nc = [];
+        $me = []; $nc = []; $con_real = [];
         try {
             foreach (DB::query(
                 "SELECT m.cotizacion_id, m.area, m.estado, m.razon, m.created_at
@@ -166,6 +166,21 @@ class Mesa
                 $cid = (int)$r['cotizacion_id'];
                 if ($r['estado'] === 'hablamos') $nc[$cid] = 0;
                 else $nc[$cid] = ($nc[$cid] ?? 0) + 1;
+            }
+            // Último 'Hablamos' REAL (no-auto) por cotización. El re-anclaje de
+            // la cita firme mira ESTE, no el contacto vigente: el implícito de
+            // 24h del endpoint (razon='auto') podía taparlo y una cita
+            // legítimamente pospuesta (Hablamos real >24h antes de re-citar)
+            // quedaba 'vencida' (regresión cazada por verificación 16-jul).
+            foreach (DB::query(
+                "SELECT cotizacion_id, MAX(created_at) AS at
+                 FROM mesa_estados
+                 WHERE empresa_id = ? AND cotizacion_id IN ($in) AND area = 'contacto'
+                   AND estado = 'hablamos' AND (razon IS NULL OR razon <> 'auto')
+                 GROUP BY cotizacion_id",
+                [$empresa_id]
+            ) as $r) {
+                $con_real[(int)$r['cotizacion_id']] = $r['at'];
             }
         } catch (Throwable $e) {} // tabla aún no migrada
 
@@ -417,14 +432,15 @@ class Mesa
                         && isset($cita_anc[$cid]);
                 if ($es_cita) {
                     // CITA = FIRME: ancla al inicio de la racha; solo la re-ancla
-                    // una re-cita VÁLIDA (Hablamos estrictamente posterior a la
-                    // racha + re-declaración de la cita tras ese Hablamos — la
-                    // pospusieron de verdad). El > estricto descarta el Hablamos
+                    // una re-cita VÁLIDA (Hablamos REAL estrictamente posterior a
+                    // la racha + re-declaración de la cita tras ese Hablamos — la
+                    // pospusieron de verdad). Se usa el último Hablamos NO-auto
+                    // ($con_real), no el contacto vigente: un implícito posterior
+                    // (razon='auto') tapaba al Hablamos real y la cita pospuesta
+                    // quedaba 'vencida'. El > estricto descarta el Hablamos
                     // implícito del mismo segundo en que se declaró la cita.
                     $ancla  = (int)strtotime($cita_anc[$cid]);
-                    $con_at = ($con_d && $con_d['estado'] === 'hablamos'
-                               && ($con_d['razon'] ?? null) !== 'auto') // el implícito del endpoint NO re-ancla
-                             ? (int)strtotime($con_d['at']) : 0;
+                    $con_at = isset($con_real[$cid]) ? (int)strtotime($con_real[$cid]) : 0;
                     $com_at = (int)strtotime($me[$cid]['compromiso']['at']);
                     if ($con_at > $ancla && $com_at > $con_at) $ancla = $con_at;
                 } else {
@@ -649,15 +665,16 @@ class Mesa
         // ($dias se conserva en la firma por compatibilidad; armar define la ventana.)
         $medir = function (int $vid) use ($empresa_id): array {
             $mesa = self::armar($empresa_id, $vid);
-            $ped = 0; $ate = 0;
+            $ped = 0; $ate = 0; $fal = [];
             foreach ($mesa['rows'] as $r) {
                 if (!empty($r['es_fria'])) continue; // Frías: fuera del examen
                 $ped++;
                 $tiene_fb   = (($r['postura'] ?? null) !== null);    // 👍👎 del dueño
                 $tiene_post = !empty($r['decl']['postura'] ?? null); // postura declarada
-                if ($tiene_fb && $tiene_post) $ate++;
+                if ($tiene_fb && $tiene_post) { $ate++; }
+                else { $fal[] = (string)($r['numero'] ?? $r['id'] ?? '?'); } // folios para el drill-down
             }
-            return ['pedidas' => $ped, 'atendidas' => $ate, 'fallas' => $ped - $ate];
+            return ['pedidas' => $ped, 'atendidas' => $ate, 'fallas' => $ped - $ate, 'fallas_cots' => $fal];
         };
         try {
             if ($vendedor_id !== null) {
@@ -685,67 +702,37 @@ class Mesa
     }
 
     /**
-     * Desglose de señales del asesor para SU widget de cobertura: cada
-     * episodio con folio, fecha y estado (atendida / vencida / por vencer).
-     * Incluye episodios con ventana ABIERTA (aún no se juzgan) para que el
-     * "vence mañana" sea accionable. Mismas reglas que cobertura_senales().
+     * Desglose de la cobertura del asesor para SU widget — FUENTE ÚNICA:
+     * lista EXACTAMENTE las filas que cuenta cobertura_senales() (la mesa
+     * visible sin Frías), con qué le falta a cada una (manita / postura).
+     * Antes salía de bucket_transitions con otra ventana y otro criterio de
+     * "atendida": el contador decía "1 de 2" y el desglose listaba 5
+     * episodios — nunca cuadraban (auditoría 16-jul).
+     * Pendientes primero (accionable); $dias se conserva por compatibilidad
+     * (armar define la ventana, igual que en el contador).
      */
     public static function cobertura_detalle(int $empresa_id, int $vendedor_id, int $dias = 30): array
     {
-        $dias   = max(1, (int)$dias);
-        $hot_in = "'" . implode("','", self::HOT) . "'";
         try {
-            return self::_sin_di($empresa_id, DB::query(
-                "SELECT s.cotizacion_id, c.numero, c.titulo, s.senal_at,
-                        (s.senal_at <= NOW() - INTERVAL 3 DAY) AS cerrada,
-                        (EXISTS (SELECT 1 FROM mesa_estados m
-                                 WHERE m.cotizacion_id = s.cotizacion_id
-                                   AND m.created_at >= s.senal_at
-                                   AND m.created_at <= s.senal_at + INTERVAL 3 DAY)
-                      OR EXISTS (SELECT 1 FROM radar_feedback rf
-                                 WHERE rf.cotizacion_id = s.cotizacion_id
-                                   AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
-                                   AND rf.updated_at >= s.senal_at
-                                   AND rf.updated_at <= s.senal_at + INTERVAL 3 DAY)
-                      OR EXISTS (SELECT 1 FROM ventas v
-                                 WHERE v.cotizacion_id = s.cotizacion_id AND v.estado != 'cancelada'
-                                   AND v.created_at >= s.senal_at)
-                      OR (c.accion_at IS NOT NULL AND c.accion_at >= s.senal_at)) AS atendida
-                 FROM (SELECT bt.cotizacion_id, bt.created_at AS senal_at
-                       FROM bucket_transitions bt
-                       JOIN cotizaciones c2 ON c2.id = bt.cotizacion_id
-                       WHERE c2.empresa_id = ? AND bt.bucket_nuevo IN ($hot_in)
-                         AND c2.suspendida = 0 AND c2.total > 0
-                         AND COALESCE(c2.vendedor_id, c2.usuario_id) = ?
-                         AND bt.created_at >= NOW() - INTERVAL $dias DAY
-                         AND NOT EXISTS (SELECT 1 FROM bucket_transitions bt2
-                                         WHERE bt2.cotizacion_id = bt.cotizacion_id
-                                           AND bt2.bucket_nuevo IN ($hot_in)
-                                           AND (bt2.created_at < bt.created_at
-                                                OR (bt2.created_at = bt.created_at AND bt2.id < bt.id))
-                                           AND bt2.created_at >= bt.created_at - INTERVAL 3 DAY)) s
-                 JOIN cotizaciones c ON c.id = s.cotizacion_id
-                 ORDER BY s.senal_at DESC", [$empresa_id, $vendedor_id]
-            ));
-        } catch (Throwable $e) { return []; }
-    }
-
-    /** Filtra del desglose las cotizaciones con DI (Opción B) — el contador
-     *  (cobertura_senales, derivado de armar) ya las excluye; sin este filtro
-     *  el desglose listaba señales de cotizaciones que el X/Y no cuenta. */
-    private static function _sin_di(int $empresa_id, array $rows): array
-    {
-        if (!$rows) return $rows;
-        try {
-            $di = [];
-            foreach (DB::query(
-                "SELECT DISTINCT cotizacion_id FROM desc_int_activaciones
-                 WHERE empresa_id = ? AND estado <> 'cancelado'", [$empresa_id]) as $dr) {
-                $di[(int)$dr['cotizacion_id']] = true;
-            }
-            if ($di) $rows = array_values(array_filter($rows, fn($r) => !isset($di[(int)$r['cotizacion_id']])));
-        } catch (\Throwable $e) {} // tabla sin migrar → sin filtro
-        return $rows;
+            $mesa = self::armar($empresa_id, $vendedor_id);
+        } catch (\Throwable $e) { return []; }
+        $out = [];
+        foreach ($mesa['rows'] as $r) {
+            if (!empty($r['es_fria'])) continue; // mismas exclusiones que el contador
+            $manita  = (($r['postura'] ?? null) !== null);    // 👍👎 del dueño
+            $postura = !empty($r['decl']['postura'] ?? null); // postura declarada
+            $out[] = [
+                'cotizacion_id' => (int)($r['id'] ?? 0),
+                'numero'   => (string)($r['numero'] ?? ''),
+                'titulo'   => (string)($r['titulo'] ?? ''),
+                'atendida' => ($manita && $postura) ? 1 : 0,
+                'falta'    => ($manita && $postura) ? ''
+                            : (!$manita && !$postura ? 'manita y postura'
+                            : (!$manita ? 'manita' : 'postura')),
+            ];
+        }
+        usort($out, fn($a, $b) => $a['atendida'] <=> $b['atendida']);
+        return $out;
     }
 
     /**
@@ -764,10 +751,11 @@ class Mesa
      *                   últimos p75/2 días (mín. 3). Justa: mide atención,
      *                   nunca el resultado de la venta; descartarla con 👎
      *                   cuenta como decisión tomada y la excluye
-     * - hot_desatendidas: episodios 🔥 del período sin acción en los 3 días
-     *                   siguientes a la señal. Por episodio (rebotes entre
-     *                   buckets calientes no cuentan doble) y con ventana:
-     *                   atender hoy no perdona la señal ignorada hace semanas
+     * - hot_total/hot_desatendidas: "Mesa sin calificar" — filas VISIBLES de
+     *                   la mesa del asesor (sin Frías) y cuántas les falta
+     *                   manita+postura. FUENTE ÚNICA con el score y el widget
+     *                   (cobertura_senales). Foto de hoy; NO son episodios 🔥
+     *                   (docblock viejo corregido en la auditoría 16-jul)
      *
      * TRABAJO (últimos N días) — PRINCIPIO ÚNICO (no desviarse al editar):
      * el estado VIGENTE manda y el PARADERO decide dónde se juzga cada
@@ -775,18 +763,36 @@ class Mesa
      * contando ahí (éxito del acuerdo); DESCARTADA → sale completa de las
      * métricas de acuerdo (ni numerador ni denominador) y se juzga en
      * revividos/recuperado. Los toques cuentan siempre (esfuerzo real).
+     * DI (Opción B, decisión CEO 16-jul): cotización con DI <> 'cancelado'
+     * sale de TODOS los bloques — regla única, ya no asimétrica.
      *
      * - contacto:    conteo de toques declarados → % le contesta
      * - compromiso:  de las cotizaciones con plática, en cuántas quedó en algo
      *                → % genera compromiso. POR COTIZACIÓN, no por tap:
      *                re-declarar la misma pill no infla el número
+     * - citas:       'Nos citamos' vigentes → % citas sobre pláticas
      * - cumplidos:   de los "Quedamos en algo" con 5+ días de maduración,
      *                en cuántos el cliente SE MOVIÓ en los 5 días siguientes
      *                (abrió la cotización o compró) — hecho observable, no juicio
      * - postura:     distribución de "¿Cómo lo ves?" (última por cotización)
-     * - revividos:   de sus 👎, cuántos el cliente volvió a calentar después
+     * - revividos:   de sus 👎, cuántos el cliente recalentó DENTRO de los
+     *                últimos 7 días (misma regla que la ⚡ de la mesa)
      * - recuperado:  su rebanada del contador (descartada antes, vendida después)
+     * - ventas_n/ventas_monto: ventas del período con pagado > 0 (resultado)
      */
+    /** Query fail-open por BLOQUE del reporte: un bloque que truena (columna
+     *  sin migrar, timeout) aporta cero filas y DEJA VIVIR al resto — antes
+     *  cualquier Throwable vaciaba el reporte completo en silencio y el dueño
+     *  veía "sin datos" con datos reales debajo (auditoría 16-jul, finding 4). */
+    private static function _rq(string $tag, string $sql, array $params): array
+    {
+        try { return DB::query($sql, $params); }
+        catch (\Throwable $e) {
+            error_log("[Mesa reporte {$tag}] " . $e->getMessage());
+            return [];
+        }
+    }
+
     public static function reporte(int $empresa_id, int $dias = 30): array
     {
         $dias = max(1, (int)$dias);
@@ -799,11 +805,25 @@ class Mesa
             'comp_maduros' => 0, 'comp_cumplidos' => 0, 'comp_en_curso' => 0,
             'postura' => [], 'descartes' => 0, 'revividos' => 0,
             'rec_n' => 0, 'rec_monto' => 0.0,
-            'activas' => 0, 'sin_calificar' => 0,
-            'sin_trabajar' => 0, 'monto_sin_trabajar' => 0.0,
-            'se_fueron' => 0, 'monto_se_fueron' => 0.0,
-            'hot_total' => 0, 'hot_desatendidas' => 0,
+            'activas' => 0, 'monto_activas' => 0.0, 'sin_calificar' => 0,
+            'sin_trabajar' => 0, 'monto_sin_trabajar' => 0.0, 'sin_trabajar_cots' => [],
+            'se_fueron' => 0, 'monto_se_fueron' => 0.0, 'se_fueron_cots' => [],
+            'hot_total' => 0, 'hot_desatendidas' => 0, 'fallas_cots' => [],
+            'ventas_n' => 0, 'ventas_monto' => 0.0,
         ];
+
+        // Exclusión DI (Opción B) — UNA regla para TODOS los bloques (antes era
+        // asimétrica: cartera/descartes/recuperado la tenían, toques/pláticas/
+        // examen/postura no — una cot con DI contaba "1 de 1 con plática" sin
+        // existir en ninguna mesa). Fail-open: sin la tabla, sin exclusión —
+        // el reporte NUNCA se vacía por esto (antes cualquier Throwable de un
+        // bloque devolvía asesores=[] en silencio).
+        $di_on = false;
+        try { DB::val("SELECT 1 FROM desc_int_activaciones LIMIT 1"); $di_on = true; } catch (\Throwable $e) {}
+        $dx = fn(string $col): string => $di_on
+            ? " AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones dax
+                                WHERE dax.cotizacion_id = $col AND dax.estado <> 'cancelado')"
+            : '';
 
         try {
             // Ventana real de la empresa (misma que usa la mesa)
@@ -818,15 +838,14 @@ class Mesa
             //    no ventas. La descartada (👎 vigente) queda fuera: descartar
             //    ES la decisión correcta para una muerta — el Radar la vigila.
             $k = max(3, (int)ceil($p75 / 2)); // cadencia justa, proporcional al ciclo
-            foreach (DB::query(
-                "SELECT uid, COUNT(*) AS activas,
-                        SUM(sin_calificar) AS sin_calificar,
-                        SUM(sin_trabajar)  AS sin_trabajar,
-                        SUM(CASE WHEN sin_trabajar THEN total ELSE 0 END) AS monto_sin_trabajar,
-                        SUM(fuera AND abandonada AND NOT descartada) AS se_fueron,
-                        SUM(CASE WHEN fuera AND abandonada AND NOT descartada THEN total ELSE 0 END) AS monto_se_fueron
+            // Por FILA (no agregado): los folios alimentan el drill-down
+            // "¿cuáles?" de Sin trabajar / Se le fueron, y monto_activas
+            // valora la cartera — el conteo solo no dice cuánto hay en juego.
+            foreach (self::_rq('cartera', 
+                "SELECT uid, numero, total, fuera, sin_calificar, sin_trabajar,
+                        abandonada, descartada
                  FROM (
-                    SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, c.total,
+                    SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, c.numero, c.total,
                            (DATEDIFF(NOW(), c.created_at) > $p75) AS fuera,
                            (NOT EXISTS (SELECT 1 FROM mesa_estados m
                                         WHERE m.cotizacion_id = c.id
@@ -870,42 +889,52 @@ class Mesa
                       -- DI (Opción B): tuvo Descuento Inteligente → el sistema la
                       -- tomó; fuera de la cartera del reporte (activas/sin_trabajar/
                       -- se_fueron) igual que sale de la mesa. 'cancelado' regresa.
-                      AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da
-                                      WHERE da.cotizacion_id = c.id AND da.estado <> 'cancelado')
+                      {$dx('c.id')}
                       -- Agendada parqueada: fuera de la cartera igual que de la
                       -- mesa ('la saco de tu mesa y no te penaliza') — vuelve a
                       -- contar cuando reaparece (fecha-7d)
                       AND (c.agenda_fecha IS NULL OR c.agenda_fecha - INTERVAL 7 DAY <= CURDATE())
-                 ) cart
-                 GROUP BY uid", [$empresa_id]
+                 ) cart", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
                 $out[$u] ??= $base;
-                $out[$u]['activas']            = (int)$r['activas'];
-                $out[$u]['sin_calificar']      = (int)$r['sin_calificar'];
-                $out[$u]['sin_trabajar']       = (int)$r['sin_trabajar'];
-                $out[$u]['monto_sin_trabajar'] = (float)$r['monto_sin_trabajar'];
-                $out[$u]['se_fueron']          = (int)$r['se_fueron'];
-                $out[$u]['monto_se_fueron']    = (float)$r['monto_se_fueron'];
+                $out[$u]['activas']++;
+                $out[$u]['monto_activas'] += (float)$r['total'];
+                if ((int)$r['sin_calificar']) $out[$u]['sin_calificar']++;
+                if ((int)$r['sin_trabajar']) {
+                    $out[$u]['sin_trabajar']++;
+                    $out[$u]['monto_sin_trabajar'] += (float)$r['total'];
+                    $out[$u]['sin_trabajar_cots'][] = (string)$r['numero'];
+                }
+                if ((int)$r['fuera'] && (int)$r['abandonada'] && !(int)$r['descartada']) {
+                    $out[$u]['se_fueron']++;
+                    $out[$u]['monto_se_fueron'] += (float)$r['total'];
+                    $out[$u]['se_fueron_cots'][] = (string)$r['numero'];
+                }
             }
 
-            // 0b) Señales calientes DESATENDIDAS — FUENTE ÚNICA (helper
-            //     cobertura_senales: mismas reglas para reporte, score y widget)
+            // 0b) Mesa sin calificar — FUENTE ÚNICA (helper cobertura_senales:
+            //     mismas reglas para reporte, score y widget). Sin fila de
+            //     cartera Y sin mesa → NO crear al asesor (antes un asesor cuya
+            //     única cot era de $0 aparecía con todo en cero — fila fantasma).
             foreach (self::cobertura_senales($empresa_id, null, $dias) as $u => $cs) {
                 if (!$u) continue;
+                if (!isset($out[$u]) && (int)($cs['pedidas'] ?? 0) === 0) continue;
                 $out[$u] ??= $base;
                 $out[$u]['hot_total']        = $cs['pedidas'];
                 $out[$u]['hot_desatendidas'] = $cs['fallas'];
+                $out[$u]['fallas_cots']      = $cs['fallas_cots'] ?? [];
             }
 
             // 1) Contacto: cada declaración es un toque registrado
-            foreach (DB::query(
+            foreach (self::_rq('toques', 
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
                         SUM(m.estado = 'hablamos')    AS hablamos,
                         SUM(m.estado = 'no_contesta') AS no_contesta
                  FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
                  WHERE m.empresa_id = ? AND m.area = 'contacto'
                    AND m.created_at >= NOW() - INTERVAL $dias DAY
+                   {$dx('m.cotizacion_id')}
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
@@ -920,7 +949,7 @@ class Mesa
             //    conversación declarada en el período — plática O desenlace
             //    (un compromiso implica plática aunque el "hablamos" haya
             //    quedado fuera del período) — el numerador siempre cabe.
-            foreach (DB::query(
+            foreach (self::_rq('platicas', 
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
                         COUNT(DISTINCT m.cotizacion_id) AS hablamos_cots
                  FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
@@ -938,6 +967,7 @@ class Mesa
                                    WHERE rf.cotizacion_id = m.cotizacion_id
                                      AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                                      AND rf.tipo = 'sin_interes')
+                   {$dx('m.cotizacion_id')}
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
@@ -953,7 +983,7 @@ class Mesa
             //    longevo con plática nueva cuenta a favor, no en contra. La
             //    membresía sí es del período: solo cotizaciones con conversación
             //    declarada en él (mismo criterio que el denominador).
-            foreach (DB::query(
+            foreach (self::_rq('desenlaces', 
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid,
                         m.estado, c.numero, c.estado AS cot_estado, c.suspendida,
                         EXISTS (SELECT 1 FROM ventas v
@@ -978,7 +1008,8 @@ class Mesa
                    AND NOT EXISTS (SELECT 1 FROM radar_feedback rf2
                                    WHERE rf2.cotizacion_id = m.cotizacion_id
                                      AND rf2.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
-                                     AND rf2.tipo = 'sin_interes')", [$empresa_id]
+                                     AND rf2.tipo = 'sin_interes')
+                   {$dx('m.cotizacion_id')}", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
                 $out[$u] ??= $base;
@@ -1028,7 +1059,7 @@ class Mesa
             //    algo" no reinicia los 5 días (si no, re-confirmar cada 4 días
             //    borraría los reprobados para siempre). Solo un CAMBIO real de
             //    desenlace arranca un acuerdo nuevo.
-            foreach (DB::query(
+            foreach (self::_rq('examen', 
                 "SELECT uid,
                         SUM(eff <= NOW() - INTERVAL 5 DAY) AS maduros,
                         SUM(eff >  NOW() - INTERVAL 5 DAY) AS en_curso,
@@ -1082,6 +1113,7 @@ class Mesa
                                    WHERE rf.cotizacion_id = m.cotizacion_id
                                      AND rf.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
                                      AND rf.tipo = 'sin_interes')
+                   {$dx('m.cotizacion_id')}
                  ) ex
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
@@ -1093,7 +1125,7 @@ class Mesa
             }
 
             // 4) ¿Cómo lo ves? — última declaración por cotización en el período
-            foreach (DB::query(
+            foreach (self::_rq('postura', 
                 "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, m.estado, COUNT(*) AS n
                  FROM mesa_estados m
                  JOIN (SELECT cotizacion_id, MAX(id) AS mid FROM mesa_estados
@@ -1101,6 +1133,7 @@ class Mesa
                          AND created_at >= NOW() - INTERVAL $dias DAY
                        GROUP BY cotizacion_id) t ON t.mid = m.id
                  JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 WHERE 1=1 {$dx('m.cotizacion_id')}
                  GROUP BY uid, m.estado", [$empresa_id]
             ) as $r) {
                 $u = (int)$r['uid']; if (!$u) continue;
@@ -1119,12 +1152,18 @@ class Mesa
             //    "Revivió" = VISTA REAL del cliente posterior al descarte (misma
             //    regla que armar) — las transiciones de bucket solas son
             //    recálculos del Radar, no actividad del cliente (flapping).
-            foreach (DB::query(
+            foreach (self::_rq('descartes', 
                 "SELECT uid, COUNT(*) AS descartes,
                         SUM(EXISTS (SELECT 1 FROM quote_sessions qs
                                     WHERE qs.cotizacion_id = x.cid AND qs.es_interno = 0
                                       AND NOT (COALESCE(qs.visible_ms,0) < 200 AND COALESCE(qs.scroll_max,0) < 35)
-                                      AND qs.created_at > x.anc)) AS revividos
+                                      AND qs.created_at > x.anc
+                                      -- TOPE 7 DÍAS (regla de la ⚡ de la mesa, decisión
+                                      -- CEO 16-jul): revivido = vista posterior al
+                                      -- descarte Y reciente. Sin tope, una vista de hace
+                                      -- 20 días contaba 'revivió' cuando la ⚡ de la mesa
+                                      -- ya había desaparecido — no cuadraban.
+                                      AND qs.created_at >= NOW() - INTERVAL 7 DAY)) AS revividos
                  FROM (
                     SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, rf.cotizacion_id AS cid,
                            COALESCE(
@@ -1153,9 +1192,7 @@ class Mesa
                                         AND v.estado != 'cancelada')
                       -- DI (Opción B): la tomó el sistema — sus visitas
                       -- posteriores no son 'revividas' de la mesa
-                      AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da
-                                      WHERE da.cotizacion_id = rf.cotizacion_id
-                                        AND da.estado <> 'cancelado')
+                      {$dx('rf.cotizacion_id')}
                     UNION ALL
                     -- DOBLE FUENTE (igual que armar/cartera): descartes hechos
                     -- SOLO con el pill Descartar (postura vigente 'descartada'
@@ -1197,9 +1234,7 @@ class Mesa
                                       WHERE v2.cotizacion_id = mp.cotizacion_id
                                         AND v2.estado != 'cancelada')
                       -- DI (Opción B): la tomó el sistema — fuera de descartes/revividos
-                      AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da2
-                                      WHERE da2.cotizacion_id = mp.cotizacion_id
-                                        AND da2.estado <> 'cancelado')
+                      {$dx('mp.cotizacion_id')}
                  ) x
                  WHERE x.anc >= NOW() - INTERVAL $dias DAY
                  GROUP BY uid", [$empresa_id, $empresa_id]
@@ -1211,7 +1246,7 @@ class Mesa
             }
 
             // 6) Recuperado por asesor (mismas condiciones que recuperado())
-            foreach (DB::query(
+            foreach (self::_rq('recuperado_asesor', 
                 "SELECT uid, SUM(fd) AS rec_n, SUM(CASE WHEN fd THEN total ELSE 0 END) AS rec_monto
                  FROM (
                     SELECT COALESCE(c2.vendedor_id, c2.usuario_id) AS uid, v.total,
@@ -1241,9 +1276,7 @@ class Mesa
                       AND v.cotizacion_id IS NOT NULL AND v.total > 0
                       AND v.created_at >= NOW() - INTERVAL $dias DAY
                       -- DI (Opción B): cierre del sistema, no de la mesa
-                      AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da
-                                      WHERE da.cotizacion_id = v.cotizacion_id
-                                        AND da.estado <> 'cancelado')
+                      {$dx('v.cotizacion_id')}
                  ) x
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
@@ -1251,6 +1284,28 @@ class Mesa
                 $out[$u] ??= $base;
                 $out[$u]['rec_n']     = (int)$r['rec_n'];
                 $out[$u]['rec_monto'] = (float)$r['rec_monto'];
+            }
+
+            // 7) VENTAS del período — el resultado. El hueco #1 de la auditoría:
+            //    un reporte de equipo de ventas sin columna de ventas. Regla del
+            //    sistema (14-may): venta cuenta con pagado > 0. Atribución por
+            //    la venta misma (vendedor_id/usuario_id de ventas — cubre también
+            //    ventas sin cotización). INCLUYE ventas DI: es dinero que entró;
+            //    la mesa solo se lo descuenta como mérito en recuperado/trabajada.
+            foreach (self::_rq('ventas', 
+                "SELECT COALESCE(v.vendedor_id, v.usuario_id, c2.vendedor_id, c2.usuario_id) AS uid,
+                        COUNT(*) AS n, COALESCE(SUM(v.total), 0) AS monto
+                 FROM ventas v
+                 LEFT JOIN cotizaciones c2 ON c2.id = v.cotizacion_id
+                 WHERE v.empresa_id = ? AND v.estado != 'cancelada'
+                   AND v.pagado > 0 AND v.total > 0
+                   AND v.created_at >= NOW() - INTERVAL $dias DAY
+                 GROUP BY uid", [$empresa_id]
+            ) as $r) {
+                $u = (int)$r['uid']; if (!$u) continue;
+                $out[$u] ??= $base;
+                $out[$u]['ventas_n']     = (int)$r['n'];
+                $out[$u]['ventas_monto'] = (float)$r['monto'];
             }
         } catch (Throwable $e) {
             return ['dias' => $dias, 'asesores' => []]; // mesa_estados aún no migrada
@@ -1262,7 +1317,7 @@ class Mesa
             // ni aparecer como fila de asesor del reporte
             $uin = implode(',', array_map('intval', array_keys($out)));
             $validos = [];
-            foreach (DB::query(
+            foreach (self::_rq('usuarios', 
                 "SELECT id, nombre, activo FROM usuarios
                  WHERE id IN ($uin) AND empresa_id = ?", [$empresa_id]
             ) as $r) {
