@@ -301,6 +301,7 @@ if ($es_admin) {
         $di_candidatos = DB::query(
             "SELECT t.regla, t.pct AS descuento_pct, t.edad AS dias_creada,
                     t.numero, t.titulo, t.total, t.radar_bucket, t.slug,
+                    t.candidata_desde,
                     cl.nombre AS cliente, cl.telefono,
                     COALESCE(uv.nombre, u.nombre) AS asesor
              FROM (
@@ -319,7 +320,12 @@ if ($es_admin) {
                       CASE WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) < dc.dia_dead
                            THEN dc.r1_pct ELSE dc.r2_pct END AS pct,
                       CASE WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) < dc.dia_dead
-                           THEN GREATEST(1, CEIL(dc.p75/2)) ELSE GREATEST(1, dc.p75) END AS win_days
+                           THEN GREATEST(1, CEIL(dc.p75/2)) ELSE GREATEST(1, dc.p75) END AS win_days,
+                      -- Fecha en que ENTRÓ a zona DI (se hizo candidata): creación +
+                      -- dia_fin_vida (inicio de R1) — o dia_dead si R1 está apagada
+                      -- y la puerta de entrada real es R2
+                      DATE_ADD(c.created_at, INTERVAL (CASE WHEN dc.r1_activa=1 AND dc.r1_pct>0
+                               THEN dc.dia_fin_vida ELSE dc.dia_dead END) DAY) AS candidata_desde
                FROM cotizaciones c
                JOIN desc_int_config dc ON dc.empresa_id = c.empresa_id
                WHERE c.empresa_id = ?
@@ -356,7 +362,9 @@ if ($es_admin) {
                AND NOT EXISTS (SELECT 1 FROM radar_feedback rf
                      WHERE rf.cotizacion_id=t.id
                        AND rf.updated_at >= NOW() - INTERVAL t.win_days DAY)
-             ORDER BY t.regla, t.edad DESC",
+             -- Más NUEVA candidata arriba (para distinguir a cuáles ya se les mandó
+             -- campaña). Los chips R1/R2 solo ocultan filas: el orden se mantiene.
+             ORDER BY t.candidata_desde DESC, t.id DESC",
             [$empresa_id]
         );
     } catch (\Throwable $e) { $di_candidatos = []; } // tabla sin migrar
@@ -1115,6 +1123,7 @@ ob_start();
       <table class="tbl" id="dicTable">
         <thead>
           <tr>
+            <th>Candidata desde</th>
             <th>Regla</th>
             <th class="r">Descuento</th>
             <th class="r">Días</th>
@@ -1131,8 +1140,15 @@ ob_start();
             $rlbl = $r1 ? 'R1 · Recuperación' : 'R2 · Zona muerta';
             $rcol = $r1 ? '#b45309' : 'var(--danger)';
             $tel  = trim((string)($dcnd['telefono'] ?? ''));
+            $cd_ts   = !empty($dcnd['candidata_desde']) ? strtotime($dcnd['candidata_desde']) : 0;
+            $cd_dias = $cd_ts ? max(0, (int)floor((time() - $cd_ts) / 86400)) : null;
+            $cd_lbl  = $cd_dias === null ? '' : ($cd_dias === 0 ? 'hoy' : 'hace ' . $cd_dias . 'd');
           ?>
           <tr class="dic-row" data-regla="<?= (int)$dcnd['regla'] ?>" data-tel="<?= e($tel) ?>" data-link="<?= e(!empty($dcnd['slug']) ? url_publica('c/' . $dcnd['slug']) : '') ?>">
+            <td style="white-space:nowrap">
+              <span style="font-weight:700"><?= $cd_ts ? date('d/m', $cd_ts) : '—' ?></span>
+              <span style="color:var(--t3);font-size:11px"> · <?= $cd_lbl ?></span>
+            </td>
             <td style="font-weight:700;color:<?= $rcol ?>"><?= $rlbl ?></td>
             <td class="tbl-num" style="font-weight:800;color:var(--g)"><?= number_format((float)$dcnd['descuento_pct'],0) ?>%</td>
             <td class="tbl-num" style="color:var(--t3)"><?= (int)$dcnd['dias_creada'] ?></td>
