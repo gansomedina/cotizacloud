@@ -259,7 +259,7 @@ foreach ($elabels as $k => $lbl):
   <!-- Col 1: folio + título -->
   <div class="venta-info">
     <div class="venta-num"><?= e($v['numero'] ?? 'VTA-'.$v['id']) ?></div>
-    <div class="venta-title"><?= e($v['titulo']) ?><?php if (!empty($v['es_di'])): ?><span class="di-badge" title="Venta cerrada con Descuento Inteligente — sin comisión para el asesor">✨ DI</span><?php endif ?></div>
+    <div class="venta-title"><?= e($v['titulo']) ?><?php if (!empty($v['es_di'])): ?><span class="di-badge" title="Venta cerrada con Descuento Inteligente">✨ DI</span><?php endif ?></div>
     <div class="venta-client"><?= e($v['cnombre'] ?? '—') ?> · <?= $fecha_f ?></div>
     <div class="progress-wrap">
       <div class="progress-bar"><div class="progress-fill" style="width:<?= $pct ?>%"></div></div>
