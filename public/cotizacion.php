@@ -314,11 +314,12 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
                 // slot único del cliente y aplicaría descuento sin mostrarlo).
                 $di_giro = DB::val("SELECT giro FROM empresas WHERE id=?", [(int)$cot['empresa_id']]) ?: 'servicios';
                 // GUARDIA EXPLÍCITA: un interno (Capa 0 logueado/superadmin, Capa 1
-                // visitor conocido) NUNCA activa DI. Hoy ya es imposible por el
-                // `goto skip_tracking` que salta este bloque, pero lo dejamos aquí
-                // en el punto de activación para que ningún refactor futuro abra la
-                // puerta: el DI solo lo dispara una visita de CLIENTE real.
-                if (!$di_act && !$es_usuario_interno && $di_giro !== 'inmuebles' && in_array($cot['estado'], ['enviada','vista'])) {
+                // visitor conocido, Capa 3 bot) NUNCA activa DI. Hoy ya es imposible
+                // por el `goto skip_tracking` que salta este bloque, pero lo dejamos
+                // aquí en el punto de activación para que ningún refactor futuro abra
+                // la puerta: el DI solo lo dispara una visita de CLIENTE real.
+                // ($interno_detectado cubre TODAS las capas; $es_usuario_interno solo Capa 0)
+                if (!$di_act && !$interno_detectado && $di_giro !== 'inmuebles' && in_array($cot['estado'], ['enviada','vista'])) {
                     $di_ev = DescuentoInteligente::evaluar($cot);
                     if ($di_ev) {
                         $di_precio = round($total_base - $subtotal_extras, 2);
@@ -414,12 +415,24 @@ skip_tracking:
 // Ve la fila del descuento en el Resumen y el total correcto en el modal de
 // aceptar (caso mostrador: el cliente llega a la oficina y el asesor acepta
 // por él). NUNCA evalúa ni activa — solo LEE el contrato que la visita del
-// cliente ya creó (vigente() es read-only). Cubre Capa 0 (sesión) Y Capa 1
+// cliente ya creó (el único write de vigente() es el lazy-expiry de contratos
+// vencidos, idempotente y correcto lo dispare quien sea). Cubre Capa 0 (sesión) Y Capa 1
 // (cz_vid en dominio custom, donde la sesión no viaja). El banner flotante se
 // le oculta aparte (gate !$interno_detectado).
 if ($di_act === null && $interno_detectado) {
     try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
 }
+
+// ── Cupón bloqueado si TIENE O TUVO un DI (decisión CEO 16-jul): el descuento
+// del sistema no convive con cupones — ni siquiera tecleable. Cualquier registro
+// DI (activo, utilizado, vencido, cancelado) oculta la sección de cupón; el
+// accept lo ignora también server-side (quote_action.php). ──
+$di_existe = false;
+try {
+    $di_existe = (bool)DB::val(
+        "SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id = ? LIMIT 1",
+        [(int)$cot['id']]);
+} catch (\Throwable $die) {}
 
 // ─── Helpers locales ─────────────────────────────────────
 function fmt_pub(float $n, string $moneda = 'MXN'): string {
@@ -664,7 +677,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 
   /* Ocultar todo lo interactivo */
   .hdr,.tabs,.vbadge,.cta,.ov,.succ,#coupLbl,#coupSec,#adcSec,
-  .items-mob,.bprt,.footer { display:none!important }
+  .items-mob,.bprt,.footer,#diBanner { display:none!important }
 
   /* Mostrar solo sección cotización */
   #tab-d,#tab-t { display:block!important }
@@ -1044,8 +1057,8 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
   <div data-adc="off" style="display:none"></div>
   <?php endif; ?>
 
-  <!-- CUPÓN -->
-  <?php if (!empty($cupones) && $es_activa): ?>
+  <!-- CUPÓN (oculto si la cotización tiene o tuvo DI — no se apilan) -->
+  <?php if (!empty($cupones) && $es_activa && !$di_existe): ?>
   <div id="coupLbl"><div class="slbl">¿Tienes un código de descuento?</div></div>
   <div class="coup" id="coupSec">
     <div class="coup-b" id="coupFld">
@@ -1578,7 +1591,7 @@ function openM(id){
     if (id === 'acceptOv') {
         let h;
         if (DI.active) {
-            // Descuento Inteligente activo — resumen con los números frozen del banner
+            // Descuento del sistema activo — resumen con los números frozen del banner
             h  = '<div class="sr"><span>Precio</span><span>'+fmt(DI.antes)+'</span></div>';
             h += '<div class="sr" style="color:var(--amb)"><span>Descuento especial ('+DI.pct+'%)</span><span>-'+fmt(DI.desc)+'</span></div>';
             if (DI.extras > 0) {
@@ -1654,8 +1667,11 @@ async function doAcc(){
     );
 
     // Marketing pixels — evento de conversión
+    // totalFinal era `total_base` (variable PHP inexistente en JS) → ReferenceError
+    // silencioso: los pixels de conversión NUNCA dispararon desde el origen del
+    // feature. Valor real: total con descuento del sistema si está activo.
     try {
-    var totalFinal = total_base;
+    var totalFinal = (typeof DI !== 'undefined' && DI.active) ? DI.total : <?= (float)$total_base ?>;
     var MONEDA = '<?= e($cot['moneda'] ?? 'MXN') ?>';
     <?= MarketingPixels::evento_aceptar_js(EMPRESA_ID) ?>
     } catch(e) {}

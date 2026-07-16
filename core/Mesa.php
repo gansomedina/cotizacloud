@@ -1296,6 +1296,18 @@ class Mesa
     {
         $dias  = max(1, (int)$dias);
         $vacio = ['rec_n' => 0, 'rec_monto' => 0.0, 'trab_n' => 0, 'trab_monto' => 0.0, 'dias' => $dias];
+
+        // Exclusión DI (Opción B) fail-open, mismo patrón que armar(): si la tabla
+        // no está migrada, el contador sigue funcionando SIN la exclusión (antes,
+        // la cláusula inline tumbaba toda la query → Recuperado $0 silencioso).
+        $di_sql = '';
+        try {
+            DB::val("SELECT 1 FROM desc_int_activaciones LIMIT 1");
+            $di_sql = " AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da
+                                   WHERE da.cotizacion_id = v.cotizacion_id
+                                     AND da.estado <> 'cancelado')";
+        } catch (Throwable $e) {} // tabla sin migrar → sin exclusión (fail-open seguro)
+
         try {
             $rows = DB::query(
                 "SELECT v.total,
@@ -1334,9 +1346,7 @@ class Mesa
                    -- DI (Opción B): el Descuento Inteligente la tomó — el cierre
                    -- es mérito del sistema, no de la mesa. Fuera de recuperado
                    -- Y de trabajada (misma regla con que sale de armar/cartera).
-                   AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da
-                                   WHERE da.cotizacion_id = v.cotizacion_id
-                                     AND da.estado <> 'cancelado')"
+                   {$di_sql}"
                  . ($vendedor_id !== null ? ' AND COALESCE(c2.vendedor_id, c2.usuario_id) = ' . (int)$vendedor_id : ''),
                 [$empresa_id]
             );

@@ -559,11 +559,20 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <span class="panel-t-lbl">Total</span>
                 <span class="panel-t-val" id="total-final"><?= format_money($cot['total'], $empresa['moneda']) ?></span>
             </div>
-            <?php if ($di_vigente): ?>
+            <?php
+            // La rama "activo" SOLO en estados donde aceptar puede cobrarlo
+            // (enviada/vista). En convertida/rechazada/suspendida un DI 'activo'
+            // residual (ventana <24h) prometía "el sistema cobra este total" cuando
+            // el accept está bloqueado — o la venta ya se creó a precio completo
+            // (convertir.php no consume el DI). 'utilizado' se muestra siempre.
+            $di_mostrar = $di_vigente && ($di_vigente['estado'] === 'utilizado'
+                          || in_array($cot['estado'], ['enviada', 'vista'], true));
+            ?>
+            <?php if ($di_mostrar): ?>
             <?php
                 $di_activo = $di_vigente['estado'] === 'activo';
                 $di_min    = $di_activo ? max(0, (int)ceil((strtotime($di_vigente['expira_at']) - time()) / 60)) : 0;
-                $di_resta  = $di_min >= 60 ? floor($di_min / 60) . ' h' : $di_min . ' min';
+                $di_resta  = $di_min >= 60 ? floor($di_min / 60) . ' h ' . ($di_min % 60) . ' min' : $di_min . ' min';
             ?>
             <div style="margin-top:10px;padding:10px 12px;border:1px solid #f0c869;background:#fdf7e9;border-radius:8px">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">

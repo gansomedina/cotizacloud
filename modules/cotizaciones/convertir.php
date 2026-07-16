@@ -38,6 +38,28 @@ $empresa = Auth::empresa();
 try {
     DB::beginTransaction();
 
+    // ── Descuento Inteligente VIGENTE: aplica igual que el accept (decisión
+    //    CEO 16-jul). Total = nuevo_total congelado del contrato (sin extras,
+    //    con IVA si el modo es suma) + extras actuales; el contrato pasa a
+    //    'utilizado'. Un DI vencido/inexistente NO descuenta → precio completo.
+    //    Antes convertir era CIEGO al DI: cobraba precio completo y dejaba el
+    //    contrato 'activo' colgado (la caja del editor prometía un cobro falso). ──
+    $total_vta = (float)$cot['total'];
+    try {
+        $di_vig = DescuentoInteligente::vigente($cot_id);
+        if ($di_vig && $di_vig['estado'] === 'activo') {
+            $extras_di = (float)DB::val(
+                "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas
+                 WHERE cotizacion_id = ? AND es_extra = 1", [$cot_id]);
+            $total_vta = round((float)$di_vig['nuevo_total'] + $extras_di, 2);
+            // WHERE estado='activo' evita doble-uso y carrera con un accept simultáneo
+            DB::execute("UPDATE desc_int_activaciones SET estado='utilizado' WHERE id=? AND estado='activo'",
+                [(int)$di_vig['id']]);
+            // La cotización refleja el total cobrado (igual que hace el accept)
+            DB::execute("UPDATE cotizaciones SET total=? WHERE id=?", [$total_vta, $cot_id]);
+        }
+    } catch (\Throwable $e) {} // tabla DI sin migrar → sin descuento
+
     // Folio de venta
     $numero_vta = DB::siguiente_folio($empresa_id, 'VTA', $empresa['vta_prefijo'] ?? 'VTA');
     $slug_vta   = slug_unico($cot['titulo'], 'ventas', 'slug', $empresa_id);
@@ -61,8 +83,8 @@ try {
             $cot['titulo'],
             $slug_vta,
             $token_vta,
-            $cot['total'],
-            $cot['total'],   // saldo inicial = total
+            $total_vta,
+            $total_vta,   // saldo inicial = total (con DI aplicado si estaba vigente)
             'pendiente',
         ]
     );
