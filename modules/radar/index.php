@@ -312,14 +312,13 @@ function radar_di_badge(?string $est, ?string $exp): string {
     if ($est === 'activo') {
         $min = max(1, (int)floor(($exp_ts - time()) / 60));
         $lbl = '✨ DI ' . ($min >= 60 ? floor($min / 60) . 'h' : $min . 'm');
-        $ttl = 'Descuento Inteligente VIGENTE — vence ' . date('d/m H:i', $exp_ts)
-             . '. Si el cliente cierra, es venta del sistema (sin comisión)';
+        $ttl = 'Descuento Inteligente VIGENTE — vence ' . date('d/m H:i', $exp_ts);
     } elseif ($est === 'utilizado') {
-        $ttl = 'Cerró con Descuento Inteligente — venta del sistema, sin comisión';
+        $ttl = 'Cerró con Descuento Inteligente';
     } else {
         $col = '#a8a29e'; $bg = '#f5f5f4';
         $ttl = $est === 'vencido'
-             ? 'Tuvo Descuento Inteligente — venció sin usarse (ya no habrá otro; se cobra precio completo)'
+             ? 'Tuvo Descuento Inteligente — venció sin usarse'
              : 'Tuvo Descuento Inteligente (quitado por admin)';
     }
     return " <span title='" . e($ttl) . "' style='font:600 10px var(--body,sans-serif);color:{$col};background:{$bg};border-radius:5px;padding:1px 5px;white-space:nowrap;vertical-align:middle'>" . e($lbl) . "</span>";
