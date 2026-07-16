@@ -301,7 +301,12 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
                 // que NO renderiza el banner de DI — no activar ahí (consumiría el
                 // slot único del cliente y aplicaría descuento sin mostrarlo).
                 $di_giro = DB::val("SELECT giro FROM empresas WHERE id=?", [(int)$cot['empresa_id']]) ?: 'servicios';
-                if (!$di_act && $di_giro !== 'inmuebles' && in_array($cot['estado'], ['enviada','vista'])) {
+                // GUARDIA EXPLÍCITA: un interno (Capa 0 logueado/superadmin, Capa 1
+                // visitor conocido) NUNCA activa DI. Hoy ya es imposible por el
+                // `goto skip_tracking` que salta este bloque, pero lo dejamos aquí
+                // en el punto de activación para que ningún refactor futuro abra la
+                // puerta: el DI solo lo dispara una visita de CLIENTE real.
+                if (!$di_act && !$es_usuario_interno && $di_giro !== 'inmuebles' && in_array($cot['estado'], ['enviada','vista'])) {
                     $di_ev = DescuentoInteligente::evaluar($cot);
                     if ($di_ev) {
                         $di_precio = round($total_base - $subtotal_extras, 2);
@@ -983,7 +988,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
         && in_array($cot['estado'], ['enviada','vista'])
         && strtotime($di_act['expira_at']) > time()): ?>
     <div class="tr td">
-      <span class="tl">✨ Descuento Inteligente (<?= rtrim(rtrim(number_format((float)$di_act['pct'], 1), '0'), '.') ?>%)</span>
+      <span class="tl">Descuento especial (<?= rtrim(rtrim(number_format((float)$di_act['pct'], 1), '0'), '.') ?>%)</span>
       <span class="tv">-<?= fmt_pub((float)$di_act['monto_desc']) ?></span>
     </div>
     <div class="tr tf">
