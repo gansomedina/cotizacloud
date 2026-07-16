@@ -99,7 +99,11 @@ $cot['visitas_reales'] = $visitas_reales;
 // llega a la oficina con su descuento activo, el asesor lo ve en los
 // totales y sabe que el accept cobrará ese total automáticamente.
 $di_vigente = null;
+$di_extras  = 0.0; // el contrato DI es SIN extras — el total mostrado los suma
 try { $di_vigente = DescuentoInteligente::vigente($cot_id); } catch (\Throwable $e) {}
+if ($di_vigente) {
+    foreach ($lineas as $l) { if (!empty($l['es_extra'])) $di_extras += (float)$l['subtotal']; }
+}
 
 // ─── Catálogo, clientes, cupones ─────────────────────────
 $es_inmuebles = ($empresa['giro'] ?? 'servicios') === 'inmuebles';
@@ -562,15 +566,16 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 $di_resta  = $di_min >= 60 ? floor($di_min / 60) . ' h' : $di_min . ' min';
             ?>
             <div style="margin-top:10px;padding:10px 12px;border:1px solid #f0c869;background:#fdf7e9;border-radius:8px">
-                <div class="panel-t-row disc" style="margin:0">
-                    <span class="panel-t-lbl">✨ Descuento Inteligente <?= rtrim(rtrim(number_format((float)$di_vigente['pct'], 1), '0'), '.') ?>%</span>
-                    <span class="panel-t-val">-<?= format_money($di_vigente['monto_desc'], $empresa['moneda']) ?></span>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                    <span style="font-size:12px;font-weight:600;color:#8a6d1f">✨ Desc. Inteligente <?= rtrim(rtrim(number_format((float)$di_vigente['pct'], 1), '0'), '.') ?>%</span>
+                    <span style="white-space:nowrap;font-size:13px;font-weight:600;color:#b45309">-<?= format_money($di_vigente['monto_desc'], $empresa['moneda']) ?></span>
                 </div>
-                <div class="panel-t-row final" style="margin:4px 0 0;border:0;padding:0">
-                    <span class="panel-t-lbl">Total con descuento</span>
-                    <span class="panel-t-val"><?= format_money($di_vigente['nuevo_total'], $empresa['moneda']) ?></span>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:4px">
+                    <span style="font-size:12.5px;font-weight:700;color:#1a1a1a">Total con descuento</span>
+                    <span style="white-space:nowrap;font-size:15px;font-weight:800;color:#1a5c38"><?= format_money((float)$di_vigente['nuevo_total'] + $di_extras, $empresa['moneda']) ?></span>
                 </div>
-                <div style="font-size:11px;color:#8a6d1f;margin-top:6px">
+                <div style="font-size:11px;color:#8a6d1f;margin-top:6px;line-height:1.45">
+                    <?php if ($di_extras > 0): ?>El descuento aplica sobre los artículos; los extras van completos.<br><?php endif; ?>
                     <?php if ($di_activo): ?>
                         Activado por la visita del cliente — vence en <?= $di_resta ?> (<?= date('d/m H:i', strtotime($di_vigente['expira_at'])) ?>).
                         Al aceptar la cotización, el sistema cobra este total automáticamente.
