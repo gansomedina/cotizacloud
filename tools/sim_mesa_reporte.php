@@ -197,6 +197,16 @@ tap(1008, 1, 'feedback', 'sin_interes', 12);
 tap(1008, 1, 'feedback', 'con_interes', 11);
 fb(1008, 101, 1, 'con_interes', 11);
 venta(1008, 1, 15000, 6);
+// V5 (1097): DI UTILIZADO — descartada (👎+rf) 10d, el Descuento Inteligente
+//   la revivió y CERRÓ la venta 2d (desc_int 'utilizado') → mérito del SISTEMA,
+//   no de la mesa: NO cuenta en recuperado NI en trabajada. Sin el filtro DI de
+//   recuperado()/bloque 6, rec sería 2 ($55k) y los asserts de abajo fallarían.
+cot(1097, 1, 101, 25000, 18);
+tap(1097, 1, 'feedback', 'sin_interes', 10);
+fb(1097, 101, 1, 'sin_interes', 10);
+venta(1097, 1, 25000, 2);
+DB::execute("INSERT INTO desc_int_activaciones (empresa_id, cotizacion_id, estado, expira_at, created_at)
+             VALUES (1,1097,'utilizado',?,?)", [$d(1), $d(12)]);
 // C1 (1010): acuerdo 7d, cliente ABRIÓ 6d (cumplido vía visita).
 cot(1010, 1, 101, 22000, 12);
 tap(1010, 1, 'contacto', 'hablamos', 7);

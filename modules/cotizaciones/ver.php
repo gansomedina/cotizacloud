@@ -93,6 +93,14 @@ $visitas_reales = (int)DB::val(
 );
 $cot['visitas_reales'] = $visitas_reales;
 
+// ─── Descuento Inteligente vigente (activo o ya utilizado) ──
+// El DI es un contrato aparte (desc_int_activaciones) — NO vive en
+// cotizaciones.total. Aquí solo se MUESTRA al asesor: cuando el cliente
+// llega a la oficina con su descuento activo, el asesor lo ve en los
+// totales y sabe que el accept cobrará ese total automáticamente.
+$di_vigente = null;
+try { $di_vigente = DescuentoInteligente::vigente($cot_id); } catch (\Throwable $e) {}
+
 // ─── Catálogo, clientes, cupones ─────────────────────────
 $es_inmuebles = ($empresa['giro'] ?? 'servicios') === 'inmuebles';
 if ($es_inmuebles) {
@@ -547,6 +555,31 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <span class="panel-t-lbl">Total</span>
                 <span class="panel-t-val" id="total-final"><?= format_money($cot['total'], $empresa['moneda']) ?></span>
             </div>
+            <?php if ($di_vigente): ?>
+            <?php
+                $di_activo = $di_vigente['estado'] === 'activo';
+                $di_min    = $di_activo ? max(0, (int)ceil((strtotime($di_vigente['expira_at']) - time()) / 60)) : 0;
+                $di_resta  = $di_min >= 60 ? floor($di_min / 60) . ' h' : $di_min . ' min';
+            ?>
+            <div style="margin-top:10px;padding:10px 12px;border:1px solid #f0c869;background:#fdf7e9;border-radius:8px">
+                <div class="panel-t-row disc" style="margin:0">
+                    <span class="panel-t-lbl">✨ Descuento Inteligente <?= rtrim(rtrim(number_format((float)$di_vigente['pct'], 1), '0'), '.') ?>%</span>
+                    <span class="panel-t-val">-<?= format_money($di_vigente['monto_desc'], $empresa['moneda']) ?></span>
+                </div>
+                <div class="panel-t-row final" style="margin:4px 0 0;border:0;padding:0">
+                    <span class="panel-t-lbl">Total con descuento</span>
+                    <span class="panel-t-val"><?= format_money($di_vigente['nuevo_total'], $empresa['moneda']) ?></span>
+                </div>
+                <div style="font-size:11px;color:#8a6d1f;margin-top:6px">
+                    <?php if ($di_activo): ?>
+                        Activado por la visita del cliente — vence en <?= $di_resta ?> (<?= date('d/m H:i', strtotime($di_vigente['expira_at'])) ?>).
+                        Al aceptar la cotización, el sistema cobra este total automáticamente.
+                    <?php else: ?>
+                        Aplicado en la venta — la venta ya se cerró con este total.
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
 
         <div class="panel-section">

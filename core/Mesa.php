@@ -1151,6 +1151,11 @@ class Mesa
                       AND NOT EXISTS (SELECT 1 FROM ventas v
                                       WHERE v.cotizacion_id = rf.cotizacion_id
                                         AND v.estado != 'cancelada')
+                      -- DI (Opción B): la tomó el sistema — sus visitas
+                      -- posteriores no son 'revividas' de la mesa
+                      AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da
+                                      WHERE da.cotizacion_id = rf.cotizacion_id
+                                        AND da.estado <> 'cancelado')
                     UNION ALL
                     -- DOBLE FUENTE (igual que armar/cartera): descartes hechos
                     -- SOLO con el pill Descartar (postura vigente 'descartada'
@@ -1191,6 +1196,10 @@ class Mesa
                       AND NOT EXISTS (SELECT 1 FROM ventas v2
                                       WHERE v2.cotizacion_id = mp.cotizacion_id
                                         AND v2.estado != 'cancelada')
+                      -- DI (Opción B): la tomó el sistema — fuera de descartes/revividos
+                      AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da2
+                                      WHERE da2.cotizacion_id = mp.cotizacion_id
+                                        AND da2.estado <> 'cancelado')
                  ) x
                  WHERE x.anc >= NOW() - INTERVAL $dias DAY
                  GROUP BY uid", [$empresa_id, $empresa_id]
@@ -1231,6 +1240,10 @@ class Mesa
                     WHERE v.empresa_id = ? AND v.estado != 'cancelada'
                       AND v.cotizacion_id IS NOT NULL AND v.total > 0
                       AND v.created_at >= NOW() - INTERVAL $dias DAY
+                      -- DI (Opción B): cierre del sistema, no de la mesa
+                      AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da
+                                      WHERE da.cotizacion_id = v.cotizacion_id
+                                        AND da.estado <> 'cancelado')
                  ) x
                  GROUP BY uid", [$empresa_id]
             ) as $r) {
@@ -1317,7 +1330,13 @@ class Mesa
                  FROM ventas v JOIN cotizaciones c2 ON c2.id = v.cotizacion_id
                  WHERE v.empresa_id = ? AND v.estado != 'cancelada'
                    AND v.cotizacion_id IS NOT NULL AND v.total > 0
-                   AND v.created_at >= NOW() - INTERVAL $dias DAY"
+                   AND v.created_at >= NOW() - INTERVAL $dias DAY
+                   -- DI (Opción B): el Descuento Inteligente la tomó — el cierre
+                   -- es mérito del sistema, no de la mesa. Fuera de recuperado
+                   -- Y de trabajada (misma regla con que sale de armar/cartera).
+                   AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones da
+                                   WHERE da.cotizacion_id = v.cotizacion_id
+                                     AND da.estado <> 'cancelado')"
                  . ($vendedor_id !== null ? ' AND COALESCE(c2.vendedor_id, c2.usuario_id) = ' . (int)$vendedor_id : ''),
                 [$empresa_id]
             );
