@@ -478,7 +478,7 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
         · de <a href="/cotizaciones/<?= (int)$venta['cot_id'] ?>" style="color:var(--g);text-decoration:none"><?= e($venta['cot_numero']) ?></a>
       <?php endif ?>
     </div>
-    <div class="tb-title"><?= e($venta['titulo']) ?><?php if ($desc_int_act): ?><span style="display:inline-flex;align-items:center;font:700 10px var(--body);color:#b45309;background:#fdf7e9;border:1px solid #f0c869;border-radius:5px;padding:1px 6px;vertical-align:middle;white-space:nowrap;margin-left:8px" title="Venta cerrada con Descuento Inteligente (<?= rtrim(rtrim(number_format((float)$desc_int_act['pct'], 1), '0'), '.') ?>%) — sin comisión para el asesor">✨ DI · sin comisión</span><?php endif ?></div>
+    <div class="tb-title"><?= e($venta['titulo']) ?><?php if ($desc_int_act): ?><span style="display:inline-flex;align-items:center;font:700 10px var(--body);color:#b45309;background:#fdf7e9;border:1px solid #f0c869;border-radius:5px;padding:1px 6px;vertical-align:middle;white-space:nowrap;margin-left:8px" title="Venta cerrada con Descuento Inteligente (<?= rtrim(rtrim(number_format((float)$desc_int_act['pct'], 1), '0'), '.') ?>%)">✨ DI</span><?php endif ?></div>
   </div>
 </div>
 
@@ -497,7 +497,7 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
   <div class="vhdr">
     <div class="vhdr-top">
       <div style="flex:1;min-width:0">
-        <div class="vhdr-num"><?= e($folio) ?><?php if ($desc_int_act): ?><span style="display:inline-flex;align-items:center;font:700 10px var(--body);color:#b45309;background:#fdf7e9;border:1px solid #f0c869;border-radius:5px;padding:1px 6px;vertical-align:middle;white-space:nowrap;margin-left:8px" title="Venta cerrada con Descuento Inteligente (<?= rtrim(rtrim(number_format((float)$desc_int_act['pct'], 1), '0'), '.') ?>%) — sin comisión para el asesor">✨ DI · sin comisión</span><?php endif ?></div>
+        <div class="vhdr-num"><?= e($folio) ?><?php if ($desc_int_act): ?><span style="display:inline-flex;align-items:center;font:700 10px var(--body);color:#b45309;background:#fdf7e9;border:1px solid #f0c869;border-radius:5px;padding:1px 6px;vertical-align:middle;white-space:nowrap;margin-left:8px" title="Venta cerrada con Descuento Inteligente (<?= rtrim(rtrim(number_format((float)$desc_int_act['pct'], 1), '0'), '.') ?>%)">✨ DI</span><?php endif ?></div>
         <div class="vhdr-title"><?= e($venta['titulo']) ?></div>
       </div>
       <?php
