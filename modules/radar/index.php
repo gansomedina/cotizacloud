@@ -81,7 +81,11 @@ $raw = DB::query(
             c.created_at,
             cl.nombre AS cnombre, cl.telefono AS ctel,
             u.nombre  AS asesor,
-            COALESCE(c.vendedor_id, c.usuario_id) AS vendedor_id
+            COALESCE(c.vendedor_id, c.usuario_id) AS vendedor_id,
+            (SELECT di.estado FROM desc_int_activaciones di
+             WHERE di.cotizacion_id = c.id ORDER BY di.id DESC LIMIT 1) AS di_estado,
+            (SELECT di2.expira_at FROM desc_int_activaciones di2
+             WHERE di2.cotizacion_id = c.id ORDER BY di2.id DESC LIMIT 1) AS di_expira
      FROM cotizaciones c
      LEFT JOIN clientes cl ON cl.id=c.cliente_id
      LEFT JOIN usuarios  u  ON u.id=COALESCE(c.vendedor_id, c.usuario_id)
@@ -239,6 +243,8 @@ foreach ($raw as $c) {
         'visitas'     => (int)($c['visitas'] ?? 0),
         'bucket_at'   => $c['radar_bucket_at'] ?? null,
         'vendedor_id' => (int)($c['vendedor_id'] ?? 0),
+        'di_estado'   => $c['di_estado'] ?? null,
+        'di_expira'   => $c['di_expira'] ?? null,
     ];
 
     $rows_all[] = $row;
@@ -294,6 +300,31 @@ $ciclo_venta  = Radar::ciclo_venta($empresa_id);
 $config = Radar::config($empresa_id);
 $ips_internas = DB::query("SELECT * FROM radar_ips_internas WHERE empresa_id=? ORDER BY created_at DESC LIMIT 50",[$empresa_id]);
 
+// Badge DI para las tarjetas del Radar (decisión CEO 16-jul): la cotización con
+// DI SÍ se muestra en el Radar (se ve que el descuento trabaja) pero etiquetada —
+// si cierra, es venta del SISTEMA (sin comisión), que el asesor lo sepa antes de
+// invertirle tiempo. Mismo lenguaje visual que el badge de la lista.
+function radar_di_badge(?string $est, ?string $exp): string {
+    if (!$est) return '';
+    $exp_ts = $exp ? strtotime($exp) : 0;
+    if ($est === 'activo' && $exp_ts && $exp_ts <= time()) $est = 'vencido'; // lazy-expiry visual
+    $lbl = '✨ DI'; $col = '#b45309'; $bg = '#fef3c7';
+    if ($est === 'activo') {
+        $min = max(1, (int)floor(($exp_ts - time()) / 60));
+        $lbl = '✨ DI ' . ($min >= 60 ? floor($min / 60) . 'h' : $min . 'm');
+        $ttl = 'Descuento Inteligente VIGENTE — vence ' . date('d/m H:i', $exp_ts)
+             . '. Si el cliente cierra, es venta del sistema (sin comisión)';
+    } elseif ($est === 'utilizado') {
+        $ttl = 'Cerró con Descuento Inteligente — venta del sistema, sin comisión';
+    } else {
+        $col = '#a8a29e'; $bg = '#f5f5f4';
+        $ttl = $est === 'vencido'
+             ? 'Tuvo Descuento Inteligente — venció sin usarse (ya no habrá otro; se cobra precio completo)'
+             : 'Tuvo Descuento Inteligente (quitado por admin)';
+    }
+    return " <span title='" . e($ttl) . "' style='font:600 10px var(--body,sans-serif);color:{$col};background:{$bg};border-radius:5px;padding:1px 5px;white-space:nowrap;vertical-align:middle'>" . e($lbl) . "</span>";
+}
+
 // Render de cada bucket
 function render_bkt(string $tit, string $hint, array $items, string $s, string $d, bool $gap=false, bool $motivo=false, string $bkt_key=''): void {
     $debug_mode = $GLOBALS['debug_mode'] ?? false;
@@ -344,7 +375,8 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         if (!empty($r_icons['not_opened'])) $r_ico_str .= '❌';
         $r_momentum = $r['momentum'] ?? 'stable';
         $r_decay_ico = $r_momentum === 'cooling' ? '<span class="momentum-down" title="Sin actividad reciente — perdiendo momentum">↓</span>' : '';
-        $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo']);
+        $r_title_show = ($r_ico_str ? $r_ico_str.' ' : '').htmlspecialchars($r['titulo'])
+                      . radar_di_badge($r['di_estado'] ?? null, $r['di_expira'] ?? null);
         $cot_url = '/cotizaciones/'.(int)$r['id'];
         // Botones de feedback al lado del título
         $r_bucket_fb = $r['bucket'] ?? '';
@@ -1133,7 +1165,7 @@ render_bkt('🟡 Activos 48h (todos los activos)',
         if (!empty($rg_icons['mv_price']))   $rg_ico .= '👥';
         if (!empty($rg_icons['not_opened'])) $rg_ico .= '❌';
       ?>
-      <td><div class="rtit"><?= $rg_ico ? $rg_ico.' ' : '' ?><?= e($r['titulo']) ?></div><div class="rsub"><?= e($r['cliente']) ?></div></td>
+      <td><div class="rtit"><?= $rg_ico ? $rg_ico.' ' : '' ?><?= e($r['titulo']) ?><?= radar_di_badge($r['di_estado'] ?? null, $r['di_expira'] ?? null) ?></div><div class="rsub"><?= e($r['cliente']) ?></div></td>
       <td class="tc"><?= $ab ?></td>
       <td class="tr"><b><?= number_format($r['fit_pct'],1) ?>%</b></td>
       <td class="tr"><b><?= number_format($r['priority_pct'],1) ?>%</b></td>
