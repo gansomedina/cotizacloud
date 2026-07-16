@@ -207,6 +207,16 @@ fb(1097, 101, 1, 'sin_interes', 10);
 venta(1097, 1, 25000, 2);
 DB::execute("INSERT INTO desc_int_activaciones (empresa_id, cotizacion_id, estado, expira_at, created_at)
              VALUES (1,1097,'utilizado',?,?)", [$d(1), $d(12)]);
+// A7 (1096): DI SIN VENTA, rama 1 del bloque 5 — 👎 del dueño (-8d) + visita
+//   del cliente (-3d) + DI 'activo'. El DI la tomó (Opción B): NO debe contar
+//   en descartes NI en revividos. Sin el filtro DI de la rama radar_feedback,
+//   Ana saldría [2,2] y el assert [1,1] truena.
+cot(1096, 1, 101, 21000, 16);
+tap(1096, 1, 'feedback', 'sin_interes', 8);
+fb(1096, 101, 1, 'sin_interes', 8);
+visita(1096, 3);
+DB::execute("INSERT INTO desc_int_activaciones (empresa_id, cotizacion_id, estado, expira_at, created_at)
+             VALUES (1,1096,'activo',?,?)", [$d(-1), $d(0.5)]);
 // C1 (1010): acuerdo 7d, cliente ABRIÓ 6d (cumplido vía visita).
 cot(1010, 1, 101, 22000, 12);
 tap(1010, 1, 'contacto', 'hablamos', 7);
@@ -293,6 +303,15 @@ tap(1503, 1, 'compromiso', 'nos_citamos', 4);
 cot(1504, 1, 105, 9000, 12);
 tap(1504, 1, 'postura', 'descartada', 6, 'otro');
 visita(1504, 3);
+// CA5 (1505): DI SIN VENTA, rama 2 del bloque 5 (descarte SOLO-pill) — postura
+//   'descartada' (-6d) + visita (-2d) + DI 'vencido' (expiró sin usarse, sigue
+//   siendo <> 'cancelado' → Opción B la mantiene fuera). Sin el filtro DI de la
+//   rama pill-only, Caro saldría [2,2] y el assert CA4 [1,1] truena.
+cot(1505, 1, 105, 7000, 14);
+tap(1505, 1, 'postura', 'descartada', 6, 'otro');
+visita(1505, 2);
+DB::execute("INSERT INTO desc_int_activaciones (empresa_id, cotizacion_id, estado, expira_at, created_at)
+             VALUES (1,1505,'vencido',?,?)", [$d(1), $d(2)]);
 
 // A6 (1099): activa 25d virgen — SIN DI sería +1 activa, +1 sin_trabajar,
 //   +1 se_fueron ($99k). Con DI ACTIVO, Opción B la saca de la cartera del
