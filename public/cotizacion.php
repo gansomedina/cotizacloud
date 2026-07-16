@@ -393,6 +393,15 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
 }
 skip_tracking:
 
+// ── Asesor logueado (interno): cargar el DI activo solo para MOSTRARLO ──
+// Ve la fila del descuento en el Resumen y el total correcto en el modal de
+// aceptar (caso mostrador: el cliente llega a la oficina y el asesor acepta
+// por él). NUNCA evalúa ni activa — solo lee el contrato que la visita del
+// cliente ya creó. El banner flotante se le oculta (gate !$es_usuario_interno).
+if ($di_act === null && $es_usuario_interno) {
+    try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
+}
+
 // ─── Helpers locales ─────────────────────────────────────
 function fmt_pub(float $n, string $moneda = 'MXN'): string {
     return '$' . number_format($n, 2, '.', ',');
@@ -966,6 +975,22 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <div class="tr"><span class="tl"><?= e($cot['impuesto_label'] ?: ($cot['emp_impuesto_label'] ?? 'IVA')) ?> (<?= (float)$cot['impuesto_pct'] ?>%)</span><span class="tv"><?= fmt_pub($impuesto_amt) ?></span></div>
     <?php endif; ?>
     <div class="tr tf"><span class="tl">Total</span><span class="tv" id="tTot"><?= fmt_pub($total_base) ?></span></div>
+    <?php // ── Descuento Inteligente ACTIVO: reflejarlo en el Resumen (mismos
+          //    números frozen del contrato — banner, modal y accept dicen igual).
+          //    nuevo_total es SIN extras; el total mostrado los suma, idéntico
+          //    al $total_guardar del accept. ──
+    if ($di_act && ($di_act['estado'] ?? '') === 'activo'
+        && in_array($cot['estado'], ['enviada','vista'])
+        && strtotime($di_act['expira_at']) > time()): ?>
+    <div class="tr td">
+      <span class="tl">✨ Descuento Inteligente (<?= rtrim(rtrim(number_format((float)$di_act['pct'], 1), '0'), '.') ?>%)</span>
+      <span class="tv">-<?= fmt_pub((float)$di_act['monto_desc']) ?></span>
+    </div>
+    <div class="tr tf">
+      <span class="tl">Total con descuento</span>
+      <span class="tv"><?= fmt_pub((float)$di_act['nuevo_total'] + $subtotal_extras) ?></span>
+    </div>
+    <?php endif; ?>
   </div>
 
   <!-- CRONÓMETRO descuento automático -->
@@ -1333,7 +1358,10 @@ if ($fb_render):
 
 <?php
 // ═══ Banner de Descuento Inteligente (flotante, sigue el scroll) ═══
+// El interno NO recibe el banner (solo la fila del Resumen y el modal de
+// aceptar) — el popup es pitch de venta para el cliente, ruido para el asesor.
 if ($di_act && ($di_act['estado'] ?? '') === 'activo'
+    && !$es_usuario_interno
     && in_array($estado, ['enviada','vista'])
     && strtotime($di_act['expira_at']) > time()):
   $di_antes = (float)$di_act['precio_original'];
