@@ -440,7 +440,10 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       a la mitad de tu ciclo de venta. Pasarte del límite la pone <b>🔴 sin seguimiento</b> y cada día acumula
       descuento de puntos a tu termómetro. Te pones al corriente con un <b>contacto declarado</b> (Hablamos / No contestó);
       la <b>cita</b> es aparte: solo se resuelve registrando el desenlace o re-citando tras hablar. El ⏰ es tu huella:
-      los días vencidos que ya acumulaste — no se borran al tocar, se drenan solos con los días.</p>
+      los días vencidos que ya acumulaste — no se borran al tocar, se drenan solos con los días.
+      <b>¿Todo sigue igual con el cliente? Re-tapea "Hablamos" (o "No contestó") después de cada toque, aunque
+      la pill ya esté en verde</b> — cada tap se guarda con su fecha y ESO resetea tu límite. Tu postura y tu
+      manita no se tocan si no cambió nada: repetir tu opinión no es seguimiento, hablar con el cliente sí.</p>
       <p style="margin:0 0 8px"><b>¿Qué pasa mañana con lo de hoy?</b> Las que trabajaste hoy vuelven a
       <b>En seguimiento</b> (con "hace 1d", frescas) — NO se castigan, conservan su calificación y siguen contando.
       Un trato no se cierra por tocarlo una vez; se nutre hasta que cae. Las que crucen tu ventana ya trabajadas
