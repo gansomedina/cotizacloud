@@ -217,6 +217,15 @@ require_once MODULES_PATH . '/radar/Radar.php';
 // goto skip_tracking (los internos saltan el tracking y dejarían $di_act sin definir)
 $di_act = null;
 
+// ¿Esta visita fue filtrada como INTERNA por CUALQUIER capa? (Capa 0 sesión,
+// Capa 1 cz_vid, Capa 3 bot). Se pone en true en cada goto skip_tracking. Se usa
+// después del skip para: (a) cargar el DI SOLO para mostrarlo al asesor, y (b)
+// ocultarle el banner flotante. Es MÁS AMPLIO que $es_usuario_interno: en dominio
+// custom la sesión (.cotiza.cloud) no viaja → el asesor NO es Capa 0, es Capa 1
+// (su cz_vid quedó en la lista por el bridge). Sin esto, el asesor en dominio
+// custom no veía la tabla del DI (bug reportado).
+$interno_detectado = false;
+
 // ── CAPA 0: Usuario logueado de esta empresa o superadmin ────────────
 // Es la verificación más importante y debe ser la primera.
 // Certeza absoluta: conocemos usuario_id, IP, UA y visitor_id.
@@ -240,6 +249,7 @@ if ($es_usuario_interno) {
     }
     escudo_log_decision('capa_0_logueado', (int)$cot['id'], (int)$cot['empresa_id'], $visitor_id_cookie ?: null, $ip, $ua, $dsig_cookie ?: null);
     // No registrar visita ni eventos — salir
+    $interno_detectado = true;
     goto skip_tracking;
 }
 
@@ -250,6 +260,7 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         // El asesor abrió esto antes logueado — su UUID ya está en la lista negra
         if ($visitor_id_cookie !== '' && Radar::es_visitor_interno((int)$cot['empresa_id'], $visitor_id_cookie)) {
             escudo_log_decision('capa_1_vid_interno', (int)$cot['id'], (int)$cot['empresa_id'], $visitor_id_cookie, $ip, $ua, $dsig_cookie ?: null);
+            $interno_detectado = true;
             goto skip_tracking;
         }
 
@@ -262,6 +273,7 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         foreach (Radar::BOT_IP as $prefix) {
             if (str_starts_with($ip, $prefix)) {
                 escudo_log_decision('capa_3_bot', (int)$cot['id'], (int)$cot['empresa_id'], $visitor_id_cookie ?: null, $ip, $ua, $dsig_cookie ?: null);
+                $interno_detectado = true; // bot: nunca banner (aunque tampoco renderiza)
                 goto skip_tracking;
             }
         }
@@ -398,12 +410,14 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
 }
 skip_tracking:
 
-// ── Asesor logueado (interno): cargar el DI activo solo para MOSTRARLO ──
+// ── Interno (CUALQUIER capa): cargar el DI activo solo para MOSTRARLO ──
 // Ve la fila del descuento en el Resumen y el total correcto en el modal de
 // aceptar (caso mostrador: el cliente llega a la oficina y el asesor acepta
-// por él). NUNCA evalúa ni activa — solo lee el contrato que la visita del
-// cliente ya creó. El banner flotante se le oculta (gate !$es_usuario_interno).
-if ($di_act === null && $es_usuario_interno) {
+// por él). NUNCA evalúa ni activa — solo LEE el contrato que la visita del
+// cliente ya creó (vigente() es read-only). Cubre Capa 0 (sesión) Y Capa 1
+// (cz_vid en dominio custom, donde la sesión no viaja). El banner flotante se
+// le oculta aparte (gate !$interno_detectado).
+if ($di_act === null && $interno_detectado) {
     try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
 }
 
@@ -1366,7 +1380,7 @@ if ($fb_render):
 // El interno NO recibe el banner (solo la fila del Resumen y el modal de
 // aceptar) — el popup es pitch de venta para el cliente, ruido para el asesor.
 if ($di_act && ($di_act['estado'] ?? '') === 'activo'
-    && !$es_usuario_interno
+    && !$interno_detectado
     && in_array($estado, ['enviada','vista'])
     && strtotime($di_act['expira_at']) > time()):
   $di_antes = (float)$di_act['precio_original'];
