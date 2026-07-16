@@ -604,7 +604,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
 .sbox{background:var(--glt);border:1px solid var(--gbd);border-radius:var(--r);padding:14px 18px;font-size:14px;color:var(--g)}
 
 /* Modales */
-.ov{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .22s}
+.ov{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .22s}
 .ov.on{opacity:1;pointer-events:all}
 .modal{background:var(--white);border-radius:16px 16px 0 0;border-top:2px solid var(--text);padding:20px 20px 48px;width:100%;max-width:520px;transform:translateY(100%);transition:transform .28s cubic-bezier(.32,0,.15,1);max-height:92vh;overflow-y:auto}
 .ov.on .modal{transform:translateY(0)}
@@ -1523,6 +1523,11 @@ function calc(){
 
 // ─── Modales ─────────────────────────────────────────────
 function openM(id){
+    // El banner del DI vive pegado abajo (z 520) y el sheet también:
+    // ocultarlo mientras el modal está abierto — tapaba el botón de
+    // confirmar y el cliente no podía aceptar ("como deshabilitado")
+    var _dib = document.getElementById('diBanner');
+    if (_dib) _dib.style.display = 'none';
     if (id === 'acceptOv') {
         let h;
         if (DI.active) {
@@ -1557,7 +1562,11 @@ function openM(id){
     document.getElementById(id).classList.add('on');
     if(window.czTrack) window.czTrack(id === 'acceptOv' ? 'accept_open' : 'reject_open');
 }
-function closeM(id){ document.getElementById(id).classList.remove('on'); }
+function closeM(id){
+    document.getElementById(id).classList.remove('on');
+    var _dib = document.getElementById('diBanner');
+    if (_dib) _dib.style.display = '';
+}
 
 // ─── Aceptar ─────────────────────────────────────────────
 async function doAcc(){
