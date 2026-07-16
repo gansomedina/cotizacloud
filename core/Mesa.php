@@ -141,7 +141,7 @@ class Mesa
         }
 
         // Estados declarados en la mesa (última declaración por área)
-        $me = []; $nc = [];
+        $me = []; $nc = []; $con_real = [];
         try {
             foreach (DB::query(
                 "SELECT m.cotizacion_id, m.area, m.estado, m.razon, m.created_at
@@ -166,6 +166,21 @@ class Mesa
                 $cid = (int)$r['cotizacion_id'];
                 if ($r['estado'] === 'hablamos') $nc[$cid] = 0;
                 else $nc[$cid] = ($nc[$cid] ?? 0) + 1;
+            }
+            // Último 'Hablamos' REAL (no-auto) por cotización. El re-anclaje de
+            // la cita firme mira ESTE, no el contacto vigente: el implícito de
+            // 24h del endpoint (razon='auto') podía taparlo y una cita
+            // legítimamente pospuesta (Hablamos real >24h antes de re-citar)
+            // quedaba 'vencida' (regresión cazada por verificación 16-jul).
+            foreach (DB::query(
+                "SELECT cotizacion_id, MAX(created_at) AS at
+                 FROM mesa_estados
+                 WHERE empresa_id = ? AND cotizacion_id IN ($in) AND area = 'contacto'
+                   AND estado = 'hablamos' AND (razon IS NULL OR razon <> 'auto')
+                 GROUP BY cotizacion_id",
+                [$empresa_id]
+            ) as $r) {
+                $con_real[(int)$r['cotizacion_id']] = $r['at'];
             }
         } catch (Throwable $e) {} // tabla aún no migrada
 
@@ -417,14 +432,15 @@ class Mesa
                         && isset($cita_anc[$cid]);
                 if ($es_cita) {
                     // CITA = FIRME: ancla al inicio de la racha; solo la re-ancla
-                    // una re-cita VÁLIDA (Hablamos estrictamente posterior a la
-                    // racha + re-declaración de la cita tras ese Hablamos — la
-                    // pospusieron de verdad). El > estricto descarta el Hablamos
+                    // una re-cita VÁLIDA (Hablamos REAL estrictamente posterior a
+                    // la racha + re-declaración de la cita tras ese Hablamos — la
+                    // pospusieron de verdad). Se usa el último Hablamos NO-auto
+                    // ($con_real), no el contacto vigente: un implícito posterior
+                    // (razon='auto') tapaba al Hablamos real y la cita pospuesta
+                    // quedaba 'vencida'. El > estricto descarta el Hablamos
                     // implícito del mismo segundo en que se declaró la cita.
                     $ancla  = (int)strtotime($cita_anc[$cid]);
-                    $con_at = ($con_d && $con_d['estado'] === 'hablamos'
-                               && ($con_d['razon'] ?? null) !== 'auto') // el implícito del endpoint NO re-ancla
-                             ? (int)strtotime($con_d['at']) : 0;
+                    $con_at = isset($con_real[$cid]) ? (int)strtotime($con_real[$cid]) : 0;
                     $com_at = (int)strtotime($me[$cid]['compromiso']['at']);
                     if ($con_at > $ancla && $com_at > $con_at) $ancla = $con_at;
                 } else {
