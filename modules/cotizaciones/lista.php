@@ -114,6 +114,8 @@ $rows = DB::query(
             c.descuento_auto_activo, c.descuento_auto_amt,
             (SELECT di.estado FROM desc_int_activaciones di
              WHERE di.cotizacion_id = c.id ORDER BY di.id DESC LIMIT 1) AS di_estado,
+            (SELECT di2.expira_at FROM desc_int_activaciones di2
+             WHERE di2.cotizacion_id = c.id ORDER BY di2.id DESC LIMIT 1) AS di_expira,
             (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_validate_click') AS cupon_intentos,
             (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_valid') AS cupon_validos,
             (SELECT COUNT(*) FROM quote_events qe WHERE qe.cotizacion_id = c.id AND qe.tipo = 'coupon_invalid') AS cupon_invalidos,
@@ -463,8 +465,26 @@ foreach ($chips as $k => $lbl):
             'vencido'   => ['Tuvo Descuento Inteligente (venció sin usarse)',  '#a8a29e', '#f5f5f4'],
             'cancelado' => ['Tuvo Descuento Inteligente (quitado por admin)',  '#a8a29e', '#f5f5f4'],
         ];
+        $di_lbl = '✨ DI';
+        $di_exp = !empty($c['di_expira']) ? strtotime($c['di_expira']) : 0;
+        if ($c['di_estado'] === 'activo' && $di_exp) {
+            $di_min = (int)floor(($di_exp - time()) / 60);
+            if ($di_min > 0) {
+                // Cuenta regresiva real: el reloj del cliente corre
+                $di_lbl = '✨ DI ' . ($di_min >= 60 ? floor($di_min / 60) . 'h' : $di_min . 'm');
+                $di_map['activo'][0] = 'DI vigente — vence el ' . date('d/m H:i', $di_exp)
+                                     . ' (quedan ' . ($di_min >= 60 ? floor($di_min / 60) . 'h ' . ($di_min % 60) . 'm' : $di_min . ' min') . ')';
+            } else {
+                // activo con expira_at pasado = venció y nadie ha recargado el
+                // slug (el lazy-expiry corre en la visita) — mostrar la verdad
+                $c['di_estado'] = 'vencido';
+            }
+        }
+        if ($c['di_estado'] === 'vencido' && $di_exp) {
+            $di_map['vencido'][0] = 'Tuvo Descuento Inteligente — venció el ' . date('d/m H:i', $di_exp) . ' sin usarse';
+        }
         [$di_ttl, $di_col, $di_bg] = $di_map[$c['di_estado']] ?? ['Descuento Inteligente', '#b45309', '#fef3c7'];
-        $di_html = '<span title="'.e($di_ttl).'" style="font:600 11px var(--body);color:'.$di_col.';background:'.$di_bg.';border-radius:5px;padding:2px 7px;white-space:nowrap">✨ DI</span>';
+        $di_html = '<span title="'.e($di_ttl).'" style="font:600 11px var(--body);color:'.$di_col.';background:'.$di_bg.';border-radius:5px;padding:2px 7px;white-space:nowrap">'.e($di_lbl).'</span>';
     }
     $ed_url = '/cotizaciones/'.(int)$c['id'];
   ?>
