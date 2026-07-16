@@ -66,6 +66,8 @@ CREATE TABLE clientes (id INT UNSIGNED PRIMARY KEY, nombre VARCHAR(100), telefon
 CREATE TABLE ventas (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, cotizacion_id INT UNSIGNED,
   empresa_id INT UNSIGNED NOT NULL, total DECIMAL(12,2) NOT NULL DEFAULT 0,
+  pagado DECIMAL(12,2) NOT NULL DEFAULT 0,
+  usuario_id INT UNSIGNED NULL, vendedor_id INT UNSIGNED NULL,
   estado VARCHAR(20) NOT NULL DEFAULT 'activa', created_at DATETIME NOT NULL
 );
 CREATE TABLE mesa_estados (
@@ -132,10 +134,13 @@ function hotbt(int $cot, float $hace_d): void {
     DB::execute("INSERT INTO bucket_transitions (cotizacion_id, bucket_nuevo, created_at) VALUES (?,?,?)",
         [$cot, 'probable_cierre', $d($hace_d)]);
 }
-function venta(int $cot, int $emp, float $total, float $hace_d): void {
+function venta(int $cot, int $emp, float $total, float $hace_d, float $pagado = -1): void {
     global $d;
-    DB::execute("INSERT INTO ventas (cotizacion_id, empresa_id, total, estado, created_at) VALUES (?,?,?,'activa',?)",
-        [$cot, $emp, $total, $d($hace_d)]);
+    // pagado default = total (venta cobrada): la columna 💰 Ventas del reporte
+    // solo cuenta pagado > 0 (regla del sistema 14-may). Atribución: el reporte
+    // cae a COALESCE(...c2.vendedor_id, c2.usuario_id) — vendedor de la cot.
+    DB::execute("INSERT INTO ventas (cotizacion_id, empresa_id, total, pagado, estado, created_at) VALUES (?,?,?,?,'activa',?)",
+        [$cot, $emp, $total, $pagado < 0 ? $total : $pagado, $d($hace_d)]);
 }
 function visita(int $cot, float $hace_d, int $vis = 5000, int $scr = 80): void {
     global $d;
@@ -217,6 +222,17 @@ fb(1096, 101, 1, 'sin_interes', 8);
 visita(1096, 3);
 DB::execute("INSERT INTO desc_int_activaciones (empresa_id, cotizacion_id, estado, expira_at, created_at)
              VALUES (1,1096,'activo',?,?)", [$d(-1), $d(0.5)]);
+// A8 (1094): DI ACTIVO con TRABAJO DECLARADO — hablamos + compromiso + postura
+//   hace 3d. Regla única DI (decisión CEO 16-jul): sale de TODOS los bloques —
+//   toques, pláticas, desenlaces, examen y postura. Sin la exclusión, Ana
+//   saldría con hablamos=6, hablamos_cots=5, con_compromiso=4 y postura
+//   interesada=1 → truenan los asserts de abajo.
+cot(1094, 1, 101, 17000, 24);
+tap(1094, 1, 'contacto', 'hablamos', 3);
+tap(1094, 1, 'compromiso', 'compromiso', 3);
+tap(1094, 1, 'postura', 'interesada', 3);
+DB::execute("INSERT INTO desc_int_activaciones (empresa_id, cotizacion_id, estado, expira_at, created_at)
+             VALUES (1,1094,'activo',?,?)", [$d(-1), $d(0.5)]);
 // C1 (1010): acuerdo 7d, cliente ABRIÓ 6d (cumplido vía visita).
 cot(1010, 1, 101, 22000, 12);
 tap(1010, 1, 'contacto', 'hablamos', 7);
@@ -370,6 +386,15 @@ chk('cumplidos: 2 de 2 maduros (V1 venta a 5d, C1 visita a 1d) + 1 en curso (C2)
 chk('postura: descartada=1 (A4)', $ana['postura'] ?? [], ['descartada' => 1]);
 chk('revividos: 1 de 1 (A4; el 👎 de tercero en A1 NO cuenta)', [$ana['revividos'] ?? -1, $ana['descartes'] ?? -1], [1, 1]);
 chk('recuperado Ana: $30,000 (1) — V2 sí, V3 (corregida a 👍) no', [$ana['rec_n'] ?? -1, $ana['rec_monto'] ?? -1], [1, 30000.0]);
+// ── Campos NUEVOS del rediseño (16-jul): resultado + valor + drill-down ──
+chk('💰 Ventas Ana: 4 · $120,000 (V1+V2+V3+V5; la DI SÍ suma aquí — es dinero, solo no es mérito de mesa)',
+    [$ana['ventas_n'] ?? -1, $ana['ventas_monto'] ?? -1], [4, 120000.0]);
+chk('monto_activas Ana: $99,000 (las 7 activas valoradas)', $ana['monto_activas'] ?? -1, 99000.0);
+$stc = $ana['sin_trabajar_cots'] ?? []; sort($stc);
+chk('drill-down sin_trabajar: folios A1 y A2', $stc, ['COT-1001', 'COT-1002']);
+$sfc = $ana['se_fueron_cots'] ?? [];
+chk('drill-down se_fueron: folio A2', $sfc, ['COT-1002']);
+chk('drill-down mesa sin calificar: 1 folio con falla', count($ana['fallas_cots'] ?? []), 1);
 
 echo "═ BETO — el que no hace nada ═\n";
 chk('aparece con activas=1, sin_calificar=1, sin_trabajar=1 ($40k)', [$bet['activas'] ?? -1, $bet['sin_calificar'] ?? -1, $bet['sin_trabajar'] ?? -1, $bet['monto_sin_trabajar'] ?? -1], [1, 1, 1, 40000.0]);
@@ -388,8 +413,8 @@ chk('D: sin filas de mesa (descartadas viejas / nunca abiertas) → 0 de 0', [$d
 chk('D3: acuerdo vigente viejo + plática nueva cuenta A FAVOR → 2 de 2', [$dor['con_compromiso'] ?? -1, $dor['hablamos_cots'] ?? -1], [2, 2]);
 chk('D4 re-tap no borra reprobado + D3 acuerdo viejo con plática nueva ENTRA al examen → 2 maduros, 0 cumplidos',
     [$dor['comp_maduros'] ?? -1, $dor['comp_cumplidos'] ?? -1, $dor['comp_en_curso'] ?? -1], [2, 0, 0]);
-chk('D: revividos 1 de 2 (D1 ancla fallback; bt viejo de D2 no arrastra; D6 re-tapeado con episodio -45d NO entra al período)',
-    [$dor['revividos'] ?? -1, $dor['descartes'] ?? -1], [1, 2]);
+chk('D: revividos 0 de 2 — TOPE 7 DÍAS (decisión CEO 16-jul, regla de la ⚡): la vista de D1 fue hace 8d → ya no cuenta como revivida (antes contaba sin tope y no cuadraba con la mesa)',
+    [$dor['revividos'] ?? -1, $dor['descartes'] ?? -1], [0, 2]);
 chk('D: postura = descartada 2 (D1, D5) + decidiendo 1 (V4)', $dor['postura'] ?? [], ['decidiendo' => 1, 'descartada' => 2]);
 chk('V4 (👎 corregido vía postura) NO recuperada para Dora', $dor['rec_n'] ?? -1, 0);
 
@@ -402,9 +427,11 @@ echo "═ HELPER cobertura_senales (fuente única del score/widget) ═\n";
 $cob_ana = Mesa::cobertura_senales(1, 101, 30);
 chk('Ana por-vendedor = su fila del reporte (2 visibles, 1 atendida, 1 falla)',
     [$cob_ana['pedidas'], $cob_ana['atendidas'], $cob_ana['fallas']], [2, 1, 1]);
-chk('vendedor sin señales → ceros', Mesa::cobertura_senales(1, 102, 30), ['pedidas' => 0, 'atendidas' => 0, 'fallas' => 0]);
+chk('vendedor sin señales → ceros (fallas_cots para el drill-down del reporte)',
+    Mesa::cobertura_senales(1, 102, 30), ['pedidas' => 0, 'atendidas' => 0, 'fallas' => 0, 'fallas_cots' => []]);
 $det_ana = Mesa::cobertura_detalle(1, 101, 30);
-chk('detalle de Ana: 5 episodios (incluye el de ventana abierta)', count($det_ana), 5);
+chk('detalle de Ana REALINEADO a fuente única (auditoría 16-jul): lista las MISMAS 2 filas que cuenta el contador (antes: 5 episodios de bucket_transitions que nunca cuadraban)', count($det_ana), 2);
+chk('detalle de Ana: pendientes primero, con qué falta', [$det_ana[0]['atendida'] ?? -1, ($det_ana[0]['falta'] ?? '') !== ''], [0, true]);
 
 echo "═ AISLAMIENTO entre empresas ═\n";
 chk('empresa 1 no incluye a Carla', isset($rep['asesores'][201]), false);

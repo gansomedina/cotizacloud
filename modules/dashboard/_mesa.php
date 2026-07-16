@@ -815,139 +815,178 @@ function mesaDesagendar(cotId, btn){
            style="margin-left:4px;padding:2px 10px;border-radius:12px;text-decoration:none;font-weight:700;
                   <?= $act ? 'background:#1a5c38;color:#fff' : 'background:#f4f4f0;color:#4a4a46;border:1px solid #e2e2dc' ?>"><?= $md ?>d</a>
         <?php endforeach; ?>
-        <span style="margin-left:8px;color:#a8a8a2">la cartera y las señales 🔥 son la foto de HOY (lo que la mesa muestra); el período aplica a trabajo y recuperado</span>
+        <span style="margin-left:8px;color:#a8a8a2">⚠️ Cartera, Sin calificar/trabajar, Se le fueron y Mesa sin calificar son la <b>foto de HOY</b> — no cambian con el período; el período aplica a Ventas, toques, pláticas, acuerdos, cumplidos, revividos y Recuperado</span>
       </div>
       <?php if (!$mrep['asesores']): ?>
         <div style="color:#6a6a64">Sin cotizaciones activas ni capturas — el reporte se llena conforme hay cartera y se usa la mesa.</div>
       <?php else: ?>
 
-      <div style="font-weight:800;font-size:11px;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Cartera hoy — lo que tiene y lo que NO ha hecho</div>
-      <div style="overflow-x:auto;margin-bottom:14px">
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:820px">
+      <?php
+      // ── TABLA UNIFICADA (decisión CEO 16-jul): una fila por asesor con
+      //    resultado (ventas) + cartera + trabajo. Totales del equipo al pie. ──
+      $mfolios = function (array $nums, string $lbl = '¿cuáles?'): string {
+          if (!$nums) return '';
+          $h = '<details style="display:inline-block;vertical-align:top"><summary style="cursor:pointer;color:#1a5c38;font-size:11px;list-style:none">' . $lbl . '</summary><div style="font-size:11.5px;color:#4a4a46;padding:2px 0;white-space:normal;max-width:220px">';
+          foreach ($nums as $nn) $h .= '<div>' . e((string)$nn) . '</div>';
+          return $h . '</div></details>';
+      };
+      $tot = ['ventas_n'=>0,'ventas_monto'=>0.0,'activas'=>0,'monto_activas'=>0.0,'sin_calificar'=>0,
+              'sin_trabajar'=>0,'monto_sin_trabajar'=>0.0,'se_fueron'=>0,'monto_se_fueron'=>0.0,
+              'hot_total'=>0,'hot_desatendidas'=>0,'hablamos'=>0,'no_contesta'=>0,'hablamos_cots'=>0,
+              'con_compromiso'=>0,'citas'=>0,'no_quiso'=>0,'sin_compromiso'=>0,
+              'comp_maduros'=>0,'comp_cumplidos'=>0,'comp_en_curso'=>0,
+              'descartes'=>0,'revividos'=>0,'rec_n'=>0,'rec_monto'=>0.0];
+      foreach ($mrep['asesores'] as $ru) { foreach ($tot as $tk => $tv) $tot[$tk] += $ru[$tk] ?? 0; }
+      $mth = 'padding:4px 8px;white-space:nowrap';
+      $mtd = 'padding:7px 8px;white-space:nowrap;vertical-align:top';
+      ?>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:1180px">
         <thead><tr style="text-align:left;color:#a8a8a2;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">
           <th style="padding:4px 8px 4px 0">Asesor</th>
-          <th style="padding:4px 8px">Activas</th>
-          <th style="padding:4px 8px">Sin calificar</th>
-          <th style="padding:4px 8px">Sin trabajar</th>
-          <th style="padding:4px 8px">Se le fueron</th>
-          <th style="padding:4px 8px">Señales 🔥 desatendidas</th>
+          <th style="<?= $mth ?>" title="Ventas del período con pago recibido. Es el RESULTADO — todo lo demás es el camino.">💰 Ventas</th>
+          <th style="<?= $mth ?>" title="Cotizaciones vivas asignadas HOY y su valor. No cambia con el período.">Cartera hoy</th>
+          <th style="<?= $mth ?>" title="De su cartera, cuántas no tienen NINGÚN juicio (ni manita 👍👎 ni postura). Foto de hoy.">Sin calificar</th>
+          <th style="<?= $mth ?>" title="De su cartera, cuántas no tienen UNA SOLA captura ni calificación — nadie las está tocando. Foto de hoy.">Sin trabajar</th>
+          <th style="<?= $mth ?>" title="Pasaron la ventana de cierre y llevan días sin ninguna atención (captura, manita, edición o reenvío). Mide atención, no ventas. Foto de hoy.">Se le fueron</th>
+          <th style="<?= $mth ?>" title="Filas visibles HOY en su mesa a las que falta manita y/o postura. Mismo número que examina el termómetro.">Mesa sin calificar</th>
+          <th style="<?= $mth ?>" title="Toques de contacto declarados en el período: Hablamos vs No contesta. Verde desde 50%.">Le contesta</th>
+          <th style="<?= $mth ?>" title="De sus pláticas del período, en cuántas el desenlace vigente es 'Quedamos en algo' o 'Nos citamos'. Verde desde 40%.">Acuerdos</th>
+          <th style="<?= $mth ?>" title="De sus pláticas del período, cuántas terminaron en cita agendada (física, virtual o telefónica).">📅 Citas</th>
+          <th style="<?= $mth ?>" title="Pláticas cuyo desenlace vigente es 'No quiso' o 'Sin compromiso' — la mitad negativa del embudo.">Mueren</th>
+          <th style="<?= $mth ?>" title="De los acuerdos con 5+ días, en cuántos el cliente SE MOVIÓ en los 5 días siguientes (abrió o compró). Verde desde 50%.">Cumplidos</th>
+          <th style="<?= $mth ?>" title="Descartes del período que el cliente recalentó en los últimos 7 días (misma regla que la ⚡ de la mesa).">👎 Revividos</th>
+          <th style="<?= $mth ?>;text-align:right" title="Ventas del período cuya cotización YA estaba descartada — dinero que se daba por muerto.">Recuperado</th>
         </tr></thead>
         <tbody>
-        <?php foreach ($mrep['asesores'] as $ru): ?>
+        <?php foreach ($mrep['asesores'] as $ru):
+            $toques  = $ru['hablamos'] + $ru['no_contesta'];
+            $pos_tot = array_sum($ru['postura']);
+            $acuerdos = (int)$ru['con_compromiso'] + (int)($ru['citas'] ?? 0);
+            $mueren   = (int)($ru['no_quiso'] ?? 0) + (int)($ru['sin_compromiso'] ?? 0);
+        ?>
         <tr style="border-top:1px solid #eeeee9;vertical-align:top">
-          <td style="padding:7px 8px 7px 0;font-weight:700;white-space:nowrap"><?= e($ru['nombre'] ?: '—') ?></td>
-          <td style="padding:7px 8px"><b><?= (int)$ru['activas'] ?></b></td>
-          <td style="padding:7px 8px;white-space:nowrap">
+          <td style="padding:7px 8px 7px 0;font-weight:700;white-space:nowrap"><?= e($ru['nombre'] ?: '—') ?>
+            <?php if ($pos_tot): $pz = [];
+                foreach ($ru['postura'] as $pe => $pn) $pz[] = e($MESA_SHORT[$pe] ?? $pe) . ' ' . $mpct($pn, $pos_tot);
+            ?><div style="font-weight:400;font-size:10.5px;color:#a8a8a2;white-space:normal;max-width:150px" title="¿Cómo lo ve? — su última lectura declarada por cotización, en el período"><?= implode(' · ', $pz) ?></div>
+            <?php endif; ?>
+          </td>
+          <td style="<?= $mtd ?>">
+            <?php if ($ru['ventas_n']): ?><b style="color:#15803d"><?= (int)$ru['ventas_n'] ?> · <?= $mmoney($ru['ventas_monto']) ?></b>
+            <?php else: ?><span style="color:#b91c1c;font-weight:700">0 ventas</span><?php endif; ?>
+          </td>
+          <td style="<?= $mtd ?>"><b><?= (int)$ru['activas'] ?></b> · <?= $mmoney($ru['monto_activas']) ?></td>
+          <td style="<?= $mtd ?>">
             <?php if ($ru['sin_calificar']): ?>
               <span style="color:#dc2626;font-weight:700"><?= (int)$ru['sin_calificar'] ?></span> de <?= (int)$ru['activas'] ?>
               (<?= $mpct($ru['sin_calificar'], $ru['activas']) ?>)
             <?php else: ?><span style="color:#16a34a;font-weight:700">0 ✓</span><?php endif; ?>
           </td>
-          <td style="padding:7px 8px;white-space:nowrap">
+          <td style="<?= $mtd ?>">
             <?php if ($ru['sin_trabajar']): ?>
               <span style="color:#dc2626;font-weight:700"><?= (int)$ru['sin_trabajar'] ?></span>
-              · <?= $mmoney($ru['monto_sin_trabajar']) ?>
+              · <?= $mmoney($ru['monto_sin_trabajar']) ?> <?= $mfolios($ru['sin_trabajar_cots'] ?? []) ?>
             <?php else: ?><span style="color:#16a34a;font-weight:700">0 ✓</span><?php endif; ?>
           </td>
-          <td style="padding:7px 8px;white-space:nowrap">
+          <td style="<?= $mtd ?>">
             <?php if ($ru['se_fueron']): ?>
               <span style="color:#b91c1c;font-weight:800"><?= (int)$ru['se_fueron'] ?></span>
-              · <?= $mmoney($ru['monto_se_fueron']) ?>
+              · <?= $mmoney($ru['monto_se_fueron']) ?> <?= $mfolios($ru['se_fueron_cots'] ?? []) ?>
             <?php else: ?><span style="color:#16a34a;font-weight:700">0 ✓</span><?php endif; ?>
           </td>
-          <td style="padding:7px 8px;white-space:nowrap">
+          <td style="<?= $mtd ?>">
             <?php if ($ru['hot_total']): ?>
               <span style="<?= $ru['hot_desatendidas'] > 0 ? 'color:#b91c1c;font-weight:800' : 'color:#16a34a;font-weight:700' ?>"><?= (int)$ru['hot_desatendidas'] ?></span> de <?= (int)$ru['hot_total'] ?>
-            <?php else: ?><span style="color:#a8a8a2">sin señales</span><?php endif; ?>
+              <?= $mfolios($ru['fallas_cots'] ?? []) ?>
+            <?php else: ?><span style="color:#a8a8a2">mesa vacía</span><?php endif; ?>
           </td>
-        </tr>
-        <?php endforeach; ?>
-        </tbody>
-      </table>
-      </div>
-
-      <div style="font-weight:800;font-size:11px;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Trabajo declarado — últimos <?= (int)$mrep['dias'] ?> días</div>
-      <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:820px">
-        <thead><tr style="text-align:left;color:#a8a8a2;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em">
-          <th style="padding:4px 8px 4px 0">Asesor</th>
-          <th style="padding:4px 8px">Le contesta</th>
-          <th style="padding:4px 8px">Genera compromiso</th>
-          <th style="padding:4px 8px">Compromisos cumplidos</th>
-          <th style="padding:4px 8px">¿Cómo lo ve?</th>
-          <th style="padding:4px 8px">👎 que revivieron</th>
-          <th style="padding:4px 8px;text-align:right">Recuperado</th>
-        </tr></thead>
-        <tbody>
-        <?php foreach ($mrep['asesores'] as $ru):
-            $toques = $ru['hablamos'] + $ru['no_contesta'];
-            $pos_tot = array_sum($ru['postura']);
-        ?>
-        <tr style="border-top:1px solid #eeeee9;vertical-align:top">
-          <td style="padding:7px 8px 7px 0;font-weight:700;white-space:nowrap"><?= e($ru['nombre'] ?: '—') ?></td>
-          <td style="padding:7px 8px;white-space:nowrap">
-            <?php if ($toques): ?><b><?= (int)$ru['hablamos'] ?></b> de <?= $toques ?> toques
+          <td style="<?= $mtd ?>">
+            <?php if ($toques): ?><b><?= (int)$ru['hablamos'] ?></b> de <?= $toques ?>
               <span style="color:<?= $ru['hablamos'] / $toques >= .5 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['hablamos'], $toques) ?>)</span>
-            <?php else: ?><span style="color:#dc2626;font-weight:700">sin toques declarados</span><?php endif; ?>
+            <?php else: ?><span style="color:#dc2626;font-weight:700">sin toques</span><?php endif; ?>
           </td>
-          <td style="padding:7px 8px;white-space:nowrap">
-            <?php if ($ru['hablamos_cots']): ?><b><?= (int)$ru['con_compromiso'] ?></b> de <?= (int)$ru['hablamos_cots'] ?> con plática
-              <span style="color:<?= ($ru['con_compromiso'] + ($ru['citas'] ?? 0)) / $ru['hablamos_cots'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['con_compromiso'], $ru['hablamos_cots']) ?>)</span><?php if (!empty($ru['citas'])): ?> · <b style="color:#1a5c38">📅 <?= (int)$ru['citas'] ?> cita<?= (int)$ru['citas'] > 1 ? 's' : '' ?></b><?php endif; ?>
+          <td style="<?= $mtd ?>">
+            <?php if ($ru['hablamos_cots']): ?><b><?= $acuerdos ?></b> de <?= (int)$ru['hablamos_cots'] ?>
+              <span style="color:<?= $acuerdos / $ru['hablamos_cots'] >= .4 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($acuerdos, $ru['hablamos_cots']) ?>)</span>
               <?php if ($ru['compromiso_cots']): ?>
               <details style="display:inline-block;vertical-align:top"><summary style="cursor:pointer;color:#1a5c38;font-size:11px;list-style:none">¿cuáles?</summary>
-                <div style="font-size:11.5px;color:#4a4a46;padding:2px 0">
+                <div style="font-size:11.5px;color:#4a4a46;padding:2px 0;white-space:normal;max-width:240px">
                 <?php foreach ($ru['compromiso_cots'] as $cc): ?>
-                  <div><?= ($cc['tipo'] ?? '') === 'cita' ? '📅 ' : '' ?><?= e($cc['numero']) ?> — <span style="<?= $cc['donde'] === 'vendida' || $cc['donde'] === 'aceptada' ? 'color:#15803d;font-weight:700' : ($cc['donde'] === 'activa' ? '' : 'color:#b91c1c') ?>"><?= e($cc['donde']) ?><?= $cc['donde'] !== 'activa' ? ' (ya no está en la mesa)' : '' ?></span></div>
+                  <div><?= ($cc['tipo'] ?? '') === 'cita' ? '📅 ' : '' ?><?= e($cc['numero']) ?> — <span style="<?= $cc['donde'] === 'vendida' || $cc['donde'] === 'aceptada' ? 'color:#15803d;font-weight:700' : ($cc['donde'] === 'activa' ? '' : 'color:#b91c1c') ?>"><?= e(ucfirst($cc['donde'])) ?><?= $cc['donde'] !== 'activa' ? ' (ya no está en la mesa)' : '' ?></span></div>
                 <?php endforeach; ?>
                 </div>
               </details>
               <?php endif; ?>
-            <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
+            <?php else: ?><span style="color:#a8a8a2">sin pláticas</span><?php endif; ?>
           </td>
-          <td style="padding:7px 8px;white-space:nowrap">
+          <td style="<?= $mtd ?>">
+            <?php if ($ru['hablamos_cots']): ?>
+              <?php if (!empty($ru['citas'])): ?><b style="color:#1a5c38">📅 <?= (int)$ru['citas'] ?></b>
+                <span style="font-weight:700">(<?= $mpct((int)$ru['citas'], $ru['hablamos_cots']) ?>)</span>
+              <?php else: ?><span style="color:#a8a8a2">0 (0%)</span><?php endif; ?>
+            <?php else: ?><span style="color:#a8a8a2">sin pláticas</span><?php endif; ?>
+          </td>
+          <td style="<?= $mtd ?>">
+            <?php if ($ru['hablamos_cots']): ?>
+              <?php if ($mueren): ?><span style="color:#b91c1c;font-weight:700"><?= $mueren ?></span> (<?= $mpct($mueren, $ru['hablamos_cots']) ?>)
+              <?php else: ?><span style="color:#16a34a;font-weight:700">0 ✓</span><?php endif; ?>
+            <?php else: ?><span style="color:#a8a8a2">sin pláticas</span><?php endif; ?>
+          </td>
+          <td style="<?= $mtd ?>">
             <?php if ($ru['comp_maduros']): ?><b><?= (int)$ru['comp_cumplidos'] ?></b> de <?= (int)$ru['comp_maduros'] ?>
-              (<?= $mpct($ru['comp_cumplidos'], $ru['comp_maduros']) ?>)<?= $ru['comp_en_curso'] ? ' · ' . (int)$ru['comp_en_curso'] . ' en curso' : '' ?>
+              <span style="color:<?= $ru['comp_cumplidos'] / $ru['comp_maduros'] >= .5 ? '#16a34a' : '#dc2626' ?>;font-weight:700">(<?= $mpct($ru['comp_cumplidos'], $ru['comp_maduros']) ?>)</span><?= $ru['comp_en_curso'] ? ' · ' . (int)$ru['comp_en_curso'] . ' en curso' : '' ?>
             <?php elseif ($ru['comp_en_curso']): ?><?= (int)$ru['comp_en_curso'] ?> en curso
-            <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
+            <?php else: ?><span style="color:#a8a8a2">sin acuerdos aún</span><?php endif; ?>
           </td>
-          <td style="padding:7px 8px">
-            <?php if ($pos_tot): $pz = [];
-                foreach ($ru['postura'] as $pe => $pn) $pz[] = e($MESA_SHORT[$pe] ?? $pe) . ' ' . $mpct($pn, $pos_tot);
-                echo implode(' · ', $pz);
-            ?><span style="color:#a8a8a2"> (<?= $pos_tot ?> cot.)</span>
-            <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
-          </td>
-          <td style="padding:7px 8px;white-space:nowrap">
+          <td style="<?= $mtd ?>">
             <?php if ($ru['descartes']): ?>
               <span style="<?= $ru['revividos'] > 0 ? 'color:#d97706;font-weight:700' : '' ?>"><?= (int)$ru['revividos'] ?> de <?= (int)$ru['descartes'] ?></span>
-            <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
+            <?php else: ?><span style="color:#a8a8a2">sin descartes</span><?php endif; ?>
           </td>
-          <td style="padding:7px 8px;text-align:right;white-space:nowrap">
+          <td style="<?= $mtd ?>;text-align:right">
             <?php if ($ru['rec_n']): ?><b style="color:#15803d"><?= $mmoney($ru['rec_monto']) ?></b> (<?= (int)$ru['rec_n'] ?>)
-            <?php else: ?><span style="color:#a8a8a2">—</span><?php endif; ?>
+            <?php else: ?><span style="color:#a8a8a2">$0</span><?php endif; ?>
           </td>
         </tr>
         <?php endforeach; ?>
+        <?php $ttoq = $tot['hablamos'] + $tot['no_contesta']; $tacu = $tot['con_compromiso'] + $tot['citas']; $tmue = $tot['no_quiso'] + $tot['sin_compromiso']; ?>
+        <tr style="border-top:2px solid #d6d6cf;vertical-align:top;background:#fafaf7;font-weight:700">
+          <td style="padding:7px 8px 7px 0;white-space:nowrap">EQUIPO</td>
+          <td style="<?= $mtd ?>"><?= (int)$tot['ventas_n'] ?> · <?= $mmoney($tot['ventas_monto']) ?></td>
+          <td style="<?= $mtd ?>"><?= (int)$tot['activas'] ?> · <?= $mmoney($tot['monto_activas']) ?></td>
+          <td style="<?= $mtd ?>"><?= (int)$tot['sin_calificar'] ?> de <?= (int)$tot['activas'] ?> (<?= $mpct($tot['sin_calificar'], $tot['activas']) ?>)</td>
+          <td style="<?= $mtd ?>"><?= (int)$tot['sin_trabajar'] ?> · <?= $mmoney($tot['monto_sin_trabajar']) ?></td>
+          <td style="<?= $mtd ?>"><?= (int)$tot['se_fueron'] ?> · <?= $mmoney($tot['monto_se_fueron']) ?></td>
+          <td style="<?= $mtd ?>"><?= (int)$tot['hot_desatendidas'] ?> de <?= (int)$tot['hot_total'] ?></td>
+          <td style="<?= $mtd ?>"><?= (int)$tot['hablamos'] ?> de <?= $ttoq ?> (<?= $mpct($tot['hablamos'], $ttoq) ?>)</td>
+          <td style="<?= $mtd ?>"><?= $tacu ?> de <?= (int)$tot['hablamos_cots'] ?> (<?= $mpct($tacu, $tot['hablamos_cots']) ?>)</td>
+          <td style="<?= $mtd ?>">📅 <?= (int)$tot['citas'] ?> (<?= $mpct($tot['citas'], $tot['hablamos_cots']) ?>)</td>
+          <td style="<?= $mtd ?>"><?= $tmue ?> (<?= $mpct($tmue, $tot['hablamos_cots']) ?>)</td>
+          <td style="<?= $mtd ?>"><?= (int)$tot['comp_cumplidos'] ?> de <?= (int)$tot['comp_maduros'] ?> (<?= $mpct($tot['comp_cumplidos'], $tot['comp_maduros']) ?>)</td>
+          <td style="<?= $mtd ?>"><?= (int)$tot['revividos'] ?> de <?= (int)$tot['descartes'] ?></td>
+          <td style="<?= $mtd ?>;text-align:right"><?= $mmoney($tot['rec_monto']) ?> (<?= (int)$tot['rec_n'] ?>)</td>
+        </tr>
         </tbody>
       </table>
       </div>
 
-      <div style="margin-top:10px;color:#6a6a64;font-size:11.5px;line-height:1.55">
-        <b>Cartera:</b>
-        <b>Activas</b>: cotizaciones vivas asignadas (enviadas/vistas, sin venta).
-        <b>Sin calificar</b>: activas donde el asesor no ha dado NINGÚN juicio (ni "¿Cómo lo ves?" ni 👍👎).
-        <b>Sin trabajar</b>: activas sin una sola captura en la mesa ni calificación 👍👎 — cartera que nadie está tocando, con su monto.
-        <b>Se le fueron</b>: pasaron la ventana de cierre (día <?= $mp75 ?>) y llevan <?= max(3, (int)ceil($mp75 / 2)) ?>+ días sin
-        ninguna atención — ni captura, ni calificación, ni edición/reenvío. Mide atención, no ventas: cerrar no depende
-        solo del asesor, pero tocarla sí. Descartarla con 👎 también cuenta (es una decisión) y la saca de esta columna.
-        <b>Señales 🔥 desatendidas</b>: las filas que HOY están en la mesa del asesor sin calificar por completo — calificar es la manita (👍/👎/📵) <b>y</b> la postura ("¿Cómo lo ves?"). Es la foto de hoy, no del período: al descartar, la fila sale mañana; las viejas YA trabajadas se van a ❄️ Frías y dejan de contar; las ignoradas siguen contando. Es el mismo número que examina el 25% del Seguimiento en el termómetro — lo que el dueño ve aquí y lo que califica al asesor es UNA sola cuenta.
-        <br><b>Trabajo:</b>
-        <b>Le contesta</b>: de los toques declarados, en cuántos hubo plática (declarar un acuerdo registra la plática implícita).
-        <b>Genera compromiso</b>: de las cotizaciones con conversación declarada en el período, en cuántas el acuerdo VIGENTE es "Quedamos en algo"; las 📅 <b>citas</b> ("Nos citamos" — física, virtual o telefónica) se cuentan aparte y entran al mismo examen de cumplidos. Regla pareja en toda la sección: las <b>descartadas salen completas</b> (ni a favor ni en contra — se juzgan en 👎 revividos y Recuperado); las <b>vendidas/aceptadas siguen contando</b> (son el éxito del acuerdo, el "¿cuáles?" las desglosa con folio); los <b>toques cuentan siempre</b> aunque la cotización luego se descarte — el esfuerzo fue real.
-        <b>Cumplidos</b>: de los acuerdos con 5+ días, en cuántos el cliente se movió en los 5 días siguientes (abrió la cotización o compró) — dato observado, no juicio. "En curso" = acuerdos de hace menos de 5 días: aún no se califican, ni a favor ni en contra. Re-confirmar el mismo acuerdo NO reinicia su reloj — solo un cambio real de desenlace arranca un acuerdo nuevo. Si la cotización se descarta, su acuerdo sale de este examen — pasa a juzgarse en "👎 que revivieron" y "Recuperado", no aquí.
-        <b>¿Cómo lo ve?</b>: su última lectura declarada por cotización, dentro del período elegido.
-        <b>👎 que revivieron</b>: descartes HECHOS en el período (fechados por cuándo se descartó, no por el último re-tap) donde el cliente volvió a calentarse después — muchos = está matando ventas vivas.
-        <b>Recuperado</b>: ventas que ya estaban descartadas y aun así se cerraron.
+      <div style="margin-top:10px;color:#6a6a64;font-size:11.5px;line-height:1.6">
+        <div style="margin-bottom:4px"><b>Cómo leer la tabla</b> (cada encabezado también explica su columna al pasar el mouse):</div>
+        <b>💰 Ventas</b>: cerradas en el período CON pago recibido — el resultado; todo lo demás es el camino.
+        <b>Cartera hoy</b>: vivas asignadas y su valor (foto de hoy, no cambia con el período).
+        <b>Sin calificar</b>: sin ningún juicio (ni manita 👍👎 ni postura).
+        <b>Sin trabajar</b>: ni una captura ni calificación — nadie las toca.
+        <b>Se le fueron</b>: pasaron la ventana (día <?= $mp75 ?>) y llevan <?= max(3, (int)ceil($mp75 / 2)) ?>+ días sin ninguna atención; mide atención, no ventas — descartarla con 👎 cuenta como decisión y la saca.
+        <b>Mesa sin calificar</b>: filas visibles HOY en su mesa a las que falta manita y/o postura — el mismo número que examina el 25% del Seguimiento en el termómetro.
+        <b>Le contesta</b>: toques declarados del período (Hablamos vs No contesta) — verde desde 50%. Ojo: cuenta declaraciones, no clientes.
+        <b>Acuerdos</b>: de sus pláticas (cotizaciones con conversación en el período), en cuántas el desenlace vigente es "Quedamos en algo" o 📅 cita — verde desde 40%; el color y el % son el mismo número.
+        <b>📅 Citas</b>: de esas mismas pláticas, cuántas terminaron en cita agendada.
+        <b>Mueren</b>: pláticas cuyo desenlace vigente es "No quiso" o "Sin compromiso" — la mitad negativa del embudo.
+        <b>Cumplidos</b>: acuerdos con 5+ días donde el cliente se movió en los 5 días siguientes (abrió o compró) — verde desde 50%; "en curso" = aún no maduran, no cuentan ni a favor ni en contra.
+        <b>👎 Revividos</b>: descartes del período que el cliente recalentó en los últimos 7 días (misma regla que la ⚡ de la mesa) — muchos = está matando ventas vivas.
+        <b>Recuperado</b>: ventas del período que ya estaban descartadas y aun así cerraron; una venta recuperada NO aparece en Revividos (se juzga aquí, no allá).
+        <br><b>Reglas parejas de toda la sección:</b> las <b>descartadas</b> salen completas de pláticas/acuerdos (se juzgan en Revividos y Recuperado); las <b>vendidas/aceptadas siguen contando</b> en acuerdos (son su éxito — el "¿cuáles?" las desglosa); los <b>toques cuentan siempre</b> (el esfuerzo fue real); las cotizaciones con <b>Descuento Inteligente</b> las tomó el sistema y salen de TODAS las columnas (su venta sí suma en 💰 Ventas).
       </div>
     <?php endif; ?>
     </div>
@@ -981,36 +1020,33 @@ function mesaDesagendar(cotId, btn){
       </div>
     </details>
     <?php if ($mesa_cob !== null):
-        $cob_pend = 0;
-        foreach ($mesa_cob_det as $cd) { if (!(int)$cd['cerrada'] && !(int)$cd['atendida']) $cob_pend++; }
         // MISMO cálculo que el score (proporcional 3 escalones — fuente única):
         // <50% bajo · 50–80% medio (0.5) · ≥80% completo. Mesa vacía = al día.
+        // El desglose lista EXACTAMENTE las filas que cuenta el contador
+        // (cobertura_detalle realineado a la fuente única, auditoría 16-jul) —
+        // antes decía "1 de 2" y listaba 5 episodios de otra fuente.
         $cob_vacia = ($mesa_cob['pedidas'] === 0);
         $cob_cov   = !$cob_vacia ? $mesa_cob['atendidas'] / $mesa_cob['pedidas'] : 1.0;
         $cob_pct   = (int)round($cob_cov * 100);
         $cob_niv   = $cob_vacia ? 'ok' : ($cob_cov >= 0.80 ? 'ok' : ($cob_cov >= 0.50 ? 'medio' : 'bajo'));
         $cob_col   = $cob_niv === 'ok' ? '#15803d' : ($cob_niv === 'medio' ? '#b45309' : '#b91c1c');
         $cob_tag   = $cob_niv === 'ok' ? '✓ completo' : ($cob_niv === 'medio' ? 'medio (cuenta 50%)' : 'bajo (no cuenta)');
+        $cob_pend  = max(0, (int)$mesa_cob['pedidas'] - (int)$mesa_cob['atendidas']);
     ?>
     <div style="margin-bottom:8px;font-size:12.5px">
       <span style="font-weight:700;color:<?= $cob_col ?>">
         🔥 Señales de tu mesa: <?php if ($cob_vacia): ?>sin pendientes ✓<?php else: ?><?= (int)$mesa_cob['atendidas'] ?> de <?= (int)$mesa_cob['pedidas'] ?> atendidas (<?= $cob_pct ?>%) · <?= $cob_tag ?><?php endif; ?></span>
       <?php if ($cob_pend > 0): ?>
-        · <span style="color:#d97706;font-weight:700"><?= $cob_pend ?> por vencer</span>
+        · <span style="color:#d97706;font-weight:700"><?= $cob_pend ?> pendiente<?= $cob_pend > 1 ? 's' : '' ?></span>
       <?php endif; ?>
       <?php if ($mesa_cob_det): ?>
       <details style="display:inline-block;vertical-align:top;margin-left:6px">
         <summary style="cursor:pointer;color:#1a5c38;font-weight:700;font-size:11.5px;list-style:none">ver desglose</summary>
         <div style="font-size:11.5px;color:#4a4a46;padding:4px 0;line-height:1.7">
-          <?php foreach ($mesa_cob_det as $cd):
-              $vence = date('d/m', strtotime($cd['senal_at']) + 3 * 86400);
-              if ((int)$cd['atendida']) { $st = '✓ atendida'; $co = '#15803d'; }
-              elseif ((int)$cd['cerrada']) { $st = '✗ vencida'; $co = '#b91c1c'; }
-              else { $st = "por vencer — hasta el {$vence}"; $co = '#d97706'; }
-          ?>
+          <?php foreach ($mesa_cob_det as $cd): ?>
           <div><a href="/cotizaciones/<?= (int)$cd['cotizacion_id'] ?>" style="color:inherit"><?= e($cd['numero']) ?></a>
-            <span style="color:#a8a8a2">señal <?= e(date('d/m', strtotime($cd['senal_at']))) ?></span>
-            — <span style="color:<?= $co ?>;font-weight:700"><?= e($st) ?></span></div>
+            — <?php if ((int)$cd['atendida']): ?><span style="color:#15803d;font-weight:700">✓ atendida</span>
+              <?php else: ?><span style="color:#d97706;font-weight:700">falta <?= e($cd['falta']) ?></span><?php endif; ?></div>
           <?php endforeach; ?>
           <div style="color:#a8a8a2;margin-top:4px"><?= (int)($empresa['mesa_activa'] ?? 0) >= 2
               ? 'Cuenta para tu termómetro: cubrir ≥80% = completo · 50–80% = medio (mitad) · menos de 50% = no cuenta.'
