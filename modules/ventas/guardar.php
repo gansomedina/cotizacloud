@@ -107,7 +107,11 @@ try {
             "SELECT nuevo_total FROM desc_int_activaciones
              WHERE cotizacion_id = ? AND estado = 'utilizado'
              ORDER BY id DESC LIMIT 1", [$cot_id]);
-        if ($v !== null) $di_nuevo_total = (float)$v;
+        // DB::val() (PDO fetchColumn) devuelve FALSE —no null— cuando NO hay fila.
+        // `nuevo_total` es NOT NULL en el schema, así que una fila real siempre
+        // trae número. Sin este `!== false`, una venta SIN DI entraba a la rama DI
+        // con $di_nuevo_total=0.0 y colapsaba su total a $0 (regresión SEV-1).
+        if ($v !== false && $v !== null) $di_nuevo_total = (float)$v;
     } catch (\Throwable $e) {}
     if ($di_nuevo_total !== null) {
         $cupon_amt = 0.0;
