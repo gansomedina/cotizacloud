@@ -173,6 +173,9 @@ $di_anio = DB::row(
                    WHERE di.cotizacion_id = v.cotizacion_id AND di.estado = 'utilizado')",
     [$now->format('Y') . '-01-01 00:00:00', $now->format('Y-m-d') . ' 23:59:59']
 ) ?: ['monto' => 0, 'num' => 0];
+// Total del mes = suma de las mismas filas por empresa (siempre cuadra con el desglose).
+$di_mes_monto = 0.0; $di_mes_num = 0;
+foreach ($di_por_emp as $de) { $di_mes_monto += (float)$de['monto']; $di_mes_num += (int)$de['num']; }
 
 $var_ventas = (float)$kpi_ant['ventas'] > 0
     ? round(((float)$kpi_mes['ventas'] - (float)$kpi_ant['ventas']) / (float)$kpi_ant['ventas'] * 100, 1)
@@ -904,7 +907,9 @@ tbody tr:hover td{background:var(--card-hover)}
 <!-- Leyenda: ventas del Descuento Inteligente (solo mis empresas) — desglose
      por empresa del mes en curso + total del año en curso. Centrada, con wrap. -->
 <div style="margin:-6px 0 20px;padding:9px 15px;font:600 12px 'Inter',sans-serif;background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 16px">
-    <span style="color:var(--a)">💡 Descuento Inteligente · este mes</span>
+    <span style="color:var(--a)">💡 Descuento Inteligente</span>
+    <span style="color:var(--t2)">Este mes: <b style="color:var(--text)"><?= xf($di_mes_monto) ?></b> · <?= $di_mes_num ?> ventas</span>
+    <span style="color:var(--t3)">·</span>
     <?php if ($di_por_emp): foreach ($di_por_emp as $de): $ec = $empresas_cfg[(int)$de['empresa_id']] ?? null; ?>
     <span style="color:var(--t2)"><span style="color:<?= $ec['color'] ?? 'var(--text)' ?>"><?= $ec['nombre'] ?? ('Empresa ' . (int)$de['empresa_id']) ?></span>: <b style="color:var(--text)"><?= xf((float)$de['monto']) ?></b> · <?= (int)$de['num'] ?></span>
     <?php endforeach; else: ?>
