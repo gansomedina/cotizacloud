@@ -187,6 +187,18 @@ elseif ($accion === 'descuento') {
     if (!Auth::es_admin() && !Auth::puede('aplicar_descuentos')) json_error('Sin permiso', 403);
     if ($venta['estado'] === 'cancelada') json_error('Venta cancelada', 422);
 
+    // DI 'utilizado': el precio lo manda el contrato congelado; no se apila un
+    // descuento manual encima (regla CEO). Antes esta acción recalculaba
+    // total = lineas − cupon − manual, BORRANDO el DI (revive COT-2026-0185 por
+    // otra ruta). Para cambiar el precio de una venta con DI, se quita el DI
+    // primero (acción quitar-desc-int, que restaura el total).
+    try {
+        if (DB::val("SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id=? AND estado='utilizado' LIMIT 1",
+                    [$venta['cotizacion_id']])) {
+            json_error('Esta venta tiene Descuento Inteligente. Para cambiar el precio, primero quita el DI.', 422);
+        }
+    } catch (\Throwable $e) {} // tabla sin migrar → sin bloqueo
+
     $desc_amt = max(0, (float)($body['descuento_manual_amt'] ?? 0));
 
     // Calcular nuevo total: recalcular desde subtotal de líneas

@@ -1007,13 +1007,19 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <div class="tr"><span class="tl"><?= e($cot['impuesto_label'] ?: ($cot['emp_impuesto_label'] ?? 'IVA')) ?> (<?= (float)$cot['impuesto_pct'] ?>%)</span><span class="tv"><?= fmt_pub($impuesto_amt) ?></span></div>
     <?php endif; ?>
     <div class="tr tf"><span class="tl">Total</span><span class="tv" id="tTot"><?= fmt_pub($total_base) ?></span></div>
-    <?php // ── Descuento Inteligente ACTIVO: reflejarlo en el Resumen (mismos
-          //    números frozen del contrato — banner, modal y accept dicen igual).
-          //    nuevo_total es SIN extras; el total mostrado los suma, idéntico
-          //    al $total_guardar del accept. ──
-    if ($di_act && ($di_act['estado'] ?? '') === 'activo'
+    <?php // ── Descuento Inteligente en el Resumen — mismos números frozen del
+          //    contrato (banner, modal, accept dicen igual). nuevo_total es SIN
+          //    extras; el total mostrado los suma, idéntico al total cobrado.
+          //    Dos casos: ACTIVO (oferta viva, enviada/vista) y UTILIZADO (ya
+          //    aceptada/convertida) — sin el 2º, el slug/impresión post-accept
+          //    mostraba el precio COMPLETO, contradiciendo lo que el cliente
+          //    aceptó (auditoría 17-jul). nuevo_total + extras = cot.total. ──
+    $di_res_activo = $di_act && ($di_act['estado'] ?? '') === 'activo'
         && in_array($cot['estado'], ['enviada','vista'])
-        && strtotime($di_act['expira_at']) > time()): ?>
+        && strtotime($di_act['expira_at']) > time();
+    $di_res_util = $di_act && ($di_act['estado'] ?? '') === 'utilizado'
+        && in_array($cot['estado'], ['aceptada','convertida']);
+    if ($di_res_activo || $di_res_util): ?>
     <div class="tr td">
       <span class="tl">Descuento especial (<?= rtrim(rtrim(number_format((float)$di_act['pct'], 1), '0'), '.') ?>%)</span>
       <span class="tv">-<?= fmt_pub((float)$di_act['monto_desc']) ?></span>
