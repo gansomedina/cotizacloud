@@ -423,6 +423,15 @@ if ($di_act === null && $interno_detectado) {
     try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
 }
 
+// ── Display del DII en cots TERMINALES (aceptada/convertida) para CUALQUIER
+// visitante — read-only. El gate de tracking (arriba) no incluye 'convertida',
+// así que un cliente viendo una cot convertida no poblaba $di_act y el Resumen/
+// impresión mostraban el precio COMPLETO (verificación 17-jul). vigente() es
+// solo lectura; si no hay DI devuelve null y no se muestra nada.
+if ($di_act === null && in_array($cot['estado'], ['aceptada', 'convertida'], true)) {
+    try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
+}
+
 // ── Cupón bloqueado si TIENE O TUVO un DI (decisión CEO 16-jul): el descuento
 // del sistema no convive con cupones — ni siquiera tecleable. Cualquier registro
 // DI (activo, utilizado, vencido, cancelado) oculta la sección de cupón; el
