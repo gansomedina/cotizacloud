@@ -112,7 +112,10 @@ foreach ($items as $i => $item) {
             "SELECT precio FROM articulos WHERE id = ? AND empresa_id = ?",
             [(int)$item['articulo_id'], $empresa_id]
         );
-        if ($art_precio !== null) $precio = (float)$art_precio;
+        // DB::val() devuelve FALSE (no null) si el artículo no existe → sin este
+        // `!== false` la línea quedaba en $0 (subcobro). Si no se encuentra el
+        // precio de catálogo, se conserva el ya calculado (mismo caso que guardar.php).
+        if ($art_precio !== false && $art_precio !== null) $precio = (float)$art_precio;
     }
 
     $sub_linea = $cant * $precio;
