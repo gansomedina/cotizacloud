@@ -149,6 +149,26 @@ $acum_anio_hist = (float)DB::val(
 );
 $acum_anio = $acum_anio_real + $acum_anio_hist;
 
+// Ventas atribuidas al Descuento Inteligente — SOLO mis empresas ($emp_ids).
+// "Del DI" = la cotización tiene un desc_int_activaciones 'utilizado' (mismo
+// criterio que ActividadScore). Este mes (mes en curso) + acumulado total.
+$di_mes = DB::row(
+    "SELECT COALESCE(SUM(v.total),0) AS monto, COUNT(*) AS num
+     FROM ventas v
+     WHERE v.empresa_id IN ({$emp_ids}) AND v.estado != 'cancelada'
+       AND v.created_at BETWEEN ? AND ?
+       AND EXISTS (SELECT 1 FROM desc_int_activaciones di
+                   WHERE di.cotizacion_id = v.cotizacion_id AND di.estado = 'utilizado')",
+    [$now->format('Y-m') . '-01 00:00:00', $now->format('Y-m-d') . ' 23:59:59']
+) ?: ['monto' => 0, 'num' => 0];
+$di_total = DB::row(
+    "SELECT COALESCE(SUM(v.total),0) AS monto, COUNT(*) AS num
+     FROM ventas v
+     WHERE v.empresa_id IN ({$emp_ids}) AND v.estado != 'cancelada'
+       AND EXISTS (SELECT 1 FROM desc_int_activaciones di
+                   WHERE di.cotizacion_id = v.cotizacion_id AND di.estado = 'utilizado')"
+) ?: ['monto' => 0, 'num' => 0];
+
 $var_ventas = (float)$kpi_ant['ventas'] > 0
     ? round(((float)$kpi_mes['ventas'] - (float)$kpi_ant['ventas']) / (float)$kpi_ant['ventas'] * 100, 1)
     : ((float)$kpi_mes['ventas'] > 0 ? 100 : 0);
@@ -874,6 +894,14 @@ tbody tr:hover td{background:var(--card-hover)}
         <div class="kpi-val" style="color:var(--g)"><?= xm($acum_anio) ?></div>
         <div class="kpi-sub"><?= $anio_actual ?></div>
     </div>
+</div>
+
+<!-- Leyenda: ventas del Descuento Inteligente (solo mis empresas) -->
+<div style="margin:-6px 0 20px;padding:9px 15px;font:600 12px 'Inter',sans-serif;background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px">
+    <span style="color:var(--a)">💡 Descuento Inteligente</span>
+    <span style="color:var(--t2)">Este mes: <b style="color:var(--text)"><?= xf((float)$di_mes['monto']) ?></b> · <?= (int)$di_mes['num'] ?> ventas</span>
+    <span style="color:var(--t3)">|</span>
+    <span style="color:var(--t2)">Acumulado total: <b style="color:var(--text)"><?= xf((float)$di_total['monto']) ?></b> · <?= (int)$di_total['num'] ?> ventas</span>
 </div>
 
 <!-- GRÁFICA GLOBAL -->
