@@ -617,6 +617,17 @@ var MESA_ERR = {rate:'Vas muy rápido — espera un momento e intenta de nuevo',
                 guardar:'Error al guardar — intenta de nuevo'};
 function mesaErr(code){ return MESA_ERR[code] || ('No se pudo guardar: ' + (code || 'error')); }
 
+// ¿Bajaría a "Atendidas hoy" al recargar? Mismo criterio que Mesa::armar:
+// calificada (manita+postura) + postura FRESCA de hoy + al corriente (reloj
+// NO rojo). El color del reloj se lee del DOM ya renderizado — y arriba, en
+// mesaTap, se actualiza a 'ok' si el tap fue un contacto. Evita prometer
+// "Atendidas hoy" cuando la recarga la dejaría en "Por trabajar".
+function mesaAtendida(row, d){
+  var fr = row ? row.querySelector('.mfresh') : null;
+  var enRojo = !!(fr && fr.classList.contains('bad'));
+  return !!(d && d.calificada && d.postura_fresca && !enRojo);
+}
+
 // Feedback Radar desde la mesa — se guarda a nombre del asesor dueño de la
 // cotización (una sola marca: el descarte voltea el 👍 a 👎 automáticamente)
 function mesaFb(cotId, tipo, btn){
@@ -650,15 +661,21 @@ function mesaFb(cotId, tipo, btn){
       var sx = drawer.querySelector('.msx'); if(sx) sx.textContent = d.sugerencia;
     }
     if(row){ row.style.opacity = (tipo === 'sin_interes') ? '.72' : ''; }
-    // La manita puede COMPLETAR la calificación (manita + postura) → ✓
-    if(tipo !== 'sin_interes' && d.calificada && row && !row.classList.contains('done')){
+    // La manita COMPLETA la calificación → ✓ SOLO si bajaría a "Atendidas hoy"
+    // (calificada + postura fresca de hoy + al corriente). La manita NO refresca
+    // la postura ni apaga el reloj: sobre una postura vieja o un reloj rojo, la
+    // fila se queda en "Por trabajar" (igual que la recarga).
+    var atendida = mesaAtendida(row, d);
+    if(tipo !== 'sin_interes' && atendida && row && !row.classList.contains('done')){
       row.classList.add('done');
       var mc2 = row.querySelector('.mcheck'); if(mc2) mc2.textContent = '✓';
     }
     mesaToast(tipo === 'con_interes'
-      ? (d.calificada ? '👍 marcado — ✓ atendida; al recargar pasa a \"Atendidas hoy\" (también quedó en el Radar)' : '👍 marcado — también quedó en el Radar; falta tu postura en "¿Cómo lo ves?" para que cuente como atendida')
+      ? (atendida ? '👍 marcado — ✓ atendida; al recargar pasa a \"Atendidas hoy\" (también quedó en el Radar)'
+          : (d.calificada ? '👍 marcado — para bajar a \"Atendidas hoy\" necesita tu postura de HOY y estar al corriente de seguimiento' : '👍 marcado — también quedó en el Radar; falta tu postura en "¿Cómo lo ves?" para que cuente como atendida'))
       : (tipo === 'sin_info'
-        ? (d.calificada ? '📵 Sin comunicación — ✓ atendida; cuando logres contacto cámbialo a 👍/👎' : '📵 Sin comunicación — cuenta como evaluación; remata con tu lectura en "¿Cómo lo ves?" y cuando logres contacto cámbialo a 👍/👎')
+        ? (atendida ? '📵 Sin comunicación — ✓ atendida; cuando logres contacto cámbialo a 👍/👎'
+            : (d.calificada ? '📵 Sin comunicación — para \"Atendidas hoy\" pon tu postura de HOY y declara un contacto para el seguimiento' : '📵 Sin comunicación — cuenta como evaluación; remata con tu lectura en "¿Cómo lo ves?" y cuando logres contacto cámbialo a 👍/👎'))
         : '👎 marcado — pasa a \"Descartadas hoy\" y mañana sale de la mesa; si el cliente revive, vuelve sola — y un descarte que el cliente desmiente cuenta en tu contra'));
   }).catch(function(){ thumbs.forEach(function(b){ b.disabled = false; }); mesaToast('No se pudo guardar (red o sesión).'); });
 }
@@ -729,11 +746,16 @@ function mesaTap(cotId, area, estado, btn, razon){
       if(sx) sx.textContent = d.sugerencia;
     }
     mesaLocks(drawer);
-    // ✓ SOLO calificada (manita + postura) — tocarla sin calificar no marca
-    if(estado !== 'descartada' && d.calificada && !row.classList.contains('done')){
+    // ✓ SOLO si bajaría a "Atendidas hoy": calificada + postura fresca + al
+    // corriente (reloj no rojo). El reloj se actualizó arriba si fue contacto.
+    var atendida = mesaAtendida(row, d);
+    if(estado !== 'descartada' && atendida && !row.classList.contains('done')){
       row.classList.add('done');
       var mc = row.querySelector('.mcheck'); if(mc) mc.textContent = '✓';
       mesaToast('✓ Atendida — al recargar pasa a "Atendidas hoy"');
+    } else if(estado !== 'descartada' && d.calificada && !atendida){
+      // calificada pero el reloj sigue 🔴: la lectura no apaga el cronómetro
+      mesaToast('✓ Calificada — pero sigue 🔴 sin seguimiento; declara un contacto (Hablamos/No contestó) para bajarla a "Atendidas hoy"');
     } else if(area === 'postura' && estado !== 'descartada' && !d.calificada){
       // declaró postura pero falta la manita — el momento exacto de avisar
       mesaToast('Postura guardada — falta la manita 👍👎/📵 para que cuente como atendida');

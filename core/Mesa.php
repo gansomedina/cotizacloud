@@ -489,18 +489,24 @@ class Mesa
                 'dormida' => $dormida,
                 'tier' => ($edad <= $p75 ? 1 : 2),
                 'decl' => $me[$cid] ?? [],
-                // "Atendida hoy" = TRABAJADA HOY y CALIFICADA (manita 👍👎📵 +
-                // postura) — decisión CEO: la tarjeta no está calificada sin
-                // los 2 elementos; tocarla sin calificarla NO la marca ✓ (la
-                // cobertura la seguiría contando como falla y la pantalla
-                // diría lo contrario). La manita de hoy también cuenta como
-                // actividad (es el toque que completa la calificación).
-                'atendida_hoy' => (function () use ($me, $cid, $hoy_db, $postura) {
+                // "Atendida hoy" = CALIFICADA con POSTURA FRESCA de hoy y AL
+                // CORRIENTE de seguimiento (decisión CEO 17-jul). Tres candados:
+                //   1) manita 👍👎📵 existe (no requiere re-tapeo: si ya estaba,
+                //      cuenta — evita doble retrabajo) Y postura declarada existe.
+                //   2) POSTURA FRESCA: el tap de "¿Cómo lo ves?" es de HOY. Re-
+                //      tapear solo la manita sobre una postura vieja NO la baja a
+                //      verde (antes sí: postura del 14 + 📵 del 17 se veía "hoy").
+                //   3) CANDADO DEL RELOJ: si el seguimiento está 🔴 vencido, NO
+                //      pasa a verde — se queda en "Por trabajar" hasta que haya
+                //      CONTACTO real (hablamos/no_contesta). La postura/manita son
+                //      TU LECTURA, no contacto: puedes tener "en_el_aire" sobre un
+                //      cliente que no te contestó, así que no apagan el cronómetro.
+                // No toca el score: cobertura_senales cuenta por EXISTENCIA de
+                // manita+postura, no por atendida_hoy — este gate es solo de UI.
+                'atendida_hoy' => (function () use ($me, $cid, $hoy_db, $postura, $seg) {
                     if ($postura === null || empty($me[$cid]['postura'])) return false;
-                    foreach (($me[$cid] ?? []) as $a => $d) {
-                        if (substr($d['at'], 0, 10) === $hoy_db) return true;
-                    }
-                    return false;
+                    if (($seg['estado'] ?? '') === 'vencida') return false;
+                    return substr($me[$cid]['postura']['at'] ?? '', 0, 10) === $hoy_db;
                 })(),
                 // Días desde la última declaración en la mesa (null = nunca).
                 // Días de CALENDARIO, no horas/24: trabajo de ayer 8pm debe decir

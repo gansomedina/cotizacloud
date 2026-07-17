@@ -415,5 +415,39 @@ foreach ($mh['rows'] as $r) $mhby[$r['numero']] = $r;
 chk('H1 al corriente PERO con huella ⏰2d (no se borra al tocar)',
     [$mhby['COT-9801']['seguimiento']['estado'] ?? '', $mhby['COT-9801']['venc_huella'] ?? -1], ['ok', 2]);
 
+echo "═ CANDADOS 'ATENDIDA HOY' (vendedor 507 — regla 17-jul) ═\n";
+// A1 (9901): postura FRESCA hoy + manita + al corriente → atendida_hoy TRUE (control +)
+cot(9901, 507, 12000, 6, ['visitas' => 2, 'vista_d' => 2]);
+tap(9901, 'contacto', 'hablamos', 0.04);
+tap(9901, 'postura', 'decidiendo', 0.04);
+fb(9901, 507, 'con_interes', 0.04);
+// A2 (9902): postura VIEJA (3d) + manita HOY (re-tap) + al corriente → NO atendida
+//   (candado postura fresca: re-tapear la manita sobre postura vieja no la baja a verde)
+cot(9902, 507, 13000, 6, ['visitas' => 2, 'vista_d' => 2]);
+tap(9902, 'contacto', 'hablamos', 3);   // hablamos → cadencia mediana → al corriente
+tap(9902, 'postura', 'en_el_aire', 3);  // postura de hace 3d (NO fresca)
+fb(9902, 507, 'sin_info', 0.04);        // manita re-tapeada HOY
+// A3 (9903): postura FRESCA hoy + manita + reloj VENCIDO → NO atendida
+//   (candado del reloj: la lectura fresca NO apaga el cronómetro; falta contacto real)
+cot(9903, 507, 14000, 6, ['visitas' => 2, 'vista_d' => 2]);
+tap(9903, 'contacto', 'no_contesta', 4); // no_contesta 4d → cadencia 2 → vencido 2d
+tap(9903, 'postura', 'decidiendo', 0.04); // postura fresca HOY
+fb(9903, 507, 'con_interes', 0.04);
+$ma = Mesa::armar(5, 507);
+$maby = [];
+foreach ($ma['rows'] as $r) $maby[$r['numero']] = $r;
+chk('A1 postura fresca + manita + al corriente → atendida_hoy TRUE',
+    [$maby['COT-9901']['atendida_hoy'] ?? null, $maby['COT-9901']['seguimiento']['estado'] ?? ''], [true, 'ok']);
+chk('A2 postura VIEJA + manita hoy (re-tap) + al corriente → NO atendida (candado postura fresca)',
+    [$maby['COT-9902']['atendida_hoy'] ?? null, $maby['COT-9902']['seguimiento']['estado'] ?? ''], [false, 'ok']);
+chk('A3 postura fresca + reloj VENCIDO → NO atendida (candado reloj rojo)',
+    [$maby['COT-9903']['atendida_hoy'] ?? null, $maby['COT-9903']['seguimiento']['estado'] ?? ''], [false, 'vencida']);
+chk('resumen 507: atendidas=1 (solo A1), vencidas=1 (A3)',
+    [$ma['resumen']['atendidas'] ?? -1, $ma['resumen']['vencidas'] ?? -1], [1, 1]);
+// El SCORE no se toca: cobertura cuenta por EXISTENCIA de manita+postura (las 3 la tienen)
+$ca = Mesa::cobertura_senales(5, 507);
+chk('score intacto: cobertura 507 = pedidas 3, atendidas 3 (candados son solo UI)',
+    [$ca['pedidas'], $ca['atendidas']], [3, 3]);
+
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

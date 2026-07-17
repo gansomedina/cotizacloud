@@ -341,4 +341,9 @@ try {
     error_log('[Mesa sugerencia] ' . $e->getMessage());
 }
 
-echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia, 'auto_contacto' => $auto_contacto, 'fb_hint' => $fb_hint, 'calificada' => $calificada]);
+// Postura FRESCA de hoy — el JS la exige (además de estar al corriente, que
+// lee del reloj ya renderizado) para bajar la fila a "Atendidas hoy" sin
+// contradecir a la recarga (misma regla que Mesa::armar). El reloj NO se
+// recomputa aquí a propósito: duplicarlo rompería la fuente única.
+$postura_fresca = !empty($decl['postura']) && substr($decl['postura']['at'] ?? '', 0, 10) === $hoy_db;
+echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia, 'auto_contacto' => $auto_contacto, 'fb_hint' => $fb_hint, 'calificada' => $calificada, 'postura_fresca' => $postura_fresca]);
