@@ -1595,30 +1595,36 @@ function rmC(){
 // ─── Calcular totales ────────────────────────────────────
 function fmt(n){return'$'+n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function calc(){
+    const r2 = x => Math.round(x * 100) / 100; // redondeo a 2 dec, igual que round() del server
     let tot = SUB, aa = 0, ca = 0;
-    const adcOn = AUTO.on && document.getElementById('adcSec').style.display !== 'none';
-    const ar = document.getElementById('tAR');
-    if (adcOn) {
-        aa = SUB * AUTO.pct / 100; tot -= aa;
-        ar.style.display = '';
-        document.getElementById('tAL').textContent = 'Descuento especial ('+AUTO.pct+'%)';
-        document.getElementById('tAV').textContent = '-'+fmt(aa);
-    } else ar.style.display = 'none';
 
+    // Cupón PRIMERO (sobre SUB), luego el descuento sobre el remanente — MISMO
+    // orden y MISMO redondeo que el server (quote_action) y los editores. Antes
+    // calc() aplicaba el descuento primero y el cupón después: con un cupón de
+    // MONTO FIJO el orden no conmuta y el cliente veía menos de lo que se cobraba
+    // (verificación 17-jul: sobrecobro de $2.72 a $11.57).
     const cr = document.getElementById('tCR');
     if (applied) {
-        ca = applied.monto_fijo ? Math.min(applied.monto_fijo, tot) : tot * applied.pct / 100; tot -= ca;
+        ca = r2(applied.monto_fijo ? Math.min(applied.monto_fijo, SUB) : SUB * applied.pct / 100); tot -= ca;
         cr.style.display = '';
         document.getElementById('tCL').textContent = 'Cupón '+applied.code+(applied.monto_fijo ? '' : ' ('+applied.pct+'%)');
         document.getElementById('tCV').textContent = '-'+fmt(ca);
     } else cr.style.display = 'none';
 
+    const adcOn = AUTO.on && document.getElementById('adcSec').style.display !== 'none';
+    const ar = document.getElementById('tAR');
+    if (adcOn) {
+        aa = r2(tot * AUTO.pct / 100); tot -= aa;
+        ar.style.display = '';
+        document.getElementById('tAL').textContent = 'Descuento especial ('+AUTO.pct+'%)';
+        document.getElementById('tAV').textContent = '-'+fmt(aa);
+    } else ar.style.display = 'none';
+
     // Extras (auditoría 17-jul): add-ons NO descontables pero SÍ gravables. Entran
     // a la base gravable DESPUÉS de los descuentos; el IVA cae sobre base+extras.
-    // Antes calc() ignoraba los extras y PISABA el #tTot correcto → el cliente veía
-    // menos de lo que se le cobraba.
+    // Redondeo de 2 pasos idéntico al server → lo mostrado = lo cobrado, sin ±1¢.
     const taxable = Math.max(0, tot) + EXTRAS;
-    tot = (TAX.modo === 'suma') ? (taxable + taxable * TAX.pct / 100) : taxable;
+    tot = (TAX.modo === 'suma') ? r2(taxable + r2(taxable * TAX.pct / 100)) : r2(taxable);
 
     document.getElementById('tTot').textContent = fmt(tot);
     return {tot, aa, ca};
