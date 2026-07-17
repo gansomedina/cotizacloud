@@ -346,9 +346,9 @@ final class DiagnosticoTips
         if ($m['bcierre'] >= 4) $f[] = "Tu tasa de cierre viene por arriba de tu histórico.";
         // Castigo por seguimiento vencido (ciclo Fase C) — el -2 es silencioso
         if ($m['castigo_seg'] >= 8) {
-            $f[] = "⏰ Acumulas {$m['dias_venc']} días de seguimiento vencido en tu mesa — te está costando {$m['castigo_seg']} puntos: las vencidas van primero, un contacto declarado las pone al corriente.";
+            $f[] = "⏰ Acumulas {$m['dias_venc']} días-cotización de seguimiento vencido en tu mesa — te está costando {$m['castigo_seg']} puntos: las vencidas van primero, un contacto declarado las pone al corriente.";
         } elseif ($m['castigo_seg'] >= 5) {
-            $f[] = "⏰ Acumulas {$m['dias_venc']} días de seguimiento vencido en tu mesa — te está costando {$m['castigo_seg']} puntos.";
+            $f[] = "⏰ Acumulas {$m['dias_venc']} días-cotización de seguimiento vencido en tu mesa — te está costando {$m['castigo_seg']} puntos.";
         }
         // Cierre sucio (solo con ventas reales)
         if ($m['cierres'] >= 1 || $m['vper'] >= 1) {

@@ -1104,9 +1104,12 @@ class ActividadScore
         $total_bonus = ($cierre_quality > 0 ? $cierre_quality * $close_rate_safe : 0);
 
         // ═══════════════════════════════════════════════════
-        //  GUARDAR
+        //  GUARDAR — persistir NUNCA debe tumbar el dashboard: si faltara una
+        //  columna (migración pendiente) o fallara el INSERT, se loguea y se
+        //  sigue con el score YA calculado (el return de abajo no depende de esto).
         // ═══════════════════════════════════════════════════
 
+        try {
         DB::execute(
             "INSERT INTO usuario_score
              (usuario_id, empresa_id, score, nivel, dias_activos, acciones, conversiones,
@@ -1175,6 +1178,9 @@ class ActividadScore
                 $mesa_dias_vencidos, $castigo_seguimiento,
             ]
         );
+        } catch (\Throwable $e) {
+            error_log('[ActividadScore persist] ' . $e->getMessage());
+        }
 
         return [
             'usuario_id'        => $usuario_id,
