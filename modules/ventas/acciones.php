@@ -133,6 +133,15 @@ elseif ($accion === 'agregar-item') {
     $cot_id = $venta['cotizacion_id'];
     if (!$cot_id) json_error('Esta venta no tiene cotización asociada para agregar artículos');
 
+    // DI 'utilizado': agregar un artículo REGULAR cambia la base del contrato
+    // congelado → se bloquea (como el descuento manual). Para editar el precio
+    // de una venta con DI, se quita el DI primero (los extras add-on sí se permiten).
+    try {
+        if (DB::val("SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id=? AND estado='utilizado' LIMIT 1", [$cot_id])) {
+            json_error('Esta venta tiene Descuento Inteligente. Para agregar artículos, primero quita el DI.', 422);
+        }
+    } catch (\Throwable $e) {} // tabla sin migrar → sin bloqueo
+
     $max_orden = (int)DB::val(
         "SELECT MAX(orden) FROM cotizacion_lineas WHERE cotizacion_id=?",
         [$cot_id]
@@ -147,11 +156,23 @@ elseif ($accion === 'agregar-item') {
             [$cot_id, $max_orden + 1, $sku, $titulo, $desc, $cantidad, $precio, $subtotal]
         );
 
-        // Actualizar total de venta
-        DB::execute(
-            "UPDATE ventas SET total=total+?, saldo=saldo+?, updated_at=NOW() WHERE id=?",
-            [$subtotal, $subtotal, $venta_id]
-        );
+        // Recomputar el total (antes hacía total=total+subtotal SIN IVA → subcobro
+        // en modo suma). Modelo: base sin extras descontada + extras gravados, IVA
+        // según config. Sin DI (bloqueado arriba). Igual que ventas/guardar.
+        $base_ne = (float)DB::val("SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=0", [$cot_id]);
+        $extras  = (float)DB::val("SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
+        $cotd = DB::row("SELECT impuesto_pct, impuesto_modo, cupon_monto, descuento_auto_amt FROM cotizaciones WHERE id=?", [$cot_id]);
+        $imp_pct   = (float)($cotd['impuesto_pct'] ?? 0);
+        $imp_modo  = $cotd['impuesto_modo'] ?? 'ninguno';
+        $taxable   = max(0, $base_ne - (float)($cotd['cupon_monto'] ?? 0) - (float)($cotd['descuento_auto_amt'] ?? 0)) + $extras;
+        $nuevo_total = ($imp_modo === 'suma')
+            ? round($taxable + round($taxable * $imp_pct / 100, 2), 2)
+            : round($taxable, 2);
+        $nuevo_saldo = max(0, round($nuevo_total - (float)$venta['pagado'], 2));
+        DB::execute("UPDATE ventas SET total=?, saldo=?, updated_at=NOW() WHERE id=?",
+            [$nuevo_total, $nuevo_saldo, $venta_id]);
+        DB::execute("UPDATE cotizaciones SET subtotal=(SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=?), updated_at=NOW() WHERE id=?",
+            [$cot_id, $cot_id]);
 
         DB::commit();
     } catch (Exception $e) {
@@ -160,7 +181,7 @@ elseif ($accion === 'agregar-item') {
         json_error('Error al agregar artículo', 500);
     }
 
-    json_ok(['subtotal' => $subtotal]);
+    json_ok(['subtotal' => $subtotal, 'total' => $nuevo_total, 'saldo' => $nuevo_saldo]);
 }
 
 // ════════════════════════════════════════════════════════════
