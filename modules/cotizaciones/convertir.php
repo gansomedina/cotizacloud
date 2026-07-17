@@ -22,11 +22,28 @@ $cot = DB::row(
 );
 if (!$cot) json_error('No encontrada', 404);
 
-// Solo aceptadas o convertidas (si ya existe venta, redirigir a ella)
-if ($cot['estado'] === 'convertida') {
-    $venta = DB::row("SELECT id FROM ventas WHERE cotizacion_id = ?", [$cot_id]);
-    if ($venta) json_ok(['venta_id' => (int)$venta['id']]);
-    json_error('Ya convertida pero sin venta', 500);
+// ── Permisos (auditoría 17-jul): convertir a venta es tan sensible como editar
+//    la cotización. Antes solo pedía csrf_check → cualquier asesor logueado
+//    convertía CUALQUIER cotización (incl. borrador) a venta. ──
+if (!Auth::es_admin() && !Auth::puede('editar_cotizaciones')) {
+    json_error('Sin permiso para convertir a venta', 403);
+}
+if (!Auth::puede('ver_todas_cots')
+    && (int)$cot['usuario_id'] !== (int)Auth::id()
+    && (int)($cot['vendedor_id'] ?? 0) !== (int)Auth::id()) {
+    json_error('Sin acceso a esta cotización', 403);
+}
+
+// ── Nunca crear una SEGUNDA venta (auditoría 17-jul): si ya existe una
+//    (aceptada por el cliente en el slug → el accept ya creó su venta; ya
+//    convertida; o doble-submit), devolver ESA. Antes solo se checaba en estado
+//    'convertida' → convertir una 'aceptada' creaba venta duplicada = ingreso
+//    doble. Una venta CANCELADA bloquea la reconversión automática (evita
+//    re-crear al precio ya descontado del DI — el cot sigue 'aceptada'). ──
+$venta_prev = DB::row("SELECT id, estado FROM ventas WHERE cotizacion_id = ? ORDER BY id DESC LIMIT 1", [$cot_id]);
+if ($venta_prev) {
+    if ($venta_prev['estado'] !== 'cancelada') json_ok(['venta_id' => (int)$venta_prev['id']]);
+    json_error('Esta cotización ya tuvo una venta cancelada; no se reconvierte automáticamente.', 422);
 }
 
 if (!in_array($cot['estado'], ['aceptada','enviada','vista','borrador'])) {
@@ -37,6 +54,13 @@ $empresa = Auth::empresa();
 
 try {
     DB::beginTransaction();
+
+    // ── Lock + re-check bajo el lock: dos POST concurrentes sobre una 'enviada'
+    //    creaban dos ventas (solo la 1ª consumía el DI). El FOR UPDATE serializa
+    //    y el re-check devuelve la venta si otra request la creó primero. ──
+    DB::row("SELECT id FROM cotizaciones WHERE id = ? FOR UPDATE", [$cot_id]);
+    $dup = DB::val("SELECT id FROM ventas WHERE cotizacion_id = ? AND estado <> 'cancelada' LIMIT 1", [$cot_id]);
+    if ($dup) { DB::rollback(); json_ok(['venta_id' => (int)$dup]); }
 
     // ── Descuento Inteligente VIGENTE: aplica igual que el accept (decisión
     //    CEO 16-jul). Total = nuevo_total congelado del contrato (sin extras,

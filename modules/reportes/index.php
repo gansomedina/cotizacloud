@@ -308,18 +308,22 @@ if ($es_admin) {
                SELECT c.id, c.numero, c.titulo, c.total, c.radar_bucket, c.empresa_id,
                       c.cliente_id, c.usuario_id, c.vendedor_id, c.slug,
                       TIMESTAMPDIFF(DAY, c.created_at, NOW()) AS edad,
+                      -- Bordes IDÉNTICOS al motor evaluar() (auditoría 17-jul):
+                      -- R1 = (dia_fin_vida, dia_dead]  ·  R2 = (dia_dead, dia_techo].
+                      -- Antes usaba >= / < → mostraba un candidato un día antes de
+                      -- que dispare y pintaba R2 con r2_pct donde el motor daba R1.
                       CASE
-                        WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) >= dc.dia_fin_vida
-                             AND TIMESTAMPDIFF(DAY,c.created_at,NOW()) <  dc.dia_dead
+                        WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) >  dc.dia_fin_vida
+                             AND TIMESTAMPDIFF(DAY,c.created_at,NOW()) <= dc.dia_dead
                              AND dc.r1_activa=1 AND dc.r1_pct>0 THEN 1
-                        WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) >= dc.dia_dead
+                        WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) >  dc.dia_dead
                              AND TIMESTAMPDIFF(DAY,c.created_at,NOW()) <= dc.dia_techo
                              AND dc.r2_activa=1 AND dc.r2_pct>0 THEN 2
                         ELSE 0
                       END AS regla,
-                      CASE WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) < dc.dia_dead
+                      CASE WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) <= dc.dia_dead
                            THEN dc.r1_pct ELSE dc.r2_pct END AS pct,
-                      CASE WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) < dc.dia_dead
+                      CASE WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) <= dc.dia_dead
                            THEN GREATEST(1, CEIL(dc.p75/2)) ELSE GREATEST(1, dc.p75) END AS win_days,
                       -- Fecha en que ENTRÓ a zona DI (se hizo candidata): creación +
                       -- dia_fin_vida (inicio de R1) — o dia_dead si R1 está apagada
@@ -346,6 +350,21 @@ if ($es_admin) {
                  AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones di WHERE di.cotizacion_id=c.id)
                  AND NOT EXISTS (SELECT 1 FROM ventas v
                                  WHERE v.cliente_id = c.cliente_id AND v.estado <> 'cancelada')
+                 -- DORMANCIA (faltaba, auditoría 17-jul): el motor exige que el
+                 -- cliente lleve callado MÁS que 2×p75 desde su última vista; si
+                 -- te vio hace poco es milagro (lo trabaja el asesor), no DI. Sin
+                 -- esto se listaban clientes vistos hace días que el motor bloquea.
+                 AND c.ultima_vista_at IS NOT NULL
+                 AND c.ultima_vista_at < NOW() - INTERVAL (2 * dc.p75) DAY
+                 -- AGENDA (faltaba): cotización parqueada con cita futura es
+                 -- territorio de la mesa; el motor la bloquea hasta fecha+2×p75.
+                 AND (c.agenda_fecha IS NULL
+                      OR DATE_ADD(c.agenda_fecha, INTERVAL (2 * dc.p75) DAY) < NOW())
+                 -- CLIENTE_LOCK (faltaba): si el cliente ya tiene un DI vivo
+                 -- (activo/utilizado) en OTRA cotización, activar() daría null.
+                 AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones dcl
+                                 WHERE dcl.cliente_id = c.cliente_id
+                                   AND dcl.estado IN ('activo','utilizado'))
              ) t
              LEFT JOIN clientes cl ON cl.id = t.cliente_id
              LEFT JOIN usuarios u  ON u.id = t.usuario_id
@@ -362,6 +381,12 @@ if ($es_admin) {
                AND NOT EXISTS (SELECT 1 FROM radar_feedback rf
                      WHERE rf.cotizacion_id=t.id
                        AND rf.updated_at >= NOW() - INTERVAL t.win_days DAY)
+               -- MESA (faltaba): el motor cuenta CUALQUIER tap de mesa reciente
+               -- como actividad que bloquea el DI. Una llamada declarada ayer no
+               -- sacaba la cot del reporte pero sí frena el descuento.
+               AND NOT EXISTS (SELECT 1 FROM mesa_estados me
+                     WHERE me.cotizacion_id=t.id
+                       AND me.created_at >= NOW() - INTERVAL t.win_days DAY)
              -- Más NUEVA candidata arriba (para distinguir a cuáles ya se les mandó
              -- campaña). Los chips R1/R2 solo ocultan filas: el orden se mantiene.
              ORDER BY t.candidata_desde DESC, t.id DESC",

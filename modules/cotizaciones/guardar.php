@@ -43,6 +43,17 @@ if (!in_array($cot['estado'], $editables)) {
 
 $empresa = Auth::empresa();
 
+// ── Cupón/descuento manual NO conviven con DI (regla CEO 16-jul) ──
+// Si la cotización tiene o tuvo un Descuento Inteligente, el editor NO acepta
+// cupón ni descuento manual — antes el re-freeze los apilaba DENTRO del contrato
+// (base_di = subtotal − cupón − manual, luego % DI encima), cobrando descuentos
+// apilados. Es la única puerta que faltaba cerrar (el slug y el accept ya lo
+// bloqueaban). 'tiene o tuvo' = cualquier registro (mismo criterio del slug).
+$tiene_di = false;
+try {
+    $tiene_di = (bool)DB::val("SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id = ? LIMIT 1", [$cot_id]);
+} catch (\Throwable $e) {} // tabla sin migrar → sin bloqueo
+
 // ─── Validar campos ──────────────────────────────────────
 $titulo = trim($body['titulo'] ?? '');
 if (empty($titulo)) json_error('El título es requerido');
@@ -75,7 +86,7 @@ if ($valida_hasta && preg_match('/^\d{4}-\d{2}-\d{2}$/', $valida_hasta) && $vali
 
 // Cupón
 $cupon_id = null; $cupon_codigo = null; $cupon_pct = 0; $cupon_monto_fijo = null;
-if (!empty($body['cupon_id']) && Auth::puede('aplicar_descuentos')) {
+if (!empty($body['cupon_id']) && !$tiene_di && Auth::puede('aplicar_descuentos')) {
     $cupon = DB::row(
         "SELECT id, codigo, porcentaje, monto_fijo FROM cupones WHERE id = ? AND empresa_id = ? AND activo = 1",
         [(int)$body['cupon_id'], $empresa_id]
@@ -90,7 +101,7 @@ if (!empty($body['cupon_id']) && Auth::puede('aplicar_descuentos')) {
 
 // Descuento auto
 $desc_auto_activo = 0; $desc_auto_pct = 0.0; $desc_auto_expira = null; $desc_auto_amt = 0.0;
-if (!empty($body['descuento_auto_activo']) && Auth::puede('aplicar_descuentos')) {
+if (!empty($body['descuento_auto_activo']) && !$tiene_di && Auth::puede('aplicar_descuentos')) {
     $desc_auto_activo = 1;
     $desc_auto_pct    = max(0, min(100, (float)($body['descuento_auto_pct'] ?? 0)));
     $dias = max(1, (int)($body['descuento_auto_dias'] ?? 3));
