@@ -107,7 +107,22 @@ CREATE TABLE mesa_vencidos (
 SQL;
 foreach (array_filter(array_map('trim', explode(';', $ddl))) as $stmt) DB::pdo()->exec($stmt);
 
-$d = fn(float $dias) => date('Y-m-d H:i:s', time() - (int)round($dias * 86400));
+$d = function (float $dias): string {
+    $now = time();
+    $ts  = $now - (int)round($dias * 86400);
+    $mid = strtotime(date('Y-m-d')); // medianoche de HOY (hora local del sim)
+    // Marcadores de "HOY" (offset < 0.5d) que por la hora de corrida caerían en
+    // AYER → re-anclar dentro de las horas transcurridas hoy, preservando el orden
+    // relativo (dias mayor = más temprano). Evita el falso-fallo del sim en las
+    // ~2h post-medianoche (M2 descartada_hoy, M10 atendida_hoy, etc.). NO afecta
+    // offsets >= 0.5d (ventanas de 24h+ intactas) ni corridas fuera de esa franja.
+    if ($dias >= 0 && $dias < 0.5 && $ts < $mid) {
+        $elapsed = max(1, $now - $mid);
+        $frac    = 1 - min(1.0, $dias / 0.5);
+        $ts      = $mid + (int) round($elapsed * $frac * 0.9);
+    }
+    return date('Y-m-d H:i:s', $ts);
+};
 function cot(int $id, int $uid, float $total, float $edad, array $x = []): void {
     global $d;
     DB::execute("INSERT INTO cotizaciones (id, empresa_id, usuario_id, cliente_id, numero, titulo, total, estado, visitas,
