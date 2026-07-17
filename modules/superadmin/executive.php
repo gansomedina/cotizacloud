@@ -151,22 +151,27 @@ $acum_anio = $acum_anio_real + $acum_anio_hist;
 
 // Ventas atribuidas al Descuento Inteligente — SOLO mis empresas ($emp_ids).
 // "Del DI" = la cotización tiene un desc_int_activaciones 'utilizado' (mismo
-// criterio que ActividadScore). Este mes (mes en curso) + acumulado total.
-$di_mes = DB::row(
+// criterio que ActividadScore). Desglose del mes por empresa + total del AÑO
+// EN CURSO (dinámico: 2026 hoy, 2027 el próximo año, etc.).
+$di_por_emp = DB::query(
+    "SELECT v.empresa_id, COALESCE(SUM(v.total),0) AS monto, COUNT(*) AS num
+     FROM ventas v
+     WHERE v.empresa_id IN ({$emp_ids}) AND v.estado != 'cancelada'
+       AND v.created_at BETWEEN ? AND ?
+       AND EXISTS (SELECT 1 FROM desc_int_activaciones di
+                   WHERE di.cotizacion_id = v.cotizacion_id AND di.estado = 'utilizado')
+     GROUP BY v.empresa_id
+     ORDER BY monto DESC",
+    [$now->format('Y-m') . '-01 00:00:00', $now->format('Y-m-d') . ' 23:59:59']
+);
+$di_anio = DB::row(
     "SELECT COALESCE(SUM(v.total),0) AS monto, COUNT(*) AS num
      FROM ventas v
      WHERE v.empresa_id IN ({$emp_ids}) AND v.estado != 'cancelada'
        AND v.created_at BETWEEN ? AND ?
        AND EXISTS (SELECT 1 FROM desc_int_activaciones di
                    WHERE di.cotizacion_id = v.cotizacion_id AND di.estado = 'utilizado')",
-    [$now->format('Y-m') . '-01 00:00:00', $now->format('Y-m-d') . ' 23:59:59']
-) ?: ['monto' => 0, 'num' => 0];
-$di_total = DB::row(
-    "SELECT COALESCE(SUM(v.total),0) AS monto, COUNT(*) AS num
-     FROM ventas v
-     WHERE v.empresa_id IN ({$emp_ids}) AND v.estado != 'cancelada'
-       AND EXISTS (SELECT 1 FROM desc_int_activaciones di
-                   WHERE di.cotizacion_id = v.cotizacion_id AND di.estado = 'utilizado')"
+    [$now->format('Y') . '-01-01 00:00:00', $now->format('Y-m-d') . ' 23:59:59']
 ) ?: ['monto' => 0, 'num' => 0];
 
 $var_ventas = (float)$kpi_ant['ventas'] > 0
@@ -896,12 +901,17 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
-<!-- Leyenda: ventas del Descuento Inteligente (solo mis empresas) -->
-<div style="margin:-6px 0 20px;padding:9px 15px;font:600 12px 'Inter',sans-serif;background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px">
-    <span style="color:var(--a)">💡 Descuento Inteligente</span>
-    <span style="color:var(--t2)">Este mes: <b style="color:var(--text)"><?= xf((float)$di_mes['monto']) ?></b> · <?= (int)$di_mes['num'] ?> ventas</span>
+<!-- Leyenda: ventas del Descuento Inteligente (solo mis empresas) — desglose
+     por empresa del mes en curso + total del año en curso. Centrada, con wrap. -->
+<div style="margin:-6px 0 20px;padding:9px 15px;font:600 12px 'Inter',sans-serif;background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 16px">
+    <span style="color:var(--a)">💡 Descuento Inteligente · este mes</span>
+    <?php if ($di_por_emp): foreach ($di_por_emp as $de): $ec = $empresas_cfg[(int)$de['empresa_id']] ?? null; ?>
+    <span style="color:var(--t2)"><span style="color:<?= $ec['color'] ?? 'var(--text)' ?>"><?= $ec['nombre'] ?? ('Empresa ' . (int)$de['empresa_id']) ?></span>: <b style="color:var(--text)"><?= xf((float)$de['monto']) ?></b> · <?= (int)$de['num'] ?></span>
+    <?php endforeach; else: ?>
+    <span style="color:var(--t3)">sin ventas con DI este mes</span>
+    <?php endif; ?>
     <span style="color:var(--t3)">|</span>
-    <span style="color:var(--t2)">Acumulado total: <b style="color:var(--text)"><?= xf((float)$di_total['monto']) ?></b> · <?= (int)$di_total['num'] ?> ventas</span>
+    <span style="color:var(--t2)">Total <?= $now->format('Y') ?>: <b style="color:var(--text)"><?= xf((float)$di_anio['monto']) ?></b> · <?= (int)$di_anio['num'] ?> ventas</span>
 </div>
 
 <!-- GRÁFICA GLOBAL -->
