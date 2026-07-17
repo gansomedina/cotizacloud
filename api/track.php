@@ -220,43 +220,18 @@ if (in_array($cot['estado'], ['enviada','vista'], true)
 // Acciones especiales
 switch ($tipo) {
     case 'accept_confirm':
-        // accept_confirm llega de track.php solo como fallback del evento JS
-        // El flujo principal de aceptación es quote_action.php que ya crea la venta.
-        // Este caso solo actualiza el estado si aún no está aceptada.
-        if (in_array($cot['estado'], ['enviada','vista'], true)) {
-            try {
-                DB::beginTransaction();
-                DB::execute("UPDATE cotizaciones SET estado='aceptada', aceptada_at=NOW() WHERE id=? AND estado IN ('enviada','vista')", [$cot_id]);
-                // Crear venta si no existe
-                $venta_ok = DB::val("SELECT id FROM ventas WHERE cotizacion_id=? LIMIT 1", [$cot_id]);
-                if (!$venta_ok) {
-                    $empresa_row = DB::row("SELECT vta_prefijo FROM empresas WHERE id=? LIMIT 1", [$empresa_id]);
-                    $num_vta     = DB::siguiente_folio($empresa_id, 'VTA', $empresa_row['vta_prefijo'] ?? 'VTA');
-                    $cot_full    = DB::row("SELECT titulo, cliente_id, total FROM cotizaciones WHERE id=?", [$cot_id]);
-                    DB::insert(
-                        "INSERT INTO ventas (empresa_id, cotizacion_id, cliente_id, usuario_id, numero, titulo, slug, token, total, pagado, saldo, estado, created_at)
-                         VALUES (?,?,?,NULL,?,?,?,?,?,0,?,'pendiente',NOW())",
-                        [
-                            $empresa_id, $cot_id, $cot_full['cliente_id'],
-                            $num_vta, $cot_full['titulo'],
-                            slug_unico($cot_full['titulo'], 'ventas', 'slug', $empresa_id),
-                            generar_token(32),
-                            $cot_full['total'], $cot_full['total'],
-                        ]
-                    );
-                }
-                DB::execute("INSERT INTO cotizacion_log (cotizacion_id, usuario_id, accion, detalle) VALUES (?,NULL,'aceptada_cliente','Aceptada desde vista pública')", [$cot_id]);
-                snapshot_cotizacion($cot_id);
-                DB::commit();
-            } catch (Throwable $ex) { DB::rollback(); }
-        }
-        break;
     case 'reject_confirm':
-        $motivo = substr(preg_replace('/[^\w\s\-\.,áéíóúüñÁÉÍÓÚÜÑ]/u', '', (string)($data['motivo'] ?? '')), 0, 200);
-        if (in_array($cot['estado'], ['enviada','vista','aceptada'], true)) {
-            DB::execute("UPDATE cotizaciones SET estado='rechazada', rechazada_at=NOW() WHERE id=? AND estado IN ('enviada','vista','aceptada')", [$cot_id]);
-            DB::execute("INSERT INTO cotizacion_log (cotizacion_id, usuario_id, accion, detalle) VALUES (?,NULL,'rechazada_cliente',?)", [$cot_id, 'Rechazada desde vista pública: '.$motivo]);
-        }
+        // NO-OP a propósito (seguridad, auditoría 17-jul). Este beacon NUNCA
+        // debe mutar dinero/estado: llega con un cotizacion_id ENTERO sin token
+        // ni slug ni binding de host — enumerando IDs cualquiera aceptaba/
+        // rechazaba cotizaciones ajenas, y creaba la venta con el total viejo
+        // (sin DI, sin bloquear cupón, sin checar suspendida), pisando lo que
+        // quote_action ya había cobrado bien (carrera). El flujo REAL de
+        // aceptar/rechazar es api/quote_action.php (recalcula server-side,
+        // aplica el DI congelado, valida cupón, exige nombre). El slug siempre
+        // lo llama ANTES de este beacon (doAcc/doRej en cotizacion.php); este
+        // evento solo se conserva para la analítica del embudo (ya se registró
+        // como quote_event arriba). NO restaurar la creación de venta aquí.
         break;
 }
 

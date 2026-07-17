@@ -36,7 +36,16 @@ if (!empty($cot['suspendida'])) {
 }
 
 $estado_actual = $cot['estado'];
-$estados_activos = ['enviada','vista','aceptada'];
+// SIN 'aceptada' (seguridad, auditoría 17-jul): incluirla permitía RE-ACEPTAR
+// una cotización ya cerrada — recalculaba y reescribía el total desde líneas
+// vivas (que la venta ya pudo editar), dejaba inyectar un cupón retroactivo
+// para bajar el precio, reseteaba aceptada_at (corrompía tasa de cierre/TTC del
+// termómetro) y duplicaba push/email. Y en la rama de RECHAZAR permitía rechazar
+// una ya aceptada, dejando la venta huérfana. La aceptación crea la venta en la
+// MISMA transacción, así que no existe un estado legítimo 'aceptada sin venta'
+// que necesite re-entrar. El doble-clic queda cubierto por el guard
+// venta_existente + el FOR UPDATE.
+$estados_activos = ['enviada','vista'];
 
 // ─── Aceptar ─────────────────────────────────────────────
 if ($accion === 'aceptar') {
