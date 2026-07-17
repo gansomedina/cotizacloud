@@ -109,19 +109,23 @@ foreach (array_filter(array_map('trim', explode(';', $ddl))) as $stmt) DB::pdo()
 
 $d = function (float $dias): string {
     $now = time();
-    $ts  = $now - (int)round($dias * 86400);
     $mid = strtotime(date('Y-m-d')); // medianoche de HOY (hora local del sim)
-    // Marcadores de "HOY" (offset < 0.5d) que por la hora de corrida caerían en
-    // AYER → re-anclar dentro de las horas transcurridas hoy, preservando el orden
-    // relativo (dias mayor = más temprano). Evita el falso-fallo del sim en las
-    // ~2h post-medianoche (M2 descartada_hoy, M10 atendida_hoy, etc.). NO afecta
-    // offsets >= 0.5d (ventanas de 24h+ intactas) ni corridas fuera de esa franja.
-    if ($dias >= 0 && $dias < 0.5 && $ts < $mid) {
-        $elapsed = max(1, $now - $mid);
-        $frac    = 1 - min(1.0, $dias / 0.5);
-        $ts      = $mid + (int) round($elapsed * $frac * 0.9);
+    // Marcadores de "HOY" (offset < 0.5d): interpolar SIEMPRE dentro de la ventana
+    // [floor, now], con floor = max(medianoche, posición natural del marcador 0.5d),
+    // de modo que:
+    //   (a) nunca crucen a AYER — atendida_hoy/descartada_hoy comparan el DÍA, y un
+    //       marcador de "hoy" que caiga en ayer causaba el falso-fallo ~2h post-medianoche;
+    //   (b) el orden global quede estrictamente descendente en TODA hora, incluido el
+    //       borde 0.49↔0.5 — el clamp parcial anterior mezclaba rama plana y clamp e
+    //       INVERTÍA el orden entre ~00:14 y ~03:00 (d=0.2 quedaba más reciente que d=0.1).
+    // Offsets >= 0.5d quedan en su posición natural (ventanas de 24h+ intactas).
+    // Nota: a <~60s de la medianoche la ventana es tan chica que dos offsets in-band
+    // pueden empatar el segundo (no invertir); el desempate por id resuelve el orden.
+    if ($dias >= 0 && $dias < 0.5) {
+        $floor = max($mid, $now - 43200);
+        return date('Y-m-d H:i:s', $now - (int) round(($dias / 0.5) * ($now - $floor)));
     }
-    return date('Y-m-d H:i:s', $ts);
+    return date('Y-m-d H:i:s', $now - (int) round($dias * 86400));
 };
 function cot(int $id, int $uid, float $total, float $edad, array $x = []): void {
     global $d;
