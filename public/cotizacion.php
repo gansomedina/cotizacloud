@@ -1653,6 +1653,16 @@ async function doAcc(){
         respOk = data.ok === true;
     } catch(e){}
 
+    // El server DEBE confirmar. Antes se mostraba éxito y se recargaba pase lo
+    // que pase; con el beacon de track ahora NO-OP (seguridad 17-jul), un fetch
+    // fallido dejaba la aceptación PERDIDA con éxito falso. Si no hay ok, avisar
+    // y recargar para que los botones vuelvan y el cliente reintente.
+    if (!respOk) {
+        alert('No pudimos registrar tu respuesta. Revisa tu conexión e inténtalo de nuevo.');
+        window.location.reload();
+        return;
+    }
+
     if(window.czTrack) window.czTrack('accept_confirm');
 
     const msgExito = EMPRESA.texto_aceptar
@@ -1691,13 +1701,23 @@ async function doRej(){
     const otro = document.getElementById('rOther').value.trim();
     const motivo = razonSel === 'otro' ? otro : razonSel;
 
+    let respOk = false;
     try {
-        await fetch('/api/quote-action', {
+        const r = await fetch('/api/quote-action', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify({cotizacion_id: COT_ID, accion: 'rechazar', motivo})
         });
+        const data = await r.json();
+        respOk = data.ok === true;
     } catch(e){}
+
+    // Mismo criterio que doAcc: sin confirmación del server, no fingir éxito.
+    if (!respOk) {
+        alert('No pudimos registrar tu respuesta. Revisa tu conexión e inténtalo de nuevo.');
+        window.location.reload();
+        return;
+    }
 
     mostrarExito('👋', 'Cotización rechazada',
         'Hemos registrado tu decisión. Si deseas retomar el proyecto, con gusto te atendemos.',
