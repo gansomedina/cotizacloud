@@ -1656,7 +1656,7 @@ async function doAcc(){
     const {tot, aa, ca} = calc();
     const cupon = applied ? applied.code : null;
 
-    let respOk = false;
+    let respOk = false, respErr = '';
     try {
         const r = await fetch('/api/quote-action', {
             method: 'POST',
@@ -1669,14 +1669,16 @@ async function doAcc(){
         });
         const data = await r.json();
         respOk = data.ok === true;
+        if (!respOk) respErr = data.error || '';
     } catch(e){}
 
     // El server DEBE confirmar. Antes se mostraba éxito y se recargaba pase lo
     // que pase; con el beacon de track ahora NO-OP (seguridad 17-jul), un fetch
-    // fallido dejaba la aceptación PERDIDA con éxito falso. Si no hay ok, avisar
-    // y recargar para que los botones vuelvan y el cliente reintente.
+    // fallido dejaba la aceptación PERDIDA con éxito falso. Si no hay ok, mostrar
+    // el motivo real del server (p.ej. "el descuento venció") o el genérico de red,
+    // y recargar para que los botones vuelvan y el cliente vea el precio vigente.
     if (!respOk) {
-        alert('No pudimos registrar tu respuesta. Revisa tu conexión e inténtalo de nuevo.');
+        alert(respErr || 'No pudimos registrar tu respuesta. Revisa tu conexión e inténtalo de nuevo.');
         window.location.reload();
         return;
     }
@@ -1719,7 +1721,7 @@ async function doRej(){
     const otro = document.getElementById('rOther').value.trim();
     const motivo = razonSel === 'otro' ? otro : razonSel;
 
-    let respOk = false;
+    let respOk = false, respErr = '';
     try {
         const r = await fetch('/api/quote-action', {
             method: 'POST',
@@ -1728,11 +1730,12 @@ async function doRej(){
         });
         const data = await r.json();
         respOk = data.ok === true;
+        if (!respOk) respErr = data.error || '';
     } catch(e){}
 
     // Mismo criterio que doAcc: sin confirmación del server, no fingir éxito.
     if (!respOk) {
-        alert('No pudimos registrar tu respuesta. Revisa tu conexión e inténtalo de nuevo.');
+        alert(respErr || 'No pudimos registrar tu respuesta. Revisa tu conexión e inténtalo de nuevo.');
         window.location.reload();
         return;
     }

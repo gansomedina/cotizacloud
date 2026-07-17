@@ -127,13 +127,32 @@ function e(mixed $val): string
     return htmlspecialchars((string)($val ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-// HTML seguro — permite solo tags de formato básico, strip todo lo demás
+// HTML seguro — permite solo tags de formato básico, strip todo lo demás.
+// Endurecido (auditoría 17-jul): strip_tags conserva los tags de la allowlist
+// PERO no sus atributos → sobrevivían handlers de evento (onclick/onmouseover…)
+// y esquemas peligrosos (javascript:/data:/vbscript:) en <a>/<div>/etc., que al
+// inyectarse por innerHTML ejecutaban (tenant-XSS). Se limpian SOLO dentro de
+// los tags (preg_replace_callback sobre `<...>`), así el texto libre —que puede
+// contener " on…=" o "data:" en prosa— nunca se toca.
 function e_html(mixed $val): string
 {
-    return strip_tags(
+    $html = strip_tags(
         (string)($val ?? ''),
         '<strong><b><em><i><u><br><p><div><span><ul><ol><li><h3><h4><h5><h6><hr><a><sub><sup><small>'
     );
+    if ($html === '' || strpos($html, '<') === false) return $html;
+
+    return preg_replace_callback('/<[a-z][^>]*>/i', function ($m) {
+        $tag = $m[0];
+        // Quitar atributos handler de evento: onX="…" | onX='…' | onX=valor
+        $tag = preg_replace('/\son[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $tag);
+        // Neutralizar esquemas peligrosos en href/src (javascript:/data:/vbscript:)
+        $tag = preg_replace_callback('/\b(href|src)\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', function ($a) {
+            $val = trim($a[2], "\"'");
+            return preg_match('/^\s*(javascript|data|vbscript):/i', $val) ? $a[1] . '="#"' : $a[0];
+        }, $tag);
+        return $tag;
+    }, $html);
 }
 
 // Escapar texto y convertir URLs en links clickeables

@@ -95,6 +95,27 @@ if ($accion === 'aceptar') {
         $di_vig = null;
         try { $di_vig = DescuentoInteligente::vigente($cot_id); } catch (\Throwable $e) {}
 
+        // ── Carrera del DI (auditoría 17-jul): si el cliente cargó la página con
+        //    un descuento VIGENTE y hace clic en aceptar JUSTO DESPUÉS de que
+        //    expiró, vigente() lo marcó 'vencido' y devolvió null → antes se
+        //    cobraba precio COMPLETO en SILENCIO (el cliente vio "Ahora $X").
+        //    Rechazamos con mensaje para que recargue y vea el precio real. La
+        //    ventana de 1h apunta solo al que expiró hace poco (evita loop en
+        //    cots con DI vencido hace mucho, que el cliente ya no ve como oferta).
+        if (!$di_vig) {
+            $di_recien_venc = false;
+            try {
+                $di_recien_venc = (bool)DB::val(
+                    "SELECT 1 FROM desc_int_activaciones
+                     WHERE cotizacion_id=? AND estado='vencido'
+                       AND expira_at >= NOW() - INTERVAL 1 HOUR LIMIT 1", [$cot_id]);
+            } catch (\Throwable $e) {}
+            if ($di_recien_venc) {
+                DB::rollback();
+                echo json_encode(['ok'=>false,'error'=>'El descuento especial venció. Actualiza la página para ver el precio vigente.']); exit;
+            }
+        }
+
         if ($di_vig) {
             // ── Contrato firme: se cobra el precio CONGELADO que vio y aceptó el
             //    cliente, NO se recomputa de líneas vivas. `nuevo_total` = base
