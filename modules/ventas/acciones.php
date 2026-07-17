@@ -287,19 +287,24 @@ elseif ($accion === 'editar-linea') {
         [$linea_id, $venta_id, $empresa_id]
     );
     if (!$linea) json_error('Línea no encontrada o sin permiso', 404);
+    $cot_id = (int)$linea['cotizacion_id'];
+
+    // DI 'utilizado': editar/eliminar una línea REGULAR cambia la base del
+    // contrato congelado → se bloquea (los extras add-on sí se permiten vía
+    // agregar/eliminar_extra). Para cambiar el precio base, se quita el DI.
+    if (!(int)$linea['es_extra']) {
+        try {
+            if (DB::val("SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id=? AND estado='utilizado' LIMIT 1", [$cot_id])) {
+                json_error('Esta venta tiene Descuento Inteligente. Para cambiar artículos, primero quita el DI.', 422);
+            }
+        } catch (\Throwable $e) {} // tabla sin migrar → sin bloqueo
+    }
 
     DB::beginTransaction();
     try {
         if ($es_eliminar) {
-            // Eliminar línea
-            $subtotal_viejo = (float)$linea['subtotal'];
             DB::execute("DELETE FROM cotizacion_lineas WHERE id=?", [$linea_id]);
-            DB::execute(
-                "UPDATE ventas SET total=GREATEST(0,total-?), saldo=GREATEST(0,saldo-?), updated_at=NOW() WHERE id=?",
-                [$subtotal_viejo, $subtotal_viejo, $venta_id]
-            );
         } else {
-            // Editar línea
             $titulo   = trim($body['titulo'] ?? '');
             if (empty($titulo)) json_error('El nombre es requerido');
             $sku      = trim($body['sku'] ?? '');
@@ -307,25 +312,42 @@ elseif ($accion === 'editar-linea') {
             $cantidad = max(0.001, (float)($body['cantidad'] ?? 1));
             $precio   = max(0, (float)($body['precio_unit'] ?? 0));
             $subtotal_nuevo = round($cantidad * $precio, 2);
-            $subtotal_viejo = (float)$linea['subtotal'];
-            $diff = $subtotal_nuevo - $subtotal_viejo;
-
             DB::execute(
                 "UPDATE cotizacion_lineas SET titulo=?, sku=?, descripcion=?, cantidad=?, precio_unit=?, subtotal=? WHERE id=?",
                 [$titulo, $sku, $desc, $cantidad, $precio, $subtotal_nuevo, $linea_id]
             );
-            DB::execute(
-                "UPDATE ventas SET total=GREATEST(0,total+?), saldo=GREATEST(0,saldo+?), updated_at=NOW() WHERE id=?",
-                [$diff, $diff, $venta_id]
-            );
         }
+
+        // Recompute completo (antes sumaba/restaba el subtotal crudo SIN IVA →
+        // subcobro en modo suma). Modelo: base sin extras descontada + extras
+        // gravados; DI-aware (nuevo_total congelado + extras gravados).
+        $base_ne = (float)DB::val("SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=0", [$cot_id]);
+        $extras  = (float)DB::val("SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
+        $cotd = DB::row("SELECT impuesto_pct, impuesto_modo, cupon_monto, descuento_auto_amt FROM cotizaciones WHERE id=?", [$cot_id]);
+        $imp_pct  = (float)($cotd['impuesto_pct'] ?? 0);
+        $imp_modo = $cotd['impuesto_modo'] ?? 'ninguno';
+        $extras_final = ($imp_modo === 'suma') ? round($extras + round($extras * $imp_pct / 100, 2), 2) : $extras;
+        $di_nt = null;
+        try {
+            $v = DB::val("SELECT nuevo_total FROM desc_int_activaciones WHERE cotizacion_id=? AND estado='utilizado' ORDER BY id DESC LIMIT 1", [$cot_id]);
+            if ($v !== false && $v !== null) $di_nt = (float)$v;
+        } catch (\Throwable $e) {}
+        if ($di_nt !== null) {
+            $nuevo_total = round($di_nt + $extras_final, 2);
+        } else {
+            $taxable = max(0, $base_ne - (float)($cotd['cupon_monto'] ?? 0) - (float)($cotd['descuento_auto_amt'] ?? 0)) + $extras;
+            $nuevo_total = ($imp_modo === 'suma') ? round($taxable + round($taxable * $imp_pct / 100, 2), 2) : round($taxable, 2);
+        }
+        $nuevo_saldo = max(0, round($nuevo_total - (float)$venta['pagado'], 2));
+        DB::execute("UPDATE ventas SET total=?, saldo=?, updated_at=NOW() WHERE id=?", [$nuevo_total, $nuevo_saldo, $venta_id]);
+        DB::execute("UPDATE cotizaciones SET subtotal=(SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=?), updated_at=NOW() WHERE id=?", [$cot_id, $cot_id]);
         DB::commit();
     } catch (Exception $e) {
         DB::rollback();
         json_error('Error al procesar', 500);
     }
 
-    json_ok();
+    json_ok(['total' => $nuevo_total, 'saldo' => $nuevo_saldo]);
 }
 
 // ════════════════════════════════════════════════════════════
