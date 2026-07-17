@@ -338,8 +338,13 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
                 if (!$di_act && !$interno_detectado && $di_giro !== 'inmuebles' && in_array($cot['estado'], ['enviada','vista'])) {
                     $di_ev = DescuentoInteligente::evaluar($cot);
                     if ($di_ev) {
-                        // base del DI = total SIN los extras gravados (= base descontada con IVA)
-                        $di_precio = round($total_base - $extras_final, 2);
+                        // base del DI = base sin extras CON IVA. Se calcula DIRECTO
+                        // (no restando extras del total) para ser bit-idéntica al
+                        // re-freeze de cotizaciones/guardar (round(base*(1+iva))) y
+                        // evitar drift de ±1¢ entre activación y re-congelado.
+                        $di_precio = ($cot['impuesto_modo'] === 'suma')
+                            ? round($base * (1 + $ivapct / 100), 2)
+                            : round($base, 2);
                         $di_act = DescuentoInteligente::activar($cot, $di_ev, $di_precio, $visitor_id_cookie ?: null);
                     }
                 }
@@ -1487,7 +1492,8 @@ if ($di_act && ($di_act['estado'] ?? '') === 'activo'
 <?php endif; ?>
 
 <script>
-const SUB   = <?= (float)$subtotal ?>;
+const SUB    = <?= (float)$subtotal ?>;
+const EXTRAS = <?= (float)$subtotal_extras ?>; // add-ons: no descontables, gravables si suma
 const TAX   = {modo:'<?= $cot['impuesto_modo'] ?>',pct:<?= (float)$cot['impuesto_pct'] ?>};
 const AUTO  = {on:<?= $adc_on?'true':'false' ?>,pct:<?= (float)$adc_pct ?>,exp:new Date(<?= $adc_exp ? ($adc_exp * 1000) : 0 ?>)};
 <?php
@@ -1607,10 +1613,12 @@ function calc(){
         document.getElementById('tCV').textContent = '-'+fmt(ca);
     } else cr.style.display = 'none';
 
-    // Sumar IVA si el modo es "suma"
-    if (TAX.modo === 'suma') {
-        tot += tot * TAX.pct / 100;
-    }
+    // Extras (auditoría 17-jul): add-ons NO descontables pero SÍ gravables. Entran
+    // a la base gravable DESPUÉS de los descuentos; el IVA cae sobre base+extras.
+    // Antes calc() ignoraba los extras y PISABA el #tTot correcto → el cliente veía
+    // menos de lo que se le cobraba.
+    const taxable = Math.max(0, tot) + EXTRAS;
+    tot = (TAX.modo === 'suma') ? (taxable + taxable * TAX.pct / 100) : taxable;
 
     document.getElementById('tTot').textContent = fmt(tot);
     return {tot, aa, ca};
@@ -1638,12 +1646,13 @@ function openM(id){
             }
         } else {
             const {tot,aa,ca} = calc();
-            let base = SUB - aa - ca;
+            const taxable = Math.max(0, SUB - aa - ca) + EXTRAS; // base descontada + extras
             h = '<div class="sr"><span>Subtotal</span><span>'+fmt(SUB)+'</span></div>';
             if (aa) h += '<div class="sr" style="color:var(--amb)"><span>Descuento especial</span><span>-'+fmt(aa)+'</span></div>';
             if (ca && applied) h += '<div class="sr" style="color:var(--amb)"><span>Cupón '+applied.code+'</span><span>-'+fmt(ca)+'</span></div>';
+            if (EXTRAS > 0) h += '<div class="sr"><span>Extras</span><span>+'+fmt(EXTRAS)+'</span></div>';
             if (TAX.modo === 'suma') {
-                let taxAmt = base * TAX.pct / 100;
+                let taxAmt = taxable * TAX.pct / 100; // IVA sobre base + extras
                 h += '<div class="sr"><span><?= e($cot['impuesto_label'] ?: 'IVA') ?> ('+TAX.pct+'%)</span><span>'+fmt(taxAmt)+'</span></div>';
             }
             h += '<div class="sr tot"><span>Total</span><span>'+fmt(tot)+'</span></div>';
@@ -1681,7 +1690,8 @@ async function doAcc(){
             body: JSON.stringify({
                 cotizacion_id: COT_ID, accion: 'aceptar',
                 nombre, total_final: tot,
-                descuento_auto_amt: aa, cupon_codigo: cupon, cupon_pct: applied?.pct ?? 0
+                descuento_auto_amt: aa, cupon_codigo: cupon, cupon_pct: applied?.pct ?? 0,
+                di_visto: (typeof DI !== 'undefined' && DI.active === true)
             })
         });
         const data = await r.json();

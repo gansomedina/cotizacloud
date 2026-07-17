@@ -101,18 +101,20 @@ if ($accion === 'aceptar') {
         //    un descuento VIGENTE y hace clic en aceptar JUSTO DESPUÉS de que
         //    expiró, vigente() lo marcó 'vencido' y devolvió null → antes se
         //    cobraba precio COMPLETO en SILENCIO (el cliente vio "Ahora $X").
-        //    Rechazamos con mensaje para que recargue y vea el precio real. La
-        //    ventana de 1h apunta solo al que expiró hace poco (evita loop en
-        //    cots con DI vencido hace mucho, que el cliente ya no ve como oferta).
-        if (!$di_vig) {
-            $di_recien_venc = false;
+        //    Rechazamos con mensaje para que recargue y vea el precio real. El
+        //    gate `di_visto` (el slug lo manda solo si renderizó el DI activo)
+        //    limita el rechazo a ESA sesión: tras recargar, el slug ya no manda
+        //    di_visto → el cliente SÍ puede aceptar a precio completo (sin loop).
+        //    di_visto es del cliente pero es inofensivo: solo elige rechazo-vs-
+        //    cobro-completo, nunca aplica un descuento.
+        if (!$di_vig && !empty($body['di_visto'])) {
+            $di_venc = false;
             try {
-                $di_recien_venc = (bool)DB::val(
+                $di_venc = (bool)DB::val(
                     "SELECT 1 FROM desc_int_activaciones
-                     WHERE cotizacion_id=? AND estado='vencido'
-                       AND expira_at >= NOW() - INTERVAL 1 HOUR LIMIT 1", [$cot_id]);
+                     WHERE cotizacion_id=? AND estado='vencido' LIMIT 1", [$cot_id]);
             } catch (\Throwable $e) {}
-            if ($di_recien_venc) {
+            if ($di_venc) {
                 DB::rollback();
                 echo json_encode(['ok'=>false,'error'=>'El descuento especial venció. Actualiza la página para ver el precio vigente.']); exit;
             }

@@ -986,21 +986,23 @@ function calcItemTotal(input) {
 
 // ─── Cálculo de totales ─────────────────────────────────
 function calcularTotales() {
-    // Subtotal de items
-    let subtotal = 0;
+    // Subtotal de items — extras aparte (add-ons gravables, NO descontables)
+    let subRegular = 0, subExtras = 0;
     document.querySelectorAll('#items-list .item-card').forEach(card => {
         const cant  = parseFloat(card.querySelector('[data-campo=cantidad]')?.value) || 0;
         const precio = parseFloat(card.querySelector('[data-campo=precio]')?.value)  || 0;
-        subtotal += cant * precio;
+        const monto = cant * precio;
+        if (parseInt(card.dataset.esExtra) || 0) subExtras += monto; else subRegular += monto;
     });
+    const subtotal = subRegular + subExtras;
 
-    // Descuentos
-    let baseImpuesto = subtotal;
+    // Descuentos SOLO sobre la base sin extras
+    let baseImpuesto = subRegular;
 
     // Cupón
     let cuponAmt = 0;
     if (cuponSeleccionado) {
-        cuponAmt    = subtotal * (cuponSeleccionado.pct / 100);
+        cuponAmt    = subRegular * (cuponSeleccionado.pct / 100);
         baseImpuesto -= cuponAmt;
         document.getElementById('row-cupon').style.display = '';
         document.getElementById('lbl-cupon').textContent   = 'Cupón ' + cuponSeleccionado.codigo;
@@ -1021,19 +1023,20 @@ function calcularTotales() {
         rowDescAuto.style.display = 'none';
     }
 
-    // Impuesto
+    // Impuesto: los extras entran a la base gravable (no descontados) → IVA sobre base+extras
     let impuestoAmt = 0;
     const modo = EMPRESA_CFG.impuesto_modo;
     const pct  = EMPRESA_CFG.impuesto_pct / 100;
+    const taxable = Math.max(0, baseImpuesto) + subExtras;
     if (modo === 'suma') {
-        impuestoAmt = baseImpuesto * pct;
+        impuestoAmt = taxable * pct;
     } else if (modo === 'incluido') {
-        impuestoAmt = baseImpuesto - (baseImpuesto / (1 + pct));
+        impuestoAmt = taxable - (taxable / (1 + pct));
     }
 
     const total = modo === 'suma'
-        ? baseImpuesto + impuestoAmt
-        : baseImpuesto; // incluido o ninguno
+        ? taxable + impuestoAmt
+        : taxable; // incluido o ninguno
 
     // Actualizar DOM
     setText('total-subtotal', fmt(subtotal));

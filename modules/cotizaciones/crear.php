@@ -99,6 +99,7 @@ if (!is_array($items)) $items = [];
 
 // ─── Calcular totales ────────────────────────────────────
 $subtotal = 0.0;
+$subtotal_extras = 0.0; // extras: add-ons gravables, no descontables
 $lineas   = [];
 
 foreach ($items as $i => $item) {
@@ -116,6 +117,7 @@ foreach ($items as $i => $item) {
 
     $sub_linea = $cant * $precio;
     $subtotal += $sub_linea;
+    if ((int)($item['es_extra'] ?? 0)) $subtotal_extras += $sub_linea;
 
     $lineas[] = [
         'orden'       => $i + 1,
@@ -130,12 +132,13 @@ foreach ($items as $i => $item) {
     ];
 }
 
-// Cálculo de descuentos e impuesto
-$base = $subtotal;
+// Cálculo de descuentos e impuesto (extras: NO descontables pero SÍ gravables —
+// mismo modelo que el slug/accept/guardar, auditoría 17-jul).
+$base = $subtotal - $subtotal_extras; // base sin extras
 
 $cupon_monto = 0.0;
 if ($cupon_id) {
-    $cupon_monto = $cupon_monto_fijo !== null ? min($cupon_monto_fijo, $subtotal) : $subtotal * ($cupon_pct / 100);
+    $cupon_monto = $cupon_monto_fijo !== null ? min($cupon_monto_fijo, $base) : $base * ($cupon_pct / 100);
     $base -= $cupon_monto;
 }
 
@@ -143,19 +146,21 @@ if ($desc_auto_activo) {
     $desc_auto_amt = $base * ($desc_auto_pct / 100);
     $base -= $desc_auto_amt;
 }
+$base = max(0, $base);
 
 $impuesto_modo  = $empresa['impuesto_modo'];
 $impuesto_pct   = (float)$empresa['impuesto_pct'];
 $impuesto_amt   = 0.0;
+$taxable = $base + $subtotal_extras; // extras gravables, no descontables
 
 if ($impuesto_modo === 'suma') {
-    $impuesto_amt = $base * ($impuesto_pct / 100);
-    $total = $base + $impuesto_amt;
+    $impuesto_amt = round($taxable * ($impuesto_pct / 100), 2);
+    $total = round($taxable + $impuesto_amt, 2);
 } elseif ($impuesto_modo === 'incluido') {
-    $impuesto_amt = $base - ($base / (1 + $impuesto_pct / 100));
-    $total = $base;
+    $impuesto_amt = round($taxable - ($taxable / (1 + $impuesto_pct / 100)), 2);
+    $total = round($taxable, 2);
 } else {
-    $total = $base;
+    $total = round($taxable, 2);
 }
 
 // ─── Generar folio, slug y token ─────────────────────────

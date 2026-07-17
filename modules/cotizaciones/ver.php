@@ -990,11 +990,15 @@ function calcularTotales(){
     let base=subRegular,cuponAmt=0,descAutoAmt=0;
     if(cuponSeleccionado){cuponAmt=subRegular*(cuponSeleccionado.pct/100);base-=cuponAmt;}
     if(descAutoActivo&&descAutoPct>0){descAutoAmt=base*(descAutoPct/100);base-=descAutoAmt;}
-    let impAmt=0,totalBase=base;
+    // Extras: NO descontables pero SÍ gravables — el IVA cae sobre base+extras
+    // (antes se sumaban crudos sin IVA → el editor mostraba menos de lo cobrado).
+    let impAmt=0;
     const modo=EMPRESA_CFG.impuesto_modo,pct=EMPRESA_CFG.impuesto_pct/100;
-    if(modo==='suma'){impAmt=base*pct;totalBase=base+impAmt;}
-    else if(modo==='incluido'){impAmt=base-(base/(1+pct));}
-    const total=totalBase+subExtras;
+    const taxable=Math.max(0,base)+subExtras;
+    let total;
+    if(modo==='suma'){impAmt=taxable*pct;total=taxable+impAmt;}
+    else if(modo==='incluido'){impAmt=taxable-(taxable/(1+pct));total=taxable;}
+    else{total=taxable;}
     setText('total-subtotal',fmt(subRegular));
     const rdEl=document.getElementById('row-desc-auto');
     if(rdEl){rdEl.style.display=descAutoAmt>0?'':'none';setText('total-desc-auto','-'+fmt(descAutoAmt));setText('lbl-desc-auto','Descuento '+descAutoPct+'%');}

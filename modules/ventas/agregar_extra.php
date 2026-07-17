@@ -52,25 +52,38 @@ try {
         [$cot_id, $max_orden + 1, $titulo, $desc, $total, $total]
     );
 
-    // Recalcular subtotal de la cotización
+    // Recalcular: base sin extras (descontable) y extras (add-ons gravables no
+    // descontables). El subtotal guardado sigue siendo la suma de TODAS las líneas.
     $nuevo_subtotal = (float)DB::val(
-        "SELECT COALESCE(SUM(subtotal), 0) FROM cotizacion_lineas WHERE cotizacion_id=?",
-        [$cot_id]
-    );
+        "SELECT COALESCE(SUM(subtotal), 0) FROM cotizacion_lineas WHERE cotizacion_id=?", [$cot_id]);
+    $base_ne = (float)DB::val(
+        "SELECT COALESCE(SUM(subtotal), 0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=0", [$cot_id]);
+    $extras  = (float)DB::val(
+        "SELECT COALESCE(SUM(subtotal), 0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
 
-    // Leer datos de impuesto y descuentos
     $cot = DB::row("SELECT impuesto_pct, impuesto_modo, cupon_monto, descuento_auto_amt FROM cotizaciones WHERE id=?", [$cot_id]);
     $cupon_amt     = (float)($cot['cupon_monto'] ?? 0);
     $desc_auto_amt = (float)($cot['descuento_auto_amt'] ?? 0);
     $imp_pct       = (float)($cot['impuesto_pct'] ?? 0);
     $imp_modo      = $cot['impuesto_modo'] ?? 'ninguno';
+    $extras_final  = ($imp_modo === 'suma') ? round($extras + round($extras * $imp_pct / 100, 2), 2) : $extras;
 
-    // Recalcular total
-    $base = $nuevo_subtotal - $cupon_amt - $desc_auto_amt;
-    if ($imp_modo === 'suma') {
-        $nuevo_total = round($base * (1 + $imp_pct / 100), 2);
+    // DI 'utilizado': el precio base lo manda el CONTRATO congelado; el extra
+    // nuevo se suma gravado encima (antes esta ruta recomputaba a precio de lista
+    // completo, BORRANDO el DI → sobrecobro). Sin DI: base descontada + extras gravados.
+    $di_nt = null;
+    try {
+        $v = DB::val("SELECT nuevo_total FROM desc_int_activaciones
+                      WHERE cotizacion_id=? AND estado='utilizado' ORDER BY id DESC LIMIT 1", [$cot_id]);
+        if ($v !== false && $v !== null) $di_nt = (float)$v;
+    } catch (\Throwable $e) {}
+    if ($di_nt !== null) {
+        $nuevo_total = round($di_nt + $extras_final, 2);
     } else {
-        $nuevo_total = round(max(0, $base), 2);
+        $taxable = max(0, $base_ne - $cupon_amt - $desc_auto_amt) + $extras;
+        $nuevo_total = ($imp_modo === 'suma')
+            ? round($taxable + round($taxable * $imp_pct / 100, 2), 2)
+            : round($taxable, 2);
     }
 
     // Actualizar cotización
