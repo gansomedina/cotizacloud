@@ -75,7 +75,7 @@ if ($accion === 'aceptar') {
 
         // Total final — recalcular del lado del servidor, NO confiar en el cliente
         $cot_data = DB::row(
-            "SELECT total, subtotal, impuesto_modo, impuesto_pct,
+            "SELECT total, subtotal, impuesto_modo, impuesto_pct, created_at,
                     descuento_auto_activo, descuento_auto_pct, descuento_auto_expira
              FROM cotizaciones WHERE id=?", [$cot_id]
         );
@@ -126,11 +126,25 @@ if ($accion === 'aceptar') {
             // Cupón — re-validar server-side (se aplica primero, igual que guardar.php)
             if ($cupon_codigo) {
                 $cupon_real = DB::row(
-                    "SELECT id, porcentaje, monto_fijo FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
+                    "SELECT id, porcentaje, monto_fijo, vencimiento_tipo, vencimiento_dias, vencimiento_fecha
+                     FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
                     [EMPRESA_ID, $cupon_codigo]
                 );
                 if ($cupon_real) {
-                    if ($cupon_real['monto_fijo'] !== null) {
+                    // Validar VENCIMIENTO server-side (auditoría 17-jul): el JS ya lo
+                    // hacía, pero un POST directo con un código vencido por fecha_fija
+                    // o dias_cotizacion (que sigue activo=1) se cobraba con descuento.
+                    // Misma fórmula que el slug (cotizacion.php).
+                    $exp_cup = null;
+                    if ($cupon_real['vencimiento_tipo'] === 'fecha_fija' && !empty($cupon_real['vencimiento_fecha'])) {
+                        $exp_cup = $cupon_real['vencimiento_fecha'];
+                    } elseif ($cupon_real['vencimiento_tipo'] === 'dias_cotizacion' && !empty($cupon_real['vencimiento_dias'])) {
+                        $exp_cup = date('Y-m-d', strtotime($cot_data['created_at']) + ((int)$cupon_real['vencimiento_dias'] * 86400));
+                    }
+                    $cup_vencido = $exp_cup !== null && $exp_cup < date('Y-m-d');
+                    if ($cup_vencido) {
+                        $cupon_codigo = null; // vencido → no se aplica ni se guarda
+                    } elseif ($cupon_real['monto_fijo'] !== null) {
                         $cupon_amt_srv = round(min((float)$cupon_real['monto_fijo'], $subtotal_srv), 2);
                     } else {
                         $cupon_pct = (float)$cupon_real['porcentaje'];
@@ -275,8 +289,13 @@ if ($accion === 'aceptar') {
         http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Error al procesar']); exit;
     }
 
-    // CAPI: enviar Lead server-side
-    try { MarketingPixels::capi_lead($empresa_id, (float)$cot['total'], $empresa['moneda'] ?? 'MXN'); } catch (\Throwable $e) {}
+    // CAPI: enviar Lead server-side (auditoría 17-jul: usaba $empresa_id/$empresa/
+    // $cot['total'] INDEFINIDOS → TypeError tragado por el catch → NUNCA se enviaba.
+    // Ahora con EMPRESA_ID, el total realmente cobrado y la moneda de la empresa).
+    try {
+        MarketingPixels::capi_lead(EMPRESA_ID, (float)$total_guardar,
+            DB::val("SELECT moneda FROM empresas WHERE id=?", [EMPRESA_ID]) ?: 'MXN');
+    } catch (\Throwable $e) {}
 
     echo json_encode(['ok'=>true, 'estado'=>'aceptada']); exit;
 }
@@ -354,8 +373,8 @@ if ($accion === 'rechazar') {
         http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Error al procesar']); exit;
     }
 
-    // CAPI: enviar QuoteRejected server-side
-    try { MarketingPixels::capi_rechazar($empresa_id); } catch (\Throwable $e) {}
+    // CAPI: enviar QuoteRejected server-side ($empresa_id era indefinido → nunca corría)
+    try { MarketingPixels::capi_rechazar(EMPRESA_ID); } catch (\Throwable $e) {}
 
     echo json_encode(['ok'=>true,'estado'=>'rechazada']); exit;
 }

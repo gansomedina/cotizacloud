@@ -1100,7 +1100,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       <span style="font-size:24px;flex-shrink:0"><?= $ico ?></span>
       <div style="flex:1;min-width:0">
         <div style="font:600 14px 'Plus Jakarta Sans',sans-serif;color:var(--text)"><?= $label ?></div>
-        <div style="font:400 12px 'Plus Jakarta Sans',sans-serif;color:var(--t3);margin-top:2px"><?= $size_txt ?> · <?= strtoupper($ext) ?></div>
+        <div style="font:400 12px 'Plus Jakarta Sans',sans-serif;color:var(--t3);margin-top:2px"><?= $size_txt ?> · <?= e(strtoupper($ext)) ?></div>
       </div>
       <span style="font:600 12px 'Plus Jakarta Sans',sans-serif;color:var(--g);white-space:nowrap;padding:6px 12px;background:var(--glt);border-radius:var(--r)">Abrir</span>
     </a>
@@ -1480,8 +1480,11 @@ const EMPRESA = <?= json_encode([
     'nombre'        => $cot['emp_nombre'],
     'tel'           => $cot['emp_tel'],
     'email'         => $cot['emp_email'],
-    'texto_aceptar' => $cot['texto_aceptar'] ?? '',
-    'texto_rechazar'=> $cot['texto_rechazar'] ?? '',
+    // e_html (allowlist) porque openM las inyecta por innerHTML (XSS de tenant:
+    // un admin podía meter <img onerror> en el texto y ejecutarlo en SUS clientes).
+    // Mismo escape que el render server-side (nl2br(e_html())).
+    'texto_aceptar' => e_html($cot['texto_aceptar'] ?? ''),
+    'texto_rechazar'=> e_html($cot['texto_rechazar'] ?? ''),
 ]) ?>;
 
 let applied = null, tmrInterval = null;
