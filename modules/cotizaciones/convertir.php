@@ -75,7 +75,11 @@ try {
             $extras_di = (float)DB::val(
                 "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas
                  WHERE cotizacion_id = ? AND es_extra = 1", [$cot_id]);
-            $total_vta = round((float)$di_vig['nuevo_total'] + $extras_di, 2);
+            // Extras gravables (IVA si suma), no descontables — igual que el accept.
+            $extras_di_final = (($cot['impuesto_modo'] ?? 'ninguno') === 'suma')
+                ? round($extras_di + round($extras_di * (float)($cot['impuesto_pct'] ?? 0) / 100, 2), 2)
+                : $extras_di;
+            $total_vta = round((float)$di_vig['nuevo_total'] + $extras_di_final, 2);
             // WHERE estado='activo' evita doble-uso y carrera con un accept simultáneo
             DB::execute("UPDATE desc_int_activaciones SET estado='utilizado' WHERE id=? AND estado='activo'",
                 [(int)$di_vig['id']]);

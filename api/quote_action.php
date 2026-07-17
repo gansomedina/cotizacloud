@@ -79,10 +79,12 @@ if ($accion === 'aceptar') {
                     descuento_auto_activo, descuento_auto_pct, descuento_auto_expira
              FROM cotizaciones WHERE id=?", [$cot_id]
         );
-        $lineas_sub = (float)DB::val(
-            "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=?", [$cot_id]
-        );
-        $subtotal_srv = $lineas_sub > 0 ? $lineas_sub : (float)$cot_data['subtotal'];
+        // Base sin extras (descontable) y extras (add-ons, gravables no descontables)
+        $base_ne_srv = (float)DB::val(
+            "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=0", [$cot_id]);
+        $extras_srv  = (float)DB::val(
+            "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
+        $subtotal_srv = ($base_ne_srv + $extras_srv) > 0 ? $base_ne_srv : (float)$cot_data['subtotal'];
 
         $imp_modo = $cot_data['impuesto_modo'] ?? 'ninguno';
         $imp_pct  = (float)($cot_data['impuesto_pct'] ?? 0);
@@ -128,7 +130,12 @@ if ($accion === 'aceptar') {
             $extras_raw = (float)DB::val(
                 "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas
                  WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
-            $total_guardar = round($nuevo_base_congelado + $extras_raw, 2);
+            // Extras gravables (IVA si suma), no descontables — el nuevo_total ya
+            // trae el IVA de la base descontada.
+            $extras_final = ($imp_modo === 'suma')
+                ? round($extras_raw + round($extras_raw * $imp_pct / 100, 2), 2)
+                : $extras_raw;
+            $total_guardar = round($nuevo_base_congelado + $extras_final, 2);
             $cupon_codigo  = null; // el inteligente no se apila
             // WHERE estado='activo' evita doble-uso y carrera con vigente()→vencido.
             DB::execute("UPDATE desc_int_activaciones SET estado='utilizado' WHERE id=? AND estado='activo'", [(int)$di_vig['id']]);
@@ -181,11 +188,14 @@ if ($accion === 'aceptar') {
                     $desc_auto_srv = round($base_after_cupon * (float)$cot_data['descuento_auto_pct'] / 100, 2);
                 }
             }
+            // Extras (add-ons): NO descontables pero SÍ gravables. La base sin
+            // extras se descuenta; luego los extras entran a la base gravable.
             $base_srv = $base_after_cupon - $desc_auto_srv;
+            $taxable  = max(0, $base_srv) + $extras_srv;
             if ($imp_modo === 'suma') {
-                $total_guardar = round($base_srv * (1 + $imp_pct / 100), 2);
+                $total_guardar = round($taxable + round($taxable * $imp_pct / 100, 2), 2);
             } else {
-                $total_guardar = round(max(0, $base_srv), 2);
+                $total_guardar = round($taxable, 2);
             }
         }
 

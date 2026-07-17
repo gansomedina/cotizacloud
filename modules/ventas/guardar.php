@@ -113,16 +113,22 @@ try {
         // con $di_nuevo_total=0.0 y colapsaba su total a $0 (regresión SEV-1).
         if ($v !== false && $v !== null) $di_nuevo_total = (float)$v;
     } catch (\Throwable $e) {}
+    // Extras (add-ons): NO descontables pero SÍ gravables (IVA si el modo es suma).
+    $extras_final = ($imp_modo === 'suma')
+        ? round($extras_lineas + round($extras_lineas * $imp_pct / 100, 2), 2)
+        : $extras_lineas;
     if ($di_nuevo_total !== null) {
         $cupon_amt = 0.0;
         $desc_auto_amt = 0.0;
-        $nuevo_total = round($di_nuevo_total + $extras_lineas, 2);
+        $nuevo_total = round($di_nuevo_total + $extras_final, 2);
     } else {
-        $base = $subtotal_lineas - $cupon_amt - $desc_auto_amt;
+        // base sin extras, descontada; luego los extras entran a la base gravable
+        $base    = ($subtotal_lineas - $extras_lineas) - $cupon_amt - $desc_auto_amt;
+        $taxable = max(0, $base) + $extras_lineas;
         if ($imp_modo === 'suma') {
-            $nuevo_total = round($base * (1 + $imp_pct / 100), 2);
+            $nuevo_total = round($taxable + round($taxable * $imp_pct / 100, 2), 2);
         } else {
-            $nuevo_total = round(max(0, $base), 2);
+            $nuevo_total = round($taxable, 2);
         }
     }
     $nuevo_saldo = max(0, round($nuevo_total - (float)$venta['pagado'], 2));

@@ -104,15 +104,31 @@ if ($cot['estado'] === 'aceptada' || $cot['estado'] === 'convertida') {
 } else {
     $desc_auto_amt = $adc_on ? round($subtotal * $adc_pct / 100, 2) : 0;
 }
-$base = $subtotal - $cupon_monto_guardado - $desc_auto_amt;
+// Extras (auditoría 17-jul, decisión CEO): son add-ons a precio COMPLETO — los
+// descuentos (cupón/manual/DI) aplican SOLO a la base sin extras — PERO SÍ llevan
+// IVA según la config del sistema (gravados si el modo es 'suma'). Antes se
+// sumaban crudos DESPUÉS del IVA (sin gravar) y el cobro los gravaba → el cliente
+// veía menos de lo que se le cobraba. Ahora entran a la base gravable.
+$ivapct = (float)$cot['impuesto_pct'];
+$base   = max(0, $subtotal - $cupon_monto_guardado - $desc_auto_amt); // base sin extras, descontada
+$subtotal_extras = array_sum(array_column($lineas_extra, 'subtotal'));
+$taxable = $base + $subtotal_extras; // extras gravables, NO descontables
 $impuesto_amt = 0;
 if ($cot['impuesto_modo'] === 'suma') {
-    $impuesto_amt = round($base * ((float)$cot['impuesto_pct'] / 100), 2);
+    $impuesto_amt = round($taxable * ($ivapct / 100), 2);
+    $total_base   = round($taxable + $impuesto_amt, 2);
 } elseif ($cot['impuesto_modo'] === 'incluido') {
-    $impuesto_amt = round($base - $base / (1 + (float)$cot['impuesto_pct'] / 100), 2);
+    $impuesto_amt = round($taxable - $taxable / (1 + $ivapct / 100), 2);
+    $total_base   = round($taxable, 2);
+} else {
+    $total_base   = round($taxable, 2);
 }
-$subtotal_extras = array_sum(array_column($lineas_extra, 'subtotal'));
-$total_base = $base + ($cot['impuesto_modo'] === 'suma' ? $impuesto_amt : 0) + $subtotal_extras;
+// Extras gravados (mismo criterio que el accept): para el display del DI, el
+// "Total con descuento" = nuevo_total (base descontada con IVA, sin extras) +
+// extras gravados. Y la base del DI ($di_precio) = total sin esos extras.
+$extras_final = ($cot['impuesto_modo'] === 'suma')
+    ? round($subtotal_extras + round($subtotal_extras * $ivapct / 100, 2), 2)
+    : $subtotal_extras;
 
 // ─── Cupones disponibles (para JS) ───────────────────────
 $cupones_raw = DB::query(
@@ -322,7 +338,8 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
                 if (!$di_act && !$interno_detectado && $di_giro !== 'inmuebles' && in_array($cot['estado'], ['enviada','vista'])) {
                     $di_ev = DescuentoInteligente::evaluar($cot);
                     if ($di_ev) {
-                        $di_precio = round($total_base - $subtotal_extras, 2);
+                        // base del DI = total SIN los extras gravados (= base descontada con IVA)
+                        $di_precio = round($total_base - $extras_final, 2);
                         $di_act = DescuentoInteligente::activar($cot, $di_ev, $di_precio, $visitor_id_cookie ?: null);
                     }
                 }
@@ -1035,7 +1052,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     </div>
     <div class="tr tf">
       <span class="tl">Total con descuento</span>
-      <span class="tv"><?= fmt_pub((float)$di_act['nuevo_total'] + $subtotal_extras) ?></span>
+      <span class="tv"><?= fmt_pub((float)$di_act['nuevo_total'] + $extras_final) ?></span>
     </div>
     <?php endif; ?>
   </div>
@@ -1432,7 +1449,7 @@ if ($di_act && ($di_act['estado'] ?? '') === 'activo'
         <span style="font:800 22px system-ui,sans-serif;color:<?= $th['g'] ?>">Ahora <?= fmt_pub($di_ahora, $di_mon) ?></span>
       </div>
       <?php if ($subtotal_extras > 0): ?>
-      <div style="font:600 11.5px system-ui,sans-serif;color:#555;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">+ extras <?= fmt_pub($subtotal_extras, $di_mon) ?> · Total a pagar <b style="color:<?= $th['g'] ?>"><?= fmt_pub($di_ahora + $subtotal_extras, $di_mon) ?></b></div>
+      <div style="font:600 11.5px system-ui,sans-serif;color:#555;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">+ extras <?= fmt_pub($extras_final, $di_mon) ?> · Total a pagar <b style="color:<?= $th['g'] ?>"><?= fmt_pub($di_ahora + $extras_final, $di_mon) ?></b></div>
       <?php endif; ?>
       <div style="display:flex;align-items:center;gap:9px;margin-top:4px;flex-wrap:wrap">
         <span style="font:700 12px system-ui,sans-serif;color:<?= $th['g'] ?>;background:<?= $th['glt'] ?>;border:1px solid <?= $th['gbd'] ?>;padding:2px 8px;border-radius:10px">Ahorras <?= fmt_pub($di_desc, $di_mon) ?></span>
@@ -1479,7 +1496,7 @@ $di_js = ($di_act && ($di_act['estado'] ?? '') === 'activo'
           && in_array($estado, ['enviada','vista']) && strtotime($di_act['expira_at']) > time())
     ? ['active'=>true, 'pct'=>(float)$di_act['pct'], 'antes'=>(float)$di_act['precio_original'],
        'ahora'=>(float)$di_act['nuevo_total'], 'desc'=>(float)$di_act['monto_desc'],
-       'extras'=>(float)$subtotal_extras, 'total'=>round((float)$di_act['nuevo_total'] + (float)$subtotal_extras, 2)]
+       'extras'=>(float)$extras_final, 'total'=>round((float)$di_act['nuevo_total'] + (float)$extras_final, 2)]
     : ['active'=>false];
 ?>
 const DI = <?= json_encode($di_js) ?>;
