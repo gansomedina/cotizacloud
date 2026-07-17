@@ -127,13 +127,71 @@ function e(mixed $val): string
     return htmlspecialchars((string)($val ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-// HTML seguro — permite solo tags de formato básico, strip todo lo demás
+// HTML seguro — permite solo tags de formato básico. Se PARSEA con DOMDocument
+// (no regex) y se aplica allowlist de TAGS y de ATRIBUTOS: se elimina cualquier
+// atributo salvo `href` en <a> con esquema seguro validado tras decodificar
+// entidades y quitar control-chars. Motivo (auditoría 17-jul): strip_tags/regex
+// dejaban pasar handlers pegados a la comilla (`href="x"onclick=…`) y esquemas
+// ofuscados (`java&#115;cript:`) que el navegador sí ejecuta — el parser DOM
+// tokeniza igual que el navegador y cierra esos vectores. Texto libre (sin '<')
+// no toca el parser. Ante cualquier fallo del parser → e() (escape total, seguro).
 function e_html(mixed $val): string
 {
-    return strip_tags(
-        (string)($val ?? ''),
-        '<strong><b><em><i><u><br><p><div><span><ul><ol><li><h3><h4><h5><h6><hr><a><sub><sup><small>'
+    $s = (string)($val ?? '');
+    if ($s === '' || strpos($s, '<') === false) return $s;
+
+    static $allowed = ['strong','b','em','i','u','br','p','div','span','ul','ol',
+                       'li','h3','h4','h5','h6','hr','a','sub','sup','small'];
+
+    // href seguro: decodifica entidades y quita TAB/LF/CR/espacios embebidos
+    // (que el navegador ignora) ANTES de evaluar el esquema. Permite http(s),
+    // mailto, tel, relativos y anclas; bloquea javascript:/data:/vbscript: y
+    // cualquier otro esquema explícito.
+    $href_ok = static function (string $v): bool {
+        $v = html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $v = preg_replace('/[\x00-\x20]+/', '', $v);
+        if ($v === '') return false;
+        if (preg_match('#^(https?:|mailto:|tel:)#i', $v)) return true;
+        if ($v[0] === '/' || $v[0] === '#') return true;           // relativo / ancla
+        return !preg_match('#^[a-z][a-z0-9+.\-]*:#i', $v);          // sin esquema → ok; con esquema no listado → bloquea
+    };
+
+    $doc = new DOMDocument();
+    $prev = libxml_use_internal_errors(true);
+    $ok = $doc->loadHTML(
+        '<?xml encoding="UTF-8"><div id="__ehtml_root__">' . $s . '</div>',
+        LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
     );
+    libxml_clear_errors();
+    libxml_use_internal_errors($prev);
+    if (!$ok) return e($s); // parser falló → fallback seguro
+
+    $root = $doc->getElementById('__ehtml_root__');
+    if (!$root) return e($s);
+
+    $walk = static function (DOMNode $node) use (&$walk, $allowed, $href_ok) {
+        foreach (iterator_to_array($node->childNodes) as $child) {
+            if ($child->nodeType !== XML_ELEMENT_NODE) continue;
+            $walk($child); // bottom-up: el subárbol queda limpio antes de decidir
+            $tag = strtolower($child->nodeName);
+            if (!in_array($tag, $allowed, true)) {
+                // tag no permitido → "unwrap": conservar su texto/hijos ya limpios
+                while ($child->firstChild) $node->insertBefore($child->firstChild, $child);
+                $node->removeChild($child);
+                continue;
+            }
+            foreach (iterator_to_array($child->attributes) as $attr) {
+                $an = strtolower($attr->name);
+                if ($tag === 'a' && $an === 'href' && $href_ok($attr->value)) continue;
+                $child->removeAttribute($attr->name);
+            }
+        }
+    };
+    $walk($root);
+
+    $out = '';
+    foreach ($root->childNodes as $c) $out .= $doc->saveHTML($c);
+    return $out;
 }
 
 // Escapar texto y convertir URLs en links clickeables

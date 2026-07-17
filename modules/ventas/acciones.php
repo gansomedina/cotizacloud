@@ -187,25 +187,40 @@ elseif ($accion === 'descuento') {
     if (!Auth::es_admin() && !Auth::puede('aplicar_descuentos')) json_error('Sin permiso', 403);
     if ($venta['estado'] === 'cancelada') json_error('Venta cancelada', 422);
 
+    // DI 'utilizado': el precio lo manda el contrato congelado; no se apila un
+    // descuento manual encima (regla CEO). Antes esta acción recalculaba
+    // total = lineas − cupon − manual, BORRANDO el DI (revive COT-2026-0185 por
+    // otra ruta). Para cambiar el precio de una venta con DI, se quita el DI
+    // primero (acción quitar-desc-int, que restaura el total).
+    try {
+        if (DB::val("SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id=? AND estado='utilizado' LIMIT 1",
+                    [$venta['cotizacion_id']])) {
+            json_error('Esta venta tiene Descuento Inteligente. Para cambiar el precio, primero quita el DI.', 422);
+        }
+    } catch (\Throwable $e) {} // tabla sin migrar → sin bloqueo
+
     $desc_amt = max(0, (float)($body['descuento_manual_amt'] ?? 0));
 
-    // Calcular nuevo total: recalcular desde subtotal de líneas
-    $subtotal_lineas = (float)DB::val(
-        "SELECT COALESCE(SUM(cl.subtotal),0) FROM cotizacion_lineas cl WHERE cl.cotizacion_id=?",
-        [$venta['cotizacion_id']]
-    );
+    // Base sin extras (descontable) y extras (add-ons gravables, no descontables)
+    $base_ne_lineas = (float)DB::val(
+        "SELECT COALESCE(SUM(cl.subtotal),0) FROM cotizacion_lineas cl WHERE cl.cotizacion_id=? AND cl.es_extra=0",
+        [$venta['cotizacion_id']]);
+    $extras_lineas = (float)DB::val(
+        "SELECT COALESCE(SUM(cl.subtotal),0) FROM cotizacion_lineas cl WHERE cl.cotizacion_id=? AND cl.es_extra=1",
+        [$venta['cotizacion_id']]);
 
     // Traer descuentos de cotización origen (cupon_monto es el nombre real de la columna)
     $cot = DB::row("SELECT cupon_monto, impuesto_pct, impuesto_modo, impuesto_amt FROM cotizaciones WHERE id=?",
         [$venta['cotizacion_id']]);
 
-    $nuevo_subtotal = $subtotal_lineas - (float)($cot['cupon_monto']??0) - $desc_amt;
+    // Descuentos SOLO a la base sin extras; los extras entran a la base gravable.
+    $base_ne  = $base_ne_lineas - (float)($cot['cupon_monto'] ?? 0) - $desc_amt;
+    $taxable  = max(0, $base_ne) + $extras_lineas;
     if ($cot['impuesto_modo'] === 'suma') {
-        $nuevo_total = $nuevo_subtotal * (1 + (float)$cot['impuesto_pct']/100);
+        $nuevo_total = round($taxable + round($taxable * (float)$cot['impuesto_pct'] / 100, 2), 2);
     } else {
-        $nuevo_total = max(0, $nuevo_subtotal);
+        $nuevo_total = round($taxable, 2);
     }
-    $nuevo_total = round($nuevo_total, 2);
     $nuevo_saldo = round($nuevo_total - (float)$venta['pagado'], 2);
 
     // Intentar UPDATE con descuento_manual_amt si existe, si no solo total/saldo

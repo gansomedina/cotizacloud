@@ -51,6 +51,7 @@ try {
     DB::execute("DELETE FROM cotizacion_lineas WHERE cotizacion_id=?", [$cot_id]);
 
     $subtotal_lineas = 0;
+    $extras_lineas   = 0.0; // extras (raw, sin IVA extra) — para el total con DI
     foreach ($lineas_new as $orden => $l) {
         $titulo   = substr(trim($l['titulo'] ?? ''), 0, 255);
         $sku      = substr(trim($l['sku'] ?? ''), 0, 100);
@@ -61,6 +62,7 @@ try {
         $subtotal_lineas += $subtotal;
 
         $es_extra = (int)($l['es_extra'] ?? 0);
+        if ($es_extra) $extras_lineas += $subtotal;
         DB::execute(
             "INSERT INTO cotizacion_lineas
              (cotizacion_id, orden, sku, titulo, descripcion, cantidad, precio_unit, subtotal, es_extra)
@@ -89,27 +91,45 @@ try {
     $imp_pct   = (float)($cot['impuesto_pct'] ?? 0);
     $imp_modo  = $cot['impuesto_modo'] ?? 'ninguno';
 
-    // ── DI 'utilizado': el descuento del contrato MANDA y no se apila ──
-    // (misma precedencia que el accept: el inteligente ignora cupón/manual).
-    // Antes este recálculo era CIEGO al DI: guardar la venta pisaba el total
-    // del contrato con líneas − descuentos normales (caso COT-2026-0185).
-    $di_monto_vta = 0.0;
+    // ── DI 'utilizado': el TOTAL lo manda el CONTRATO CONGELADO, no se re-deriva ──
+    // total = nuevo_total (frozen, SIN extras, ya CON IVA si el modo es suma)
+    //       + extras actuales (raw, sin IVA extra)
+    // Es la fórmula EXACTA del accept (quote_action) y de convertir. Antes esta
+    // rama re-derivaba `base = subtotal_lineas − monto_desc` y le aplicaba IVA
+    // encima → doble IVA sobre el descuento (monto_desc ya es post-IVA) y además
+    // gravaba los extras que el contrato deja crudos: un simple "Guardar" sin
+    // editar nada movía el total ($1,044 → $1,025.44 con IVA suma). Editar el
+    // precio base de una venta con DII no debe romper el precio que aceptó el
+    // cliente; para cambiarlo, se quita el DI de la venta (acciones.php).
+    $di_nuevo_total = null;
     try {
-        $di_monto_vta = (float)DB::val(
-            "SELECT monto_desc FROM desc_int_activaciones
-             WHERE cotizacion_id = ? AND estado = 'utilizado'", [$cot_id]);
+        $v = DB::val(
+            "SELECT nuevo_total FROM desc_int_activaciones
+             WHERE cotizacion_id = ? AND estado = 'utilizado'
+             ORDER BY id DESC LIMIT 1", [$cot_id]);
+        // DB::val() (PDO fetchColumn) devuelve FALSE —no null— cuando NO hay fila.
+        // `nuevo_total` es NOT NULL en el schema, así que una fila real siempre
+        // trae número. Sin este `!== false`, una venta SIN DI entraba a la rama DI
+        // con $di_nuevo_total=0.0 y colapsaba su total a $0 (regresión SEV-1).
+        if ($v !== false && $v !== null) $di_nuevo_total = (float)$v;
     } catch (\Throwable $e) {}
-    if ($di_monto_vta > 0) {
+    // Extras (add-ons): NO descontables pero SÍ gravables (IVA si el modo es suma).
+    $extras_final = ($imp_modo === 'suma')
+        ? round($extras_lineas + round($extras_lineas * $imp_pct / 100, 2), 2)
+        : $extras_lineas;
+    if ($di_nuevo_total !== null) {
         $cupon_amt = 0.0;
         $desc_auto_amt = 0.0;
-        $base = $subtotal_lineas - $di_monto_vta;
+        $nuevo_total = round($di_nuevo_total + $extras_final, 2);
     } else {
-        $base = $subtotal_lineas - $cupon_amt - $desc_auto_amt;
-    }
-    if ($imp_modo === 'suma') {
-        $nuevo_total = round($base * (1 + $imp_pct / 100), 2);
-    } else {
-        $nuevo_total = round(max(0, $base), 2);
+        // base sin extras, descontada; luego los extras entran a la base gravable
+        $base    = ($subtotal_lineas - $extras_lineas) - $cupon_amt - $desc_auto_amt;
+        $taxable = max(0, $base) + $extras_lineas;
+        if ($imp_modo === 'suma') {
+            $nuevo_total = round($taxable + round($taxable * $imp_pct / 100, 2), 2);
+        } else {
+            $nuevo_total = round($taxable, 2);
+        }
     }
     $nuevo_saldo = max(0, round($nuevo_total - (float)$venta['pagado'], 2));
 

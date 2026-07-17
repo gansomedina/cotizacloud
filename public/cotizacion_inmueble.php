@@ -526,11 +526,12 @@ function doAccept() {
     if (btn.disabled) return;
     btn.disabled = true; btn.textContent = 'Enviando…';
     var body = {
+        cotizacion_id: <?= (int)$cot['id'] ?>,
         accion: 'aceptar',
         nombre: document.getElementById('accNombre').value.trim(),
         mensaje: document.getElementById('accMsg').value.trim()
     };
-    fetch('/api/quote-action/<?= e($cot['slug']) ?>', {
+    fetch('/api/quote-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -561,10 +562,10 @@ function doReject() {
     if (!rejSel) { alert('Selecciona un motivo.'); return; }
     btn.disabled = true; btn.textContent = 'Enviando…';
     var motivo = rejSel === 'Otro motivo' ? document.getElementById('rejTxt').value.trim() : rejSel;
-    fetch('/api/quote-action/<?= e($cot['slug']) ?>', {
+    fetch('/api/quote-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accion: 'rechazar', motivo: motivo })
+        body: JSON.stringify({ cotizacion_id: <?= (int)$cot['id'] ?>, accion: 'rechazar', motivo: motivo })
     }).then(function(r){ return r.json(); }).then(function(d){
         if (d.ok) {
             closeM('rejectOv');

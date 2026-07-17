@@ -104,15 +104,31 @@ if ($cot['estado'] === 'aceptada' || $cot['estado'] === 'convertida') {
 } else {
     $desc_auto_amt = $adc_on ? round($subtotal * $adc_pct / 100, 2) : 0;
 }
-$base = $subtotal - $cupon_monto_guardado - $desc_auto_amt;
+// Extras (auditoría 17-jul, decisión CEO): son add-ons a precio COMPLETO — los
+// descuentos (cupón/manual/DI) aplican SOLO a la base sin extras — PERO SÍ llevan
+// IVA según la config del sistema (gravados si el modo es 'suma'). Antes se
+// sumaban crudos DESPUÉS del IVA (sin gravar) y el cobro los gravaba → el cliente
+// veía menos de lo que se le cobraba. Ahora entran a la base gravable.
+$ivapct = (float)$cot['impuesto_pct'];
+$base   = max(0, $subtotal - $cupon_monto_guardado - $desc_auto_amt); // base sin extras, descontada
+$subtotal_extras = array_sum(array_column($lineas_extra, 'subtotal'));
+$taxable = $base + $subtotal_extras; // extras gravables, NO descontables
 $impuesto_amt = 0;
 if ($cot['impuesto_modo'] === 'suma') {
-    $impuesto_amt = round($base * ((float)$cot['impuesto_pct'] / 100), 2);
+    $impuesto_amt = round($taxable * ($ivapct / 100), 2);
+    $total_base   = round($taxable + $impuesto_amt, 2);
 } elseif ($cot['impuesto_modo'] === 'incluido') {
-    $impuesto_amt = round($base - $base / (1 + (float)$cot['impuesto_pct'] / 100), 2);
+    $impuesto_amt = round($taxable - $taxable / (1 + $ivapct / 100), 2);
+    $total_base   = round($taxable, 2);
+} else {
+    $total_base   = round($taxable, 2);
 }
-$subtotal_extras = array_sum(array_column($lineas_extra, 'subtotal'));
-$total_base = $base + ($cot['impuesto_modo'] === 'suma' ? $impuesto_amt : 0) + $subtotal_extras;
+// Extras gravados (mismo criterio que el accept): para el display del DI, el
+// "Total con descuento" = nuevo_total (base descontada con IVA, sin extras) +
+// extras gravados. Y la base del DI ($di_precio) = total sin esos extras.
+$extras_final = ($cot['impuesto_modo'] === 'suma')
+    ? round($subtotal_extras + round($subtotal_extras * $ivapct / 100, 2), 2)
+    : $subtotal_extras;
 
 // ─── Cupones disponibles (para JS) ───────────────────────
 $cupones_raw = DB::query(
@@ -322,7 +338,13 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
                 if (!$di_act && !$interno_detectado && $di_giro !== 'inmuebles' && in_array($cot['estado'], ['enviada','vista'])) {
                     $di_ev = DescuentoInteligente::evaluar($cot);
                     if ($di_ev) {
-                        $di_precio = round($total_base - $subtotal_extras, 2);
+                        // base del DI = base sin extras CON IVA. Se calcula DIRECTO
+                        // (no restando extras del total) para ser bit-idéntica al
+                        // re-freeze de cotizaciones/guardar (round(base*(1+iva))) y
+                        // evitar drift de ±1¢ entre activación y re-congelado.
+                        $di_precio = ($cot['impuesto_modo'] === 'suma')
+                            ? round($base * (1 + $ivapct / 100), 2)
+                            : round($base, 2);
                         $di_act = DescuentoInteligente::activar($cot, $di_ev, $di_precio, $visitor_id_cookie ?: null);
                     }
                 }
@@ -420,6 +442,15 @@ skip_tracking:
 // (cz_vid en dominio custom, donde la sesión no viaja). El banner flotante se
 // le oculta aparte (gate !$interno_detectado).
 if ($di_act === null && $interno_detectado) {
+    try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
+}
+
+// ── Display del DII en cots TERMINALES (aceptada/convertida) para CUALQUIER
+// visitante — read-only. El gate de tracking (arriba) no incluye 'convertida',
+// así que un cliente viendo una cot convertida no poblaba $di_act y el Resumen/
+// impresión mostraban el precio COMPLETO (verificación 17-jul). vigente() es
+// solo lectura; si no hay DI devuelve null y no se muestra nada.
+if ($di_act === null && in_array($cot['estado'], ['aceptada', 'convertida'], true)) {
     try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
 }
 
@@ -1007,20 +1038,26 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     <div class="tr"><span class="tl"><?= e($cot['impuesto_label'] ?: ($cot['emp_impuesto_label'] ?? 'IVA')) ?> (<?= (float)$cot['impuesto_pct'] ?>%)</span><span class="tv"><?= fmt_pub($impuesto_amt) ?></span></div>
     <?php endif; ?>
     <div class="tr tf"><span class="tl">Total</span><span class="tv" id="tTot"><?= fmt_pub($total_base) ?></span></div>
-    <?php // ── Descuento Inteligente ACTIVO: reflejarlo en el Resumen (mismos
-          //    números frozen del contrato — banner, modal y accept dicen igual).
-          //    nuevo_total es SIN extras; el total mostrado los suma, idéntico
-          //    al $total_guardar del accept. ──
-    if ($di_act && ($di_act['estado'] ?? '') === 'activo'
+    <?php // ── Descuento Inteligente en el Resumen — mismos números frozen del
+          //    contrato (banner, modal, accept dicen igual). nuevo_total es SIN
+          //    extras; el total mostrado los suma, idéntico al total cobrado.
+          //    Dos casos: ACTIVO (oferta viva, enviada/vista) y UTILIZADO (ya
+          //    aceptada/convertida) — sin el 2º, el slug/impresión post-accept
+          //    mostraba el precio COMPLETO, contradiciendo lo que el cliente
+          //    aceptó (auditoría 17-jul). nuevo_total + extras = cot.total. ──
+    $di_res_activo = $di_act && ($di_act['estado'] ?? '') === 'activo'
         && in_array($cot['estado'], ['enviada','vista'])
-        && strtotime($di_act['expira_at']) > time()): ?>
+        && strtotime($di_act['expira_at']) > time();
+    $di_res_util = $di_act && ($di_act['estado'] ?? '') === 'utilizado'
+        && in_array($cot['estado'], ['aceptada','convertida']);
+    if ($di_res_activo || $di_res_util): ?>
     <div class="tr td">
       <span class="tl">Descuento especial (<?= rtrim(rtrim(number_format((float)$di_act['pct'], 1), '0'), '.') ?>%)</span>
       <span class="tv">-<?= fmt_pub((float)$di_act['monto_desc']) ?></span>
     </div>
     <div class="tr tf">
       <span class="tl">Total con descuento</span>
-      <span class="tv"><?= fmt_pub((float)$di_act['nuevo_total'] + $subtotal_extras) ?></span>
+      <span class="tv"><?= fmt_pub((float)$di_act['nuevo_total'] + $extras_final) ?></span>
     </div>
     <?php endif; ?>
   </div>
@@ -1100,7 +1137,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       <span style="font-size:24px;flex-shrink:0"><?= $ico ?></span>
       <div style="flex:1;min-width:0">
         <div style="font:600 14px 'Plus Jakarta Sans',sans-serif;color:var(--text)"><?= $label ?></div>
-        <div style="font:400 12px 'Plus Jakarta Sans',sans-serif;color:var(--t3);margin-top:2px"><?= $size_txt ?> · <?= strtoupper($ext) ?></div>
+        <div style="font:400 12px 'Plus Jakarta Sans',sans-serif;color:var(--t3);margin-top:2px"><?= $size_txt ?> · <?= e(strtoupper($ext)) ?></div>
       </div>
       <span style="font:600 12px 'Plus Jakarta Sans',sans-serif;color:var(--g);white-space:nowrap;padding:6px 12px;background:var(--glt);border-radius:var(--r)">Abrir</span>
     </a>
@@ -1417,7 +1454,7 @@ if ($di_act && ($di_act['estado'] ?? '') === 'activo'
         <span style="font:800 22px system-ui,sans-serif;color:<?= $th['g'] ?>">Ahora <?= fmt_pub($di_ahora, $di_mon) ?></span>
       </div>
       <?php if ($subtotal_extras > 0): ?>
-      <div style="font:600 11.5px system-ui,sans-serif;color:#555;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">+ extras <?= fmt_pub($subtotal_extras, $di_mon) ?> · Total a pagar <b style="color:<?= $th['g'] ?>"><?= fmt_pub($di_ahora + $subtotal_extras, $di_mon) ?></b></div>
+      <div style="font:600 11.5px system-ui,sans-serif;color:#555;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">+ extras <?= fmt_pub($extras_final, $di_mon) ?> · Total a pagar <b style="color:<?= $th['g'] ?>"><?= fmt_pub($di_ahora + $extras_final, $di_mon) ?></b></div>
       <?php endif; ?>
       <div style="display:flex;align-items:center;gap:9px;margin-top:4px;flex-wrap:wrap">
         <span style="font:700 12px system-ui,sans-serif;color:<?= $th['g'] ?>;background:<?= $th['glt'] ?>;border:1px solid <?= $th['gbd'] ?>;padding:2px 8px;border-radius:10px">Ahorras <?= fmt_pub($di_desc, $di_mon) ?></span>
@@ -1455,7 +1492,8 @@ if ($di_act && ($di_act['estado'] ?? '') === 'activo'
 <?php endif; ?>
 
 <script>
-const SUB   = <?= (float)$subtotal ?>;
+const SUB    = <?= (float)$subtotal ?>;
+const EXTRAS = <?= (float)$subtotal_extras ?>; // add-ons: no descontables, gravables si suma
 const TAX   = {modo:'<?= $cot['impuesto_modo'] ?>',pct:<?= (float)$cot['impuesto_pct'] ?>};
 const AUTO  = {on:<?= $adc_on?'true':'false' ?>,pct:<?= (float)$adc_pct ?>,exp:new Date(<?= $adc_exp ? ($adc_exp * 1000) : 0 ?>)};
 <?php
@@ -1464,7 +1502,7 @@ $di_js = ($di_act && ($di_act['estado'] ?? '') === 'activo'
           && in_array($estado, ['enviada','vista']) && strtotime($di_act['expira_at']) > time())
     ? ['active'=>true, 'pct'=>(float)$di_act['pct'], 'antes'=>(float)$di_act['precio_original'],
        'ahora'=>(float)$di_act['nuevo_total'], 'desc'=>(float)$di_act['monto_desc'],
-       'extras'=>(float)$subtotal_extras, 'total'=>round((float)$di_act['nuevo_total'] + (float)$subtotal_extras, 2)]
+       'extras'=>(float)$extras_final, 'total'=>round((float)$di_act['nuevo_total'] + (float)$extras_final, 2)]
     : ['active'=>false];
 ?>
 const DI = <?= json_encode($di_js) ?>;
@@ -1480,8 +1518,11 @@ const EMPRESA = <?= json_encode([
     'nombre'        => $cot['emp_nombre'],
     'tel'           => $cot['emp_tel'],
     'email'         => $cot['emp_email'],
-    'texto_aceptar' => $cot['texto_aceptar'] ?? '',
-    'texto_rechazar'=> $cot['texto_rechazar'] ?? '',
+    // e_html (allowlist) porque openM las inyecta por innerHTML (XSS de tenant:
+    // un admin podía meter <img onerror> en el texto y ejecutarlo en SUS clientes).
+    // Mismo escape que el render server-side (nl2br(e_html())).
+    'texto_aceptar' => e_html($cot['texto_aceptar'] ?? ''),
+    'texto_rechazar'=> e_html($cot['texto_rechazar'] ?? ''),
 ]) ?>;
 
 let applied = null, tmrInterval = null;
@@ -1572,10 +1613,12 @@ function calc(){
         document.getElementById('tCV').textContent = '-'+fmt(ca);
     } else cr.style.display = 'none';
 
-    // Sumar IVA si el modo es "suma"
-    if (TAX.modo === 'suma') {
-        tot += tot * TAX.pct / 100;
-    }
+    // Extras (auditoría 17-jul): add-ons NO descontables pero SÍ gravables. Entran
+    // a la base gravable DESPUÉS de los descuentos; el IVA cae sobre base+extras.
+    // Antes calc() ignoraba los extras y PISABA el #tTot correcto → el cliente veía
+    // menos de lo que se le cobraba.
+    const taxable = Math.max(0, tot) + EXTRAS;
+    tot = (TAX.modo === 'suma') ? (taxable + taxable * TAX.pct / 100) : taxable;
 
     document.getElementById('tTot').textContent = fmt(tot);
     return {tot, aa, ca};
@@ -1603,12 +1646,13 @@ function openM(id){
             }
         } else {
             const {tot,aa,ca} = calc();
-            let base = SUB - aa - ca;
+            const taxable = Math.max(0, SUB - aa - ca) + EXTRAS; // base descontada + extras
             h = '<div class="sr"><span>Subtotal</span><span>'+fmt(SUB)+'</span></div>';
             if (aa) h += '<div class="sr" style="color:var(--amb)"><span>Descuento especial</span><span>-'+fmt(aa)+'</span></div>';
             if (ca && applied) h += '<div class="sr" style="color:var(--amb)"><span>Cupón '+applied.code+'</span><span>-'+fmt(ca)+'</span></div>';
+            if (EXTRAS > 0) h += '<div class="sr"><span>Extras</span><span>+'+fmt(EXTRAS)+'</span></div>';
             if (TAX.modo === 'suma') {
-                let taxAmt = base * TAX.pct / 100;
+                let taxAmt = taxable * TAX.pct / 100; // IVA sobre base + extras
                 h += '<div class="sr"><span><?= e($cot['impuesto_label'] ?: 'IVA') ?> ('+TAX.pct+'%)</span><span>'+fmt(taxAmt)+'</span></div>';
             }
             h += '<div class="sr tot"><span>Total</span><span>'+fmt(tot)+'</span></div>';
@@ -1638,7 +1682,7 @@ async function doAcc(){
     const {tot, aa, ca} = calc();
     const cupon = applied ? applied.code : null;
 
-    let respOk = false;
+    let respOk = false, respErr = '';
     try {
         const r = await fetch('/api/quote-action', {
             method: 'POST',
@@ -1646,12 +1690,25 @@ async function doAcc(){
             body: JSON.stringify({
                 cotizacion_id: COT_ID, accion: 'aceptar',
                 nombre, total_final: tot,
-                descuento_auto_amt: aa, cupon_codigo: cupon, cupon_pct: applied?.pct ?? 0
+                descuento_auto_amt: aa, cupon_codigo: cupon, cupon_pct: applied?.pct ?? 0,
+                di_visto: (typeof DI !== 'undefined' && DI.active === true)
             })
         });
         const data = await r.json();
         respOk = data.ok === true;
+        if (!respOk) respErr = data.error || '';
     } catch(e){}
+
+    // El server DEBE confirmar. Antes se mostraba éxito y se recargaba pase lo
+    // que pase; con el beacon de track ahora NO-OP (seguridad 17-jul), un fetch
+    // fallido dejaba la aceptación PERDIDA con éxito falso. Si no hay ok, mostrar
+    // el motivo real del server (p.ej. "el descuento venció") o el genérico de red,
+    // y recargar para que los botones vuelvan y el cliente vea el precio vigente.
+    if (!respOk) {
+        alert(respErr || 'No pudimos registrar tu respuesta. Revisa tu conexión e inténtalo de nuevo.');
+        window.location.reload();
+        return;
+    }
 
     if(window.czTrack) window.czTrack('accept_confirm');
 
@@ -1691,13 +1748,24 @@ async function doRej(){
     const otro = document.getElementById('rOther').value.trim();
     const motivo = razonSel === 'otro' ? otro : razonSel;
 
+    let respOk = false, respErr = '';
     try {
-        await fetch('/api/quote-action', {
+        const r = await fetch('/api/quote-action', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify({cotizacion_id: COT_ID, accion: 'rechazar', motivo})
         });
+        const data = await r.json();
+        respOk = data.ok === true;
+        if (!respOk) respErr = data.error || '';
     } catch(e){}
+
+    // Mismo criterio que doAcc: sin confirmación del server, no fingir éxito.
+    if (!respOk) {
+        alert(respErr || 'No pudimos registrar tu respuesta. Revisa tu conexión e inténtalo de nuevo.');
+        window.location.reload();
+        return;
+    }
 
     mostrarExito('👋', 'Cotización rechazada',
         'Hemos registrado tu decisión. Si deseas retomar el proyecto, con gusto te atendemos.',

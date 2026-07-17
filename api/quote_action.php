@@ -36,7 +36,16 @@ if (!empty($cot['suspendida'])) {
 }
 
 $estado_actual = $cot['estado'];
-$estados_activos = ['enviada','vista','aceptada'];
+// SIN 'aceptada' (seguridad, auditoría 17-jul): incluirla permitía RE-ACEPTAR
+// una cotización ya cerrada — recalculaba y reescribía el total desde líneas
+// vivas (que la venta ya pudo editar), dejaba inyectar un cupón retroactivo
+// para bajar el precio, reseteaba aceptada_at (corrompía tasa de cierre/TTC del
+// termómetro) y duplicaba push/email. Y en la rama de RECHAZAR permitía rechazar
+// una ya aceptada, dejando la venta huérfana. La aceptación crea la venta en la
+// MISMA transacción, así que no existe un estado legítimo 'aceptada sin venta'
+// que necesite re-entrar. El doble-clic queda cubierto por el guard
+// venta_existente + el FOR UPDATE.
+$estados_activos = ['enviada','vista'];
 
 // ─── Aceptar ─────────────────────────────────────────────
 if ($accion === 'aceptar') {
@@ -66,14 +75,16 @@ if ($accion === 'aceptar') {
 
         // Total final — recalcular del lado del servidor, NO confiar en el cliente
         $cot_data = DB::row(
-            "SELECT total, subtotal, impuesto_modo, impuesto_pct,
+            "SELECT total, subtotal, impuesto_modo, impuesto_pct, created_at,
                     descuento_auto_activo, descuento_auto_pct, descuento_auto_expira
              FROM cotizaciones WHERE id=?", [$cot_id]
         );
-        $lineas_sub = (float)DB::val(
-            "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=?", [$cot_id]
-        );
-        $subtotal_srv = $lineas_sub > 0 ? $lineas_sub : (float)$cot_data['subtotal'];
+        // Base sin extras (descontable) y extras (add-ons, gravables no descontables)
+        $base_ne_srv = (float)DB::val(
+            "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=0", [$cot_id]);
+        $extras_srv  = (float)DB::val(
+            "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
+        $subtotal_srv = ($base_ne_srv + $extras_srv) > 0 ? $base_ne_srv : (float)$cot_data['subtotal'];
 
         $imp_modo = $cot_data['impuesto_modo'] ?? 'ninguno';
         $imp_pct  = (float)($cot_data['impuesto_pct'] ?? 0);
@@ -85,6 +96,29 @@ if ($accion === 'aceptar') {
         //    disparó). % congelado en la activación (server-authoritative). ──
         $di_vig = null;
         try { $di_vig = DescuentoInteligente::vigente($cot_id); } catch (\Throwable $e) {}
+
+        // ── Carrera del DI (auditoría 17-jul): si el cliente cargó la página con
+        //    un descuento VIGENTE y hace clic en aceptar JUSTO DESPUÉS de que
+        //    expiró, vigente() lo marcó 'vencido' y devolvió null → antes se
+        //    cobraba precio COMPLETO en SILENCIO (el cliente vio "Ahora $X").
+        //    Rechazamos con mensaje para que recargue y vea el precio real. El
+        //    gate `di_visto` (el slug lo manda solo si renderizó el DI activo)
+        //    limita el rechazo a ESA sesión: tras recargar, el slug ya no manda
+        //    di_visto → el cliente SÍ puede aceptar a precio completo (sin loop).
+        //    di_visto es del cliente pero es inofensivo: solo elige rechazo-vs-
+        //    cobro-completo, nunca aplica un descuento.
+        if (!$di_vig && !empty($body['di_visto'])) {
+            $di_venc = false;
+            try {
+                $di_venc = (bool)DB::val(
+                    "SELECT 1 FROM desc_int_activaciones
+                     WHERE cotizacion_id=? AND estado='vencido' LIMIT 1", [$cot_id]);
+            } catch (\Throwable $e) {}
+            if ($di_venc) {
+                DB::rollback();
+                echo json_encode(['ok'=>false,'error'=>'El descuento especial venció. Actualiza la página para ver el precio vigente.']); exit;
+            }
+        }
 
         if ($di_vig) {
             // ── Contrato firme: se cobra el precio CONGELADO que vio y aceptó el
@@ -98,7 +132,12 @@ if ($accion === 'aceptar') {
             $extras_raw = (float)DB::val(
                 "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas
                  WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
-            $total_guardar = round($nuevo_base_congelado + $extras_raw, 2);
+            // Extras gravables (IVA si suma), no descontables — el nuevo_total ya
+            // trae el IVA de la base descontada.
+            $extras_final = ($imp_modo === 'suma')
+                ? round($extras_raw + round($extras_raw * $imp_pct / 100, 2), 2)
+                : $extras_raw;
+            $total_guardar = round($nuevo_base_congelado + $extras_final, 2);
             $cupon_codigo  = null; // el inteligente no se apila
             // WHERE estado='activo' evita doble-uso y carrera con vigente()→vencido.
             DB::execute("UPDATE desc_int_activaciones SET estado='utilizado' WHERE id=? AND estado='activo'", [(int)$di_vig['id']]);
@@ -117,11 +156,25 @@ if ($accion === 'aceptar') {
             // Cupón — re-validar server-side (se aplica primero, igual que guardar.php)
             if ($cupon_codigo) {
                 $cupon_real = DB::row(
-                    "SELECT id, porcentaje, monto_fijo FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
+                    "SELECT id, porcentaje, monto_fijo, vencimiento_tipo, vencimiento_dias, vencimiento_fecha
+                     FROM cupones WHERE empresa_id=? AND codigo=? AND activo=1",
                     [EMPRESA_ID, $cupon_codigo]
                 );
                 if ($cupon_real) {
-                    if ($cupon_real['monto_fijo'] !== null) {
+                    // Validar VENCIMIENTO server-side (auditoría 17-jul): el JS ya lo
+                    // hacía, pero un POST directo con un código vencido por fecha_fija
+                    // o dias_cotizacion (que sigue activo=1) se cobraba con descuento.
+                    // Misma fórmula que el slug (cotizacion.php).
+                    $exp_cup = null;
+                    if ($cupon_real['vencimiento_tipo'] === 'fecha_fija' && !empty($cupon_real['vencimiento_fecha'])) {
+                        $exp_cup = $cupon_real['vencimiento_fecha'];
+                    } elseif ($cupon_real['vencimiento_tipo'] === 'dias_cotizacion' && !empty($cupon_real['vencimiento_dias'])) {
+                        $exp_cup = date('Y-m-d', strtotime($cot_data['created_at']) + ((int)$cupon_real['vencimiento_dias'] * 86400));
+                    }
+                    $cup_vencido = $exp_cup !== null && $exp_cup < date('Y-m-d');
+                    if ($cup_vencido) {
+                        $cupon_codigo = null; // vencido → no se aplica ni se guarda
+                    } elseif ($cupon_real['monto_fijo'] !== null) {
                         $cupon_amt_srv = round(min((float)$cupon_real['monto_fijo'], $subtotal_srv), 2);
                     } else {
                         $cupon_pct = (float)$cupon_real['porcentaje'];
@@ -137,11 +190,14 @@ if ($accion === 'aceptar') {
                     $desc_auto_srv = round($base_after_cupon * (float)$cot_data['descuento_auto_pct'] / 100, 2);
                 }
             }
+            // Extras (add-ons): NO descontables pero SÍ gravables. La base sin
+            // extras se descuenta; luego los extras entran a la base gravable.
             $base_srv = $base_after_cupon - $desc_auto_srv;
+            $taxable  = max(0, $base_srv) + $extras_srv;
             if ($imp_modo === 'suma') {
-                $total_guardar = round($base_srv * (1 + $imp_pct / 100), 2);
+                $total_guardar = round($taxable + round($taxable * $imp_pct / 100, 2), 2);
             } else {
-                $total_guardar = round(max(0, $base_srv), 2);
+                $total_guardar = round($taxable, 2);
             }
         }
 
@@ -266,8 +322,13 @@ if ($accion === 'aceptar') {
         http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Error al procesar']); exit;
     }
 
-    // CAPI: enviar Lead server-side
-    try { MarketingPixels::capi_lead($empresa_id, (float)$cot['total'], $empresa['moneda'] ?? 'MXN'); } catch (\Throwable $e) {}
+    // CAPI: enviar Lead server-side (auditoría 17-jul: usaba $empresa_id/$empresa/
+    // $cot['total'] INDEFINIDOS → TypeError tragado por el catch → NUNCA se enviaba.
+    // Ahora con EMPRESA_ID, el total realmente cobrado y la moneda de la empresa).
+    try {
+        MarketingPixels::capi_lead(EMPRESA_ID, (float)$total_guardar,
+            DB::val("SELECT moneda FROM empresas WHERE id=?", [EMPRESA_ID]) ?: 'MXN');
+    } catch (\Throwable $e) {}
 
     echo json_encode(['ok'=>true, 'estado'=>'aceptada']); exit;
 }
@@ -345,8 +406,8 @@ if ($accion === 'rechazar') {
         http_response_code(500); echo json_encode(['ok'=>false,'error'=>'Error al procesar']); exit;
     }
 
-    // CAPI: enviar QuoteRejected server-side
-    try { MarketingPixels::capi_rechazar($empresa_id); } catch (\Throwable $e) {}
+    // CAPI: enviar QuoteRejected server-side ($empresa_id era indefinido → nunca corría)
+    try { MarketingPixels::capi_rechazar(EMPRESA_ID); } catch (\Throwable $e) {}
 
     echo json_encode(['ok'=>true,'estado'=>'rechazada']); exit;
 }

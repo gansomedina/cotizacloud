@@ -43,6 +43,17 @@ if (!in_array($cot['estado'], $editables)) {
 
 $empresa = Auth::empresa();
 
+// ── Cupón/descuento manual NO conviven con DI (regla CEO 16-jul) ──
+// Si la cotización tiene o tuvo un Descuento Inteligente, el editor NO acepta
+// cupón ni descuento manual — antes el re-freeze los apilaba DENTRO del contrato
+// (base_di = subtotal − cupón − manual, luego % DI encima), cobrando descuentos
+// apilados. Es la única puerta que faltaba cerrar (el slug y el accept ya lo
+// bloqueaban). 'tiene o tuvo' = cualquier registro (mismo criterio del slug).
+$tiene_di = false;
+try {
+    $tiene_di = (bool)DB::val("SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id = ? LIMIT 1", [$cot_id]);
+} catch (\Throwable $e) {} // tabla sin migrar → sin bloqueo
+
 // ─── Validar campos ──────────────────────────────────────
 $titulo = trim($body['titulo'] ?? '');
 if (empty($titulo)) json_error('El título es requerido');
@@ -75,7 +86,7 @@ if ($valida_hasta && preg_match('/^\d{4}-\d{2}-\d{2}$/', $valida_hasta) && $vali
 
 // Cupón
 $cupon_id = null; $cupon_codigo = null; $cupon_pct = 0; $cupon_monto_fijo = null;
-if (!empty($body['cupon_id']) && Auth::puede('aplicar_descuentos')) {
+if (!empty($body['cupon_id']) && !$tiene_di && Auth::puede('aplicar_descuentos')) {
     $cupon = DB::row(
         "SELECT id, codigo, porcentaje, monto_fijo FROM cupones WHERE id = ? AND empresa_id = ? AND activo = 1",
         [(int)$body['cupon_id'], $empresa_id]
@@ -90,7 +101,7 @@ if (!empty($body['cupon_id']) && Auth::puede('aplicar_descuentos')) {
 
 // Descuento auto
 $desc_auto_activo = 0; $desc_auto_pct = 0.0; $desc_auto_expira = null; $desc_auto_amt = 0.0;
-if (!empty($body['descuento_auto_activo']) && Auth::puede('aplicar_descuentos')) {
+if (!empty($body['descuento_auto_activo']) && !$tiene_di && Auth::puede('aplicar_descuentos')) {
     $desc_auto_activo = 1;
     $desc_auto_pct    = max(0, min(100, (float)($body['descuento_auto_pct'] ?? 0)));
     $dias = max(1, (int)($body['descuento_auto_dias'] ?? 3));
@@ -106,6 +117,7 @@ if (!empty($body['descuento_auto_activo']) && Auth::puede('aplicar_descuentos'))
 // ─── Recalcular totales ──────────────────────────────────
 $items    = $body['items'] ?? [];
 $subtotal = 0.0;
+$subtotal_extras = 0.0; // extras: add-ons gravables, no descontables
 $lineas   = [];
 
 foreach ($items as $i => $item) {
@@ -126,6 +138,7 @@ foreach ($items as $i => $item) {
 
     $sub_linea = $cant * $precio;
     $subtotal += $sub_linea;
+    if ((int)($item['es_extra'] ?? 0)) $subtotal_extras += $sub_linea;
 
     $lineas[] = [
         'orden'       => $i + 1,
@@ -145,18 +158,22 @@ $tiene_precio = false;
 foreach ($lineas as $l) { if ($l['precio_unit'] > 0) { $tiene_precio = true; break; } }
 if (!$tiene_precio) json_error('Al menos un artículo debe tener precio');
 
-$base = $subtotal;
+// Descuentos SOLO sobre la base sin extras (add-ons a precio completo); los
+// extras entran a la base gravable después (IVA si aplica). Antes cupón/desc e
+// IVA caían sobre TODO (incl. extras) → divergía del slug/DI (auditoría 17-jul).
+$base = $subtotal - $subtotal_extras; // base sin extras
 $cupon_monto = 0.0;
-if ($cupon_id) { $cupon_monto = $cupon_monto_fijo !== null ? min($cupon_monto_fijo, $subtotal) : $subtotal * ($cupon_pct / 100); $base -= $cupon_monto; }
+if ($cupon_id) { $cupon_monto = $cupon_monto_fijo !== null ? min($cupon_monto_fijo, $base) : $base * ($cupon_pct / 100); $base -= $cupon_monto; }
 if ($desc_auto_activo) { $desc_auto_amt = $base * ($desc_auto_pct / 100); $base -= $desc_auto_amt; }
-$base = max(0, $base); // Nunca permitir total negativo
+$base = max(0, $base); // Nunca permitir base negativa
 
 $impuesto_modo = $empresa['impuesto_modo'];
 $impuesto_pct  = (float)$empresa['impuesto_pct'];
 $impuesto_amt  = 0.0;
-if ($impuesto_modo === 'suma')     { $impuesto_amt = $base * ($impuesto_pct / 100); $total = $base + $impuesto_amt; }
-elseif ($impuesto_modo === 'incluido') { $impuesto_amt = $base - ($base / (1 + $impuesto_pct / 100)); $total = $base; }
-else { $total = $base; }
+$taxable = $base + $subtotal_extras; // extras gravables, no descontables
+if ($impuesto_modo === 'suma')     { $impuesto_amt = round($taxable * ($impuesto_pct / 100), 2); $total = round($taxable + $impuesto_amt, 2); }
+elseif ($impuesto_modo === 'incluido') { $impuesto_amt = round($taxable - ($taxable / (1 + $impuesto_pct / 100)), 2); $total = round($taxable, 2); }
+else { $total = round($taxable, 2); }
 
 // ─── Actualizar en DB ────────────────────────────────────
 try {
