@@ -355,7 +355,7 @@ if ($es_admin) {
                  -- te vio hace poco es milagro (lo trabaja el asesor), no DI. Sin
                  -- esto se listaban clientes vistos hace días que el motor bloquea.
                  AND c.ultima_vista_at IS NOT NULL
-                 AND c.ultima_vista_at < NOW() - INTERVAL (2 * dc.p75) DAY
+                 AND TIMESTAMPDIFF(DAY, c.ultima_vista_at, NOW()) > 2 * dc.p75
                  -- AGENDA (faltaba): cotización parqueada con cita futura es
                  -- territorio de la mesa; el motor la bloquea hasta fecha+2×p75.
                  AND (c.agenda_fecha IS NULL
