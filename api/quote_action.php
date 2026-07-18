@@ -96,8 +96,14 @@ if ($accion === 'aceptar') {
             "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
         $subtotal_srv = ($base_ne_srv + $extras_srv) > 0 ? $base_ne_srv : (float)$cot_data['subtotal'];
 
-        $imp_modo = $cot_data['impuesto_modo'] ?? 'ninguno';
-        $imp_pct  = (float)($cot_data['impuesto_pct'] ?? 0);
+        // IVA de la CONFIGURACIÓN vigente de la empresa (decisión CEO 18-jul: se
+        // cobra como esté configurado HOY, igual que lo muestra el enlace público
+        // —no el valor congelado al crear—; si la empresa cambia su IVA, las
+        // cotizaciones ya enviadas se cobran con el nuevo). Fallback al congelado
+        // si el SELECT fallara, para nunca quedar sin IVA.
+        $emp_iva  = DB::row("SELECT impuesto_modo, impuesto_pct FROM empresas WHERE id=?", [EMPRESA_ID]);
+        $imp_modo = $emp_iva['impuesto_modo'] ?? ($cot_data['impuesto_modo'] ?? 'ninguno');
+        $imp_pct  = (float)($emp_iva['impuesto_pct'] ?? $cot_data['impuesto_pct'] ?? 0);
         $cupon_amt_srv = 0; $desc_auto_srv = 0;
 
         // ── Descuento Inteligente: si hay uno VIGENTE, MANDA. Aplica sobre el
