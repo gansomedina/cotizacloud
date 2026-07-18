@@ -1514,6 +1514,7 @@ const COUPONS = <?= json_encode(array_map(fn($c) => [
     'exp'        => $c['fecha_vencimiento'] ?? null,
 ], $cupones)) ?>;
 const COT_ID  = <?= (int)$cot['id'] ?>;
+const COT_SLUG = <?= json_encode($cot['slug'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 const EMPRESA = <?= json_encode([
     'nombre'        => $cot['emp_nombre'],
     'tel'           => $cot['emp_tel'],
@@ -1694,7 +1695,7 @@ async function doAcc(){
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify({
-                cotizacion_id: COT_ID, accion: 'aceptar',
+                cotizacion_id: COT_ID, slug: COT_SLUG, accion: 'aceptar',
                 nombre, total_final: tot,
                 descuento_auto_amt: aa, cupon_codigo: cupon, cupon_pct: applied?.pct ?? 0,
                 di_visto: (typeof DI !== 'undefined' && DI.active === true)
@@ -1759,7 +1760,7 @@ async function doRej(){
         const r = await fetch('/api/quote-action', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({cotizacion_id: COT_ID, accion: 'rechazar', motivo})
+            body: JSON.stringify({cotizacion_id: COT_ID, slug: COT_SLUG, accion: 'rechazar', motivo})
         });
         const data = await r.json();
         respOk = data.ok === true;

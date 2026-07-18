@@ -13,6 +13,7 @@ if (!$body) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'P
 
 $cot_id = (int)($body['cotizacion_id'] ?? 0);
 $accion = trim($body['accion'] ?? '');
+$slug_req = trim((string)($body['slug'] ?? ''));
 
 if (!$cot_id || !$accion) {
     http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Datos requeridos']); exit;
@@ -25,11 +26,20 @@ if (!in_array($accion, $acciones_validas)) {
 
 // ─── Cargar cotización ───────────────────────────────────
 $cot = DB::row(
-    "SELECT id, empresa_id, estado, suspendida, cliente_id, titulo, usuario_id, vendedor_id FROM cotizaciones WHERE id = ? AND empresa_id = ?",
+    "SELECT id, empresa_id, estado, suspendida, cliente_id, titulo, usuario_id, vendedor_id, slug FROM cotizaciones WHERE id = ? AND empresa_id = ?",
     [$cot_id, EMPRESA_ID]
 );
 if (!$cot) {
     http_response_code(404); echo json_encode(['ok'=>false,'error'=>'Cotización no encontrada']); exit;
+}
+// El enlace público (slug secreto) ES la llave: ver la cotización ya lo exige,
+// pero accionarla se hacía solo con el id numérico (enumerable). Exigir que el
+// slug del enlace coincida cierra ese hueco sin exponer nada nuevo — la misma
+// llave que ya se usó para abrir la página. hash_equals: comparación en tiempo
+// constante (no filtra el slug por timing).
+if ($slug_req === '' || !hash_equals((string)$cot['slug'], $slug_req)) {
+    http_response_code(403);
+    echo json_encode(['ok'=>false,'error'=>'Enlace no válido. Actualiza la página e intenta de nuevo.']); exit;
 }
 if (!empty($cot['suspendida'])) {
     echo json_encode(['ok'=>false,'error'=>'Esta cotización está suspendida']); exit;
