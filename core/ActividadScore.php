@@ -189,17 +189,19 @@ class ActividadScore
         // ═══════════════════════════════════════════════════
 
         // ── Detectar días de importación masiva (>20 cotizaciones en 1 día) ──
-        // Estas cotizaciones no son trabajo real del vendedor. Ventana amplia
-        // (365d, no $periodo): no_abiertas_5d no tiene cota inferior de tiempo,
-        // así que un import viejo con cotizaciones sin abrir mataría Activación
-        // si su día no está en la lista de exclusión. Los consumidores acotados
-        // al período (asignadas/vistas/dormidas) ignoran las fechas viejas del
-        // NOT IN (ninguna fila vieja matchea su propio filtro de período).
+        // Estas cotizaciones no son trabajo real del vendedor. SIN cota de fecha
+        // (antes 365d): no_abiertas_5d no tiene cota inferior de tiempo, así que
+        // un import viejo con cotizaciones sin abrir mataba Activación en cuanto
+        // su día salía de la ventana de 365d (bomba de tiempo ~1 año después del
+        // import). Sin cota, un día-import queda excluido para siempre. (>20
+        // cots/día = import; un vendedor no hace 20 cotizaciones reales en un día.)
+        // Los consumidores acotados al período (asignadas/vistas/dormidas) ya
+        // ignoran las fechas viejas por su propio filtro; el que importa es
+        // no_abiertas_5d, sin cota inferior.
         $import_dates = DB::query(
             "SELECT DATE(created_at) AS d, COUNT(*) AS n
              FROM cotizaciones
              WHERE COALESCE(vendedor_id, usuario_id)=? AND empresa_id=?
-             AND created_at >= DATE_SUB(NOW(), INTERVAL 365 DAY)
              GROUP BY DATE(created_at) HAVING n > 20",
             [$usuario_id, $empresa_id]
         );

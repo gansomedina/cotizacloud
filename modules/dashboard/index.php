@@ -1050,7 +1050,7 @@ if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
         <b>¿Qué mide este ranking?</b>
         <p>Algoritmo APC v5.1 — 15 días rolling, 100% auto-ajustable:</p>
         <ul>
-          <li><b>Activación (13%)</b> — ¿Las cotizaciones llegan al cliente? Penaliza no abiertas (×1/tasa cierre) y dormidas (escalado por tiempo promedio de cierre de la empresa).</li>
+          <li><b>Activación (13%)</b> — ¿Las cotizaciones llegan al cliente? Una o más sin abrir a los 5 días tumba la operativa; las "dormidas" (que el cliente vio pero no volvió a abrir en 7+ días) restan en proporción directa a tus vistas.</li>
           <li><b>Engagement (17%)</b> — Capa de penalizaciones: ventas sin cobrar (×1/tasa cierre, fuerte), descuentos (×tasa cierre, suave), ventas por debajo del promedio de la empresa.</li>
           <li><b>Seguimiento (25%) = tu mesa</b> — Con la Mesa de Trabajo activa, ESTA dimensión ES tu mesa (lista completa): atiende (feedback 👍👎 <b>+</b> postura) el <b>≥80%</b> = completo · <b>50–80%</b> = medio (cuenta la mitad) · <b>menos de 50%</b> = no cuenta. <span style="opacity:.7">(Empresas sin mesa: se mide el feedback en tus cotizaciones calientes.)</span></li>
           <li><b>Radar Health (10%)</b> — ¿Cuidas a los clientes con interés? Cuando una cotización se pone caliente, el cliente la está viendo con interés. Mide cuántas de esas se te mueren — el cliente desaparece del Radar sin que cierres. Entre menos sueltas, más alto.</li>
