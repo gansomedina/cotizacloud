@@ -449,5 +449,20 @@ $ca = Mesa::cobertura_senales(5, 507);
 chk('score intacto: cobertura 507 = pedidas 3, atendidas 3 (candados son solo UI)',
     [$ca['pedidas'], $ca['atendidas']], [3, 3]);
 
+echo "═ DESCARTE con auto-manita (vendedor 508 — regla 18-jul) ═\n";
+// D1: descarte COMPLETO — postura=descartada + manita 👎 (la que el endpoint
+// pone sola). Cobertura debe contarlo ATENDIDO (postura+manita presentes).
+cot(9911, 508, 10000, 8, ['visitas' => 2, 'vista_d' => 3]);
+tap(9911, 'postura', 'descartada', 0.1);
+fb(9911, 508, 'sin_interes', 0.1);
+// D2: descarte de UN SOLO gesto (postura sin manita) — comportamiento viejo →
+// cobertura lo cuenta como FALLA. Con el auto-manita del endpoint este caso ya
+// no ocurre por el pill Descartar; se conserva para documentar la diferencia.
+cot(9912, 508, 12000, 8, ['visitas' => 2, 'vista_d' => 3]);
+tap(9912, 'postura', 'descartada', 0.1);
+$cd = Mesa::cobertura_senales(5, 508);
+chk('descarte con 👎 auto = ATENDIDO; descarte sin manita = falla (pedidas 2, atendidas 1)',
+    [$cd['pedidas'], $cd['atendidas'], $cd['fallas']], [2, 1, 1]);
+
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

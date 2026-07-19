@@ -718,7 +718,13 @@ function mesaTap(cotId, area, estado, btn, razon){
     areaEl.querySelectorAll('.mpill').forEach(function(x){x.classList.remove('on')});
     if(estado === 'descartada'){
       var md = areaEl.querySelector('.mdesc'); if(md) md.classList.add('on');
-      mesaToast('Descartada — pasa a \"Descartadas hoy\" al recargar y mañana sale de la mesa. Si el cliente revive, vuelve sola con ⚡ — y un descarte que el cliente desmiente cuenta en tu contra');
+      // La manita 👎 se marcó sola (auto_manita): reflejarla abajo para que el
+      // asesor VEA que el descarte con motivo ya cuenta completo, sin doble tap.
+      if(d.auto_manita){
+        var fbis = row.querySelectorAll('.mmarc .fbi');
+        fbis.forEach(function(b,i){ b.classList.toggle('on', i === 1); }); // 👎 = índice 1 (👍👎📵)
+      }
+      mesaToast('Descartada — pasa a \"Descartadas hoy\" al recargar y mañana sale de la mesa. Se marcó 👎 por ti (ya cuenta completo). Si el cliente revive, vuelve sola con ⚡ — y un descarte que el cliente desmiente cuenta en tu contra');
     }
     btn.classList.add('on');
     // columnita con el label corto
