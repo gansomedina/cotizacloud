@@ -754,8 +754,17 @@ function mesaTap(cotId, area, estado, btn, razon){
       var mc = row.querySelector('.mcheck'); if(mc) mc.textContent = '✓';
       mesaToast('✓ Atendida — al recargar pasa a "Atendidas hoy"');
     } else if(estado !== 'descartada' && d.calificada && !atendida){
-      // calificada pero el reloj sigue 🔴: la lectura no apaga el cronómetro
-      mesaToast('✓ Calificada — pero sigue 🔴 sin seguimiento; declara un contacto (Hablamos/No contestó) para bajarla a "Atendidas hoy"');
+      // calificada pero aún no baja. Si YA se declaró un contacto (auto del
+      // compromiso) o es una CITA, no ordenar "declara un contacto" —el reloj
+      // de cita lo re-ancla el servidor y la recarga lo acomoda; el JS no puede
+      // replicar esa lógica con certeza. Solo cuando NO hubo contacto ni es cita
+      // damos la instrucción concreta.
+      var esCita = !!(fr && fr.textContent.indexOf('cita') !== -1);
+      if(d.auto_contacto || esCita){
+        mesaToast('✓ Calificada — al recargar se acomoda tu seguimiento');
+      } else {
+        mesaToast('✓ Calificada — pero sigue 🔴 sin seguimiento; declara un contacto (Hablamos/No contestó) para bajarla a "Atendidas hoy"');
+      }
     } else if(area === 'postura' && estado !== 'descartada' && !d.calificada){
       // declaró postura pero falta la manita — el momento exacto de avisar
       mesaToast('Postura guardada — falta la manita 👍👎/📵 para que cuente como atendida');

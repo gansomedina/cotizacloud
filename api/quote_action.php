@@ -13,6 +13,7 @@ if (!$body) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'P
 
 $cot_id = (int)($body['cotizacion_id'] ?? 0);
 $accion = trim($body['accion'] ?? '');
+$slug_req = trim((string)($body['slug'] ?? ''));
 
 if (!$cot_id || !$accion) {
     http_response_code(400); echo json_encode(['ok'=>false,'error'=>'Datos requeridos']); exit;
@@ -25,11 +26,20 @@ if (!in_array($accion, $acciones_validas)) {
 
 // ─── Cargar cotización ───────────────────────────────────
 $cot = DB::row(
-    "SELECT id, empresa_id, estado, suspendida, cliente_id, titulo, usuario_id, vendedor_id FROM cotizaciones WHERE id = ? AND empresa_id = ?",
+    "SELECT id, empresa_id, estado, suspendida, cliente_id, titulo, usuario_id, vendedor_id, slug FROM cotizaciones WHERE id = ? AND empresa_id = ?",
     [$cot_id, EMPRESA_ID]
 );
 if (!$cot) {
     http_response_code(404); echo json_encode(['ok'=>false,'error'=>'Cotización no encontrada']); exit;
+}
+// El enlace público (slug secreto) ES la llave: ver la cotización ya lo exige,
+// pero accionarla se hacía solo con el id numérico (enumerable). Exigir que el
+// slug del enlace coincida cierra ese hueco sin exponer nada nuevo — la misma
+// llave que ya se usó para abrir la página. hash_equals: comparación en tiempo
+// constante (no filtra el slug por timing).
+if ($slug_req === '' || !hash_equals((string)$cot['slug'], $slug_req)) {
+    http_response_code(403);
+    echo json_encode(['ok'=>false,'error'=>'Enlace no válido. Actualiza la página e intenta de nuevo.']); exit;
 }
 if (!empty($cot['suspendida'])) {
     echo json_encode(['ok'=>false,'error'=>'Esta cotización está suspendida']); exit;
@@ -86,8 +96,14 @@ if ($accion === 'aceptar') {
             "SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
         $subtotal_srv = ($base_ne_srv + $extras_srv) > 0 ? $base_ne_srv : (float)$cot_data['subtotal'];
 
-        $imp_modo = $cot_data['impuesto_modo'] ?? 'ninguno';
-        $imp_pct  = (float)($cot_data['impuesto_pct'] ?? 0);
+        // IVA de la CONFIGURACIÓN vigente de la empresa (decisión CEO 18-jul: se
+        // cobra como esté configurado HOY, igual que lo muestra el enlace público
+        // —no el valor congelado al crear—; si la empresa cambia su IVA, las
+        // cotizaciones ya enviadas se cobran con el nuevo). Fallback al congelado
+        // si el SELECT fallara, para nunca quedar sin IVA.
+        $emp_iva  = DB::row("SELECT impuesto_modo, impuesto_pct FROM empresas WHERE id=?", [EMPRESA_ID]);
+        $imp_modo = $emp_iva['impuesto_modo'] ?? ($cot_data['impuesto_modo'] ?? 'ninguno');
+        $imp_pct  = (float)($emp_iva['impuesto_pct'] ?? $cot_data['impuesto_pct'] ?? 0);
         $cupon_amt_srv = 0; $desc_auto_srv = 0;
 
         // ── Descuento Inteligente: si hay uno VIGENTE, MANDA. Aplica sobre el

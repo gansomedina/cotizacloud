@@ -618,7 +618,16 @@ class Mesa
         // tabla sin migrar → se ignora; si el query de anclas de cita falló,
         // NO escribir — leer sin castigar, un error transitorio de BD no debe
         // dejar castigo permanente). Escritura-en-lectura (patrón ghost cleanup).
-        if ($venc_ins && empty($cita_anc_fail)) {
+        // Solo si la mesa está ACTIVA para el asesor (mesa_activa>=1: ya ve la
+        // UI). Con la mesa apagada (flag 0, solo el admin la ve) el asesor no
+        // acumula castigo por días que no pudo trabajar — evita el castigo
+        // retroactivo de hasta 14 días al encender la mesa (0→2).
+        static $ma_cache = [];
+        if (!array_key_exists($empresa_id, $ma_cache)) {
+            try { $ma_cache[$empresa_id] = ((int)DB::val("SELECT mesa_activa FROM empresas WHERE id=?", [$empresa_id])) >= 1; }
+            catch (\Throwable $e) { $ma_cache[$empresa_id] = true; } // columna sin migrar → sin castigo aguas abajo, inofensivo
+        }
+        if ($venc_ins && empty($cita_anc_fail) && $ma_cache[$empresa_id]) {
             try {
                 DB::execute("INSERT IGNORE INTO mesa_vencidos (cotizacion_id, usuario_id, empresa_id, fecha) VALUES " . implode(',', $venc_ins));
             } catch (\Throwable $e) {}

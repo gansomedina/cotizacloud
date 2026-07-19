@@ -167,7 +167,13 @@ if (!$tiene_precio) json_error('Al menos un artículo debe tener precio');
 $base = $subtotal - $subtotal_extras; // base sin extras
 $cupon_monto = 0.0;
 if ($cupon_id) { $cupon_monto = $cupon_monto_fijo !== null ? min($cupon_monto_fijo, $base) : $base * ($cupon_pct / 100); $base -= $cupon_monto; }
-if ($desc_auto_activo) { $desc_auto_amt = $base * ($desc_auto_pct / 100); $base -= $desc_auto_amt; }
+// Solo aplicar si NO ha vencido (igual que el enlace público y el aceptar); si
+// ya venció, no se hornea el descuento en el total guardado — antes convertir a
+// venta cobraba el descuento caducado mientras aceptar cobraba completo.
+if ($desc_auto_activo) {
+    $exp_ts = $desc_auto_expira ? strtotime($desc_auto_expira) : 0;
+    if (!$exp_ts || $exp_ts > time()) { $desc_auto_amt = $base * ($desc_auto_pct / 100); $base -= $desc_auto_amt; }
+}
 $base = max(0, $base); // Nunca permitir base negativa
 
 $impuesto_modo = $empresa['impuesto_modo'];

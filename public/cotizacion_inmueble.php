@@ -527,6 +527,7 @@ function doAccept() {
     btn.disabled = true; btn.textContent = 'Enviando…';
     var body = {
         cotizacion_id: <?= (int)$cot['id'] ?>,
+        slug: <?= json_encode($cot['slug'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>,
         accion: 'aceptar',
         nombre: document.getElementById('accNombre').value.trim(),
         mensaje: document.getElementById('accMsg').value.trim()
@@ -565,7 +566,7 @@ function doReject() {
     fetch('/api/quote-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cotizacion_id: <?= (int)$cot['id'] ?>, accion: 'rechazar', motivo: motivo })
+        body: JSON.stringify({ cotizacion_id: <?= (int)$cot['id'] ?>, slug: <?= json_encode($cot['slug'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>, accion: 'rechazar', motivo: motivo })
     }).then(function(r){ return r.json(); }).then(function(d){
         if (d.ok) {
             closeM('rejectOv');
