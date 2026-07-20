@@ -519,6 +519,16 @@ class MesaSugerencias
                         'No quedaron en nada y el interés del cliente va de bajada — pregúntale hoy sin rodeos si sigue interesado; un no claro vale más que el silencio.',
                     ]);
                     $slots['confronta'] = true;
+                } elseif (!$seg_ok) {
+                    // Reloj vencido: la propuesta/fecha cerrada ES el toque de hoy
+                    // (igual que la rama 'decidiendo'). Antes esta variante
+                    // (en_el_aire sin pacto, no dormida) NO mencionaba el
+                    // seguimiento vencido → el tip contradecía el 🔴 de la fila.
+                    $f = $pk([
+                        'Hablaron sin aterrizar y tu seguimiento ya venció — deja de sondear: la siguiente llamada lleva UNA propuesta cerrada o una fecha límite, y con eso quedas al corriente.',
+                        'La plática quedó abierta y el reloj de seguimiento venció — no llames a "ver cómo va": hoy va una propuesta concreta o una fecha límite; con eso te pones al corriente.',
+                    ]);
+                    $slots['decision'] = true;
                 } else {
                     $f = $pk([
                         'Hablaron sin quedar en nada y tú mismo la ves dudosa — deja de sondear: la siguiente llamada lleva UNA propuesta cerrada o una fecha límite.',
