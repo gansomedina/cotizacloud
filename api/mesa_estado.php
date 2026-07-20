@@ -78,6 +78,7 @@ try {
 // Los 3 writes van en transacción: un fallo parcial dejaría el tap guardado
 // pero sin proyección al Radar (o sin el contacto implícito) — estado divergente.
 $auto_contacto = false;
+$auto_manita   = false;
 try {
     DB::beginTransaction();
 
@@ -128,6 +129,20 @@ try {
              VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE tipo=VALUES(tipo), updated_at=NOW()",
             [$cot_id, (int)$cot['vend'], EMPRESA_ID, $estado]
         );
+    }
+
+    // Excepción a "la manita es juicio independiente": DESCARTAR con motivo YA
+    // ES el juicio "sin interés". Al declarar postura='descartada' se auto-marca
+    // la manita 👎 (sin_interes) para que el descarte cuente COMPLETO
+    // (postura+manita, como exige la cobertura) sin doble trabajo — el asesor
+    // solo elige el motivo y la manita se pone sola abajo.
+    if ($area === 'postura' && $estado === 'descartada') {
+        DB::execute(
+            "INSERT INTO radar_feedback (cotizacion_id, usuario_id, empresa_id, tipo)
+             VALUES (?,?,?,'sin_interes') ON DUPLICATE KEY UPDATE tipo='sin_interes', updated_at=NOW()",
+            [$cot_id, (int)$cot['vend'], EMPRESA_ID]
+        );
+        $auto_manita = true;
     }
 
     DB::commit();
@@ -346,4 +361,4 @@ try {
 // contradecir a la recarga (misma regla que Mesa::armar). El reloj NO se
 // recomputa aquí a propósito: duplicarlo rompería la fuente única.
 $postura_fresca = !empty($decl['postura']) && substr($decl['postura']['at'] ?? '', 0, 10) === $hoy_db;
-echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia, 'auto_contacto' => $auto_contacto, 'fb_hint' => $fb_hint, 'calificada' => $calificada, 'postura_fresca' => $postura_fresca]);
+echo json_encode(['ok' => true, 'estado' => $estado, 'sugerencia' => $sugerencia, 'auto_contacto' => $auto_contacto, 'auto_manita' => $auto_manita, 'fb_hint' => $fb_hint, 'calificada' => $calificada, 'postura_fresca' => $postura_fresca]);
