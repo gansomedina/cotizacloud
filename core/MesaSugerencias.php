@@ -682,6 +682,22 @@ class MesaSugerencias
             $f .= ' Vale ' . self::x($ratio) . ' de tu venta típica.';
         }
 
+        // ══ RELOJ VENCIDO (🔴): reconocerlo si la rama no lo hizo ══
+        // La mayoría de las ~50 ramas de tips no revisan el reloj de seguimiento
+        // y daban buen consejo pero sin reconocer el atraso — el asesor ve 🔴
+        // "sin seguimiento" en la fila y el tip lo ignoraba. Si el consejo aún
+        // no lo menciona, se ata a ponerse al corriente. SOLO estado 'vencida'
+        // (no 'hoy', que aún no vence → afirmar "venció" sería falso) y NUNCA en
+        // tips de ESPERA (contradice "dale espacio"). Las 6 ramas que ya lo dicen
+        // traen "venció/al corriente/a su límite" en $f → el guard las salta.
+        if (($c['seguimiento']['estado'] ?? '') === 'vencida' && empty($slots['espera'])
+            && !preg_match('/venci|al corriente|a su límite/iu', $f)) {
+            $f .= ' ' . $pk([
+                'Y ojo: tu seguimiento ya venció — hazlo hoy y quedas al corriente.',
+                'Además tu seguimiento está vencido — este toque de hoy te pone al corriente.',
+            ]);
+        }
+
         // ══ CAPA 4: modulación por arquetipo (CÓMO, nunca QUÉ) ══
         return self::modular($f, (string)($c['arquetipo'] ?? ''), $slots, $viva, $dormida, $pk);
     }
