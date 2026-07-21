@@ -1078,6 +1078,12 @@ if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
     $w_pct_lb  = $team_n >= 3 ? min(($team_n - 2) / ($team_n + 18), 0.25) : 0.0;
     $w_mom_lb  = (1.0 - $w_pct_lb) * $lb_cr;
     $w_prop_lb = 1.0 - $w_pct_lb - $w_mom_lb;
+    // Enteros a mostrar: redondear 2 y derivar el 3ro → SIEMPRE suman 100% (antes
+    // los 3 round() independientes daban 99/101). El '≈' avisa que el close_rate
+    // es estimado del leaderboard, no el benchmark exacto de ActividadScore.
+    $pct_disp  = (int)round($w_pct_lb * 100);
+    $mom_disp  = (int)round($w_mom_lb * 100);
+    $prop_disp = 100 - $pct_disp - $mom_disp;
     $rank = 0;
     foreach ($equipo_scores as $es):
       $rank++;
@@ -1181,9 +1187,9 @@ if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
         <div class="dbg-row"><span class="dbg-lbl">Bonus ticket</span><span class="dbg-val"><?= (int)($es['bonus_ticket'] ?? 0) > 0 ? '+'.($es['bonus_ticket']).' pts ('.(int)($es['bonus_ticket_ventas'] ?? 0).' venta'.((int)($es['bonus_ticket_ventas'] ?? 0) != 1 ? 's' : '').')' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Bonus cierre</span><span class="dbg-val"><?= (int)($es['bonus_cierre'] ?? 0) > 0 ? '+'.($es['bonus_cierre']).' pts' : '—' ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Castigo seguimiento</span><span class="dbg-val"><?= (int)($es['castigo_seguimiento'] ?? 0) > 0 ? '-'.($es['castigo_seguimiento']).' pts ('.(int)($es['mesa_dias_vencidos'] ?? 0).'d vencidos en el período)' : '—' ?></span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Proporcional (×<?= round($w_prop_lb * 100) ?>%)</span><span class="dbg-val"><?= round(($es['tasa_gestion'] ?? 0) * 100, 1) ?>%</span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Momentum (×<?= round($w_mom_lb * 100) ?>%)</span><span class="dbg-val"><?= number_format($es['momentum'] ?? 1, 2) ?></span></div>
-        <div class="dbg-row"><span class="dbg-lbl">Percentil (×<?= round($w_pct_lb * 100) ?>%)</span><span class="dbg-val"><?= round(($es['percentil'] ?? 0) * 100) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Proporcional (×≈<?= $prop_disp ?>%)</span><span class="dbg-val"><?= round(($es['tasa_gestion'] ?? 0) * 100, 1) ?>%</span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Momentum (×≈<?= $mom_disp ?>%)</span><span class="dbg-val"><?= number_format($es['momentum'] ?? 1, 2) ?></span></div>
+        <div class="dbg-row"><span class="dbg-lbl">Percentil (×≈<?= $pct_disp ?>%)</span><span class="dbg-val"><?= round(($es['percentil'] ?? 0) * 100) ?>%</span></div>
         <div class="dbg-row"><span class="dbg-lbl">Asig / Vistas / Cierres</span><span class="dbg-val"><?= (int)($es['cot_asignadas'] ?? 0) ?> / <?= (int)($es['cot_vistas'] ?? 0) ?> / <?= (int)($es['conversiones'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">Dormidas 7d</span><span class="dbg-val"><?= (int)($es['cot_dormidas'] ?? 0) ?></span></div>
         <div class="dbg-row"><span class="dbg-lbl">No abiertas 5d</span><span class="dbg-val dbg-neg"><?= (int)($es['no_abiertas_5d'] ?? 0) ?></span></div>

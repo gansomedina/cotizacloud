@@ -69,6 +69,28 @@ try {
     //    Antes convertir era CIEGO al DI: cobraba precio completo y dejaba el
     //    contrato 'activo' colgado (la caja del editor prometía un cobro falso). ──
     $total_vta = (float)$cot['total'];
+
+    // ── Descuento automático VENCIDO horneado en cot.total (gemelo del fix de
+    //    guardar.php): guardar ya no lo hornea al editar, pero una cotización
+    //    creada con descuento que caducó SIN re-guardarse conserva el total
+    //    descontado — convertir lo cobraba, mientras aceptar SÍ valida vigencia.
+    //    Si venció, recomputa el total SIN el descuento (misma fórmula canónica,
+    //    IVA congelado de la cotización = el que construyó cot.total). Solo se
+    //    dispara con descuento vencido; si el DI aplica abajo, lo sobreescribe. ──
+    if (!empty($cot['descuento_auto_activo'])
+        && !empty($cot['descuento_auto_expira'])
+        && strtotime($cot['descuento_auto_expira']) <= time()) {
+        $base_ne_c = (float)DB::val("SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=0", [$cot_id]);
+        $extras_c  = (float)DB::val("SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
+        $cupon_c   = (float)($cot['cupon_monto'] ?? 0);
+        $imp_modo_c = $cot['impuesto_modo'] ?? 'ninguno';
+        $imp_pct_c  = (float)($cot['impuesto_pct'] ?? 0);
+        $taxable_c  = max(0, $base_ne_c - $cupon_c) + $extras_c; // SIN el descuento vencido
+        $total_vta  = ($imp_modo_c === 'suma')
+            ? round($taxable_c + round($taxable_c * $imp_pct_c / 100, 2), 2)
+            : round($taxable_c, 2);
+    }
+
     try {
         $di_vig = DescuentoInteligente::vigente($cot_id);
         if ($di_vig && $di_vig['estado'] === 'activo') {

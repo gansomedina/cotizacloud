@@ -690,8 +690,12 @@ class MesaSugerencias
         // (no 'hoy', que aún no vence → afirmar "venció" sería falso) y NUNCA en
         // tips de ESPERA (contradice "dale espacio"). Las 6 ramas que ya lo dicen
         // traen "venció/al corriente/a su límite" en $f → el guard las salta.
+        // Guard específico del RELOJ (antes /venci/ suelto matcheaba de más:
+        // "conVENCIó", "cotización VENCIda contra tu historial" → suprimía la nota
+        // falsamente). Ahora exige que "venció/límite" esté ligado a seguimiento/
+        // reloj, o el cierre "al corriente" que solo usan las ramas del reloj.
         if (($c['seguimiento']['estado'] ?? '') === 'vencida' && empty($slots['espera'])
-            && !preg_match('/venci|al corriente|a su límite/iu', $f)) {
+            && !preg_match('/al corriente|(seguimiento|reloj)[^.]{0,25}(venci|límite)/iu', $f)) {
             $f .= ' ' . $pk([
                 'Y ojo: tu seguimiento ya venció — hazlo hoy y quedas al corriente.',
                 'Además tu seguimiento está vencido — este toque de hoy te pone al corriente.',
