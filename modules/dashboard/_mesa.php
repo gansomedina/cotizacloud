@@ -63,6 +63,21 @@ foreach ($mesa_vendedores as $mv) {
 $mesa_first = reset($mesa_all);
 $mp75 = max(1, (int)$mesa_first['p75']);
 
+// Historial de toques por cotización (panel izquierdo del cajón). UNA consulta
+// batcheada para TODAS las cotizaciones visibles (no N+1). Solo lectura de
+// mesa_estados (que ya es insert-only) — backend intacto.
+$mesa_hist = [];
+$mesa_hist_cids = [];
+foreach ($mesa_all as $ma) foreach (($ma['rows'] ?? []) as $rr) $mesa_hist_cids[] = (int)$rr['id'];
+if ($mesa_hist_cids) {
+    $in_h = implode(',', array_map('intval', array_unique($mesa_hist_cids)));
+    try {
+        foreach (DB::query("SELECT cotizacion_id, area, estado, razon, created_at FROM mesa_estados WHERE cotizacion_id IN ($in_h) AND (razon IS NULL OR razon <> 'auto') ORDER BY id") as $h) {
+            $mesa_hist[(int)$h['cotizacion_id']][] = $h;
+        }
+    } catch (\Throwable $e) {}
+}
+
 $MESA_BUCKET_LBL = [
     'probable_cierre' => ['Probable cierre', '#dc2626'], 'onfire' => ['On fire', '#dc2626'],
     'inminente' => ['Inminente', '#dc2626'], 'validando_precio' => ['Validando precio', '#d97706'],
@@ -95,7 +110,7 @@ $MESA_SHORT = [
 $mag_min = date('Y-m-d', strtotime('+15 days'));
 $mag_max = date('Y-m-d', strtotime('+183 days'));
 
-$mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT, $mmoney, $mp75, $mag_min, $mag_max) {
+$mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT, $mmoney, $mp75, $mag_min, $mag_max, $mesa_hist) {
     $d  = $r['decl'] ?? [];
     $bl = $r['bucket'] ? ($MESA_BUCKET_LBL[$r['bucket']] ?? [$r['bucket'], '#64748b']) : null;
     $es_milagro = $r['revivida'] || $r['milagro'];
@@ -169,30 +184,61 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           $con_e0 = $d['contacto']['estado'] ?? '';
           $lock2 = empty($d['compromiso']) && $con_e0 !== 'hablamos';
           $lock3 = empty($d['postura']) && empty($d['compromiso']) && $con_e0 !== 'no_contesta';
+          $mdf = fn($at) => $at ? date('d/m', strtotime($at)) : '';
       ?>
-      <div class="mareas">
-        <div class="marea" data-area="contacto"><span class="man">1 · Contacto</span>
-          <?php foreach ($MESA_AREAS['contacto'] as $ek => $el): ?>
-          <button type="button" data-e="<?= $ek ?>" class="mpill<?= ($d['contacto']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'contacto','<?= $ek ?>',this)"><?= e($el) ?></button>
-          <?php endforeach; ?></div>
-        <div class="marea<?= $lock2 ? ' lock' : '' ?>" data-area="compromiso"<?= !empty($r['cita_vencida']) ? ' style="border:1px solid #dc2626;border-radius:6px;padding:4px 6px;background:#fef2f2"' : '' ?>><span class="man">2 · Compromiso</span>
-          <?php if (!empty($r['cita_vencida'])): ?><span style="display:block;color:#b91c1c;font-weight:700;font-size:12px;margin:2px 0">❓ ¿Qué pasó con la cita? — registra el desenlace; si la pospusieron: Hablamos + re-citar</span><?php endif; ?>
-          <?php foreach ($MESA_AREAS['compromiso'] as $ek => $el): ?>
-          <button type="button" data-e="<?= $ek ?>" class="mpill<?= ($d['compromiso']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'compromiso','<?= $ek ?>',this)"><?= e($el) ?></button>
-          <?php endforeach; ?>
-          <span class="mlockmsg">primero el contacto (si hablaron)</span></div>
-        <div class="marea<?= $lock3 ? ' lock' : '' ?>" data-area="postura"><span class="man">3 · ¿Cómo lo ves?</span>
-          <?php foreach ($MESA_AREAS['postura'] as $ek => $el): if ($ek === 'descartada') continue; ?>
-          <button type="button" data-e="<?= $ek ?>" class="mpill<?= ($d['postura']['estado'] ?? '') === $ek ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','<?= $ek ?>',this)"><?= e($el) ?></button>
-          <?php endforeach; ?>
-          <button type="button" data-e="descartada" class="mpill mdesc<?= ($d['postura']['estado'] ?? '') === 'descartada' ? ' on' : '' ?>" onclick="mesaRz(this)">Descartar</button>
-          <span class="mrz<?= ($d['postura']['estado'] ?? '') === 'descartada' ? ' show' : '' ?>">
-            <span class="mrz-l">¿motivo?</span>
-            <?php foreach (['precio' => 'Muy caro', 'competencia' => 'Se fue con otro', 'despues' => 'Lo dejó para después', 'no_responde' => 'Dejó de responder', 'no_comprador' => 'No era comprador', 'otro' => 'Otro'] as $rk => $rl): ?>
-            <button type="button" data-e="descartada" class="mpill mrz-b<?= ($d['postura']['estado'] ?? '') === 'descartada' && ($d['postura']['razon'] ?? '') === $rk ? ' on' : '' ?>" onclick="mesaTap(<?= (int)$r['id'] ?>,'postura','descartada',this,'<?= $rk ?>')"><?= e($rl) ?></button>
-            <?php endforeach; ?>
-          </span>
-          <span class="mlockmsg">primero el paso anterior</span></div>
+      <div class="mdrawer-cols">
+        <!-- IZQUIERDA: seguimiento declarado (display + fecha + historial) -->
+        <div class="mcol mcol-info">
+          <div class="mcol-h">Seguimiento declarado</div>
+          <div class="mdecl">
+            <div class="mdln"><span class="mdk">1 · Contacto</span><span class="mdv<?= ($d['contacto']['estado'] ?? '') ? '' : ' none' ?>"><?= ($d['contacto']['estado'] ?? '') ? e($MESA_SHORT[$d['contacto']['estado']] ?? '') : 'sin declarar' ?></span><span class="mdd"><?= $mdf($d['contacto']['at'] ?? null) ?></span></div>
+            <div class="mdln"><span class="mdk">2 · Compromiso</span><span class="mdv<?= ($d['compromiso']['estado'] ?? '') ? '' : ' none' ?>"><?= ($d['compromiso']['estado'] ?? '') ? e($MESA_SHORT[$d['compromiso']['estado']] ?? '') : '—' ?></span><span class="mdd"><?= $mdf($d['compromiso']['at'] ?? null) ?></span></div>
+            <div class="mdln"><span class="mdk">3 · ¿Cómo lo ves?</span><span class="mdv<?= ($d['postura']['estado'] ?? '') ? '' : ' none' ?>"><?= ($d['postura']['estado'] ?? '') ? e($MESA_SHORT[$d['postura']['estado']] ?? '') : 'sin declarar' ?></span><span class="mdd"><?= $mdf($d['postura']['at'] ?? null) ?></span></div>
+          </div>
+          <?php $mhh = $mesa_hist[(int)$r['id']] ?? []; if (count($mhh) > 1): ?>
+          <div class="mhist">
+            <button type="button" class="mhist-t" onclick="this.closest('.mhist').classList.toggle('open')"><span class="chev">▶</span> Historial (<?= count($mhh) ?> toques)</button>
+            <div class="mhist-b">
+              <?php foreach (array_reverse($mhh) as $he): ?>
+              <div class="mhist-i"><span class="mho"><?= e($MESA_SHORT[$he['estado']] ?? $he['estado']) ?></span><span class="mhd"><?= date('d/m', strtotime($he['created_at'])) ?></span></div>
+              <?php endforeach; ?>
+            </div>
+          </div>
+          <?php endif; ?>
+        </div>
+
+        <!-- DERECHA: capturar el siguiente (reemplaza el re-tap) -->
+        <div class="mcol mcol-cap">
+          <div class="mcol-h">Capturar siguiente seguimiento</div>
+          <div class="mareas">
+            <div class="marea" data-area="contacto"><span class="man">1 · Contacto</span>
+              <?php foreach ($MESA_AREAS['contacto'] as $ek => $el): ?>
+              <button type="button" data-e="<?= $ek ?>" class="mpill" onclick="mesaSel(this,<?= (int)$r['id'] ?>)"><?= e($el) ?></button>
+              <?php endforeach; ?></div>
+            <div class="marea<?= $lock2 ? ' lock' : '' ?>" data-area="compromiso"<?= !empty($r['cita_vencida']) ? ' style="border:1px solid #dc2626;border-radius:6px;padding:4px 6px;background:#fef2f2"' : '' ?>><span class="man">2 · Compromiso</span>
+              <?php if (!empty($r['cita_vencida'])): ?><span style="display:block;color:#b91c1c;font-weight:700;font-size:12px;margin:2px 0">❓ ¿Qué pasó con la cita? — registra el desenlace; si la pospusieron: Hablamos + re-citar</span><?php endif; ?>
+              <?php foreach ($MESA_AREAS['compromiso'] as $ek => $el): ?>
+              <button type="button" data-e="<?= $ek ?>" class="mpill" onclick="mesaSel(this,<?= (int)$r['id'] ?>)"><?= e($el) ?></button>
+              <?php endforeach; ?>
+              <span class="mlockmsg">primero el contacto (si hablaron)</span></div>
+            <div class="marea<?= $lock3 ? ' lock' : '' ?>" data-area="postura"><span class="man">3 · ¿Cómo lo ves?</span>
+              <?php foreach ($MESA_AREAS['postura'] as $ek => $el): if ($ek === 'descartada') continue; ?>
+              <button type="button" data-e="<?= $ek ?>" class="mpill" onclick="mesaSel(this,<?= (int)$r['id'] ?>)"><?= e($el) ?></button>
+              <?php endforeach; ?>
+              <button type="button" data-e="descartada" class="mpill mdesc" onclick="mesaRz(this)">Descartar</button>
+              <span class="mrz">
+                <span class="mrz-l">¿motivo?</span>
+                <?php foreach (['precio' => 'Muy caro', 'competencia' => 'Se fue con otro', 'despues' => 'Lo dejó para después', 'no_responde' => 'Dejó de responder', 'no_comprador' => 'No era comprador', 'otro' => 'Otro'] as $rk => $rl): ?>
+                <button type="button" data-e="descartada" data-rz="<?= $rk ?>" class="mpill mrz-b" onclick="mesaSel(this,<?= (int)$r['id'] ?>)"><?= e($rl) ?></button>
+                <?php endforeach; ?>
+              </span>
+              <span class="mlockmsg">primero el paso anterior</span></div>
+          </div>
+          <div class="mcap">
+            <button type="button" class="mcapbtn" id="mcap<?= (int)$r['id'] ?>" onclick="mesaCapturar(<?= (int)$r['id'] ?>)" disabled>Capturar seguimiento</button>
+            <span class="mcaphint" id="mcaph<?= (int)$r['id'] ?>">Marca al menos el contacto</span>
+          </div>
+        </div>
       </div>
       <div class="magenda">
         <span class="man">📅 Agendar</span>
@@ -528,6 +574,37 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .marea .mlockmsg{display:none;font-size:10.5px;color:#a8a8a2;font-style:italic}
 .mesa-emb .marea.lock .mpill{opacity:.35;pointer-events:none}
 .mesa-emb .marea.lock .mlockmsg{display:inline}
+/* ── Cajón en 2 columnas: izquierda declarado (display) / derecha capturar ── */
+.mesa-emb .mdrawer-cols{display:grid;grid-template-columns:1fr 1.15fr;gap:14px;margin:8px 0 4px}
+.mesa-emb .mcol-h{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#a8a8a2;margin-bottom:8px}
+.mesa-emb .mcol-cap{border-left:2px solid #e6efe9;padding-left:14px}
+.mesa-emb .mdecl{display:flex;flex-direction:column;gap:7px}
+.mesa-emb .mdln{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline;font-size:12px}
+.mesa-emb .mdk{color:#a8a8a2;font-weight:700;white-space:nowrap}
+.mesa-emb .mdv{font-weight:700;color:#292524}
+.mesa-emb .mdv.none{color:#c4c4bd;font-weight:600;font-style:italic}
+.mesa-emb .mdd{color:#1a5c38;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mesa-emb .mhist{margin-top:10px;border-top:1px dashed #e6e6df;padding-top:8px}
+.mesa-emb .mhist-t{background:none;border:0;cursor:pointer;font:700 11px 'Plus Jakarta Sans',system-ui,sans-serif;color:#a8a8a2;padding:0;display:flex;align-items:center;gap:6px}
+.mesa-emb .mhist-t:hover{color:#1a5c38}
+.mesa-emb .mhist-t .chev{font-size:9px;transition:transform .15s}
+.mesa-emb .mhist.open .mhist-t .chev{transform:rotate(90deg)}
+.mesa-emb .mhist-b{display:none;margin-top:6px}
+.mesa-emb .mhist.open .mhist-b{display:block}
+.mesa-emb .mhist-i{display:flex;justify-content:space-between;gap:10px;padding:2px 0;font-size:11.5px}
+.mesa-emb .mhist-i .mho{font-weight:600;color:#44403c}
+.mesa-emb .mhist-i .mhd{font-variant-numeric:tabular-nums;color:#a8a8a2}
+.mesa-emb .mpill.sel{background:#1a5c38;border-color:#1a5c38;color:#fff}
+.mesa-emb .mdesc.sel,.mesa-emb .mrz-b.sel{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.mesa-emb .mcap{margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mesa-emb .mcapbtn{border:0;background:#1a5c38;color:#fff;border-radius:8px;padding:8px 15px;cursor:pointer;font:750 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
+.mesa-emb .mcapbtn:hover{background:#22a05a}
+.mesa-emb .mcapbtn:disabled{background:#dcdcd5;color:#a8a8a2;cursor:not-allowed}
+.mesa-emb .mcaphint{font-size:11px;color:#a8a8a2}
+@media (max-width:620px){
+  .mesa-emb .mdrawer-cols{grid-template-columns:1fr}
+  .mesa-emb .mcol-cap{border-left:0;border-top:2px solid #e6efe9;padding-left:0;padding-top:12px;order:-1}
+}
 .mesa-emb .mhead{display:flex;align-items:center;gap:10px;padding:0 12px;font-size:10px;font-weight:800;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em}
 .mesa-emb .mhead .mh-dot{flex:none;width:9px}
 .mesa-emb .mhead .mh-cot{flex:1 1 380px;max-width:560px;min-width:0}
@@ -700,6 +777,71 @@ var MESA_IDX   = {contacto:0, compromiso:1, postura:2};
 // Descartar: despliega los motivos a la derecha (misma línea), sin popup
 function mesaRz(btn){
   btn.closest('.marea').querySelector('.mrz').classList.toggle('show');
+}
+
+// ── Captura de seguimiento (reemplaza el re-tap). Las pills del panel derecho
+//    SELECCIONAN (no postean); "Capturar seguimiento" manda las áreas marcadas
+//    en orden al MISMO endpoint y recarga → el servidor re-renderiza el estado
+//    autoritativo (declarado, historial, reloj) sin cirugía optimista del DOM. ──
+function mesaSel(btn, cotId){
+  var marea = btn.closest('.marea');
+  if(!marea || marea.classList.contains('lock')) return;
+  var area = marea.dataset.area;
+  var drawer = document.getElementById('md'+cotId);
+  var was = btn.classList.contains('sel');
+  drawer.querySelectorAll('.marea[data-area="'+area+'"] .mpill').forEach(function(x){ x.classList.remove('sel'); });
+  if(!was) btn.classList.add('sel');
+  mesaSelLocks(drawer);
+  mesaCapSync(cotId);
+}
+// Desbloqueo por SELECCIÓN (solo abre, nunca cierra bajo el estado inicial del
+// servidor): Hablamos abre Compromiso; Compromiso o No contestó abre la postura.
+function mesaSelLocks(drawer){
+  var sel = function(a){ var b = drawer.querySelector('.marea[data-area="'+a+'"] .mpill.sel'); return b ? (b.dataset.e || '') : ''; };
+  var con = sel('contacto'), com = sel('compromiso');
+  if(con === 'hablamos'){ var a2 = drawer.querySelector('.marea[data-area="compromiso"]'); if(a2) a2.classList.remove('lock'); }
+  if(com || con === 'no_contesta'){ var a3 = drawer.querySelector('.marea[data-area="postura"]'); if(a3) a3.classList.remove('lock'); }
+}
+function mesaCapSels(drawer){
+  var out = [];
+  ['contacto','compromiso','postura'].forEach(function(area){
+    var b = drawer.querySelector('.marea[data-area="'+area+'"] .mpill.sel');
+    if(b) out.push({area:area, estado:b.dataset.e, razon:b.dataset.rz || null});
+  });
+  return out;
+}
+function mesaCapSync(cotId){
+  var drawer = document.getElementById('md'+cotId);
+  var sels = mesaCapSels(drawer);
+  var btn = document.getElementById('mcap'+cotId), hint = document.getElementById('mcaph'+cotId);
+  if(!btn) return;
+  btn.disabled = sels.length === 0;
+  var con = sels.filter(function(s){ return s.area === 'contacto'; })[0];
+  if(sels.length === 0) hint.textContent = 'Marca al menos el contacto';
+  else if(con) hint.textContent = 'El reloj: ' + (con.estado === 'no_contesta' ? 'No contestó → 2 días' : 'Hablamos → según tu ciclo');
+  else hint.textContent = 'Se guarda tu lectura (el contacto es lo que mueve el reloj)';
+}
+function mesaCapturar(cotId){
+  var drawer = document.getElementById('md'+cotId);
+  var sels = mesaCapSels(drawer);
+  if(sels.length === 0){ mesaToast('Marca al menos el contacto'); return; }
+  var btn = document.getElementById('mcap'+cotId);
+  btn.disabled = true; btn.textContent = 'Capturando…';
+  var i = 0;
+  (function next(){
+    if(i >= sels.length){ location.reload(); return; }
+    var s = sels[i++];
+    fetch('/api/mesa/estado', {method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+      body: JSON.stringify({cotizacion_id:cotId, area:s.area, estado:s.estado, razon:s.razon})
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if(!d.ok){ throw new Error(d.error || 'guardar'); }
+      next();
+    }).catch(function(e){
+      btn.disabled = false; btn.textContent = 'Capturar seguimiento';
+      mesaToast(typeof mesaErr === 'function' ? mesaErr(String((e && e.message) || e)) : 'No se pudo guardar.');
+    });
+  })();
 }
 function mesaTap(cotId, area, estado, btn, razon){
   razon = razon || null;
