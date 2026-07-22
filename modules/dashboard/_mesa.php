@@ -208,8 +208,8 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
       ?>
       <div class="mintentos<?= $nc_r >= 4 && $suspendible_r ? ' full' : '' ?>">
         <div class="mint-top">
-          <span class="mint-h">Intentos de contacto</span>
-          <span class="mint-n">Intento <?= min($nc_r, 4) ?> de 4</span>
+          <span class="mint-h">Intentos de contacto sin respuesta</span>
+          <span class="mint-n"><?= min($nc_r, 4) ?> de 4</span>
           <span class="mint-beads"><?php for ($i = 1; $i <= 4; $i++): ?><span class="mint-b<?= $i <= $nc_r ? '' : ' off' ?><?= $i === 4 ? ' susp' : '' ?>"></span><?php endfor; ?></span>
         </div>
         <?php if ($nc_r >= 4 && $suspendible_r): ?>
@@ -217,8 +217,6 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
         <button type="button" class="mint-susp" onclick="mesaSuspender(<?= (int)$r['id'] ?>)">Suspender cotización</button>
         <?php elseif ($nc_r >= 4): ?>
         <div class="mint-msg">Llevas <b><?= $nc_r ?> «no contestó»</b> — pero hay señal viva del cliente (te lee, volvió o está agendada), así que suspender no aplica: <b>insiste ahora que está activo</b>.</div>
-        <?php else: ?>
-        <div class="mint-msg mut">Aún sin lograr contacto. Al 4.º «no contestó» sin respuesta podrás suspenderla<?= empty($r['es_hot']) ? '' : ' (si se enfría)' ?>.</div>
         <?php endif; ?>
       </div>
       <?php endif; ?>
