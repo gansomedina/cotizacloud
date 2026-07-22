@@ -180,10 +180,10 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <span class="mlbl">→</span><span class="msx"><?= e($r['sugerencia']) ?></span>
       </div>
       <?php
-          // Candados secuenciales 1→2→3 (área con valor previo = siempre editable)
-          $con_e0 = $d['contacto']['estado'] ?? '';
-          $lock2 = empty($d['compromiso']) && $con_e0 !== 'hablamos';
-          $lock3 = empty($d['postura']) && empty($d['compromiso']) && $con_e0 !== 'no_contesta';
+          // Candados del panel de CAPTURA: siempre FRESCO (1→2→3). Compromiso y
+          // ¿Cómo lo ves? arrancan BLOQUEADOS y se abren con la SELECCIÓN de hoy
+          // (mesaSelLocks), no con lo ya declarado — cada captura es un toque
+          // nuevo, así que el asesor declara primero el contacto.
           $mdf = fn($at) => $at ? date('d/m', strtotime($at)) : '';
       ?>
       <div class="mdrawer-cols">
@@ -215,13 +215,13 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
               <?php foreach ($MESA_AREAS['contacto'] as $ek => $el): ?>
               <button type="button" data-e="<?= $ek ?>" class="mpill" onclick="mesaSel(this,<?= (int)$r['id'] ?>)"><?= e($el) ?></button>
               <?php endforeach; ?></div>
-            <div class="marea<?= $lock2 ? ' lock' : '' ?>" data-area="compromiso"<?= !empty($r['cita_vencida']) ? ' style="border:1px solid #dc2626;border-radius:6px;padding:4px 6px;background:#fef2f2"' : '' ?>><span class="man">2 · Compromiso</span>
+            <div class="marea lock" data-area="compromiso"<?= !empty($r['cita_vencida']) ? ' style="border:1px solid #dc2626;border-radius:6px;padding:4px 6px;background:#fef2f2"' : '' ?>><span class="man">2 · Compromiso</span>
               <?php if (!empty($r['cita_vencida'])): ?><span style="display:block;color:#b91c1c;font-weight:700;font-size:12px;margin:2px 0">❓ ¿Qué pasó con la cita? — registra el desenlace; si la pospusieron: Hablamos + re-citar</span><?php endif; ?>
               <?php foreach ($MESA_AREAS['compromiso'] as $ek => $el): ?>
               <button type="button" data-e="<?= $ek ?>" class="mpill" onclick="mesaSel(this,<?= (int)$r['id'] ?>)"><?= e($el) ?></button>
               <?php endforeach; ?>
               <span class="mlockmsg">primero el contacto (si hablaron)</span></div>
-            <div class="marea<?= $lock3 ? ' lock' : '' ?>" data-area="postura"><span class="man">3 · ¿Cómo lo ves?</span>
+            <div class="marea lock" data-area="postura"><span class="man">3 · ¿Cómo lo ves?</span>
               <?php foreach ($MESA_AREAS['postura'] as $ek => $el): if ($ek === 'descartada') continue; ?>
               <button type="button" data-e="<?= $ek ?>" class="mpill" onclick="mesaSel(this,<?= (int)$r['id'] ?>)"><?= e($el) ?></button>
               <?php endforeach; ?>
@@ -794,13 +794,17 @@ function mesaSel(btn, cotId){
   mesaSelLocks(drawer);
   mesaCapSync(cotId);
 }
-// Desbloqueo por SELECCIÓN (solo abre, nunca cierra bajo el estado inicial del
-// servidor): Hablamos abre Compromiso; Compromiso o No contestó abre la postura.
+// Candados por SELECCIÓN (toggle, 1→2→3 fresco): sin nada marcado, Compromiso y
+// ¿Cómo lo ves? quedan bloqueados. Hablamos abre Compromiso; Compromiso o
+// No contestó abre ¿Cómo lo ves? (No contestó salta el 2). Re-bloquea al
+// deseleccionar. Mismo criterio que el candado original, pero sobre la selección.
 function mesaSelLocks(drawer){
   var sel = function(a){ var b = drawer.querySelector('.marea[data-area="'+a+'"] .mpill.sel'); return b ? (b.dataset.e || '') : ''; };
-  var con = sel('contacto'), com = sel('compromiso');
-  if(con === 'hablamos'){ var a2 = drawer.querySelector('.marea[data-area="compromiso"]'); if(a2) a2.classList.remove('lock'); }
-  if(com || con === 'no_contesta'){ var a3 = drawer.querySelector('.marea[data-area="postura"]'); if(a3) a3.classList.remove('lock'); }
+  var con = sel('contacto'), com = sel('compromiso'), pos = sel('postura');
+  var a2 = drawer.querySelector('.marea[data-area="compromiso"]');
+  var a3 = drawer.querySelector('.marea[data-area="postura"]');
+  if(a2) a2.classList.toggle('lock', !com && con !== 'hablamos');
+  if(a3) a3.classList.toggle('lock', !pos && !com && con !== 'no_contesta');
 }
 function mesaCapSels(drawer){
   var out = [];
@@ -818,7 +822,7 @@ function mesaCapSync(cotId){
   btn.disabled = sels.length === 0;
   var con = sels.filter(function(s){ return s.area === 'contacto'; })[0];
   if(sels.length === 0) hint.textContent = 'Marca al menos el contacto';
-  else if(con) hint.textContent = 'El reloj: ' + (con.estado === 'no_contesta' ? 'No contestó → 2 días' : 'Hablamos → según tu ciclo');
+  else if(con) hint.textContent = 'Al capturar: próximo toque ' + (con.estado === 'no_contesta' ? 'en 2 días' : 'según tu ciclo de venta');
   else hint.textContent = 'Se guarda tu lectura (el contacto es lo que mueve el reloj)';
 }
 function mesaCapturar(cotId){
