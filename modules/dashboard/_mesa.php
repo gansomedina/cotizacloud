@@ -187,7 +187,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           $mdf = fn($at) => $at ? date('d/m', strtotime($at)) : '';
       ?>
       <div class="mdrawer-cols">
-        <!-- IZQUIERDA: seguimiento declarado (display + fecha + historial) -->
+        <!-- DERECHA (visual, via order:2): seguimiento declarado — display + fecha + historial -->
         <div class="mcol mcol-info">
           <div class="mcol-h">Seguimiento declarado</div>
           <div class="mdecl">
@@ -207,7 +207,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           <?php endif; ?>
         </div>
 
-        <!-- DERECHA: capturar el siguiente (reemplaza el re-tap) -->
+        <!-- IZQUIERDA (visual, via order:1): capturar el siguiente — reemplaza el re-tap -->
         <div class="mcol mcol-cap">
           <div class="mcol-h">Capturar siguiente seguimiento</div>
           <div class="mareas">
@@ -575,9 +575,11 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .marea.lock .mpill{opacity:.35;pointer-events:none}
 .mesa-emb .marea.lock .mlockmsg{display:inline}
 /* ── Cajón en 2 columnas: izquierda declarado (display) / derecha capturar ── */
-.mesa-emb .mdrawer-cols{display:grid;grid-template-columns:1fr 1.15fr;gap:14px;margin:8px 0 4px}
+.mesa-emb .mdrawer-cols{display:grid;grid-template-columns:1.15fr 1fr;gap:14px;margin:8px 0 4px}
 .mesa-emb .mcol-h{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#a8a8a2;margin-bottom:8px}
-.mesa-emb .mcol-cap{border-left:2px solid #e6efe9;padding-left:14px}
+/* invertido: capturar a la IZQUIERDA (order 1), declarado a la DERECHA (order 2) */
+.mesa-emb .mcol-cap{order:1}
+.mesa-emb .mcol-info{order:2;border-left:2px solid #e6efe9;padding-left:14px}
 .mesa-emb .mdecl{display:flex;flex-direction:column;gap:7px}
 .mesa-emb .mdln{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline;font-size:12px}
 .mesa-emb .mdk{color:#a8a8a2;font-weight:700;white-space:nowrap}
@@ -603,7 +605,8 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mcaphint{font-size:11px;color:#a8a8a2}
 @media (max-width:620px){
   .mesa-emb .mdrawer-cols{grid-template-columns:1fr}
-  .mesa-emb .mcol-cap{border-left:0;border-top:2px solid #e6efe9;padding-left:0;padding-top:12px;order:-1}
+  /* capturar (order 1) arriba, declarado (order 2) abajo con su divisor */
+  .mesa-emb .mcol-info{border-left:0;border-top:2px solid #e6efe9;padding-left:0;padding-top:12px}
 }
 .mesa-emb .mhead{display:flex;align-items:center;gap:10px;padding:0 12px;font-size:10px;font-weight:800;color:#a8a8a2;text-transform:uppercase;letter-spacing:.05em}
 .mesa-emb .mhead .mh-dot{flex:none;width:9px}
