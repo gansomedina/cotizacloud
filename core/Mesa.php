@@ -543,6 +543,9 @@ class Mesa
                     'compromiso' => $me[$cid]['compromiso'] ?? null,
                     'postura_decl' => $me[$cid]['postura'] ?? null,
                     'razon_descarte' => $me[$cid]['postura']['razon'] ?? null,
+                    // Manita del dueño (radar_feedback): la nota de la escalera
+                    // de intentos solo aplica a GHOSTS — 👍/👎 la bloquean
+                    'manita' => $postura,
                     'intentos_nc' => $nc[$cid] ?? 0,
                     'vistas_24h' => (int)($act_c[$cid]['v24'] ?? 0),
                     'vistas_7d'  => (int)($act_c[$cid]['v7'] ?? 0),

@@ -80,6 +80,27 @@ class MesaSugerencias
         $mediana = max(1, (int)($c['mediana'] ?? $p75));
         $fuera   = $edad > $p75;
         $intentos_nc = (int)($c['intentos_nc'] ?? 0);
+        // Nota de la ESCALERA de intentos (suspender asistido, 22-jul): alinea
+        // los tips de rendición con el contador "N de 4" del cajón. Closure
+        // porque se usa en DOS lugares: la rama FANTASMA (que hace return
+        // temprano y se salta las notas del final) y el bloque sistémico del
+        // cierre. Solo GHOST (👍/👎 bloquean la suspensión; 📵 o sin manita sí).
+        $manita_sug    = $c['manita'] ?? null;
+        $es_ghost_sug  = ($manita_sug === null || $manita_sug === 'sin_info');
+        // &$pk por referencia: $pk se define MÁS ABAJO (línea ~115) — capturarlo
+        // por valor aquí lo congela en null y truena al llamar la nota
+        $nota_escalera = function () use ($es_ghost_sug, $intentos_nc, &$pk) {
+            if (!$es_ghost_sug || $intentos_nc < 1) return '';
+            return ' ' . ($intentos_nc >= 4
+                ? $pk([
+                    'Ya van 4 «no contestó» sin respuesta: puedes suspenderla desde aquí — o descártala con razón si tu lectura es que no era comprador.',
+                    'Con 4 «no contestó» la escalera está completa — suspéndela desde aquí, o descártala con razón si ya lo juzgaste.',
+                  ])
+                : $pk([
+                    "Si tampoco responde y no quieres descartarla aún: decláralo como «No contestó» — vas {$intentos_nc} de 4; al 4.º podrás suspenderla.",
+                    "Y si no responde pero prefieres no descartarla todavía, decláralo como «No contestó»: vas {$intentos_nc} de 4 — al 4.º se habilita suspenderla.",
+                  ]));
+        };
         // Reloj de seguimiento (Fase A): las ramas de ESPERA solo aplican con
         // el reloj al corriente — si el límite es hoy o ya pasó, aconsejar
         // "dale espacio" contradice el chip 🔴 y el castigo que corre a diario.
@@ -169,13 +190,15 @@ class MesaSugerencias
                 'La cotización es vieja pero el cliente la tiene abierta AHORA — es el momento: mensaje inmediato preguntando si la retoman.',
             ]);
         }
-        // FANTASMA: insiste sin respuesta y el cliente tampoco la abre
+        // FANTASMA: insiste sin respuesta y el cliente tampoco la abre.
+        // Return temprano → la nota de la escalera se pega AQUÍ (el bloque
+        // sistémico del final no la alcanza).
         if ($con_e === 'no_contesta' && $intentos_nc >= 2 && $visitas > 0 && $dsv >= 7 && !$viva) {
             return $pk([
                 "Varios intentos sin respuesta y el cliente lleva {$dsv}d sin abrir la cotización — mándale un último mensaje amable y descártala con razón.",
                 "El cliente no contesta y lleva {$dsv}d sin abrir la cotización — un último mensaje de inmediato y descártala con razón: no le dediques más tiempo.",
                 "Ni respuesta ni aperturas en {$dsv}d — despídete con un último mensaje amable y descártala con razón; tu tiempo rinde más en otras cotizaciones.",
-            ]);
+            ]) . $nota_escalera();
         }
 
         // ══ RAMA C1 — no_contesta vigente: SOLO acciones de canal ══
@@ -689,6 +712,23 @@ class MesaSugerencias
         }
 
         // ══ RELOJ VENCIDO (🔴): reconocerlo si la rama no lo hizo ══
+        // Escalera de intentos (suspender asistido, 22-jul): los tips de
+        // rendición ("último mensaje y descártala") son ANTERIORES a la
+        // escalera y contradecían al contador "N de 4" del cajón (reporte CEO:
+        // el tip dice "último" y el contador "2 de 4"). Esta nota los alinea
+        // presentando las DOS salidas como alternativa: descartar = tu juicio
+        // (👎 con motivo); suspender = completar la escalera sin juzgar.
+        // Gates: SOLO fila GHOST (manita 👍/👎 bloquea la suspensión — 📵 o
+        // sin manita sí califica), con intentos declarados, NUNCA en tips de
+        // espera ni revivida/milagro (señal viva: el cajón ahí dice "insiste")
+        // ni descartada_hoy, y solo si el tip ES de rendición (regex).
+        if (empty($slots['espera'])
+            && empty($c['revivida']) && empty($c['milagro'])
+            && ($c['cat'] ?? '') !== 'descartada_hoy'
+            && preg_match('/descart|despídete|último (?:mensaje|intento)|última jugada|no le dediques|mensaje final|cierra el caso/iu', $f)) {
+            $f .= $nota_escalera(); // '' si no es ghost o sin intentos
+        }
+
         // La mayoría de las ~50 ramas de tips no revisan el reloj de seguimiento
         // y daban buen consejo pero sin reconocer el atraso — el asesor ve 🔴
         // "sin seguimiento" en la fila y el tip lo ignoraba. Si el consejo aún
