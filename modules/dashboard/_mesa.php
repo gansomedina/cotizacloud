@@ -180,6 +180,40 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
         <span class="mlbl">→</span><span class="msx"><?= e($r['sugerencia']) ?></span>
       </div>
       <?php
+          // ── Intentos de contacto (solo GHOST: sin 👍 y sin 👎). "Intento N de 4";
+          //    al 4º "no contestó" sin lograr contacto → botón de SUSPENDER asistido
+          //    (nunca automático). 👍 se persigue (interes_muriendo) · 👎 se descarta
+          //    (slug vivo para revival) · 📵/sin-manita = ghost declarado. intentos_nc
+          //    ya resetea con "Hablamos" y tiene ventana de 30d (Mesa.php).
+          $manita_r  = $r['postura'] ?? null;               // con_interes/sin_interes/sin_info/null
+          $es_ghost_r = ($manita_r === null || $manita_r === 'sin_info');
+          $nc_r = (int)($r['intentos_nc'] ?? 0);
+          // Guard de calor/categoría: NUNCA ofrecer suspender sobre una fila VIVA
+          // o ya resuelta. Sin esto el botón salía en milagro/revivida/agendada
+          // (venta viva → el cliente la está viendo o pidió seguimiento) y en
+          // descartada_hoy/atendida_hoy (ya resueltas). Solo el ghost FRÍO y sin
+          // resolver es candidato a suspender.
+          $suspendible_r = $es_ghost_r
+              && empty($r['es_hot']) && empty($r['revivida']) && empty($r['milagro'])
+              && empty($r['agenda_fecha']) && ($r['cat'] ?? '') !== 'descartada_hoy'
+              && empty($r['atendida_hoy']);
+          if ($suspendible_r && $nc_r >= 1):
+      ?>
+      <div class="mintentos<?= $nc_r >= 4 ? ' full' : '' ?>">
+        <div class="mint-top">
+          <span class="mint-h">Intentos de contacto</span>
+          <span class="mint-n">Intento <?= min($nc_r, 4) ?> de 4</span>
+          <span class="mint-beads"><?php for ($i = 1; $i <= 4; $i++): ?><span class="mint-b<?= $i <= $nc_r ? '' : ' off' ?><?= $i === 4 ? ' susp' : '' ?>"></span><?php endfor; ?></span>
+        </div>
+        <?php if ($nc_r >= 4): ?>
+        <div class="mint-msg">Llevas <b><?= $nc_r ?> «no contestó»</b> sin lograr contacto. <b>Para conservarla:</b> háblale y contesta (reinicia el conteo), márcala 👍 (hay interés) o reenvíale/edítale algo. Si ya no responde, suspéndela.</div>
+        <button type="button" class="mint-susp" onclick="mesaSuspender(<?= (int)$r['id'] ?>)">Suspender cotización</button>
+        <?php else: ?>
+        <div class="mint-msg mut">Aún sin lograr contacto. Al 4.º «no contestó» sin respuesta podrás suspenderla.</div>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
+      <?php
           // Candados del panel de CAPTURA: siempre FRESCO (1→2→3). Compromiso y
           // ¿Cómo lo ves? arrancan BLOQUEADOS y se abren con la SELECCIÓN de hoy
           // (mesaSelLocks), no con lo ya declarado — cada captura es un toque
@@ -603,6 +637,22 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mcapbtn:hover{background:#22a05a}
 .mesa-emb .mcapbtn:disabled{background:#dcdcd5;color:#a8a8a2;cursor:not-allowed}
 .mesa-emb .mcaphint{font-size:11px;color:#a8a8a2}
+/* ── Intentos de contacto + suspender asistido (ghost) ── */
+.mesa-emb .mintentos{margin:10px 0 4px;padding:10px 12px;border:1px solid #f0e6d6;background:#fdf9f0;border-radius:10px}
+.mesa-emb .mintentos.full{border-color:#f3c9c4;background:#fdf3f2}
+.mesa-emb .mint-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mesa-emb .mint-h{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#a8a8a2}
+.mesa-emb .mint-n{font-size:12.5px;font-weight:800;color:#b45309}
+.mesa-emb .mintentos.full .mint-n{color:#b91c1c}
+.mesa-emb .mint-beads{display:inline-flex;gap:4px}
+.mesa-emb .mint-b{width:9px;height:9px;border-radius:50%;background:#d97706}
+.mesa-emb .mint-b.off{background:#e2ddd2}
+.mesa-emb .mint-b.susp{background:#dc2626}
+.mesa-emb .mint-b.susp.off{background:#e9d3d0}
+.mesa-emb .mint-msg{font-size:12px;color:#57534e;margin-top:8px;line-height:1.5}
+.mesa-emb .mint-msg.mut{color:#a8a8a2}
+.mesa-emb .mint-susp{margin-top:10px;border:0;background:#dc2626;color:#fff;border-radius:8px;padding:8px 15px;cursor:pointer;font:800 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
+.mesa-emb .mint-susp:hover{background:#b91c1c}
 @media (max-width:620px){
   .mesa-emb .mdrawer-cols{grid-template-columns:1fr}
   /* capturar (order 1) arriba, declarado (order 2) abajo con su divisor */
@@ -861,6 +911,20 @@ function mesaCapturar(cotId){
       mesaToast(typeof mesaErr === 'function' ? mesaErr(String((e && e.message) || e)) : 'No se pudo guardar.');
     });
   })();
+}
+// Suspender asistido del ghost (nunca automático). Reusa el endpoint existente
+// /cotizaciones/:id/suspender (toggle; aquí la fila está activa → suspende).
+// Sale de la mesa + del Radar; el cliente ya no puede abrir el slug (por diseño:
+// fuerza al cliente a comunicarse). Solo el asesor la reactiva a mano.
+function mesaSuspender(cotId){
+  if(!confirm('¿Suspender esta cotización?\n\nSale de tu mesa y del Radar, y el cliente ya no podrá abrir el enlace. Solo tú podrás reactivarla.')) return;
+  fetch('/cotizaciones/'+cotId+'/suspender', {method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
+    body: JSON.stringify({accion:'suspender'})  // explícito, NO toggle (evita reactivar por carrera)
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.ok){ location.reload(); }
+    else { mesaToast(typeof mesaErr === 'function' ? mesaErr(d.error) : (d.error || 'No se pudo suspender.')); }
+  }).catch(function(){ mesaToast('No se pudo suspender (red o sesión).'); });
 }
 function mesaTap(cotId, area, estado, btn, razon){
   razon = razon || null;
