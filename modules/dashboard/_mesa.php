@@ -801,13 +801,26 @@ function mesaSel(btn, cotId){
 // ¿Cómo lo ves? quedan bloqueados. Hablamos abre Compromiso; Compromiso o
 // No contestó abre ¿Cómo lo ves? (No contestó salta el 2). Re-bloquea al
 // deseleccionar. Mismo criterio que el candado original, pero sobre la selección.
+//
+// El candado depende SOLO del prerequisito (NO de la propia selección del área):
+// si dependiera de `!pos`/`!com` de sí mismo, una vez elegida el área nunca se
+// re-bloquearía aunque retires el prerequisito (Hablamos→Quedamos→Decidiendo→
+// cambio a No contestó dejaba las 3 marcadas y la captura mandaba un contacto
+// contradictorio). Al re-bloquear, se LIMPIA la selección huérfana del área;
+// se evalúa en cascada (contacto → compromiso → postura) para propagar.
 function mesaSelLocks(drawer){
   var sel = function(a){ var b = drawer.querySelector('.marea[data-area="'+a+'"] .mpill.sel'); return b ? (b.dataset.e || '') : ''; };
-  var con = sel('contacto'), com = sel('compromiso'), pos = sel('postura');
+  var clr = function(a){ drawer.querySelectorAll('.marea[data-area="'+a+'"] .mpill.sel').forEach(function(x){ x.classList.remove('sel'); }); };
+  var con = sel('contacto');
+  // Compromiso: se abre solo si hablaron (prerequisito = contacto 'hablamos')
   var a2 = drawer.querySelector('.marea[data-area="compromiso"]');
+  var l2 = con !== 'hablamos';
+  if(a2){ a2.classList.toggle('lock', l2); if(l2) clr('compromiso'); }
+  // Postura: se abre con un compromiso declarado o si no contestó (salta el 2)
+  var com = sel('compromiso'); // re-leído: pudo limpiarse arriba
   var a3 = drawer.querySelector('.marea[data-area="postura"]');
-  if(a2) a2.classList.toggle('lock', !com && con !== 'hablamos');
-  if(a3) a3.classList.toggle('lock', !pos && !com && con !== 'no_contesta');
+  var l3 = !com && con !== 'no_contesta';
+  if(a3){ a3.classList.toggle('lock', l3); if(l3) clr('postura'); }
 }
 function mesaCapSels(drawer){
   var out = [];
