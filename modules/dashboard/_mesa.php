@@ -188,7 +188,16 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           $manita_r  = $r['postura'] ?? null;               // con_interes/sin_interes/sin_info/null
           $es_ghost_r = ($manita_r === null || $manita_r === 'sin_info');
           $nc_r = (int)($r['intentos_nc'] ?? 0);
-          if ($es_ghost_r && $nc_r >= 1):
+          // Guard de calor/categoría: NUNCA ofrecer suspender sobre una fila VIVA
+          // o ya resuelta. Sin esto el botón salía en milagro/revivida/agendada
+          // (venta viva → el cliente la está viendo o pidió seguimiento) y en
+          // descartada_hoy/atendida_hoy (ya resueltas). Solo el ghost FRÍO y sin
+          // resolver es candidato a suspender.
+          $suspendible_r = $es_ghost_r
+              && empty($r['es_hot']) && empty($r['revivida']) && empty($r['milagro'])
+              && empty($r['agenda_fecha']) && ($r['cat'] ?? '') !== 'descartada_hoy'
+              && empty($r['atendida_hoy']);
+          if ($suspendible_r && $nc_r >= 1):
       ?>
       <div class="mintentos<?= $nc_r >= 4 ? ' full' : '' ?>">
         <div class="mint-top">
@@ -911,7 +920,7 @@ function mesaSuspender(cotId){
   if(!confirm('¿Suspender esta cotización?\n\nSale de tu mesa y del Radar, y el cliente ya no podrá abrir el enlace. Solo tú podrás reactivarla.')) return;
   fetch('/cotizaciones/'+cotId+'/suspender', {method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
-    body: JSON.stringify({})
+    body: JSON.stringify({accion:'suspender'})  // explícito, NO toggle (evita reactivar por carrera)
   }).then(function(r){ return r.json(); }).then(function(d){
     if(d.ok){ location.reload(); }
     else { mesaToast(typeof mesaErr === 'function' ? mesaErr(d.error) : (d.error || 'No se pudo suspender.')); }
