@@ -341,6 +341,9 @@ try {
         'compromiso' => $decl['compromiso'] ?? null,
         'postura_decl' => $decl['postura'] ?? null,
         'razon_descarte' => $razon_now,
+        // Manita del dueño — misma que armar: la nota de la escalera de
+        // intentos solo aplica a ghosts (👍/👎 bloquean la suspensión)
+        'manita' => $fb_row['tipo'] ?? null,
         'intentos_nc' => $nc,
         'vistas_24h' => (int)($act['v24'] ?? 0),
         'vistas_7d'  => (int)($act['v7'] ?? 0),
