@@ -110,7 +110,9 @@ $MESA_SHORT = [
 $mag_min = date('Y-m-d', strtotime('+15 days'));
 $mag_max = date('Y-m-d', strtotime('+183 days'));
 
-$mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT, $mmoney, $mp75, $mag_min, $mag_max, $mesa_hist) {
+// $rank = número de orden de ataque (solo secciones pendientes) · $ql = mostrar
+// la línea "→ qué hacer" (sugerencia) en la fila colapsada (idea 3 del mockup)
+$mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT, $mmoney, $mp75, $mag_min, $mag_max, $mesa_hist) {
     $d  = $r['decl'] ?? [];
     $bl = $r['bucket'] ? ($MESA_BUCKET_LBL[$r['bucket']] ?? [$r['bucket'], '#64748b']) : null;
     $es_milagro = $r['revivida'] || $r['milagro'];
@@ -122,7 +124,9 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
     else                                      { $dot = null;      $dott = 'Sin señal del Radar'; }
     $udd = $r['ult_decl_dias'];
     ?>
-    <div class="mrow<?= $es_milagro ? ' milagro' : '' ?><?= !empty($r['atendida_hoy']) ? ' done' : '' ?>" data-drawer="md<?= (int)$r['id'] ?>">
+    <?php $has_ql = $ql && !empty($r['sugerencia']); ?>
+    <div class="mrow<?= $es_milagro ? ' milagro' : '' ?><?= !empty($r['atendida_hoy']) ? ' done' : '' ?><?= $has_ql ? ' has-ql' : '' ?>" data-drawer="md<?= (int)$r['id'] ?>">
+      <?php if ($rank !== null): ?><span class="mrank" title="Orden sugerido de ataque"><?= (int)$rank ?></span><?php else: ?><span class="mrank off"></span><?php endif; ?>
       <?php if ($dot): ?><span class="mdot" style="background:<?= $dot ?>" title="<?= e($dott) ?>"></span>
       <?php else: ?><span class="mdot off" title="<?= e($dott) ?>"></span><?php endif; ?>
       <span class="mcli">
@@ -171,6 +175,7 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
       <?php endif; ?>
       <span class="msp"></span>
       <span class="mchev">▶</span>
+      <?php if ($has_ql): ?><span class="mql">→ <?= e($r['sugerencia']) ?></span><?php endif; ?>
     </div>
     <div class="mdrawer" id="md<?= (int)$r['id'] ?>">
       <div class="msug">
@@ -188,28 +193,32 @@ $mesa_row = function (array $r) use ($MESA_BUCKET_LBL, $MESA_AREAS, $MESA_SHORT,
           $manita_r  = $r['postura'] ?? null;               // con_interes/sin_interes/sin_info/null
           $es_ghost_r = ($manita_r === null || $manita_r === 'sin_info');
           $nc_r = (int)($r['intentos_nc'] ?? 0);
-          // Guard de calor/categoría: NUNCA ofrecer suspender sobre una fila VIVA
-          // o ya resuelta. Sin esto el botón salía en milagro/revivida/agendada
-          // (venta viva → el cliente la está viendo o pidió seguimiento) y en
-          // descartada_hoy/atendida_hoy (ya resueltas). Solo el ghost FRÍO y sin
-          // resolver es candidato a suspender.
-          $suspendible_r = $es_ghost_r
+          // Las BOLITAS (progreso de intentos) se muestran a todo ghost con
+          // intentos, incluso caliente — son contexto útil. Solo se ocultan en
+          // filas ya resueltas (descartada/atendida hoy), donde serían ruido.
+          $mostrar_int_r = $es_ghost_r && $nc_r >= 1
+              && ($r['cat'] ?? '') !== 'descartada_hoy' && empty($r['atendida_hoy']);
+          // El BOTÓN de suspender solo en el ghost FRÍO (guard de la auditoría):
+          // en milagro/revivida/agendada/caliente hay señal viva del cliente —
+          // ofrecer suspender ahí sería suspender una venta viva.
+          $suspendible_r = $mostrar_int_r
               && empty($r['es_hot']) && empty($r['revivida']) && empty($r['milagro'])
-              && empty($r['agenda_fecha']) && ($r['cat'] ?? '') !== 'descartada_hoy'
-              && empty($r['atendida_hoy']);
-          if ($suspendible_r && $nc_r >= 1):
+              && empty($r['agenda_fecha']);
+          if ($mostrar_int_r):
       ?>
-      <div class="mintentos<?= $nc_r >= 4 ? ' full' : '' ?>">
+      <div class="mintentos<?= $nc_r >= 4 && $suspendible_r ? ' full' : '' ?>">
         <div class="mint-top">
           <span class="mint-h">Intentos de contacto</span>
           <span class="mint-n">Intento <?= min($nc_r, 4) ?> de 4</span>
           <span class="mint-beads"><?php for ($i = 1; $i <= 4; $i++): ?><span class="mint-b<?= $i <= $nc_r ? '' : ' off' ?><?= $i === 4 ? ' susp' : '' ?>"></span><?php endfor; ?></span>
         </div>
-        <?php if ($nc_r >= 4): ?>
+        <?php if ($nc_r >= 4 && $suspendible_r): ?>
         <div class="mint-msg">Llevas <b><?= $nc_r ?> «no contestó»</b> sin lograr contacto. <b>Para conservarla:</b> háblale y contesta (reinicia el conteo), márcala 👍 (hay interés) o reenvíale/edítale algo. Si ya no responde, suspéndela.</div>
         <button type="button" class="mint-susp" onclick="mesaSuspender(<?= (int)$r['id'] ?>)">Suspender cotización</button>
+        <?php elseif ($nc_r >= 4): ?>
+        <div class="mint-msg">Llevas <b><?= $nc_r ?> «no contestó»</b> — pero hay señal viva del cliente (te lee, volvió o está agendada), así que suspender no aplica: <b>insiste ahora que está activo</b>.</div>
         <?php else: ?>
-        <div class="mint-msg mut">Aún sin lograr contacto. Al 4.º «no contestó» sin respuesta podrás suspenderla.</div>
+        <div class="mint-msg mut">Aún sin lograr contacto. Al 4.º «no contestó» sin respuesta podrás suspenderla<?= empty($r['es_hot']) ? '' : ' (si se enfría)' ?>.</div>
         <?php endif; ?>
       </div>
       <?php endif; ?>
@@ -351,9 +360,34 @@ foreach ($mesa_all as $mesa_vid => $mesa):
         (con señal del cliente o dentro de ventana). La cartera completa, incluidas las que nadie ha tocado, está en el 📊 Reporte.</div>
     <?php else: ?>
 
+      <?php
+        // ── "Mesa de hoy" (idea 2 del mockup): fecha + contadores + por dónde
+        //    empezar. Los contadores reusan lo ya calculado ($mesa_sin/$mesa_seg/
+        //    $mr) — cero queries nuevas. "Empieza por" = primera fila pendiente
+        //    (el orden ya viene priorizado de Mesa::armar: vencidas primero).
+        $mday_dias  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+        $mday_meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+        $mday_txt   = $mday_dias[(int)date('w')] . ' ' . (int)date('j') . ' ' . $mday_meses[(int)date('n') - 1];
+        $mday_first = $mesa_sin[0] ?? ($mesa_seg[0] ?? null);
+      ?>
+      <div class="mday">
+        <div class="mday-top">
+          <span class="mday-t">Mesa de hoy</span><span class="mday-f"><?= e($mday_txt) ?></span>
+          <span class="mday-chips">
+            <?php if ($n_sin > 0): ?><span class="mday-c warn"><b><?= $n_sin ?></b> por trabajar</span><?php endif; ?>
+            <?php if ($n_seg > 0): ?><span class="mday-c ok2"><b><?= $n_seg ?></b> en seguimiento</span><?php endif; ?>
+            <?php if (!empty($mr['vencidas'])): ?><span class="mday-c bad">⏰ <b><?= (int)$mr['vencidas'] ?></b> sin seguimiento</span><?php endif; ?>
+            <?php if (!empty($mr['atendidas'])): ?><span class="mday-c ok">✓ <b><?= (int)$mr['atendidas'] ?></b> atendida<?= $mr['atendidas'] > 1 ? 's' : '' ?></span><?php endif; ?>
+          </span>
+        </div>
+        <?php if ($mday_first): ?>
+        <div class="mday-start">Empieza por <b><?= e($mday_first['titulo'] ?: $mday_first['cliente']) ?></b><?= !empty($mday_first['sugerencia']) ? ' — ' . e($mday_first['sugerencia']) : '' ?></div>
+        <?php endif; ?>
+      </div>
+
       <?php if ($mesa_sin || $mesa_seg): ?>
       <div class="mhead">
-        <span class="mh-dot"></span><span class="mh-cot">Cotización</span><span class="mh-flag"></span><span class="mh-check"></span>
+        <span class="mh-rank"></span><span class="mh-dot"></span><span class="mh-cot">Cotización</span><span class="mh-flag"></span><span class="mh-check"></span>
         <span class="mh-ciclo">Ciclo</span><span class="mh-money">Monto</span>
         <span class="mh-decl"><span class="s1">Contacto</span><span class="s2">Compromiso</span><span class="s3">Cómo lo ves</span></span>
         <span class="mh-marc">Feedback<br>Radar</span>
@@ -361,14 +395,15 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       </div>
       <?php endif; ?>
 
+      <?php $mesa_rank = 0; ?>
       <?php if ($mesa_sin): ?>
       <div class="msect" style="color:#b45309">🔴 Por trabajar (<?= count($mesa_sin) ?>) — dales feedback 👍👎 + postura; estas son las que te faltan</div>
-      <div class="mlist"><?php foreach ($mesa_sin as $r) $mesa_row($r); ?></div>
+      <div class="mlist"><?php foreach ($mesa_sin as $r) $mesa_row($r, ++$mesa_rank, true); ?></div>
       <?php endif; ?>
 
       <?php if ($mesa_seg): ?>
       <div class="msect" style="color:#15803d">🌱 En seguimiento (<?= count($mesa_seg) ?>) — ya calificadas; nútrelas hasta que cierren</div>
-      <div class="mlist"><?php foreach ($mesa_seg as $r) $mesa_row($r); ?></div>
+      <div class="mlist"><?php foreach ($mesa_seg as $r) $mesa_row($r, ++$mesa_rank, true); ?></div>
       <?php endif; ?>
 
       <?php if (!$mesa_sin && !$mesa_seg): ?>
@@ -653,6 +688,26 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mint-msg.mut{color:#a8a8a2}
 .mesa-emb .mint-susp{margin-top:10px;border:0;background:#dc2626;color:#fff;border-radius:8px;padding:8px 15px;cursor:pointer;font:800 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
 .mesa-emb .mint-susp:hover{background:#b91c1c}
+/* ── Mesa de hoy (encabezado con fecha + contadores + por dónde empezar) ── */
+.mesa-emb .mday{border:1px solid #eeeee9;background:#fafaf8;border-radius:10px;padding:10px 14px;margin:2px 0 12px}
+.mesa-emb .mday-top{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.mesa-emb .mday-t{font-weight:800;font-size:13.5px;color:#3f3f3a}
+.mesa-emb .mday-f{font-size:12px;color:#a8a8a2;font-weight:600}
+.mesa-emb .mday-chips{display:inline-flex;gap:7px;flex-wrap:wrap;margin-left:auto}
+.mesa-emb .mday-c{font-size:11.5px;font-weight:650;padding:2px 9px;border-radius:999px;background:#f1f1ec;color:#57534e;white-space:nowrap}
+.mesa-emb .mday-c.warn{background:#fef6e7;color:#b45309}
+.mesa-emb .mday-c.ok2{background:#e9f5ee;color:#15803d}
+.mesa-emb .mday-c.bad{background:#fef2f2;color:#dc2626}
+.mesa-emb .mday-c.ok{background:#e9f5ee;color:#16a34a}
+.mesa-emb .mday-start{margin-top:8px;padding:7px 10px;background:#fff;border-left:3px solid #1a5c38;border-radius:6px;font-size:12.5px;color:#44403c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ── Orden de ataque (número) + línea "→ qué hacer" en fila colapsada ── */
+.mesa-emb .mrank{width:20px;height:20px;border-radius:50%;background:#1a5c38;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex:none}
+.mesa-emb .mrank.off{background:transparent}
+.mesa-emb .mhead .mh-rank{flex:none;width:20px}
+.mesa-emb .mrow.done .mrank{background:#c9c9c2}
+.mesa-emb .mrow.has-ql{flex-wrap:wrap;padding-bottom:7px}
+.mesa-emb .mql{flex:1 1 100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#78716c;padding-left:49px;margin-top:-3px}
+@media (max-width:640px){.mesa-emb .mql{padding-left:0}.mesa-emb .mday-chips{margin-left:0}}
 @media (max-width:620px){
   .mesa-emb .mdrawer-cols{grid-template-columns:1fr}
   /* capturar (order 1) arriba, declarado (order 2) abajo con su divisor */
