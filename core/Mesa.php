@@ -487,6 +487,10 @@ class Mesa
                 'visitas' => (int)$c['visitas'], 'dias_sin_vista' => (int)$c['dias_sin_vista'],
                 'postura' => $postura, 'ultima_accion' => $acc[$cid] ?? null,
                 'dormida' => $dormida,
+                // Intentos de "no contestó" consecutivos desde el último "Hablamos"
+                // (ventana 30d, ya calculado en $nc). Alimenta "Intento N de 4" +
+                // el suspender asistido del ghost en _mesa.php. Resetea con Hablamos.
+                'intentos_nc' => (int)($nc[$cid] ?? 0),
                 'tier' => ($edad <= $p75 ? 1 : 2),
                 'decl' => $me[$cid] ?? [],
                 // "Atendida hoy" = CALIFICADA con POSTURA FRESCA de hoy y AL
