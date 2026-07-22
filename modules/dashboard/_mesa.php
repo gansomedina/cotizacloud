@@ -381,7 +381,9 @@ foreach ($mesa_all as $mesa_vid => $mesa):
           </span>
         </div>
         <?php if ($mday_first): ?>
-        <div class="mday-start">Empieza por <b><?= e($mday_first['titulo'] ?: $mday_first['cliente']) ?></b><?= !empty($mday_first['sugerencia']) ? ' — ' . e($mday_first['sugerencia']) : '' ?></div>
+        <?php // Solo el NOMBRE — la sugerencia ya se ve en la fila #1 justo abajo
+              // (y en su cajón al abrir); repetirla aquí triplicaba el texto. ?>
+        <div class="mday-start">Empieza por <b><?= e($mday_first['titulo'] ?: $mday_first['cliente']) ?></b> — es la #1 de tu lista</div>
         <?php endif; ?>
       </div>
 
