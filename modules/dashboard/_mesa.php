@@ -709,9 +709,10 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 /* cajón abierto ya muestra la sugerencia (msug) — la línea colapsada sobra */
 .mesa-emb .mrow.open .mql{display:none}
 .mesa-emb .mrow.open.has-ql{padding-bottom:2px}
-/* tip como anotación: píldora sombreada, tenue y recortada (~72ch) — el texto
-   completo vive en el cajón; así 15 filas no se vuelven una pared de texto */
-.mesa-emb .mql{flex:1 1 100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(72ch,92%);font-size:11.5px;color:#8f8f86;background:#f6f6f1;border-radius:7px;padding:2px 10px;margin:-1px 0 3px 49px}
+/* tip: texto completo y legible (es herramienta de trabajo — decisión CEO:
+   sin píldora, sin recorte, sin alto extra). Solo una rayita izquierda sutil
+   para separarlo visualmente del renglón de datos, a costo cero de espacio. */
+.mesa-emb .mql{flex:1 1 100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#78716c;margin:-3px 0 0 49px;border-left:2px solid #e4e4dc;padding-left:8px}
 @media (max-width:640px){.mesa-emb .mql{padding-left:0}.mesa-emb .mday-chips{margin-left:0}}
 @media (max-width:620px){
   .mesa-emb .mdrawer-cols{grid-template-columns:1fr}
