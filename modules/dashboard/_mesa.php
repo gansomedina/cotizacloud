@@ -820,10 +820,9 @@ function mesaCapSync(cotId){
   var btn = document.getElementById('mcap'+cotId), hint = document.getElementById('mcaph'+cotId);
   if(!btn) return;
   btn.disabled = sels.length === 0;
-  var con = sels.filter(function(s){ return s.area === 'contacto'; })[0];
-  if(sels.length === 0) hint.textContent = 'Marca al menos el contacto';
-  else if(con) hint.textContent = 'Al capturar: próximo toque ' + (con.estado === 'no_contesta' ? 'en 2 días' : 'según tu ciclo de venta');
-  else hint.textContent = 'Se guarda tu lectura (el contacto es lo que mueve el reloj)';
+  // Sin aviso del reloj/próximo toque aquí: eso ya lo muestra la columna
+  // Actividad (el chip .mfresh). Solo el "por qué está deshabilitado".
+  hint.textContent = sels.length === 0 ? 'Marca al menos el contacto' : '';
 }
 function mesaCapturar(cotId){
   var drawer = document.getElementById('md'+cotId);
