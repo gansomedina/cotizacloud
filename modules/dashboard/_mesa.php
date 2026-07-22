@@ -381,7 +381,9 @@ foreach ($mesa_all as $mesa_vid => $mesa):
           </span>
         </div>
         <?php if ($mday_first): ?>
-        <div class="mday-start">Empieza por <b><?= e($mday_first['titulo'] ?: $mday_first['cliente']) ?></b><?= !empty($mday_first['sugerencia']) ? ' — ' . e($mday_first['sugerencia']) : '' ?></div>
+        <?php // Solo el NOMBRE — la sugerencia ya se ve en la fila #1 justo abajo
+              // (y en su cajón al abrir); repetirla aquí triplicaba el texto. ?>
+        <div class="mday-start">Empieza por <b><?= e($mday_first['titulo'] ?: $mday_first['cliente']) ?></b> — es la #1 de tu lista</div>
         <?php endif; ?>
       </div>
 
@@ -706,6 +708,9 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mhead .mh-rank{flex:none;width:20px}
 .mesa-emb .mrow.done .mrank{background:#c9c9c2}
 .mesa-emb .mrow.has-ql{flex-wrap:wrap;padding-bottom:7px}
+/* cajón abierto ya muestra la sugerencia (msug) — la línea colapsada sobra */
+.mesa-emb .mrow.open .mql{display:none}
+.mesa-emb .mrow.open.has-ql{padding-bottom:2px}
 .mesa-emb .mql{flex:1 1 100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#78716c;padding-left:49px;margin-top:-3px}
 @media (max-width:640px){.mesa-emb .mql{padding-left:0}.mesa-emb .mday-chips{margin-left:0}}
 @media (max-width:620px){
