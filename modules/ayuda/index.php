@@ -330,8 +330,10 @@ if (!$is_native_app_ayuda): ?>
       <div class="ay-field">
         <label for="lic-plan">Plan deseado</label>
         <select id="lic-plan" name="plan_lic" style="width:100%;padding:10px 12px;border:1.5px solid var(--border2);border-radius:var(--r-sm);font:400 14px var(--body);background:var(--white);color:var(--text)">
-          <option value="Pro">Pro — $299/mes</option>
-          <option value="Business">Business — $799/mes</option>
+          <?php $ay_precios = MercadoPago::precios(); // fuente única — no divergir de nuevo ?>
+          <option value="Lite">Lite — $<?= number_format($ay_precios['lite']['mensual'], 0) ?>/mes</option>
+          <option value="Pro">Pro — $<?= number_format($ay_precios['pro']['mensual'], 0) ?>/mes</option>
+          <option value="Business">Business — $<?= number_format($ay_precios['business']['mensual'], 0) ?>/mes (con demo y capacitación)</option>
         </select>
       </div>
 
