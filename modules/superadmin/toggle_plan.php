@@ -14,7 +14,40 @@ if (!$emp || $emp['slug'] === '_system') {
     die('Empresa no encontrada');
 }
 
+
+// Activación/renovación MANUAL (transferencia): además de plan+vence, limpia
+// grace (sin esto el cron degradaba al día siguiente con licencia vigente —
+// auditoría B, ALTO 5) y saca a la empresa del modo trial (es_trial=0,
+// trial_usado=0 — botón implícito de "reset" del bloqueo post-prueba).
+function toggle_activar_plan(string $plan, string $vence, int $empresa_id): void {
+    try {
+        DB::execute(
+            "UPDATE empresas SET plan = ?, plan_vence = ?, grace_hasta = NULL, activa = 1, es_trial = 0, trial_usado = 0 WHERE id = ?",
+            [$plan, $vence, $empresa_id]
+        );
+    } catch (Throwable $e) { // columnas trial sin migrar
+        DB::execute(
+            "UPDATE empresas SET plan = ?, plan_vence = ?, grace_hasta = NULL, activa = 1 WHERE id = ?",
+            [$plan, $vence, $empresa_id]
+        );
+    }
+}
+
 $accion = $_POST['accion'] ?? 'toggle';
+
+// Asientos (paquetes 23-jul): tope de usuarios ACTIVOS por empresa. Vacío/0 =
+// default del plan (Free/Lite=1, Pro/Business=ilimitado). Perilla para Business
+// por asiento pactado en demo, o para capar un plan puntual.
+if ($accion === 'asientos') {
+    $val = trim((string)($_POST['asientos'] ?? ''));
+    $asientos = ($val === '' || (int)$val <= 0) ? null : min(250, (int)$val);
+    try {
+        DB::execute("UPDATE empresas SET asientos = ? WHERE id = ?", [$asientos, $empresa_id]);
+    } catch (Throwable $e) {
+        error_log('[Asientos] columna sin migrar — correr migrations/add_asientos.sql');
+    }
+    redirect('/superadmin/empresa/' . $empresa_id);
+}
 
 // Mesa de Trabajo: rollout por empresa (0=off, 1=UI asesores, 2=UI+score 25%)
 if ($accion === 'mesa_activa') {
@@ -41,15 +74,15 @@ $duracion_dias = function() {
 
 if ($accion === 'activar_lite') {
     $vence = date('Y-m-d', strtotime("+{$duracion_dias()} days"));
-    DB::execute("UPDATE empresas SET plan = 'lite', plan_vence = ?, activa = 1 WHERE id = ?", [$vence, $empresa_id]);
+    toggle_activar_plan('lite', $vence, $empresa_id);
 
 } elseif ($accion === 'activar_pro') {
     $vence = date('Y-m-d', strtotime("+{$duracion_dias()} days"));
-    DB::execute("UPDATE empresas SET plan = 'pro', plan_vence = ?, activa = 1 WHERE id = ?", [$vence, $empresa_id]);
+    toggle_activar_plan('pro', $vence, $empresa_id);
 
 } elseif ($accion === 'activar_business') {
     $vence = date('Y-m-d', strtotime("+{$duracion_dias()} days"));
-    DB::execute("UPDATE empresas SET plan = 'business', plan_vence = ?, activa = 1 WHERE id = ?", [$vence, $empresa_id]);
+    toggle_activar_plan('business', $vence, $empresa_id);
 
 } elseif ($accion === 'renovar') {
     // Renovar: extender desde hoy o desde fecha actual de vencimiento (lo que sea mayor)
@@ -59,25 +92,35 @@ if ($accion === 'activar_lite') {
     $nuevo_vence = date('Y-m-d', strtotime($base . " +{$dias} days"));
     // Mantener el plan actual (lite, pro o business)
     $plan_actual = in_array($emp['plan'], ['lite', 'pro', 'business']) ? $emp['plan'] : 'pro';
-    DB::execute("UPDATE empresas SET plan = ?, plan_vence = ?, activa = 1 WHERE id = ?", [$plan_actual, $nuevo_vence, $empresa_id]);
+    toggle_activar_plan($plan_actual, $nuevo_vence, $empresa_id);
 
 } elseif ($accion === 'cambiar_plan') {
     // Cambiar entre lite, pro y business manteniendo la fecha de vencimiento
     $nuevo_plan = $_POST['nuevo_plan'] ?? 'pro';
     if (!in_array($nuevo_plan, ['lite', 'pro', 'business'])) $nuevo_plan = 'pro';
-    DB::execute("UPDATE empresas SET plan = ? WHERE id = ?", [$nuevo_plan, $empresa_id]);
+    try {
+        DB::execute("UPDATE empresas SET plan = ?, es_trial = 0, trial_usado = 0 WHERE id = ?", [$nuevo_plan, $empresa_id]);
+    } catch (Throwable $e) { // columnas trial sin migrar
+        DB::execute("UPDATE empresas SET plan = ? WHERE id = ?", [$nuevo_plan, $empresa_id]);
+    }
 
-} elseif ($accion === 'regresar_free') {
-    DB::execute("UPDATE empresas SET plan = 'free', plan_vence = NULL WHERE id = ?", [$empresa_id]);
-
-} elseif ($accion === 'regresar_trial') {
-    // Compatibilidad legacy → ahora va a free
-    DB::execute("UPDATE empresas SET plan = 'free', plan_vence = NULL WHERE id = ?", [$empresa_id]);
+} elseif ($accion === 'regresar_free' || $accion === 'regresar_trial') {
+    // (regresar_trial = legacy → free). Limpia también es_trial para no dejar
+    // "· PRUEBA" fantasma ni eximir el candado de downgrade por accidente.
+    try {
+        DB::execute("UPDATE empresas SET plan = 'free', plan_vence = NULL, es_trial = 0 WHERE id = ?", [$empresa_id]);
+    } catch (Throwable $e) {
+        DB::execute("UPDATE empresas SET plan = 'free', plan_vence = NULL WHERE id = ?", [$empresa_id]);
+    }
 
 } else {
     // Toggle simple (legacy)
     $nuevo_plan = ($emp['plan'] ?? 'free') === 'free' ? 'pro' : 'free';
-    DB::execute("UPDATE empresas SET plan = ? WHERE id = ?", [$nuevo_plan, $empresa_id]);
+    try {
+        DB::execute("UPDATE empresas SET plan = ?, es_trial = 0 WHERE id = ?", [$nuevo_plan, $empresa_id]);
+    } catch (Throwable $e) {
+        DB::execute("UPDATE empresas SET plan = ? WHERE id = ?", [$nuevo_plan, $empresa_id]);
+    }
 }
 
 redirect('/superadmin/empresa/' . $empresa_id);

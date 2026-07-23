@@ -12,16 +12,22 @@ $empresa_id = EMPRESA_ID;
 $tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing','historial','termometro','feedback','suscripcion'])
     ? $_GET['tab'] : 'empresa';
 
-// Usuarios solo disponible en plan Business
+// Usuarios disponible en Pro y Business (paquetes 23-jul: Pro = "tu equipo")
 if ($tab_activo === 'usuarios') {
     $plan_check = trial_info(EMPRESA_ID);
-    if (!$plan_check['es_business']) $tab_activo = 'empresa';
+    if (!$plan_check['es_pro_o_superior']) $tab_activo = 'empresa';
 }
 
 // Costos solo disponible en plan Pro o Business (NO Lite)
 if ($tab_activo === 'costos') {
     $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
     if (!$plan_check['es_pro_o_superior']) $tab_activo = 'empresa';
+}
+
+// Termómetro e Historial son Business — por URL directa quedaban en blanco
+if (in_array($tab_activo, ['termometro', 'historial'], true)) {
+    $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
+    if (!$plan_check['es_business']) $tab_activo = 'empresa';
 }
 
 // Radar (config) oculto para Lite — no tiene módulo Radar
@@ -355,7 +361,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <a class="cfg-tab <?= $tab_activo==='catalogo'  ?'on':'' ?>" href="/config?tab=catalogo"><?= ($empresa['giro'] ?? 'servicios') === 'inmuebles' ? 'Propiedades' : 'Catálogo' ?></a>
     <a class="cfg-tab <?= $tab_activo==='clientes'  ?'on':'' ?>" href="/config?tab=clientes">Clientes</a>
     <a class="cfg-tab <?= $tab_activo==='cupones'   ?'on':'' ?>" href="/config?tab=cupones">Cupones</a>
-    <?php $plan_info = trial_info(EMPRESA_ID); if ($plan_info['es_business']): ?>
+    <?php $plan_info = trial_info(EMPRESA_ID); if ($plan_info['es_pro_o_superior']): ?>
     <a class="cfg-tab <?= $tab_activo==='usuarios'  ?'on':'' ?>" href="/config?tab=usuarios">Usuarios</a>
     <?php endif; ?>
     <?php if (!$plan_info['es_lite']): ?>
@@ -972,10 +978,13 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   </div>
 
   <?php
-  // Cargar scores del equipo
+  // Scores del equipo — SOLO Business (el termómetro es Business; sin este
+  // gate un admin Pro veía el anillo con score/nivel en su tab Usuarios)
   $scores_equipo = [];
-  foreach (ActividadScore::equipo($empresa_id) as $se) {
-      $scores_equipo[(int)$se['usuario_id']] = $se;
+  if (!empty($plan_info['es_business'])) {
+      foreach (ActividadScore::equipo($empresa_id) as $se) {
+          $scores_equipo[(int)$se['usuario_id']] = $se;
+      }
   }
   ?>
   <div class="card">
@@ -1707,8 +1716,8 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <label class="toggle"><input type="checkbox" id="perm_ver_costos" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
         <div class="perm-row">
-          <div><div class="perm-lbl">Proveedores</div><div class="perm-sub">Ver y gestionar proveedores</div></div>
-          <label class="toggle"><input type="checkbox" id="perm_ver_proveedores" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <div><div class="perm-lbl">Proveedores</div><div class="perm-sub"><?= !empty($plan_info['es_business']) ? 'Ver y gestionar proveedores' : 'Exclusivo del plan Business' ?></div></div>
+          <label class="toggle"><input type="checkbox" id="perm_ver_proveedores" <?= !empty($plan_info['es_business']) ? 'checked' : 'disabled' ?>><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
         <div class="perm-row">
           <div><div class="perm-lbl">Reportes</div><div class="perm-sub">Ver reportes financieros y de cotizaciones</div></div>
@@ -2330,11 +2339,13 @@ async function eliminarHistorial(id, btn) {
 <script>
 async function guardarTermometro(on) {
     try {
-        await fetch('/config/termometro', {
+        const r = await fetch('/config/termometro', {
             method: 'POST',
             headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
             body: JSON.stringify({termometro_visible: on ? 1 : 0})
         });
+        const d = await r.json();
+        if (!d.ok) { alert(d.error || 'No se pudo guardar'); return; }
         var m = document.getElementById('termometro-saved');
         if (m) { m.style.display = 'block'; setTimeout(() => m.style.display = 'none', 1800); }
     } catch(e) {}

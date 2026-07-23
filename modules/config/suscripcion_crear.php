@@ -14,7 +14,8 @@ csrf_check();
 $plan  = $_POST['plan']  ?? '';
 $ciclo = $_POST['ciclo'] ?? '';
 
-if (!in_array($plan, ['lite', 'pro', 'business']) || !in_array($ciclo, ['mensual', 'anual'])) {
+// Business es venta ASISTIDA (demo + capacitación) — no comprable self-serve
+if (!in_array($plan, ['lite', 'pro']) || !in_array($ciclo, ['mensual', 'anual'])) {
     $_SESSION['flash'] = ['tipo' => 'error', 'msg' => 'Plan o ciclo inválido.'];
     redirect('/config?tab=suscripcion');
 }
@@ -24,7 +25,7 @@ if (!in_array($plan, ['lite', 'pro', 'business']) || !in_array($ciclo, ['mensual
 // asesores/datos colgados. La UI ya lo oculta; esto es la defensa de servidor.
 $plan_rango = ['free' => 0, 'lite' => 1, 'pro' => 2, 'business' => 3];
 $trial      = trial_info(EMPRESA_ID);
-if ($trial['es_pagado'] && ($plan_rango[$plan] ?? 0) < ($plan_rango[$trial['plan']] ?? 0)) {
+if ($trial['es_pagado'] && empty($trial['trial_activo']) && ($plan_rango[$plan] ?? 0) < ($plan_rango[$trial['plan']] ?? 0)) {
     $_SESSION['flash'] = ['tipo' => 'error', 'msg' => 'Para cambiar a un plan menor, contacta a soporte. No es posible bajar de plan automáticamente.'];
     redirect('/config?tab=suscripcion');
 }

@@ -27,6 +27,7 @@ require '/home/user/cotizacloud/core/Mesa.php';
 
 $es_admin_dash = 1; $empresa_id = 5;
 ob_start();
+$trial = ['es_business' => true]; // gate de plan (paquetes 23-jul)
 include '/home/user/cotizacloud/modules/dashboard/_mesa.php';
 $emitido = ob_get_clean();
 
@@ -51,6 +52,7 @@ chk('binding de filas diferido a DOMContentLoaded', str_contains($MESA_ASSETS ??
 $_GET['mesa_dias'] = '30';
 unset($MESA_SHARED, $MESA_BLOQUES, $MESA_EMITIDO);
 ob_start();
+$trial = ['es_business' => true]; // gate de plan (paquetes 23-jul)
 include '/home/user/cotizacloud/modules/dashboard/_mesa.php';
 ob_end_clean();
 chk('CON ?mesa_dias el reporte SÍ se renderiza abierto', str_contains($MESA_SHARED ?? '', 'id="mesa-rp"') && str_contains($MESA_SHARED ?? '', 'Cartera hoy'), true);
@@ -62,6 +64,7 @@ unset($MESA_SHARED, $MESA_BLOQUES, $MESA_ASESOR, $MESA_ASSETS, $MESA_EMITIDO);
 $es_admin_dash = 0;
 $empresa = ['mesa_activa' => 1];
 ob_start();
+$trial = ['es_business' => true]; // gate de plan (paquetes 23-jul)
 include '/home/user/cotizacloud/modules/dashboard/_mesa.php';
 ob_end_clean();
 chk('ASESOR: tarjeta propia con su mesa', str_contains($MESA_ASESOR ?? '', 'Tu mesa de trabajo') && str_contains($MESA_ASESOR ?? '', 'mesa-emb-500'), true);
@@ -77,6 +80,7 @@ chk('ASESOR: shared de admin NO se construyó', empty($MESA_SHARED), true);
 unset($MESA_SHARED, $MESA_BLOQUES, $MESA_ASESOR, $MESA_ASSETS);
 $empresa = ['mesa_activa' => 0];
 ob_start();
+$trial = ['es_business' => true]; // gate de plan (paquetes 23-jul)
 include '/home/user/cotizacloud/modules/dashboard/_mesa.php';
 ob_end_clean();
 chk('ASESOR con flag=0: la mesa no existe para él', empty($MESA_ASESOR) && empty($MESA_SHARED), true);

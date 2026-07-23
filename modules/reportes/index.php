@@ -270,7 +270,7 @@ foreach ($por_asesor as $a) $nombre_asesor[(int)$a['usr_id']] = $a['asesor'];
 // El score vivo es una ventana móvil de 15d que se sobrescribe; aquí se
 // promedia el punto diario capturado al abrir el dashboard. Últimos 6 meses.
 $score_mensual = [];
-if ($es_admin) {
+if ($es_admin && $es_business_rep) { // score = termómetro = Business
     try {
         $score_mensual = DB::query(
             "SELECT DATE_FORMAT(sd.fecha,'%Y-%m') AS mes,

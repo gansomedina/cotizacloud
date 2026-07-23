@@ -74,10 +74,17 @@ foreach ($por_cobrar as $sub) {
              WHERE id=?",
             [$vence, (string)$resp['id'], $sub['id']]
         );
-        DB::execute(
-            "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1 WHERE id=?",
-            [$sub['plan'], $vence, $empresa_id]
-        );
+        try {
+            DB::execute(
+                "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1, es_trial=0, trial_usado=0 WHERE id=?",
+                [$sub['plan'], $vence, $empresa_id]
+            );
+        } catch (Throwable $e) { // columnas trial sin migrar
+            DB::execute(
+                "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1 WHERE id=?",
+                [$sub['plan'], $vence, $empresa_id]
+            );
+        }
         DB::insert(
             "INSERT INTO pagos_suscripcion
                 (suscripcion_id, empresa_id, mp_payment_id, monto_mxn, estado, fecha_pago, detalle)
@@ -144,14 +151,12 @@ $expiradas_grace = DB::query(
      FROM empresas e
      WHERE e.grace_hasta IS NOT NULL
        AND e.grace_hasta < CURDATE()
-       AND e.plan != 'free'"
+       AND e.plan != 'free'
+       AND (e.plan_vence IS NULL OR e.plan_vence < CURDATE())"
 );
 
 foreach ($expiradas_grace as $emp) {
-    DB::execute(
-        "UPDATE empresas SET plan='free', plan_vence=NULL, grace_hasta=NULL, activa=1 WHERE id=?",
-        [$emp['id']]
-    );
+    planes_degradar_free((int)$emp['id']); // plan=free + usuarios extra desactivados
     DB::execute(
         "UPDATE suscripciones SET estado='cancelled', cancel_al_vencer=1, cancelled_at=NOW() WHERE empresa_id=?",
         [$emp['id']]
@@ -188,10 +193,7 @@ foreach ($vencidas_sin_grace as $emp) {
     );
     if ($tiene_sub_activa) continue; // el paso 1 la está cobrando
 
-    DB::execute(
-        "UPDATE empresas SET plan='free', plan_vence=NULL, activa=1 WHERE id=?",
-        [$emp['id']]
-    );
+    planes_degradar_free((int)$emp['id']); // plan=free + usuarios extra desactivados
     $log("Degradada a Free (sin suscripción activa): empresa #{$emp['id']}");
 }
 
@@ -205,18 +207,39 @@ $por_vencer = DB::query(
        AND e.plan_vence = DATE_ADD(CURDATE(), INTERVAL 7 DAY)
        AND (s.cancel_al_vencer = 1 OR s.id IS NULL OR s.mp_customer_id IS NULL)"
 );
+try {
+    $trial_flags = [];
+    foreach (DB::query("SELECT id, es_trial FROM empresas WHERE es_trial = 1") as $tf) $trial_flags[(int)$tf['id']] = true;
+} catch (Throwable $e) { $trial_flags = []; } // columna sin migrar
+$por_vencer = array_map(function ($e) use ($trial_flags) {
+    $e['_es_trial'] = !empty($trial_flags[(int)$e['id']]);
+    return $e;
+}, $por_vencer ?? []);
 
 foreach ($por_vencer as $emp) {
     if ($emp['email']) {
-        Mailer::enviar(
-            $emp['email'],
-            $emp['nombre'] ?: 'Usuario',
-            'Tu plan CotizaCloud vence en 7 días',
-            '<p>Hola ' . htmlspecialchars($emp['nombre'] ?: 'Usuario') . ',</p>' .
-            '<p>Tu plan <strong>' . ucfirst($emp['plan']) . '</strong> vence el <strong>' .
-            date('d/m/Y', strtotime($emp['plan_vence'])) . '</strong>.</p>' .
-            '<p>Si deseas renovar, visita <a href="' . BASE_URL . '/config?tab=suscripcion">Configuración > Suscripción</a>.</p>'
-        );
+        if (!empty($emp['_es_trial'])) {
+            // Trial: no se "renueva" lo que nunca se pagó (auditoría B, A7)
+            Mailer::enviar(
+                $emp['email'],
+                $emp['nombre'] ?: 'Usuario',
+                'Tu prueba de CotizaCloud termina en 7 días',
+                '<p>Hola ' . htmlspecialchars($emp['nombre'] ?: 'Usuario') . ',</p>' .
+                '<p>Tu prueba de <strong>' . ucfirst($emp['plan']) . '</strong> termina el <strong>' .
+                date('d/m/Y', strtotime($emp['plan_vence'])) . '</strong>.</p>' .
+                '<p>Activa tu plan en <a href="' . BASE_URL . '/config?tab=suscripcion">Configuración > Suscripción</a> para no perderlo — tus datos se conservan igual.</p>'
+            );
+        } else {
+            Mailer::enviar(
+                $emp['email'],
+                $emp['nombre'] ?: 'Usuario',
+                'Tu plan CotizaCloud vence en 7 días',
+                '<p>Hola ' . htmlspecialchars($emp['nombre'] ?: 'Usuario') . ',</p>' .
+                '<p>Tu plan <strong>' . ucfirst($emp['plan']) . '</strong> vence el <strong>' .
+                date('d/m/Y', strtotime($emp['plan_vence'])) . '</strong>.</p>' .
+                '<p>Si deseas renovar, visita <a href="' . BASE_URL . '/config?tab=suscripcion">Configuración > Suscripción</a>.</p>'
+            );
+        }
         $log("Aviso 7 días: empresa #{$emp['id']}");
     }
 }

@@ -262,7 +262,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .toggle-save{font:700 12px var(--body);color:#fff;background:var(--g);padding:4px 12px;border-radius:20px;letter-spacing:.02em;animation:pulse-save 2s infinite}
 @keyframes pulse-save{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.85;transform:scale(1.05)}}
 
-.pricing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;align-items:start}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:960px;margin:0 auto;align-items:start}
 .price-card{background:var(--white);border:1.5px solid var(--border);border-radius:20px;padding:36px 28px;position:relative;transition:all .3s}
 .price-card:hover{box-shadow:var(--sh-lg);transform:translateY(-4px)}
 .price-card-featured{border:2.5px solid var(--g);box-shadow:var(--sh-lg);transform:scale(1.04);z-index:2}
@@ -660,7 +660,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <section class="apc">
   <div class="apc-card">
     <div class="apc-left">
-      <div class="apc-badge">Exclusivo CotizaCloud</div>
+      <div class="apc-badge">Exclusivo del plan Business</div>
       <div class="apc-title">Termometro de <em>Productividad Comercial</em></div>
       <div class="apc-desc">Un algoritmo que mide la efectividad real de cada vendedor — automaticamente. No es opinion, son datos. Se auto-ajusta a tu empresa y evoluciona con tu equipo.</div>
       <div class="apc-dims">
@@ -782,29 +782,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
   <div class="pricing-grid">
 
-    <!-- FREE -->
-    <div class="price-card">
-      <div class="price-header">
-        <div class="price-plan-name">Free</div>
-        <div class="price-plan-desc">Conoce el sistema. Sin limite de tiempo.</div>
-      </div>
-      <div class="price-amount">
-        <span class="price-currency">$</span>
-        <span class="price-value">0</span>
-      </div>
-      <div class="price-period">Para siempre</div>
-      <a href="/registro" class="price-btn price-btn-outline">Crear cuenta gratis</a>
-      <div class="price-features">
-        <div class="price-feat"><span class="feat-check">&#10003;</span>25 cotizaciones</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Radar de inteligencia</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas y recibos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos basicos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Catalogo de articulos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y descuentos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
-      </div>
-    </div>
-
     <!-- LITE -->
     <div class="price-card">
       <div class="price-header">
@@ -835,25 +812,22 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <!-- PRO -->
     <div class="price-card price-card-featured">
       <div class="price-badge-popular">Mas popular</div>
-      <div class="price-badge-launch">Precio de lanzamiento</div>
       <div class="price-header">
         <div class="price-plan-name">Pro</div>
         <div class="price-plan-desc">Cotiza sin limites. Vende con inteligencia.</div>
       </div>
       <div class="price-amount">
-        <span class="price-original monthly-price" data-mxn="499">$499</span>
-        <span class="price-original annual-price" data-mxn="399" style="display:none">$399</span>
         <span class="price-currency">$</span>
-        <span class="price-value monthly-price" data-mxn="299">299</span>
-        <span class="price-value annual-price" data-mxn="239" style="display:none">239</span>
+        <span class="price-value monthly-price" data-mxn="499">499</span>
+        <span class="price-value annual-price" data-mxn="399" style="display:none">399</span>
         <span class="price-mo">/mes</span>
       </div>
-      <div class="price-period monthly-price"><span data-mxn="3588">$3,588</span> <span class="cur-lbl">MXN</span>/año</div>
-      <div class="price-period annual-price" style="display:none"><span data-mxn="2868">$2,868</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="720">$720</span></strong></div>
+      <div class="price-period monthly-price"><span data-mxn="5988">$5,988</span> <span class="cur-lbl">MXN</span>/año</div>
+      <div class="price-period annual-price" style="display:none"><span data-mxn="4788">$4,788</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="1200">$1,200</span></strong></div>
       <a href="/registro?plan=pro" class="price-btn price-btn-solid">Crear cuenta gratis</a>
       <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
-        <div class="price-feat-header">Todo de Free, sin limites:</div>
+        <div class="price-feat-header">Todo lo esencial, sin limites:</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Radar de inteligencia completo</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Articulos ilimitados</div>
@@ -872,16 +846,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-plan-desc">Tu equipo completo. Control total.</div>
       </div>
       <div class="price-amount">
-        <span class="price-original monthly-price" data-mxn="1299">$1,299</span>
-        <span class="price-original annual-price" data-mxn="999" style="display:none">$999</span>
         <span class="price-currency">$</span>
-        <span class="price-value monthly-price" data-mxn="799">799</span>
-        <span class="price-value annual-price" data-mxn="639" style="display:none">639</span>
+        <span class="price-value monthly-price" data-mxn="2999">2,999</span>
+        <span class="price-value annual-price" data-mxn="2399" style="display:none">2,399</span>
         <span class="price-mo">/mes</span>
       </div>
-      <div class="price-period monthly-price"><span data-mxn="9588">$9,588</span> <span class="cur-lbl">MXN</span>/año</div>
-      <div class="price-period annual-price" style="display:none"><span data-mxn="7668">$7,668</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="1920">$1,920</span></strong></div>
-      <a href="/registro?plan=business" class="price-btn price-btn-business">Crear cuenta gratis</a>
+      <div class="price-period monthly-price"><span data-mxn="35988">$35,988</span> <span class="cur-lbl">MXN</span>/año</div>
+      <div class="price-period annual-price" style="display:none"><span data-mxn="28788">$28,788</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="7200">$7,200</span></strong></div>
+      <a href="#" class="price-btn price-btn-business" onclick="var f=document.getElementById('czl-fab');if(f){f.click();}return false;">Agenda una demo</a>
       <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
         <div class="price-feat-header">Todo de Pro, mas:</div>
@@ -889,9 +861,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Permisos por vendedor</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Termometro de productividad</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Ranking y diagnostico por vendedor</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Archivos adjuntos en cotizaciones</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Feedback de clientes</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Venta cruzada en cotizaciones</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Costos avanzados por categoria</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Modulo de proveedores</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes avanzados de equipo</div>

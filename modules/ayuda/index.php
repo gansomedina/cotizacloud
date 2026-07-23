@@ -330,8 +330,10 @@ if (!$is_native_app_ayuda): ?>
       <div class="ay-field">
         <label for="lic-plan">Plan deseado</label>
         <select id="lic-plan" name="plan_lic" style="width:100%;padding:10px 12px;border:1.5px solid var(--border2);border-radius:var(--r-sm);font:400 14px var(--body);background:var(--white);color:var(--text)">
-          <option value="Pro">Pro — $299/mes</option>
-          <option value="Business">Business — $799/mes</option>
+          <?php $ay_precios = MercadoPago::precios(); // fuente única — no divergir de nuevo ?>
+          <option value="Lite">Lite — $<?= number_format($ay_precios['lite']['mensual'], 0) ?>/mes</option>
+          <option value="Pro">Pro — $<?= number_format($ay_precios['pro']['mensual'], 0) ?>/mes</option>
+          <option value="Business">Business — $<?= number_format($ay_precios['business']['mensual'], 0) ?>/mes (con demo y capacitación)</option>
         </select>
       </div>
 
@@ -1116,7 +1118,7 @@ if (!$is_native_app_ayuda): ?>
       <li><b>Catálogo</b> (o <b>Propiedades</b> si vendes inmuebles) — Tus productos o servicios. <span class="ay-shortcut">Todos</span></li>
       <li><b>Clientes</b> — Tu base de clientes. <span class="ay-shortcut">Todos</span></li>
       <li><b>Cupones</b> — Códigos de descuento + el descuento con cronómetro. <span class="ay-shortcut">Todos</span></li>
-      <li><b>Usuarios</b> — Tu equipo y sus permisos. <span class="ay-shortcut">Business</span></li>
+      <li><b>Usuarios</b> — Tu equipo y sus permisos. <span class="ay-shortcut">Pro y Business</span></li>
       <li><b>Radar</b> — Qué tan fino detecta el interés de tus clientes. <span class="ay-shortcut">Todos</span></li>
       <li><b>Costos</b> — Cómo registras tus gastos. <span class="ay-shortcut">Pro y Business</span></li>
       <li><b>Marketing</b> — Pixels de Meta, Google, TikTok. <span class="ay-shortcut">Business</span></li>
@@ -1176,8 +1178,8 @@ if (!$is_native_app_ayuda): ?>
 
   <!-- ── USUARIOS ── -->
   <div class="ay-card">
-    <h3>Pestaña Usuarios <span class="ay-shortcut">Business</span></h3>
-    <p>Tu equipo. Cada vendedor tiene su propio login y su score del Termómetro visible aquí. Al crear o editar un usuario defines:</p>
+    <h3>Pestaña Usuarios <span class="ay-shortcut">Pro y Business</span></h3>
+    <p>Tu equipo. Cada vendedor tiene su propio login (en Business, además, su score del Termómetro aparece aquí). Al crear o editar un usuario defines:</p>
     <ul>
       <li><b>Datos</b> — Nombre, email, contraseña (mín. 8 caracteres; déjala vacía para no cambiarla), <b>rol</b> (Asesor o Admin) y si está activo.</li>
       <li><b>Permisos del asesor</b> (cada uno es un interruptor): crear cotizaciones, editar cotizaciones, ver cantidad y precio unitario, editar precios, aplicar descuentos/cupones, ver todas las cotizaciones, ver todas las ventas, eliminar ítems de ventas, agregar extras, cancelar recibos, capturar pagos/abonos y asignar cotizaciones.</li>

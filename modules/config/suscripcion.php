@@ -22,7 +22,20 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
 
 $tiene_auto_renew = $sub && $sub['estado'] === 'active' && !$sub['cancel_al_vencer'] && !empty($sub['mp_customer_id']);
 $cobro_fallido = $sub && (int)($sub['intentos_cobro'] ?? 0) > 0 && !empty($sub['ultimo_error']);
+
+// Trial de 30 días en curso — flag EXPLÍCITO de trial_info (es_trial del
+// registro): un cliente de pago manual/transferencia jamás ve este banner
+$trial_en_curso = !empty($trial['trial_activo']) && $trial['dias_restantes'] !== null;
 ?>
+<?php if ($trial_en_curso): ?>
+<div style="margin-bottom:16px;padding:14px 18px;background:var(--amb-bg,#fef6e7);border:1px solid #fcd34d;border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <span style="font-size:22px">🎁</span>
+  <div style="flex:1;min-width:220px">
+    <div style="font-weight:800;font-size:14px">Tu prueba de <?= e($trial['plan_label']) ?> termina <?= (int)$trial['dias_restantes'] === 0 ? 'HOY' : 'en ' . (int)$trial['dias_restantes'] . ' día' . ((int)$trial['dias_restantes'] === 1 ? '' : 's') ?></div>
+    <div style="font-size:12.5px;color:#92400e">Activa tu plan abajo para no perderlo — tus datos y cotizaciones se conservan igual.</div>
+  </div>
+</div>
+<?php endif; ?>
 
 <div class="sec">
   <div class="sec-lbl">Tu plan actual</div>
@@ -145,13 +158,13 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
       'name'     => 'Pro',
       'color'    => 'var(--g)',
       'tagline'  => 'Para profesionales independientes',
-      'features' => 'Todo lo de Lite + Radar completo, reportes, costos y app móvil',
+      'features' => 'Todo lo de Lite + tu equipo (usuarios ilimitados*), Radar completo, reportes, costos y app móvil',
     ],
     'business' => [
       'name'     => 'Business',
       'color'    => 'var(--blue)',
       'tagline'  => 'Para equipos de trabajo',
-      'features' => 'Todo lo de Pro + usuarios ilimitados, marketing, extras y reportes avanzados',
+      'features' => 'Todo lo de Pro + Termómetro de productividad, Mesa de Trabajo, marketing, extras y reportes avanzados',
     ],
   ];
 
@@ -165,8 +178,9 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
     <?php foreach ($planes_grid as $plan_key => $pd):
       if (empty($precios[$plan_key])) continue;
       $is_current = $trial['plan'] === $plan_key && $trial['es_pagado'] && $tiene_auto_renew && !$cobro_fallido;
-      // Downgrade = ya tiene un plan pagado y este es de rango menor al actual.
-      $is_downgrade = $trial['es_pagado'] && ($plan_rango[$plan_key] ?? 0) < $rango_actual;
+      // Downgrade = plan PAGADO real de rango menor. El trial NO cuenta (C2 de
+      // la auditoría: el trial de Pro impedía auto-comprar Lite, el plan gancho).
+      $is_downgrade = $trial['es_pagado'] && empty($trial['trial_activo']) && ($plan_rango[$plan_key] ?? 0) < $rango_actual;
       $color = $pd['color'];
     ?>
     <div class="card" style="border-color:<?= $is_current ? $color : 'var(--border)' ?>">
@@ -185,6 +199,14 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
             Ya tienes un plan superior (<?= htmlspecialchars($trial['plan_label']) ?>). Para cambiar a un plan menor, <a href="/ayuda" style="color:<?= $color ?>;font-weight:600">contacta a soporte</a>.
           </div>
         </div>
+        <?php elseif ($plan_key === 'business'): ?>
+        <div style="font:700 16px var(--num);color:var(--text)">$<?= number_format($precios['business']['mensual'], 0) ?> <span style="font:400 12px var(--body);color:var(--t3)">MXN/mes</span></div>
+        <div style="font:400 12px var(--body);color:var(--t3);margin:6px 0 10px">Business se activa con una demo personalizada y 4 horas de capacitación para tu equipo.</div>
+        <?php // Abre el CHAT DE SOPORTE in-app (burbuja czs de layout.php, solo admins
+              // — esta pantalla es de admins): la solicitud llega con push + email al
+              // superadmin. Un mailto a un buzón inexistente perdía el lead. ?>
+        <a href="#" class="btn-main" style="display:inline-block;padding:8px 18px;font-size:12px;background:<?= $color ?>;border-color:<?= $color ?>;text-decoration:none"
+           onclick="var f=document.getElementById('czs-fab');if(f){f.click();var t=document.getElementById('czs-input');if(t&&!t.value){t.value='Quiero una demo de Business';}}return false;">Agenda una demo</a>
         <?php else: ?>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>

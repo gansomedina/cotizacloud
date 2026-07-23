@@ -232,6 +232,9 @@ unset($_SESSION['registro_errores'], $_SESSION['registro_valores']);
             </div>
 
             <button type="submit" class="btn-submit" id="btn_crear">Crear cuenta</button>
+            <div style="text-align:center;margin-top:10px;font-size:12px;color:#8a8a84">
+                Incluye <strong>30 días de prueba completa</strong> de tu plan. Sin tarjeta.
+            </div>
         </form>
     </div>
 

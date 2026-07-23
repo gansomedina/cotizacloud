@@ -231,7 +231,7 @@ tr:hover td{background:#fafaf8}
     $plan_bg = $trial['es_free'] ? 'var(--amb-bg)' : ($trial['vencido'] ? 'var(--danger-bg)' : ($trial['por_vencer'] ? 'var(--amb-bg)' : 'var(--g-bg)'));
     $plan_border = $trial['es_free'] ? '#fcd34d' : ($trial['vencido'] ? '#fca5a5' : ($trial['por_vencer'] ? '#fcd34d' : 'var(--g-border)'));
     $badge_class = $trial['es_free'] ? 'badge-amber' : ($trial['vencido'] ? 'badge-red' : ($trial['es_business'] ? 'badge-blue' : ($trial['es_lite'] ? 'badge-slate' : 'badge-green')));
-    $badge_text = $trial['es_free'] ? 'FREE' : ($trial['vencido'] ? strtoupper($trial['plan_label']) . ' VENCIDO' : strtoupper($trial['plan_label']));
+    $badge_text = $trial['es_free'] ? 'FREE' : ($trial['vencido'] ? strtoupper($trial['plan_label']) . ' VENCIDO' : strtoupper($trial['plan_label']) . (!empty($trial['trial_activo']) ? ' · PRUEBA' : ''));
 ?>
 <div style="background:<?= $plan_bg ?>;border:1px solid <?= $plan_border ?>;border-radius:var(--r);padding:16px 20px;margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -241,8 +241,12 @@ tr:hover td{background:#fafaf8}
             </span>
             <?php if ($trial['es_free']): ?>
                 <span style="font-size:13px;color:var(--amb);font-weight:600">
+                    <?php if (!empty($trial['trial_usado'])): ?>
+                    Prueba de 30 días FINALIZADA sin pago — bloqueada para cotizaciones nuevas
+                    <?php else: ?>
                     <?= $trial['usadas'] ?> / <?= TRIAL_LIMIT ?> cotizaciones usadas
                     <?php if ($trial['agotado']): ?> — <strong>AGOTADO</strong><?php endif; ?>
+                    <?php endif; ?>
                 </span>
                 <div style="background:#fde68a;border-radius:6px;height:6px;margin-top:8px;max-width:300px;overflow:hidden">
                     <div style="background:<?= $trial['agotado'] ? 'var(--danger)' : 'var(--amb)' ?>;height:100%;width:<?= $trial['pct'] ?>%;border-radius:6px"></div>
@@ -381,6 +385,20 @@ tr:hover td{background:#fafaf8}
         </select>
         <button type="submit" class="btn btn-sm">Guardar</button>
         <span style="font-size:11.5px;color:#8a8a84">Requiere migración add_mesa_score.sql. Avisar la regla ANTES de pasar a 2: cobertura de la mesa ≥80% = completo · 50–80% = medio · menos = no cuenta.</span>
+      </form>
+    </div>
+
+    <!-- Asientos: tope de usuarios activos (perilla por empresa — paquetes 23-jul) -->
+    <div style="margin-bottom:14px;padding:10px 12px;background:#f8f8f5;border:1px solid #e2e2dc;border-radius:8px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:6px">🪑 Asientos (tope de usuarios activos)</div>
+      <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <?= csrf_field() ?>
+        <input type="hidden" name="accion" value="asientos">
+        <input type="number" name="asientos" min="1" max="250" value="<?= ($emp['asientos'] ?? null) !== null ? (int)$emp['asientos'] : '' ?>"
+               placeholder="vacío = default del plan"
+               style="width:180px;padding:6px 10px;border:1px solid #d4d4ce;border-radius:6px;font-size:13px">
+        <button type="submit" class="btn btn-sm">Guardar</button>
+        <span style="font-size:11.5px;color:#8a8a84">Vacío = default del plan (Free/Lite 1 · Pro/Business ilimitado). Se usa para Business por asiento pactado en demo o para capar un caso puntual.</span>
       </form>
     </div>
 
