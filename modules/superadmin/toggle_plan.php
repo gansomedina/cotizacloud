@@ -31,6 +31,7 @@ function toggle_activar_plan(string $plan, string $vence, int $empresa_id): void
             [$plan, $vence, $empresa_id]
         );
     }
+    planes_ajustar_asientos($empresa_id); // tope del plan nuevo (auditoría J2)
 }
 
 $accion = $_POST['accion'] ?? 'toggle';
