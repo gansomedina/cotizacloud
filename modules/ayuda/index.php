@@ -1126,7 +1126,7 @@ if (!$is_native_app_ayuda): ?>
       <li><b>Marketing</b> — Pixels de Meta, Google, TikTok. <span class="ay-shortcut">Business</span></li>
       <li><b>Historial</b> — Tus números viejos para alimentar reportes. <span class="ay-shortcut">Business</span></li>
       <li><b>Termómetro</b> — Mostrar u ocultar el score a los asesores. <span class="ay-shortcut">Business</span></li>
-      <li><b>Feedback</b> — Pedir calificación al cliente. <span class="ay-shortcut">Free y Business</span></li>
+      <li><b>Feedback</b> — Pedir calificación al cliente. <span class="ay-shortcut">Todos</span></li>
       <li><b>Suscripción</b> — Tu plan y pagos. <span class="ay-shortcut">Todos</span></li>
     </ul>
     <div class="ay-tip">Recuerda tocar el botón <b>"Guardar cambios"</b> de cada pestaña. Los cambios no se aplican hasta que guardas.</div>
@@ -1241,7 +1241,7 @@ if (!$is_native_app_ayuda): ?>
 
   <!-- ── FEEDBACK ── -->
   <div class="ay-card">
-    <h3>Pestaña Feedback <span class="ay-shortcut">Free y Business</span></h3>
+    <h3>Pestaña Feedback <span class="ay-shortcut">Todos</span></h3>
     <p>Pide a tus clientes que <b>califiquen la atención</b> directamente al final de la cotización pública (5 estrellas + comentario). Es una calificación por cotización y solo te llega a ti.</p>
     <ul>
       <li>Préndelo con el interruptor y <b>personaliza los textos</b>: pregunta principal, texto secundario, placeholder del comentario y mensaje de agradecimiento.</li>
