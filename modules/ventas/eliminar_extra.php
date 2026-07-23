@@ -9,8 +9,7 @@ ob_start();
 header('Content-Type: application/json; charset=utf-8');
 csrf_check();
 
-$plan_ext = trial_info(EMPRESA_ID);
-if (!$plan_ext['es_business']) json_error('Función disponible en plan Business', 403);
+// Extras para TODOS los planes (decisión CEO 23-jul) — gate solo por permiso
 if (!Auth::es_admin() && !Auth::puede('agregar_extras')) {
     json_error('Sin permiso', 403);
 }

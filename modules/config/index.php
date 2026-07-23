@@ -1693,8 +1693,8 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <label class="toggle"><input type="checkbox" id="perm_eliminar_items"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
         <div class="perm-row">
-          <div><div class="perm-lbl">Agregar extras en ventas</div><div class="perm-sub"><?= !empty($plan_info['es_business']) ? 'Agregar artículos extra a una venta' : 'Exclusivo del plan Business' ?></div></div>
-          <label class="toggle"><input type="checkbox" id="perm_agregar_extras" <?= !empty($plan_info['es_business']) ? '' : 'disabled' ?>><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <div><div class="perm-lbl">Agregar extras en ventas</div><div class="perm-sub">Agregar artículos extra a una venta</div></div>
+          <label class="toggle"><input type="checkbox" id="perm_agregar_extras"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
         <div class="perm-row">
           <div><div class="perm-lbl">Cancelar recibos</div></div>

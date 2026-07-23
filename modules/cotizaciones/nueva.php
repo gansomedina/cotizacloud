@@ -448,7 +448,7 @@ $page_title = 'Nueva cotización';
         <button class="add-item-btn" style="flex:2;margin-top:0" onclick="abrirCatalogo(false)">
             <span style="font-size:18px">+</span> <?= $es_inmuebles ? 'Seleccionar propiedad' : 'Agregar artículo' ?>
         </button>
-        <?php if ($trial['es_business'] && !$es_inmuebles): ?>
+        <?php /* extras para todos (23-jul) */ if (!$es_inmuebles): ?>
         <button class="add-item-btn" style="flex:1;margin-top:0;border-color:#d97706;color:#d97706" onclick="abrirCatalogo(true)">
             <span style="font-size:18px">+</span> Agregar extra
         </button>

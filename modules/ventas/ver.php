@@ -65,7 +65,8 @@ $puede_pagos  = Auth::es_admin() || Auth::puede('capturar_pagos');
 $puede_cancel_rec = Auth::es_admin() || Auth::puede('cancelar_recibos');
 $puede_descuento  = Auth::es_admin() || Auth::puede('aplicar_descuentos');
 $plan_vta         = trial_info(EMPRESA_ID);
-$puede_extras     = $plan_vta['es_business'] && (Auth::es_admin() || Auth::puede('agregar_extras'));
+// Extras para TODOS los planes (decisión CEO 23-jul) — gate solo por permiso
+$puede_extras     = Auth::es_admin() || Auth::puede('agregar_extras');
 $folio        = $venta['numero'] ?? 'VTA-' . $venta_id;
 $pct          = $venta['total'] > 0 ? min(100, round($venta['pagado'] / $venta['total'] * 100)) : 0;
 
