@@ -799,11 +799,12 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <a href="/registro?plan=lite" class="price-btn price-btn-outline">Crear cuenta gratis</a>
       <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
-        <div class="price-feat-header">Ideal para emprendedores que inician:</div>
+        <div class="price-feat-header">Para el que vende solo:</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Seguimiento de visitas e interes</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Sabe quien abre tu cotizacion y cuantas veces</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Clientes ilimitados</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas, recibos y abonos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones, descuentos y extras</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Portal publico del cliente</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
       </div>
@@ -814,7 +815,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="price-badge-popular">Mas popular</div>
       <div class="price-header">
         <div class="price-plan-name">Pro</div>
-        <div class="price-plan-desc">Cotiza sin limites. Vende con inteligencia.</div>
+        <div class="price-plan-desc">Tu equipo completo, con el Radar.</div>
       </div>
       <div class="price-amount">
         <span class="price-currency">$</span>
@@ -827,15 +828,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <a href="/registro?plan=pro" class="price-btn price-btn-solid">Crear cuenta gratis</a>
       <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
-        <div class="price-feat-header">Todo lo esencial, sin limites:</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
+        <div class="price-feat-header">Todo lo de Lite, para tu equipo:</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Usuarios ilimitados — sin cobro por usuario*</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Radar de inteligencia completo</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Articulos ilimitados</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas, recibos y abonos</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Cada vendedor con su login y sus cotizaciones</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Costos y margenes por venta</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Portal publico del cliente</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes de tu negocio</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Articulos ilimitados</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>App movil + notificaciones push</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
       </div>
     </div>
 
@@ -843,7 +843,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <div class="price-card price-card-business">
       <div class="price-header">
         <div class="price-plan-name">Business</div>
-        <div class="price-plan-desc">Tu equipo completo. Control total.</div>
+        <div class="price-plan-desc">Dirige a tu equipo de ventas con datos, no con corazonadas.</div>
       </div>
       <div class="price-amount">
         <span class="price-currency">$</span>
@@ -854,24 +854,23 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="price-period monthly-price"><span data-mxn="35988">$35,988</span> <span class="cur-lbl">MXN</span>/año</div>
       <div class="price-period annual-price" style="display:none"><span data-mxn="28788">$28,788</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="7200">$7,200</span></strong></div>
       <a href="#" class="price-btn price-btn-business" onclick="var f=document.getElementById('czl-fab');if(f){f.click();}return false;">Agenda una demo</a>
-      <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
+      <div class="price-trial-note">Implementacion asistida — te acompañamos en la puesta en marcha.</div>
       <div class="price-features">
-        <div class="price-feat-header">Todo de Pro, mas:</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Usuarios ilimitados</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Permisos por vendedor</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Termometro de productividad</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Ranking y diagnostico por vendedor</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Feedback de clientes</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos avanzados por categoria</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Modulo de proveedores</div>
+        <div class="price-feat-header">Todo de Pro + la direccion de tu equipo:</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Termometro: califica a cada vendedor (0-100) automaticamente</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Mesa de Trabajo: a quien llamar HOY, en orden, por vendedor</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Ranking del equipo con diagnostico: quien vende y quien necesita ayuda</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Permisos por vendedor</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos avanzados y proveedores</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes avanzados de equipo</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Marketing y retargeting</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Demo personalizada + 4 horas de capacitacion incluidas</strong></div>
       </div>
     </div>
 
   </div>
 
-  <p class="pricing-note"><span class="cur-lbl-note">Precios en MXN.</span> IVA no incluido. Pago con tarjeta, transferencia o SPEI. <span id="usdNoteWrap" style="display:none">USD es solo referencia (cobro en MXN al tipo de cambio del día).</span></p>
+  <p class="pricing-note"><span class="cur-lbl-note">Precios en MXN.</span> IVA no incluido. Pago con tarjeta, transferencia o SPEI. *Ilimitado sujeto a <a href="/terminos" style="color:inherit">politica de uso justo</a>. <span id="usdNoteWrap" style="display:none">USD es solo referencia (cobro en MXN al tipo de cambio del día).</span></p>
 </section>
 
 <!-- CTA -->
