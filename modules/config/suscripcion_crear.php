@@ -14,7 +14,8 @@ csrf_check();
 $plan  = $_POST['plan']  ?? '';
 $ciclo = $_POST['ciclo'] ?? '';
 
-if (!in_array($plan, ['lite', 'pro', 'business']) || !in_array($ciclo, ['mensual', 'anual'])) {
+// Business es venta ASISTIDA (demo + capacitación) — no comprable self-serve
+if (!in_array($plan, ['lite', 'pro']) || !in_array($ciclo, ['mensual', 'anual'])) {
     $_SESSION['flash'] = ['tipo' => 'error', 'msg' => 'Plan o ciclo inválido.'];
     redirect('/config?tab=suscripcion');
 }

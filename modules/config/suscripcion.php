@@ -199,6 +199,10 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
             Ya tienes un plan superior (<?= htmlspecialchars($trial['plan_label']) ?>). Para cambiar a un plan menor, <a href="/ayuda" style="color:<?= $color ?>;font-weight:600">contacta a soporte</a>.
           </div>
         </div>
+        <?php elseif ($plan_key === 'business'): ?>
+        <div style="font:700 16px var(--num);color:var(--text)">$<?= number_format($precios['business']['mensual'], 0) ?> <span style="font:400 12px var(--body);color:var(--t3)">MXN/mes</span></div>
+        <div style="font:400 12px var(--body);color:var(--t3);margin:6px 0 10px">Business se activa con una demo personalizada y 4 horas de capacitación para tu equipo.</div>
+        <a href="mailto:hola@cotiza.cloud?subject=Quiero%20una%20demo%20de%20Business" class="btn-main" style="display:inline-block;padding:8px 18px;font-size:12px;background:<?= $color ?>;border-color:<?= $color ?>;text-decoration:none">Agenda una demo</a>
         <?php else: ?>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>

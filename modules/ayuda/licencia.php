@@ -88,8 +88,8 @@ ob_start();
                 <label style="display:block;font-size:13px;font-weight:600;color:var(--t1);margin-bottom:6px">Plan deseado</label>
                 <select id="lic-plan" name="plan_lic" style="width:100%;padding:10px 12px;border:1.5px solid var(--border2);border-radius:var(--r-sm);font:400 14px var(--body);background:var(--white);color:var(--text)">
                     <option value="Lite">Lite — $199/mes</option>
-                    <option value="Pro">Pro — $299/mes</option>
-                    <option value="Business">Business — $799/mes</option>
+                    <option value="Pro">Pro — $499/mes</option>
+                    <option value="Business">Business — $2,999/mes (con demo y capacitación)</option>
                 </select>
             </div>
 
