@@ -102,6 +102,9 @@ $MESA_SHORT = [
     'compromiso' => 'Quedamos', 'nos_citamos' => 'Cita', 'propuse_no_quiso' => 'No quiso', 'sin_compromiso' => 'Nada',
     'decidiendo' => 'Decidiendo', 'objecion_precio' => 'Precio', 'pidio_cambios' => 'Cambios',
     'en_el_aire' => 'En el aire', 'descartada' => 'Descartada',
+    // Manitas (area='feedback') — salen en el HISTORIAL del cajón; sin estas
+    // llaves se veían las claves crudas ("con_interes") en texto de programador
+    'con_interes' => '👍 Con interés', 'sin_interes' => '👎 Sin interés', 'sin_info' => '📵 Sin info',
 ];
 
 // Límites del picker de agenda (el backend re-valida: 15 días … 6 meses).
