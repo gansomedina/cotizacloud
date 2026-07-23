@@ -782,29 +782,6 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 
   <div class="pricing-grid">
 
-    <!-- FREE -->
-    <div class="price-card">
-      <div class="price-header">
-        <div class="price-plan-name">Free</div>
-        <div class="price-plan-desc">Conoce el sistema. Sin limite de tiempo.</div>
-      </div>
-      <div class="price-amount">
-        <span class="price-currency">$</span>
-        <span class="price-value">0</span>
-      </div>
-      <div class="price-period">Para siempre</div>
-      <a href="/registro" class="price-btn price-btn-outline">Crear cuenta gratis</a>
-      <div class="price-features">
-        <div class="price-feat"><span class="feat-check">&#10003;</span>25 cotizaciones</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Radar de inteligencia</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas y recibos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos basicos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Catalogo de articulos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y descuentos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
-      </div>
-    </div>
-
     <!-- LITE -->
     <div class="price-card">
       <div class="price-header">

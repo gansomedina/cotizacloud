@@ -441,33 +441,56 @@ define('TRIAL_LIMIT', 25);
 // trial_usado=1 SOLO si la empresa jamás tuvo un pago aprobado.
 function planes_degradar_free(int $empresa_id): void
 {
-    $nunca_pago = false;
+    // Solo el TRIAL EXPLÍCITO (es_trial=1, lo pone únicamente el registro) recibe
+    // el tratamiento de trial: trial_usado=1 + usuarios extra desactivados +
+    // email. Un cliente que pagó (MP o manual/transferencia) que caiga aquí vía
+    // cron solo baja a free — como antes de Fase B (auditoría: la inferencia por
+    // pagos MP degradaba y desactivaba usuarios a toda la base de pago manual).
+    $fila = null;
     try {
-        $nunca_pago = !DB::val(
-            "SELECT 1 FROM pagos_suscripcion WHERE empresa_id = ? AND estado = 'approved' LIMIT 1",
-            [$empresa_id]
-        );
-    } catch (\Throwable $e) {}
+        $fila = DB::row("SELECT es_trial, email, nombre FROM empresas WHERE id = ?", [$empresa_id]);
+    } catch (\Throwable $e) {
+        try { $fila = DB::row("SELECT email, nombre FROM empresas WHERE id = ?", [$empresa_id]); } catch (\Throwable $e2) {}
+    }
+    $es_trial = (int)($fila['es_trial'] ?? 0) === 1;
     try {
         DB::execute(
             "UPDATE empresas SET plan='free', plan_vence=NULL, grace_hasta=NULL, activa=1" .
-            ($nunca_pago ? ", trial_usado=1" : "") . " WHERE id = ?",
+            ($es_trial ? ", trial_usado=1, es_trial=0" : "") . " WHERE id = ?",
             [$empresa_id]
         );
     } catch (\Throwable $e) {
-        // trial_usado sin migrar — degradar sin el flag (el límite de 25 respalda)
+        // columnas sin migrar — degradar sin flags (el límite de 25 respalda)
         DB::execute("UPDATE empresas SET plan='free', plan_vence=NULL, grace_hasta=NULL, activa=1 WHERE id = ?", [$empresa_id]);
     }
-    // Usuarios extra fuera; se conserva (y reactiva) el admin más antiguo para
-    // no dejar la cuenta sin acceso. Reversible: al re-pagar, el admin los
-    // reactiva (el tope de asientos del plan nuevo lo permite).
+    if (!$es_trial) return;
+
+    // Usuarios extra fuera (SOLO trials); se conserva (y reactiva) el admin más
+    // antiguo para no dejar la cuenta sin acceso. El superadmin jamás se toca.
+    // Reversible: al re-pagar, el admin los reactiva (asientos lo permite).
     $keep = DB::val(
         "SELECT id FROM usuarios WHERE empresa_id = ? AND rol = 'admin' ORDER BY activo DESC, id ASC LIMIT 1",
         [$empresa_id]
     );
     if ($keep) {
-        DB::execute("UPDATE usuarios SET activo = 0 WHERE empresa_id = ? AND id <> ?", [$empresa_id, (int)$keep]);
+        DB::execute(
+            "UPDATE usuarios SET activo = 0 WHERE empresa_id = ? AND id <> ? AND rol <> 'superadmin'",
+            [$empresa_id, (int)$keep]
+        );
         DB::execute("UPDATE usuarios SET activo = 1 WHERE id = ?", [(int)$keep]);
+    }
+    // Email "tu prueba terminó" — sin él, el trial moría en silencio total
+    if (!empty($fila['email'])) {
+        try {
+            Mailer::enviar(
+                $fila['email'],
+                $fila['nombre'] ?: 'Usuario',
+                'Tu prueba de CotizaCloud terminó',
+                '<p>Hola,</p>' .
+                '<p>Tu prueba de 30 días terminó. Tus cotizaciones, clientes y ventas siguen intactos, y puedes seguir cobrando tus abonos.</p>' .
+                '<p>Para seguir creando cotizaciones, <a href="' . BASE_URL . '/config?tab=suscripcion">activa tu plan aquí</a>.</p>'
+            );
+        } catch (\Throwable $e) {}
     }
 }
 
@@ -505,6 +528,12 @@ function trial_info(int $empresa_id): array
     // documenta el ALTER para el servidor).
     static $asientos_ok = false;
     if (!$asientos_ok) {
+        try { DB::execute("ALTER TABLE empresas ADD COLUMN es_trial TINYINT(1) NOT NULL DEFAULT 0"); }
+        catch (\PDOException $e) {
+            if (stripos($e->getMessage(), 'Duplicate column') === false) {
+                error_log('[Trial] ALTER es_trial falló (correr migrations/add_trial_fase_b.sql): ' . $e->getMessage());
+            }
+        }
         try { DB::execute("ALTER TABLE empresas ADD COLUMN trial_usado TINYINT(1) NOT NULL DEFAULT 0"); }
         catch (\PDOException $e) {
             if (stripos($e->getMessage(), 'Duplicate column') === false) {
@@ -524,7 +553,7 @@ function trial_info(int $empresa_id): array
     }
 
     try {
-        $row = DB::row("SELECT plan, plan_vence, grace_hasta, activa, asientos, trial_usado FROM empresas WHERE id = ?", [$empresa_id]);
+        $row = DB::row("SELECT plan, plan_vence, grace_hasta, activa, asientos, trial_usado, es_trial FROM empresas WHERE id = ?", [$empresa_id]);
     } catch (\PDOException $e) {
         // Columna asientos inexistente (ALTER denegado) → degradar con gracia:
         // el sistema sigue vivo con los defaults del plan, jamás un 500 global.
@@ -541,28 +570,27 @@ function trial_info(int $empresa_id): array
     $es_pro_o_superior = in_array($plan, ['pro', 'business']);
     $en_grace = $es_pagado && $grace_hasta && $grace_hasta >= date('Y-m-d');
 
-    $trial_usado = (int)($row['trial_usado'] ?? 0);
+    $trial_usado  = (int)($row['trial_usado'] ?? 0);
+    $es_trial_col = (int)($row['es_trial'] ?? 0) === 1;
 
     // Plan pagado vencido (sin grace):
-    // — TRIAL (jamás pagó): degradar SUAVE a Free al instante — sigue entrando,
-    //   ve sus datos y cobra abonos; solo se bloquean cotizaciones NUEVAS
-    //   (trial_usado). Sin esto caía a la pantalla 402 sin botón de pago.
-    // — Cliente que SÍ pagó alguna vez: flujo original (suspender → cron/grace).
+    // — TRIAL EXPLÍCITO (es_trial=1, solo lo pone el registro Fase B): degradar
+    //   SUAVE a Free al instante — sigue entrando, ve sus datos y cobra abonos;
+    //   solo se bloquean cotizaciones NUEVAS (trial_usado). El flag explícito
+    //   protege a los clientes de pago MANUAL/transferencia (auditoría B: la
+    //   inferencia "sin pagos MP = trial" los degradaba y desactivaba usuarios).
+    //   Solo con activa=1: una empresa suspendida por superadmin NO se auto-
+    //   reactiva por esta vía.
+    // — Todo lo demás (pagó por MP, activación manual, legacy): flujo original
+    //   (suspender → pantalla de licencia → cron/grace).
     $vencido = false;
     if ($es_pagado && $plan_vence && $plan_vence < date('Y-m-d') && !$en_grace) {
-        $nunca_pago = false;
-        try {
-            $nunca_pago = !DB::val(
-                "SELECT 1 FROM pagos_suscripcion WHERE empresa_id = ? AND estado = 'approved' LIMIT 1",
-                [$empresa_id]
-            );
-        } catch (\Throwable $e) { /* tabla sin migrar → tratar como pagó (flujo original) */ }
-        if ($nunca_pago) {
+        if ($es_trial_col && $activa) {
             planes_degradar_free($empresa_id);
             // Estado local post-degradación (sin recursión ni re-query)
             $plan = 'free'; $es_pagado = false; $es_pro_o_superior = false;
             $plan_vence = null; $grace_hasta = null; $en_grace = false;
-            $trial_usado = 1; $activa = 1;
+            $trial_usado = 1; $es_trial_col = false; $activa = 1;
         } else {
             $vencido = true;
             if ($activa) {
@@ -608,6 +636,8 @@ function trial_info(int $empresa_id): array
         'restantes'       => max(0, TRIAL_LIMIT - $usadas),
         'agotado'         => $plan === 'free' && ($usadas >= TRIAL_LIMIT || $trial_usado),
         'trial_usado'     => $trial_usado,
+        // Trial de 30 días EN CURSO (flag explícito del registro Fase B)
+        'trial_activo'    => $es_pagado && $es_trial_col,
         'cerca'           => $plan === 'free' && $usadas >= (TRIAL_LIMIT * 0.8),
         'pct'             => $plan === 'free' ? min(100, round($usadas / TRIAL_LIMIT * 100)) : 0,
         'plan_vence'      => $plan_vence,

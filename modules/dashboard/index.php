@@ -775,7 +775,12 @@ ob_start();
 }
 </style>
 
-<?php if ($trial['agotado'] || $trial['vencido']): ?>
+<?php
+// Banner de plan — NO en app nativa (Apple 3.1.1; auditoría I12: en la app el
+// botón /licencia redirigía a /dashboard = loop muerto)
+$dash_native_app = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+?>
+<?php if (($trial['agotado'] || $trial['vencido']) && !$dash_native_app): ?>
 <div style="background:<?= $trial['vencido'] ? '#fff5f5' : 'var(--amb-bg)' ?>;border:1px solid <?= $trial['vencido'] ? '#fca5a5' : '#fcd34d' ?>;border-radius:var(--r);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
     <div style="width:48px;height:48px;border-radius:50%;background:<?= $trial['vencido'] ? '#fee2e2' : '#fde68a' ?>;display:flex;align-items:center;justify-content:center;flex-shrink:0">
         <svg viewBox="0 0 24 24" fill="none" stroke="<?= $trial['vencido'] ? '#c53030' : '#92400e' ?>" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -785,11 +790,16 @@ ob_start();
             <div style="font:700 15px var(--body);color:#c53030;margin-bottom:2px">Licencia vencida</div>
             <div style="font:400 13px var(--body);color:#991b1b;line-height:1.5">Tu plan <?= $trial['plan_label'] ?> venció el <?= date('d/m/Y', strtotime($trial['plan_vence'])) ?>. Renueva para seguir creando cotizaciones.</div>
         <?php else: ?>
+            <?php if (!empty($trial['trial_usado'])): ?>
+            <div style="font:700 15px var(--body);color:#92400e;margin-bottom:2px">Tu prueba terminó</div>
+            <div style="font:400 13px var(--body);color:#78350f;line-height:1.5">Tus cotizaciones, clientes y ventas siguen intactos — y puedes cobrar tus abonos. Activa tu plan para seguir creando cotizaciones.</div>
+            <?php else: ?>
             <div style="font:700 15px var(--body);color:#92400e;margin-bottom:2px">Plan Free agotado</div>
             <div style="font:400 13px var(--body);color:#78350f;line-height:1.5">Has usado las <?= TRIAL_LIMIT ?> cotizaciones gratuitas. Activa tu plan Pro para continuar.</div>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
-    <a href="/licencia" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--r-sm);font:600 13px var(--body);background:<?= $trial['vencido'] ? '#c53030' : '#92400e' ?>;color:#fff;text-decoration:none;white-space:nowrap;transition:opacity .12s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+    <a href="<?= !empty($trial['trial_usado']) ? '/config?tab=suscripcion' : '/licencia' ?>" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--r-sm);font:600 13px var(--body);background:<?= $trial['vencido'] ? '#c53030' : '#92400e' ?>;color:#fff;text-decoration:none;white-space:nowrap;transition:opacity .12s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         Activar licencia
     </a>
@@ -798,8 +808,7 @@ ob_start();
 
 <?php
 $plan_intento = $_SESSION['plan_intento'] ?? '';
-// Ocultar en app nativa iOS/Android (Apple Guideline 3.1.1: sin steering a pago externo)
-$dash_native_app = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+// ($dash_native_app ya definido arriba, junto al banner de plan)
 if ($plan_intento && in_array($plan_intento, ['lite','pro','business']) && $trial['es_free'] && !$dash_native_app):
     $pi_label = match($plan_intento) { 'lite' => 'Lite', 'pro' => 'Pro', 'business' => 'Business', default => '' };
     $pi_color = match($plan_intento) { 'lite' => '#92400e', 'pro' => 'var(--g)', 'business' => '#1d4ed8', default => '' };

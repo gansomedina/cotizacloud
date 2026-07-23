@@ -231,7 +231,7 @@ tr:hover td{background:#fafaf8}
     $plan_bg = $trial['es_free'] ? 'var(--amb-bg)' : ($trial['vencido'] ? 'var(--danger-bg)' : ($trial['por_vencer'] ? 'var(--amb-bg)' : 'var(--g-bg)'));
     $plan_border = $trial['es_free'] ? '#fcd34d' : ($trial['vencido'] ? '#fca5a5' : ($trial['por_vencer'] ? '#fcd34d' : 'var(--g-border)'));
     $badge_class = $trial['es_free'] ? 'badge-amber' : ($trial['vencido'] ? 'badge-red' : ($trial['es_business'] ? 'badge-blue' : ($trial['es_lite'] ? 'badge-slate' : 'badge-green')));
-    $badge_text = $trial['es_free'] ? 'FREE' : ($trial['vencido'] ? strtoupper($trial['plan_label']) . ' VENCIDO' : strtoupper($trial['plan_label']));
+    $badge_text = $trial['es_free'] ? 'FREE' : ($trial['vencido'] ? strtoupper($trial['plan_label']) . ' VENCIDO' : strtoupper($trial['plan_label']) . (!empty($trial['trial_activo']) ? ' · PRUEBA' : ''));
 ?>
 <div style="background:<?= $plan_bg ?>;border:1px solid <?= $plan_border ?>;border-radius:var(--r);padding:16px 20px;margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -241,8 +241,12 @@ tr:hover td{background:#fafaf8}
             </span>
             <?php if ($trial['es_free']): ?>
                 <span style="font-size:13px;color:var(--amb);font-weight:600">
+                    <?php if (!empty($trial['trial_usado'])): ?>
+                    Prueba de 30 días FINALIZADA sin pago — bloqueada para cotizaciones nuevas
+                    <?php else: ?>
                     <?= $trial['usadas'] ?> / <?= TRIAL_LIMIT ?> cotizaciones usadas
                     <?php if ($trial['agotado']): ?> — <strong>AGOTADO</strong><?php endif; ?>
+                    <?php endif; ?>
                 </span>
                 <div style="background:#fde68a;border-radius:6px;height:6px;margin-top:8px;max-width:300px;overflow:hidden">
                     <div style="background:<?= $trial['agotado'] ? 'var(--danger)' : 'var(--amb)' ?>;height:100%;width:<?= $trial['pct'] ?>%;border-radius:6px"></div>

@@ -453,11 +453,11 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         if ($trial_layout['es_free']): ?>
         <div style="padding:6px 12px;margin-bottom:4px;font:500 11px var(--body);color:var(--t3)">
             Plan: <span style="color:var(--amb);font-weight:700">Free</span>
-            <span style="font:400 11px var(--num);color:var(--t3);display:block;margin-top:1px"><?= $trial_layout['usadas'] ?>/<?= TRIAL_LIMIT ?> cotizaciones</span>
+            <span style="font:400 11px var(--num);color:var(--t3);display:block;margin-top:1px"><?= !empty($trial_layout['trial_usado']) ? 'Prueba finalizada' : $trial_layout['usadas'] . '/' . TRIAL_LIMIT . ' cotizaciones' ?></span>
         </div>
         <?php elseif ($trial_layout['es_pagado']): ?>
         <div style="padding:6px 12px;margin-bottom:4px;font:500 11px var(--body);color:var(--t3)">
-            Plan: <span style="color:<?= $trial_layout['es_business'] ? 'var(--blue)' : 'var(--g)' ?>;font-weight:700"><?= $trial_layout['plan_label'] ?></span>
+            Plan: <span style="color:<?= $trial_layout['es_business'] ? 'var(--blue)' : 'var(--g)' ?>;font-weight:700"><?= $trial_layout['plan_label'] ?><?= !empty($trial_layout['trial_activo']) ? ' (prueba)' : '' ?></span>
             <span style="font:400 11px var(--num);color:<?= $trial_layout['por_vencer'] ? 'var(--danger)' : 'var(--t3)' ?>;display:block;margin-top:1px">
                 Vence: <?= date('d/m/Y', strtotime($trial_layout['plan_vence'])) ?>
                 <?php if ($trial_layout['dias_restantes'] !== null): ?>
@@ -516,8 +516,13 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             <div class="flash flash-error" style="margin-bottom:16px">
                 <i data-feather="alert-circle"></i>
                 <div>
+                    <?php if (!empty($trial['trial_usado'])): ?>
+                    <strong>Tu prueba terminó.</strong> Tus datos siguen intactos y puedes cobrar tus abonos — para crear cotizaciones nuevas, activa tu plan.
+                    <a href="/config?tab=suscripcion" style="color:inherit;font-weight:700;text-decoration:underline">Activar mi plan</a>
+                    <?php else: ?>
                     <strong>Límite de prueba alcanzado.</strong> Has usado <?= $trial['usadas'] ?>/<?= TRIAL_LIMIT ?> cotizaciones.
                     <a href="/licencia" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu licencia</a>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php elseif ($trial['cerca']): ?>
@@ -532,8 +537,13 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             <div class="flash flash-warning" style="margin-bottom:16px">
                 <i data-feather="alert-triangle"></i>
                 <div>
+                    <?php if (!empty($trial['trial_activo'])): ?>
+                    <strong>Tu prueba de <?= $trial['plan_label'] ?> termina <?= $trial['dias_restantes'] === 0 ? 'HOY' : 'en ' . $trial['dias_restantes'] . ' día' . ($trial['dias_restantes'] !== 1 ? 's' : '') ?>.</strong>
+                    <a href="/config?tab=suscripcion" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu plan</a>
+                    <?php else: ?>
                     <strong>Tu licencia vence en <?= $trial['dias_restantes'] ?> día<?= $trial['dias_restantes'] !== 1 ? 's' : '' ?>.</strong>
                     <a href="/config?tab=suscripcion" style="color:inherit;font-weight:700;text-decoration:underline">Renueva tu plan</a>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php elseif (!empty($trial['en_grace'])): ?>

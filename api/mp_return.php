@@ -129,10 +129,17 @@ try {
         );
     }
 
-    DB::execute(
-        "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1, ultima_sync_mp=NOW() WHERE id=?",
-        [$plan, $vence, $empresa_id]
-    );
+    try {
+        DB::execute(
+            "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1, es_trial=0, trial_usado=0, ultima_sync_mp=NOW() WHERE id=?",
+            [$plan, $vence, $empresa_id]
+        );
+    } catch (Throwable $e) { // columnas trial sin migrar
+        DB::execute(
+            "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1, ultima_sync_mp=NOW() WHERE id=?",
+            [$plan, $vence, $empresa_id]
+        );
+    }
 
     DB::commit();
 

@@ -109,12 +109,25 @@ try {
         ? $pendiente['plan_intento'] : 'pro';
     $trial_vence  = date('Y-m-d', strtotime('+30 days'));
 
-    $empresa_id = DB::insert(
-        "INSERT INTO empresas
-         (slug, nombre, moneda, impuesto_modo, impuesto_pct, activa, plan, plan_vence)
-         VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
-        [$slug_raw, $nombre_empresa, $moneda, $impuesto_modo, $impuesto_pct, $plan_elegido, $trial_vence]
-    );
+    // es_trial=1 EXPLÍCITO (única fuente del flag) + email en empresas (sin él
+    // los avisos del cron y el email de fin de prueba no llegaban: quedaba NULL).
+    // Fallback sin es_trial por si la columna aún no migra (primer deploy).
+    try {
+        $empresa_id = DB::insert(
+            "INSERT INTO empresas
+             (slug, nombre, email, moneda, impuesto_modo, impuesto_pct, activa, plan, plan_vence, es_trial)
+             VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, 1)",
+            [$slug_raw, $nombre_empresa, $email, $moneda, $impuesto_modo, $impuesto_pct, $plan_elegido, $trial_vence]
+        );
+    } catch (Exception $e_col) {
+        error_log('[Registro] INSERT con es_trial falló (¿columna sin migrar?): ' . $e_col->getMessage());
+        $empresa_id = DB::insert(
+            "INSERT INTO empresas
+             (slug, nombre, email, moneda, impuesto_modo, impuesto_pct, activa, plan, plan_vence)
+             VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)",
+            [$slug_raw, $nombre_empresa, $email, $moneda, $impuesto_modo, $impuesto_pct, $plan_elegido, $trial_vence]
+        );
+    }
 
     foreach ([
         ['Material extra',      '#3b82f6'],
@@ -166,7 +179,8 @@ try {
     PushNotification::enviar_a_superadmin(
         'nueva_empresa',
         'Nueva empresa registrada',
-        "{$nombre_empresa} ({$slug_raw}) — {$nombre} <{$email}>",
+        "{$nombre_empresa} ({$slug_raw}) — {$nombre} <{$email}> · trial de " . ucfirst($plan_elegido)
+            . (($pendiente['plan_intento'] ?? '') === 'business' ? ' · ⭐ PIDIÓ BUSINESS — contactar para demo' : ''),
         ['url' => '/superadmin']
     );
     if (defined('SUPERADMIN_EMAIL') && SUPERADMIN_EMAIL) {
