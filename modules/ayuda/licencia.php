@@ -33,12 +33,12 @@ ob_start();
         <div style="width:64px;height:64px;border-radius:50%;background:var(--amb-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--amb)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
-        <h2 style="font-size:22px;font-weight:800;margin:0 0 8px">Activa tu plan Pro</h2>
+        <h2 style="font-size:22px;font-weight:800;margin:0 0 8px">Activa tu plan</h2>
         <p style="color:var(--t2);margin:0;line-height:1.6">
             <?php if ($trial['agotado']): ?>
-                Has usado <strong><?= $trial['usadas'] ?>/<?= TRIAL_LIMIT ?></strong> cotizaciones gratuitas. Activa Pro para crear cotizaciones ilimitadas.
+                Has usado <strong><?= $trial['usadas'] ?>/<?= TRIAL_LIMIT ?></strong> cotizaciones gratuitas. Activa Lite, Pro o Business para crear cotizaciones ilimitadas.
             <?php else: ?>
-                Te quedan <strong><?= $trial['restantes'] ?></strong> cotizaciones gratuitas. Activa Pro para no tener limite.
+                Te quedan <strong><?= $trial['restantes'] ?></strong> cotizaciones gratuitas. Activa un plan para no tener limite.
             <?php endif; ?>
         </p>
     </div>

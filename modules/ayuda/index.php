@@ -151,7 +151,7 @@ ob_start();
   </div>
 
   <div class="ay-card" style="border-left:4px solid var(--g)">
-    <h3>3️⃣ Trabaja con el Radar todos los días <span style="color:var(--t3);font-weight:500">— aquí es donde vendes</span></h3>
+    <h3>3️⃣ Trabaja con el Radar todos los días <span class="ay-shortcut">Pro y Business</span> <span style="color:var(--t3);font-weight:500">— aquí es donde vendes</span></h3>
     <p>El Radar es tu herramienta de trabajo diaria. Cada mañana:</p>
     <ul>
       <li>Entra al <b>Radar</b> y empieza por el <b>Resumen "Probable cierre"</b>: ahí están tus clientes más calientes, los que debes contactar HOY.</li>
@@ -163,7 +163,7 @@ ob_start();
   </div>
 
   <div class="ay-card" style="border-left:4px solid var(--g)">
-    <h3>4️⃣ El Termómetro <span style="color:var(--t3);font-weight:500">— tu calificación, calculada por el sistema</span></h3>
+    <h3>4️⃣ El Termómetro <span class="ay-shortcut">Business</span> <span style="color:var(--t3);font-weight:500">— tu calificación, calculada por el sistema</span></h3>
     <p>El Termómetro <b>no es algo que "haces"</b>: es un <b>análisis automático de tu trabajo como vendedor</b>. El sistema revisa TODO — cuántas cotizaciones envías, si las abren, si das seguimiento, si marcas las manitas en el Radar, cada cuánto cierras, si cobras, si das muchos descuentos, cómo va tu cartera de clientes — y con todo eso <b>calcula un número del 0 al 100</b> que es tu calificación.</p>
     <p style="margin-top:8px">Es tu <b>espejo</b>: te dice de forma objetiva qué tan bien estás vendiendo y en qué estás fallando, sin adivinar. <b>No sube con clics sueltos: sube cuando haces bien las 3 armas de arriba.</b> Si configuras bien, cuidas el Escudo y trabajas el Radar a diario, el Termómetro sube solo.</p>
     <p style="margin-top:8px"><a href="#termometro" onclick="event.preventDefault();document.querySelector('.ay-nav a[href=\'#termometro\']').click()" style="color:var(--g);font-weight:600">→ Ver cómo se calcula y cómo subirlo (pestaña Termómetro)</a></p>
@@ -299,7 +299,7 @@ ob_start();
     </div>
     <div class="ay-step">
       <h4>Revisa el Radar</h4>
-      <p>Una vez enviada, ve a <b>Radar</b>. Ahí verás cuándo el cliente abre la cotización, qué secciones revisa y cuánto tiempo dedica. Esto te dice cuándo es el mejor momento para dar seguimiento.</p>
+      <p>Una vez enviada, ve a <b>Radar</b>. Ahí verás cuándo el cliente abre la cotización, qué secciones revisa y cuánto tiempo dedica. Esto te dice cuándo es el mejor momento para dar seguimiento. <i>(En el plan Lite, las visitas y el interés se ven dentro de Cotizaciones.)</i></p>
     </div>
   </div>
 
@@ -315,8 +315,10 @@ if (!$is_native_app_ayuda): ?>
 <div class="ay-section" id="sec-licencia">
   <h2 class="ay-h2">Activar licencia</h2>
   <?php if ($trial['es_free']): ?>
-    <p class="ay-subtitle">Activa tu plan Pro o Business para crear cotizaciones ilimitadas. Selecciona el plan y la duracion deseada y te contactaremos con la liga de cobro.</p>
-  <?php elseif ($trial['por_vencer']): ?>
+    <p class="ay-subtitle">Activa tu plan Lite, Pro o Business para crear cotizaciones ilimitadas. Selecciona el plan y la duracion deseada y te contactaremos con la liga de cobro.</p>
+  <?php elseif (!empty($trial['trial_activo']) && $trial['por_vencer']): ?>
+    <p class="ay-subtitle">Tu prueba de <?= $trial['plan_label'] ?> termina en <strong><?= $trial['dias_restantes'] ?> dias</strong> (<?= date('d/m/Y', strtotime($trial['plan_vence'])) ?>). Activa tu plan en Configuración → Suscripción para no perderlo.</p>
+<?php elseif ($trial['por_vencer']): ?>
     <p class="ay-subtitle">Tu licencia <?= $trial['plan_label'] ?> vence en <strong><?= $trial['dias_restantes'] ?> dias</strong> (<?= date('d/m/Y', strtotime($trial['plan_vence'])) ?>). Renuevala aqui para no perder acceso.</p>
   <?php else: ?>
     <p class="ay-subtitle">Tu plan <?= $trial['plan_label'] ?> esta activo<?= $trial['plan_vence'] ? ' hasta el ' . date('d/m/Y', strtotime($trial['plan_vence'])) : '' ?>. Si necesitas renovar o extender, usa el formulario.</p>
@@ -591,7 +593,7 @@ if (!$is_native_app_ayuda): ?>
         <p>El <b>Total</b> se calcula solo a la derecha conforme agregas cosas, cupones o descuentos. Cuando esté listo, toca <b>"Generar cotización"</b>. Te aparece una ventana para <b>copiar el link</b>, ver la cotización o editarla.</p>
       </div>
     </div>
-    <div class="ay-warn">Plan Free: tienes un máximo de <b>25 cotizaciones en total</b>. Al llegar al límite el sistema te pide activar Pro para seguir creando. Pro y Business son ilimitadas.</div>
+    <div class="ay-warn">Plan Free: tienes un máximo de <b>25 cotizaciones en total</b>. Al llegar al límite (o al terminar tu prueba) el sistema te pide activar un plan. Lite, Pro y Business son ilimitadas.</div>
   </div>
 
   <!-- ── CADA ARTÍCULO POR DENTRO ── -->
@@ -612,11 +614,11 @@ if (!$is_native_app_ayuda): ?>
 
   <!-- ── EXTRAS (BUSINESS) ── -->
   <div class="ay-card">
-    <h3>Artículos "Extra" <span class="ay-shortcut">Business</span></h3>
+    <h3>Artículos "Extra" <span class="ay-shortcut">Todos</span></h3>
     <p>Los <b>extras</b> son artículos opcionales que se muestran en una sección aparte (con borde ámbar) y con su <b>subtotal separado</b>. Sirven para ofrecer complementos sin inflar el precio principal ("agrégale esto si quieres"). Usa el botón <b>"Agregar extra"</b> o el botón ↗ de cualquier artículo.</p>
     <ul>
       <li>Los <b>cupones y descuentos NO aplican</b> sobre los extras: solo sobre los artículos principales.</li>
-      <li>Disponible únicamente en plan <b>Business</b> y para giros que no sean inmuebles.</li>
+      <li>Disponible en todos los planes, para giros que no sean inmuebles.</li>
     </ul>
   </div>
 
@@ -808,7 +810,7 @@ if (!$is_native_app_ayuda): ?>
       <li><b>Registrar abono</b> — Cobra un pago (ver arriba).</li>
       <li><b>Copiar URL del cliente</b> — Copia el link público de la venta para que el cliente vea su saldo y pagos.</li>
       <li><b>Agregar descuento</b> — Aplica un descuento en pesos directo al total. <b>Se acumula</b> sobre el descuento que ya hubiera. Pon 0 para quitarlo. <i>(Necesita permiso de descuentos.)</i></li>
-      <li><b>Agregar extra</b> <span class="ay-shortcut">Business</span> — Suma un concepto extra (instalación, flete, accesorio) con su nombre y total. Aparece en sección aparte.</li>
+      <li><b>Agregar extra</b> — Suma un concepto extra (instalación, flete, accesorio) con su nombre y total. Aparece en sección aparte.</li>
       <li><b>Guardar cambios</b> — Aparece en verde solo cuando hay cambios pendientes en artículos o descuentos.</li>
       <li><b>🖨️ Imprimir / PDF</b> — Genera el comprobante completo de la venta (no es factura fiscal).</li>
       <li><b>📋 Estado de cuenta</b> — Imprime un desglose claro: conceptos, extras, ajustes, pagos y saldo. Ideal para mandárselo al cliente.</li>
@@ -907,7 +909,7 @@ if (!$is_native_app_ayuda): ?>
 <!--  TERMÓMETRO                                            -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-termometro">
-  <h2 class="ay-h2">🌡️ Termómetro de Productividad</h2>
+  <h2 class="ay-h2">🌡️ Termómetro de Productividad <span class="ay-shortcut">Business</span></h2>
   <p class="ay-subtitle">Es como el velocímetro de tu trabajo: un número del 0 al 100 que te dice qué tan bien estás vendiendo. Sube cuando haces bien tu trabajo y baja cuando lo dejas de hacer. No necesitas saber de computadoras — solo seguir 4 pasos todos los días. Aquí te explicamos cada uno, paso a paso.</p>
 
   <div class="ay-card">
@@ -1109,7 +1111,7 @@ if (!$is_native_app_ayuda): ?>
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="ay-section" id="sec-configuracion">
   <h2 class="ay-h2">⚙️ Configuración</h2>
-  <p class="ay-subtitle">El centro de control de tu cuenta. Aquí está organizado en <b>pestañas (tabs)</b>. Esta guía explica <b>cada pestaña y cada opción</b> que vas a encontrar. <b>Solo el administrador</b> entra a Configuración. Algunas pestañas aparecen según tu plan (Free, Pro o Business).</p>
+  <p class="ay-subtitle">El centro de control de tu cuenta. Aquí está organizado en <b>pestañas (tabs)</b>. Esta guía explica <b>cada pestaña y cada opción</b> que vas a encontrar. <b>Solo el administrador</b> entra a Configuración. Algunas pestañas aparecen según tu plan (Free, Lite, Pro o Business).</p>
 
   <div class="ay-card">
     <h3>Las pestañas que verás</h3>
@@ -1119,7 +1121,7 @@ if (!$is_native_app_ayuda): ?>
       <li><b>Clientes</b> — Tu base de clientes. <span class="ay-shortcut">Todos</span></li>
       <li><b>Cupones</b> — Códigos de descuento + el descuento con cronómetro. <span class="ay-shortcut">Todos</span></li>
       <li><b>Usuarios</b> — Tu equipo y sus permisos. <span class="ay-shortcut">Pro y Business</span></li>
-      <li><b>Radar</b> — Qué tan fino detecta el interés de tus clientes. <span class="ay-shortcut">Todos</span></li>
+      <li><b>Radar</b> — Qué tan fino detecta el interés de tus clientes. <span class="ay-shortcut">Pro y Business</span></li>
       <li><b>Costos</b> — Cómo registras tus gastos. <span class="ay-shortcut">Pro y Business</span></li>
       <li><b>Marketing</b> — Pixels de Meta, Google, TikTok. <span class="ay-shortcut">Business</span></li>
       <li><b>Historial</b> — Tus números viejos para alimentar reportes. <span class="ay-shortcut">Business</span></li>
@@ -1301,7 +1303,7 @@ if (!$is_native_app_ayuda): ?>
 
   <details class="ay-faq">
     <summary>¿Puedo tener varios asesores en mi cuenta?</summary>
-    <div class="ay-faq-body">Sí. En <b>Configuración → Usuarios</b> puedes agregar tantos asesores como necesites. Cada uno tiene su login y ve solo sus cotizaciones. El administrador ve todo.</div>
+    <div class="ay-faq-body">En los planes <b>Pro y Business</b> sí: en <b>Configuración → Usuarios</b> agregas usuarios ilimitados (sujeto a uso justo). Cada uno tiene su login y ve solo sus cotizaciones; el administrador ve todo. El plan Lite incluye 1 usuario.</div>
   </details>
 
   <details class="ay-faq">

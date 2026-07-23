@@ -29,7 +29,7 @@
 <a href="/" class="back">← Volver a CotizaCloud</a>
 
 <h1>Términos y Condiciones de Servicio</h1>
-<p class="date">Fecha de vigencia: 1 de junio de 2026</p>
+<p class="date">Última actualización: 23 de julio de 2026</p>
 
 <p>Los presentes Términos y Condiciones de Servicio (en adelante, los "<strong>Términos</strong>") regulan el acceso y uso de la plataforma CotizaCloud. Al crear una cuenta, usted manifiesta haber leído, comprendido y aceptado estos Términos en su totalidad, así como el <a href="/privacidad">Aviso de Privacidad</a>.</p>
 
@@ -101,6 +101,11 @@
 
 <h3>5.6. Responsabilidad del método de pago</h3>
 <p>El Usuario es responsable de que su método de pago acepte cargos recurrentes. CotizaCloud no es responsable de rechazos originados por el banco emisor del Usuario.</p>
+
+<h3>5.7. Período de prueba gratuita</h3>
+<p>Al registrarse, la cuenta inicia con un <strong>período de prueba gratuita de 30 días naturales</strong> del plan elegido, sin requerir método de pago. Durante la prueba, la cuenta tiene acceso a las funcionalidades del plan seleccionado, sujetas a la Política de uso justo (sección 6.1).</p>
+<p>Si al concluir la prueba no se ha contratado un plan de pago: (a) la cuenta pasa al plan Free y conserva el acceso a su información (cotizaciones, clientes, ventas) y al registro de cobros; (b) se bloquea la creación de nuevas cotizaciones hasta activar un plan; y (c) los usuarios adicionales creados durante la prueba quedan desactivados, conservándose el usuario administrador. Los datos no se eliminan y quedan disponibles al contratar cualquier plan de pago.</p>
+<p>El período de prueba es por Empresa y por única ocasión; CotizaCloud podrá denegar pruebas adicionales a cuentas creadas para eludir esta limitación.</p>
 
 <!-- ═══════════════════════════════════════════════════════ -->
 <h2>6. Uso aceptable</h2>

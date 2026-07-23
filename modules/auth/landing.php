@@ -397,7 +397,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <a href="/registro" class="btn-hero btn-hero-primary">Probar el Radar gratis</a>
     <a href="#como-funciona" class="btn-hero btn-hero-secondary">Ver como funciona</a>
   </div>
-  <p class="hero-note">Sin tarjeta. Sin contratos. Radar completo desde el dia 1.</p>
+  <p class="hero-note">Prueba completa 30 dias. Sin tarjeta. Sin contratos.</p>
 </section>
 
 <!-- PROOF -->
@@ -540,7 +540,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 <section class="predictive">
   <div class="pred-card" style="background:linear-gradient(135deg,#1a1a18 0%,#2d1f0e 50%,#3d2b10 100%)">
     <div>
-      <div class="pred-label" style="color:#fbbf24">Rentabilidad real</div>
+      <div class="pred-label" style="color:#fbbf24">Rentabilidad real · Planes Pro y Business</div>
       <div class="pred-title">Sabes exactamente cuanto ganas en cada proyecto</div>
       <div class="pred-desc">No es Excel. Es un sistema que registra tus costos por operacion y te muestra el margen real — por venta, por cliente, por periodo. Sin sorpresas al final del mes.</div>
       <ul class="pred-list">
@@ -608,14 +608,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <svg viewBox="0 0 24 24" stroke="#be185d"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       </div>
       <div class="feat-title">Reportes de ventas</div>
-      <div class="feat-desc">Dashboards claros con ingresos, gastos y utilidad. Filtra por periodo, vendedor o cliente.</div>
+      <div class="feat-desc">Dashboards claros con ingresos, gastos y utilidad. Filtra por periodo, vendedor o cliente. Incluido en Pro y Business.</div>
     </div>
     <div class="feat-card">
       <div class="feat-ico" style="background:#dbeafe">
         <svg viewBox="0 0 24 24" stroke="#1d4ed8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </div>
       <div class="feat-title">Multi-usuario y permisos</div>
-      <div class="feat-desc">Agrega vendedores con permisos granulares. Controla ¿quien cotiza y quien ve los numeros?</div>
+      <div class="feat-desc">Usuarios ilimitados en Pro y Business, sin cobro por usuario. Permisos granulares por vendedor en Business.</div>
     </div>
   </div>
 </section>
@@ -688,7 +688,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       </div>
       <div class="apc-feats">
         <div class="apc-feat">
-          <div class="apc-feat-val">30d</div>
+          <div class="apc-feat-val">15d</div>
           <div class="apc-feat-lbl">Ventana rolling</div>
         </div>
         <div class="apc-feat">
@@ -797,7 +797,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="price-period monthly-price"><span data-mxn="2388">$2,388</span> <span class="cur-lbl">MXN</span>/año</div>
       <div class="price-period annual-price" style="display:none"><span data-mxn="1910">$1,910</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="478">$478</span></strong></div>
       <a href="/registro?plan=lite" class="price-btn price-btn-outline">Crear cuenta gratis</a>
-      <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
+      <div class="price-trial-note">Prueba 30 dias gratis. Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
         <div class="price-feat-header">Para el que vende solo:</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
@@ -827,7 +827,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="price-period monthly-price"><span data-mxn="5988">$5,988</span> <span class="cur-lbl">MXN</span>/año</div>
       <div class="price-period annual-price" style="display:none"><span data-mxn="4788">$4,788</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="1200">$1,200</span></strong></div>
       <a href="/registro?plan=pro" class="price-btn price-btn-solid">Crear cuenta gratis</a>
-      <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
+      <div class="price-trial-note">Prueba 30 dias gratis. Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
         <div class="price-feat-header">Todo lo de Lite, para tu equipo:</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Usuarios ilimitados — sin cobro por usuario*</strong></div>
@@ -883,7 +883,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <h2>Tu proximo cliente ya esta revisando tu cotizacion. Lo sabes?</h2>
     <p class="cta-sub">Con el Radar de Cotiza.cloud, sabras quien esta listo para cerrar — antes de hacer una sola llamada.</p>
     <a href="/registro" class="btn-cta">Probar el Radar gratis</a>
-    <p class="cta-note">Sin tarjeta. Sin contratos. Radar completo desde el dia 1.</p>
+    <p class="cta-note">Prueba completa 30 dias. Sin tarjeta. Sin contratos.</p>
   </div>
 </section>
 
