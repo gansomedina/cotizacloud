@@ -16,6 +16,20 @@ if (!$emp || $emp['slug'] === '_system') {
 
 $accion = $_POST['accion'] ?? 'toggle';
 
+// Asientos (paquetes 23-jul): tope de usuarios ACTIVOS por empresa. Vacío/0 =
+// default del plan (Free/Lite=1, Pro/Business=ilimitado). Perilla para Business
+// por asiento pactado en demo, o para capar un plan puntual.
+if ($accion === 'asientos') {
+    $val = trim((string)($_POST['asientos'] ?? ''));
+    $asientos = ($val === '' || (int)$val <= 0) ? null : min(250, (int)$val);
+    try {
+        DB::execute("UPDATE empresas SET asientos = ? WHERE id = ?", [$asientos, $empresa_id]);
+    } catch (Throwable $e) {
+        error_log('[Asientos] columna sin migrar — correr migrations/add_asientos.sql');
+    }
+    redirect('/superadmin/empresa/' . $empresa_id);
+}
+
 // Mesa de Trabajo: rollout por empresa (0=off, 1=UI asesores, 2=UI+score 25%)
 if ($accion === 'mesa_activa') {
     $val = (int)($_POST['valor'] ?? 0);

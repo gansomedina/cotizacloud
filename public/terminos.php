@@ -82,14 +82,7 @@
 <h2>5. Planes y pagos</h2>
 
 <h3>5.1. Planes disponibles</h3>
-<table>
-    <thead><tr><th>Plan</th><th>Precio mensual</th><th>Características principales</th></tr></thead>
-    <tbody>
-        <tr><td>Free</td><td>$0 MXN</td><td>Hasta 25 cotizaciones, 1 usuario, funcionalidades básicas</td></tr>
-        <tr><td>Pro</td><td>$299 MXN</td><td>Cotizaciones ilimitadas, 1 usuario, funcionalidades completas</td></tr>
-        <tr><td>Business</td><td>$799 MXN</td><td>Cotizaciones ilimitadas, usuarios ilimitados, funcionalidades avanzadas</td></tr>
-    </tbody>
-</table>
+<p>CotizaCloud ofrece distintos planes con diferentes niveles de funcionalidad, límites de cotizaciones y número de usuarios. Los planes vigentes, sus precios y sus características se publican en <a href="https://cotiza.cloud/#precios">cotiza.cloud</a> y en la sección Configuración → Suscripción de la cuenta, que constituyen la referencia oficial al momento de la contratación. Las características descritas como «ilimitadas» están sujetas a la <strong>Política de uso justo</strong> (sección 6.1).</p>
 <p>Los precios están expresados en pesos mexicanos (MXN), no incluyen impuestos aplicables, y pueden ser modificados con aviso previo de al menos 30 días naturales antes de la siguiente fecha de renovación.</p>
 
 <h3>5.2. Cobro recurrente</h3>
@@ -126,6 +119,11 @@
 </ul>
 
 <p>CotizaCloud se reserva el derecho de suspender o cancelar cuentas que violen estas disposiciones, con notificación previa cuando las circunstancias lo permitan.</p>
+
+<h3>6.1. Política de uso justo</h3>
+<p>Las características descritas como <strong>«ilimitadas»</strong> (incluyendo, de manera enunciativa mas no limitativa, el número de cotizaciones y el número de usuarios) están sujetas a un <strong>uso comercial razonable y de buena fe</strong>, entendido como el volumen de operación propio de un negocio real que utiliza la Plataforma para su actividad comercial.</p>
+<p>Se considera uso anormal, entre otros: la generación masiva o automatizada de cotizaciones sin propósito comercial legítimo; la creación de usuarios sin relación con la operación real de la Empresa; el uso de una sola cuenta para operar múltiples negocios o empresas distintas; la reventa o compartición del servicio con terceros; y cualquier patrón de uso cuyo volumen o comportamiento sea manifiestamente desproporcionado respecto al uso típico de los planes contratados.</p>
+<p>Ante un uso anormal, CotizaCloud podrá, <strong>previa notificación al correo registrado</strong>: (a) requerir al Usuario el ajuste de su plan a uno acorde a su volumen real de uso; (b) establecer límites operativos temporales; o (c) en caso de persistir el abuso, suspender o cancelar la cuenta conforme a la sección 6. Esta política existe para proteger el desempeño y la disponibilidad del servicio para todos los clientes.</p>
 
 <!-- ═══════════════════════════════════════════════════════ -->
 <h2>7. Deslinde de responsabilidad comercial</h2>

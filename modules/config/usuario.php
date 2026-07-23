@@ -12,11 +12,27 @@ header('Content-Type: application/json');
 $eid    = EMPRESA_ID;
 $usr_id = isset($id) ? (int)$id : 0;
 
-// Solo Business puede crear usuarios nuevos (editar existentes sí se permite)
+// Paquetes 23-jul: Pro y Business pueden crear usuarios (Pro = "tu equipo").
+// Tope por ASIENTOS (asientos_max de trial_info): columna empresas.asientos si
+// está fijada; si no, default del plan (Free/Lite=1, Pro/Business=ilimitado).
+// El mismo check aplica al REACTIVAR (rama editar) — sin él, una empresa
+// degradada revivía usuarios por edición sin gate (hueco de la auditoría).
+$plan = trial_info($eid);
+$chk_asientos = function () use ($plan, $eid) {
+    if ($plan['asientos_max'] === null) return null; // sin tope
+    $activos = (int)DB::val("SELECT COUNT(*) FROM usuarios WHERE empresa_id=? AND activo=1", [$eid]);
+    if ($activos >= $plan['asientos_max']) {
+        return "Tu plan incluye {$plan['asientos_max']} usuario" . ($plan['asientos_max'] > 1 ? 's' : '')
+             . " activo" . ($plan['asientos_max'] > 1 ? 's' : '') . " — para agregar más, mejora tu plan.";
+    }
+    return null;
+};
 if ($usr_id === 0) {
-    $plan = trial_info($eid);
-    if (!$plan['es_business']) {
-        echo json_encode(['ok'=>false,'error'=>'Crear usuarios es exclusivo del plan Business']); exit;
+    if (!$plan['es_pro_o_superior']) {
+        echo json_encode(['ok'=>false,'error'=>'Crear usuarios está disponible en los planes Pro y Business']); exit;
+    }
+    if (($err_as = $chk_asientos()) !== null) {
+        echo json_encode(['ok'=>false,'error'=>$err_as]); exit;
     }
 }
 
@@ -64,8 +80,14 @@ if ($rol === 'admin') {
 
 if ($usr_id > 0) {
     // ── EDITAR ───────────────────────────────────────────────
-    $u = DB::row("SELECT id, usuario FROM usuarios WHERE id=? AND empresa_id=?", [$usr_id, $eid]);
+    $u = DB::row("SELECT id, usuario, activo FROM usuarios WHERE id=? AND empresa_id=?", [$usr_id, $eid]);
     if (!$u) { echo json_encode(['ok'=>false,'error'=>'Usuario no encontrado']); exit; }
+
+    // REACTIVAR (inactivo → activo) cuenta contra el tope de asientos igual que
+    // crear — antes esta rama no validaba plan y era la puerta trasera.
+    if ($activo === 1 && (int)$u['activo'] === 0 && ($err_as = $chk_asientos()) !== null) {
+        echo json_encode(['ok'=>false,'error'=>$err_as]); exit;
+    }
 
     // Verificar email único (excepto el mismo)
     $dup = DB::val("SELECT id FROM usuarios WHERE empresa_id=? AND email=? AND id!=?", [$eid, $email, $usr_id]);

@@ -10,6 +10,9 @@
 //  - filas declaradas hoy → sección "Atendidas hoy" al recargar
 // ============================================================
 defined('COTIZAAPP') or die;
+// Gate de PLAN (paquetes 23-jul): la Mesa es BUSINESS. Antes solo dependía del
+// flag mesa_activa por empresa — un Pro/Free con el flag encendido la veía.
+if (empty($trial['es_business'])) return;
 // Gate: admin → mesa completa (todas las mesas + reporte + recuperado);
 // asesor → SU mesa, solo si la empresa abrió el rollout (mesa_activa>=1:
 // 0=off, 1=UI asesores, 2=UI+score). La columna puede no existir aún.

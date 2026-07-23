@@ -462,7 +462,17 @@ function trial_info(int $empresa_id): array
         $migrated = true;
     }
 
-    $row = DB::row("SELECT plan, plan_vence, grace_hasta, activa FROM empresas WHERE id = ?", [$empresa_id]);
+    // Perilla de ASIENTOS (paquetes 23-jul): NULL = default del plan. Sigue el
+    // patrón de auto-migración de esta misma función (migrations/add_asientos.sql
+    // documenta el ALTER para el servidor).
+    static $asientos_ok = false;
+    if (!$asientos_ok) {
+        try { DB::execute("ALTER TABLE empresas ADD COLUMN asientos TINYINT UNSIGNED NULL DEFAULT NULL"); }
+        catch (\PDOException $e) { /* ya existe — OK */ }
+        $asientos_ok = true;
+    }
+
+    $row = DB::row("SELECT plan, plan_vence, grace_hasta, activa, asientos FROM empresas WHERE id = ?", [$empresa_id]);
     $plan = $row['plan'] ?? 'free';
     if ($plan === 'trial') $plan = 'free';
     $plan_vence = $row['plan_vence'] ?? null;
@@ -509,6 +519,12 @@ function trial_info(int $empresa_id): array
         'es_business'       => $plan === 'business',
         'es_pagado'         => $es_pagado,
         'es_pro_o_superior' => $es_pro_o_superior,
+        // Tope de usuarios ACTIVOS: columna asientos si está fijada (perilla por
+        // empresa, p.ej. Business por asiento pactado en demo); si no, default
+        // del plan: Free/Lite=1 · Pro/Business=NULL (ilimitado). NULL = sin tope.
+        'asientos_max'      => ($row['asientos'] ?? null) !== null
+                                ? (int)$row['asientos']
+                                : ($es_pro_o_superior ? null : 1),
         'usadas'          => $usadas,
         'limite'          => TRIAL_LIMIT,
         'restantes'       => max(0, TRIAL_LIMIT - $usadas),

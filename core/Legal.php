@@ -24,7 +24,9 @@ class Legal
      * del contenido real, así que el número es solo una etiqueta.
      */
     const VERSIONES = [
-        'terminos'   => '2026-06-01',
+        // 2026-07-23: +Política de uso justo (6.1) y §5.1 referencia a precios
+        // publicados (antes tabla hardcodeada que se desincronizaba)
+        'terminos'   => '2026-07-23',
         'privacidad' => '2026-05-28',
     ];
 

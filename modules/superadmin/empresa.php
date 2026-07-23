@@ -384,6 +384,20 @@ tr:hover td{background:#fafaf8}
       </form>
     </div>
 
+    <!-- Asientos: tope de usuarios activos (perilla por empresa — paquetes 23-jul) -->
+    <div style="margin-bottom:14px;padding:10px 12px;background:#f8f8f5;border:1px solid #e2e2dc;border-radius:8px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:6px">🪑 Asientos (tope de usuarios activos)</div>
+      <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/plan" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <?= csrf_field() ?>
+        <input type="hidden" name="accion" value="asientos">
+        <input type="number" name="asientos" min="1" max="250" value="<?= ($emp['asientos'] ?? null) !== null ? (int)$emp['asientos'] : '' ?>"
+               placeholder="vacío = default del plan"
+               style="width:180px;padding:6px 10px;border:1px solid #d4d4ce;border-radius:6px;font-size:13px">
+        <button type="submit" class="btn btn-sm">Guardar</button>
+        <span style="font-size:11.5px;color:#8a8a84">Vacío = default del plan (Free/Lite 1 · Pro/Business ilimitado). Se usa para Business por asiento pactado en demo o para capar un caso puntual.</span>
+      </form>
+    </div>
+
     <form method="post" action="/superadmin/empresa/<?= $emp['id'] ?>/dominio" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <?= csrf_field() ?>
         <input type="text" name="dominio_custom" value="<?= e($emp['dominio_custom'] ?? '') ?>"

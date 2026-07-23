@@ -16,16 +16,24 @@ if (Auth::rol() === 'admin' && isset($empresa['onboarding_completo']) && (int)$e
     redirect('/bienvenida');
 }
 
-// ─── Termómetro de actividad (cache 5 min) ────────────────
-$mi_score = ActividadScore::obtener(Auth::id());
-if (!$mi_score || (time() - strtotime($mi_score['updated_at'])) > 300) {
-    $mi_score = ActividadScore::calcular(Auth::id(), $empresa_id);
+// ─── Plan (paquetes 23-jul): termómetro/mesa/score son BUSINESS. El cálculo
+//     del score corría de balde en cada carga para planes que ni lo ven. ───
+$trial = trial_info($empresa_id);
+$es_business_dash = !empty($trial['es_business']);
+
+// ─── Termómetro de actividad (cache 5 min) — solo Business ───
+$mi_score = null;
+if ($es_business_dash) {
+    $mi_score = ActividadScore::obtener(Auth::id());
+    if (!$mi_score || (time() - strtotime($mi_score['updated_at'])) > 300) {
+        $mi_score = ActividadScore::calcular(Auth::id(), $empresa_id);
+    }
 }
 
-// ─── Leaderboard (solo admin, recalcula toda la empresa) ──
+// ─── Leaderboard (solo admin Business, recalcula toda la empresa) ──
 $es_admin_dash = Auth::es_admin();
 $equipo_scores = [];
-if ($es_admin_dash) {
+if ($es_admin_dash && $es_business_dash) {
     // Recalcular empresa si el score más viejo tiene >10 min
     $oldest = DB::val(
         "SELECT MIN(updated_at) FROM usuario_score WHERE empresa_id=?",
@@ -40,7 +48,7 @@ if ($es_admin_dash) {
 // Contexto del diagnóstico para TODOS los roles — sin él, la tarjeta del
 // asesor inventaba benchmarks ("la empresa promedia 0% de cierre") y el
 // wording de la mesa nunca activaba para la audiencia del rollout
-if (!isset($diag_ctx)) {
+if (!isset($diag_ctx) && $es_business_dash) {
     $n_vend = (int)DB::val(
         "SELECT COUNT(DISTINCT COALESCE(vendedor_id, usuario_id)) FROM cotizaciones
          WHERE empresa_id = ? AND total > 0
@@ -49,6 +57,7 @@ if (!isset($diag_ctx)) {
     );
     $diag_ctx = ActividadScore::diagnostico_ctx($empresa_id, max(1, $n_vend));
 }
+$diag_ctx = $diag_ctx ?? null;
 
 
 
@@ -510,7 +519,7 @@ function dias_lbl(int $dias, bool $pasado = false): array {
 
 $mes_lbl_cap = ucfirst($mes_lbl);
 
-$trial = trial_info($empresa_id);
+// $trial ya viene del hoist de arriba (paquetes 23-jul)
 
 $escudo_dispositivos_raw = DB::query(
     "SELECT LEFT(user_agent, 200) AS ua, MAX(created_at) AS ultimo
@@ -872,7 +881,8 @@ if ($plan_intento && in_array($plan_intento, ['lite','pro','business']) && $tria
 <?php include __DIR__ . '/_mesa.php'; ?>
 
 <!-- ══ TERMÓMETRO + LEADERBOARD ══ -->
-<?php if (!empty($empresa['termometro_visible']) && !$trial['es_lite']):
+<?php // Paquetes 23-jul: BUSINESS only (antes !es_lite dejaba pasar Free/Pro con el toggle) ?>
+<?php if (!empty($empresa['termometro_visible']) && !empty($trial['es_business'])):
 $ts = $mi_score;
 $ts_en_gracia = ($ts['nivel'] ?? '') === 'nuevo' || !empty($ts['en_gracia']);
 

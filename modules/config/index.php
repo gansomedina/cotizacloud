@@ -12,10 +12,10 @@ $empresa_id = EMPRESA_ID;
 $tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing','historial','termometro','feedback','suscripcion'])
     ? $_GET['tab'] : 'empresa';
 
-// Usuarios solo disponible en plan Business
+// Usuarios disponible en Pro y Business (paquetes 23-jul: Pro = "tu equipo")
 if ($tab_activo === 'usuarios') {
     $plan_check = trial_info(EMPRESA_ID);
-    if (!$plan_check['es_business']) $tab_activo = 'empresa';
+    if (!$plan_check['es_pro_o_superior']) $tab_activo = 'empresa';
 }
 
 // Costos solo disponible en plan Pro o Business (NO Lite)
@@ -355,7 +355,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <a class="cfg-tab <?= $tab_activo==='catalogo'  ?'on':'' ?>" href="/config?tab=catalogo"><?= ($empresa['giro'] ?? 'servicios') === 'inmuebles' ? 'Propiedades' : 'Catálogo' ?></a>
     <a class="cfg-tab <?= $tab_activo==='clientes'  ?'on':'' ?>" href="/config?tab=clientes">Clientes</a>
     <a class="cfg-tab <?= $tab_activo==='cupones'   ?'on':'' ?>" href="/config?tab=cupones">Cupones</a>
-    <?php $plan_info = trial_info(EMPRESA_ID); if ($plan_info['es_business']): ?>
+    <?php $plan_info = trial_info(EMPRESA_ID); if ($plan_info['es_pro_o_superior']): ?>
     <a class="cfg-tab <?= $tab_activo==='usuarios'  ?'on':'' ?>" href="/config?tab=usuarios">Usuarios</a>
     <?php endif; ?>
     <?php if (!$plan_info['es_lite']): ?>
