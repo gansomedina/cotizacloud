@@ -563,25 +563,41 @@ class Mesa
             ];
         }
 
-        // Orden: revividas/milagros arriba → en ventana → cerrándose;
-        // dentro: calor del Radar primero, luego monto DESC
+        // Orden — REGLA CEO 23-jul: UNA sola escala de urgencia. Antes el corte
+        // por ventana (tier) iba ANTES que las vencidas y enterraba a la fila
+        // más desatendida (caso real: vencida 4d + hot + $119K en el lugar 14
+        // solo por ser vieja), y "límite HOY" pesaba igual que "vence en 3 días".
+        //   1. Revividas/milagros (señal viva excepcional; revivida > milagro)
+        //   2. Urgencia del reloj: vencida (MÁS días vencida primero) → límite
+        //      HOY → al corriente/sin reloj
+        //   3. Calor del Radar → monto DESC
+        //   4. Ventana (tier) queda como mero desempate; la edad ya no entierra
+        //      urgencias (frías y limpieza ya filtran lo muerto antes de aquí).
         $prio_bucket = array_flip(self::HOT);
-        usort($rows, function ($a, $b) use ($prio_bucket) {
+        $urg = function ($r) {
+            $e = $r['seguimiento']['estado'] ?? null;
+            return $e === 'vencida' ? 0 : ($e === 'hoy' ? 1 : 2);
+        };
+        usort($rows, function ($a, $b) use ($prio_bucket, $urg) {
             $ga = in_array($a['cat'], ['revivida','milagro'], true) ? 0 : 1;
             $gb = in_array($b['cat'], ['revivida','milagro'], true) ? 0 : 1;
             if ($ga !== $gb) return $ga <=> $gb;
             // Dentro del grupo urgente, la revivida manda sobre el milagro
             // (es la promesa "si la reabre, vuelve sola" — no debe caerse del cap)
             if ($ga === 0 && $a['cat'] !== $b['cat']) return $a['cat'] === 'revivida' ? -1 : 1;
-            if ($ga === 1 && $a['tier'] !== $b['tier']) return $a['tier'] <=> $b['tier'];
-            // Seguimiento vencido primero dentro de su grupo (Fase A del ciclo)
-            $va = ($a['seguimiento']['estado'] ?? '') === 'vencida' ? 0 : 1;
-            $vb = ($b['seguimiento']['estado'] ?? '') === 'vencida' ? 0 : 1;
-            if ($va !== $vb) return $va <=> $vb;
+            $ua = $urg($a); $ub = $urg($b);
+            if ($ua !== $ub) return $ua <=> $ub;
+            if ($ua === 0) { // ambas vencidas: la más abandonada primero
+                $da = (int)($a['seguimiento']['dias'] ?? 0);
+                $db = (int)($b['seguimiento']['dias'] ?? 0);
+                if ($da !== $db) return $db <=> $da;
+            }
             $ha = $prio_bucket[$a['bucket']] ?? 99;
             $hb = $prio_bucket[$b['bucket']] ?? 99;
             if ($ha !== $hb) return $ha <=> $hb;
-            return ($b['total'] <=> $a['total']) ?: ($a['id'] <=> $b['id']);
+            return ($b['total'] <=> $a['total'])
+                ?: ($a['tier'] <=> $b['tier'])
+                ?: ($a['id'] <=> $b['id']);
         });
 
         // Sin tope de mesa: se muestra la LISTA COMPLETA (decisión CEO — cortar
