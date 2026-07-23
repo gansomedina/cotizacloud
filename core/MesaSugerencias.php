@@ -80,17 +80,17 @@ class MesaSugerencias
         $mediana = max(1, (int)($c['mediana'] ?? $p75));
         $fuera   = $edad > $p75;
         $intentos_nc = (int)($c['intentos_nc'] ?? 0);
-        // Nota de la ESCALERA de intentos (suspender asistido, 22-jul): alinea
-        // los tips de rendición con el contador "N de 4" del cajón. Closure
-        // porque se usa en DOS lugares: la rama FANTASMA (que hace return
-        // temprano y se salta las notas del final) y el bloque sistémico del
-        // cierre. Solo GHOST (👍/👎 bloquean la suspensión; 📵 o sin manita sí).
-        $manita_sug    = $c['manita'] ?? null;
-        $es_ghost_sug  = ($manita_sug === null || $manita_sug === 'sin_info');
+        // Nota de la ESCALERA de intentos (suspender asistido): alinea los tips
+        // de rendición con el contador "N de 4" del cajón. Closure porque se usa
+        // en DOS lugares: la rama FANTASMA (que hace return temprano y se salta
+        // las notas del final) y el bloque sistémico del cierre.
+        // REGLA DEL CEO (23-jul): «no contestó» es un HECHO — la escalera cuenta
+        // y el 4.º habilita suspender SIN importar manita/calor/categoría. El
+        // asesor decide (asistido).
         // &$pk por referencia: $pk se define MÁS ABAJO (línea ~115) — capturarlo
         // por valor aquí lo congela en null y truena al llamar la nota
-        $nota_escalera = function () use ($es_ghost_sug, $intentos_nc, &$pk) {
-            if (!$es_ghost_sug || $intentos_nc < 1) return '';
+        $nota_escalera = function () use ($intentos_nc, &$pk) {
+            if ($intentos_nc < 1) return '';
             return ' ' . ($intentos_nc >= 4
                 ? $pk([
                     'Ya van 4 «no contestó» sin respuesta: puedes suspenderla desde aquí — o descártala con razón si tu lectura es que no era comprador.',
@@ -722,11 +722,13 @@ class MesaSugerencias
         // sin manita sí califica), con intentos declarados, NUNCA en tips de
         // espera ni revivida/milagro (señal viva: el cajón ahí dice "insiste")
         // ni descartada_hoy, y solo si el tip ES de rendición (regex).
+        // Gates mínimos: nunca en tips de ESPERA (contradice "dale aire") ni en
+        // descartada_hoy (fila ya resuelta), y solo si el tip ES de rendición.
+        // (revivida/milagro hacen return temprano — jamás llegan aquí.)
         if (empty($slots['espera'])
-            && empty($c['revivida']) && empty($c['milagro'])
             && ($c['cat'] ?? '') !== 'descartada_hoy'
             && preg_match('/descart|despídete|último (?:mensaje|intento)|última jugada|no le dediques|mensaje final|cierra el caso/iu', $f)) {
-            $f .= $nota_escalera(); // '' si no es ghost o sin intentos
+            $f .= $nota_escalera(); // '' sin intentos declarados
         }
 
         // La mayoría de las ~50 ramas de tips no revisan el reloj de seguimiento
@@ -930,7 +932,7 @@ class MesaSugerencias
                 'prediccion_alta'      => ['su patrón de lectura se parece al de los que sí compran', $pk(['contacto suave hoy: confirma el interés, no lo asumas.', 'un toque ligero hoy — pregúntale qué le pareció, sin presionar.', 'mensaje corto de inmediato preguntando cómo ve la propuesta; sin presión.']), false],
                 'lectura_comprometida' => ['leyó la cotización a fondo a la primera y se detuvo en el precio', $pk(['esta señal dura horas: contáctalo HOY.', 'no dejes pasar el día: llámale o escríbele HOY.', 'esa atención se enfría en horas — búscalo ya mismo.']), false],
                 'multi_persona'        => [($ips7 >= 2 ? "hay {$ips7} personas viendo la cotización" : 'varias personas están viendo la cotización'), $pk(['tu contacto no decide solo: propón reunión con todos y garantía por escrito.', 'pide ya mismo una reunión con todos los que deciden y manda garantía por escrito.', 'ofrécete a presentarla a todo el grupo hoy, con garantía por escrito.']), true],
-                'alto_importe'         => ['la cotización está arriba de lo que normalmente vendes', $pk(['venta grande: mándale cuanto antes la garantía por escrito y los tiempos de entrega, sin presionar el cierre.', 'mándale sin tardar por escrito la garantía y los tiempos de entrega, sin presionar el cierre.', 'mándale de inmediato la garantía por escrito y explícale paso a paso cómo trabajas, sin prisas.']), false],
+                'alto_importe'         => ['la cotización está arriba de lo que normalmente vendes', $pk(['venta grande: manda garantía por escrito y tiempos de entrega, sin presionar el cierre.', 'mándale sin tardar por escrito la garantía y los tiempos de entrega, sin presionar el cierre.', 'mándale de inmediato la garantía por escrito y explícale paso a paso cómo trabajas, sin prisas.']), false],
                 're_enganche_caliente' => ['regresó directo a los precios tras días fuera', $pk(['está comparando opciones para decidir: contáctalo HOY con seguridad.', 'anda en la comparación final: márcale cuanto antes y dale certeza con garantía y tiempos.', 'está por decidir entre opciones: aparece hoy con tu mejor argumento.']), false],
                 default                => ['el Radar trae la cotización caliente y no la has calificado', $pk(['dale el toque hoy y declara cómo lo ves.', 'contáctalo ya mismo y registra en qué quedó.', 'búscalo cuanto antes y captura el resultado del toque.']), false],
             };

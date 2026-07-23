@@ -188,38 +188,24 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
         <span class="mlbl">→</span><span class="msx"><?= e($r['sugerencia']) ?></span>
       </div>
       <?php
-          // ── Intentos de contacto (solo GHOST: sin 👍 y sin 👎). "Intento N de 4";
-          //    al 4º "no contestó" sin lograr contacto → botón de SUSPENDER asistido
-          //    (nunca automático). 👍 se persigue (interes_muriendo) · 👎 se descarta
-          //    (slug vivo para revival) · 📵/sin-manita = ghost declarado. intentos_nc
-          //    ya resetea con "Hablamos" y tiene ventana de 30d (Mesa.php).
-          $manita_r  = $r['postura'] ?? null;               // con_interes/sin_interes/sin_info/null
-          $es_ghost_r = ($manita_r === null || $manita_r === 'sin_info');
+          // ── Intentos de contacto — REGLA DEL CEO (23-jul, definitiva y simple):
+          //    "no contestó" es un HECHO. Las bolitas se muestran SIEMPRE que
+          //    haya «no contestó» seguidos (reset con Hablamos, ventana 30d en
+          //    Mesa.php) — sin importar manita, calor, categoría ni nada. Al 4.º
+          //    se habilita SUSPENDER (asistido: el botón aparece, el asesor
+          //    decide — el tip de la fila ya le dice si el cliente está leyendo).
           $nc_r = (int)($r['intentos_nc'] ?? 0);
-          // Las BOLITAS (progreso de intentos) se muestran a todo ghost con
-          // intentos, incluso caliente — son contexto útil. Solo se ocultan en
-          // filas ya resueltas (descartada/atendida hoy), donde serían ruido.
-          $mostrar_int_r = $es_ghost_r && $nc_r >= 1
-              && ($r['cat'] ?? '') !== 'descartada_hoy' && empty($r['atendida_hoy']);
-          // El BOTÓN de suspender solo en el ghost FRÍO (guard de la auditoría):
-          // en milagro/revivida/agendada/caliente hay señal viva del cliente —
-          // ofrecer suspender ahí sería suspender una venta viva.
-          $suspendible_r = $mostrar_int_r
-              && empty($r['es_hot']) && empty($r['revivida']) && empty($r['milagro'])
-              && empty($r['agenda_fecha']);
-          if ($mostrar_int_r):
+          if ($nc_r >= 1):
       ?>
-      <div class="mintentos<?= $nc_r >= 4 && $suspendible_r ? ' full' : '' ?>">
+      <div class="mintentos<?= $nc_r >= 4 ? ' full' : '' ?>">
         <div class="mint-top">
           <span class="mint-h">Intentos de contacto sin respuesta</span>
           <span class="mint-n"><?= min($nc_r, 4) ?> de 4</span>
           <span class="mint-beads"><?php for ($i = 1; $i <= 4; $i++): ?><span class="mint-b<?= $i <= $nc_r ? '' : ' off' ?><?= $i === 4 ? ' susp' : '' ?>"></span><?php endfor; ?></span>
         </div>
-        <?php if ($nc_r >= 4 && $suspendible_r): ?>
-        <div class="mint-msg">Llevas <b><?= $nc_r ?> «no contestó»</b> sin lograr contacto. <b>Para conservarla:</b> háblale y contesta (reinicia el conteo), márcala 👍 (hay interés) o reenvíale/edítale algo. Si ya no responde, suspéndela.</div>
+        <?php if ($nc_r >= 4): ?>
+        <div class="mint-msg">Llevas <b><?= $nc_r ?> «no contestó» seguidos</b>. Puedes suspenderla — o sigue intentando: un «Hablamos» reinicia el conteo.</div>
         <button type="button" class="mint-susp" onclick="mesaSuspender(<?= (int)$r['id'] ?>)">Suspender cotización</button>
-        <?php elseif ($nc_r >= 4): ?>
-        <div class="mint-msg">Llevas <b><?= $nc_r ?> «no contestó»</b> — pero hay señal viva del cliente (te lee, volvió o está agendada), así que suspender no aplica: <b>insiste ahora que está activo</b>.</div>
         <?php endif; ?>
       </div>
       <?php endif; ?>
