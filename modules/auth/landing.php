@@ -804,7 +804,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-feat"><span class="feat-check">&#10003;</span>Sabe quien abre tu cotizacion y cuantas veces</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Clientes ilimitados</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas, recibos y abonos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones, descuentos y extras</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y extras</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Descuentos Inteligentes</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Portal publico del cliente</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
       </div>
@@ -833,6 +834,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Radar de inteligencia completo</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Cada vendedor con su login y sus cotizaciones</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Costos y margenes por venta</div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Descuentos Inteligentes</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes de tu negocio</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Articulos ilimitados</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>App movil + notificaciones push</div>
@@ -860,6 +862,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Termometro: califica a cada vendedor (0-100) automaticamente</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Mesa de Trabajo: a quien llamar HOY, en orden, por vendedor</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Ranking del equipo con diagnostico: quien vende y quien necesita ayuda</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>CotizaCloud AI: tips de venta y analisis de cada vendedor, generados con tus datos</strong></div>
+        <div class="price-feat"><span class="feat-check">&#10003;</span>Descuentos Inteligentes</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Permisos por vendedor</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Costos avanzados y proveedores</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes avanzados de equipo</div>
