@@ -102,11 +102,18 @@ if ($existe) {
 try {
     DB::beginTransaction();
 
+    // Fase B (23-jul): la empresa nace con el PLAN ELEGIDO en la landing y 30
+    // días de prueba. Sin ?plan= (o con business, que es venta asistida) →
+    // trial de Pro. Al vencer sin pago, trial_info degrada suave a Free.
+    $plan_elegido = in_array($pendiente['plan_intento'] ?? '', ['lite', 'pro'], true)
+        ? $pendiente['plan_intento'] : 'pro';
+    $trial_vence  = date('Y-m-d', strtotime('+30 days'));
+
     $empresa_id = DB::insert(
         "INSERT INTO empresas
-         (slug, nombre, moneda, impuesto_modo, impuesto_pct, activa)
-         VALUES (?, ?, ?, ?, ?, 1)",
-        [$slug_raw, $nombre_empresa, $moneda, $impuesto_modo, $impuesto_pct]
+         (slug, nombre, moneda, impuesto_modo, impuesto_pct, activa, plan, plan_vence)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
+        [$slug_raw, $nombre_empresa, $moneda, $impuesto_modo, $impuesto_pct, $plan_elegido, $trial_vence]
     );
 
     foreach ([
@@ -172,7 +179,44 @@ try {
     }
 } catch (Exception $e) {}
 
-// ─── Redirigir al login centralizado ─────────────
+// ─── Auto-login (Fase B): sin re-teclear la contraseña en el momento de
+//     máxima intención. MISMA cadena que login_post: Auth::login crea la
+//     sesión estándar y se registran las 3 señales del Escudo (visitor_id +
+//     IP + device_sig — el form de verificación las recolecta con el mismo
+//     JS que el login). La cadena cross-domain se omite a propósito: una
+//     empresa recién nacida no tiene dominios custom. Si algo falla, cae al
+//     flujo original (login manual) — nunca bloquea el registro. ───────────
+try {
+    $auto = Auth::login($slug_raw, $email, $password, false);
+    if (!empty($auto['ok'])) {
+        $visitor_id_post = substr(preg_replace('/[^a-zA-Z0-9\-_]/', '', (string)($_POST['visitor_id'] ?? '')), 0, 64);
+        $device_sig_post = substr(preg_replace('/[^a-zA-Z0-9|\/\-_., ():]/', '', (string)($_POST['device_sig'] ?? '')), 0, 120);
+        if ($visitor_id_post === '') {
+            $visitor_id_post = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                random_int(0,0xffff), random_int(0,0xffff), random_int(0,0xffff),
+                random_int(0,0x0fff)|0x4000, random_int(0,0x3fff)|0x8000,
+                random_int(0,0xffff), random_int(0,0xffff), random_int(0,0xffff)
+            );
+        }
+        $cur_token = $auto['token'] ?? '';
+        if ($device_sig_post !== '' && $cur_token !== '') {
+            try {
+                DB::execute(
+                    "UPDATE user_sessions SET device_sig = ? WHERE token = ? AND usuario_id = ?",
+                    [$device_sig_post, $cur_token, (int)$usuario_id]
+                );
+            } catch (Throwable $e) {}
+        }
+        require_once MODULES_PATH . '/radar/Radar.php';
+        Radar::marcar_visitor_interno($empresa_id, $visitor_id_post, 'login', (int)$usuario_id, ip_real(), substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255));
+        Radar::aprender_ip_radar($empresa_id, ip_real());
+        redirect('/dashboard'); // el dashboard manda al wizard /bienvenida
+    }
+} catch (Throwable $e) {
+    error_log('[Registro] auto-login falló: ' . $e->getMessage());
+}
+
+// ─── Fallback: login manual (flujo original) ─────
 $redir = '/login?nuevo=1&empresa=' . urlencode($slug_raw) . '&u=' . urlencode($email);
 if (!empty($pendiente['plan_intento'])) {
     $redir .= '&plan=' . urlencode($pendiente['plan_intento']);

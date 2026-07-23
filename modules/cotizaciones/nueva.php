@@ -25,11 +25,17 @@ if ($trial['agotado']) {
         <div style="width:64px;height:64px;border-radius:50%;background:var(--amb-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
             <svg viewBox="0 0 24 24" fill="none" stroke="var(--amb)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
-        <h2 style="font-size:20px;font-weight:800;margin:0 0 8px">Límite del plan Free alcanzado</h2>
+        <h2 style="font-size:20px;font-weight:800;margin:0 0 8px"><?= !empty($trial['trial_usado']) ? 'Tu prueba terminó' : 'Límite del plan Free alcanzado' ?></h2>
         <p style="color:var(--t2);margin:0 0 16px;line-height:1.6">
+            <?php if (!empty($trial['trial_usado'])): ?>
+            Tu prueba de 30 días terminó. Tus cotizaciones, clientes y ventas siguen intactos
+            — y puedes seguir cobrando tus abonos. Para crear cotizaciones nuevas, activa tu plan.
+            <?php else: ?>
             Has utilizado las <strong><?= TRIAL_LIMIT ?> cotizaciones</strong> incluidas en tu plan Free.
             Para seguir creando cotizaciones, activa tu plan Pro.
+            <?php endif; ?>
         </p>
+        <?php if (empty($trial['trial_usado'])): ?>
         <div style="background:var(--amb-bg);border:1px solid #fcd34d;border-radius:var(--r);padding:16px;margin-bottom:24px;text-align:left">
             <div style="font-size:13px;color:var(--amb)">
                 <strong>Cotizaciones usadas:</strong> <?= $trial['usadas'] ?> / <?= TRIAL_LIMIT ?>
@@ -38,7 +44,8 @@ if ($trial['agotado']) {
                 <div style="background:var(--amb);height:100%;width:100%;border-radius:6px"></div>
             </div>
         </div>
-        <a href="/licencia" class="btn btn-primary" style="padding:12px 28px;font-size:14px">
+        <?php endif; ?>
+        <a href="<?= !empty($trial['trial_usado']) ? '/config?tab=suscripcion' : '/licencia' ?>" class="btn btn-primary" style="padding:12px 28px;font-size:14px">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             Activar licencia
         </a>

@@ -24,7 +24,9 @@ $empresa_id = EMPRESA_ID;
 // Verificar límite plan Free
 $trial = trial_info($empresa_id);
 if ($trial['agotado']) {
-    json_error('Has alcanzado el límite de ' . TRIAL_LIMIT . ' cotizaciones del plan Free.', 402);
+    json_error(!empty($trial['trial_usado'])
+        ? 'Tu prueba de 30 días terminó — activa tu plan para seguir creando cotizaciones.'
+        : 'Has alcanzado el límite de ' . TRIAL_LIMIT . ' cotizaciones del plan Free.', 402);
 }
 
 $cot_id = (int)($params['id'] ?? 0);

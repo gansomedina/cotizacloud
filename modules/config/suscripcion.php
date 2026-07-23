@@ -22,7 +22,28 @@ $csrf = $_SESSION[CSRF_TOKEN_NAME] ?? '';
 
 $tiene_auto_renew = $sub && $sub['estado'] === 'active' && !$sub['cancel_al_vencer'] && !empty($sub['mp_customer_id']);
 $cobro_fallido = $sub && (int)($sub['intentos_cobro'] ?? 0) > 0 && !empty($sub['ultimo_error']);
+
+// Trial de 30 días en curso (plan pagado, con vencimiento, sin un solo pago
+// aprobado) → banner de conversión con los días restantes
+$trial_en_curso = false;
+if ($trial['es_pagado'] && !$trial['vencido'] && $trial['dias_restantes'] !== null) {
+    try {
+        $trial_en_curso = !DB::val(
+            "SELECT 1 FROM pagos_suscripcion WHERE empresa_id = ? AND estado = 'approved' LIMIT 1",
+            [$empresa_id]
+        );
+    } catch (\Throwable $e) {}
+}
 ?>
+<?php if ($trial_en_curso): ?>
+<div style="margin-bottom:16px;padding:14px 18px;background:var(--amb-bg,#fef6e7);border:1px solid #fcd34d;border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <span style="font-size:22px">🎁</span>
+  <div style="flex:1;min-width:220px">
+    <div style="font-weight:800;font-size:14px">Tu prueba de <?= e($trial['plan_label']) ?> termina en <?= (int)$trial['dias_restantes'] ?> día<?= (int)$trial['dias_restantes'] === 1 ? '' : 's' ?></div>
+    <div style="font-size:12.5px;color:#92400e">Activa tu plan abajo para no perderlo — tus datos y cotizaciones se conservan igual.</div>
+  </div>
+</div>
+<?php endif; ?>
 
 <div class="sec">
   <div class="sec-lbl">Tu plan actual</div>

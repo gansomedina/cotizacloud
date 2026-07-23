@@ -148,10 +148,7 @@ $expiradas_grace = DB::query(
 );
 
 foreach ($expiradas_grace as $emp) {
-    DB::execute(
-        "UPDATE empresas SET plan='free', plan_vence=NULL, grace_hasta=NULL, activa=1 WHERE id=?",
-        [$emp['id']]
-    );
+    planes_degradar_free((int)$emp['id']); // plan=free + usuarios extra desactivados
     DB::execute(
         "UPDATE suscripciones SET estado='cancelled', cancel_al_vencer=1, cancelled_at=NOW() WHERE empresa_id=?",
         [$emp['id']]
@@ -188,10 +185,7 @@ foreach ($vencidas_sin_grace as $emp) {
     );
     if ($tiene_sub_activa) continue; // el paso 1 la está cobrando
 
-    DB::execute(
-        "UPDATE empresas SET plan='free', plan_vence=NULL, activa=1 WHERE id=?",
-        [$emp['id']]
-    );
+    planes_degradar_free((int)$emp['id']); // plan=free + usuarios extra desactivados
     $log("Degradada a Free (sin suscripción activa): empresa #{$emp['id']}");
 }
 
