@@ -3362,3 +3362,39 @@ ventas, solo QUÉ se muestra en el menú.
 A $199 con cobro recurrente, el margen es delgado y el churn de planes baratos
 es alto. El Lite SOLO es rentable como puerta de entrada que convierte parte de
 su base a Pro/Business. No es el destino final del cliente.
+
+## Sesión 22-24 julio 2026 — Mesa v3 + RELANZAMIENTO COMERCIAL (deployado)
+
+### Mesa de Trabajo v3 (mergeado en PRs #857-#872)
+1. **Cajón 2 columnas** — izquierda "Capturar siguiente seguimiento" (pills SELECCIONAN, botón "Capturar seguimiento" postea y recarga; candados frescos 1→2→3 por selección), derecha "Seguimiento declarado" (display + fechas + historial colapsado con etiquetas 👍👎📵). Reemplaza el re-tap confuso.
+2. **Escalera de intentos + suspender asistido — REGLA CEO (simple y definitiva)**: "no contestó" es un HECHO. Bolitas "N de 4" SIEMPRE que haya no-contestó seguidos (reset con Hablamos, ventana 30d), sin importar manita/calor/categoría. Al 4.º aparece el botón Suspender (asistido, jamás automático; reusa /cotizaciones/:id/suspender con accion='suspender' explícita + ownership guard agregado al endpoint). Un "Hablamos" intermedio reinicia el conteo (3→contesta→2 = "2 de 4"). Nota de escalera en tips (closure nota_escalera, también en la rama FANTASMA que hace return temprano).
+3. **Orden por URGENCIA** — revividas/milagros → vencidas (MÁS días primero) → límite HOY → al corriente; luego calor→monto; tier solo desempate. Contrato en sim_mesa_armar sección "ORDEN POR URGENCIA" (vendedor 509, ids 9951-9954).
+4. **Mesa de hoy** — encabezado con fecha + chips + "Empieza por [#1]"; filas pendientes numeradas 1..N con línea "→ qué hacer" (oculta al abrir el cajón).
+5. Tips: evidencia factual "hace menos de 24h"/"N veces en las últimas 24h" (v24 es ventana rodante — decir "hoy" era mentira con visita de ayer); ~175 imperativos "hoy" → rotación cuanto antes/de inmediato/sin tardar/ya mismo (F_oracion límite 185 chars).
+6. **4ª sim descubierta**: tools/sim_mesa_render.php — corre ENCADENADA tras armar (comparte fixtures). Suite completa = armar → render, reporte, factlint.
+
+### RELANZAMIENTO COMERCIAL — estructura final (PR #872, deployado 24-jul)
+**Planes**: Free (legacy, ya no se vende) · **Lite $199** (1 usuario, radar simplificado en Cotizaciones + /ayuda/buckets) · **Pro $499** (usuarios ILIMITADOS sin cobro por usuario*, Radar completo, costos, reportes, DI) · **Business $2,999 plano ASISTIDO** (termómetro+mesa+score+ranking+AI+costos avanzados+proveedores+reportes avanzados+marketing+permisos + demo y 4h capacitación). Anuales -20% ($159/$399/$2,399 por mes). Para TODOS: extras, adjuntos, cupones, descuentos, DI, Feedback de clientes, manitas 👍👎📵.
+**Fuente única de precios**: MercadoPago::precios() (la landing y /ayuda la reflejan; /licencia hardcodeado — vigilar).
+
+**Trial 30 días**: al registrarse se elige Lite/Pro (?plan=; default Pro; business→trial Pro + notif superadmin "PIDIÓ BUSINESS"). Columnas `es_trial` (SOLO lo pone el registro; lo limpian mp_return, cron cobro, toggle_plan del superadmin, y la degradación) y `trial_usado` (bloquea SOLO crear/clonar cotizaciones; reversible al pagar/activación manual). Al vencer sin pago: degradación SUAVE en trial_info (free + trial_usado=1 + usuarios extra desactivados excepto admin más antiguo + email) — clientes de pago MANUAL/transferencia (es_trial=0) conservan el flujo original (402 → grace → cron). Auto-login post-verificación con señales del Escudo (el form de verificación recolecta vid/dsig con el mismo JS del login). Empresas nacen con email (para avisos del cron).
+
+**Asientos**: columna `empresas.asientos` (NULL=default del plan: Free/Lite=1, Pro/Business=∞). Enforcement en usuario.php (crear + reactivar) y `planes_ajustar_asientos()` al ACTIVAR un plan (mp_return, toggle_plan) — un trial Pro con 3 asesores que compra Lite queda con solo el admin (flash lo avisa). Perilla en ficha superadmin (acción 'asientos'). Superadmin jamás se desactiva.
+
+**Helpers clave**: `planes_degradar_free()` (trial → castigo completo + email; no-trial → solo plan=free), `planes_ajustar_asientos()`, trial_info expone `trial_activo`, `trial_usado`, `asientos_max` (auto-migra es_trial/trial_usado/asientos con log + SELECT tolerante — jamás 500 por columna faltante).
+
+**Legal**: TyC v2026-07-23 — §5.1 precios por referencia, §5.2 Lite incluido, §5.7 período de prueba (30d, qué pasa al vencer), §6.1 política de USO JUSTO (ilimitado = uso comercial razonable; ante abuso: ajuste de plan/límites/cancelación con aviso). Todo registro la acepta con evidencia (hash+IP).
+
+**Empresa _system (id 4)**: plan=business con plan_vence=NULL (equivalente moderno del plan vacío: sin timers, cron la ignora, login _admin no depende de activa). Empresa 11 (apple-review): business con vence 2027.
+
+**Business asistido**: no comprable self-serve (suscripcion_crear whitelist lite/pro); CTA "Agenda una demo" → chat de leads (landing, czl-fab) / chat de soporte (in-app, czs-fab prellenado). Mensajería: asesor desactivado ve "Tu cuenta está desactivada..." en login (tras validar password); email de fin de trial menciona usuarios desactivados; CTAs de agotado van al checkout (/config?tab=suscripcion).
+
+**Deploy**: migraciones add_asientos.sql + add_trial_fase_b.sql corridas; cron diario 3am ya existía; tag de rollback `pre-paquetes-v1` (main 15e39e1). 8 auditorías de agentes sobre el proyecto (fases A/B/C + jornadas + superficie).
+
+### Pendientes post-relanzamiento
+1. **P2 anti-abuso** (prioridad sube con trial gratis): unicidad de email (+1@gmail = cuentas infinitas), ip_real() confía en X-Forwarded-For sin proxy (rate limit spoofeable), race del límite 25, captcha si hay abuso.
+2. Cosmético: toggle USD "$ $11" doble signo (preexistente), clases pred-list/pred-dot/pipe-label sin CSS, /licencia con precios hardcodeados.
+3. Decisiones registradas: landing muestra termómetro con 3 dimensiones (simplificación de marketing OK); pagar temprano suma días del trial (premio, no bug); sección termómetro sigue arriba de precios en landing (pulido futuro).
+4. Vigilar primeros días: salida del cron 3am, primeros registros (es_trial=1 en BD), logs [Asientos]/[Trial]/[Registro].
+5. MercadoPago::sincronizar() es código muerto (sin caller) — limpiar.
+6. Plan de arranque comercial (Fase 1: FB Ads del Radar + guion de demo) y libro de ventas (brief en docs/libro/BRIEF.md) — listos para arrancar ahora que el producto y los planes están vivos.
