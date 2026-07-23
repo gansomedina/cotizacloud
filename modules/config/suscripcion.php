@@ -157,14 +157,14 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
     'pro' => [
       'name'     => 'Pro',
       'color'    => 'var(--g)',
-      'tagline'  => 'Para profesionales independientes',
-      'features' => 'Todo lo de Lite + tu equipo (usuarios ilimitados*), Radar completo, reportes, costos y app móvil',
+      'tagline'  => 'Para tu equipo de ventas',
+      'features' => 'Todo lo de Lite + tu equipo (usuarios ilimitados, uso justo), Radar completo, reportes, costos y app móvil',
     ],
     'business' => [
       'name'     => 'Business',
       'color'    => 'var(--blue)',
-      'tagline'  => 'Para equipos de trabajo',
-      'features' => 'Todo lo de Pro + Termómetro de productividad, Mesa de Trabajo, marketing, extras y reportes avanzados',
+      'tagline'  => 'Dirige a tu equipo con datos',
+      'features' => 'Todo lo de Pro + Termómetro, Mesa de Trabajo, ranking del equipo, CotizaCloud AI, marketing y reportes avanzados',
     ],
   ];
 

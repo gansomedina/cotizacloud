@@ -143,6 +143,15 @@ try {
 
     DB::commit();
 
+    // Ajustar usuarios activos al tope del plan comprado (ej. trial Pro con 3
+    // asesores que paga Lite=1 usuario) — auditoría J2
+    $antes_aj = 0; $despues_aj = 0;
+    try {
+        $antes_aj = (int)DB::val("SELECT COUNT(*) FROM usuarios WHERE empresa_id=? AND activo=1 AND rol <> 'superadmin'", [$empresa_id]);
+        planes_ajustar_asientos($empresa_id);
+        $despues_aj = (int)DB::val("SELECT COUNT(*) FROM usuarios WHERE empresa_id=? AND activo=1 AND rol <> 'superadmin'", [$empresa_id]);
+    } catch (Throwable $e) {}
+
     unset($_SESSION['mp_intento']);
 
     $guardada = $datos['card_last4']
@@ -150,7 +159,8 @@ try {
         : '';
     $_SESSION['flash'] = [
         'tipo' => 'ok',
-        'msg'  => '¡Pago recibido! Tu plan ' . ucfirst($plan) . ' está activo hasta el ' . date('d/m/Y', strtotime($vence)) . '.' . $guardada,
+        'msg'  => '¡Pago recibido! Tu plan ' . ucfirst($plan) . ' está activo hasta el ' . date('d/m/Y', strtotime($vence)) . '.' . $guardada
+             . ($despues_aj < $antes_aj ? ' Tu plan incluye ' . $despues_aj . ' usuario(s): los demás quedaron desactivados.' : ''),
     ];
 } catch (Throwable $e) {
     DB::rollBack();

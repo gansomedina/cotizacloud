@@ -129,7 +129,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
   <div class="cover-kicker">Acabas de subir de nivel</div>
   <h1>Bienvenido a tu máquina de cerrar ventas 🎯</h1>
   <p>La mayoría manda una cotización y se queda <b>esperando a ver qué pasa.</b> Tú ya no. CotizaCloud te dice <b>quién abrió tu cotización, cuántas veces volvió y quién está a un paso de firmar.</b> Tú solo llegas a cerrar.</p>
-  <p>Y mientras vendes, el sistema <b>vigila a tu equipo</b>: sabrás quién está rompiéndola y a quién hay que apretar. Dale 1 minuto a esta guía y prepárate para <b>dar justo en el blanco.</b></p>
+  <p>Y mientras vendes, el sistema <b>vigila tus cotizaciones</b>: sabrás quién está interesado de verdad y a quién hay que apretar. Dale 1 minuto a esta guía y prepárate para <b>dar justo en el blanco.</b></p>
   <button class="cover-cta" id="wzComenzar">Encender mi radar →</button>
 </div>
 
@@ -179,7 +179,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
     <!-- 4 -->
     <div class="wz-slide">
       <div class="wz-ico wz-ico--target">🎯</div>
-      <div class="wz-step">Arma 3 de 4 · la parte medular</div>
+      <div class="wz-step">Arma 3 de 4 · la parte medular · planes Pro y Business</div>
       <h2 class="wz-h">Radar, tu secreto mejor guardado</h2>
       <p class="wz-p">Te anticipa <b>qué cliente se enganchó con tu propuesta</b>, te dice <b>a quién darle seguimiento HOY</b> y hasta te ayuda a entender <b>qué necesita para decidirse</b>. Mientras tu competencia adivina, tú te <b>anticipas</b>.</p>
       <div class="wz-why">💡 Es el corazón de CotizaCloud — lo que te hará vender más. Tras hablar con cada cliente, márcalo 👍 / 👎 y el Radar afina aún más su puntería.</div>
@@ -188,7 +188,7 @@ body{font-family:var(--body);background:linear-gradient(160deg,#eef7f2 0%,#f4f4f
     <!-- 5 -->
     <div class="wz-slide">
       <div class="wz-ico wz-ico--thermo">🌡️</div>
-      <div class="wz-step">Arma 4 de 4</div>
+      <div class="wz-step">Arma 4 de 4 · plan Business</div>
       <h2 class="wz-h">Aquí se ve quién vende de verdad</h2>
       <p class="wz-p">El <b>Termómetro</b> es tu <b>boleta de calificaciones de ventas</b>: un número del <b>0 al 100</b> que el sistema calcula solo, viendo todo lo que haces — cuántas cotizaciones mandas, si les das seguimiento y cuántas cierras.</p>
       <div class="wz-why">💡 Es el gran diferenciador: <b>separa al vendedor profesional del mediocre</b>. Con números claros, queda a la vista quién hace bien su trabajo y quién no. Súbelo y vuélvete el <b>#1 de tu equipo</b>.</div>

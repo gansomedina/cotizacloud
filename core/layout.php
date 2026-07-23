@@ -522,8 +522,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
                     <strong>Tu prueba terminó.</strong> Tus datos siguen intactos y puedes cobrar tus abonos — para crear cotizaciones nuevas, activa tu plan.
                     <a href="/config?tab=suscripcion" style="color:inherit;font-weight:700;text-decoration:underline">Activar mi plan</a>
                     <?php else: ?>
-                    <strong>Límite de prueba alcanzado.</strong> Has usado <?= $trial['usadas'] ?>/<?= TRIAL_LIMIT ?> cotizaciones.
-                    <a href="/licencia" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu licencia</a>
+                    <strong>Límite del plan Free alcanzado</strong> (<?= TRIAL_LIMIT ?> cotizaciones en total).
+                    <a href="/config?tab=suscripcion" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu plan</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -531,8 +531,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             <div class="flash flash-warning" style="margin-bottom:16px">
                 <i data-feather="alert-triangle"></i>
                 <div>
-                    <strong>Prueba:</strong> <?= $trial['restantes'] ?> cotizaciones restantes de <?= TRIAL_LIMIT ?>.
-                    <a href="/licencia" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu licencia</a>
+                    <strong>Plan Free:</strong> <?= $trial['restantes'] ?> cotizaciones restantes de <?= TRIAL_LIMIT ?>.
+                    <a href="/config?tab=suscripcion" style="color:inherit;font-weight:700;text-decoration:underline">Activa tu plan</a>
                 </div>
             </div>
             <?php elseif ($trial['por_vencer']): ?>

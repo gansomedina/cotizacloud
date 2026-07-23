@@ -794,12 +794,12 @@ $dash_native_app = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud'
             <div style="font:700 15px var(--body);color:#92400e;margin-bottom:2px">Tu prueba terminó</div>
             <div style="font:400 13px var(--body);color:#78350f;line-height:1.5">Tus cotizaciones, clientes y ventas siguen intactos — y puedes cobrar tus abonos. Activa tu plan para seguir creando cotizaciones.</div>
             <?php else: ?>
-            <div style="font:700 15px var(--body);color:#92400e;margin-bottom:2px">Plan Free agotado</div>
-            <div style="font:400 13px var(--body);color:#78350f;line-height:1.5">Has usado las <?= TRIAL_LIMIT ?> cotizaciones gratuitas. Activa tu plan Pro para continuar.</div>
+            <div style="font:700 15px var(--body);color:#92400e;margin-bottom:2px">Plan Free — límite alcanzado</div>
+            <div style="font:400 13px var(--body);color:#78350f;line-height:1.5">El plan Free permite <?= TRIAL_LIMIT ?> cotizaciones en total. Activa un plan para seguir creando — tus datos siguen intactos.</div>
             <?php endif; ?>
         <?php endif; ?>
     </div>
-    <a href="<?= !empty($trial['trial_usado']) ? '/config?tab=suscripcion' : '/licencia' ?>" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--r-sm);font:600 13px var(--body);background:<?= $trial['vencido'] ? '#c53030' : '#92400e' ?>;color:#fff;text-decoration:none;white-space:nowrap;transition:opacity .12s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+    <a href="/config?tab=suscripcion" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--r-sm);font:600 13px var(--body);background:<?= $trial['vencido'] ? '#c53030' : '#92400e' ?>;color:#fff;text-decoration:none;white-space:nowrap;transition:opacity .12s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         Activar licencia
     </a>

@@ -433,6 +433,37 @@ function validar_url(string $url): bool
 // ─── Trial / Plan ───────────────────────────────────────────
 define('TRIAL_LIMIT', 25);
 
+// ─── Ajustar usuarios activos al tope del plan recién activado ──────────────
+// Al COMPRAR/activar un plan con menos asientos que los usuarios activos (ej.
+// trial de Pro con 3 asesores que paga Lite=1), desactiva los excedentes:
+// conserva primero el admin más antiguo y luego los usuarios más antiguos
+// hasta el tope. Sin esto, un Lite de $199 operaba multiusuario para siempre
+// (el login no valida plan y el tope solo actuaba en crear/reactivar).
+// El superadmin jamás se toca. Idempotente.
+function planes_ajustar_asientos(int $empresa_id): void
+{
+    try {
+        $t = trial_info($empresa_id);
+        $max = $t['asientos_max'];
+        if ($max === null) return; // ilimitado
+        $activos = DB::query(
+            "SELECT id FROM usuarios WHERE empresa_id = ? AND activo = 1 AND rol <> 'superadmin'
+             ORDER BY (rol = 'admin') DESC, id ASC",
+            [$empresa_id]
+        );
+        if (count($activos) <= $max) return;
+        $keep = array_map(fn($u) => (int)$u['id'], array_slice($activos, 0, $max));
+        $ph = implode(',', array_fill(0, count($keep), '?'));
+        DB::execute(
+            "UPDATE usuarios SET activo = 0
+             WHERE empresa_id = ? AND activo = 1 AND rol <> 'superadmin' AND id NOT IN ($ph)",
+            array_merge([$empresa_id], $keep)
+        );
+    } catch (\Throwable $e) {
+        error_log('[Asientos] ajuste post-activación falló: ' . $e->getMessage());
+    }
+}
+
 // ─── Degradar una empresa a Free (trial vencido o pago fallido) ────────────
 // Compartido por trial_info() (degradación suave del trial en caliente) y el
 // cron de suscripciones. SIEMPRE: plan=free + usuarios extra desactivados
@@ -488,6 +519,7 @@ function planes_degradar_free(int $empresa_id): void
                 'Tu prueba de CotizaCloud terminó',
                 '<p>Hola,</p>' .
                 '<p>Tu prueba de 30 días terminó. Tus cotizaciones, clientes y ventas siguen intactos, y puedes seguir cobrando tus abonos.</p>' .
+                '<p>Los usuarios adicionales de tu equipo quedaron <strong>desactivados</strong>; al activar un plan podrás reactivarlos en Configuración → Usuarios.</p>' .
                 '<p>Para seguir creando cotizaciones, <a href="' . BASE_URL . '/config?tab=suscripcion">activa tu plan aquí</a>.</p>'
             );
         } catch (\Throwable $e) {}

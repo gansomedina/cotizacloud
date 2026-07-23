@@ -45,10 +45,14 @@ if ($trial['agotado']) {
             </div>
         </div>
         <?php endif; ?>
-        <a href="<?= !empty($trial['trial_usado']) ? '/config?tab=suscripcion' : '/licencia' ?>" class="btn btn-primary" style="padding:12px 28px;font-size:14px">
+        <?php if (str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud')): ?>
+        <p style="font-size:13px;color:var(--t3)">Gestiona tu plan desde <strong>cotiza.cloud</strong> en tu navegador.</p>
+        <?php else: ?>
+        <a href="/config?tab=suscripcion" class="btn btn-primary" style="padding:12px 28px;font-size:14px">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            Activar licencia
+            Activar mi plan
         </a>
+        <?php endif; ?>
         <a href="/cotizaciones" style="display:block;margin-top:12px;font-size:13px;color:var(--t3);text-decoration:none">Volver a cotizaciones</a>
     </div>
     <?php

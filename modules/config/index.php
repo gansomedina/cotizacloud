@@ -375,9 +375,10 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <a class="cfg-tab <?= $tab_activo==='historial' ?'on':'' ?>" href="/config?tab=historial">Historial</a>
     <a class="cfg-tab <?= $tab_activo==='termometro' ?'on':'' ?>" href="/config?tab=termometro">Termómetro</a>
     <?php endif; ?>
-    <?php if ($plan_info['es_free'] || $plan_info['es_business']): ?>
+    <?php // Feedback para TODOS (decisión CEO 24-jul): configurar aquí; el
+          // usuario ve sus calificaciones en el Dashboard; el reporte por
+          // equipo vive en Reportes (Pro+). Antes: free||business (rareza). ?>
     <a class="cfg-tab <?= $tab_activo==='feedback'  ?'on':'' ?>" href="/config?tab=feedback">Feedback</a>
-    <?php endif; ?>
     <a class="cfg-tab <?= $tab_activo==='suscripcion'?'on':'' ?>" href="/config?tab=suscripcion" id="tab-suscripcion-link">Suscripción</a>
   </div>
 </div>
