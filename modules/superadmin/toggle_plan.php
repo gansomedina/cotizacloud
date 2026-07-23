@@ -104,17 +104,23 @@ if ($accion === 'activar_lite') {
         DB::execute("UPDATE empresas SET plan = ? WHERE id = ?", [$nuevo_plan, $empresa_id]);
     }
 
-} elseif ($accion === 'regresar_free') {
-    DB::execute("UPDATE empresas SET plan = 'free', plan_vence = NULL WHERE id = ?", [$empresa_id]);
-
-} elseif ($accion === 'regresar_trial') {
-    // Compatibilidad legacy → ahora va a free
-    DB::execute("UPDATE empresas SET plan = 'free', plan_vence = NULL WHERE id = ?", [$empresa_id]);
+} elseif ($accion === 'regresar_free' || $accion === 'regresar_trial') {
+    // (regresar_trial = legacy → free). Limpia también es_trial para no dejar
+    // "· PRUEBA" fantasma ni eximir el candado de downgrade por accidente.
+    try {
+        DB::execute("UPDATE empresas SET plan = 'free', plan_vence = NULL, es_trial = 0 WHERE id = ?", [$empresa_id]);
+    } catch (Throwable $e) {
+        DB::execute("UPDATE empresas SET plan = 'free', plan_vence = NULL WHERE id = ?", [$empresa_id]);
+    }
 
 } else {
     // Toggle simple (legacy)
     $nuevo_plan = ($emp['plan'] ?? 'free') === 'free' ? 'pro' : 'free';
-    DB::execute("UPDATE empresas SET plan = ? WHERE id = ?", [$nuevo_plan, $empresa_id]);
+    try {
+        DB::execute("UPDATE empresas SET plan = ?, es_trial = 0 WHERE id = ?", [$nuevo_plan, $empresa_id]);
+    } catch (Throwable $e) {
+        DB::execute("UPDATE empresas SET plan = ? WHERE id = ?", [$nuevo_plan, $empresa_id]);
+    }
 }
 
 redirect('/superadmin/empresa/' . $empresa_id);

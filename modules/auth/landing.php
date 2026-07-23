@@ -262,7 +262,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .toggle-save{font:700 12px var(--body);color:#fff;background:var(--g);padding:4px 12px;border-radius:20px;letter-spacing:.02em;animation:pulse-save 2s infinite}
 @keyframes pulse-save{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.85;transform:scale(1.05)}}
 
-.pricing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;align-items:start}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:960px;margin:0 auto;align-items:start}
 .price-card{background:var(--white);border:1.5px solid var(--border);border-radius:20px;padding:36px 28px;position:relative;transition:all .3s}
 .price-card:hover{box-shadow:var(--sh-lg);transform:translateY(-4px)}
 .price-card-featured{border:2.5px solid var(--g);box-shadow:var(--sh-lg);transform:scale(1.04);z-index:2}
@@ -830,7 +830,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <a href="/registro?plan=pro" class="price-btn price-btn-solid">Crear cuenta gratis</a>
       <div class="price-trial-note">Sin tarjeta. Cancela cuando quieras.</div>
       <div class="price-features">
-        <div class="price-feat-header">Todo de Free, sin limites:</div>
+        <div class="price-feat-header">Todo lo esencial, sin limites:</div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Radar de inteligencia completo</strong></div>
         <div class="price-feat"><span class="feat-check">&#10003;</span>Articulos ilimitados</div>
