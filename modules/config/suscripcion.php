@@ -202,7 +202,11 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
         <?php elseif ($plan_key === 'business'): ?>
         <div style="font:700 16px var(--num);color:var(--text)">$<?= number_format($precios['business']['mensual'], 0) ?> <span style="font:400 12px var(--body);color:var(--t3)">MXN/mes</span></div>
         <div style="font:400 12px var(--body);color:var(--t3);margin:6px 0 10px">Business se activa con una demo personalizada y 4 horas de capacitación para tu equipo.</div>
-        <a href="mailto:hola@cotiza.cloud?subject=Quiero%20una%20demo%20de%20Business" class="btn-main" style="display:inline-block;padding:8px 18px;font-size:12px;background:<?= $color ?>;border-color:<?= $color ?>;text-decoration:none">Agenda una demo</a>
+        <?php // Abre el CHAT DE SOPORTE in-app (burbuja czs de layout.php, solo admins
+              // — esta pantalla es de admins): la solicitud llega con push + email al
+              // superadmin. Un mailto a un buzón inexistente perdía el lead. ?>
+        <a href="#" class="btn-main" style="display:inline-block;padding:8px 18px;font-size:12px;background:<?= $color ?>;border-color:<?= $color ?>;text-decoration:none"
+           onclick="var f=document.getElementById('czs-fab');if(f){f.click();var t=document.getElementById('czs-input');if(t&&!t.value){t.value='Quiero una demo de Business';}}return false;">Agenda una demo</a>
         <?php else: ?>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <div>
