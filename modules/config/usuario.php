@@ -47,7 +47,8 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { echo json_encode(['ok'=>false,
 $usuario = mb_substr(preg_replace('/[^a-z0-9._-]/', '', strtolower(explode('@', $email)[0])), 0, 60);
 if ($usuario === '') $usuario = mb_substr(str_replace(['@','.'], '_', $email), 0, 60);
 $rol     = in_array($body['rol']??'', ['admin','asesor']) ? $body['rol'] : 'asesor';
-$activo  = (int)($body['activo'] ?? 1);
+// Clamp a 0/1: sin él, activo=2 burlaba el check de reactivación en 2 pasos
+$activo  = ((int)($body['activo'] ?? 1)) ? 1 : 0;
 $pass    = $body['password'] ?? '';
 
 // Validaciones
@@ -85,7 +86,7 @@ if ($usr_id > 0) {
 
     // REACTIVAR (inactivo → activo) cuenta contra el tope de asientos igual que
     // crear — antes esta rama no validaba plan y era la puerta trasera.
-    if ($activo === 1 && (int)$u['activo'] === 0 && ($err_as = $chk_asientos()) !== null) {
+    if ($activo === 1 && (int)$u['activo'] !== 1 && ($err_as = $chk_asientos()) !== null) {
         echo json_encode(['ok'=>false,'error'=>$err_as]); exit;
     }
 

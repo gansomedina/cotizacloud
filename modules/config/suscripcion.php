@@ -145,13 +145,13 @@ $titulo_seccion = $cobro_fallido ? 'Actualizar método de pago' : 'Actualizar pl
       'name'     => 'Pro',
       'color'    => 'var(--g)',
       'tagline'  => 'Para profesionales independientes',
-      'features' => 'Todo lo de Lite + Radar completo, reportes, costos y app móvil',
+      'features' => 'Todo lo de Lite + tu equipo (usuarios ilimitados*), Radar completo, reportes, costos y app móvil',
     ],
     'business' => [
       'name'     => 'Business',
       'color'    => 'var(--blue)',
       'tagline'  => 'Para equipos de trabajo',
-      'features' => 'Todo lo de Pro + usuarios ilimitados, marketing, extras y reportes avanzados',
+      'features' => 'Todo lo de Pro + Termómetro de productividad, Mesa de Trabajo, marketing, extras y reportes avanzados',
     ],
   ];
 

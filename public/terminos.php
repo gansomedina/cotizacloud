@@ -86,7 +86,7 @@
 <p>Los precios están expresados en pesos mexicanos (MXN), no incluyen impuestos aplicables, y pueden ser modificados con aviso previo de al menos 30 días naturales antes de la siguiente fecha de renovación.</p>
 
 <h3>5.2. Cobro recurrente</h3>
-<p>Los planes de pago (Pro y Business) se cobran de manera recurrente (mensual o anual, según la modalidad elegida) a través de MercadoPago. Al contratar un plan de pago, el Usuario otorga su <strong>consentimiento expreso</strong> para que se realicen cargos automáticos recurrentes en su método de pago.</p>
+<p>Los planes de pago (Lite, Pro y Business) se cobran de manera recurrente (mensual o anual, según la modalidad elegida) a través de MercadoPago. Al contratar un plan de pago, el Usuario otorga su <strong>consentimiento expreso</strong> para que se realicen cargos automáticos recurrentes en su método de pago.</p>
 
 <p>CotizaCloud notificará al Usuario por correo electrónico con al menos <strong>5 días naturales de anticipación</strong> a cada renovación, indicando el monto, la fecha de cobro y el procedimiento para cancelar.</p>
 
@@ -151,7 +151,7 @@
     <li>El Cliente Final <strong>nunca realiza pago alguno a CotizaCloud</strong>. Cualquier pago derivado de la relación entre la Empresa y su Cliente Final se efectúa <strong>directamente entre ellos</strong>, por los medios que la Empresa determine, fuera de la Plataforma.</li>
     <li>Las funciones de "ventas", "abonos", "pagos" y "recibos" dentro de la Plataforma son <strong>únicamente un registro contable e informativo</strong> que la Empresa lleva por su cuenta. <strong>No representan una transacción financiera procesada por CotizaCloud</strong> ni implican que CotizaCloud reciba, custodie o mueva dinero alguno.</li>
     <li>CotizaCloud <strong>no es una institución financiera, agregador de pagos, procesador de pagos ni entidad de fondos de pago electrónico</strong>, y no presta servicios de esa naturaleza.</li>
-    <li>Los únicos pagos que CotizaCloud recibe son las <strong>cuotas de suscripción que la propia Empresa paga</strong> por el uso de la Plataforma (planes Pro y Business), conforme a la sección 5. Estos pagos son completamente independientes y ajenos a las transacciones entre la Empresa y sus Clientes Finales.</li>
+    <li>Los únicos pagos que CotizaCloud recibe son las <strong>cuotas de suscripción que la propia Empresa paga</strong> por el uso de la Plataforma (planes de pago: Lite, Pro y Business), conforme a la sección 5. Estos pagos son completamente independientes y ajenos a las transacciones entre la Empresa y sus Clientes Finales.</li>
 </ul>
 <p>En consecuencia, CotizaCloud queda totalmente deslindada de cualquier reclamación, disputa, incumplimiento, fraude, contracargo o controversia relacionada con cobros o pagos entre la Empresa y sus Clientes Finales.</p>
 

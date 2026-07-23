@@ -468,11 +468,24 @@ function trial_info(int $empresa_id): array
     static $asientos_ok = false;
     if (!$asientos_ok) {
         try { DB::execute("ALTER TABLE empresas ADD COLUMN asientos TINYINT UNSIGNED NULL DEFAULT NULL"); }
-        catch (\PDOException $e) { /* ya existe — OK */ }
+        catch (\PDOException $e) {
+            // "Duplicate column" = ya migrada (OK). Cualquier OTRO error (p.ej.
+            // usuario de BD sin permiso ALTER) se loguea — sin esto el fallo era
+            // silencioso y el SELECT de abajo tumbaba TODAS las páginas.
+            if (stripos($e->getMessage(), 'Duplicate column') === false) {
+                error_log('[Asientos] ALTER falló (correr migrations/add_asientos.sql): ' . $e->getMessage());
+            }
+        }
         $asientos_ok = true;
     }
 
-    $row = DB::row("SELECT plan, plan_vence, grace_hasta, activa, asientos FROM empresas WHERE id = ?", [$empresa_id]);
+    try {
+        $row = DB::row("SELECT plan, plan_vence, grace_hasta, activa, asientos FROM empresas WHERE id = ?", [$empresa_id]);
+    } catch (\PDOException $e) {
+        // Columna asientos inexistente (ALTER denegado) → degradar con gracia:
+        // el sistema sigue vivo con los defaults del plan, jamás un 500 global.
+        $row = DB::row("SELECT plan, plan_vence, grace_hasta, activa FROM empresas WHERE id = ?", [$empresa_id]);
+    }
     $plan = $row['plan'] ?? 'free';
     if ($plan === 'trial') $plan = 'free';
     $plan_vence = $row['plan_vence'] ?? null;

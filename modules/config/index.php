@@ -24,6 +24,12 @@ if ($tab_activo === 'costos') {
     if (!$plan_check['es_pro_o_superior']) $tab_activo = 'empresa';
 }
 
+// Termómetro e Historial son Business — por URL directa quedaban en blanco
+if (in_array($tab_activo, ['termometro', 'historial'], true)) {
+    $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
+    if (!$plan_check['es_business']) $tab_activo = 'empresa';
+}
+
 // Radar (config) oculto para Lite — no tiene módulo Radar
 if ($tab_activo === 'radar') {
     $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
@@ -972,10 +978,13 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
   </div>
 
   <?php
-  // Cargar scores del equipo
+  // Scores del equipo — SOLO Business (el termómetro es Business; sin este
+  // gate un admin Pro veía el anillo con score/nivel en su tab Usuarios)
   $scores_equipo = [];
-  foreach (ActividadScore::equipo($empresa_id) as $se) {
-      $scores_equipo[(int)$se['usuario_id']] = $se;
+  if (!empty($plan_info['es_business'])) {
+      foreach (ActividadScore::equipo($empresa_id) as $se) {
+          $scores_equipo[(int)$se['usuario_id']] = $se;
+      }
   }
   ?>
   <div class="card">
@@ -1684,8 +1693,8 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <label class="toggle"><input type="checkbox" id="perm_eliminar_items"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
         <div class="perm-row">
-          <div><div class="perm-lbl">Agregar extras en ventas</div><div class="perm-sub">Agregar artículos extra a una venta</div></div>
-          <label class="toggle"><input type="checkbox" id="perm_agregar_extras"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <div><div class="perm-lbl">Agregar extras en ventas</div><div class="perm-sub"><?= !empty($plan_info['es_business']) ? 'Agregar artículos extra a una venta' : 'Exclusivo del plan Business' ?></div></div>
+          <label class="toggle"><input type="checkbox" id="perm_agregar_extras" <?= !empty($plan_info['es_business']) ? '' : 'disabled' ?>><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
         <div class="perm-row">
           <div><div class="perm-lbl">Cancelar recibos</div></div>
@@ -1707,8 +1716,8 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
           <label class="toggle"><input type="checkbox" id="perm_ver_costos" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
         <div class="perm-row">
-          <div><div class="perm-lbl">Proveedores</div><div class="perm-sub">Ver y gestionar proveedores</div></div>
-          <label class="toggle"><input type="checkbox" id="perm_ver_proveedores" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          <div><div class="perm-lbl">Proveedores</div><div class="perm-sub"><?= !empty($plan_info['es_business']) ? 'Ver y gestionar proveedores' : 'Exclusivo del plan Business' ?></div></div>
+          <label class="toggle"><input type="checkbox" id="perm_ver_proveedores" <?= !empty($plan_info['es_business']) ? 'checked' : 'disabled' ?>><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
         </div>
         <div class="perm-row">
           <div><div class="perm-lbl">Reportes</div><div class="perm-sub">Ver reportes financieros y de cotizaciones</div></div>
@@ -2330,11 +2339,13 @@ async function eliminarHistorial(id, btn) {
 <script>
 async function guardarTermometro(on) {
     try {
-        await fetch('/config/termometro', {
+        const r = await fetch('/config/termometro', {
             method: 'POST',
             headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
             body: JSON.stringify({termometro_visible: on ? 1 : 0})
         });
+        const d = await r.json();
+        if (!d.ok) { alert(d.error || 'No se pudo guardar'); return; }
         var m = document.getElementById('termometro-saved');
         if (m) { m.style.display = 'block'; setTimeout(() => m.style.display = 'none', 1800); }
     } catch(e) {}
