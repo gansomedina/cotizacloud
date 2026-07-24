@@ -3223,6 +3223,70 @@ demos: **el usuario al principio**, contratar closers cuando el volumen lo exija
   Droplet 4GB ($24) + Managed MySQL 4GB ($60) + Spaces ($5) + Cloudflare Free
   + SendGrid ($20).
 
+### Migración a Contabo — análisis (24 jul 2026)
+Contexto: se cayó el hosting actual; se evalúa mover a Contabo. NOTA: specs y
+precios de Contabo son APROXIMADOS — verificar en su sitio (cambian seguido).
+Decidido con el usuario: **Contabo VPS + panel (Plesk), escala 20-100 empresas**.
+
+**Core vs Performance → Performance (para nosotros).**
+- VPS Core = CPU compartido/oversold (CPU steal de vecinos) + SSD SATA. Más barato.
+- VPS Performance = CPU mejor/consistente (AMD EPYC) + **NVMe**. Poco más caro.
+- Por qué Performance: la app es PESADA de BD (Radar recalcula buckets,
+  termómetro corre queries pesadas, dashboard agrega en cada carga). Sensible a
+  latencia de CPU y a I/O de disco. En Core oversold el CPU steal se ve como
+  dashboards/Radar lentos en pico. NVMe le da a MySQL el I/O que necesita.
+  Regla: estático → Core alcanza; SaaS con MySQL → Performance.
+
+**Spec recomendado:**
+- Mínimo: 4 vCPU / **8 GB** / 100 GB NVMe **con Plesk** (Plesk es liviano; en
+  8 GB va cómodo para 20-100 empresas). Si se usa **cPanel** (pesado, ~1-2 GB
+  idle) → subir a 12-16 GB para que MySQL respire.
+- Si el salto a 6 vCPU / 12-16 GB cuesta poco (en Contabo suele serlo), tomarlo
+  (margen para crecer sin re-migrar).
+- Disco 100 GB alcanza hoy pero CRECE con uploads (assets/uploads/{empresa_id}/:
+  imágenes, PDFs, fotos de propiedades del módulo inmuebles). Monitorear.
+- Datacenter: EE.UU. (latencia desde México).
+
+**Panel: Plesk sobre cPanel** — Web Admin ~$12/mes vs cPanel Solo ~$18. Para una
+sola app (no revendemos hosting) Plesk hace lo mismo: AutoSSL para *.cotiza.cloud
+Y dominios propios (ontimecocinas.com, etc. — clave para el feature dominio
+propio), Git deploy, cron, PHP 8.x.
+
+**Costo aprox/mes:** VPS M Performance ~$11-13 + Plesk ~$12 + auto-backup ~$3 +
+correo (Brevo/SES, NO el mail del VPS) $0-15 + Cloudflare Free = **~$26-40 USD
+(~$500-720 MXN)**. Mucho menos que el plan DigitalOcean ($109) y sin MySQL
+administrado aparte (el monolito PHP+MySQL vive en un solo VPS).
+
+**Lo que ganamos al salir de cPanel actual:**
+- Adiós Imunify360 → webhooks de MercadoPago funcionan (reactivar validación
+  HMAC que quedó desactivada).
+- Adiós límites 25 conexiones MySQL / 25 procesos PHP / 500 correos-hora.
+
+**Clave de rendimiento (aplica a cualquier VPS):** afinar MySQL —
+`innodb_buffer_pool_size` a ~50-60% de la RAM. Un Performance mal configurado
+rinde peor que un Core bien tuneado. Dejar afinado al montar.
+
+**Checklist de migración (específico a nuestro stack):**
+1. BD: dump MariaDB → importar.
+2. Archivos: public_html/, assets/uploads/{empresa_id}/, y /home/key/ (.p8 de
+   APNs + vapid_private.pem).
+3. config.php: DB creds, VAPID, y ROTAR tokens de MercadoPago (se compartieron
+   en chat).
+4. SSL dominios custom: AutoSSL del panel para *.cotiza.cloud Y dominios propios.
+5. Correo: NO usar el mail del VPS (IP nueva = spam). Brevo/SES transaccional.
+6. Cron: recrear diario 3am (cron/procesar_suscripciones.php).
+7. DNS: cambiar A record de cotiza.cloud + todos los dominios custom a la IP
+   nueva (hay downtime de propagación).
+
+**Advertencia honesta:** Contabo = imbatible en precio/specs pero fama de
+oversold y soporte lento (riesgo real para SaaS con clientes pagando).
+Alternativas de precio similar y mejor reputación: **Hetzner** o **Vultr**.
+Si el precio manda → Contabo; si la estabilidad manda → Hetzner.
+
+**IMPORTANTE:** migrar NO restaura el servicio al instante (horas: provisionar,
+panel, mover BD+archivos, DNS). Ante una caída, primero recuperar el host actual;
+la migración es la jugada estratégica para que no se repita.
+
 ### Siguiente paso cuando se retome
 Diseñar los 3 creativos de FB Ads (guion visual del anuncio del Radar) + guion
 de demo de 15 min que cierra a Business. Arrancar Fase 1 con $50K.
