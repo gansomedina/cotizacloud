@@ -3287,6 +3287,56 @@ Si el precio manda → Contabo; si la estabilidad manda → Hetzner.
 panel, mover BD+archivos, DNS). Ante una caída, primero recuperar el host actual;
 la migración es la jugada estratégica para que no se repita.
 
+### Panel: DirectAdmin (decisión 24 jul 2026)
+Elegido **DirectAdmin** sobre Plesk/cPanel: **$5 USD/mes** (el más barato),
+ligero (deja más RAM para MySQL — clave con CotizaCloud + WordPress + MySQL en
+el mismo VPS), y **SÍ importa cPanel** (herramienta de conversión de cuentas —
+baja el dolor de migración). Corre en Ubuntu (verificar versión LTS soportada).
+
+### Arquitectura de red + SSL (Cloudflare + DirectAdmin + Let's Encrypt)
+Diseño validado (aprobado con el usuario):
+```
+Cloudflare (DNS + proxy + CDN + DDoS)
+  → cotiza.cloud        → IP del VPS  (nube naranja / proxy)
+  → *.cotiza.cloud      → IP del VPS  (nube naranja / proxy)
+  → VPS Contabo (Ubuntu) → DirectAdmin → CotizaCloud + WordPress + MySQL
+```
+1. **Cloudflare Free** para DNS/proxy/CDN/DDoS.
+2. **Wildcard `*.cotiza.cloud`** (A record al VPS) — cubre todos los subdominios
+   de empresa (empresa.cotiza.cloud).
+3. **DirectAdmin** en Ubuntu.
+4. **SSL del origen: Let's Encrypt wildcard vía DNS-01** (no solo el Origin
+   Certificate de Cloudflare). Razón: independencia — el cert LE sigue válido si
+   se apaga el proxy, se deja un registro DNS only, se prueba el origen directo o
+   se migra fuera de Cloudflare. (El Origin cert también sirve en Full strict pero
+   solo confía vía Cloudflare.)
+5. **Token de Cloudflare con permisos MÍNIMOS**: solo zona `cotiza.cloud`, editar
+   DNS, SIN Global API Key, sin otras zonas. DirectAdmin/acme.sh crea el TXT
+   `_acme-challenge.cotiza.cloud` temporal para el DNS-01.
+6. **Renovación automática** por el cron de DirectAdmin.
+7. **Cloudflare SSL/TLS = Full (strict).**
+8. **Correo y hostname en DNS only (nube GRIS)**: `mail.cotiza.cloud`, MX,
+   SPF/DKIM/DMARC, `server.cotiza.cloud`. Cloudflare NO proxea SMTP — dejarlos
+   en naranja rompe el correo. Solo los registros web HTTP/HTTPS van en naranja.
+
+**DirectAdmin usa acme.sh por debajo** (su cliente ACME/Let's Encrypt ES
+acme.sh). NO se instala Certbot ni scripts aparte. Para el wildcard con Cloudflare
+(DNS externo) se configura el plugin **`dns_cf` de acme.sh** con el token scoped
+— eso suele requerir **1 paso de config por CLI** (exportar `CF_Token`); después
+DA renueva solo por cron. El botón wildcard del GUI de DA asume DNS local (BIND);
+con Cloudflare externo el camino es `dns_cf`. Verificar flujo exacto en la versión
+de DA instalada.
+
+**Dos cosas que NO cubre el wildcard (agregadas al plan):**
+- **Dominios propios de clientes** (ontimecocinas.com, etc.): NO los cubre el
+  wildcard ni Cloudflare (están fuera de nuestra zona). Cada uno lleva **su cert
+  por HTTP-01** (no DNS-01), que DirectAdmin/acme.sh emite automático cuando el
+  dominio apunta al VPS. Sin esto, el feature "dominio propio" queda sin SSL.
+- **Correo transaccional por RELAY, no desde el VPS.** IP nueva de Contabo = sin
+  reputación = a spam. Cotización aceptada, abonos, avisos a superadmin → por
+  **Brevo / Amazon SES / SendGrid**. `mail.cotiza.cloud` puede existir, pero el
+  correo que el cliente DEBE recibir va por relay (crítico para el negocio).
+
 ### Siguiente paso cuando se retome
 Diseñar los 3 creativos de FB Ads (guion visual del anuncio del Radar) + guion
 de demo de 15 min que cierra a Business. Arrancar Fase 1 con $50K.
