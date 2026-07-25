@@ -3287,6 +3287,15 @@ Si el precio manda → Contabo; si la estabilidad manda → Hetzner.
 panel, mover BD+archivos, DNS). Ante una caída, primero recuperar el host actual;
 la migración es la jugada estratégica para que no se repita.
 
+### ▶ RUNBOOK DE EJECUCIÓN
+La guía paso a paso completa de la migración vive en
+**`docs/migracion_contabo_runbook.md`** (12 fases: provisionar VPS → DirectAdmin
+→ DNS a Cloudflare → subir código → BD → archivos/secretos → SSL wildcard →
+correo relay → cron/tuning → prueba por /etc/hosts → corte → post-corte +
+rollback). En el chat de ejecución, seguir ese doc un paso a la vez; el usuario
+NO sabe configurar servidores — Claude guía, el usuario ejecuta por SSH y pega
+outputs.
+
 ### Panel: DirectAdmin (decisión 24 jul 2026)
 Elegido **DirectAdmin** sobre Plesk/cPanel: **$5 USD/mes** (el más barato),
 ligero (deja más RAM para MySQL — clave con CotizaCloud + WordPress + MySQL en
