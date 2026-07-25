@@ -3295,6 +3295,78 @@ de demo de 15 min que cierra a Business. Arrancar Fase 1 con $50K.
 "Powered by CotizaCloud" en slugs públicos de SUBDOMINIO (no en dominios
 custom — ahí se respeta la marca del cliente). Gratis y compuesto.
 
+## CotizaCloud AI — capa generativa (evaluada 24 jul 2026, DIFERIDA a post-tracción)
+
+### Decisión: NO construir ahora
+Los tips rule-based actuales (MesaSugerencias / DiagnosticoTips — deterministas,
+fact-linted 0 errores en ~490k, gratis, privados) **SON SUFICIENTES** para
+vender, cerrar demos y cumplir la promesa del anuncio. "CotizaCloud AI te dice
+qué hacer" **ya es cierto HOY** con el motor de reglas. La capa generativa (LLM)
+entra **después de tracción, no antes**.
+
+**Por qué diferir (opinión de CEO):**
+- Reformular los tips con un LLM = maquillaje, no más útil. El asesor ya sabe qué
+  hacer con "su intención subió hoy — llámale y cierra fecha". Cambiaría el moat
+  (determinista/gratis/privado/fact-linted) por prosa + costo por llamada +
+  latencia + exposición de datos a un tercero. Mal negocio.
+- Prioridades reales del CEO hoy: **adquisición** (FB ads, demos, camino a 1000)
+  + **estabilidad** (migración a Contabo). La IA generativa compite por atención
+  con lo que genera ingresos — distracción clásica de fundador.
+- El anuncio ya es honesto con las reglas actuales; el LLM no es requisito.
+
+### Principio de diseño (si algún día se hace)
+- **Núcleo determinista de CotizaCloud = fuente de la verdad** (FIT, radar,
+  prioridad, descuentos inteligentes, reglas comerciales, permisos, comisiones,
+  fechas, estados). NO se traslada al LLM.
+- El LLM **solo** recibe resultados ya calculados y los convierte en lenguaje /
+  consultas / acciones pre-autorizadas.
+- El LLM **nunca presenta un número/hecho que CotizaCloud no le entregó**.
+- Corre con los **permisos del usuario que pregunta** (asesor ve lo suyo; solo
+  admin ve datos del equipo).
+- **Read-only primero**; acciones de escritura mucho después, con confirmación
+  humana + allowlist + auditoría. Nunca autónomo al inicio.
+- **Mínima PII al API** (idealmente "Cliente #3, boda, $132k, 3 visitas", no
+  nombres/direcciones). Declarar el subprocesador de IA en el Aviso de
+  Privacidad. Nota: OpenAI y Anthropic por **API NO entrenan con tus datos**.
+- Redactar mensajes que el asesor **copia y pega él mismo** = OK. **Integrar o
+  enviar por WhatsApp = NO** (decisión previa del usuario, se mantiene).
+
+### Fases
+- **FASE 1 — Explicar (la del 80% del valor, 20% del riesgo).**
+  CotizaCloud → **API directa** (Claude/OpenAI), wrapper propio en `core/` tipo
+  Mailer (`AI::explicar_radar($datos)`). **NO necesita OpenClaw** — es una sola
+  llamada de API. Read-only: explicar el radar/bucket/score, resumen de un
+  cliente, justificar por qué una cotización es prioridad alta, coaching de venta
+  (respuesta a objeción, argumento de cierre). Cachear / generar on-demand o en
+  batch — nunca una llamada por cada carga del dashboard.
+- **FASE 2 — Asistente concierge.**
+  Asistente conversacional cuyo propósito es **resolver dudas particulares** del
+  usuario sobre SUS datos, tipo conserje de ayuda (no de mensajería): "¿por qué
+  este cliente es prioridad alta?", "resume lo que pasó con este cliente",
+  "¿cuáles están más cerca del cierre?", "¿qué necesita seguimiento hoy?", "¿qué
+  vendedores traen atrasos?" (solo admin). API con **tool-use nativo**, empezar
+  simple, respeta permisos. Posible diferenciador de la demo/plan Business.
+- **FASE 3 — Multi-agente / muchas herramientas.**
+  Solo si de verdad duele orquestar a mano (LLM que encadena varios pasos
+  decidiendo qué herramienta usar, patrón ReAct). Ahí evaluar **OpenClaw**
+  (gateway de agentes self-hosted, ~380k stars GitHub, verificado real) en Docker
+  aparte, con endpoints/tools de **alcance limitado + auditoría, sin root ni
+  acceso indiscriminado a la BD**.
+
+### Sobre OpenClaw (verificado)
+Es real: gateway de agentes IA self-hosted, patrón ReAct, orquestación por
+WebSocket, conecta canales de mensajería (Discord/Slack/WhatsApp/…). Su valor
+está en **orquestación multi-paso/multi-herramienta y canales** — NO se necesita
+para Fase 1 (que es una llamada de API). Punto medio opcional: **LiteLLM** como
+proxy delgado para rutear modelos/costos sin todo OpenClaw. **No cablear canales
+de mensajería** (decisión previa). Si se implementa, vive en el mismo VPS Contabo
+(Docker aparte; **sin GPU** porque la inferencia es por API). Ver "Migración a
+Contabo".
+
+### Cuándo retomar
+Cuando un cliente Business lo pida, o para un diferenciador fuerte en la demo de
+Business. **No cuando el juguete brille — cuando el negocio lo pida.**
+
 ## Mesa de Trabajo — estado (11 jul 2026)
 
 ### Construido y auditado (branch claude/analyze-domain-change-hmo-AkFAi)
