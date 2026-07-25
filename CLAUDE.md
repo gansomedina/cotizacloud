@@ -3223,6 +3223,129 @@ demos: **el usuario al principio**, contratar closers cuando el volumen lo exija
   Droplet 4GB ($24) + Managed MySQL 4GB ($60) + Spaces ($5) + Cloudflare Free
   + SendGrid ($20).
 
+### Migración a Contabo — análisis (24 jul 2026)
+Contexto: se cayó el hosting actual; se evalúa mover a Contabo. NOTA: specs y
+precios de Contabo son APROXIMADOS — verificar en su sitio (cambian seguido).
+Decidido con el usuario: **Contabo VPS + panel (Plesk), escala 20-100 empresas**.
+
+**Core vs Performance → Performance (para nosotros).**
+- VPS Core = CPU compartido/oversold (CPU steal de vecinos) + SSD SATA. Más barato.
+- VPS Performance = CPU mejor/consistente (AMD EPYC) + **NVMe**. Poco más caro.
+- Por qué Performance: la app es PESADA de BD (Radar recalcula buckets,
+  termómetro corre queries pesadas, dashboard agrega en cada carga). Sensible a
+  latencia de CPU y a I/O de disco. En Core oversold el CPU steal se ve como
+  dashboards/Radar lentos en pico. NVMe le da a MySQL el I/O que necesita.
+  Regla: estático → Core alcanza; SaaS con MySQL → Performance.
+
+**Spec recomendado:**
+- Mínimo: 4 vCPU / **8 GB** / 100 GB NVMe **con Plesk** (Plesk es liviano; en
+  8 GB va cómodo para 20-100 empresas). Si se usa **cPanel** (pesado, ~1-2 GB
+  idle) → subir a 12-16 GB para que MySQL respire.
+- Si el salto a 6 vCPU / 12-16 GB cuesta poco (en Contabo suele serlo), tomarlo
+  (margen para crecer sin re-migrar).
+- Disco 100 GB alcanza hoy pero CRECE con uploads (assets/uploads/{empresa_id}/:
+  imágenes, PDFs, fotos de propiedades del módulo inmuebles). Monitorear.
+- Datacenter: EE.UU. (latencia desde México).
+
+**Panel: Plesk sobre cPanel** — Web Admin ~$12/mes vs cPanel Solo ~$18. Para una
+sola app (no revendemos hosting) Plesk hace lo mismo: AutoSSL para *.cotiza.cloud
+Y dominios propios (ontimecocinas.com, etc. — clave para el feature dominio
+propio), Git deploy, cron, PHP 8.x.
+
+**Costo aprox/mes:** VPS M Performance ~$11-13 + Plesk ~$12 + auto-backup ~$3 +
+correo (Brevo/SES, NO el mail del VPS) $0-15 + Cloudflare Free = **~$26-40 USD
+(~$500-720 MXN)**. Mucho menos que el plan DigitalOcean ($109) y sin MySQL
+administrado aparte (el monolito PHP+MySQL vive en un solo VPS).
+
+**Lo que ganamos al salir de cPanel actual:**
+- Adiós Imunify360 → webhooks de MercadoPago funcionan (reactivar validación
+  HMAC que quedó desactivada).
+- Adiós límites 25 conexiones MySQL / 25 procesos PHP / 500 correos-hora.
+
+**Clave de rendimiento (aplica a cualquier VPS):** afinar MySQL —
+`innodb_buffer_pool_size` a ~50-60% de la RAM. Un Performance mal configurado
+rinde peor que un Core bien tuneado. Dejar afinado al montar.
+
+**Checklist de migración (específico a nuestro stack):**
+1. BD: dump MariaDB → importar.
+2. Archivos: public_html/, assets/uploads/{empresa_id}/, y /home/key/ (.p8 de
+   APNs + vapid_private.pem).
+3. config.php: DB creds, VAPID, y ROTAR tokens de MercadoPago (se compartieron
+   en chat).
+4. SSL dominios custom: AutoSSL del panel para *.cotiza.cloud Y dominios propios.
+5. Correo: NO usar el mail del VPS (IP nueva = spam). Brevo/SES transaccional.
+6. Cron: recrear diario 3am (cron/procesar_suscripciones.php).
+7. DNS: cambiar A record de cotiza.cloud + todos los dominios custom a la IP
+   nueva (hay downtime de propagación).
+
+**Advertencia honesta:** Contabo = imbatible en precio/specs pero fama de
+oversold y soporte lento (riesgo real para SaaS con clientes pagando).
+Alternativas de precio similar y mejor reputación: **Hetzner** o **Vultr**.
+Si el precio manda → Contabo; si la estabilidad manda → Hetzner.
+
+**IMPORTANTE:** migrar NO restaura el servicio al instante (horas: provisionar,
+panel, mover BD+archivos, DNS). Ante una caída, primero recuperar el host actual;
+la migración es la jugada estratégica para que no se repita.
+
+### ▶ RUNBOOK DE EJECUCIÓN
+La guía paso a paso completa de la migración vive en
+**`docs/migracion_contabo_runbook.md`** (12 fases: provisionar VPS → DirectAdmin
+→ DNS a Cloudflare → subir código → BD → archivos/secretos → SSL wildcard →
+correo relay → cron/tuning → prueba por /etc/hosts → corte → post-corte +
+rollback). En el chat de ejecución, seguir ese doc un paso a la vez; el usuario
+NO sabe configurar servidores — Claude guía, el usuario ejecuta por SSH y pega
+outputs.
+
+### Panel: DirectAdmin (decisión 24 jul 2026)
+Elegido **DirectAdmin** sobre Plesk/cPanel: **$5 USD/mes** (el más barato),
+ligero (deja más RAM para MySQL — clave con CotizaCloud + WordPress + MySQL en
+el mismo VPS), y **SÍ importa cPanel** (herramienta de conversión de cuentas —
+baja el dolor de migración). Corre en Ubuntu (verificar versión LTS soportada).
+
+### Arquitectura de red + SSL (Cloudflare + DirectAdmin + Let's Encrypt)
+Diseño validado (aprobado con el usuario):
+```
+Cloudflare (DNS + proxy + CDN + DDoS)
+  → cotiza.cloud        → IP del VPS  (nube naranja / proxy)
+  → *.cotiza.cloud      → IP del VPS  (nube naranja / proxy)
+  → VPS Contabo (Ubuntu) → DirectAdmin → CotizaCloud + WordPress + MySQL
+```
+1. **Cloudflare Free** para DNS/proxy/CDN/DDoS.
+2. **Wildcard `*.cotiza.cloud`** (A record al VPS) — cubre todos los subdominios
+   de empresa (empresa.cotiza.cloud).
+3. **DirectAdmin** en Ubuntu.
+4. **SSL del origen: Let's Encrypt wildcard vía DNS-01** (no solo el Origin
+   Certificate de Cloudflare). Razón: independencia — el cert LE sigue válido si
+   se apaga el proxy, se deja un registro DNS only, se prueba el origen directo o
+   se migra fuera de Cloudflare. (El Origin cert también sirve en Full strict pero
+   solo confía vía Cloudflare.)
+5. **Token de Cloudflare con permisos MÍNIMOS**: solo zona `cotiza.cloud`, editar
+   DNS, SIN Global API Key, sin otras zonas. DirectAdmin/acme.sh crea el TXT
+   `_acme-challenge.cotiza.cloud` temporal para el DNS-01.
+6. **Renovación automática** por el cron de DirectAdmin.
+7. **Cloudflare SSL/TLS = Full (strict).**
+8. **Correo y hostname en DNS only (nube GRIS)**: `mail.cotiza.cloud`, MX,
+   SPF/DKIM/DMARC, `server.cotiza.cloud`. Cloudflare NO proxea SMTP — dejarlos
+   en naranja rompe el correo. Solo los registros web HTTP/HTTPS van en naranja.
+
+**DirectAdmin usa acme.sh por debajo** (su cliente ACME/Let's Encrypt ES
+acme.sh). NO se instala Certbot ni scripts aparte. Para el wildcard con Cloudflare
+(DNS externo) se configura el plugin **`dns_cf` de acme.sh** con el token scoped
+— eso suele requerir **1 paso de config por CLI** (exportar `CF_Token`); después
+DA renueva solo por cron. El botón wildcard del GUI de DA asume DNS local (BIND);
+con Cloudflare externo el camino es `dns_cf`. Verificar flujo exacto en la versión
+de DA instalada.
+
+**Dos cosas que NO cubre el wildcard (agregadas al plan):**
+- **Dominios propios de clientes** (ontimecocinas.com, etc.): NO los cubre el
+  wildcard ni Cloudflare (están fuera de nuestra zona). Cada uno lleva **su cert
+  por HTTP-01** (no DNS-01), que DirectAdmin/acme.sh emite automático cuando el
+  dominio apunta al VPS. Sin esto, el feature "dominio propio" queda sin SSL.
+- **Correo transaccional por RELAY, no desde el VPS.** IP nueva de Contabo = sin
+  reputación = a spam. Cotización aceptada, abonos, avisos a superadmin → por
+  **Brevo / Amazon SES / SendGrid**. `mail.cotiza.cloud` puede existir, pero el
+  correo que el cliente DEBE recibir va por relay (crítico para el negocio).
+
 ### Siguiente paso cuando se retome
 Diseñar los 3 creativos de FB Ads (guion visual del anuncio del Radar) + guion
 de demo de 15 min que cierra a Business. Arrancar Fase 1 con $50K.
@@ -3230,6 +3353,78 @@ de demo de 15 min que cierra a Business. Arrancar Fase 1 con $50K.
 ### Loop viral acordado
 "Powered by CotizaCloud" en slugs públicos de SUBDOMINIO (no en dominios
 custom — ahí se respeta la marca del cliente). Gratis y compuesto.
+
+## CotizaCloud AI — capa generativa (evaluada 24 jul 2026, DIFERIDA a post-tracción)
+
+### Decisión: NO construir ahora
+Los tips rule-based actuales (MesaSugerencias / DiagnosticoTips — deterministas,
+fact-linted 0 errores en ~490k, gratis, privados) **SON SUFICIENTES** para
+vender, cerrar demos y cumplir la promesa del anuncio. "CotizaCloud AI te dice
+qué hacer" **ya es cierto HOY** con el motor de reglas. La capa generativa (LLM)
+entra **después de tracción, no antes**.
+
+**Por qué diferir (opinión de CEO):**
+- Reformular los tips con un LLM = maquillaje, no más útil. El asesor ya sabe qué
+  hacer con "su intención subió hoy — llámale y cierra fecha". Cambiaría el moat
+  (determinista/gratis/privado/fact-linted) por prosa + costo por llamada +
+  latencia + exposición de datos a un tercero. Mal negocio.
+- Prioridades reales del CEO hoy: **adquisición** (FB ads, demos, camino a 1000)
+  + **estabilidad** (migración a Contabo). La IA generativa compite por atención
+  con lo que genera ingresos — distracción clásica de fundador.
+- El anuncio ya es honesto con las reglas actuales; el LLM no es requisito.
+
+### Principio de diseño (si algún día se hace)
+- **Núcleo determinista de CotizaCloud = fuente de la verdad** (FIT, radar,
+  prioridad, descuentos inteligentes, reglas comerciales, permisos, comisiones,
+  fechas, estados). NO se traslada al LLM.
+- El LLM **solo** recibe resultados ya calculados y los convierte en lenguaje /
+  consultas / acciones pre-autorizadas.
+- El LLM **nunca presenta un número/hecho que CotizaCloud no le entregó**.
+- Corre con los **permisos del usuario que pregunta** (asesor ve lo suyo; solo
+  admin ve datos del equipo).
+- **Read-only primero**; acciones de escritura mucho después, con confirmación
+  humana + allowlist + auditoría. Nunca autónomo al inicio.
+- **Mínima PII al API** (idealmente "Cliente #3, boda, $132k, 3 visitas", no
+  nombres/direcciones). Declarar el subprocesador de IA en el Aviso de
+  Privacidad. Nota: OpenAI y Anthropic por **API NO entrenan con tus datos**.
+- Redactar mensajes que el asesor **copia y pega él mismo** = OK. **Integrar o
+  enviar por WhatsApp = NO** (decisión previa del usuario, se mantiene).
+
+### Fases
+- **FASE 1 — Explicar (la del 80% del valor, 20% del riesgo).**
+  CotizaCloud → **API directa** (Claude/OpenAI), wrapper propio en `core/` tipo
+  Mailer (`AI::explicar_radar($datos)`). **NO necesita OpenClaw** — es una sola
+  llamada de API. Read-only: explicar el radar/bucket/score, resumen de un
+  cliente, justificar por qué una cotización es prioridad alta, coaching de venta
+  (respuesta a objeción, argumento de cierre). Cachear / generar on-demand o en
+  batch — nunca una llamada por cada carga del dashboard.
+- **FASE 2 — Asistente concierge.**
+  Asistente conversacional cuyo propósito es **resolver dudas particulares** del
+  usuario sobre SUS datos, tipo conserje de ayuda (no de mensajería): "¿por qué
+  este cliente es prioridad alta?", "resume lo que pasó con este cliente",
+  "¿cuáles están más cerca del cierre?", "¿qué necesita seguimiento hoy?", "¿qué
+  vendedores traen atrasos?" (solo admin). API con **tool-use nativo**, empezar
+  simple, respeta permisos. Posible diferenciador de la demo/plan Business.
+- **FASE 3 — Multi-agente / muchas herramientas.**
+  Solo si de verdad duele orquestar a mano (LLM que encadena varios pasos
+  decidiendo qué herramienta usar, patrón ReAct). Ahí evaluar **OpenClaw**
+  (gateway de agentes self-hosted, ~380k stars GitHub, verificado real) en Docker
+  aparte, con endpoints/tools de **alcance limitado + auditoría, sin root ni
+  acceso indiscriminado a la BD**.
+
+### Sobre OpenClaw (verificado)
+Es real: gateway de agentes IA self-hosted, patrón ReAct, orquestación por
+WebSocket, conecta canales de mensajería (Discord/Slack/WhatsApp/…). Su valor
+está en **orquestación multi-paso/multi-herramienta y canales** — NO se necesita
+para Fase 1 (que es una llamada de API). Punto medio opcional: **LiteLLM** como
+proxy delgado para rutear modelos/costos sin todo OpenClaw. **No cablear canales
+de mensajería** (decisión previa). Si se implementa, vive en el mismo VPS Contabo
+(Docker aparte; **sin GPU** porque la inferencia es por API). Ver "Migración a
+Contabo".
+
+### Cuándo retomar
+Cuando un cliente Business lo pida, o para un diferenciador fuerte en la demo de
+Business. **No cuando el juguete brille — cuando el negocio lo pida.**
 
 ## Mesa de Trabajo — estado (11 jul 2026)
 
@@ -3362,3 +3557,39 @@ ventas, solo QUÉ se muestra en el menú.
 A $199 con cobro recurrente, el margen es delgado y el churn de planes baratos
 es alto. El Lite SOLO es rentable como puerta de entrada que convierte parte de
 su base a Pro/Business. No es el destino final del cliente.
+
+## Sesión 22-24 julio 2026 — Mesa v3 + RELANZAMIENTO COMERCIAL (deployado)
+
+### Mesa de Trabajo v3 (mergeado en PRs #857-#872)
+1. **Cajón 2 columnas** — izquierda "Capturar siguiente seguimiento" (pills SELECCIONAN, botón "Capturar seguimiento" postea y recarga; candados frescos 1→2→3 por selección), derecha "Seguimiento declarado" (display + fechas + historial colapsado con etiquetas 👍👎📵). Reemplaza el re-tap confuso.
+2. **Escalera de intentos + suspender asistido — REGLA CEO (simple y definitiva)**: "no contestó" es un HECHO. Bolitas "N de 4" SIEMPRE que haya no-contestó seguidos (reset con Hablamos, ventana 30d), sin importar manita/calor/categoría. Al 4.º aparece el botón Suspender (asistido, jamás automático; reusa /cotizaciones/:id/suspender con accion='suspender' explícita + ownership guard agregado al endpoint). Un "Hablamos" intermedio reinicia el conteo (3→contesta→2 = "2 de 4"). Nota de escalera en tips (closure nota_escalera, también en la rama FANTASMA que hace return temprano).
+3. **Orden por URGENCIA** — revividas/milagros → vencidas (MÁS días primero) → límite HOY → al corriente; luego calor→monto; tier solo desempate. Contrato en sim_mesa_armar sección "ORDEN POR URGENCIA" (vendedor 509, ids 9951-9954).
+4. **Mesa de hoy** — encabezado con fecha + chips + "Empieza por [#1]"; filas pendientes numeradas 1..N con línea "→ qué hacer" (oculta al abrir el cajón).
+5. Tips: evidencia factual "hace menos de 24h"/"N veces en las últimas 24h" (v24 es ventana rodante — decir "hoy" era mentira con visita de ayer); ~175 imperativos "hoy" → rotación cuanto antes/de inmediato/sin tardar/ya mismo (F_oracion límite 185 chars).
+6. **4ª sim descubierta**: tools/sim_mesa_render.php — corre ENCADENADA tras armar (comparte fixtures). Suite completa = armar → render, reporte, factlint.
+
+### RELANZAMIENTO COMERCIAL — estructura final (PR #872, deployado 24-jul)
+**Planes**: Free (legacy, ya no se vende) · **Lite $199** (1 usuario, radar simplificado en Cotizaciones + /ayuda/buckets) · **Pro $499** (usuarios ILIMITADOS sin cobro por usuario*, Radar completo, costos, reportes, DI) · **Business $2,999 plano ASISTIDO** (termómetro+mesa+score+ranking+AI+costos avanzados+proveedores+reportes avanzados+marketing+permisos + demo y 4h capacitación). Anuales -20% ($159/$399/$2,399 por mes). Para TODOS: extras, adjuntos, cupones, descuentos, DI, Feedback de clientes, manitas 👍👎📵.
+**Fuente única de precios**: MercadoPago::precios() (la landing y /ayuda la reflejan; /licencia hardcodeado — vigilar).
+
+**Trial 30 días**: al registrarse se elige Lite/Pro (?plan=; default Pro; business→trial Pro + notif superadmin "PIDIÓ BUSINESS"). Columnas `es_trial` (SOLO lo pone el registro; lo limpian mp_return, cron cobro, toggle_plan del superadmin, y la degradación) y `trial_usado` (bloquea SOLO crear/clonar cotizaciones; reversible al pagar/activación manual). Al vencer sin pago: degradación SUAVE en trial_info (free + trial_usado=1 + usuarios extra desactivados excepto admin más antiguo + email) — clientes de pago MANUAL/transferencia (es_trial=0) conservan el flujo original (402 → grace → cron). Auto-login post-verificación con señales del Escudo (el form de verificación recolecta vid/dsig con el mismo JS del login). Empresas nacen con email (para avisos del cron).
+
+**Asientos**: columna `empresas.asientos` (NULL=default del plan: Free/Lite=1, Pro/Business=∞). Enforcement en usuario.php (crear + reactivar) y `planes_ajustar_asientos()` al ACTIVAR un plan (mp_return, toggle_plan) — un trial Pro con 3 asesores que compra Lite queda con solo el admin (flash lo avisa). Perilla en ficha superadmin (acción 'asientos'). Superadmin jamás se desactiva.
+
+**Helpers clave**: `planes_degradar_free()` (trial → castigo completo + email; no-trial → solo plan=free), `planes_ajustar_asientos()`, trial_info expone `trial_activo`, `trial_usado`, `asientos_max` (auto-migra es_trial/trial_usado/asientos con log + SELECT tolerante — jamás 500 por columna faltante).
+
+**Legal**: TyC v2026-07-23 — §5.1 precios por referencia, §5.2 Lite incluido, §5.7 período de prueba (30d, qué pasa al vencer), §6.1 política de USO JUSTO (ilimitado = uso comercial razonable; ante abuso: ajuste de plan/límites/cancelación con aviso). Todo registro la acepta con evidencia (hash+IP).
+
+**Empresa _system (id 4)**: plan=business con plan_vence=NULL (equivalente moderno del plan vacío: sin timers, cron la ignora, login _admin no depende de activa). Empresa 11 (apple-review): business con vence 2027.
+
+**Business asistido**: no comprable self-serve (suscripcion_crear whitelist lite/pro); CTA "Agenda una demo" → chat de leads (landing, czl-fab) / chat de soporte (in-app, czs-fab prellenado). Mensajería: asesor desactivado ve "Tu cuenta está desactivada..." en login (tras validar password); email de fin de trial menciona usuarios desactivados; CTAs de agotado van al checkout (/config?tab=suscripcion).
+
+**Deploy**: migraciones add_asientos.sql + add_trial_fase_b.sql corridas; cron diario 3am ya existía; tag de rollback `pre-paquetes-v1` (main 15e39e1). 8 auditorías de agentes sobre el proyecto (fases A/B/C + jornadas + superficie).
+
+### Pendientes post-relanzamiento
+1. **P2 anti-abuso** (prioridad sube con trial gratis): unicidad de email (+1@gmail = cuentas infinitas), ip_real() confía en X-Forwarded-For sin proxy (rate limit spoofeable), race del límite 25, captcha si hay abuso.
+2. Cosmético: toggle USD "$ $11" doble signo (preexistente), clases pred-list/pred-dot/pipe-label sin CSS, /licencia con precios hardcodeados.
+3. Decisiones registradas: landing muestra termómetro con 3 dimensiones (simplificación de marketing OK); pagar temprano suma días del trial (premio, no bug); sección termómetro sigue arriba de precios en landing (pulido futuro).
+4. Vigilar primeros días: salida del cron 3am, primeros registros (es_trial=1 en BD), logs [Asientos]/[Trial]/[Registro].
+5. MercadoPago::sincronizar() es código muerto (sin caller) — limpiar.
+6. Plan de arranque comercial (Fase 1: FB Ads del Radar + guion de demo) y libro de ventas (brief en docs/libro/BRIEF.md) — listos para arrancar ahora que el producto y los planes están vivos.
