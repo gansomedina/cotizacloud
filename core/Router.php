@@ -34,40 +34,6 @@ class Router
         self::$path   = '/' . trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
         $method       = $_SERVER['REQUEST_METHOD'];
 
-        // ── HEAD: se resuelve contra las rutas GET pero NO ejecuta el manejador ──
-        // Sin esto ninguna ruta matchea (todas se registran como 'GET') y TODO el
-        // sitio contesta 404 a un HEAD, que es lo que mandan por defecto los
-        // monitores de disponibilidad: reportarían el sitio caído estando bien.
-        //
-        // Se devuelve solo el código de estado, que es lo único que un monitor
-        // necesita. Ejecutar el manejador sería peligroso, y no en teoría:
-        //   · /logout es GET (línea 114) y Auth::logout() expira la sesión EN LA
-        //     BASE (core/Auth.php:197). Un HEAD desde un escáner de enlaces, una
-        //     extensión o un proxy corporativo desloguearía al asesor sin que se
-        //     entere → pierde la Capa 0 del Escudo → sus visitas al slug pasan a
-        //     contar como cliente.
-        //   · /api/safari-bridge escribe (marca visitor interno, aprende IP) y
-        //     pone cookies que un HEAD descarta: se gastaría a medias.
-        //   · el slug público insertaría en escudo_log en cada HEAD.
-        // No ejecutar nada elimina los tres de una vez.
-        //
-        // LIMITACIÓN CONOCIDA: solo se comprueba que el PATRÓN de ruta exista, no
-        // la autenticación ni que el recurso exista. `HEAD /dashboard` contesta
-        // 200 aunque no haya sesión, y `HEAD /c/slug-que-no-existe` también. Para
-        // un monitor de disponibilidad da igual (apúntalo a /login o /landing);
-        // solo hay que saberlo para no apoyar nada más en ese código de estado.
-        if ($method === 'HEAD') {
-            foreach (self::$routes as [$rMethod, $pattern, $unused]) {
-                if ($rMethod !== 'ANY' && $rMethod !== 'GET') continue;
-                if (self::match_pattern($pattern, self::$path) !== null) {
-                    http_response_code(200);
-                    return;
-                }
-            }
-            http_response_code(404);
-            return;
-        }
-
         foreach (self::$routes as [$rMethod, $pattern, $handler]) {
             if ($rMethod !== 'ANY' && $rMethod !== $method) {
                 continue;
