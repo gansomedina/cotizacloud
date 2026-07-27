@@ -90,8 +90,12 @@ línea 42, exactamente como ya lo hace `quote_action.php`. Es una línea.
 
 ---
 
-## 2 · El botón "Activar Escudo" entrega una sesión válida por 24 horas
-`core/layout.php:572` + `api/safari_bridge.php:118` · **ALTO** · preexistente · *verificado personalmente*
+## 2 · El botón "Activar Escudo" entrega una sesión válida por 24 horas — APLAZADO 27 jul
+`core/layout.php:572` + `api/safari_bridge.php:118` · **MEDIO** (era ALTO) · preexistente · *código releído completo el 27 jul*
+
+> **Estado: anotado, sin tocar código.** Ver "Segunda revisión, 27 jul (tarde)"
+> al final de esta sección: correcciones a este texto, qué se confirmó, por qué
+> se aplaza y el plan de 3 pasos para cuando se retome.
 
 Tres defectos encadenados que los agentes reportaron por separado y que en
 realidad son un solo problema:
@@ -140,6 +144,70 @@ a esa protección.
 demanda (endpoint al hacer clic) en vez de imprimirlo en cada render; no imprimir
 el `<a href>` cuando el banner no aplica; y validar `next` contra una lista de
 dominios propios.
+
+### Segunda revisión, 27 jul (tarde) — correcciones y DECISIÓN: se aplaza
+
+Se releyeron los tres archivos completos. **La severidad baja de ALTO a MEDIO** y
+el arreglo queda **anotado, no aplicado**, por decisión del CEO tras exponerle el
+riesgo del propio arreglo (abajo).
+
+**Correcciones a lo que decía este documento:**
+
+1. **El botón no está "a la vista".** Decir que solo se oculta con
+   `display:none` es incompleto: el JS que lo muestra (`layout.php:730-738`)
+   arranca con `if(!window.Capacitor.isNativePlatform())return;` — **el botón
+   solo existe dentro de la app nativa**. En navegador nadie lo ve nunca. El
+   token sí está en el HTML servido, pero el escenario de "el asesor copia el
+   enlace y se lo manda a un cliente" exige un long-press deliberado en el
+   WKWebView. Es mucho menos probable de lo que decía este texto.
+2. **El token en el `access.log` de nginx no se verificó.** Es plausible (el
+   formato `combined` registra la query string) pero nadie revisó
+   `/etc/nginx/nginx.conf`. Se listaba como hecho; no lo es.
+3. **"Todas las empresas activas"** es impreciso: `safari_bridge.php:82` excluye
+   `slug != '_system'`.
+4. **`APP_SECRET` NO es el default del repo** — verificado en producción, 48
+   caracteres propios. Nadie puede forjar tokens. Esto era lo único que habría
+   hecho el hallazgo urgente, y queda descartado.
+
+**Lo que se confirmó leyendo el código, y sigue vigente:**
+- `Auth::cargar_usuario_por_token()` (`Auth.php:202-213`) valida token, empresa
+  o superadmin, expiración y usuario activo — **no ata la sesión a IP ni a UA**.
+  La cookie plantada por el bridge basta para tener la sesión.
+- `next` acepta cualquier `https://` (`safari_bridge.php:139`). Como cualquiera
+  puede registrarse y sacar su propio token válido, la redirección abierta es el
+  único hallazgo aprovechable **a propósito** por un tercero.
+- `radar_ips_internas` es **cosmético**: `cotizacion.php:283` dice literal
+  "CAPA 2 (IP interna) eliminada" y nadie la consulta para filtrar. Solo se
+  lista en la UI del Radar.
+- `radar_visitors_internos` **sí** se consulta (`cotizacion.php:277`,
+  `track.php:78`, `cot_feedback.php:70`): plantar el `cz_vid` del asesor en el
+  navegador de un cliente sí ciega el Radar para ese cliente.
+- El token se emite en **cada carga de página** de todo usuario logueado con
+  cookie `cz_vid` (`layout.php:566`), incluso en navegadores donde el banner
+  jamás se mostrará. Y para el superadmin la cadena incluye el `dominio_custom`
+  de **todos** los inquilinos (`layout.php:580`).
+
+**Por qué se aplaza — el riesgo del arreglo.** La lista blanca de `next` parece
+inocua, pero si el valor de `empresas.dominio_custom` no coincide exactamente con
+el host que viaja en la URL (un `www.`, mayúsculas, un espacio), la cadena
+legítima se rechaza y **quien se loguee en una empresa con dominio propio se
+queda en la pantalla "Escudo Radar activado" en vez de llegar a su dashboard**.
+No se pierde nada y se revierte en un minuto, pero es visible para el cliente.
+Contra una ganancia que no es urgente —nadie está explotando esto— no se tocó.
+
+**Plan para cuando se retome (3 pasos, en este orden):**
+1. Leer los valores reales de `empresas.dominio_custom` en producción y construir
+   la lista blanca con **esos**, no con supuestos.
+2. Registrar en el log cada `next` rechazado, para detectar el mismo día si algo
+   legítimo se bloquea.
+3. Tras el deploy, login real en una sucursal de OnTime confirmando que se llega
+   al dashboard. Si no, revertir.
+
+**Lo que NO se recomienda:** nonce de un solo uso (más tabla, más escrituras, más
+superficie de error para un beneficio marginal sobre acortar la expiración), y
+decidir server-side si el visitante es la app nativa para no emitir el token en
+navegadores (obligaría a confiar en el User-Agent, que es meter una heurística
+nueva en el Escudo).
 
 ---
 
