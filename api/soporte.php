@@ -74,7 +74,14 @@ if ($rol === 'admin') {
         $ref = trim(str_replace(["\r","\n"], ' ', ($usuario['nombre'] ?? 'Usuario') . ' · ' . (Auth::empresa()['nombre'] ?? '')));
         try { PushNotification::enviar_a_superadmin('soporte_mensaje', 'Nuevo mensaje de soporte', mb_substr($ref.': '.$cuerpo,0,150), ['url'=>'/superadmin/soporte','conversacion_id'=>$conv_id]); } catch (\Throwable $e) {}
         if (defined('SUPERADMIN_EMAIL') && SUPERADMIN_EMAIL) {
-            try { @mail(SUPERADMIN_EMAIL, 'Soporte — '.$ref, "Mensaje:\n{$cuerpo}\n\nResponder: https://cotiza.cloud/superadmin/soporte", "From: noreply@cotiza.cloud\r\nContent-Type: text/plain; charset=utf-8"); } catch (\Throwable $e) {}
+            // Mailer (SMTP) y no mail(): el server no tiene MTA local, así que
+            // mail() devolvía false en silencio (la @ se lo tragaba) y el aviso
+            // se perdía. Mailer::enviar sale por el relay SMTP configurado.
+            try {
+                Mailer::enviar(SUPERADMIN_EMAIL, 'Soporte', 'Soporte — '.$ref,
+                    '<p><strong>Mensaje:</strong></p><p>'.nl2br(e($cuerpo)).'</p>'
+                    .'<p><a href="https://cotiza.cloud/superadmin/soporte">Responder en el panel</a></p>');
+            } catch (\Throwable $e) {}
         }
         echo json_encode(['ok'=>true, 'conversacion_id'=>$conv_id, 'mensaje_id'=>$msg_id]);
         exit;
@@ -125,7 +132,14 @@ if ($accion === 'enviar') {
     $ref = trim(str_replace(["\r","\n"], ' ', "Landing · {$nombre} <{$email}>"));
     try { PushNotification::enviar_a_superadmin('soporte_landing', 'Lead del landing', mb_substr($ref.': '.$cuerpo,0,150), ['url'=>'/superadmin/soporte','conversacion_id'=>$conv_id]); } catch (\Throwable $e) {}
     if (defined('SUPERADMIN_EMAIL') && SUPERADMIN_EMAIL) {
-        try { @mail(SUPERADMIN_EMAIL, 'Lead landing — '.$ref, "Prospecto: {$nombre}\nCorreo: {$email}\n\nMensaje:\n{$cuerpo}\n\nResponder: https://cotiza.cloud/superadmin/soporte", "From: noreply@cotiza.cloud\r\nContent-Type: text/plain; charset=utf-8"); } catch (\Throwable $e) {}
+        // Mailer (SMTP) y no mail(): sin MTA local se perdían los avisos de LEADS.
+        try {
+            Mailer::enviar(SUPERADMIN_EMAIL, 'Soporte', 'Lead landing — '.$ref,
+                '<p><strong>Prospecto:</strong> '.e($nombre).'<br>'
+                .'<strong>Correo:</strong> <a href="mailto:'.e($email).'">'.e($email).'</a></p>'
+                .'<p><strong>Mensaje:</strong></p><p>'.nl2br(e($cuerpo)).'</p>'
+                .'<p><a href="https://cotiza.cloud/superadmin/soporte">Responder en el panel</a></p>');
+        } catch (\Throwable $e) {}
     }
     echo json_encode(['ok'=>true, 'token'=>$token, 'conversacion_id'=>$conv_id, 'mensaje_id'=>$msg_id]);
     exit;

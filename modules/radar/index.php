@@ -350,7 +350,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
     if (!$items) { echo "<div class='rbk-em'>Sin registros.</div></div>"; return; }
     // Sin límite — mostrar todas las cotizaciones del bucket
     echo "<div class='rdrs'><table class='rdrt'><thead><tr>";
-    echo "<th>Título / Cliente</th>";
+    echo "<th style='min-width:320px'>Título / Cliente</th>";
     if ($motivo) echo "<th style='width:100px'>Motivo</th>";
     echo "<th class='tc col-estado' style='width:72px'>Estado</th>";
     echo "<th class='tr' style='width:70px'><a href='".rurlq(['sort'=>'fit','dir'=>rtdir($s,'fit',$d)])."'>Score%</a></th>";
@@ -605,7 +605,11 @@ ob_start();
 .rdrt tr.hot4h{background:#fff7cc}
 .rdrt tr:hover td{background:#fafaf8;cursor:pointer}
 .tc{text-align:center}.tr{text-align:right}
-.rtit{font-weight:600;font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
+/* Sin max-width a propósito: .rtit vive en un flex con flex:1;min-width:0, así
+   que ocupa TODO el ancho que le dé su <td> y el ellipsis evita el desbordo. Un
+   max-width aquí solo recortaba antes de tiempo (el tope real lo pone la celda).
+   El ancho de la columna se garantiza con el min-width del <th>. Móvil: 160px. */
+.rtit{font-weight:600;font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rsub{font-weight:400;font-size:11px;color:var(--t3);margin-top:1px}
 .ago{color:#888;font-size:11px}
 .rmot{font-weight:500;font-size:11px;color:var(--t2)}

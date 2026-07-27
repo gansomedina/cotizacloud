@@ -43,7 +43,33 @@ el corte se cierra con **dump + rsync FINAL** justo antes de cambiar el DNS.
 | 9 | SSL: Cloudflare Origin Certificate instalado (sirve si algún día se activa el naranja) | ✅ |
 | 10 | `real_ip` de rangos Cloudflare + **`APP_ENV=production`** por `fastcgi_param` | ✅ |
 | 11 | **Archivos migrados**: `uploads/logos`, `public/uploads/logos`, `public/assets/uploads`, `data/` | ✅ |
-| 12 | 6 correcciones de código (ver Parte C) commiteadas | ✅ |
+| 12 | 6 correcciones de código (ver Parte C) commiteadas y desplegadas | ✅ |
+| 13 | **CORTE HECHO** (27 jul): dump FINAL re-importado, DNS a `212.28.186.247` en gris | ✅ |
+| 14 | Let's Encrypt wildcard `cotiza.cloud` + `*.cotiza.cloud` (DNS-01, auto-renueva) | ✅ |
+| 15 | Let's Encrypt de los 3 dominios custom OnTime + su bloque 443 en nginx | ✅ |
+| 16 | Correo separado: `mail` → A → `107.161.23.124`; MX → `mail.cotiza.cloud` | ✅ |
+| 17 | Tuning MariaDB: `innodb_buffer_pool_size=6G`, `max_connections=200` | ✅ |
+
+### Verificación post-corte (todo desde afuera, con certs reales)
+`https://cotiza.cloud/login`→200 · `/landing`→200 · `granitodepot.cotiza.cloud`→302 ·
+`hermosillo/obregon/nogales.ontimecocinas.com/login`→302 (SSL válido) ·
+**correo enviado y recibido** con `Mailer::enviar()` desde el server nuevo ·
+BD final: 2347 cotizaciones · 257 ventas · 9 empresas · **868 user_sessions**
+(los asesores NO tuvieron que volver a loguearse).
+
+**Radar verificado byte a byte:** `md5sum` de `modules/radar/index.php` y
+`core/layout.php` **idénticos** entre viejo y nuevo. El único archivo distinto es
+`Radar.php`, y su md5 previo coincide exactamente con el commit anterior a la
+corrección — o sea, la única diferencia es el filtro `es_interno = 0`.
+
+### Gotcha del corte: "invalid signature" durante la propagación
+`api/safari_bridge.php:33` devuelve `invalid signature` si el token del bridge se
+**firma** en un servidor y se **verifica** en otro — pasa mientras el DNS propaga,
+porque el server viejo tiene el `APP_SECRET` viejo y el nuevo el nuevo. No es un
+bug: se resuelve solo al terminar la propagación, o limpiando la caché DNS local
+(`sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`) y reabriendo el
+navegador. Ojo mientras dure: quien caiga en el server viejo trabaja sobre la
+**BD vieja** y ese trabajo no se refleja en Contabo.
 
 **Verificado por HTTPS local (Host header, sin DNS):** `/`→200 · `/login`→200 ·
 `/landing`→200 · `/registro`→200 · `/dashboard`→302 ·
@@ -119,23 +145,68 @@ MariaDB son **128 MB** — con 2347 cotizaciones y las queries del Radar, esto e
 diferencia entre "se siente rápido" y "se siente igual que el compartido".
 Editar `my.cnf`, reiniciar MariaDB, verificar.
 
-### 5. Correo — relay (del plan maestro, PENDIENTE y con dependencia)
-Hoy `SMTP_HOST = mail.cotiza.cloud` → **el correo sale por el host viejo**.
-Funciona durante y después del corte… **pero muere el día que canceles el hosting
-viejo**. Antes de cancelar:
-1. Crear cuenta de relay (Brevo o Amazon SES).
-2. Apuntar `SMTP_*` del `config.php` al relay.
-3. Autenticar el dominio en el relay (SPF/DKIM que pidan) → agregar esos TXT en
-   Cloudflare en **gris**.
-4. Probar envío real y revisar que **no caiga en spam**.
+### 5. Correo — relay Brevo ✅ HECHO (27 jul)
 
-> **Nunca mandar transaccionales desde la IP del VPS directo**: IP nueva sin
-> reputación = spam.
+**Envío ya NO depende del hosting viejo.** `Mailer::enviar()` probado desde el
+server nuevo con `ENVIADO OK`.
 
-Además: `api/soporte.php` usa `mail()` de PHP (no PHPMailer) para avisarte de
-**leads del landing**. Ubuntu limpio no trae MTA → esos avisos se pierden en
-silencio. Instalar `msmtp-mta` apuntando al mismo SMTP, o cambiar esas 2 llamadas
-a `Mailer::enviar()`.
+Config aplicada en `/var/www/cotizacloud/config.php` (respaldo en
+`config.php.bak-antes-brevo`):
+```
+SMTP_HOST   = smtp-relay.brevo.com
+SMTP_PORT   = 587
+SMTP_SECURE = tls          ← STARTTLS, NO 'ssl' (eso es para 465)
+SMTP_USER   = b36550001@smtp-brevo.com
+SMTP_PASS   = (SMTP key de Brevo, empieza con xsmtpsib-)
+SMTP_FROM   = noreply@cotiza.cloud   (sin cambio)
+```
+
+**DNS agregado en Cloudflare (todo DNS-only/gris):**
+| Tipo | Nombre | Contenido |
+|---|---|---|
+| TXT | `@` | `brevo-code:0808f1ab4967b9a1d7da0b64067dccef` |
+| CNAME | `brevo1._domainkey` | `b1.cotiza-cloud.dkim.brevo.com` |
+| CNAME | `brevo2._domainkey` | `b2.cotiza-cloud.dkim.brevo.com` |
+
+**⛔ Registros de Brevo que se OMITIERON a propósito** (y por qué):
+- `CNAME mail → …brand.brevosend.com` — **rompería el correo**: `mail.cotiza.cloud`
+  es un registro **A** al server viejo y el **MX apunta ahí**. Un CNAME de branding
+  ahí mata la recepción de correo.
+- `CNAME img.mail` y `CNAME r.mail` — dependen del anterior.
+- El `_dmarc` que pide Brevo — **ya existe uno**; solo puede haber un DMARC por dominio.
+
+Brevo muestra esos 3 como "mismatch": es **cosmético** (branded tracking links).
+La autenticación real la dan el `brevo-code` + los 2 DKIM, y el envío funciona.
+Si algún día se quiere el branding, recrear el dominio en Brevo usando
+**`send`** como subdominio de marca en vez de `mail`.
+
+**⚠️ Filtro de IPs autorizadas:** Brevo bloquea el SMTP desde IPs no dadas de alta
+(el síntoma es `SMTP Error: Could not authenticate`, que despista). Está autorizada
+`212.28.186.247`. **Si algún día cambia la IP del servidor, el correo deja de salir
+hasta darla de alta en Brevo.**
+
+### 5b. Correo — lo que SIGUE dependiendo del hosting viejo
+El **envío** ya salió del hosting viejo (Brevo). Lo que TODAVÍA depende de él:
+
+1. **Recepción de correo (MX)** — `MX → mail.cotiza.cloud → 107.161.23.124`.
+   Hoy no se usan buzones, pero si algún día se quieren (clientes, tickets), el
+   día que se cancele el hosting viejo hay que mover el MX a un proveedor de
+   buzones (Zoho Mail / Google Workspace). **Nunca auto-hospedar correo en el VPS**:
+   IP nueva sin reputación = spam + blacklists + mantenimiento.
+2. **`api/soporte.php` usa `mail()` de PHP** (no PHPMailer) para avisar de **leads
+   del landing**. Ubuntu limpio no trae MTA → esos avisos se pierden en silencio.
+   Arreglo: cambiar esas 2 llamadas a `Mailer::enviar()` (ahora que hay relay), o
+   instalar `msmtp-mta` apuntando a Brevo.
+
+### Patrón para migrar otro sitio que SÍ tenga correo (ej. ontimecocinas.com)
+Su MX apunta al **dominio** (`MX → ontimecocinas.com`), así que si se mueve el
+registro A del apex al VPS, **el correo se va con él y se cae**. Orden correcto:
+1. Crear `mail.ontimecocinas.com` → **A** → IP del servidor de correo actual.
+2. Cambiar el `MX` → `mail.ontimecocinas.com`.
+3. Esperar propagación y **verificar que el correo sigue llegando**.
+4. Recién entonces mover `ontimecocinas.com` → A → IP del VPS.
+
+Es exactamente lo que se hizo con `mail.cotiza.cloud` en este corte.
 
 ### 6. Cron (⚠️ NO activar antes del corte)
 ```
@@ -283,6 +354,34 @@ asesor). **→ Certs de los 3 dominios custom ANTES de mover su DNS.**
   `CREATE TABLE IF NOT EXISTS` en runtime (`trial_info()`, superadmin, tickets…).
 
 ---
+
+## PENDIENTE — ancho del título en el Radar (problema viejo, causa ya identificada)
+
+Síntoma histórico: los títulos del Radar se cortan y **subir el `max-width` no
+sirve de nada**. Se subió `.rtit` de 200px a 320px y **no se notó ningún cambio**.
+
+**Causa raíz encontrada (no es `.rtit`):**
+- El título **NO** se recorta en PHP — `modules/radar/index.php:377` imprime
+  `htmlspecialchars($r['titulo'])` completo. Es puramente CSS.
+- `modules/radar/index.php:439`: el `.rtit` vive dentro de un
+  `<div style='display:flex'>` con **`style='flex:1;min-width:0'`**.
+- Con `flex:1; min-width:0`, el ancho real lo impone el **`<td>`** contenedor.
+  El `max-width` es solo un **tope superior**: si la celda ofrece menos de 320px,
+  el texto se corta al ancho de la celda y el tope nunca llega a aplicar.
+- `.rdrt` es `width:100%; min-width:520px` (línea 599) y **todas las demás
+  columnas llevan `white-space:nowrap`** (línea 600) → se quedan con su ancho
+  natural y a la columna de título le toca **solo la sobra**.
+
+**Cómo se arregla de verdad (cuando se retome):**
+1. Dar ancho explícito a la columna en su `<th>`: `width:38%` (o el % que se
+   decida), que es lo mínimo invasivo.
+2. O `table-layout:fixed` en `.rdrt` + anchos por columna — más control, pero
+   obliga a definir TODAS las columnas.
+3. O reducir columnas en pantallas medianas (ocultar PRIOR% o IMPORTE bajo cierto
+   breakpoint) para liberar espacio.
+
+Estado: `.rtit` quedó en **320px** (inofensivo, es solo el tope). El cambio real
+está pendiente de decidir cuál de las 3 opciones se toma.
 
 ## Gotchas técnicos encontrados en la ejecución
 
