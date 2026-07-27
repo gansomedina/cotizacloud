@@ -228,10 +228,11 @@ El **envío** ya salió del hosting viejo (Brevo). Lo que TODAVÍA depende de é
    día que se cancele el hosting viejo hay que mover el MX a un proveedor de
    buzones (Zoho Mail / Google Workspace). **Nunca auto-hospedar correo en el VPS**:
    IP nueva sin reputación = spam + blacklists + mantenimiento.
-2. **`api/soporte.php` usa `mail()` de PHP** (no PHPMailer) para avisar de **leads
-   del landing**. Ubuntu limpio no trae MTA → esos avisos se pierden en silencio.
-   Arreglo: cambiar esas 2 llamadas a `Mailer::enviar()` (ahora que hay relay), o
-   instalar `msmtp-mta` apuntando a Brevo.
+2. ~~**`api/soporte.php` usa `mail()` de PHP**~~ ✅ **RESUELTO por partida doble**:
+   las 2 llamadas se cambiaron a `Mailer::enviar()`, y además se instaló
+   `msmtp-mta` (ver §6), así que `mail()` también funciona ya en el servidor.
+   Falta la prueba de humo: mandar un mensaje por el chat del landing y confirmar
+   que llega el aviso del lead.
 
 ### Patrón para migrar otro sitio que SÍ tenga correo (ej. ontimecocinas.com)
 Su MX apunta al **dominio** (`MX → ontimecocinas.com`), así que si se mueve el
@@ -254,6 +255,27 @@ Nota: el cron corre por **CLI**, que no recibe el `APP_ENV` del `fastcgi_param` 
 conviene `define('ENV','production')` duro en `config.php`.
 No hay otros crons reales: `tools/` y los `.php` de la raíz son one-shot o dev
 (`cleanup_bot_views.php` es de la era WordPress y está roto: pide `wp-load.php`).
+
+**✅ HECHO (27 jul) — el cron ya avisa por correo, como hacía cPanel.**
+cPanel mandaba la salida del cron por correo porque tenía MTA local; Ubuntu
+limpio **no**, así que el cron corría y su salida se perdía. Se instaló `msmtp`
++ `msmtp-mta` (`/usr/sbin/sendmail` → `/usr/bin/msmtp`) apuntando al mismo relay
+Brevo. Crontab final:
+```
+MAILTO=josealfonsomedina@hotmail.com
+0 3 * * * APP_ENV=production /usr/bin/php /var/www/cotizacloud/cron/procesar_suscripciones.php 2>&1 | tee -a /var/log/cotizacloud-cron.log
+```
+El `tee -a` es deliberado: guarda en el log **y** deja la salida en stdout, que
+es lo que hace que cron mande el correo (con `>>` a secas no hay salida → no hay
+correo). Verificado: envío sin cabecera `From` → msmtp usa el `from` de
+`/etc/msmtprc` → `smtpstatus=250 exitcode=EX_OK`. No hace falta `set_from_header`.
+Ejecución manual del script OK (`Cobros: 0 ok, 0 err`).
+
+`/etc/msmtprc` se genera leyendo las constantes `SMTP_*` de `config.php` (la
+contraseña nunca se teclea), `chmod 600 root:root`. Log en `/var/log/msmtp.log`.
+Esto también deja operativa la función `mail()` de PHP para cualquier script que
+la use. El comando `mail` NO se instala (viene de `mailutils`, que arrastra
+Postfix) — no hace falta: cron usa `sendmail` directamente.
 
 ### 7. Probar SIN tocar el DNS (`/etc/hosts`)
 En la Mac, agregar temporalmente:
