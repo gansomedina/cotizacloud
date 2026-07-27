@@ -436,6 +436,51 @@ class Radar
         // Para multip: IPs en ventana post primer guest
         $ips_post_guest = [];
 
+        // ── ¿Esta sesión cuenta como visita real? (FUENTE ÚNICA) ──────────
+        // Los DOS recorridos de $sess_rows —el principal y el de multi-persona—
+        // deben descartar exactamente lo mismo. Estaban duplicados y se
+        // separaron: el segundo se quedó con la versión vieja (salvaba la sesión
+        // con que existiera CUALQUIER evento de la misma IP, sin exigir
+        // engagement, y usaba el umbral viejo vis<2000 && scroll===0). Resultado:
+        // sesiones fantasma ya descartadas arriba seguían sumando "personas
+        // distintas" e inflaban el bucket multi_persona, la categoría social de
+        // probable_cierre y el impulso de prioridad por múltiples visitantes.
+        // Un solo closure para que no vuelvan a divergir.
+        $sesion_valida = function (int $scroll, int $vis, int $ts, string $vid, string $ip) use ($cfg, $now, $ev_rows): bool {
+            $filtrar = $cfg['filtrar_bots'] ?? true;
+
+            // Fantasma de bot de preview: sin scroll ni tiempo visible y con más
+            // de 2 min de vida. Se salva solo si el MISMO visitor_id (o la IP,
+            // cuando no hay vid) dejó al menos un evento con engagement real.
+            // Match por visitor_id y no por IP: la IP rota en Telcel/Telmex y se
+            // comparte en oficinas, el UUID no.
+            if ($filtrar && $scroll === 0 && $vis === 0 && ($now - $ts) > 120) {
+                $engagement = false;
+                foreach ($ev_rows as $ev) {
+                    $match = ($vid !== '' && ($ev['visitor_id'] ?? '') === $vid)
+                          || ($vid === '' && ($ev['ip'] ?? '') === $ip);
+                    if (!$match) continue;
+                    if ((int)($ev['max_scroll'] ?? 0) > 0 || (int)($ev['visible_ms'] ?? 0) >= 2000) {
+                        $engagement = true;
+                        break;
+                    }
+                }
+                if (!$engagement) return false;
+            }
+
+            // Visita mínima: umbral calibrado con 60 días de datos contra el
+            // scroll que restaura el navegador (Chrome Android reposiciona el
+            // scroll de cargas previas y el JS lo lee como si fuera del usuario).
+            // Nota: aquí vivía un `$js_tocado = $s['visible_ms'] !== null` que era
+            // siempre true — la columna es NOT NULL DEFAULT 0 (ver hallazgo 11 de
+            // docs/auditoria_postmigracion_escudo_radar.md). Se omite porque no
+            // cambiaba nada; el día que se decida distinguir "JS no corrió" habrá
+            // que hacerlo con una señal explícita, no con el tipo de la columna.
+            if ($filtrar && $vis < 200 && $scroll < 35) return false;
+
+            return true;
+        };
+
         foreach ($sess_rows as $s) {
             $ip   = trim((string)($s['ip'] ?? ''));
             $ua   = (string)($s['ua'] ?? '');
@@ -450,50 +495,12 @@ class Radar
                 ($dsig !== '' && isset($intern_dsig[$dsig]))
             )) continue;
 
-            // ── Filtro behavioral: sesión fantasma de bot de preview ──
-            // Si scroll=0, visible=0, sesión tiene >2 min de vida, descartar
-            // a menos que el MISMO visitor_id (o IP si no hay vid) tenga
-            // al menos 1 evento JS con engagement real (scroll>0 o visible>=2s).
-            //
-            // Antes el filtro miraba solo "ip tiene eventos" sin chequear
-            // engagement. Los previews modernos (iMessage, Teams, headless
-            // de oficina) ejecutan JS por <100ms y mandan quote_open +
-            // quote_close con scroll=0 y visible=0. Esos eventos pasaban
-            // el filtro viejo y contaminaban $sessions.
-            //
-            // Match por visitor_id (UUID estable) — no por IP, que rota en
-            // Telcel/Telmex y comparte oficinas/NAT. Caso real: cliente que
-            // cambia de WiFi a 4G mantiene su vid; preview que comparte IP
-            // con cliente real no comparte vid.
+            // Filtro de sesión fantasma + visita mínima. La lógica y el porqué
+            // están en $sesion_valida (definido arriba), que es exactamente la
+            // misma función que usa el bucle de multi-persona.
             $scroll = (int)($s['scroll_max'] ?? 0);
             $vis    = (int)($s['visible_ms'] ?? 0);
-            if (($cfg['filtrar_bots'] ?? true) && $scroll === 0 && $vis === 0 && ($now - $ts) > 120) {
-                $vid_has_real_engagement = false;
-                foreach ($ev_rows as $ev) {
-                    $match = ($vid !== '' && ($ev['visitor_id'] ?? '') === $vid)
-                          || ($vid === '' && ($ev['ip'] ?? '') === $ip);
-                    if (!$match) continue;
-                    $ev_scroll = (int)($ev['max_scroll'] ?? 0);
-                    $ev_vis    = (int)($ev['visible_ms']  ?? 0);
-                    if ($ev_scroll > 0 || $ev_vis >= 2000) {
-                        $vid_has_real_engagement = true;
-                        break;
-                    }
-                }
-                if (!$vid_has_real_engagement) continue;
-            }
-
-            // ── Filtro de visita mínima: <2 segundos no es lectura real ──
-            // Validado con datos (60d): rango scroll 20-34 con visible<200ms tiene
-            // 0 aceptadas y 9 activas — zona muerta del scroll restaurado por el
-            // browser (Chrome Android restaura posición de scroll de cargas previas;
-            // el JS lo lee como si fuera scroll del usuario y manda scroll>0 con
-            // visible bajo). El umbral scroll<35 + visible<200 captura ghost-restore
-            // sin tocar engagement legítimo (rango 35+ tiene aceptadas reales).
-            // $js_tocado distingue NULL (adblocker, mantener) de 0 (JS ejecutó pero
-            // cero engagement, descartar).
-            $js_tocado = $s['visible_ms'] !== null;
-            if (($cfg['filtrar_bots'] ?? true) && $js_tocado && $vis < 200 && $scroll < 35) continue;
+            if (!$sesion_valida($scroll, $vis, $ts, $vid, $ip)) continue;
 
             // Construir mapas vid→dsig, vid→ips e ip→dsig (después de filtros, antes de dedup)
             if ($dsig !== '') {
@@ -580,16 +587,13 @@ class Radar
                     ($vid2 !== '' && isset($intern_v[$vid2])) ||
                     ($dsig2 !== '' && isset($intern_dsig[$dsig2]))
                 )) continue;
-                // Filtro ghost (paridad con loop principal)
+                // Fantasma + visita mínima: la MISMA función del bucle principal.
+                // Antes estaban copiados aquí y se habían quedado en la versión
+                // vieja, así que este bucle contaba sesiones que el principal ya
+                // había descartado.
                 $sc2 = (int)($s['scroll_max'] ?? 0);
                 $vi2 = (int)($s['visible_ms'] ?? 0);
-                if (($cfg['filtrar_bots'] ?? true) && $sc2 === 0 && $vi2 === 0 && ($now - $ts2) > 120) {
-                    $ip2_has_ev = false;
-                    foreach ($ev_rows as $ev) { if (($ev['ip'] ?? '') === $ip2) { $ip2_has_ev = true; break; } }
-                    if (!$ip2_has_ev) continue;
-                }
-                // Filtro visita mínima (paridad con loop principal)
-                if ($vi2 > 0 && $vi2 < 2000 && $sc2 === 0) continue;
+                if (!$sesion_valida($sc2, $vi2, $ts2, $vid2, $ip2)) continue;
                 $ips_post_guest[$ip2] = true;
                 if ($vid2 !== '') $vids_post_guest[$vid2] = true;
             }
@@ -1883,13 +1887,19 @@ class Radar
         $total = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado NOT IN ('borrador') AND suspendida = 0", [$empresa_id]);
         $base  = $total > 0 ? $cerr / $total : self::FIT_GLOBAL;
 
+        // El es_interno=0 del JOIN va en el ON y NO en el WHERE: en el WHERE
+        // degradaría el LEFT JOIN a INNER y sacarían del modelo las cotizaciones
+        // sin ninguna sesión de cliente, que son justamente la evidencia de que
+        // sin engagement no se cierra. Sin ese filtro, cada vista previa del
+        // asesor sobre su propia cotización subía su num_sess/num_ips y el modelo
+        // FIT aprendía que muchas sesiones equivale a cierre, por una razón falsa.
         $cots = DB::query(
             "SELECT c.id, c.estado, c.total,
                     COUNT(qs.id) AS num_sess,
                     COUNT(DISTINCT qs.ip) AS num_ips,
                     DATEDIFF(MAX(qs.created_at), MIN(qs.created_at)) AS span_d
              FROM cotizaciones c
-             LEFT JOIN quote_sessions qs ON qs.cotizacion_id = c.id
+             LEFT JOIN quote_sessions qs ON qs.cotizacion_id = c.id AND qs.es_interno = 0
              WHERE c.empresa_id=? AND c.estado NOT IN ('borrador') AND c.suspendida = 0
              GROUP BY c.id, c.estado, c.total",
             [$empresa_id]
@@ -2162,7 +2172,7 @@ class Radar
              LEFT JOIN usuarios  u  ON u.id=c.usuario_id
              LEFT JOIN (
                  SELECT cotizacion_id, COUNT(*) AS num_sesiones, COUNT(DISTINCT ip) AS num_ips
-                 FROM quote_sessions GROUP BY cotizacion_id
+                 FROM quote_sessions WHERE es_interno = 0 GROUP BY cotizacion_id
              ) qs_agg ON qs_agg.cotizacion_id = c.id
              WHERE c.empresa_id=? AND c.estado IN ('enviada','vista','aceptada') $uw
              ORDER BY c.radar_score IS NULL ASC, c.radar_score DESC, c.ultima_vista_at DESC",
@@ -2186,6 +2196,7 @@ class Radar
              JOIN cotizaciones c ON c.id = qs.cotizacion_id
              JOIN ventas v ON v.cotizacion_id = c.id
              WHERE v.empresa_id = ? AND v.estado != 'cancelada'
+               AND qs.es_interno = 0
                AND qs.scroll_max > 0 AND qs.visible_ms > 0",
             [$empresa_id]
         );

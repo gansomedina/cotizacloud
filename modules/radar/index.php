@@ -820,6 +820,11 @@ function render_comp_row($cv, $empresa_id, $tipo) {
          JOIN cotizaciones c ON c.id = qs.cotizacion_id
          LEFT JOIN clientes cl ON cl.id = c.cliente_id
          WHERE {$where_main} = ? AND c.empresa_id = ?
+           -- La consulta que GENERA la alerta filtra es_interno = 0; el detalle
+           -- no lo hacía, así que al expandir aparecían sesiones internas y el
+           -- supuesto competidor figuraba viendo más cotizaciones de las que la
+           -- alerta contó.
+           AND qs.es_interno = 0
            AND qs.created_at >= DATE_SUB(NOW(), INTERVAL 180 DAY)
            AND (qs.visible_ms > 3000 OR qs.scroll_max > 10)
          GROUP BY c.cliente_id
