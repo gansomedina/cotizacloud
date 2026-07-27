@@ -397,16 +397,20 @@ class Radar
         $es = self::_agregar_eventos($ev_rows, $intern_v, $intern_dsig, $cfg);
 
         // ── D. Cargar sesiones históricas (mismo lookback que eventos: 150d) ──
+        // es_interno=0: una sesión ya marcada como interna (limpieza retroactiva de
+        // layout.php, o marcada a mano por SQL) NO debe puntuar en el Radar. El resto
+        // del sistema ya filtra igual (layout.php, track.php, ver.php); aquí faltaba,
+        // así que una fila interna con visitor_id NULL sí contaba.
         try {
             $sess_rows = DB::query(
                 "SELECT ip, user_agent AS ua, visitor_id, device_sig, created_at, scroll_max, visible_ms
-                 FROM quote_sessions WHERE cotizacion_id=? AND created_at >= FROM_UNIXTIME(?) ORDER BY created_at ASC",
+                 FROM quote_sessions WHERE cotizacion_id=? AND es_interno = 0 AND created_at >= FROM_UNIXTIME(?) ORDER BY created_at ASC",
                 [$cotizacion_id, $lookback]
             );
         } catch (Throwable $e) {
             $sess_rows = DB::query(
                 "SELECT ip, user_agent AS ua, visitor_id, NULL AS device_sig, created_at, scroll_max, visible_ms
-                 FROM quote_sessions WHERE cotizacion_id=? AND created_at >= FROM_UNIXTIME(?) ORDER BY created_at ASC",
+                 FROM quote_sessions WHERE cotizacion_id=? AND es_interno = 0 AND created_at >= FROM_UNIXTIME(?) ORDER BY created_at ASC",
                 [$cotizacion_id, $lookback]
             );
         }

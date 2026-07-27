@@ -416,8 +416,19 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
                 try { Radar::recalcular((int)$cot['id'], (int)$cot['empresa_id']); } catch (\Throwable $re) {}
             }
 
-            // CAPI: enviar ViewContent server-side (solo visitas nuevas, no recargas)
-            try { MarketingPixels::capi_view(EMPRESA_ID, $cot['numero'], (float)($cot['total'] ?? 0), $cot['moneda'] ?? 'MXN'); } catch (\Throwable $e) {}
+            // CAPI: enviar ViewContent server-side (solo visitas nuevas, no recargas).
+            // DIFERIDO igual que la notificación de DI: capi_enviar() usa curl_exec
+            // SÍNCRONO (timeout 5s + connect 3s), así que en la ruta caliente hacía
+            // esperar al cliente hasta 5s en blanco si Meta responde lento o el
+            // egress está filtrado — y un rebote por lentitud contamina el Radar.
+            $capi_eid = EMPRESA_ID;
+            $capi_num = $cot['numero'];
+            $capi_tot = (float)($cot['total'] ?? 0);
+            $capi_mon = $cot['moneda'] ?? 'MXN';
+            register_shutdown_function(function () use ($capi_eid, $capi_num, $capi_tot, $capi_mon) {
+                if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+                try { MarketingPixels::capi_view($capi_eid, $capi_num, $capi_tot, $capi_mon); } catch (\Throwable $e) {}
+            });
 
         } else {
             // Sesión ya existe — solo actualizar timestamp (heartbeat)

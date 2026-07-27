@@ -396,8 +396,23 @@ class Router
             $domain = !empty($row['dominio_custom'])
                 ? $row['dominio_custom']
                 : $row['empresa_slug'] . '.' . BASE_DOMAIN;
+
+            // Guardia anti-bucle: si el destino ES el host actual, redirigir sería
+            // un loop infinito. Pasa cuando detectar_empresa_slug() no resuelve el
+            // dominio custom (p.ej. un hipo de MySQL: config.php se traga el error
+            // en silencio) -> el custom se trata como dominio raíz y cae aquí.
+            $host_actual = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+            if (strtolower($domain) === $host_actual) {
+                self::not_found();
+                return;
+            }
+
             $url = 'https://' . $domain . $prefix . $valor;
-            header('Location: ' . $url, true, 301);
+            // 302 y no 301: un 301 se cachea de forma permanente en el navegador.
+            // Si el DNS o la resolución de empresa está en un estado transitorio
+            // (migración de servidor, cambio de dominio custom), un 301 deja al
+            // cliente clavado en el destino viejo aunque el sistema ya se corrigió.
+            header('Location: ' . $url, true, 302);
             exit;
         }
 

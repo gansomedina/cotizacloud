@@ -603,7 +603,11 @@ $vid_js      = htmlspecialchars($visitor_id_cookie ?? '', ENT_QUOTES);
     document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){if(visibleStart){visibleAccum+=Date.now()-visibleStart;visibleStart=0;}}else{visibleStart=Date.now();}});
     function sendEvent(tipo,beacon){
         if(visibleStart){visibleAccum+=Date.now()-visibleStart;visibleStart=Date.now();}
-        var d={cotizacion_id:COT,empresa_id:EID,tipo:tipo,visible_ms:visibleAccum,scroll_max:maxScroll,visitor_id:VID};
+        // La clave DEBE ser max_scroll: api/track.php lee $data['max_scroll'].
+        // Con 'scroll_max' el scroll llegaba siempre en 0 -> el ghost cleanup
+        // (scroll_max=0 AND visible_ms<200) borraba visitas reales de clientes
+        // y los buckets de lectura del Radar nunca disparaban en inmuebles.
+        var d={cotizacion_id:COT,empresa_id:EID,tipo:tipo,visible_ms:visibleAccum,max_scroll:maxScroll,visitor_id:VID};
         var url='/api/track';
         if(beacon&&navigator.sendBeacon){navigator.sendBeacon(url,JSON.stringify(d));}
         else{fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d),keepalive:true}).catch(function(){});}
