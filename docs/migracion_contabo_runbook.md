@@ -105,11 +105,46 @@ navegador. Ojo mientras dure: quien caiga en el server viejo trabaja sobre la
 
 # PARTE B — LO QUE FALTA
 
-### 1. Llave APNs (push iOS)
+### 1. Llave APNs (push iOS) ✅ HECHO (27 jul)
 `AuthKey_D2AW3CT2UF.p8` **no está en el repo** (`.gitignore *.p8`). Estaba en el
-cPanel viejo en `/home/key/`. Subirla por `scp` a `/var/www/cotizacloud-keys/`,
-`chown www-data:www-data` + `chmod 600`. Sin ella el push iOS no firma.
-(El `vapid_private.pem` sí está en el repo y ya se copió.)
+cPanel viejo en `~/key/`. Ya está en `/var/www/cotizacloud-keys/` con
+`root:www-data` + `chmod 640`. (El `vapid_private.pem` sí está en el repo y ya
+se copió.)
+
+**No transferir el `.p8` pegándolo como texto**: empieza con
+`-----BEGIN PRIVATE KEY-----` y el cliente/chat lo enmascara con `••••` (mismo
+problema que la llave del cert Origin). Va en **base64**:
+`base64 -w0 ~/key/AuthKey_*.p8` en el origen → `base64 -d > destino` en Contabo.
+
+**Verificado contra Apple de verdad** (no solo "el archivo existe"): se firma un
+JWT ES256 con el código real de la app (`generar_jwt_apns` por Reflection) y se
+POSTea a `api.push.apple.com` con un device token falso de 64 ceros:
+```
+JWT: eyJhbGciOiJFUzI1NiIsImtpZCI6IkQyQVczQ1Qy...
+HTTP: 400 → {"reason":"BadDeviceToken"}
+```
+`BadDeviceToken` **es el éxito**: Apple validó llave + Key ID + Team ID y solo
+rechazó el token inventado. `403 InvalidProviderToken` sería el fallo real.
+No le llega notificación a ningún dispositivo, así que la prueba es repetible.
+
+### 1b. Integridad de datos post-corte — VERIFICADA (27 jul)
+Se comparó viejo vs Contabo tabla por tabla: `cotizaciones` 2347=2347 ·
+`ventas` 257=257 · `recibos` 318=318 · `quote_sessions` 2606=2606 ·
+`radar_feedback` 599=599 · `cot_feedbacks` 10=10 · `clientes` 880=880, con los
+mismos `MAX(created_at)`. Y el contador agregado: `SUM(visitas)` **2456 = 2456**.
+Cero divergencia.
+
+Momento exacto del corte: `21:41:56 -0400` en el access log del viejo ≡
+`18:41:56` (Hermosillo) del último `quote_sessions`. Contabo ya registraba
+visitas a las `18:44:56` → la ventana de riesgo fue de **~3 minutos**.
+
+Hipótesis descartada con datos: se supuso que las visitas con `200` posteriores
+al corte en el log del viejo las había filtrado el Escudo como internas — falso,
+`escudo_log` también está vacío en esa ventana. La explicación real está en el
+código: `cotizacion.php` solo inserta en `quote_sessions` **y** en `escudo_log`
+cuando la sesión NO existía; un cliente que recarga con su `cz_vid` vigente deja
+`200` en el log sin fila nueva. Los slugs `/v/` (ventas) tampoco usan
+`quote_sessions`.
 
 ### 2. Ajustes de nginx pendientes
 - **`location ^~ /.well-known/acme-challenge/`** en el bloque de `cotiza.cloud`
