@@ -46,7 +46,17 @@ Varias cosas además **mejoraron** con nginx (tabla al final).
 `WHERE id=? AND empresa_id=?` con `EMPRESA_ID`, que sale del host y siempre está
 definida en la rama `IS_SUBDOMAIN` (`core/Auth.php:64`). Se revisaron los demás
 endpoints públicos: `quote_action.php:29` y `cot_feedback.php:28` ya validaban;
-`track.php` era el único sin el filtro. **Pendiente de desplegar.**
+`track.php` era el único sin el filtro.
+
+**Desplegado el 27 jul** (merge del PR #879, `1df4260`). Confirmado en el
+servidor: `api/track.php:49` tiene `WHERE id=? AND empresa_id=?`.
+
+Nota de método: **no se puede verificar desde fuera**. `api/track.php` responde
+siempre `204` sin cuerpo —a propósito, para no romper el beacon del cliente—, así
+que acepte o rechace se ve idéntico. Y una prueba real de escritura cruzada
+tendría que saltarse el filtro de bots con un User-Agent de navegador, con riesgo
+de ensuciar una cotización real si el arreglo no estuviera activo. La prueba
+válida es el código desplegado.
 
 ### Descripción original (se conserva para contexto)
 
