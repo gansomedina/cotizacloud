@@ -39,8 +39,16 @@ Varias cosas además **mejoraron** con nginx (tabla al final).
 
 # HALLAZGOS, POR IMPACTO AL NEGOCIO
 
-## 1 · Cualquiera puede contaminar el Radar de cualquier empresa
+## 1 · ~~Cualquiera puede contaminar el Radar de cualquier empresa~~ — CORREGIDO 27 jul
 `api/track.php:42` · **ALTO** · preexistente · *verificado personalmente*
+
+**Aplicado** (commit `a65d152`): la consulta pasó a
+`WHERE id=? AND empresa_id=?` con `EMPRESA_ID`, que sale del host y siempre está
+definida en la rama `IS_SUBDOMAIN` (`core/Auth.php:64`). Se revisaron los demás
+endpoints públicos: `quote_action.php:29` y `cot_feedback.php:28` ya validaban;
+`track.php` era el único sin el filtro. **Pendiente de desplegar.**
+
+### Descripción original (se conserva para contexto)
 
 `api/track.php` no ata la cotización al host que hace la petición. El contraste
 con el resto del código es la prueba:
@@ -125,8 +133,31 @@ dominios propios.
 
 ---
 
-## 3 · Los dominios custom sirven cotizaciones por HTTP sin cifrar
+## 3 · ~~Los dominios custom sirven cotizaciones por HTTP sin cifrar~~ — RESUELTO 27 jul
 Configuración de nginx · **ALTO** · **CAUSADO POR LA MIGRACIÓN** · *verificado personalmente*
+
+**Causa exacta:** el bloque `listen 80 default_server` (`server_name _`) **servía
+la aplicación** en vez de redirigir. Los dominios custom solo tenían bloque 443,
+así que sus peticiones por HTTP caían en ese catch-all y se atendían en claro.
+`cotiza.cloud` y `*.cotiza.cloud` sí tenían su propio bloque de puerto 80 con
+redirect, por eso la asimetría.
+
+**Aplicado:** el catch-all pasó a `return 301 https://$host$request_uri`
+conservando `location ^~ /.well-known/acme-challenge/` **antes** del redirect, y
+se agregó HSTS al bloque 443 de los dominios custom (no lo tenían;
+`cotiza.cloud` sí). Con respaldo previo, `nginx -t` antes de recargar y
+restauración automática si la validación fallaba.
+
+**Verificado desde fuera después del cambio:**
+```
+http://{hermosillo,obregon,nogales}.ontimecocinas.com/c/<slug>
+    → 301 a https://<mismo host>/c/<slug>          ✅
+HSTS en los tres dominios custom por HTTPS         ✅
+http://…/.well-known/acme-challenge/prueba → 404 SIN redirect  ✅ (renovación viva)
+cotiza.cloud, subdominios, assets y bridge         ✅ sin regresión
+```
+
+### Descripción original (se conserva para contexto)
 
 ```
 http://hermosillo.cotiza.cloud/c/<slug>      → 301 a HTTPS        ✅
