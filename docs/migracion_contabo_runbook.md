@@ -43,7 +43,33 @@ el corte se cierra con **dump + rsync FINAL** justo antes de cambiar el DNS.
 | 9 | SSL: Cloudflare Origin Certificate instalado (sirve si algún día se activa el naranja) | ✅ |
 | 10 | `real_ip` de rangos Cloudflare + **`APP_ENV=production`** por `fastcgi_param` | ✅ |
 | 11 | **Archivos migrados**: `uploads/logos`, `public/uploads/logos`, `public/assets/uploads`, `data/` | ✅ |
-| 12 | 6 correcciones de código (ver Parte C) commiteadas | ✅ |
+| 12 | 6 correcciones de código (ver Parte C) commiteadas y desplegadas | ✅ |
+| 13 | **CORTE HECHO** (27 jul): dump FINAL re-importado, DNS a `212.28.186.247` en gris | ✅ |
+| 14 | Let's Encrypt wildcard `cotiza.cloud` + `*.cotiza.cloud` (DNS-01, auto-renueva) | ✅ |
+| 15 | Let's Encrypt de los 3 dominios custom OnTime + su bloque 443 en nginx | ✅ |
+| 16 | Correo separado: `mail` → A → `107.161.23.124`; MX → `mail.cotiza.cloud` | ✅ |
+| 17 | Tuning MariaDB: `innodb_buffer_pool_size=6G`, `max_connections=200` | ✅ |
+
+### Verificación post-corte (todo desde afuera, con certs reales)
+`https://cotiza.cloud/login`→200 · `/landing`→200 · `granitodepot.cotiza.cloud`→302 ·
+`hermosillo/obregon/nogales.ontimecocinas.com/login`→302 (SSL válido) ·
+**correo enviado y recibido** con `Mailer::enviar()` desde el server nuevo ·
+BD final: 2347 cotizaciones · 257 ventas · 9 empresas · **868 user_sessions**
+(los asesores NO tuvieron que volver a loguearse).
+
+**Radar verificado byte a byte:** `md5sum` de `modules/radar/index.php` y
+`core/layout.php` **idénticos** entre viejo y nuevo. El único archivo distinto es
+`Radar.php`, y su md5 previo coincide exactamente con el commit anterior a la
+corrección — o sea, la única diferencia es el filtro `es_interno = 0`.
+
+### Gotcha del corte: "invalid signature" durante la propagación
+`api/safari_bridge.php:33` devuelve `invalid signature` si el token del bridge se
+**firma** en un servidor y se **verifica** en otro — pasa mientras el DNS propaga,
+porque el server viejo tiene el `APP_SECRET` viejo y el nuevo el nuevo. No es un
+bug: se resuelve solo al terminar la propagación, o limpiando la caché DNS local
+(`sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`) y reabriendo el
+navegador. Ojo mientras dure: quien caiga en el server viejo trabaja sobre la
+**BD vieja** y ese trabajo no se refleja en Contabo.
 
 **Verificado por HTTPS local (Host header, sin DNS):** `/`→200 · `/login`→200 ·
 `/landing`→200 · `/registro`→200 · `/dashboard`→302 ·
