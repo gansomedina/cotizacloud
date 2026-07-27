@@ -446,37 +446,27 @@ class Radar
         // distintas" e inflaban el bucket multi_persona, la categoría social de
         // probable_cierre y el impulso de prioridad por múltiples visitantes.
         // Un solo closure para que no vuelvan a divergir.
-        $sesion_valida = function (int $scroll, int $vis, int $ts, string $vid, string $ip) use ($cfg, $now, $ev_rows): bool {
-            $filtrar = $cfg['filtrar_bots'] ?? true;
-
-            // Fantasma de bot de preview: sin scroll ni tiempo visible y con más
-            // de 2 min de vida. Se salva solo si el MISMO visitor_id (o la IP,
-            // cuando no hay vid) dejó al menos un evento con engagement real.
-            // Match por visitor_id y no por IP: la IP rota en Telcel/Telmex y se
-            // comparte en oficinas, el UUID no.
-            if ($filtrar && $scroll === 0 && $vis === 0 && ($now - $ts) > 120) {
-                $engagement = false;
-                foreach ($ev_rows as $ev) {
-                    $match = ($vid !== '' && ($ev['visitor_id'] ?? '') === $vid)
-                          || ($vid === '' && ($ev['ip'] ?? '') === $ip);
-                    if (!$match) continue;
-                    if ((int)($ev['max_scroll'] ?? 0) > 0 || (int)($ev['visible_ms'] ?? 0) >= 2000) {
-                        $engagement = true;
-                        break;
-                    }
-                }
-                if (!$engagement) return false;
-            }
-
-            // Visita mínima: umbral calibrado con 60 días de datos contra el
-            // scroll que restaura el navegador (Chrome Android reposiciona el
-            // scroll de cargas previas y el JS lo lee como si fuera del usuario).
-            // Nota: aquí vivía un `$js_tocado = $s['visible_ms'] !== null` que era
-            // siempre true — la columna es NOT NULL DEFAULT 0 (ver hallazgo 11 de
-            // docs/auditoria_postmigracion_escudo_radar.md). Se omite porque no
-            // cambiaba nada; el día que se decida distinguir "JS no corrió" habrá
-            // que hacerlo con una señal explícita, no con el tipo de la columna.
-            if ($filtrar && $vis < 200 && $scroll < 35) return false;
+        $sesion_valida = function (int $scroll, int $vis) use ($cfg): bool {
+            // Umbral calibrado con 60 días de datos contra el scroll que restaura
+            // el navegador (Chrome Android reposiciona el scroll de cargas previas
+            // y el JS lo lee como si fuera desplazamiento del usuario).
+            //
+            // AQUÍ VIVÍA UN BLOQUE DE "RESCATE DE FANTASMAS" — se eliminó porque
+            // era código muerto, comprobado: descartaba las sesiones con
+            // scroll=0 y visible=0 de más de 2 min salvo que el mismo visitor_id
+            // tuviera un evento con engagement real. Pero toda sesión que entraba
+            // ahí cumple (0,0), y este umbral de abajo la mata igual (0<200 y
+            // 0<35). De 140 combinaciones probadas, el rescate salvaba CERO. Su
+            // único efecto real era recorrer 150 días de eventos por cada sesión
+            // (0,0), en los dos bucles, para nada. Ya estaba muerto antes de
+            // unificar los filtros: el `$js_tocado` del bucle principal también
+            // era siempre true (la columna es NOT NULL DEFAULT 0).
+            //
+            // Si algún día se quiere que ese rescate funcione de verdad, hay que
+            // hacerlo devolviendo true de inmediato al encontrar el engagement,
+            // no dejando que caiga a este umbral — pero eso es un cambio de
+            // comportamiento que hay que medir antes, no un arreglo silencioso.
+            if (($cfg['filtrar_bots'] ?? true) && $vis < 200 && $scroll < 35) return false;
 
             return true;
         };
@@ -500,7 +490,7 @@ class Radar
             // misma función que usa el bucle de multi-persona.
             $scroll = (int)($s['scroll_max'] ?? 0);
             $vis    = (int)($s['visible_ms'] ?? 0);
-            if (!$sesion_valida($scroll, $vis, $ts, $vid, $ip)) continue;
+            if (!$sesion_valida($scroll, $vis)) continue;
 
             // Construir mapas vid→dsig, vid→ips e ip→dsig (después de filtros, antes de dedup)
             if ($dsig !== '') {
@@ -593,7 +583,7 @@ class Radar
                 // había descartado.
                 $sc2 = (int)($s['scroll_max'] ?? 0);
                 $vi2 = (int)($s['visible_ms'] ?? 0);
-                if (!$sesion_valida($sc2, $vi2, $ts2, $vid2, $ip2)) continue;
+                if (!$sesion_valida($sc2, $vi2)) continue;
                 $ips_post_guest[$ip2] = true;
                 if ($vid2 !== '') $vids_post_guest[$vid2] = true;
             }
@@ -1887,12 +1877,17 @@ class Radar
         $total = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id=? AND estado NOT IN ('borrador') AND suspendida = 0", [$empresa_id]);
         $base  = $total > 0 ? $cerr / $total : self::FIT_GLOBAL;
 
-        // El es_interno=0 del JOIN va en el ON y NO en el WHERE: en el WHERE
-        // degradaría el LEFT JOIN a INNER y sacarían del modelo las cotizaciones
-        // sin ninguna sesión de cliente, que son justamente la evidencia de que
-        // sin engagement no se cierra. Sin ese filtro, cada vista previa del
-        // asesor sobre su propia cotización subía su num_sess/num_ips y el modelo
-        // FIT aprendía que muchas sesiones equivale a cierre, por una razón falsa.
+        // Sin el es_interno=0, cada vista previa del asesor sobre su propia
+        // cotización subía su num_sess/num_ips y el modelo FIT aprendía que
+        // muchas sesiones equivale a cierre, por una razón falsa.
+        //
+        // Va en el ON y NO en el WHERE. La razón NO son los buckets del FIT: para
+        // esos da igual, porque el `if ($sess <= 1) continue` de más abajo ya
+        // descarta las cotizaciones sin sesiones de cliente. Importa por las
+        // BANDAS DE IMPORTE: $totales (línea ~1967) recorre TODO $cots, incluidas
+        // las que ese continue salta. Con WHERE, las cotizaciones cuyas únicas
+        // sesiones son internas desaparecerían de $cots, encogiendo la muestra y
+        // corriendo los percentiles de las bandas.
         $cots = DB::query(
             "SELECT c.id, c.estado, c.total,
                     COUNT(qs.id) AS num_sess,

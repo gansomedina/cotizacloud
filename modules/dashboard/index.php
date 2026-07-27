@@ -414,7 +414,7 @@ $radar_buckets_raw = DB::query(
          SELECT cotizacion_id,
                 COUNT(*) AS sesiones,
                 MAX(scroll_max) AS scroll_max
-         FROM quote_sessions
+         FROM quote_sessions WHERE es_interno = 0
          GROUP BY cotizacion_id
      ) qs ON qs.cotizacion_id = c.id
      WHERE c.empresa_id=? AND c.estado IN ('enviada','vista') AND c.suspendida = 0 $c_where

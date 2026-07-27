@@ -122,11 +122,18 @@ $dedupe_min = ($rcfg['deduplicar_30min'] ?? true) ? 30 : 60;
 // resolver la misma sesión. Si una ignorara las internas y la otra no, los
 // eventos JS del cliente se engancharían a la sesión interna y la suya se
 // quedaría en scroll 0 / visible 0 → la borraría el cleanup de fantasmas.
+//
+// Atado al MISMO toggle que la Capa 1 de arriba (línea 77). Si la empresa apaga
+// excluir_internos, la Capa 1 deja pasar al asesor y sus beacons caen aquí: si
+// aun así filtráramos las internas, no encontraría su sesión y se INSERTARÍA una
+// nueva marcada como cliente — una fuga creada por el propio filtro. Con el
+// toggle apagado se conserva el comportamiento anterior.
+$excl_int = ($rcfg['excluir_internos'] ?? true) ? ' AND es_interno=0' : '';
 $sess = null;
 if ($visitor_id !== '') {
     $sess = DB::row(
         "SELECT id FROM quote_sessions
-         WHERE cotizacion_id=? AND visitor_id=? AND activa=1 AND es_interno=0
+         WHERE cotizacion_id=? AND visitor_id=? AND activa=1{$excl_int}
            AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
          ORDER BY updated_at DESC LIMIT 1",
         [$cot_id, $visitor_id, $dedupe_min]
@@ -135,7 +142,7 @@ if ($visitor_id !== '') {
 if (!$sess) {
     $sess = DB::row(
         "SELECT id FROM quote_sessions
-         WHERE cotizacion_id=? AND ip=? AND activa=1 AND es_interno=0
+         WHERE cotizacion_id=? AND ip=? AND activa=1{$excl_int}
            AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
          ORDER BY updated_at DESC LIMIT 1",
         [$cot_id, $ip, $dedupe_min]

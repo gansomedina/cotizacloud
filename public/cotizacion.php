@@ -320,11 +320,20 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         // como interna, y un cliente que sale por esa misma IP dentro de los 30
         // min "heredaba" esa sesión y su visita no se contaba. Si llegamos hasta
         // aquí es porque el Escudo ya consideró cliente a quien está entrando.
+        //
+        // Atado al toggle excluir_internos, igual que api/track.php: las cuatro
+        // consultas de dedupe (2 aquí, 2 allá) deben resolver la MISMA sesión.
+        // Alcance real, sin exagerarlo: esto solo actúa DESPUÉS de que la
+        // limpieza retroactiva de core/layout.php marcó la sesión del asesor, y
+        // esa limpieza corre como mucho una vez al día por sesión PHP. Una
+        // sesión interna todavía sin marcar sigue tragándose la visita del
+        // cliente por la rama de IP.
+        $excl_int = ($rcfg['excluir_internos'] ?? true) ? ' AND es_interno=0' : '';
         $session_existe = null;
         if ($visitor_id_cookie !== '') {
             $session_existe = DB::row(
                 "SELECT id FROM quote_sessions
-                 WHERE cotizacion_id=? AND visitor_id=? AND activa=1 AND es_interno=0
+                 WHERE cotizacion_id=? AND visitor_id=? AND activa=1{$excl_int}
                    AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
                  LIMIT 1",
                 [$cot['id'], $visitor_id_cookie, $dedupe_min]
@@ -333,7 +342,7 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         if (!$session_existe) {
             $session_existe = DB::row(
                 "SELECT id FROM quote_sessions
-                 WHERE cotizacion_id=? AND ip=? AND activa=1 AND es_interno=0
+                 WHERE cotizacion_id=? AND ip=? AND activa=1{$excl_int}
                    AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
                  LIMIT 1",
                 [$cot['id'], $ip, $dedupe_min]
