@@ -25,7 +25,7 @@ if (!$prov) json_error('Proveedor no encontrado', 404);
 
 $nuevo = $prov['activo'] ? 0 : 1;
 
-DB::exec(
+DB::execute(
     "UPDATE proveedores SET activo = ? WHERE id = ? AND empresa_id = ?",
     [$nuevo, $proveedor_id, $empresa_id]
 );
