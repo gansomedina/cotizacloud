@@ -407,3 +407,28 @@ está pendiente de decidir cuál de las 3 opciones se toma.
 - Los CNAME de OnTime tienen TTL 3600, pero **la resolución final sigue el TTL del
   A de `cotiza.cloud`** (~300 s en Cloudflare) → siguen el cambio en minutos sin
   tocar DirectAdmin.
+- **El resolvedor DNS de tu propia red puede seguir en el server viejo días
+  después del corte** — y eso se disfraza de bug en el código. Caso real (27 jul):
+  el Radar mostraba HTML viejo en Firefox y Safari de la iMac, mientras que otra
+  computadora veía el correcto. Se revisó OPcache, caché de nginx, `root` de los
+  vhosts, copias huérfanas del archivo y `md5sum` del desplegado — **todo estaba
+  bien**. La causa: `dig +short cotiza.cloud` desde esa Mac devolvía
+  `107.161.23.124` (viejo) porque el DNS del router/proveedor tenía cacheado el
+  registro con el TTL largo de cPanel (14400 s), mientras `@1.1.1.1` y `@8.8.8.8`
+  ya devolvían `212.28.186.247`. Ojo: los **subdominios sí resolvían bien** — solo
+  el apex estaba pegado, así que `hermosillo.cotiza.cloud` se veía correcto y
+  `cotiza.cloud` no. `dscacheutil -flushcache` NO lo arregla (la caché no es de
+  macOS sino de la red); se resuelve poniendo `1.1.1.1` / `8.8.8.8` en
+  Ajustes → Red → Detalles → DNS.
+  **Diagnóstico de 10 segundos antes de tocar código, siempre:**
+  ```bash
+  dig +short cotiza.cloud            # tu resolvedor
+  dig +short cotiza.cloud @1.1.1.1   # verdad autoritativa
+  curl -sI https://cotiza.cloud/login | grep -i "^server:"
+  ```
+  `server: LiteSpeed` = servidor viejo · `server: nginx/1.24.0 (Ubuntu)` = Contabo.
+  **Consecuencia de negocio:** quien caiga en el viejo escribe en la BD vieja
+  (cotizaciones, ventas, abonos, taps del Radar) y ese trabajo NO llega a Contabo.
+  Es la segunda razón —además del rollback— para dejar el server viejo encendido
+  varios días, y obliga a revisar escrituras posteriores al corte antes de darlo
+  de baja.
