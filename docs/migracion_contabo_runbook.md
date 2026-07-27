@@ -25,6 +25,21 @@ phpMyAdmin protegido va al final.
 | 4 | BD `cotizacloud` + usuario, `config.php` escrito (secretos reales, rutas de llaves Contabo) | ✅ |
 | 5 | Import del dump fresco `migrations/cotizacl_cotizacloud-3.sql` (50 tablas) | ✅ |
 | 6 | Nginx vhost (traducción del `.htaccess`, anti-leak) | ✅ |
+| 7 | DNS movido a **Cloudflare** (NS `albert`/`imani`), 8 registros incl. DKIM copiado, todo DNS-only apuntando aún al server viejo | ✅ |
+| 8 | SSL: Cloudflare **Origin Certificate** (válido a 2041) en `/etc/ssl/cloudflare/`, nginx 443 + HTTP→HTTPS | ✅ |
+| 9 | `real_ip` de rangos Cloudflare + **`APP_ENV=production`** vía fastcgi_param (fix #1 auditoría) | ✅ |
+
+**Verificado por HTTPS local:** `/`→200 · `/login`→200 · `/dashboard`→302 · **0 errores PHP**
+(confirma `APP_ENV=production` → no hay riesgo de "headers already sent" en `cz_vid`).
+
+### Gotcha del Origin Certificate (para futuro)
+La llave privada **se enmascara como `••••` al pegarla** por SSH/chat (el cliente
+la redacta al ver `-----BEGIN PRIVATE KEY-----`). Solución: transferirla en
+**base64** (`base64 -w64`) y decodificar en destino con `base64 -d > archivo.key`.
+Si el archivo queda en DER (empieza sin `-----BEGIN`), convertir:
+`openssl pkey -inform DER -in k.key -outform PEM -out k.pem`.
+Verificar par cert/llave: los `openssl ... -modulus | openssl md5` deben coincidir.
+nginx 1.24 usa `listen 443 ssl http2;` (NO `http2 on;`, que es 1.25+).
 
 **Datos importados (producción viva):** 9 empresas, 17 usuarios, 2347
 cotizaciones, 257 ventas.
