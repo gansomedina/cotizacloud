@@ -148,28 +148,49 @@ los datos del cliente (precios, nombre, dirección) van en claro.
 
 ---
 
-## 4 · `obregon.ontimecocinas.com` da 503 en el puerto 80
-Configuración de nginx · **ALTO** · **CAUSADO POR LA MIGRACIÓN** · *verificado personalmente*
+## 4 · ~~`obregon.ontimecocinas.com` da 503 en el puerto 80~~ — RETIRADO
+**FALSO POSITIVO MÍO.** Se retira el 27 jul tras re-verificarlo.
 
-```
-http://obregon.ontimecocinas.com/   → 503  (repetido, no transitorio)
-https://obregon.ontimecocinas.com/  → 302  (funciona)
-```
+El 503 **no se reproduce**. Nueve intentos sobre los tres dominios, y además
+atacando la IP directamente con el `Host` header (sin DNS ni intermediarios), dan
+`302` de forma consistente. El 503 original venía del proxy de salida por el que
+viajan las pruebas de auditoría, no del servidor.
 
-Los tres dominios custom se comportan **distinto** en HTTP: hermosillo sirve 200,
-nogales redirige 302, obregón devuelve 503. El bloque de puerto 80 quedó
-incompleto e inconsistente en el corte.
+Queda como recordatorio de método: una observación única contra producción no
+basta para declarar un hallazgo — hay que repetirla y, cuando se pueda, aislar la
+capa de red.
 
-**Impacto:** un cliente de Obregón que abra el enlace sin `https://` ve un error
-del servidor. Enlace muerto, prospecto perdido, y el asesor nunca se entera.
-
-**Arreglo de 3 y 4:** un único `server` de puerto 80 para los tres dominios custom
-que redirija 301 a HTTPS, igual al que ya tiene `*.cotiza.cloud`.
+**Arreglo del hallazgo 3:** el bloque `listen 80 default_server` (`server_name _`)
+**sirve la aplicación** en vez de redirigir. Los dominios custom solo tienen
+bloque de HTTPS, así que sus peticiones por HTTP caen en ese catch-all y se
+atienden en claro. Hay que convertirlo en redirect 301 a HTTPS, **conservando**
+`location ^~ /.well-known/acme-challenge/` antes del redirect: si se pierde, se
+rompe la renovación por HTTP-01 de los certificados de los dominios custom.
 
 ---
 
-## 5 · La IP se puede falsificar por cabecera → se anula el límite de intentos de login
-`core/Helpers.php:375` · **ALTO** · preexistente
+## 5 · ~~La IP se puede falsificar por cabecera~~ — YA ESTABA MITIGADO
+`core/Helpers.php:375` · **CERRADO** · preexistente en el código, **ya cubierto en nginx**
+
+**Verificado el 27 jul en el servidor:** la configuración ya vacía las cabeceras
+antes de que lleguen a PHP, en los dos bloques revisados:
+```nginx
+/etc/nginx/sites-available/cotizacloud:67,101   fastcgi_param HTTP_CF_CONNECTING_IP "";
+/etc/nginx/sites-available/cotizacloud:68,102   fastcgi_param HTTP_X_FORWARDED_FOR "";
+```
+Con eso `ip_real()` cae a `REMOTE_ADDR` y el límite de intentos vuelve a contar
+por IP real. Los agentes auditaron el repo, no la configuración del servidor, y
+explícitamente marcaron esto como "pendiente de comprobar" — la comprobación
+salió a favor.
+
+Queda **un pendiente menor**: confirmar que el vaciado esté también en el tercer
+bloque (`sed -n '1,48p' /etc/nginx/sites-available/cotizacloud`), y que el día
+que se encienda el proxy naranja de Cloudflare esto cambie por
+`/etc/nginx/cloudflare-ips.conf`, que ya existe en el servidor con los rangos y
+`real_ip_header CF-Connecting-IP` (hoy inerte porque Cloudflare no proxea).
+
+### Descripción original (se conserva para contexto)
+`core/Helpers.php:375` · preexistente
 
 ```php
 foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key)
