@@ -284,6 +284,34 @@ asesor). **→ Certs de los 3 dominios custom ANTES de mover su DNS.**
 
 ---
 
+## PENDIENTE — ancho del título en el Radar (problema viejo, causa ya identificada)
+
+Síntoma histórico: los títulos del Radar se cortan y **subir el `max-width` no
+sirve de nada**. Se subió `.rtit` de 200px a 320px y **no se notó ningún cambio**.
+
+**Causa raíz encontrada (no es `.rtit`):**
+- El título **NO** se recorta en PHP — `modules/radar/index.php:377` imprime
+  `htmlspecialchars($r['titulo'])` completo. Es puramente CSS.
+- `modules/radar/index.php:439`: el `.rtit` vive dentro de un
+  `<div style='display:flex'>` con **`style='flex:1;min-width:0'`**.
+- Con `flex:1; min-width:0`, el ancho real lo impone el **`<td>`** contenedor.
+  El `max-width` es solo un **tope superior**: si la celda ofrece menos de 320px,
+  el texto se corta al ancho de la celda y el tope nunca llega a aplicar.
+- `.rdrt` es `width:100%; min-width:520px` (línea 599) y **todas las demás
+  columnas llevan `white-space:nowrap`** (línea 600) → se quedan con su ancho
+  natural y a la columna de título le toca **solo la sobra**.
+
+**Cómo se arregla de verdad (cuando se retome):**
+1. Dar ancho explícito a la columna en su `<th>`: `width:38%` (o el % que se
+   decida), que es lo mínimo invasivo.
+2. O `table-layout:fixed` en `.rdrt` + anchos por columna — más control, pero
+   obliga a definir TODAS las columnas.
+3. O reducir columnas en pantallas medianas (ocultar PRIOR% o IMPORTE bajo cierto
+   breakpoint) para liberar espacio.
+
+Estado: `.rtit` quedó en **320px** (inofensivo, es solo el tope). El cambio real
+está pendiente de decidir cuál de las 3 opciones se toma.
+
 ## Gotchas técnicos encontrados en la ejecución
 
 - **Las desconexiones SSH** se resuelven con `ServerAliveInterval` en la Mac +
