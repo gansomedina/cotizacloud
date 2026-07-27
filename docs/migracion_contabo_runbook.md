@@ -145,23 +145,68 @@ MariaDB son **128 MB** — con 2347 cotizaciones y las queries del Radar, esto e
 diferencia entre "se siente rápido" y "se siente igual que el compartido".
 Editar `my.cnf`, reiniciar MariaDB, verificar.
 
-### 5. Correo — relay (del plan maestro, PENDIENTE y con dependencia)
-Hoy `SMTP_HOST = mail.cotiza.cloud` → **el correo sale por el host viejo**.
-Funciona durante y después del corte… **pero muere el día que canceles el hosting
-viejo**. Antes de cancelar:
-1. Crear cuenta de relay (Brevo o Amazon SES).
-2. Apuntar `SMTP_*` del `config.php` al relay.
-3. Autenticar el dominio en el relay (SPF/DKIM que pidan) → agregar esos TXT en
-   Cloudflare en **gris**.
-4. Probar envío real y revisar que **no caiga en spam**.
+### 5. Correo — relay Brevo ✅ HECHO (27 jul)
 
-> **Nunca mandar transaccionales desde la IP del VPS directo**: IP nueva sin
-> reputación = spam.
+**Envío ya NO depende del hosting viejo.** `Mailer::enviar()` probado desde el
+server nuevo con `ENVIADO OK`.
 
-Además: `api/soporte.php` usa `mail()` de PHP (no PHPMailer) para avisarte de
-**leads del landing**. Ubuntu limpio no trae MTA → esos avisos se pierden en
-silencio. Instalar `msmtp-mta` apuntando al mismo SMTP, o cambiar esas 2 llamadas
-a `Mailer::enviar()`.
+Config aplicada en `/var/www/cotizacloud/config.php` (respaldo en
+`config.php.bak-antes-brevo`):
+```
+SMTP_HOST   = smtp-relay.brevo.com
+SMTP_PORT   = 587
+SMTP_SECURE = tls          ← STARTTLS, NO 'ssl' (eso es para 465)
+SMTP_USER   = b36550001@smtp-brevo.com
+SMTP_PASS   = (SMTP key de Brevo, empieza con xsmtpsib-)
+SMTP_FROM   = noreply@cotiza.cloud   (sin cambio)
+```
+
+**DNS agregado en Cloudflare (todo DNS-only/gris):**
+| Tipo | Nombre | Contenido |
+|---|---|---|
+| TXT | `@` | `brevo-code:0808f1ab4967b9a1d7da0b64067dccef` |
+| CNAME | `brevo1._domainkey` | `b1.cotiza-cloud.dkim.brevo.com` |
+| CNAME | `brevo2._domainkey` | `b2.cotiza-cloud.dkim.brevo.com` |
+
+**⛔ Registros de Brevo que se OMITIERON a propósito** (y por qué):
+- `CNAME mail → …brand.brevosend.com` — **rompería el correo**: `mail.cotiza.cloud`
+  es un registro **A** al server viejo y el **MX apunta ahí**. Un CNAME de branding
+  ahí mata la recepción de correo.
+- `CNAME img.mail` y `CNAME r.mail` — dependen del anterior.
+- El `_dmarc` que pide Brevo — **ya existe uno**; solo puede haber un DMARC por dominio.
+
+Brevo muestra esos 3 como "mismatch": es **cosmético** (branded tracking links).
+La autenticación real la dan el `brevo-code` + los 2 DKIM, y el envío funciona.
+Si algún día se quiere el branding, recrear el dominio en Brevo usando
+**`send`** como subdominio de marca en vez de `mail`.
+
+**⚠️ Filtro de IPs autorizadas:** Brevo bloquea el SMTP desde IPs no dadas de alta
+(el síntoma es `SMTP Error: Could not authenticate`, que despista). Está autorizada
+`212.28.186.247`. **Si algún día cambia la IP del servidor, el correo deja de salir
+hasta darla de alta en Brevo.**
+
+### 5b. Correo — lo que SIGUE dependiendo del hosting viejo
+El **envío** ya salió del hosting viejo (Brevo). Lo que TODAVÍA depende de él:
+
+1. **Recepción de correo (MX)** — `MX → mail.cotiza.cloud → 107.161.23.124`.
+   Hoy no se usan buzones, pero si algún día se quieren (clientes, tickets), el
+   día que se cancele el hosting viejo hay que mover el MX a un proveedor de
+   buzones (Zoho Mail / Google Workspace). **Nunca auto-hospedar correo en el VPS**:
+   IP nueva sin reputación = spam + blacklists + mantenimiento.
+2. **`api/soporte.php` usa `mail()` de PHP** (no PHPMailer) para avisar de **leads
+   del landing**. Ubuntu limpio no trae MTA → esos avisos se pierden en silencio.
+   Arreglo: cambiar esas 2 llamadas a `Mailer::enviar()` (ahora que hay relay), o
+   instalar `msmtp-mta` apuntando a Brevo.
+
+### Patrón para migrar otro sitio que SÍ tenga correo (ej. ontimecocinas.com)
+Su MX apunta al **dominio** (`MX → ontimecocinas.com`), así que si se mueve el
+registro A del apex al VPS, **el correo se va con él y se cae**. Orden correcto:
+1. Crear `mail.ontimecocinas.com` → **A** → IP del servidor de correo actual.
+2. Cambiar el `MX` → `mail.ontimecocinas.com`.
+3. Esperar propagación y **verificar que el correo sigue llegando**.
+4. Recién entonces mover `ontimecocinas.com` → A → IP del VPS.
+
+Es exactamente lo que se hizo con `mail.cotiza.cloud` en este corte.
 
 ### 6. Cron (⚠️ NO activar antes del corte)
 ```
