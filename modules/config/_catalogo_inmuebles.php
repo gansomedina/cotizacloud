@@ -102,7 +102,7 @@ $tipo_prop_labels = ['casa'=>'Casa','departamento'=>'Depto','terreno'=>'Terreno'
 
 <!-- ══ SHEET: PROPIEDAD ══════════════════════════════════════ -->
 <div class="sh-overlay" id="ov-shProp" onclick="closeSheet('shProp')"></div>
-<div class="bottom-sheet" id="shProp" style="max-height:95vh">
+<div class="bottom-sheet" id="shProp" style="max-height:95vh;max-height:95dvh">
   <div class="sh-handle"></div>
   <div class="sh-header">
     <div class="sh-title" id="shPropTit">Propiedad</div>
