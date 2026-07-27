@@ -491,6 +491,23 @@ del **modo productivo** (el simulador de pruebas fallará la firma, y eso es
 normal), y revisar que los IDs alfanuméricos de `subscription_preapproval` vayan
 en minúsculas, como pide la documentación de MP.
 
+### 6e. Monitoreo externo ✅ HECHO (27 jul)
+**UptimeRobot** (gratis), monitor tipo **Keyword** sobre
+`https://cotiza.cloud/login`, palabra `Iniciar sesión`, alerta si **no** existe,
+cada 5 min.
+
+Tipo `Keyword` y no HTTP(s) simple **a propósito**: si PHP truena, nginx puede
+seguir respondiendo 200 con una página de error y un monitor simple diría que
+todo está bien. La palabra clave comprueba que el formulario esté ahí de verdad.
+Se vigila `/login` y no la raíz porque `/` muestra la landing y redirige distinto
+según haya sesión.
+
+Tiene que ser **externo**: un agente dentro del VPS no puede avisar que el VPS
+murió. Pendiente opcional: un segundo monitor sobre un dominio custom de cliente
+(vigila certificado y enrutamiento, que se rompen solos al caducar) y un cron de
+salud interno (disco, RAM, MariaDB, certificados por vencer) que avise **antes**
+de la caída, usando el relay de Brevo ya configurado.
+
 ### 7. Probar SIN tocar el DNS (`/etc/hosts`)
 En la Mac, agregar temporalmente:
 ```
