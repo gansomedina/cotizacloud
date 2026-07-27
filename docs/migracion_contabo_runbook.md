@@ -327,6 +327,65 @@ Esto también deja operativa la función `mail()` de PHP para cualquier script q
 la use. El comando `mail` NO se instala (viene de `mailutils`, que arrastra
 Postfix) — no hace falta: cron usa `sendmail` directamente.
 
+### 6b. Respaldos ✅ HECHO (27 jul)
+cPanel traía respaldo del hosting; Ubuntu limpio **no**. Contabo tiene contratada
+la **imagen diaria del VPS**, pero eso es otra cosa: la imagen sirve cuando muere
+el servidor, no cuando el daño es **lógico** (un borrado por error, una migración
+mal hecha, un `DELETE` sin `WHERE`) — para eso hace falta **historial**.
+
+Script: `/usr/local/bin/respaldo-cotizacloud.sh` · cron `0 2 * * *` (una hora antes
+del de suscripciones, ambos cubiertos por el `MAILTO` ya existente).
+
+Qué guarda, y por qué cada cosa:
+| Archivo | Contenido | Por qué |
+|---|---|---|
+| `bd_FECHA.sql.gz` | `mysqldump --single-transaction --routines --triggers --events` | la BD entera sin bloquear InnoDB |
+| `archivos_FECHA.tar.gz` | `public/assets/uploads`, `uploads`, `data` | subidas de clientes + estado runtime que **no está en git** (`equilibrio.json`, `comisiones_pagadas_*`) |
+| `llaves_FECHA.tar.gz` | `/var/www/cotizacloud-keys` | APNs `.p8` + VAPID: sin ellas el push **no se puede reconstruir** |
+| `config_FECHA.php.gz` | `config.php` | tiene los secretos y no está en el repo |
+
+Guardas del script:
+- **Aborta si el dump pesa < 100 KB** y borra el archivo. Un dump vacío que se
+  rota durante 14 días destruye el historial en silencio — es el modo de fallo
+  clásico de los respaldos, y el peor, porque solo se descubre al restaurar.
+- Rotación local `find -mtime +14 -delete`, y la misma ventana del lado remoto.
+- `set -euo pipefail`: si algo truena, el cron manda correo.
+
+**Copia fuera de Contabo — Cloudflare R2** (un respaldo que vive en el mismo
+servidor que protege no es un respaldo). Bucket `cotizacloud-respaldos`, token de
+API **limitado a ese bucket** (no a la cuenta), config en
+`/root/.config/rclone/rclone.conf` con `chmod 600`. ~4 MB por corrida, 14 días
+≈ 60 MB: cabe de sobra en los 10 GB gratuitos y R2 no cobra la descarga, que es
+justo cuando la vas a necesitar.
+
+⚠️ **Gotcha de rclone con R2 — el `501 Not Implemented`.** La primera corrida
+reportó `Failed to copy: NotImplemented` en **todos** los archivos y solo pasó en
+el reintento. La subida nunca estuvo mal. La secuencia real, vista con
+`--dump headers`:
+1. `PUT` → **200 OK**, ETag correcto, archivo completo en R2.
+2. R2 responde con la cabecera `X-Amz-Version-Id`.
+3. rclone, al verla, hace `HEAD ...?versionId=...` para verificar.
+4. **R2 no implementa la API de versiones** → `501`.
+5. rclone marca el archivo como fallido aunque ya está arriba y bien.
+
+El reintento "funciona" solo porque el archivo ya existe y rclone lo salta por
+tamaño+fecha, sin repetir el HEAD. Solución: `no_head = true` en `rclone.conf`, y
+la integridad se comprueba con `rclone check` (compara **MD5** local contra el de
+R2, más estricto que el HEAD que se quitó). Verificado: `0 differences found`,
+8/8 archivos. También hace falta `no_check_bucket = true`, porque un token
+limitado a un bucket no puede hacer el `HeadBucket` de la cuenta.
+
+Los tres comandos de rclone llevan `-q`: en éxito no imprimen nada, así el correo
+del cron llega **vacío cuando todo está bien**. Un correo que siempre trae ruido
+se termina ignorando, y entonces el día que falle de verdad tampoco se lee.
+
+**Restauración — probada, no supuesta** (27 jul, contra una BD desechable
+`prueba_restauracion`): 2350 cotizaciones · 257 ventas · 883 clientes · 9 empresas
+· 17 usuarios. Un respaldo que nunca se restauró es una hipótesis.
+```bash
+gunzip -c /var/backups/cotizacloud/bd_FECHA.sql.gz | mysql -u root prueba_restauracion
+```
+
 ### 7. Probar SIN tocar el DNS (`/etc/hosts`)
 En la Mac, agregar temporalmente:
 ```
