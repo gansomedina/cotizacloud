@@ -447,6 +447,50 @@ archivo abierto, así que si logrotate lo renombrara, PHP seguiría escribiendo 
 el archivo viejo y el nuevo quedaría vacío para siempre. Importa más desde que
 `config.php` corre con `E_ALL`.
 
+### 6d. Webhook de MercadoPago — VIVO por primera vez (27 jul)
+Llevaba meses muerto: **Imunify360**, el firewall del hosting viejo, tenía
+baneadas a nivel de red las IPs de MercadoPago (OVH, `51.68.x`). Ese firewall no
+existe en Contabo. Verificado el mismo día del corte:
+
+| Modo | URL configurada en el panel MP | Resultado |
+|---|---|---|
+| Prueba | `/api/mp/webhook` | 200, simulador del panel |
+| Productivo | `/hook/c5f8-2a19` | 200, simulador **y** POST manual con `curl` |
+
+Cadena completa confirmada en los logs: MercadoPago → nginx → PHP →
+`procesarWebhook`. El `404 Payment not found` del pago simulado `123456` es la
+respuesta **correcta**: el código re-consulta cada ID contra la API de MP. Las
+peticiones ahora llegan de `35.245.x` (Google Cloud), no de las `51.68.x`
+baneadas.
+
+**Por qué la URL productiva es esa ruta rara.** `/hook/c5f8-2a19` la inventamos
+para esquivar Imunify360. El motivo ya no existe y se puede unificar a
+`/api/mp/webhook`, pero **no vale la pena entrar al panel de MP solo para eso**:
+ese panel ya falló una vez (no dejaba guardar), y hoy el webhook es el **único**
+camino para activar suscripciones — `MercadoPago::sincronizar()`, el plan B por
+polling, quedó sin caller. Unificar cuando se entre al panel por otra razón.
+
+**⚠️ Trampa encontrada antes de causar daño: `$_GET['data.id']` SIEMPRE está
+vacío.** PHP renombra los puntos a guiones bajos en los parámetros de la URL:
+```
+parse_str("data.id=123456&type=payment") → claves: ["data_id", "type"]
+```
+`validarWebhook()` (`MercadoPago.php:343`) construía el manifiesto
+`id:{$dataId};request-id:...;ts:...;` con ese valor. Con `MP_WEBHOOK_SECRET`
+puesto, la firma **nunca** habría coincidido y el webhook habría rechazado el
+100% de las notificaciones **en silencio** — clientes pagando sin que se les
+active el plan. Corregido: se lee `data_id` primero.
+
+**Decisión: NO se configura `MP_WEBHOOK_SECRET`.** MercadoPago sí firma (llega
+la cabecera `X-Signature: ts=...,v1=...`), pero la firma aporta poco aquí: el
+código ya re-consulta cada ID contra la API de MP con el access token, así que
+una notificación falsa no logra nada aunque entre. Activar la validación
+cambiaría esa seguridad real por una marginal, metiendo un modo de falla
+silencioso justo donde corre el dinero. Si algún día se activa: usar la clave
+del **modo productivo** (el simulador de pruebas fallará la firma, y eso es
+normal), y revisar que los IDs alfanuméricos de `subscription_preapproval` vayan
+en minúsculas, como pide la documentación de MP.
+
 ### 7. Probar SIN tocar el DNS (`/etc/hosts`)
 En la Mac, agregar temporalmente:
 ```
