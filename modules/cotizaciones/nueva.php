@@ -655,8 +655,18 @@ $page_title = 'Nueva cotización';
         <div class="panel-section">
             <div class="panel-lbl">Vendedor asignado</div>
             <select id="cot-vendedor" style="width:100%;border:none;background:transparent;font:400 14px var(--body);color:var(--text);padding:8px 0;outline:none;cursor:pointer">
+                <?php /* Arranca VACIO a proposito. Antes venia preseleccionado
+                         el usuario que creaba la cotizacion, y cuando ese
+                         usuario no pertenece a la empresa (caso del superadmin)
+                         ninguna opcion quedaba marcada y el navegador mostraba
+                         la primera de la lista. En los dos casos parecia una
+                         eleccion sin que nadie hubiera elegido, y las
+                         cotizaciones terminaban asignadas al asesor
+                         equivocado. Con un solo usuario este bloque ni se
+                         imprime (count > 1), asi que no estorba. */ ?>
+                <option value="" selected disabled>— Seleccionar asesor —</option>
                 <?php foreach ($vendedores as $v): ?>
-                <option value="<?= (int)$v['id'] ?>" <?= (int)$v['id'] === (int)Auth::id() ? 'selected' : '' ?>><?= e($v['nombre']) ?></option>
+                <option value="<?= (int)$v['id'] ?>"><?= e($v['nombre']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -1230,6 +1240,14 @@ async function guardarCotizacion() {
     };
 
     const vendedorSel = document.getElementById('cot-vendedor');
+    // Con mas de un asesor el selector arranca vacio a proposito: antes venia
+    // preseleccionado y se asignaban cotizaciones al asesor equivocado sin que
+    // nadie lo hubiera elegido. Aqui se exige la eleccion explicita.
+    if (vendedorSel && !vendedorSel.value) {
+        alert('Selecciona el asesor al que se le asigna esta cotizacion.');
+        vendedorSel.focus();
+        return;
+    }
     const payload = {
         titulo,
         cliente_id:            clienteSeleccionado?.id || null,

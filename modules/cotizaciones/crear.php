@@ -55,6 +55,19 @@ if (!empty($body['vendedor_id']) && Auth::puede('asignar_cotizaciones')) {
         [$vid, $empresa_id]
     );
     if ($existe_vendedor) $vendedor_id = $vid;
+} elseif (Auth::puede('asignar_cotizaciones')) {
+    // Quien puede asignar DEBE elegir cuando hay a quien elegir. Sin esto, el
+    // default silencioso de arriba asigna la cotizacion a quien la captura —
+    // y si es el superadmin, ni siquiera pertenece a la empresa. El selector
+    // del formulario ya obliga a elegir; esta es la misma regla del lado del
+    // servidor, para que no dependa del navegador.
+    $usuarios_activos = (int)DB::val(
+        "SELECT COUNT(*) FROM usuarios WHERE empresa_id = ? AND activo = 1",
+        [$empresa_id]
+    );
+    if ($usuarios_activos > 1) {
+        json_error('Selecciona el asesor al que se le asigna esta cotización');
+    }
 }
 
 // Fechas
