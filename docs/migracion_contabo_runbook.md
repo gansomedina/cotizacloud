@@ -105,11 +105,46 @@ navegador. Ojo mientras dure: quien caiga en el server viejo trabaja sobre la
 
 # PARTE B — LO QUE FALTA
 
-### 1. Llave APNs (push iOS)
+### 1. Llave APNs (push iOS) ✅ HECHO (27 jul)
 `AuthKey_D2AW3CT2UF.p8` **no está en el repo** (`.gitignore *.p8`). Estaba en el
-cPanel viejo en `/home/key/`. Subirla por `scp` a `/var/www/cotizacloud-keys/`,
-`chown www-data:www-data` + `chmod 600`. Sin ella el push iOS no firma.
-(El `vapid_private.pem` sí está en el repo y ya se copió.)
+cPanel viejo en `~/key/`. Ya está en `/var/www/cotizacloud-keys/` con
+`root:www-data` + `chmod 640`. (El `vapid_private.pem` sí está en el repo y ya
+se copió.)
+
+**No transferir el `.p8` pegándolo como texto**: empieza con
+`-----BEGIN PRIVATE KEY-----` y el cliente/chat lo enmascara con `••••` (mismo
+problema que la llave del cert Origin). Va en **base64**:
+`base64 -w0 ~/key/AuthKey_*.p8` en el origen → `base64 -d > destino` en Contabo.
+
+**Verificado contra Apple de verdad** (no solo "el archivo existe"): se firma un
+JWT ES256 con el código real de la app (`generar_jwt_apns` por Reflection) y se
+POSTea a `api.push.apple.com` con un device token falso de 64 ceros:
+```
+JWT: eyJhbGciOiJFUzI1NiIsImtpZCI6IkQyQVczQ1Qy...
+HTTP: 400 → {"reason":"BadDeviceToken"}
+```
+`BadDeviceToken` **es el éxito**: Apple validó llave + Key ID + Team ID y solo
+rechazó el token inventado. `403 InvalidProviderToken` sería el fallo real.
+No le llega notificación a ningún dispositivo, así que la prueba es repetible.
+
+### 1b. Integridad de datos post-corte — VERIFICADA (27 jul)
+Se comparó viejo vs Contabo tabla por tabla: `cotizaciones` 2347=2347 ·
+`ventas` 257=257 · `recibos` 318=318 · `quote_sessions` 2606=2606 ·
+`radar_feedback` 599=599 · `cot_feedbacks` 10=10 · `clientes` 880=880, con los
+mismos `MAX(created_at)`. Y el contador agregado: `SUM(visitas)` **2456 = 2456**.
+Cero divergencia.
+
+Momento exacto del corte: `21:41:56 -0400` en el access log del viejo ≡
+`18:41:56` (Hermosillo) del último `quote_sessions`. Contabo ya registraba
+visitas a las `18:44:56` → la ventana de riesgo fue de **~3 minutos**.
+
+Hipótesis descartada con datos: se supuso que las visitas con `200` posteriores
+al corte en el log del viejo las había filtrado el Escudo como internas — falso,
+`escudo_log` también está vacío en esa ventana. La explicación real está en el
+código: `cotizacion.php` solo inserta en `quote_sessions` **y** en `escudo_log`
+cuando la sesión NO existía; un cliente que recarga con su `cz_vid` vigente deja
+`200` en el log sin fila nueva. Los slugs `/v/` (ventas) tampoco usan
+`quote_sessions`.
 
 ### 2. Ajustes de nginx pendientes
 - **`location ^~ /.well-known/acme-challenge/`** en el bloque de `cotiza.cloud`
@@ -193,10 +228,11 @@ El **envío** ya salió del hosting viejo (Brevo). Lo que TODAVÍA depende de é
    día que se cancele el hosting viejo hay que mover el MX a un proveedor de
    buzones (Zoho Mail / Google Workspace). **Nunca auto-hospedar correo en el VPS**:
    IP nueva sin reputación = spam + blacklists + mantenimiento.
-2. **`api/soporte.php` usa `mail()` de PHP** (no PHPMailer) para avisar de **leads
-   del landing**. Ubuntu limpio no trae MTA → esos avisos se pierden en silencio.
-   Arreglo: cambiar esas 2 llamadas a `Mailer::enviar()` (ahora que hay relay), o
-   instalar `msmtp-mta` apuntando a Brevo.
+2. ~~**`api/soporte.php` usa `mail()` de PHP**~~ ✅ **RESUELTO por partida doble**:
+   las 2 llamadas se cambiaron a `Mailer::enviar()`, y además se instaló
+   `msmtp-mta` (ver §6), así que `mail()` también funciona ya en el servidor.
+   Falta la prueba de humo: mandar un mensaje por el chat del landing y confirmar
+   que llega el aviso del lead.
 
 ### Patrón para migrar otro sitio que SÍ tenga correo (ej. ontimecocinas.com)
 Su MX apunta al **dominio** (`MX → ontimecocinas.com`), así que si se mueve el
@@ -219,6 +255,27 @@ Nota: el cron corre por **CLI**, que no recibe el `APP_ENV` del `fastcgi_param` 
 conviene `define('ENV','production')` duro en `config.php`.
 No hay otros crons reales: `tools/` y los `.php` de la raíz son one-shot o dev
 (`cleanup_bot_views.php` es de la era WordPress y está roto: pide `wp-load.php`).
+
+**✅ HECHO (27 jul) — el cron ya avisa por correo, como hacía cPanel.**
+cPanel mandaba la salida del cron por correo porque tenía MTA local; Ubuntu
+limpio **no**, así que el cron corría y su salida se perdía. Se instaló `msmtp`
++ `msmtp-mta` (`/usr/sbin/sendmail` → `/usr/bin/msmtp`) apuntando al mismo relay
+Brevo. Crontab final:
+```
+MAILTO=josealfonsomedina@hotmail.com
+0 3 * * * APP_ENV=production /usr/bin/php /var/www/cotizacloud/cron/procesar_suscripciones.php 2>&1 | tee -a /var/log/cotizacloud-cron.log
+```
+El `tee -a` es deliberado: guarda en el log **y** deja la salida en stdout, que
+es lo que hace que cron mande el correo (con `>>` a secas no hay salida → no hay
+correo). Verificado: envío sin cabecera `From` → msmtp usa el `from` de
+`/etc/msmtprc` → `smtpstatus=250 exitcode=EX_OK`. No hace falta `set_from_header`.
+Ejecución manual del script OK (`Cobros: 0 ok, 0 err`).
+
+`/etc/msmtprc` se genera leyendo las constantes `SMTP_*` de `config.php` (la
+contraseña nunca se teclea), `chmod 600 root:root`. Log en `/var/log/msmtp.log`.
+Esto también deja operativa la función `mail()` de PHP para cualquier script que
+la use. El comando `mail` NO se instala (viene de `mailutils`, que arrastra
+Postfix) — no hace falta: cron usa `sendmail` directamente.
 
 ### 7. Probar SIN tocar el DNS (`/etc/hosts`)
 En la Mac, agregar temporalmente:
@@ -407,3 +464,28 @@ está pendiente de decidir cuál de las 3 opciones se toma.
 - Los CNAME de OnTime tienen TTL 3600, pero **la resolución final sigue el TTL del
   A de `cotiza.cloud`** (~300 s en Cloudflare) → siguen el cambio en minutos sin
   tocar DirectAdmin.
+- **El resolvedor DNS de tu propia red puede seguir en el server viejo días
+  después del corte** — y eso se disfraza de bug en el código. Caso real (27 jul):
+  el Radar mostraba HTML viejo en Firefox y Safari de la iMac, mientras que otra
+  computadora veía el correcto. Se revisó OPcache, caché de nginx, `root` de los
+  vhosts, copias huérfanas del archivo y `md5sum` del desplegado — **todo estaba
+  bien**. La causa: `dig +short cotiza.cloud` desde esa Mac devolvía
+  `107.161.23.124` (viejo) porque el DNS del router/proveedor tenía cacheado el
+  registro con el TTL largo de cPanel (14400 s), mientras `@1.1.1.1` y `@8.8.8.8`
+  ya devolvían `212.28.186.247`. Ojo: los **subdominios sí resolvían bien** — solo
+  el apex estaba pegado, así que `hermosillo.cotiza.cloud` se veía correcto y
+  `cotiza.cloud` no. `dscacheutil -flushcache` NO lo arregla (la caché no es de
+  macOS sino de la red); se resuelve poniendo `1.1.1.1` / `8.8.8.8` en
+  Ajustes → Red → Detalles → DNS.
+  **Diagnóstico de 10 segundos antes de tocar código, siempre:**
+  ```bash
+  dig +short cotiza.cloud            # tu resolvedor
+  dig +short cotiza.cloud @1.1.1.1   # verdad autoritativa
+  curl -sI https://cotiza.cloud/login | grep -i "^server:"
+  ```
+  `server: LiteSpeed` = servidor viejo · `server: nginx/1.24.0 (Ubuntu)` = Contabo.
+  **Consecuencia de negocio:** quien caiga en el viejo escribe en la BD vieja
+  (cotizaciones, ventas, abonos, taps del Radar) y ese trabajo NO llega a Contabo.
+  Es la segunda razón —además del rollback— para dejar el server viejo encendido
+  varios días, y obliga a revisar escrituras posteriores al corte antes de darlo
+  de baja.
