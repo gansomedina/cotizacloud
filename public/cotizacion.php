@@ -242,16 +242,16 @@ $di_act = null;
 // custom no veía la tabla del DI (bug reportado).
 $interno_detectado = false;
 
-// ── HEAD nunca es una lectura ────────────────────────────────────────
-// El router resuelve HEAD con las rutas GET (core/Router.php) para no
-// contestar 404 a los monitores de disponibilidad — así que este archivo SÍ
-// se ejecuta con HEAD. Pero un HEAD no renderiza nada al visitante: contarlo
-// como visita abriría una vía nueva de visitas fantasma justo en el slug.
-// Va antes que todas las capas.
-// NO se marca $interno_detectado: un HEAD no es un interno, y marcarlo
-// dispararía la carga del Descuento Inteligente para mostrárselo a alguien que
-// no va a ver nada (el cuerpo se descarta), con la escritura de expiración
-// perezosa que eso arrastra.
+// ── HEAD nunca es una lectura (red de seguridad) ─────────────────────
+// HOY ESTO NO SE ALCANZA: core/Router.php contesta los HEAD con el código de
+// estado y sin ejecutar ningún manejador, así que este archivo no llega a
+// correr con HEAD. Se deja como segunda línea de defensa por si algún día se
+// cambia esa decisión en el router — un HEAD no renderiza nada al visitante y
+// contarlo como visita abriría una vía de visitas fantasma en el slug, que es
+// justo lo que el Escudo existe para evitar. Va antes que todas las capas.
+// NO marca $interno_detectado a propósito: un HEAD no es un interno, y
+// marcarlo dispararía la carga del Descuento Inteligente para alguien que no
+// va a ver nada, con la escritura de expiración perezosa que eso arrastra.
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD') {
     escudo_log_decision('metodo_head', (int)$cot['id'], (int)$cot['empresa_id'], $visitor_id_cookie ?: null, $ip, $ua, $dsig_cookie ?: null);
     goto skip_tracking;
