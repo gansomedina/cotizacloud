@@ -28,8 +28,13 @@ class Auth
     public static function init(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
-            // Cookie de sesión PHP — el token real en BD valida la expiración
-            session_name(SESSION_NAME);
+            // Cookie de sesión PHP — el token real en BD valida la expiración.
+            // OJO: NO usar SESSION_NAME aquí. La cookie del token de auth se llama
+            // igual (SESSION_NAME) y PHP la adoptaría como session-id: hoy funciona
+            // solo porque session.use_strict_mode=0. Con strict_mode=1 PHP reemite
+            // la cookie con SU id y PISA el token -> deslogueo masivo y Capa 0 del
+            // Escudo ciega. Nombre propio = colisión imposible.
+            session_name('cza_php');
             session_set_cookie_params([
                 'lifetime' => SESSION_BROWSER_SECONDS,
                 'path'     => '/',
