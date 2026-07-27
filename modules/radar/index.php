@@ -348,9 +348,27 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
     echo "</span>";
     echo "</div>";
     if (!$items) { echo "<div class='rbk-em'>Sin registros.</div></div>"; return; }
+
+    // ¿Esta tabla tendrá botones de feedback? Se calcula ANTES del <thead> para no
+    // pintar una columna vacía. Replica la condición de $show_fb_td/$already_shown
+    // de abajo SIN mutar $GLOBALS['fb_shown'] (el feedback se pinta una sola vez por
+    // cotización, en la primera tabla donde aparece).
+    $hot_bkts_hd = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
+    $tabla_con_fb = false;
+    foreach ($items as $r_pre) {
+        $vend_pre = (int)($r_pre['vendedor_id'] ?? 0);
+        if (in_array($r_pre['bucket'] ?? '', $hot_bkts_hd, true)
+            && ($vend_pre === Auth::id() || Auth::es_admin())
+            && !isset($GLOBALS['fb_shown'][(int)$r_pre['id']])) {
+            $tabla_con_fb = true;
+            break;
+        }
+    }
+
     // Sin límite — mostrar todas las cotizaciones del bucket
     echo "<div class='rdrs'><table class='rdrt'><thead><tr>";
     echo "<th style='min-width:320px'>Título / Cliente</th>";
+    if ($tabla_con_fb) echo "<th class='tc' style='width:118px'>Feedback</th>";
     if ($motivo) echo "<th style='width:100px'>Motivo</th>";
     echo "<th class='tc col-estado' style='width:72px'>Estado</th>";
     echo "<th class='tr' style='width:70px'><a href='".rurlq(['sort'=>'fit','dir'=>rtdir($s,'fit',$d)])."'>Score%</a></th>";
@@ -436,7 +454,10 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 $cal_badge = "<div style='margin-top:2px'><span style='background:#fef3c7;color:#92400e;font:600 10px \"Inter\",sans-serif;padding:2px 6px;border-radius:4px;display:inline-block' title='Cotización reciente — el cliente tiene el impulso inicial de la novedad. Actúa rápido antes de que pierda la motivación'>🔥 Impulso inicial — actúa antes de que el cliente se enfríe</span></div>";
             }
         }
-        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}{$fb_html}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."{$cal_badge}</div></a></td>";
+        // El feedback va en su propia columna (no dentro del título): así el título
+        // usa todo el ancho y los botones quedan alineados entre filas.
+        echo "<td><a href='{$cot_url}' class='rtit-link'><div style='display:flex;align-items:center;gap:4px'><div class='rtit' style='flex:1;min-width:0'>{$r_title_show}</div>{$r_decay_ico}</div><div class='rsub'>".htmlspecialchars($r['cliente'])."{$cal_badge}</div></a></td>";
+        if ($tabla_con_fb) echo "<td class='tc'>{$fb_html}</td>";
         if ($motivo) {
             $reason_key = $r['reason'] ?? '';
             $reason_meta = $BM[$reason_key] ?? null;
@@ -464,7 +485,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         echo "</tr>";
         // Why row: expandable explanation
         if (isset($why_id) && $why_id) {
-            $cols = $motivo ? 8 : 7;
+            $cols = ($motivo ? 8 : 7) + ($tabla_con_fb ? 1 : 0);
             echo "<tr id='{$why_id}' style='display:none'><td colspan='{$cols}' style='padding:6px 16px 10px;background:#f8fafc;border-bottom:2px solid #e0e7ff'><div style='font:400 13px var(--body);color:var(--t2);line-height:1.6'>💡 {$why_text}</div></td></tr>";
             $why_id = null;
         }
@@ -475,7 +496,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             $bks = $r['senales']['buckets'] ?? [];
             $ics = $r['senales']['icons'] ?? [];
             $pcs = $r['senales']['pc_source'] ?? null;
-            $col_span = 6 + ($motivo ? 1 : 0);
+            $col_span = 6 + ($motivo ? 1 : 0) + ($tabla_con_fb ? 1 : 0);
             echo "<tr class='dbg-row'><td colspan='{$col_span}' style='padding:6px 12px 10px;background:#fffbeb;border-bottom:2px solid #fde68a'>";
             echo "<div class='dbg-grid'>";
             // Internals
@@ -743,7 +764,9 @@ ob_start();
   .rtit{max-width:160px}
 }
 /* Feedback buttons */
-.fb-btns{display:flex;gap:3px}
+/* justify-content:center — los botones viven en su propia columna (th "Feedback"),
+   así quedan alineados entre filas en vez de pegados al final de cada título. */
+.fb-btns{display:flex;gap:3px;justify-content:center}
 .fb-btn{width:24px;height:24px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:.5;transition:all .15s}
 .fb-btn:hover{opacity:1;transform:scale(1.1)}
 .fb-active{opacity:1;border-width:2px;font-weight:600}
