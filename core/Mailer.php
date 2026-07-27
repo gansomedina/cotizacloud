@@ -47,7 +47,16 @@ class Mailer
             $mail->send();
             return true;
         } catch (MailException $e) {
-            if (DEBUG) error_log('Mailer error: ' . $e->getMessage());
+            // SIEMPRE se registra, no solo con DEBUG. Antes solo se logueaba en
+            // desarrollo, o sea NUNCA en producción — y ninguno de los ~20
+            // llamadores comprueba el bool de retorno. Resultado: si el relay
+            // SMTP rechaza (p.ej. Brevo bloquea la IP del servidor, que es su
+            // comportamiento documentado al cambiar de hosting), el prospecto
+            // que se registra nunca recibe su código de verificación y no queda
+            // rastro en ningún lado. Se incluye el destinatario y el asunto para
+            // poder reconstruir qué se perdió.
+            error_log('[Mailer] FALLO envío a ' . $para . ' — asunto: ' . $asunto
+                    . ' — error: ' . $e->getMessage());
             return false;
         }
     }

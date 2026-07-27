@@ -21,7 +21,7 @@ $tabla_existe = DB::val(
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'proveedores' LIMIT 1"
 );
 if (!$tabla_existe) {
-    DB::exec("CREATE TABLE IF NOT EXISTS `proveedores` (
+    DB::execute("CREATE TABLE IF NOT EXISTS `proveedores` (
         `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
         `empresa_id`  INT UNSIGNED NOT NULL,
         `nombre`      VARCHAR(150) NOT NULL,

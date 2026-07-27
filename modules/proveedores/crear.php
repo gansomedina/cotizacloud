@@ -46,7 +46,7 @@ if ($edit_id) {
     if (!$existe) json_error('Proveedor no encontrado', 404);
 
     try {
-        DB::exec(
+        DB::execute(
             "UPDATE proveedores SET nombre=?, contacto=?, telefono=?, email=?, direccion=?, nota=?
              WHERE id=? AND empresa_id=?",
             [$nombre, $contacto ?: null, $telefono ?: null, $email ?: null, $direccion ?: null, $nota ?: null,
