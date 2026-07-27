@@ -39,7 +39,14 @@ $tipos_validos = [
 ];
 if (!in_array($tipo, $tipos_validos, true)) exit;
 
-$cot = DB::row("SELECT id, empresa_id, estado FROM cotizaciones WHERE id=?", [$cot_id]);
+// La cotización DEBE ser de la empresa del host. Sin el filtro por empresa,
+// este endpoint —que es público y no pide sesión— aceptaba cualquier
+// cotizacion_id: como los ids son secuenciales, desde el subdominio de una
+// empresa se podía marcar 'vista' y recalcular el Radar de cotizaciones de
+// OTRAS empresas (push falsos, buckets calientes, señal "sin abrir" destruida).
+// EMPRESA_ID sale del host y aquí siempre está definida (Auth.php:64, rama
+// IS_SUBDOMAIN). Mismo criterio que api/quote_action.php:29 y api/cot_feedback.php:28.
+$cot = DB::row("SELECT id, empresa_id, estado FROM cotizaciones WHERE id=? AND empresa_id=?", [$cot_id, EMPRESA_ID]);
 if (!$cot) exit;
 $empresa_id = (int)$cot['empresa_id'];
 
