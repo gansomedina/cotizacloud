@@ -605,7 +605,7 @@ ob_start();
 .rdrt tr.hot4h{background:#fff7cc}
 .rdrt tr:hover td{background:#fafaf8;cursor:pointer}
 .tc{text-align:center}.tr{text-align:right}
-.rtit{font-weight:600;font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.rtit{font-weight:600;font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
 .rsub{font-weight:400;font-size:11px;color:var(--t3);margin-top:1px}
 .ago{color:#888;font-size:11px}
 .rmot{font-weight:500;font-size:11px;color:var(--t2)}
