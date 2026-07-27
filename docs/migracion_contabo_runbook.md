@@ -118,6 +118,54 @@ escritorio por túnel SSH (cero exposición).
 
 ---
 
+## Auditoría Escudo/Radar cross-domain (pre-cutover) — resultados
+
+Revisión exhaustiva del código (Escudo, Radar, cookies, bridge) frente a
+Cloudflare proxy + server nuevo + APP_SECRET nuevo. **Conclusión: el código
+está sano para el proxy; los riesgos son de CONFIGURACIÓN, no de código.**
+
+### CRÍTICO
+1. **`ENV=production` es el fix #1** — con `ENV=development` (default si no se
+   setea `APP_ENV`), `DEBUG=true` → `display_errors=1`. En `cotizacion.php` la
+   cookie `cz_vid` (setcookie ~185/220) y un redirect de sync (~196) ocurren en
+   el bloque de tracking ANTES del HTML. Cualquier Notice/Warning previo emite
+   output → **"headers already sent"** → `cz_vid` NO se planta → **Capa 1 del
+   Escudo rota de forma intermitente** + fuga de errores en el slug del cliente.
+   Además `secure=!DEBUG` deja cookies sin Secure. → Poner `APP_ENV=production`
+   (o `ENV=production`) y `logs/error.log` escribible.
+2. **Front-controller en nginx** (`try_files → index.php`) — ya resuelto en el
+   vhost. Sin él, `/api/track`, `/api/safari-bridge`, slugs = 404.
+
+### ALTO
+3. **Cloudflare NO debe "Cache Everything"** sobre `cotiza.cloud`/`*.cotiza.cloud`
+   — el HTML del slug planta `Set-Cookie: cz_vid` y cuenta la visita. Default de
+   CF (no cachea HTML sin extensión) es seguro. Mantener `/assets/*` cacheado.
+   Verificar que no exista Page Rule/APO de cache HTML. Rocket Loader OFF.
+4. **Dominios custom requieren Let's Encrypt válido** — cookies del Escudo ahí
+   son Secure-only hardcoded (`set_vid.php:16`, `safari_bridge.php:66/126`). Sin
+   HTTPS válido el navegador rechaza guardarlas → Capa 0 y 1 ciegas. Verificar
+   también que `empresas.dominio_custom` quedó correcto tras el import.
+
+### MEDIO
+5. `MarketingPixels.php:166` lee `REMOTE_ADDR` directo (IP de Cloudflare a Meta
+   CAPI). Lo arregla el `real_ip` de nginx (reescribe REMOTE_ADDR a la IP real
+   desde rangos CF) — o cambiar a `ip_real()`.
+6. `SMTP_HOST` debe quedar definido (ya está en config.php nuevo → mail.cotiza.cloud).
+
+### VERIFICADO OK (no se rompe)
+- `ip_real()` lee CF-Connecting-IP primero; lo usan cotizacion/track/cot_feedback/
+  layout/Auth. `radar/index.php:31` igual.
+- Host preservado por CF → lógica cookie `.cotiza.cloud` vs host-only intacta.
+- **APP_SECRET nuevo NO cierra sesiones** (tokens en `user_sessions`, no HMAC) ni
+  rompe CSRF (token en $_SESSION) ni el bridge (tokens efímeros mismo server).
+- `Radar::BOT_IP=[]` vacío; CERO IPs/rutas del server viejo hardcodeadas en Escudo/Radar.
+- Endpoints de tracking = POST (no cacheables por CF).
+
+### nginx real_ip (anti-spoof + REMOTE_ADDR real)
+Configurar `set_real_ip_from <rangos Cloudflare>` + `real_ip_header CF-Connecting-IP`.
+Para blindar contra spoof directo al origen en `cotiza.cloud`: restringir ese vhost
+a IPs de Cloudflare (los dominios custom pegan directo por diseño, ahí no aplica).
+
 ## Notas / gotchas encontrados
 - Las desconexiones SSH se resolvieron con `ServerAliveInterval` en la Mac + trabajar dentro de **tmux** (`tmux new -s mig` / `tmux attach -t mig`).
 - El dump se importó con `SET FOREIGN_KEY_CHECKS=0` (47 FKs, el dump no las desactiva).
