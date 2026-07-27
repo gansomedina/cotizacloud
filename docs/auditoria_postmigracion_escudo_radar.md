@@ -261,8 +261,27 @@ Así `ip_real()` cae a `REMOTE_ADDR` sin tocar una función que usa medio sistem
 
 ---
 
-## 6 · El Radar aplica dos filtros anti-fantasma distintos
+## 6 · ~~El Radar aplica dos filtros anti-fantasma distintos~~ — CORREGIDO Y DESPLEGADO 27 jul
 `modules/radar/Radar.php:592` · **MEDIO** · preexistente
+
+**Aplicado** (commit `5b057ae`, desplegado en PR #880): los dos filtros se
+extrajeron al closure `$sesion_valida`, usado por ambos bucles.
+
+**Delta medido** sobre 56 combinaciones de scroll/visible: cambian 13. Diez pasan
+a descartarse (scroll 0-34 con <200 ms: el ghost-restore de Chrome Android) y
+**tres pasan a contarse** (scroll 0 con 200-1999 ms) — lo correcto, porque el
+bucle principal ya las contaba como visita y una sesión que cuenta como visita
+debe contar como persona. O sea el cambio no es "más estricto", es *idéntico* al
+criterio calibrado.
+
+**Medido contra producción antes y después** con `tools/test_radar_fix.php` (que
+recalcula sin escribir) sobre las 8 cotizaciones de mayor score en los buckets
+afectados: **cero diferencias**. Deploy verificado en el servidor (el closure
+presente, el filtro viejo ausente). Lectura honesta: el defecto era real en el
+código, pero esas 8 cotizaciones sostienen su bucket caliente con engagement real
+y no había fantasmas que quitarles.
+
+### Descripción original (se conserva para contexto)
 
 `score()` recorre las sesiones dos veces. El bucle principal (línea 496) usa el
 filtro calibrado el 27 de mayo contra el scroll restaurado del navegador:
@@ -285,8 +304,25 @@ segundo bucle.
 
 ---
 
-## 7 · Dos consultas del motor no filtran `es_interno = 0`
+## 7 · ~~Dos consultas del motor no filtran `es_interno = 0`~~ — CORREGIDO Y DESPLEGADO 27 jul
 `modules/radar/Radar.php:1892` y `:2181` · **MEDIO** · preexistente
+
+**Aplicado** (commit `5b057ae`): `calibrar()` (con el filtro en el `ON` del LEFT
+JOIN, no en el `WHERE`, para no degradarlo a INNER), `engage_avg()` y
+`lista_activas()`.
+
+**Un cuarto caso, encontrado revisando el repo completo y no listado por los
+agentes:** en las alertas de competencia la consulta que **genera** la alerta
+filtra `es_interno = 0` (`modules/radar/index.php:933`) pero la del **detalle**
+no (`:827`). Al expandir una alerta aparecían sesiones internas y el supuesto
+competidor figuraba viendo más cotizaciones de las que la alerta contó.
+
+**Nota sobre el efecto:** `calibrar()` no lo llama `score()` — entrena el modelo
+FIT y lo guarda aparte. El arreglo actúa **hacia adelante**, cuando se recalibra
+la empresa; no corrige retroactivamente un `fit_pct` ya calculado. Por eso la
+medición antes/después no muestra cambio en `fit_pct`.
+
+### Descripción original (se conserva para contexto)
 
 `score()` sí filtra (líneas 407 y 413). Pero `calibrar()` hace
 `LEFT JOIN quote_sessions` **sin** `es_interno = 0`, y `engage_avg()` igual.
