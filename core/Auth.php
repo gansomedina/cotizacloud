@@ -35,10 +35,23 @@ class Auth
             // la cookie con SU id y PISA el token -> deslogueo masivo y Capa 0 del
             // Escudo ciega. Nombre propio = colisión imposible.
             session_name('cza_php');
+            // El domain de la cookie SOLO aplica si el host actual pertenece al
+            // dominio base. Desde un dominio custom (ontimecocinas.com) el
+            // navegador RECHAZA una cookie con domain=.cotiza.cloud, así que ahí
+            // no había sesión de PHP: $_SESSION nacía vacía en cada request y
+            // csrf_token() (core/Helpers.php:216) devolvía un token distinto cada
+            // vez. Hoy es inocuo porque los endpoints con CSRF viven en el panel
+            // (que está en cotiza.cloud), pero rompería aceptar y rechazar
+            // cotizaciones el día que se le agregue CSRF a api/quote_action.php,
+            // con un síntoma difícil de diagnosticar: falla solo en OnTime.
+            // Cadena vacía = cookie host-only, que es lo correcto ahí.
+            $host_cookie = strtolower(preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
+            $base_dom    = strtolower(BASE_DOMAIN);
+            $en_base     = ($host_cookie === $base_dom) || str_ends_with($host_cookie, '.' . $base_dom);
             session_set_cookie_params([
                 'lifetime' => SESSION_BROWSER_SECONDS,
                 'path'     => '/',
-                'domain'   => '.' . BASE_DOMAIN,
+                'domain'   => $en_base ? '.' . BASE_DOMAIN : '',
                 'secure'   => !DEBUG,
                 'httponly' => true,
                 'samesite' => 'Lax',

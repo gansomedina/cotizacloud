@@ -34,6 +34,15 @@ class Router
         self::$path   = '/' . trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
         $method       = $_SERVER['REQUEST_METHOD'];
 
+        // HEAD se resuelve con las rutas GET. Sin esto ninguna ruta matchea y
+        // TODO el sitio contesta 404 a un HEAD — que es justo lo que mandan por
+        // defecto los monitores de disponibilidad (reportarían el sitio caído
+        // estando bien). PHP y nginx descartan el cuerpo solos.
+        // OJO: esto hace que un HEAD ejecute el manejador. En el slug público
+        // eso contaría una visita, así que public/cotizacion.php descarta el
+        // tracking cuando el método es HEAD — un HEAD no es una lectura.
+        if ($method === 'HEAD') $method = 'GET';
+
         foreach (self::$routes as [$rMethod, $pattern, $handler]) {
             if ($rMethod !== 'ANY' && $rMethod !== $method) {
                 continue;

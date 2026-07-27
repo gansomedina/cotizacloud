@@ -118,11 +118,15 @@ if (!in_array($cot['estado'], ['enviada','vista','aceptada','rechazada'], true))
 
 // Sesión activa (ventana de deduplicación)
 $dedupe_min = ($rcfg['deduplicar_30min'] ?? true) ? 30 : 60;
+// es_interno = 0 en ambas, IGUAL que en public/cotizacion.php: las dos deben
+// resolver la misma sesión. Si una ignorara las internas y la otra no, los
+// eventos JS del cliente se engancharían a la sesión interna y la suya se
+// quedaría en scroll 0 / visible 0 → la borraría el cleanup de fantasmas.
 $sess = null;
 if ($visitor_id !== '') {
     $sess = DB::row(
         "SELECT id FROM quote_sessions
-         WHERE cotizacion_id=? AND visitor_id=? AND activa=1
+         WHERE cotizacion_id=? AND visitor_id=? AND activa=1 AND es_interno=0
            AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
          ORDER BY updated_at DESC LIMIT 1",
         [$cot_id, $visitor_id, $dedupe_min]
@@ -131,7 +135,7 @@ if ($visitor_id !== '') {
 if (!$sess) {
     $sess = DB::row(
         "SELECT id FROM quote_sessions
-         WHERE cotizacion_id=? AND ip=? AND activa=1
+         WHERE cotizacion_id=? AND ip=? AND activa=1 AND es_interno=0
            AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
          ORDER BY updated_at DESC LIMIT 1",
         [$cot_id, $ip, $dedupe_min]

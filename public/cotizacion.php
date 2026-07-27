@@ -242,6 +242,21 @@ $di_act = null;
 // custom no veía la tabla del DI (bug reportado).
 $interno_detectado = false;
 
+// ── HEAD nunca es una lectura ────────────────────────────────────────
+// El router resuelve HEAD con las rutas GET (core/Router.php) para no
+// contestar 404 a los monitores de disponibilidad — así que este archivo SÍ
+// se ejecuta con HEAD. Pero un HEAD no renderiza nada al visitante: contarlo
+// como visita abriría una vía nueva de visitas fantasma justo en el slug.
+// Va antes que todas las capas.
+// NO se marca $interno_detectado: un HEAD no es un interno, y marcarlo
+// dispararía la carga del Descuento Inteligente para mostrárselo a alguien que
+// no va a ver nada (el cuerpo se descarta), con la escritura de expiración
+// perezosa que eso arrastra.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD') {
+    escudo_log_decision('metodo_head', (int)$cot['id'], (int)$cot['empresa_id'], $visitor_id_cookie ?: null, $ip, $ua, $dsig_cookie ?: null);
+    goto skip_tracking;
+}
+
 // ── CAPA 0: Usuario logueado de esta empresa o superadmin ────────────
 // Es la verificación más importante y debe ser la primera.
 // Certeza absoluta: conocemos usuario_id, IP, UA y visitor_id.
@@ -299,11 +314,17 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         // luego IP como fallback (cuando no hay cookie)
         $rcfg = Radar::config((int)$cot['empresa_id']);
         $dedupe_min = ($rcfg['deduplicar_30min'] ?? true) ? 30 : 60;
+        // es_interno = 0 en las dos: una sesión marcada como interna NO debe
+        // suprimir la visita de un cliente. Caso real con el NAT de Telmex: el
+        // asesor abre su cotización, la limpieza retroactiva marca su sesión
+        // como interna, y un cliente que sale por esa misma IP dentro de los 30
+        // min "heredaba" esa sesión y su visita no se contaba. Si llegamos hasta
+        // aquí es porque el Escudo ya consideró cliente a quien está entrando.
         $session_existe = null;
         if ($visitor_id_cookie !== '') {
             $session_existe = DB::row(
                 "SELECT id FROM quote_sessions
-                 WHERE cotizacion_id=? AND visitor_id=? AND activa=1
+                 WHERE cotizacion_id=? AND visitor_id=? AND activa=1 AND es_interno=0
                    AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
                  LIMIT 1",
                 [$cot['id'], $visitor_id_cookie, $dedupe_min]
@@ -312,7 +333,7 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
         if (!$session_existe) {
             $session_existe = DB::row(
                 "SELECT id FROM quote_sessions
-                 WHERE cotizacion_id=? AND ip=? AND activa=1
+                 WHERE cotizacion_id=? AND ip=? AND activa=1 AND es_interno=0
                    AND updated_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)
                  LIMIT 1",
                 [$cot['id'], $ip, $dedupe_min]
