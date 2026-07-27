@@ -62,6 +62,56 @@ BD final: 2347 cotizaciones · 257 ventas · 9 empresas · **868 user_sessions**
 `Radar.php`, y su md5 previo coincide exactamente con el commit anterior a la
 corrección — o sea, la única diferencia es el filtro `es_interno = 0`.
 
+### ⛔ EL FALLO MÁS CARO DEL CORTE: 15 h sin poder crear cotizaciones
+
+**Qué pasó.** Desde el corte (26 jul 18:41) hasta el mediodía del 27, NADIE pudo
+crear, editar, enviar, clonar ni convertir una cotización. Lo reportó un asesor,
+no el monitoreo.
+
+**Causa raíz.** MariaDB 10.11 trae `sql_mode` **estricto** por defecto
+(`STRICT_TRANS_TABLES,...`); el hosting viejo lo tenía relajado. La tabla
+`cotizacion_log` arrastra una columna huérfana:
+```sql
+`evento` varchar(80) NOT NULL,     -- sin DEFAULT; el código migró a `accion` hace tiempo
+`accion` varchar(80) DEFAULT NULL,
+```
+Los INSERT del código escriben `accion` y **no** `evento`. Con modo relajado MySQL
+le ponía `''` y guardaba; con modo estricto responde
+`1364 Field 'evento' doesn't have a default value` y **revienta la transacción
+entera** de `crear.php`. Cinco caminos afectados: `crear.php:221`,
+`guardar.php:256`, `enviar.php:36`, `clonar.php:124`, `convertir.php:150`.
+
+**Arreglo aplicado** (instantáneo, solo metadatos, y conserva el modo estricto):
+```sql
+ALTER TABLE cotizacion_log ALTER COLUMN evento SET DEFAULT '';
+ALTER TABLE venta_log      ALTER COLUMN evento SET DEFAULT '';
+```
+Se prefirió esto sobre relajar el `sql_mode` global: relajarlo también lo
+arreglaba de un golpe, pero volvería a **esconder** esta clase de error en todo el
+sistema, que es justo lo que nos tuvo horas a ciegas. Barrido posterior: fuera de
+esos cinco, **ningún otro INSERT de producción** omite una columna `NOT NULL` sin
+default (los que salen en `tools/` son scripts de simulación).
+
+**Por qué tardó 15 horas en detectarse — el error de método.** La verificación
+post-corte comparó conteos entre las dos bases y dio `cotizaciones 2347 = 2347`,
+`ventas 257 = 257`, y se leyó como *"migración íntegra"*. Era cierto **y era la
+evidencia del problema al mismo tiempo**: los conteos coincidían porque no se
+había creado NADA desde el corte. Se probaron rutas, SSL, dominios, correo, push y
+lecturas — **ninguna escritura real**.
+
+**REGLA para cualquier corte futuro — prueba de humo de ESCRITURA, obligatoria,
+antes de dar por bueno el corte:**
+1. Crear una cotización de prueba (toca `cotizaciones`, `cotizacion_lineas`,
+   `cotizacion_log`, `folios`).
+2. Editarla y guardarla.
+3. Enviarla.
+4. Convertirla a venta y registrar un abono (toca `ventas`, `recibos`, `venta_log`).
+5. Aceptarla desde el slug público (toca `quote_sessions`, `quote_events`).
+6. Borrar lo de prueba.
+
+Si los conteos post-migración salen **idénticos** varias horas después del corte,
+eso no es señal de salud: es señal de que **nadie está escribiendo**. Verificarlo.
+
 ### Gotcha del corte: "invalid signature" durante la propagación
 `api/safari_bridge.php:33` devuelve `invalid signature` si el token del bridge se
 **firma** en un servidor y se **verifica** en otro — pasa mientras el DNS propaga,

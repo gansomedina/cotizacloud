@@ -261,8 +261,45 @@ Así `ip_real()` cae a `REMOTE_ADDR` sin tocar una función que usa medio sistem
 
 ---
 
-## 6 · El Radar aplica dos filtros anti-fantasma distintos
+## 6 · ~~El Radar aplica dos filtros anti-fantasma distintos~~ — CORREGIDO Y DESPLEGADO 27 jul
 `modules/radar/Radar.php:592` · **MEDIO** · preexistente
+
+**Aplicado** (commit `5b057ae`, desplegado en PR #880): los dos filtros se
+extrajeron al closure `$sesion_valida`, usado por ambos bucles.
+
+**Delta medido** sobre 56 combinaciones de scroll/visible: cambian 13. Diez pasan
+a descartarse (scroll 0-34 con <200 ms: el ghost-restore de Chrome Android) y
+**tres pasan a contarse** (scroll 0 con 200-1999 ms) — lo correcto, porque el
+bucle principal ya las contaba como visita y una sesión que cuenta como visita
+debe contar como persona. O sea el cambio no es "más estricto", es *idéntico* al
+criterio calibrado.
+
+**Medido contra producción, base completa.** Se recalcularon en vivo las **501
+cotizaciones activas** de los últimos 120 días y se comparó contra el
+`radar_bucket`/`radar_score` guardado (que se calculó con el código viejo):
+
+| Métrica | Resultado |
+|---|---|
+| Cotizaciones con diferencia | **5 de 501 (1.0%)** |
+| Que pierden un bucket caliente | **0** |
+| Diferencias reales | ±1 a ±3 puntos — ruido de recencia |
+
+La única diferencia grande (cot 3653, 50→14) quedó **probada como ajena al
+cambio**: tiene una sola sesión, con `scroll 60` y `7 121 ms` visibles, que pasa
+idéntico por el filtro viejo y el nuevo. Su `radar_score` guardado es una foto de
+abril — `Radar::recalcular()` solo corre cuando llegan eventos y esa cotización no
+tiene actividad desde entonces, así que el número quedó congelado.
+
+**El defecto sí tenía materia:** 139 sesiones en 125 cotizaciones de 5 empresas
+caen en la franja que el segundo bucle contaba de más (60 días). Que casi ninguna
+moviera el resultado se explica porque la ventana de multi-persona es corta y
+pocas caían dentro. O sea: el arreglo cierra una vía de contaminación **hacia
+adelante** sin mover nada de lo que los asesores ven hoy.
+
+Deploy verificado en el servidor: closure presente (4 apariciones), filtro viejo
+ausente (0), `es_interno` en las 4 consultas.
+
+### Descripción original (se conserva para contexto)
 
 `score()` recorre las sesiones dos veces. El bucle principal (línea 496) usa el
 filtro calibrado el 27 de mayo contra el scroll restaurado del navegador:
@@ -285,8 +322,25 @@ segundo bucle.
 
 ---
 
-## 7 · Dos consultas del motor no filtran `es_interno = 0`
+## 7 · ~~Dos consultas del motor no filtran `es_interno = 0`~~ — CORREGIDO Y DESPLEGADO 27 jul
 `modules/radar/Radar.php:1892` y `:2181` · **MEDIO** · preexistente
+
+**Aplicado** (commit `5b057ae`): `calibrar()` (con el filtro en el `ON` del LEFT
+JOIN, no en el `WHERE`, para no degradarlo a INNER), `engage_avg()` y
+`lista_activas()`.
+
+**Un cuarto caso, encontrado revisando el repo completo y no listado por los
+agentes:** en las alertas de competencia la consulta que **genera** la alerta
+filtra `es_interno = 0` (`modules/radar/index.php:933`) pero la del **detalle**
+no (`:827`). Al expandir una alerta aparecían sesiones internas y el supuesto
+competidor figuraba viendo más cotizaciones de las que la alerta contó.
+
+**Nota sobre el efecto:** `calibrar()` no lo llama `score()` — entrena el modelo
+FIT y lo guarda aparte. El arreglo actúa **hacia adelante**, cuando se recalibra
+la empresa; no corrige retroactivamente un `fit_pct` ya calculado. Por eso la
+medición antes/después no muestra cambio en `fit_pct`.
+
+### Descripción original (se conserva para contexto)
 
 `score()` sí filtra (líneas 407 y 413). Pero `calibrar()` hace
 `LEFT JOIN quote_sessions` **sin** `es_interno = 0`, y `engage_avg()` igual.
@@ -455,6 +509,56 @@ ls -ld /var/www/cotizacloud/uploads /var/www/cotizacloud/assets/uploads /var/www
 php -r 'echo date_default_timezone_get(), " ", date("P"), "\n";'
 mysql -u root -e "SELECT @@global.time_zone, @@session.time_zone, NOW();"
 ```
+
+---
+
+# EVALUADO Y DESCARTADO POR RIESGO (27 jul)
+
+Tres cambios se construyeron, se auditaron y **se descartaron**. No están
+perdidos: quedan aquí con su razón, para retomarlos si algún día el contexto lo
+justifica. El criterio fue del CEO y es el correcto — el sistema estaba estable y
+estas eran mejoras marginales sobre piezas delicadas.
+
+| Cambio | Por qué se descartó |
+|---|---|
+| **Hallazgo 9 — `HEAD` en el router** | El de menor valor de todos (que un monitor de disponibilidad no reporte falsos caídos) sobre la ruta más crítica del sistema: el despachador. Y fue donde casi se introduce un bug serio: `/logout` es GET y `Auth::logout()` expira la sesión **en la base**, así que un `HEAD` desde un escáner de enlaces habría deslogueado al asesor → Capa 0 ciega → visitas fantasma. **Alternativa sin código: configurar el monitor con `GET`.** |
+| **Hallazgo 10 — cookie de sesión host-aware** | El motivo es **hipotético**: hoy ningún flujo necesita `$_SESSION` en dominio custom (los 5 endpoints con CSRF viven en el panel). Y tiene un efecto secundario **negativo**: `core/layout.php:52` usa `$_SESSION['_sessions_cleaned']` para correr la limpieza retroactiva del Escudo una vez al día; en dominio custom hoy `$_SESSION` nace vacía y esa limpieza corre en **cada carga**, así que persistirla la bajaría a una vez al día justo en los dominios donde se originan las fugas. **Se hará el día que se agregue CSRF a `quote_action.php` — no antes.** |
+| **`es_interno` en la deduplicación** | Beneficio angosto: solo actúa **después** de que la limpieza marcó la sesión del asesor, y esa limpieza corre como mucho una vez al día. Además creaba una fuga nueva con el toggle `excluir_internos` apagado (la Capa 1 de `track.php` sí lo respeta, el filtro no), que hubo que parchear. |
+
+## Lo que la auditoría adversarial encontró en los cambios del propio día
+
+Vale registrarlo porque es el argumento a favor de auditar antes de desplegar:
+
+1. **Código muerto con comentario falso** (`Radar.php`). El bloque de "rescate de
+   fantasmas" no rescataba nada — toda sesión que entraba cumplía `(0,0)` y el
+   umbral de abajo la mataba igual. Comprobado: **0 de 140** combinaciones se
+   salvan. Encima llevaba cinco líneas justificando por qué hace match por
+   `visitor_id` en vez de IP, describiendo una decisión que el código nunca toma.
+   **Corregido:** bloque eliminado (ahorra recorrer 150 días de eventos por cada
+   sesión `(0,0)`, en los dos bucles) y el comentario dice la verdad.
+2. **Otro comentario falso** (`calibrar()`). Se justificó el `ON`-vs-`WHERE`
+   diciendo que en el `WHERE` se perderían las cotizaciones sin sesiones. Falso:
+   el `if ($sess <= 1) continue` ya las descarta. La razón real son las **bandas
+   de importe** (`$totales` recorre todo `$cots`). **Corregido.**
+3. **Regresión introducida** (`track.php`). El filtro de dedupe no estaba atado al
+   toggle `excluir_internos` pero la Capa 1 sí → con el toggle apagado se
+   insertaba una sesión nueva marcada como cliente. Ya no aplica: el cambio
+   completo se descartó.
+4. **Consulta viva sin filtrar** (`modules/dashboard/index.php`). **Corregido.**
+
+## Inconsistencia registrada, no corregida
+
+La regla de "qué cuenta como engagement" existe en **cuatro variantes** en el
+sistema, y unificarlas es una decisión de diseño, no un arreglo:
+
+| Umbral | Dónde |
+|---|---|
+| `scroll>0 OR visible>=2000` | historial del editor (`cotizaciones/ver.php`), ejecutivo |
+| `visible>3000 OR scroll>10` | alertas de competencia, ejecutivo |
+| `scroll>0 AND visible>0` | `Radar::engage_avg()` |
+| `visible<200 AND scroll<35` | `Radar::score()` — el calibrado con 60 días de datos |
+
+Por eso "fuente única" solo aplica **dentro de `score()`**, no a nivel sistema.
 
 ---
 
