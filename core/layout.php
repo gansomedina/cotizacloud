@@ -306,6 +306,27 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         .input:focus,.select:focus,.textarea:focus{border-color:var(--g)}
         .input-num{font-family:var(--num)}
 
+        /* ── ANTI-ZOOM EN iOS ──────────────────────────────────────────────
+           Safari en iPhone hace zoom automatico al enfocar un campo cuya
+           letra mide MENOS de 16px, y desde iOS 10 IGNORA el
+           "maximum-scale=1.0, user-scalable=no" del viewport — asi que ese
+           atributo no protege de nada. La unica forma de evitarlo es que el
+           campo mida 16px o mas al recibir el foco.
+           Va aqui, en un solo lugar, en vez de repetirlo en los ~10 modulos
+           que definen sus propios .sh-input/.sh-select. Lleva !important
+           porque el <style> de cada modulo se imprime DESPUES de este bloque
+           y ganaria por orden. Solo aplica en pantallas chicas: en escritorio
+           la densidad visual no cambia. */
+        @media (max-width: 768px) {
+            .input, .select, .textarea,
+            .sh-input, .sh-select, .sh-textarea,
+            input[type="text"], input[type="email"], input[type="tel"],
+            input[type="number"], input[type="password"], input[type="search"],
+            input[type="date"], input[type="url"], select, textarea {
+                font-size: 16px !important;
+            }
+        }
+
         /* ── TABLA ── */
         .table{width:100%;border-collapse:collapse}
         .table th{text-align:left;font-size:11.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;padding:10px 14px;border-bottom:2px solid var(--border)}

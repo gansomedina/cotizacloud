@@ -283,12 +283,12 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
 /* ── SHEETS ── */
 .sh-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:490;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;display:none}
 .sh-overlay.open{opacity:1;pointer-events:all;display:block}
-.bottom-sheet{display:none;position:fixed;bottom:0;left:0;right:0;z-index:500;background:var(--white);border-radius:20px 20px 0 0;max-height:92vh;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.1);max-width:640px;margin:0 auto}
+.bottom-sheet{display:none;position:fixed;bottom:0;left:0;right:0;z-index:500;background:var(--white);border-radius:20px 20px 0 0;max-height:92vh;max-height:92dvh;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.1);max-width:640px;margin:0 auto}
 .bottom-sheet.open{display:flex;animation:sheetUp .28s cubic-bezier(.32,0,.15,1)}
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @media(max-width:768px){
   .sh-overlay{bottom:64px}
-  .bottom-sheet{bottom:64px;border-radius:16px 16px 0 0;max-height:80vh}
+  .bottom-sheet{bottom:64px;border-radius:16px 16px 0 0;max-height:80vh;max-height:80dvh}
 }
 .sh-handle{width:34px;height:4px;border-radius:2px;background:var(--border);margin:12px auto 0;flex-shrink:0}
 .sh-header{padding:14px 18px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid var(--border)}

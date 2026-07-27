@@ -287,7 +287,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
 /* ─── Sheets ─────────────────────────────────────────────── */
 .sh-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
 .sh-overlay.open{opacity:1;pointer-events:auto}
-.bottom-sheet{display:none;position:fixed;bottom:0;left:0;right:0;z-index:201;background:var(--white);border-radius:20px 20px 0 0;max-height:92vh;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.1);max-width:640px;margin:0 auto;pointer-events:none}
+.bottom-sheet{display:none;position:fixed;bottom:0;left:0;right:0;z-index:201;background:var(--white);border-radius:20px 20px 0 0;max-height:92vh;max-height:92dvh;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.1);max-width:640px;margin:0 auto;pointer-events:none}
 .bottom-sheet.open{display:flex;pointer-events:auto;animation:sheetUp .3s cubic-bezier(.32,0,.15,1)}
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .sh-handle{width:34px;height:4px;border-radius:2px;background:var(--border2);margin:12px auto 0;flex-shrink:0}

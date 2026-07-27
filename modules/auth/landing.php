@@ -1084,7 +1084,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .czl-form button{background:#1a5c38;color:#fff;border:none;border-radius:10px;padding:11px;font:700 14px inherit;cursor:pointer}
 .czl-foot{padding:10px;border-top:1px solid #e2e2dc;display:flex;gap:8px;align-items:flex-end}
 .czl-foot button{background:#1a5c38;color:#fff;border:none;border-radius:10px;width:42px;height:40px;cursor:pointer;font-size:17px}
-@media(max-width:768px){#czl-win{right:0;left:0;bottom:0;width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0}}
+@media(max-width:768px){#czl-win{right:0;left:0;bottom:0;width:100vw;max-width:100vw;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;border-radius:0}}
 @media print{#czl-fab,#czl-win{display:none!important}}
 </style>
 
