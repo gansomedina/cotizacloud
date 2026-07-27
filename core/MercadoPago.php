@@ -340,7 +340,13 @@ class MercadoPago
         $hash = $parts['v1'] ?? '';
         if (!$ts || !$hash) return false;
 
-        $dataId = $_GET['data.id'] ?? $_GET['id'] ?? '';
+        // OJO: PHP renombra los puntos a guiones bajos en los parametros de la
+        // URL, asi que la clave que llega en $_GET es 'data_id', NO 'data.id'.
+        // MercadoPago manda ?data.id=... — leer 'data.id' devuelve siempre
+        // vacio, el manifiesto sale con el id en blanco y la firma jamas
+        // coincide: con el secreto puesto se rechazaria el 100% de las
+        // notificaciones, en silencio. Verificado con parse_str el 27 jul 2026.
+        $dataId = $_GET['data_id'] ?? $_GET['data.id'] ?? $_GET['id'] ?? '';
 
         $manifest = "id:{$dataId};request-id:{$xRequestId};ts:{$ts};";
         $expected = hash_hmac('sha256', $manifest, $secret);
