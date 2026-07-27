@@ -274,12 +274,30 @@ bucle principal ya las contaba como visita y una sesión que cuenta como visita
 debe contar como persona. O sea el cambio no es "más estricto", es *idéntico* al
 criterio calibrado.
 
-**Medido contra producción antes y después** con `tools/test_radar_fix.php` (que
-recalcula sin escribir) sobre las 8 cotizaciones de mayor score en los buckets
-afectados: **cero diferencias**. Deploy verificado en el servidor (el closure
-presente, el filtro viejo ausente). Lectura honesta: el defecto era real en el
-código, pero esas 8 cotizaciones sostienen su bucket caliente con engagement real
-y no había fantasmas que quitarles.
+**Medido contra producción, base completa.** Se recalcularon en vivo las **501
+cotizaciones activas** de los últimos 120 días y se comparó contra el
+`radar_bucket`/`radar_score` guardado (que se calculó con el código viejo):
+
+| Métrica | Resultado |
+|---|---|
+| Cotizaciones con diferencia | **5 de 501 (1.0%)** |
+| Que pierden un bucket caliente | **0** |
+| Diferencias reales | ±1 a ±3 puntos — ruido de recencia |
+
+La única diferencia grande (cot 3653, 50→14) quedó **probada como ajena al
+cambio**: tiene una sola sesión, con `scroll 60` y `7 121 ms` visibles, que pasa
+idéntico por el filtro viejo y el nuevo. Su `radar_score` guardado es una foto de
+abril — `Radar::recalcular()` solo corre cuando llegan eventos y esa cotización no
+tiene actividad desde entonces, así que el número quedó congelado.
+
+**El defecto sí tenía materia:** 139 sesiones en 125 cotizaciones de 5 empresas
+caen en la franja que el segundo bucle contaba de más (60 días). Que casi ninguna
+moviera el resultado se explica porque la ventana de multi-persona es corta y
+pocas caían dentro. O sea: el arreglo cierra una vía de contaminación **hacia
+adelante** sin mover nada de lo que los asesores ven hoy.
+
+Deploy verificado en el servidor: closure presente (4 apariciones), filtro viejo
+ausente (0), `es_interno` en las 4 consultas.
 
 ### Descripción original (se conserva para contexto)
 
