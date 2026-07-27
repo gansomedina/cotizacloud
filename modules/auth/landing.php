@@ -32,6 +32,7 @@ $usd_rate = (function() {
     return is_array($data) && !empty($data['usd']) ? (float)$data['usd'] : 0.0571;
 })();
 ?>
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -42,1022 +43,1046 @@ $usd_rate = (function() {
 if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()){window.location.replace('/login');}
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cotiza.cloud — ¿Sabes quien va a comprar antes de que te llame?</title>
-<meta name="description" content="Manda cotizaciones y sabe ¿cuales se van a cerrar? El Radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando esta listo para comprar.">
-<meta property="og:title" content="Cotiza.cloud — ¿Sabes quien va a comprar antes de que te llame?">
-<meta property="og:description" content="Manda cotizaciones y sabe cuales se van a cerrar. Radar de inteligencia de ventas en tiempo real.">
+<title>Cotiza.cloud — ¿Sabes quién va a comprar antes de que te llame?</title>
+<meta name="description" content="Manda cotizaciones y entérate cuáles se van a cerrar. El Radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando está listo para comprar.">
+<meta property="og:title" content="Cotiza.cloud — ¿Sabes quién va a comprar antes de que te llame?">
+<meta property="og:description" content="Manda cotizaciones y entérate cuáles se van a cerrar. Radar de inteligencia de ventas en tiempo real.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://cotiza.cloud">
+<link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f4f4f0;--white:#fff;--border:#e2e2dc;--border2:#c8c8c0;
-  --text:#1a1a18;--t2:#4a4a46;--t3:#6a6a64;
-  --g:#1a5c38;--g2:#164f30;--g-bg:#eef7f2;--g-border:#b8ddc8;
-  --accent:#7c3aed;--accent-bg:#ede9fe;
-  --warm:#dc2626;--warm-bg:#fef2f2;
-  --r:14px;--r-sm:10px;
-  --sh:0 1px 3px rgba(0,0,0,.06);--sh-md:0 4px 20px rgba(0,0,0,.08);--sh-lg:0 8px 40px rgba(0,0,0,.10);
-  --body:'Plus Jakarta Sans',sans-serif;--num:'DM Sans',sans-serif;
+  --body:'Plus Jakarta Sans','Apple Color Emoji','Segoe UI Emoji',sans-serif;
+  --num:'DM Sans','Apple Color Emoji','Segoe UI Emoji',sans-serif;
+
+  --g:#1a5c38;
+  --g-hi:#2f8a5a;
+  --g-soft:#eef4ef;
+  --g-line:#cfe3d6;
+
+  --ground:#f2f3ef;
+  --panel:#ffffff;
+  --panel-2:#f7f8f5;
+  --line:#e4e6df;
+  --ink:#1a1c19;
+  --muted:#6a716b;
+  --faint:#949b94;
+
+  --fire:#e03b34;
+  --warm:#e8a020;
+  --cool:#3d7fd6;
+  --ok:#16a34a;
+  --mid:#d97706;
+  --bad:#dc2626;
+
+  --r:14px;
+  --r-lg:22px;
+  --shadow:0 1px 2px rgba(20,30,25,.05), 0 18px 44px -22px rgba(20,40,28,.28);
+  --maxw:1080px;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
-/* NAV */
-.nav{background:rgba(255,255,255,.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-.nav-inner{max-width:1100px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between}
-.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
-.logo-mark{width:40px;height:40px;border-radius:11px;background:var(--g);display:flex;align-items:center;justify-content:center}
-.logo-mark svg{width:32px;height:26px}
-.logo-name{font:800 19px var(--body);letter-spacing:-.02em;color:var(--text)}
-.logo-name span{color:var(--g)}
-.nav-links{display:flex;align-items:center;gap:8px}
-.nav-link{padding:8px 16px;border-radius:var(--r-sm);font:600 14px var(--body);text-decoration:none;transition:all .12s}
-.nav-link-ghost{color:var(--t2);background:transparent}
-.nav-link-ghost:hover{background:var(--bg)}
-.nav-link-primary{background:var(--g);color:#fff}
-.nav-link-primary:hover{opacity:.88}
-
-/* HERO */
-.hero{max-width:900px;margin:0 auto;padding:72px 24px 0;text-align:center}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 18px;border-radius:20px;background:var(--g-bg);border:1px solid var(--g-border);font:700 11px var(--body);color:var(--g);margin-bottom:28px;letter-spacing:.08em;text-transform:uppercase}
-.hero-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--g);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.hero h1{font:800 clamp(36px,6vw,60px)/1.05 var(--body);letter-spacing:-.04em;margin-bottom:24px}
-.hero h1 em{font-style:normal;color:var(--g)}
-.hero-sub{font:500 clamp(17px,2.2vw,21px)/1.55 var(--body);color:var(--t2);max-width:620px;margin:0 auto 40px}
-.hero-sub strong{color:var(--text);font-weight:700}
-.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
-.btn-hero{padding:16px 36px;border-radius:var(--r-sm);font:700 15px var(--body);text-decoration:none;transition:all .18s;border:none;cursor:pointer}
-.btn-hero-primary{background:var(--g);color:#fff;box-shadow:0 4px 16px rgba(26,92,56,.3)}
-.btn-hero-primary:hover{background:var(--g2);box-shadow:0 6px 24px rgba(26,92,56,.4);transform:translateY(-1px)}
-.btn-hero-secondary{background:var(--white);color:var(--t2);border:1.5px solid var(--border2)}
-.btn-hero-secondary:hover{border-color:var(--g);color:var(--g)}
-.hero-note{font:400 14px var(--body);color:var(--t3)}
-
-/* PROOF BAR */
-.proof{max-width:800px;margin:0 auto;padding:48px 24px 0}
-.proof-inner{display:flex;justify-content:center;gap:40px;flex-wrap:wrap}
-.proof-item{text-align:center}
-.proof-num{font:800 30px var(--num);color:var(--g);letter-spacing:-.02em}
-.proof-label{font:500 13px var(--body);color:var(--t3);margin-top:2px}
-
-/* MANIFESTO */
-.manifesto{max-width:780px;margin:0 auto;padding:64px 24px 0}
-.manifesto-card{background:var(--white);border:1.5px solid var(--border);border-radius:20px;padding:44px 48px;box-shadow:var(--sh-md);position:relative;overflow:hidden}
-.manifesto-card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--g),var(--accent))}
-.manifesto-text{font:600 clamp(18px,2.4vw,23px)/1.6 var(--body);color:var(--text);text-align:center}
-.manifesto-text strong{color:var(--g);font-weight:800}
-.manifesto-text em{font-style:normal;color:var(--accent);font-weight:800}
-
-/* DIVIDER */
-.divider{max-width:1100px;margin:0 auto;padding:72px 24px 0}
-.divider-line{height:1px;background:var(--border)}
-
-/* FLOW */
-.flow{max-width:1100px;margin:0 auto;padding:72px 24px 0}
-.section-label{display:block;text-align:center;font:700 12px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--g);margin-bottom:12px}
-.section-title{text-align:center;font:800 clamp(26px,3.8vw,38px)/1.12 var(--body);letter-spacing:-.03em;margin-bottom:12px}
-.section-sub{text-align:center;font:400 17px var(--body);color:var(--t3);margin-bottom:56px;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.6}
-.flow-steps{display:flex;gap:0;justify-content:center;flex-wrap:wrap;position:relative}
-.flow-step{flex:1;min-width:150px;max-width:188px;text-align:center;position:relative;padding:0 6px}
-.flow-step-num{width:52px;height:52px;border-radius:50%;background:var(--g);color:#fff;font:800 20px var(--num);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 4px 16px rgba(26,92,56,.25);position:relative;z-index:2}
-.flow-step-num.hot{background:var(--warm);box-shadow:0 4px 16px rgba(220,38,38,.25)}
-.flow-step-title{font:700 16px var(--body);margin-bottom:5px;letter-spacing:-.01em}
-.flow-step-desc{font:400 14px var(--body);color:var(--t3);line-height:1.55}
-.flow-arrow{display:flex;align-items:flex-start;padding-top:22px;color:var(--g-border)}
-.flow-arrow svg{width:20px;height:20px;stroke:var(--border2);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
-
-/* AUDIENCE / PARA QUIEN */
-.audience{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.audience-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.aud-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:28px 22px;text-align:center;transition:all .25s;position:relative;overflow:hidden}
-.aud-card:hover{border-color:var(--g-border);box-shadow:var(--sh-lg);transform:translateY(-3px)}
-.aud-card-ico{font-size:36px;margin-bottom:14px;line-height:1}
-.aud-card-title{font:700 17px var(--body);color:var(--text);margin-bottom:8px;letter-spacing:-.01em}
-.aud-card-desc{font:400 14.5px var(--body);color:var(--t3);line-height:1.6}
-.aud-card-example{font:500 13px var(--body);color:var(--g);margin-top:12px}
-@media(max-width:768px){.audience-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:480px){.audience-grid{grid-template-columns:1fr}}
-
-/* ACCELERATORS */
-.accel{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.accel-inner{background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 40%,#f0fdfa 100%);border:1px solid rgba(26,92,56,.12);border-radius:20px;padding:48px 40px;position:relative;overflow:hidden}
-.accel-inner::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(26,92,56,.08) 0%,transparent 70%);border-radius:50%}
-.accel-sparkle{position:absolute;top:16px;right:20px;font:700 10px var(--body);color:#fff;background:var(--g);padding:4px 12px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase}
-.accel-label{font:700 12px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--g);margin-bottom:12px}
-.accel-title{font:800 clamp(24px,3.2vw,32px)/1.15 var(--body);letter-spacing:-.02em;color:var(--text);margin-bottom:12px}
-.accel-sub{font:400 16px var(--body);color:var(--t3);line-height:1.6;margin-bottom:32px;max-width:580px}
-.accel-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-.accel-item{background:rgba(255,255,255,.8);border:1px solid rgba(26,92,56,.1);border-radius:14px;padding:22px 18px;text-align:center;transition:all .2s}
-.accel-item:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(26,92,56,.1);border-color:var(--g-border)}
-.accel-item-ico{font-size:30px;margin-bottom:10px;line-height:1}
-.accel-item-name{font:700 15px var(--body);color:var(--text);margin-bottom:6px}
-.accel-item-desc{font:400 14px var(--body);color:var(--t3);line-height:1.55}
-@media(max-width:768px){.accel-grid{grid-template-columns:repeat(2,1fr)}.accel-inner{padding:32px 24px}}
-@media(max-width:480px){.accel-grid{grid-template-columns:1fr}}
-
-/* APC THERMOMETER */
-.apc{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.apc-card{background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);border-radius:20px;padding:56px 48px;position:relative;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
-.apc-card::before{content:"";position:absolute;top:-60px;left:-60px;width:200px;height:200px;background:radial-gradient(circle,rgba(37,99,235,.15) 0%,transparent 70%);border-radius:50%}
-.apc-card::after{content:"";position:absolute;bottom:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(22,163,74,.1) 0%,transparent 70%);border-radius:50%}
-.apc-left{position:relative;z-index:1}
-.apc-badge{display:inline-block;font:700 10px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#60a5fa;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.2);padding:5px 14px;border-radius:20px;margin-bottom:16px}
-.apc-title{font:800 clamp(26px,3.5vw,36px)/1.12 var(--body);letter-spacing:-.03em;color:#fff;margin-bottom:14px}
-.apc-title em{font-style:normal;background:linear-gradient(135deg,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.apc-desc{font:400 16px/1.65 var(--body);color:#94a3b8;margin-bottom:28px}
-.apc-dims{display:flex;flex-direction:column;gap:12px}
-.apc-dim{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px 16px}
-.apc-dim-pct{font:800 18px var(--num);min-width:42px;text-align:center}
-.apc-dim-info{flex:1}
-.apc-dim-name{font:700 14px var(--body);color:#fff;margin-bottom:2px}
-.apc-dim-sub{font:400 12px var(--body);color:#64748b;line-height:1.4}
-/* APC demo thermometer */
-.apc-right{position:relative;z-index:1;display:flex;justify-content:center}
-.apc-demo{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:28px 24px;width:100%;max-width:380px}
-.apc-demo-header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
-.apc-demo-gauge{position:relative;width:64px;height:64px;flex-shrink:0}
-.apc-demo-gauge svg{transform:rotate(-90deg)}
-.apc-demo-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 22px var(--num);color:#2563eb}
-.apc-demo-info{flex:1}
-.apc-demo-nivel{font:700 15px var(--body);color:#2563eb;margin-bottom:2px}
-.apc-demo-detail{font:400 12px var(--body);color:#94a3b8;line-height:1.4}
-.apc-demo-bars{display:flex;gap:8px;margin-bottom:16px}
-.apc-demo-bar-wrap{flex:1}
-.apc-demo-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.08)}
-.apc-demo-bar-fill{height:100%;border-radius:3px}
-.apc-demo-bar-lbl{font:500 10px var(--body);color:#64748b;margin-top:4px;text-align:center}
-.apc-demo-diag{font:400 13px/1.55 var(--body);color:#cbd5e1;padding:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px}
-.apc-demo-diag b{color:#fff;font-weight:600}
-/* APC features row */
-.apc-feats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}
-.apc-feat{text-align:center;padding:14px 10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px}
-.apc-feat-val{font:800 20px var(--num);color:#fff;margin-bottom:2px}
-.apc-feat-lbl{font:400 11px var(--body);color:#64748b}
-@media(max-width:768px){.apc-card{grid-template-columns:1fr;padding:36px 24px;gap:32px}.apc-feats{grid-template-columns:repeat(3,1fr)}}
-
-/* FEATURES */
-.features{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.feat-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:28px 24px;box-shadow:var(--sh);transition:all .2s}
-.feat-card:hover{box-shadow:var(--sh-lg);transform:translateY(-2px)}
-.feat-card.featured{border-color:var(--g-border);border-width:2px;position:relative}
-.feat-card.featured::after{content:"NUEVO";position:absolute;top:16px;right:16px;font:800 9px var(--body);letter-spacing:.08em;background:var(--warm);color:#fff;padding:3px 8px;border-radius:4px}
-.feat-ico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
-.feat-ico svg{width:22px;height:22px;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none}
-.feat-tag{display:inline-block;font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:4px;margin-bottom:10px}
-.feat-title{font:700 18px var(--body);margin-bottom:6px;letter-spacing:-.01em}
-.feat-desc{font:400 14.5px var(--body);color:var(--t3);line-height:1.65}
-
-/* PREDICTIVE SECTION — 2-col: copy left, pipeline right */
-.predictive{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.pred-card{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border-radius:24px;padding:52px;color:#fff;display:grid;grid-template-columns:1.15fr 1fr;gap:56px;align-items:center;box-shadow:0 12px 48px rgba(0,0,0,.2);position:relative;overflow:hidden}
-.pred-card::before{content:"";position:absolute;top:-60%;right:-20%;width:400px;height:400px;background:radial-gradient(circle,rgba(124,58,237,.12) 0%,transparent 70%);pointer-events:none}
-.pred-card::after{content:"";position:absolute;bottom:-40%;left:-10%;width:300px;height:300px;background:radial-gradient(circle,rgba(26,92,56,.12) 0%,transparent 70%);pointer-events:none}
-.pred-left{position:relative;z-index:1}
-.pred-label{font:700 11px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#a78bfa;margin-bottom:14px}
-.pred-title{font:800 clamp(24px,3.2vw,32px)/1.15 var(--body);letter-spacing:-.02em;margin-bottom:18px}
-.pred-desc{font:400 15px var(--body);opacity:.55;line-height:1.7;margin-bottom:32px}
-.pred-states{display:flex;flex-direction:column;gap:18px}
-.pred-state{display:flex;gap:12px;align-items:flex-start}
-.pred-state-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.pred-state-text{font:400 14px var(--body);color:rgba(255,255,255,.6);line-height:1.55}
-.pred-state-text strong{display:block;font:600 15px var(--body);color:#fff;margin-bottom:2px}
-.pred-right{position:relative;z-index:1;display:flex;align-items:center}
-
-/* PIPELINE VISUAL — right column */
-.pipeline{display:flex;flex-direction:column;gap:14px;width:100%}
-.pipe-row{display:flex;align-items:center}
-.pipe-bar{height:50px;border-radius:12px;display:flex;align-items:center;padding:0 18px;font:600 14px var(--body);white-space:nowrap;gap:6px}
-.pipe-num{font:800 20px var(--num);letter-spacing:-.02em;margin-right:2px}
-.pipe-tag{margin-left:auto;font:600 10px var(--body);letter-spacing:.06em;text-transform:uppercase;opacity:.7}
-.pipe-cold{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);width:100%;color:rgba(255,255,255,.45)}
-.pipe-warm{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.18);width:88%;color:#fbbf24}
-.pipe-hot{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.18);width:72%;color:#ef4444}
-.pipe-close{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);width:52%;color:#4ade80}
-
-/* TOOLS SECTION */
-.tools{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.tool-card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:32px 28px;box-shadow:var(--sh);display:flex;gap:20px;align-items:flex-start;transition:all .2s}
-.tool-card:hover{box-shadow:var(--sh-md)}
-.tool-ico{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.tool-ico svg{width:22px;height:22px;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none}
-.tool-title{font:700 17px var(--body);margin-bottom:5px;letter-spacing:-.01em}
-.tool-desc{font:400 14.5px var(--body);color:var(--t3);line-height:1.6}
-
-/* PRICING */
-.pricing{max-width:1100px;margin:0 auto;padding:80px 24px 0}
-.pricing-toggle{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:48px}
-.toggle-label{font:600 15px var(--body);color:var(--t3);cursor:pointer;transition:color .2s}
-.toggle-label.active{color:var(--text);font-weight:700}
-.toggle-switch{position:relative;display:inline-block;width:52px;height:28px;cursor:pointer}
-.toggle-switch input{opacity:0;width:0;height:0}
-.toggle-slider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--border2);border-radius:28px;transition:all .3s}
-.toggle-slider::before{content:"";position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:all .3s;box-shadow:0 1px 4px rgba(0,0,0,.15)}
-.toggle-switch input:checked+.toggle-slider{background:var(--g)}
-.toggle-switch input:checked+.toggle-slider::before{transform:translateX(24px)}
-.toggle-save{font:700 12px var(--body);color:#fff;background:var(--g);padding:4px 12px;border-radius:20px;letter-spacing:.02em;animation:pulse-save 2s infinite}
-@keyframes pulse-save{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.85;transform:scale(1.05)}}
-
-.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:960px;margin:0 auto;align-items:start}
-.price-card{background:var(--white);border:1.5px solid var(--border);border-radius:20px;padding:36px 28px;position:relative;transition:all .3s}
-.price-card:hover{box-shadow:var(--sh-lg);transform:translateY(-4px)}
-.price-card-featured{border:2.5px solid var(--g);box-shadow:var(--sh-lg);transform:scale(1.04);z-index:2}
-.price-card-featured:hover{transform:scale(1.04) translateY(-4px)}
-.price-card-business{border:2px solid #1d4ed8;background:linear-gradient(180deg,#fff 0%,#eff6ff 100%)}
-.price-card-business .price-value{color:#1d4ed8}
-.price-btn-business{display:block;text-align:center;padding:14px;border-radius:12px;font:700 15px var(--body);background:#1d4ed8;color:#fff;text-decoration:none;transition:all .2s}
-.price-btn-business:hover{background:#1e40af;transform:translateY(-1px)}
-
-.price-badge-popular{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--g);color:#fff;font:800 11px var(--body);padding:5px 18px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-.price-badge-launch{position:absolute;top:16px;right:16px;background:var(--warm-bg);color:var(--warm);font:700 10px var(--body);padding:4px 10px;border-radius:6px;letter-spacing:.04em;text-transform:uppercase;animation:pulse-badge 2.5s infinite}
-@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.6}}
-
-.price-header{margin-bottom:24px}
-.price-plan-name{font:800 24px var(--body);letter-spacing:-.02em;margin-bottom:4px}
-.price-plan-desc{font:400 14px var(--body);color:var(--t3)}
-
-.price-amount{display:flex;align-items:baseline;gap:2px;margin-bottom:4px}
-.price-currency{font:700 22px var(--num);color:var(--text)}
-.price-value{font:800 52px var(--num);color:var(--text);letter-spacing:-.04em;line-height:1}
-.price-mo{font:500 16px var(--body);color:var(--t3);margin-left:2px}
-.price-original{font:600 18px var(--num);color:var(--t3);text-decoration:line-through;margin-right:8px;align-self:center}
-.price-card-featured .price-value{color:var(--g)}
-
-.price-period{font:500 13px var(--body);color:var(--t3);margin-bottom:24px;min-height:20px}
-.price-period strong{color:var(--g);font-weight:700}
-
-.price-btn{display:block;width:100%;padding:14px;border-radius:var(--r-sm);font:700 15px var(--body);text-align:center;text-decoration:none;transition:all .2s;border:none;cursor:pointer}
-.price-btn-solid{background:var(--g);color:#fff;box-shadow:0 4px 16px rgba(26,92,56,.25)}
-.price-btn-solid:hover{background:var(--g2);box-shadow:0 6px 24px rgba(26,92,56,.35);transform:translateY(-1px)}
-.price-btn-outline{background:var(--white);color:var(--g);border:2px solid var(--g)}
-.price-btn-outline:hover{background:var(--g-bg)}
-
-.price-trial-note{font:500 12px var(--body);color:var(--t3);text-align:center;margin-top:8px}
-.price-features{margin-top:24px;padding-top:24px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:12px}
-.price-feat-header{font:700 13px var(--body);color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
-.price-feat{display:flex;align-items:center;gap:10px;font:400 14.5px var(--body);color:var(--t2)}
-.feat-check{color:var(--g);font-weight:800;font-size:15px;flex-shrink:0}
-
-.pricing-note{text-align:center;font:400 13px var(--body);color:var(--t3);margin-top:32px}
-
-@media(max-width:1080px){.pricing-grid{grid-template-columns:repeat(2,1fr);max-width:680px;margin:0 auto}}
-@media(max-width:600px){.pricing-grid{grid-template-columns:1fr;max-width:400px}.price-card-featured{transform:scale(1)}.price-card-featured:hover{transform:translateY(-4px)}}
-
-/* CTA */
-.cta{max-width:720px;margin:0 auto;padding:80px 24px;text-align:center}
-.cta-card{background:var(--g);border-radius:24px;padding:56px 40px;position:relative;overflow:hidden}
-.cta-card::before{content:"";position:absolute;top:-50%;right:-30%;width:400px;height:400px;background:radial-gradient(circle,rgba(255,255,255,.06) 0%,transparent 70%);pointer-events:none}
-.cta h2{font:800 clamp(26px,3.8vw,36px)/1.1 var(--body);letter-spacing:-.03em;margin-bottom:12px;color:#fff}
-.cta-sub{font:400 17px var(--body);color:rgba(255,255,255,.85);margin-bottom:32px;line-height:1.6;max-width:460px;margin-left:auto;margin-right:auto}
-.btn-cta{display:inline-block;padding:18px 44px;border-radius:var(--r-sm);background:#fff;color:var(--g);font:800 17px var(--body);text-decoration:none;transition:all .18s;box-shadow:0 4px 16px rgba(0,0,0,.15)}
-.btn-cta:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,0,0,.2)}
-.cta-note{font:500 14px var(--body);color:rgba(255,255,255,.65);margin-top:16px}
-
-/* LIVE NOTIFICATIONS */
-.notif-stack{position:fixed;top:76px;right:20px;z-index:90;display:flex;flex-direction:column;gap:12px;pointer-events:none}
-.notif{background:rgba(255,255,255,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:18px 20px;box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.06);display:flex;align-items:flex-start;gap:14px;max-width:380px;transform:translateX(120%);opacity:0;transition:all .5s cubic-bezier(.16,1,.3,1);pointer-events:auto;position:relative}
-.notif.show{transform:translateX(0);opacity:1}
-.notif-ico{font-size:28px;flex-shrink:0;line-height:1;margin-top:2px}
-.notif-body{flex:1;min-width:0}
-.notif-title{font:700 15px var(--body);color:var(--text);margin-bottom:4px;letter-spacing:-.01em}
-.notif-desc{font:400 14px var(--body);color:var(--t2);line-height:1.5}
-.notif-time{font:500 12px var(--body);color:var(--t3);flex-shrink:0;margin-top:3px}
-.notif-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:6px;font:700 11px var(--body);letter-spacing:.02em;margin-top:6px}
-.notif-close{position:absolute;top:8px;right:10px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(0,0,0,.06);color:var(--t3);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;padding:0}
-.notif-close:hover{background:rgba(0,0,0,.12);color:var(--text)}
-
-/* FOOTER */
-.footer{border-top:1px solid var(--border);padding:24px;text-align:center;font:400 13px var(--body);color:var(--t3)}
-.footer a{color:var(--g);text-decoration:none}
-
-@media(max-width:768px){
-  .notif-stack{right:12px;left:12px}
-  .notif{min-width:0;max-width:100%}
-  .hero{padding:48px 20px 0}
-  .nav-link-ghost{display:none}
-  .features-grid{grid-template-columns:1fr}
-  .tools-grid{grid-template-columns:1fr}
-  .flow-arrow{display:none}
-  .flow-steps{flex-direction:column;align-items:center;gap:24px}
-  .flow-step{max-width:280px}
-  .pred-card{grid-template-columns:1fr;padding:36px 24px 32px}
-  .manifesto-card{padding:32px 24px}
-  .proof-inner{gap:24px}
+@media (prefers-color-scheme: dark){
+  :root{
+    --g:#4fae7c; --g-hi:#6cc596; --g-soft:#14251c; --g-line:#254432;
+    --ground:#0e110f; --panel:#161a17; --panel-2:#1b201c; --line:#252b26;
+    --ink:#e9ebe7; --muted:#9aa39c; --faint:#79817a;
+    --fire:#ff6f66; --warm:#f0b03c; --cool:#5f9bea; --ok:#4ade80; --mid:#f7b955; --bad:#ff6f66;
+    
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 44px -22px rgba(0,0,0,.7);
+  }
 }
-@media(max-width:480px){
-  .features-grid{grid-template-columns:1fr}
-  .tools-grid{grid-template-columns:1fr}
-  .pipeline{display:none}
+:root[data-theme="dark"]{
+  --g:#4fae7c; --g-hi:#6cc596; --g-soft:#14251c; --g-line:#254432;
+  --ground:#0e110f; --panel:#161a17; --panel-2:#1b201c; --line:#252b26;
+  --ink:#e9ebe7; --muted:#9aa39c; --faint:#79817a;
+    --fire:#ff6f66; --warm:#f0b03c; --cool:#5f9bea; --ok:#4ade80; --mid:#f7b955; --bad:#ff6f66;
+    
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 44px -22px rgba(0,0,0,.7);
+}
+:root[data-theme="light"]{
+  --g:#1a5c38; --g-hi:#2f8a5a; --g-soft:#eef4ef; --g-line:#cfe3d6;
+  --ground:#f2f3ef; --panel:#ffffff; --panel-2:#f7f8f5; --line:#e4e6df;
+  --ink:#1a1c19; --muted:#6a716b; --faint:#949b94;
+  --fire:#e03b34; --warm:#e8a020; --cool:#3d7fd6; --ok:#16a34a; --mid:#d97706; --bad:#dc2626;
+  --shadow:0 1px 2px rgba(20,30,25,.05), 0 18px 44px -22px rgba(20,40,28,.28);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--ground);color:var(--ink);
+  font-family:var(--body);font-size:17px;line-height:1.6;font-weight:500;
+  -webkit-font-smoothing:antialiased;
+}
+img{max-width:100%}
+b,strong{font-weight:700}
+em{font-style:normal}
+
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+
+/* ── marca ─────────────────────────────────────────────── */
+.brandbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em}
+.brand .ic{width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  background:url(/assets/logo.svg) center/cover no-repeat}
+.brand span{font-size:17px}
+.navr{display:flex;align-items:center;gap:clamp(8px,1.6vw,18px)}
+.navlink{font:700 14px var(--body);color:var(--muted);text-decoration:none;padding:8px 4px;white-space:nowrap}
+.navlink:hover{color:var(--ink)}
+.navlink:focus-visible{outline:2px solid var(--g);outline-offset:2px;border-radius:6px}
+.navcta{font:700 14px var(--body);color:#fff;text-decoration:none;white-space:nowrap;
+  border:1.5px solid var(--g);border-radius:999px;padding:9px 18px;background:var(--g)}
+.navcta:hover{background:var(--g-hi);border-color:var(--g-hi)}
+.v-sm{display:none}
+@media(max-width:620px){
+  .v-lg{display:none} .v-sm{display:inline}
+  .navcta{padding:9px 15px;font-size:13.5px} .navlink{font-size:13.5px}
+  .brand span:last-child{font-size:15px}
+  .brandbar{padding:16px 0}
+}
+@media(max-width:480px){ .brand span:last-child{display:none} }
+.navcta:focus-visible{outline:2px solid var(--g);outline-offset:2px}
+
+/* ── héroe: pantalla de bloqueo ────────────────────────── */
+.hero{
+  position:relative;overflow:hidden;
+  background:radial-gradient(120% 90% at 20% 0%, #14402c 0%, #0d2a20 42%, #0b1a24 100%);
+  color:#eef2ee;
+  border-radius:var(--r-lg);
+  margin:8px 0 0;
+  padding:clamp(34px,6vw,64px) clamp(20px,4vw,52px) clamp(40px,6vw,64px);
+}
+.hero-grid{display:grid;grid-template-columns:1fr;gap:clamp(30px,5vw,56px);align-items:center}
+@media(min-width:900px){ .hero-grid{grid-template-columns:1.05fr .95fr} }
+
+.kick{font:700 12px var(--body);letter-spacing:.22em;text-transform:uppercase;color:#7fd2a4;margin:0 0 14px}
+.hero h1{
+  font:800 clamp(2.15rem,5.4vw,3.6rem)/1.03 var(--body);letter-spacing:-.035em;
+  margin:0;text-wrap:balance;color:#fff;
+}
+.hero h1 em{color:#7fd2a4}
+.hero .lede{margin:18px 0 0;max-width:34em;color:#b9c7bd;font-size:clamp(1rem,1.6vw,1.14rem)}
+.hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.btn{
+  display:inline-block;font:700 15px var(--body);text-decoration:none;
+  border-radius:999px;padding:13px 26px;border:1.5px solid transparent;
+}
+.btn-primary{background:#fff;color:#0d2a20}
+.btn-primary:hover{background:#e6f2ea}
+.btn-ghost{border-color:rgba(255,255,255,.28);color:#dfe8e1}
+.btn-ghost:hover{background:rgba(255,255,255,.08)}
+.btn:focus-visible{outline:2px solid #7fd2a4;outline-offset:3px}
+.hero .fine{margin:16px 0 0;font-size:13.5px;color:#8fa295}
+
+/* teléfono */
+.phone{
+  justify-self:center;width:min(330px,86vw);
+  border-radius:40px;padding:14px;
+  background:linear-gradient(170deg,#2a3a31,#141c18);
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.07);
+}
+.screen{
+  border-radius:29px;overflow:hidden;padding:26px 12px 20px;
+  background:linear-gradient(175deg,#1d4a3c 0%,#173a3f 45%,#141f38 100%);
+  min-height:520px;display:flex;flex-direction:column;
+}
+.clock{text-align:center;color:#fff;font:200 62px/1 var(--num);letter-spacing:-.02em;margin:6px 0 26px}
+.stack{display:flex;flex-direction:column;gap:9px}
+.nrow{
+  background:rgba(238,242,238,.82);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border-radius:17px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;
+}
+.nrow .ni{width:34px;height:34px;border-radius:9px;flex-shrink:0;
+  background:url(/assets/logo.svg) center/cover no-repeat}
+.nrow .nx{flex:1;min-width:0}
+.nrow .n1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.nrow .nt{font:700 13.5px var(--body);color:#141613;letter-spacing:-.01em}
+.nrow .nc{font:500 12px var(--body);color:#5d635d;flex-shrink:0}
+.nrow .nb{font:500 13px/1.35 var(--body);color:#3a403a;margin-top:2px}
+.nrow .nb b{color:#141613;font-weight:700}
+
+/* ── secciones ─────────────────────────────────────────── */
+section.blk{padding:clamp(56px,9vw,104px) 0 0}
+.head{max-width:40rem}
+.head .kick{color:var(--g)}
+.head h2{
+  font:800 clamp(1.65rem,3.6vw,2.5rem)/1.1 var(--body);letter-spacing:-.03em;
+  margin:0;color:var(--ink);text-wrap:balance;
+}
+.head h2 em{color:var(--g)}
+.head p{margin:14px 0 0;color:var(--muted);max-width:34em}
+
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  box-shadow:var(--shadow);margin-top:clamp(24px,3.5vw,38px);overflow:hidden;
+}
+.card-pad{padding:clamp(18px,2.6vw,26px)}
+
+/* buckets */
+.bk{border-bottom:1px solid var(--line);padding:18px clamp(16px,2.4vw,24px)}
+.bk:last-of-type{border-bottom:0}
+.bk-h{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bk-n{display:flex;align-items:center;gap:10px;font:700 16px var(--body);letter-spacing:-.01em}
+.pip{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.bk-s{font:500 14px var(--num);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bk-r{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:10px}
+.bk-c{min-width:0}
+.bk-c b{display:block;font:700 16px var(--body);letter-spacing:-.01em}
+.bk-c span{display:block;font-size:14px;color:var(--muted);margin-top:1px}
+.bk-m{text-align:right;flex-shrink:0}
+.bk-m b{font:700 17px var(--num);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.dots{display:flex;gap:5px;justify-content:flex-end;margin-top:7px}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line);
+  transform:scale(.55);opacity:.5;transition:transform .34s cubic-bezier(.2,.9,.3,1.3),opacity .34s}
+.dots i.on{transform:scale(1);opacity:1}
+
+.aitip{
+  margin:0;background:var(--g-soft);border-top:1px solid var(--g-line);
+  padding:16px clamp(16px,2.4vw,24px);display:flex;gap:12px;align-items:flex-start;
+}
+.tg{flex-shrink:0;background:var(--g);color:#fff;font:800 11px var(--body);
+  padding:5px 11px;border-radius:999px;letter-spacing:.04em;white-space:nowrap}
+.tg-inline{display:inline-block;vertical-align:1px;margin-left:7px}
+.tx{font:600 15px/1.4 var(--body);color:var(--ink)}
+.tx b{color:var(--g)}
+
+/* comportamiento */
+.beh-h{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  padding-bottom:16px;border-bottom:1px solid var(--line)}
+.beh-h b{font:700 18px var(--body);letter-spacing:-.015em}
+.beh-h span{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.beh-h .amt{font:700 19px var(--num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.lbl{font:700 11px var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:18px 0 4px}
+.ev{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:14px 0;border-bottom:1px solid var(--line)}
+.ev:last-of-type{border-bottom:0}
+.ev-l{display:flex;gap:11px;align-items:flex-start;min-width:0}
+.ev-l .pip{margin-top:7px;background:var(--g)}
+.ev-l b{font:700 15px var(--body);display:block}
+.ev-l span{font-size:13.5px;color:var(--muted)}
+.ev-r{font:700 14.5px var(--body);white-space:nowrap;text-align:right}
+.verdict{margin-top:16px;border:1.5px solid rgba(224,59,52,.35);background:rgba(224,59,52,.07);
+  border-radius:var(--r);padding:13px 16px;font:700 16px var(--body);color:var(--fire)}
+
+/* mesa */
+.mesa-top{background:var(--g-soft);border-bottom:1px solid var(--g-line);
+  padding:16px clamp(16px,2.4vw,24px)}
+.mesa-top b{font:800 16px var(--body);color:var(--g)}
+.mesa-top .meta{font:500 14px var(--num);color:var(--muted);font-variant-numeric:tabular-nums}
+.mesa-top p{margin:5px 0 0;font-size:14.5px;color:var(--ink)}
+.task{display:flex;gap:14px;padding:18px clamp(16px,2.4vw,24px);border-bottom:1px solid var(--line)}
+.task:last-child{border-bottom:0}
+.task .no{font:800 15px var(--num);color:var(--faint);width:16px;flex-shrink:0;padding-top:2px}
+.task .body{flex:1;min-width:0}
+.task .tt{display:flex;align-items:flex-start;gap:9px}
+.task .tt b{font:700 16px/1.3 var(--body);letter-spacing:-.01em}
+.task .who{font-size:14px;color:var(--muted);margin-top:1px}
+.task .amt{font:700 16px var(--num);font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
+.task .act{margin-top:9px;font-size:14.5px;display:flex;gap:9px;align-items:flex-start;flex-wrap:wrap}
+
+/* móvil */
+.mob{display:grid;grid-template-columns:1fr;gap:clamp(26px,4vw,44px);align-items:center}
+@media(min-width:820px){ .mob{grid-template-columns:.9fr 1.1fr} }
+.mob .head{max-width:none}
+.phone-lite{
+  justify-self:center;width:min(300px,84vw);border-radius:34px;padding:11px;
+  background:linear-gradient(170deg,#dfe3dd,#c3ccc4);
+  box-shadow:0 30px 70px -28px rgba(20,40,28,.5);
+}
+:root[data-theme="dark"] .phone-lite{background:linear-gradient(170deg,#2a312c,#171c18)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .phone-lite{background:linear-gradient(170deg,#2a312c,#171c18)} }
+.phone-lite .inner{background:var(--panel);border-radius:24px;overflow:hidden}
+.mob-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  padding:15px 16px;border-bottom:1px solid var(--line)}
+.mob-top .l{font:700 10.5px var(--body);letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+.mob-top .v{font:800 17px var(--num);color:var(--g);font-variant-numeric:tabular-nums}
+
+/* precios */
+.tiers{display:grid;gap:16px;grid-template-columns:1fr;margin-top:clamp(24px,3.5vw,38px)}
+@media(min-width:760px){ .tiers{grid-template-columns:repeat(3,1fr)} }
+.tier{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:26px 22px;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.tier.feat{border-color:var(--g);border-width:1.5px}
+.tier .tn{font:800 15px var(--body);letter-spacing:.02em}
+.tier .badge{display:inline-block;margin-left:8px;font:800 10.5px var(--body);letter-spacing:.06em;
+  text-transform:uppercase;color:#fff;background:var(--g);border-radius:999px;padding:3px 9px;vertical-align:2px}
+.tier .pr{display:flex;align-items:baseline;gap:6px;margin:14px 0 2px}
+.tier .pr b{font:800 clamp(2rem,3.4vw,2.5rem) var(--num);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.tier .pr span{color:var(--muted);font-size:14.5px}
+.tier .yr{font-size:13.5px;color:var(--faint)}
+.tier ul{list-style:none;margin:20px 0 0;padding:0;display:flex;flex-direction:column;gap:9px;flex:1}
+.tier li{position:relative;padding-left:22px;font-size:15px;color:var(--ink)}
+.tier li::before{content:"";position:absolute;left:2px;top:8px;width:9px;height:9px;border-radius:50%;
+  border:2px solid var(--g)}
+.tier .cta{margin-top:22px;display:block;text-align:center;text-decoration:none;
+  font:700 15px var(--body);border-radius:999px;padding:12px 20px;
+  border:1.5px solid var(--g-line);color:var(--g);background:var(--panel)}
+.tier .cta:hover{background:var(--g-soft)}
+.tier.feat .cta{background:var(--g);color:#fff;border-color:var(--g)}
+.tier.feat .cta:hover{background:var(--g-hi)}
+.tier .cta:focus-visible{outline:2px solid var(--g);outline-offset:2px}
+
+/* cierre */
+.close{margin:clamp(56px,9vw,104px) 0 0;border-radius:var(--r-lg);overflow:hidden;color:#fff;
+  background:radial-gradient(120% 95% at 76% 18%, #14402c 0%, #0d2a20 46%, #0b1a24 100%);
+  padding:clamp(36px,5.6vw,62px) clamp(22px,4vw,52px);
+  display:grid;grid-template-columns:1fr;gap:clamp(30px,4vw,50px);align-items:center}
+@media(min-width:820px){ .close{grid-template-columns:1.12fr .88fr} }
+.close h2{font:800 clamp(1.75rem,3.9vw,2.75rem)/1.05 var(--body);letter-spacing:-.035em;
+  margin:0;color:#fff;text-wrap:balance}
+.close h2 em{color:#7fd2a4}
+.close p{margin:16px 0 0;max-width:30em;color:#b9c7bd;font-size:clamp(1rem,1.5vw,1.1rem)}
+.close .btn-primary{margin-top:24px}
+.warr{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
+.warr span{font:700 13px var(--body);color:#cfe4d8;border:1px solid rgba(255,255,255,.22);
+  border-radius:999px;padding:7px 14px;background:rgba(255,255,255,.05)}
+
+/* radar del cierre */
+.rviz{position:relative;width:min(276px,70vw);aspect-ratio:1;justify-self:center}
+.rviz .ring{position:absolute;border:1px solid rgba(127,210,164,.26);border-radius:50%}
+.rviz .ring.r1{inset:0}.rviz .ring.r2{inset:17%}.rviz .ring.r3{inset:34%}.rviz .ring.r4{inset:51%}
+.rviz .sweep{position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg, rgba(127,210,164,.40), rgba(127,210,164,.06) 34%, rgba(127,210,164,0) 62%);
+  animation:sweep 3.6s linear infinite}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.rviz .blip{position:absolute;width:11px;height:11px;border-radius:50%;background:#7fd2a4;
+  animation:blip 3.6s ease-out infinite}
+.rviz .b1{top:21%;left:61%}
+.rviz .b2{top:57%;left:27%;animation-delay:1.2s}
+.rviz .b3{top:69%;left:64%;animation-delay:2.4s}
+@keyframes blip{0%{box-shadow:0 0 0 0 rgba(127,210,164,.55)}
+  70%{box-shadow:0 0 0 19px rgba(127,210,164,0)}100%{box-shadow:0 0 0 0 rgba(127,210,164,0)}}
+.rviz .core{position:absolute;inset:0;display:grid;place-items:center;
+  font:800 12px var(--body);letter-spacing:.24em;color:#7fd2a4;opacity:.85}
+@media (prefers-reduced-motion: reduce){ .rviz .sweep,.rviz .blip{animation:none} }
+
+footer{padding:34px 0 60px;color:var(--faint);font-size:13.5px;text-align:center}
+
+/* interruptores de precio */
+.sw-bar{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
+  gap:clamp(15px,2.6vw,30px);margin-top:clamp(22px,3vw,32px)}
+.sw-group{display:flex;align-items:center;gap:11px}
+.sw-div{width:1px;height:26px;background:var(--line);flex-shrink:0}
+@media(max-width:560px){ .sw-div{display:none} }
+.sw-lb{font:600 15px var(--body);color:var(--muted);cursor:pointer;user-select:none}
+.sw-lb.on{color:var(--ink);font-weight:700}
+.sw{position:relative;display:inline-block;width:50px;height:27px;flex-shrink:0}
+.sw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:2}
+.sw .track{position:absolute;inset:0;background:var(--line);border-radius:999px;transition:background .25s}
+.sw .track::before{content:"";position:absolute;height:21px;width:21px;left:3px;top:3px;background:#fff;
+  border-radius:50%;transition:transform .25s;box-shadow:0 1px 4px rgba(0,0,0,.22)}
+.sw input:checked+.track{background:var(--g)}
+.sw input:checked+.track::before{transform:translateX(23px)}
+.sw input:focus-visible+.track{outline:2px solid var(--g);outline-offset:2px}
+.sw-save{font:800 12px var(--body);color:#fff;background:var(--g);padding:4px 12px;border-radius:999px}
+@media (prefers-reduced-motion: reduce){ .sw .track,.sw .track::before{transition:none} }
+
+/* proceso en 5 pasos */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+  gap:clamp(16px,2.4vw,26px);margin-top:clamp(28px,3.6vw,42px)}
+.step{text-align:center}
+.step .num{width:46px;height:46px;border-radius:50%;background:var(--g);color:#fff;
+  font:800 19px var(--num);display:grid;place-items:center;margin:0 auto 13px}
+.step.end .num{background:var(--fire);box-shadow:0 0 0 7px rgba(224,59,52,.14)}
+.step b{display:block;font:700 16px var(--body);letter-spacing:-.01em}
+.step span{display:block;font-size:14px;color:var(--muted);margin-top:6px;line-height:1.45}
+
+/* lo que no pasó */
+.nono{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
+@media(min-width:640px){ .nono{grid-template-columns:1fr 1fr} }
+.nono div{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px 18px;box-shadow:var(--shadow)}
+.nono b{display:flex;align-items:center;gap:9px;font:700 15.5px var(--body);letter-spacing:-.01em}
+.nono .mk{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;
+  background:rgba(220,38,38,.12);border:1.5px solid rgba(220,38,38,.4);color:var(--bad);
+  font:800 13px var(--body);flex-shrink:0;line-height:1}
+.nono span{display:block;font-size:14px;color:var(--muted);margin-top:4px}
+
+/* distintivo de plan */
+.plan{display:inline-block;margin-left:9px;font:800 10.5px var(--body);letter-spacing:.09em;
+  text-transform:uppercase;color:var(--g);border:1.5px solid var(--g-line);background:var(--g-soft);
+  border-radius:999px;padding:4px 10px;vertical-align:2px;white-space:nowrap}
+.aitip .plan{margin-left:auto;align-self:center}
+
+/* lista de cotizaciones */
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.qt{width:100%;border-collapse:collapse;min-width:640px}
+.qt th{font:700 11px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);
+  text-align:left;padding:14px clamp(14px,2vw,22px);border-bottom:1px solid var(--line);white-space:nowrap}
+.qt th.n,.qt td.n{text-align:right}
+.qt td{padding:15px clamp(14px,2vw,22px);border-bottom:1px solid var(--line);vertical-align:top}
+.qt tbody tr:last-child td{border-bottom:0}
+.qt .folio{font:600 11.5px var(--num);color:var(--faint);letter-spacing:.05em}
+.qt .proj{font:700 15.5px var(--body);letter-spacing:-.01em;margin-top:2px}
+.qt .cli{font:600 15px var(--body)}
+.qt .amt2{font:700 16px var(--num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.st{display:inline-block;font:700 12px var(--body);border-radius:999px;padding:4px 11px;white-space:nowrap}
+.mot{display:inline-flex;align-items:center;gap:6px;font:700 12px var(--body);
+  border-radius:999px;padding:4px 11px;margin-top:8px;white-space:nowrap}
+.mot .eye{font:600 11.5px var(--num);opacity:.8}
+.feats{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
+.feats span{border:1px solid var(--line);background:var(--panel);border-radius:999px;
+  padding:8px 15px;font:600 14px var(--body);color:var(--muted)}
+.capt{margin:16px 0 0;font-size:14.5px;color:var(--faint);text-align:center}
+
+/* dos columnas: caso + ventas */
+.two{display:grid;grid-template-columns:1fr;gap:clamp(16px,2.2vw,22px);
+  margin-top:clamp(24px,3.5vw,38px);align-items:stretch}
+@media(min-width:900px){ .two{grid-template-columns:1fr 1fr} }
+.two>.card{margin-top:0;height:100%;display:flex;flex-direction:column}
+
+/* tarjeta compacta */
+.sm .beh-h b{font-size:16px}.sm .beh-h .amt{font-size:17px}
+.sm .ev{padding:11px 0}.sm .ev-l b{font-size:14.5px}.sm .ev-l span{font-size:12.5px}
+.sm .ev-r{font-size:13.5px}.sm .verdict{font-size:14.5px;padding:11px 14px}
+.sm .lbl{font-size:10.5px;margin:14px 0 2px}
+
+/* ventas cerradas */
+.sl{font:700 11px var(--body);letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+.srow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px}
+.srow b{font:800 clamp(1.7rem,3.6vw,2.3rem) var(--num);letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;color:var(--ink)}
+.schip{font:800 12.5px var(--body);color:var(--g);background:var(--g-soft);
+  border:1px solid var(--g-line);border-radius:999px;padding:5px 11px;white-space:nowrap}
+.gbars{display:flex;align-items:flex-end;gap:clamp(6px,1.2vw,11px);height:168px;margin-top:auto;padding-top:22px}
+.gcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;min-width:0}
+.gcol i{display:block;width:100%;height:0;border-radius:8px 8px 4px 4px;background:var(--g);
+  transition:height .9s cubic-bezier(.2,.8,.3,1)}
+.gcol.off i{background:var(--line)}
+.gcol.g1 i{background:#a8ddc0}.gcol.g2 i{background:#5fb98a}.gcol.g3 i{background:var(--g)}
+.gcol span{display:block;text-align:center;font:600 12.5px var(--body);color:var(--muted);margin-top:8px}
+.gcol.g3 span{font-weight:800;color:var(--ink)}
+.gleg{display:flex;margin-top:6px}
+.gleg span{flex:1;text-align:center;font:600 12.5px var(--body);color:var(--faint)}
+.gleg span.on{font-weight:800;color:var(--g)}
+@media (prefers-reduced-motion: reduce){ .gcol i{transition:none} }
+
+/* escalera de intentos (Mesa) *//* escalera de intentos (Mesa) */
+.chip{display:inline-flex;align-items:center;gap:6px;font:800 12px var(--body);
+  color:var(--mid);background:rgba(217,119,6,.12);border:1px solid rgba(217,119,6,.32);
+  border-radius:999px;padding:5px 11px}
+.ladder{margin-top:14px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel-2);padding:14px 16px}
+.ladder-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  font:700 13px var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.ladder-h .n{font:800 14px var(--num);color:var(--ink);letter-spacing:0;text-transform:none}
+.ladder-dots{display:flex;gap:5px}
+.ladder-dots i{width:10px;height:10px;border-radius:50%}
+.ladder p{margin:9px 0 0;font-size:15px;line-height:1.45}
+
+/* termómetro del equipo */
+.trow{display:flex;align-items:center;gap:14px;padding:16px clamp(16px,2.4vw,24px);
+  border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:0}
+.trow.bad{background:rgba(220,38,38,.06);border-top:1px solid rgba(220,38,38,.3);align-items:flex-start}
+.av{width:38px;height:38px;border-radius:50%;color:#fff;display:grid;place-items:center;
+  font:700 14px var(--body);flex-shrink:0}
+.tinfo{flex:1;min-width:0}
+.tname{font:700 16px var(--body);letter-spacing:-.01em}
+.tbar{height:9px;border-radius:999px;background:var(--panel-2);margin-top:8px;
+  overflow:hidden;border:1px solid var(--line)}
+.tfill{height:100%;border-radius:999px;width:0;transition:width .95s cubic-bezier(.2,.8,.3,1)}
+.tnote{font:700 13.5px var(--body);color:var(--bad);margin-top:9px}
+.tscore{font:800 25px var(--num);font-variant-numeric:tabular-nums;width:50px;
+  text-align:right;flex-shrink:0;letter-spacing:-.02em}
+.tarrow{font:700 15px var(--body);flex-shrink:0;width:14px;text-align:center}
+@media (prefers-reduced-motion: reduce){ .tfill{transition:none} }
+
+/* motion */
+.rev{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.3,1)}
+.rev.in{opacity:1;transform:none}
+@keyframes notiIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.nrow{opacity:0;animation:notiIn .55s cubic-bezier(.2,.8,.3,1.05) forwards}
+.nrow:nth-child(1){animation-delay:.32s}
+.nrow:nth-child(2){animation-delay:.49s}
+.nrow:nth-child(3){animation-delay:.66s}
+.nrow:nth-child(4){animation-delay:.83s}
+@media (prefers-reduced-motion: reduce){
+  .rev,.nrow{opacity:1!important;transform:none!important;transition:none!important;animation:none!important}
+  .dots i{transform:scale(1);opacity:1;transition:none}
 }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<!-- NAV -->
-<nav class="nav">
-  <div class="nav-inner">
-    <a href="/" class="nav-logo">
-      <div class="logo-mark">
-        <svg viewBox="0 0 60 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- Cloud -->
-          <path d="M48.5 38H14c-5.5 0-10-4.5-10-10 0-4.8 3.4-8.8 8-9.8C12.2 12.5 17.5 8 24 8c5.2 0 9.7 3 12 7.3C37.3 14.5 39 14 41 14c5.5 0 10 4.5 10 10 0 .7-.1 1.3-.2 2C54.3 27.5 57 31 57 35c0 1-.2 2-.5 3" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <!-- Radar circles -->
-          <circle cx="33" cy="26" r="12" stroke="rgba(255,255,255,.5)" stroke-width="1.5" fill="none"/>
-          <circle cx="33" cy="26" r="8" stroke="rgba(255,255,255,.65)" stroke-width="1.5" fill="none"/>
-          <circle cx="33" cy="26" r="4" stroke="rgba(255,255,255,.8)" stroke-width="1.5" fill="none"/>
-          <!-- Radar cross -->
-          <line x1="33" y1="14" x2="33" y2="38" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
-          <line x1="21" y1="26" x2="45" y2="26" stroke="rgba(255,255,255,.3)" stroke-width="1"/>
-          <!-- Radar sweep needle -->
-          <line x1="33" y1="26" x2="42" y2="18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-          <!-- Center dot -->
-          <circle cx="33" cy="26" r="1.8" fill="#4ade80"/>
-        </svg>
+  <div class="brandbar">
+    <div class="brand"><span class="ic"></span><span>cotiza.cloud</span></div>
+    <div class="navr">
+      <a class="navlink" href="/login">Iniciar sesión</a>
+      <a class="navcta" href="/registro"><span class="v-lg">Crear cuenta gratis</span><span class="v-sm">Crear cuenta</span></a>
+    </div>
+  </div>
+
+  <!-- ── HÉROE ─────────────────────────────────────────── -->
+  <div class="hero">
+    <div class="hero-grid">
+      <div>
+        <p class="kick">Inteligencia de ventas</p>
+        <h1>¿Sabes quién va a comprar<br><em>antes de que te llame?</em></h1>
+        <p class="lede">¿Mandas cotizaciones y esperas? Nosotros te decimos <b style="color:#fff">cuáles se van a cerrar</b>. El Radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando está listo.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="/registro">Probar 30 días gratis</a>
+        </div>
+        <p class="fine">Sin tarjeta. Cotizas desde el primer minuto.</p>
       </div>
-      <div class="logo-name">Cotiza<span>.cloud</span></div>
-    </a>
-    <div class="nav-links">
-      <a href="#precios" class="nav-link nav-link-ghost">Precios</a>
-      <a href="/login" class="nav-link nav-link-ghost">Iniciar sesion</a>
-      <a href="/registro" class="nav-link nav-link-primary">Crear cuenta gratis</a>
-    </div>
-  </div>
-</nav>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-badge"><div class="hero-badge-dot"></div>Radar de inteligencia de ventas</div>
-  <h1>¿Sabes quien va a comprar<br><em>antes de que te llame?</em></h1>
-  <p class="hero-sub">¿Mandas cotizaciones y esperas? Nosotros te decimos <strong>cuales se van a cerrar</strong>. El radar analiza el comportamiento de tu cliente en tiempo real y te avisa cuando esta listo.</p>
-  <div class="hero-btns">
-    <a href="/registro" class="btn-hero btn-hero-primary">Probar el Radar gratis</a>
-    <a href="#como-funciona" class="btn-hero btn-hero-secondary">Ver como funciona</a>
-  </div>
-  <p class="hero-note">Prueba completa 30 dias. Sin tarjeta. Sin contratos.</p>
-</section>
-
-<!-- PROOF -->
-<section class="proof">
-  <div class="proof-inner">
-    <div class="proof-item">
-      <div class="proof-num">17</div>
-      <div class="proof-label">Senales de interes que detecta</div>
-    </div>
-    <div class="proof-item">
-      <div class="proof-num">24/7</div>
-      <div class="proof-label">Monitoreo automatico</div>
-    </div>
-    <div class="proof-item">
-      <div class="proof-num">0</div>
-      <div class="proof-label">Llamadas en frio</div>
-    </div>
-  </div>
-</section>
-
-<!-- PREDICTIVE — 2-col: copy + pipeline -->
-<section class="predictive" id="como-funciona">
-  <div class="pred-card">
-    <div class="pred-left">
-      <div class="pred-label">Asi funciona el Radar</div>
-      <div class="pred-title">Tu pipeline de ventas en tiempo real — sin preguntar nada</div>
-      <div class="pred-desc">Cada vez que tu cliente abre una cotizacion, el radar registra su comportamiento: cuantas veces entro, si reviso el precio, si alguien mas la vio, cuanto tiempo le dedico. Con eso calcula la probabilidad real de cierre.</div>
-      <div class="pred-states">
-        <div class="pred-state">
-          <span class="pred-state-dot" style="background:rgba(255,255,255,.3)"></span>
-          <div class="pred-state-text"><strong>No abierta</strong>Enviaste la cotizacion y nadie la ha visto. Buen momento para reenviar.</div>
-        </div>
-        <div class="pred-state">
-          <span class="pred-state-dot" style="background:#fbbf24"></span>
-          <div class="pred-state-text"><strong>Comparando</strong>La abrieron desde otro dispositivo. Alguien mas la esta evaluando.</div>
-        </div>
-        <div class="pred-state">
-          <span class="pred-state-dot" style="background:#ef4444"></span>
-          <div class="pred-state-text"><strong>Validando precio</strong>Tu cliente regreso varias veces a revisar los totales. Le interesa.</div>
-        </div>
-        <div class="pred-state">
-          <span class="pred-state-dot" style="background:#4ade80"></span>
-          <div class="pred-state-text"><strong>Cierre inminente</strong>Multiples senales fuertes. Es momento de llamar.</div>
+      <div class="phone" aria-label="Pantalla de bloqueo con notificaciones de CotizaCloud">
+        <div class="screen">
+          <div class="clock">11:47</div>
+          <div class="stack" id="stack">
+            <div class="nrow"><span class="ni"></span><div class="nx">
+              <div class="n1"><span class="nt">Cotización aceptada</span><span class="nc">ahora</span></div>
+              <div class="nb"><b>Mariana Gutiérrez</b> aceptó la cotización: Proyecto arquitectónico — Casa Lomas</div>
+            </div></div>
+            <div class="nrow"><span class="ni"></span><div class="nx">
+              <div class="n1"><span class="nt">Cotización aceptada</span><span class="nc">hace 9 min</span></div>
+              <div class="nb"><b>Arq. Fernando Ruiz</b> aceptó la cotización: Diseño de interiores — Depto. Andes 204</div>
+            </div></div>
+            <div class="nrow"><span class="ni"></span><div class="nx">
+              <div class="n1"><span class="nt">Radar: Probable cierre</span><span class="nc">hace 23 min</span></div>
+              <div class="nb">COT-2026-0271 — Cocina en L</div>
+            </div></div>
+            <div class="nrow"><span class="ni"></span><div class="nx">
+              <div class="n1"><span class="nt">Radar: Predicción alta</span><span class="nc">hace 1 h</span></div>
+              <div class="nb">COT-2026-0258 — Contenido web</div>
+            </div></div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="pred-right">
-      <div class="pipeline">
-        <div class="pipe-row"><div class="pipe-bar pipe-cold"><span class="pipe-num">12</span> cotizaciones<span class="pipe-tag">Sin abrir</span></div></div>
-        <div class="pipe-row"><div class="pipe-bar pipe-warm"><span class="pipe-num">8</span> cotizaciones<span class="pipe-tag">Comparando</span></div></div>
-        <div class="pipe-row"><div class="pipe-bar pipe-hot"><span class="pipe-num">5</span> cotizaciones<span class="pipe-tag">Alto interes</span></div></div>
-        <div class="pipe-row"><div class="pipe-bar pipe-close"><span class="pipe-num">3</span> cotizaciones<span class="pipe-tag">Llamar ahora</span></div></div>
+  </div>
+
+  <!-- ── EL SISTEMA ────────────────────────────────────── -->
+  <section class="blk" id="sistema">
+    <div class="head rev">
+      <p class="kick">El sistema</p>
+      <h2>Cotizaciones profesionales, <em>en minutos</em>.</h2>
+      <p>Tu catálogo, tus precios, tus extras. El cliente la abre con la marca de tu empresa — <b>y el Radar ya viene adentro.</b></p>
+    </div>
+
+    <div class="card rev">
+      <div class="tblwrap">
+        <table class="qt">
+          <thead>
+            <tr><th>Proyecto</th><th>Cliente</th><th>Estatus</th><th class="n">Importe</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="folio">COT-2026-0304</div><div class="proj">Oporto 5, Cerrada del Prado</div></td>
+              <td><div class="cli">Daniela Ortiz</div></td>
+              <td><span class="st" style="color:var(--ok);background:rgba(22,163,74,.12)">Aceptada</span></td>
+              <td class="n"><span class="amt2">$93,705.00</span></td>
+            </tr>
+            <tr>
+              <td><div class="folio">COT-2026-0299</div><div class="proj">Belcanto Residencial</div></td>
+              <td><div class="cli">Mariana Gutiérrez</div></td>
+              <td>
+                <span class="st" style="color:var(--cool);background:rgba(61,127,214,.12)">Vista</span>
+                <div><span class="mot" style="color:var(--fire);background:rgba(224,59,52,.11)">
+                  <span class="pip" style="width:8px;height:8px;background:var(--fire)"></span>On Fire <span class="eye">👁 4</span></span></div>
+              </td>
+              <td class="n"><span class="amt2">$99,952.00</span></td>
+            </tr>
+            <tr>
+              <td><div class="folio">COT-2026-0294</div><div class="proj">Calle Oropel #6, Áurea Residencial</div></td>
+              <td><div class="cli">Paola Berrelleza</div></td>
+              <td>
+                <span class="st" style="color:var(--cool);background:rgba(61,127,214,.12)">Vista</span>
+                <div><span class="mot" style="color:var(--mid);background:rgba(217,119,6,.12)">
+                  <span class="pip" style="width:8px;height:8px;background:var(--warm)"></span>Validando precio <span class="eye">👁 2</span></span></div>
+              </td>
+              <td class="n"><span class="amt2">$69,880.00</span></td>
+            </tr>
+            <tr>
+              <td><div class="folio">COT-2026-0292</div><div class="proj">Archanda 11, Bilbao Residencial</div></td>
+              <td><div class="cli">Familia Cervantes</div></td>
+              <td>
+                <span class="st" style="color:var(--cool);background:rgba(61,127,214,.12)">Vista</span>
+                <div><span class="mot" style="color:var(--g);background:var(--g-soft)">
+                  <span class="pip" style="width:8px;height:8px;background:var(--g)"></span>Lectura comprometida <span class="eye">👁 4</span></span></div>
+              </td>
+              <td class="n"><span class="amt2">$67,381.60</span></td>
+            </tr>
+            <tr>
+              <td><div class="folio">COT-2026-0293</div><div class="proj">Armería 4, Villa Satélite</div></td>
+              <td><div class="cli">Grupo Miravalle</div></td>
+              <td>
+                <span class="st" style="color:var(--muted);background:rgba(120,130,120,.12)">Enviada</span>
+                <div><span class="mot" style="color:var(--bad);background:rgba(220,38,38,.1)">✕ No abierta</span></div>
+              </td>
+              <td class="n"><span class="amt2">$196,378.80</span></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
-  </div>
-</section>
 
-<div class="divider"><div class="divider-line"></div></div>
+    <p class="capt">Tu lista, con el termómetro de cada cotización al lado.</p>
 
-<!-- FLOW -->
-<section class="flow">
-  <span class="section-label">Tu proceso, potenciado</span>
-  <div class="section-title">Tu expertise cierra ventas.<br>Nosotros te decimos ¿a quien llamar primero?</div>
-  <p class="section-sub">Cinco pasos que convierten cada cotizacion en inteligencia de ventas para tu negocio.</p>
+    <div class="feats rev">
+      <span>Catálogo y precios</span>
+      <span>Cupones</span>
+      <span>Descuentos inteligentes</span>
+      <span>Extras</span>
+      <span>Archivos adjuntos</span>
+      <span>Notas internas</span>
+      <span>Se acepta en línea</span>
+      <span>Se convierte en venta</span>
+    </div>
+  </section>
 
-  <div class="flow-steps">
-    <div class="flow-step">
-      <div class="flow-step-num">1</div>
-      <div class="flow-step-title">Genera la cotizacion</div>
-      <div class="flow-step-desc">Con tu marca, tus productos y tus condiciones. Profesional desde el primer contacto.</div>
+  <!-- ── PROCESO ───────────────────────────────────────── -->
+  <section class="blk" id="proceso">
+    <div class="head rev" style="max-width:46rem">
+      <p class="kick">Tu proceso, potenciado</p>
+      <h2>Tu expertise cierra ventas. Nosotros te decimos <em>a quién llamar primero</em>.</h2>
     </div>
-    <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-    <div class="flow-step">
-      <div class="flow-step-num">2</div>
-      <div class="flow-step-title">Comparte por link</div>
-      <div class="flow-step-desc">WhatsApp, correo, donde sea. Tu cliente la abre al instante, sin descargar nada.</div>
+    <div class="steps rev">
+      <div class="step"><div class="num">1</div><b>Genera la cotización</b>
+        <span>Con tu marca, tus productos y tus condiciones.</span></div>
+      <div class="step"><div class="num">2</div><b>Compártela por link</b>
+        <span>WhatsApp o correo. Se abre al instante, sin descargar nada.</span></div>
+      <div class="step"><div class="num">3</div><b>El cliente la abre</b>
+        <span>Y tú te enteras en el momento.</span></div>
+      <div class="step"><div class="num">4</div><b>El Radar la clasifica</b>
+        <span>Por intención de compra, no por número de visitas.</span></div>
+      <div class="step end"><div class="num">5</div><b>Tú cierras</b>
+        <span>Con el momento exacto para levantar el teléfono.</span></div>
     </div>
-    <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-    <div class="flow-step">
-      <div class="flow-step-num">3</div>
-      <div class="flow-step-title">Mide la interaccion</div>
-      <div class="flow-step-desc">Cada apertura, cada visita, cada minuto que tu cliente pasa revisandola queda registrado.</div>
-    </div>
-    <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-    <div class="flow-step">
-      <div class="flow-step-num">4</div>
-      <div class="flow-step-title">Detecta el interes</div>
-      <div class="flow-step-desc">El sistema identifica patrones de comportamiento y califica el nivel de interes real.</div>
-    </div>
-    <div class="flow-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
-    <div class="flow-step">
-      <div class="flow-step-num hot">5</div>
-      <div class="flow-step-title">Anticipa el cierre</div>
-      <div class="flow-step-desc">Te avisa cuales estan listas. Tu decides el momento exacto para dar seguimiento.</div>
-    </div>
-  </div>
-</section>
+  </section>
 
-<!-- PARA QUIEN ES -->
-<section class="audience">
-  <span class="section-label">Para quien es</span>
-  <div class="section-title">Si cotizas para vender, esto es para ti</div>
-  <p class="section-sub">Profesionales que mandan cotizaciones y quieren saber ¿que pasa despues?</p>
+  <!-- ── RADAR ─────────────────────────────────────────── -->
+  <section class="blk" id="radar">
+    <div class="head rev">
+      <p class="kick">Radar de ventas</p>
+      <h2>El Radar detecta el <em>interés real</em> de tu cliente.</h2>
+      <p>Nuestro algoritmo y CotizaCloud AI analizan su comportamiento y clasifican su intención de compra con los datos de tu propio negocio. <b>No solo registramos visitas.</b></p>
+    </div>
 
-  <div class="audience-grid">
-    <div class="aud-card">
-      <div class="aud-card-ico">&#128208;</div>
-      <div class="aud-card-title">Arquitectos y Despachos</div>
-      <div class="aud-card-desc">Cotizaciones de alto valor donde el seguimiento define si cierras o no.</div>
-    </div>
-    <div class="aud-card">
-      <div class="aud-card-ico">&#127959;</div>
-      <div class="aud-card-title">Constructoras</div>
-      <div class="aud-card-desc">Multiples cotizaciones activas. Sabe cuales van en serio sin llamar a todos.</div>
-    </div>
-    <div class="aud-card">
-      <div class="aud-card-ico">&#128736;</div>
-      <div class="aud-card-title">Fabricantes y Talleres</div>
-      <div class="aud-card-desc">Muebles, herreria, carpinteria. Productos a la medida con imagen profesional.</div>
-    </div>
-    <div class="aud-card">
-      <div class="aud-card-ico">&#128187;</div>
-      <div class="aud-card-title">Freelancers y Consultores</div>
-      <div class="aud-card-desc">Diseno, marketing, TI. Deja de perseguir clientes — llama cuando estan listos.</div>
-    </div>
-    <div class="aud-card">
-      <div class="aud-card-ico">&#127968;</div>
-      <div class="aud-card-title">Inmobiliarias y Agentes</div>
-      <div class="aud-card-desc">¿Tu cliente vio la propuesta o la ignoró? Deja de perseguir a quien solo pregunta y enfócate en quien tiene interés real. Descubre qué propiedad de tu catálogo genera más interés y cuál no.</div>
-    </div>
-    <div class="aud-card">
-      <div class="aud-card-ico">&#128737;</div>
-      <div class="aud-card-title">Agentes de Seguros y Servicios Financieros</div>
-      <div class="aud-card-desc">¿Mandas cotizaciones de pólizas y no sabes si las revisaron? Deja de llamar a ciegas. Si tu cliente la leyó una vez, dale seguimiento. Si regresó a verla — ¡SEGUIMIENTO YA!</div>
-    </div>
-  </div>
-</section>
+    <div class="card rev">
+      <div class="bk">
+        <div class="bk-h">
+          <div class="bk-n"><span class="pip" style="background:var(--fire)"></span>On Fire</div>
+          <div class="bk-s">$443,900 · 5 cotizaciones</div>
+        </div>
+        <div class="bk-r">
+          <div class="bk-c"><b>Daniela Ortiz</b><span>Organización de boda</span></div>
+          <div class="bk-m"><b>$132,000</b>
+            <div class="dots" data-on="5" data-color="var(--fire)"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </div>
 
-<!-- COSTOS — Seccion dedicada, segundo gancho -->
-<section class="predictive">
-  <div class="pred-card" style="background:linear-gradient(135deg,#1a1a18 0%,#2d1f0e 50%,#3d2b10 100%)">
+      <div class="bk">
+        <div class="bk-h">
+          <div class="bk-n"><span class="pip" style="background:var(--warm)"></span>Probable cierre</div>
+          <div class="bk-s">$723,400 · 8 cotizaciones</div>
+        </div>
+        <div class="bk-r">
+          <div class="bk-c"><b>Mariana Gutiérrez</b><span>Proyecto arquitectónico</span></div>
+          <div class="bk-m"><b>$148,500</b>
+            <div class="dots" data-on="4" data-color="var(--warm)"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bk">
+        <div class="bk-h">
+          <div class="bk-n"><span class="pip" style="background:var(--cool)"></span>Validando precio</div>
+          <div class="bk-s">$83,400 · 3 cotizaciones</div>
+        </div>
+        <div class="bk-r">
+          <div class="bk-c"><b>Sra. Camacho</b><span>Cancelería de aluminio</span></div>
+          <div class="bk-m"><b>$37,900</b>
+            <div class="dots" data-on="2" data-color="var(--cool)"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="aitip">
+        <span class="tg">✨ CotizaCloud AI</span>
+        <span class="tx">Empieza por <b>Daniela</b>: su intención de compra subió hoy. Llámala y cierra fecha.</span>
+        <span class="plan">Business</span>
+      </div>
+    </div>
+      <div class="nono rev">
+      <div><b><span class="mk">✕</span> Nadie la abrió</b><span>Días enviada y sin abrirse. Te enteras antes de que se enfríe.</span></div>
+      <div><b><span class="mk">✕</span> Ni siquiera se mandó</b><span>Tú lo ves aunque el asesor no lo diga.</span></div>
+    </div>
+  </section>
+
+  <!-- ── LA PRUEBA + VENTAS ────────────────────────────── -->
+  <section class="blk">
+    <div class="head rev">
+      <p class="kick">La frase que ya conoces</p>
+      <h2>«Lo voy a pensar…»<br><em>Cotiza igual. Cierra más.</em></h2>
+      <p>Todos la dicen. La diferencia está en lo que hacen después.</p>
+    </div>
+
+    <div class="two">
+      <div class="card card-pad sm rev">
+        <div class="beh-h">
+          <div><b>Cancelería de aluminio</b><span>Sra. Camacho</span></div>
+          <div class="amt">$37,900</div>
+        </div>
+
+        <p class="lbl">Intención de compra</p>
+        <div class="ev">
+          <div class="ev-l"><span class="pip"></span><div><b>Hoy, 9:41 pm</b><span>iPhone · Guadalajara, MX</span></div></div>
+          <div class="ev-r" style="color:var(--fire)">🔥 Interés al alza</div>
+        </div>
+        <div class="ev">
+          <div class="ev-l"><span class="pip"></span><div><b>Hoy, 2:31 pm</b><span>iPhone · Guadalajara, MX</span></div></div>
+          <div class="ev-r" style="color:var(--g)">↩ Volvió a leerla</div>
+        </div>
+
+        <div class="verdict">Clasificación: 🔥 On Fire</div>
+      </div>
+
+      <div class="card card-pad rev">
+        <div class="sl">Ventas cerradas</div>
+        <div class="srow"><b>$247,900</b><span class="schip">▲ +31% vs abril</span></div>
+
+        <div class="gbars">
+          <div class="gcol off"><i data-h="38"></i><span>feb</span></div>
+          <div class="gcol off"><i data-h="44"></i><span>mar</span></div>
+          <div class="gcol off"><i data-h="36"></i><span>abr</span></div>
+          <div class="gcol g1"><i data-h="54"></i><span>may</span></div>
+          <div class="gcol g2"><i data-h="68"></i><span>jun</span></div>
+          <div class="gcol g3"><i data-h="100"></i><span>jul</span></div>
+        </div>
+        <div class="gleg"><span>sin Radar</span><span class="on">con Radar</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── MESA ──────────────────────────────────────────── -->
+  <section class="blk">
+    <div class="head rev">
+      <p class="kick">La Mesa de Trabajo <span class="plan">Business</span></p>
+      <h2>Tu día ya viene <em>priorizado</em>.</h2>
+      <p>El Radar te dice quién está caliente. La Mesa te dice qué hacer hoy, y en qué orden.</p>
+    </div>
+
+    <div class="card rev">
+      <div class="mesa-top">
+        <b>Mesa de hoy</b> <span class="meta">6 pendientes · $1,478,982 en juego</span>
+        <p>Empieza por la <b>#1</b> — es la de mayor intención de compra.</p>
+      </div>
+
+      <div class="task">
+        <div class="no">1</div>
+        <div class="body">
+          <div class="tt">
+            <span class="pip" style="background:var(--fire);margin-top:7px"></span>
+            <div style="flex:1;min-width:0">
+              <b>Organización de boda — Hacienda La Cantera</b>
+              <div class="who">Daniela Ortiz</div>
+            </div>
+            <div class="amt">$132,000</div>
+          </div>
+          <div class="act"><span class="tg">✨ CotizaCloud AI</span>
+            <span>Su intención de compra <b>subió hoy</b> — llámale y cierra fecha.</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="no">2</div>
+        <div class="body">
+          <div class="tt">
+            <span class="pip" style="background:var(--warm);margin-top:7px"></span>
+            <div style="flex:1;min-width:0">
+              <b>Seguro empresarial — flotilla 12 unidades</b>
+              <div class="who">Grupo Miravalle</div>
+            </div>
+            <div class="amt">$181,400</div>
+          </div>
+          <div class="act"><span><b>⏰ Vence hoy</b> — reenvíala con un recordatorio.</span></div>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="no">3</div>
+        <div class="body">
+          <div class="tt">
+            <span class="pip" style="background:var(--mid);margin-top:7px"></span>
+            <div style="flex:1;min-width:0">
+              <b>Bonaterra Residencial — Arboretum 11</b>
+              <div class="who">Alexa Gastelum · la vio hoy</div>
+            </div>
+            <div class="amt">$37,800</div>
+          </div>
+          <div class="act"><span class="chip">⚡ Revivió tras descarte</span>
+            <span>La habías dado por perdida y el cliente volvió.</span></div>
+
+          <div class="ladder">
+            <div class="ladder-h">
+              <span>Intentos sin respuesta</span>
+              <span class="n">4 de 4</span>
+              <span class="ladder-dots">
+                <i style="background:var(--mid)"></i><i style="background:var(--mid)"></i>
+                <i style="background:var(--bad)"></i><i style="background:var(--bad)"></i>
+              </span>
+            </div>
+            <p>Llevas <b>4 «no contestó» seguidos</b>. La Mesa propone suspenderla. Si contesta una vez, la cuenta vuelve a cero.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TERMÓMETRO / RANKING ──────────────────────────── -->
+  <section class="blk">
+    <div class="head rev">
+      <p class="kick">Termómetro del equipo <span class="plan">Business</span></p>
+      <h2>¿Quién de tu equipo <em>sí está vendiendo</em>?</h2>
+      <p>Mide el seguimiento real de cada asesor — sin perseguirlos. No cuántas mandó: si atendió a tiempo y si cerró. <span class="tg tg-inline">✨ CotizaCloud AI</span></p>
+    </div>
+
+    <div class="card rev">
+      <div class="trow">
+        <span class="av" style="background:var(--ok)">RS</span>
+        <div class="tinfo">
+          <div class="tname">Renata Salgado</div>
+          <div class="tbar"><div class="tfill" data-w="82" style="background:var(--ok)"></div></div>
+        </div>
+        <span class="tscore" style="color:var(--ok)">82</span>
+        <span class="tarrow" style="color:var(--ok)">▲</span>
+      </div>
+
+      <div class="trow">
+        <span class="av" style="background:var(--mid)">LO</span>
+        <div class="tinfo">
+          <div class="tname">Luis Ortega</div>
+          <div class="tbar"><div class="tfill" data-w="67" style="background:var(--warm)"></div></div>
+        </div>
+        <span class="tscore" style="color:var(--mid)">67</span>
+        <span class="tarrow" style="color:var(--ok)">▲</span>
+      </div>
+
+      <div class="trow bad">
+        <span class="av" style="background:var(--bad)">KN</span>
+        <div class="tinfo">
+          <div class="tname">Karla Núñez</div>
+          <div class="tbar"><div class="tfill" data-w="41" style="background:var(--bad)"></div></div>
+          <div class="tnote">⚠ Reprobada — no da seguimiento</div>
+        </div>
+        <span class="tscore" style="color:var(--bad)">41</span>
+        <span class="tarrow" style="color:var(--bad)">▼</span>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── MÓVIL ─────────────────────────────────────────── -->
+  <section class="blk">
+    <div class="mob">
+      <div class="head rev">
+        <p class="kick">Dónde se usa</p>
+        <h2>Cotiza en la oficina o <em>frente al cliente</em>.</h2>
+        <p>En la computadora trabajas el día completo, con todo a la vista. En el teléfono armas y editas la cotización ahí mismo, en la obra o en su sala — y te avisa en cuanto alguien está listo.</p>
+      </div>
+
+      <div class="phone-lite rev">
+        <div class="inner">
+          <div class="mob-top">
+            <span class="l">Oportunidades activas</span>
+            <span class="v" data-count="1250000">$1.25M en juego</span>
+          </div>
+          <div class="bk">
+            <div class="bk-h">
+              <div class="bk-n" style="font-size:15px"><span class="pip" style="background:var(--fire)"></span>On Fire</div>
+              <div class="bk-s" style="font-size:13px">$443,900 · 5</div>
+            </div>
+            <div class="bk-r">
+              <div class="bk-c"><b style="font-size:15px">Daniela Ortiz</b><span style="font-size:13px">Organización de boda</span></div>
+              <div class="bk-m"><b style="font-size:15px">$132,000</b>
+                <div class="dots" data-on="5" data-color="var(--fire)"><i></i><i></i><i></i><i></i><i></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="bk">
+            <div class="bk-h">
+              <div class="bk-n" style="font-size:15px"><span class="pip" style="background:var(--warm)"></span>Probable cierre</div>
+              <div class="bk-s" style="font-size:13px">$723,400 · 8</div>
+            </div>
+            <div class="bk-r">
+              <div class="bk-c"><b style="font-size:15px">Mariana Gutiérrez</b><span style="font-size:13px">Proyecto arquitectónico</span></div>
+              <div class="bk-m"><b style="font-size:15px">$148,500</b>
+                <div class="dots" data-on="4" data-color="var(--warm)"><i></i><i></i><i></i><i></i><i></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="aitip" style="padding:14px 16px">
+            <span class="tg">✨ AI</span>
+            <span class="tx" style="font-size:14px">Empieza por <b>Daniela</b> — su interés subió hoy.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── PRECIOS ───────────────────────────────────────── -->
+  <section class="blk" id="precios">
+    <div class="head rev">
+      <p class="kick">Precios</p>
+      <h2>Empieza gratis <em>30 días</em>.</h2>
+      <p>Cotizas desde el primer minuto. Si al mes no te sirvió, no pagas nada.</p>
+    </div>
+
+    <div class="sw-bar rev">
+      <div class="sw-group">
+        <span class="sw-lb on" id="lbMensual">Mensual</span>
+        <label class="sw"><input type="checkbox" id="swCiclo" aria-label="Cambiar a pago anual"><span class="track"></span></label>
+        <span class="sw-lb" id="lbAnual">Anual</span>
+        <span class="sw-save">Ahorra 20%</span>
+      </div>
+      <span class="sw-div"></span>
+      <div class="sw-group">
+        <span class="sw-lb on" id="lbMXN">MXN</span>
+        <label class="sw"><input type="checkbox" id="swMoneda" aria-label="Cambiar a dólares"><span class="track"></span></label>
+        <span class="sw-lb" id="lbUSD">USD</span>
+      </div>
+    </div>
+
+    <div class="tiers rev">
+      <div class="tier">
+        <div class="tn">Lite</div>
+        <div class="pr"><b data-m="199" data-a="159">$199</b><span>/ mes</span></div>
+        <div class="yr"><span data-m="2388" data-a="1910">$2,388</span> al año</div>
+        <ul>
+          <li>Cotizaciones y ventas ilimitadas</li>
+          <li>Clientes y catálogo</li>
+          <li>Cupones y descuentos</li>
+          <li>Feedback de tus clientes</li>
+          <li>Señal de interés en cada cotización</li>
+          <li>1 usuario</li>
+        </ul>
+        <a class="cta" href="/registro?plan=lite">Probar 30 días</a>
+      </div>
+
+      <div class="tier feat">
+        <div class="tn">Pro <span class="badge">El más usado</span></div>
+        <div class="pr"><b data-m="499" data-a="399">$499</b><span>/ mes</span></div>
+        <div class="yr"><span data-m="5988" data-a="4790">$5,988</span> al año</div>
+        <ul>
+          <li>Todo lo de Lite</li>
+          <li><b>Radar completo</b> con buckets y alertas</li>
+          <li><b>Asesores ilimitados</b> — todo tu equipo de ventas, sin costo por usuario</li>
+          <li>Costos, márgenes y reportes</li>
+          <li>Descuentos inteligentes</li>
+        </ul>
+        <a class="cta" href="/registro?plan=pro">Probar 30 días</a>
+      </div>
+
+      <div class="tier">
+        <div class="tn">Business</div>
+        <div class="pr"><b data-m="2999" data-a="2399">$2,999</b><span>/ mes</span></div>
+        <div class="yr"><span data-m="35988" data-a="28790">$35,988</span> al año</div>
+        <ul>
+          <li>Todo lo de Pro</li>
+          <li><b>Mesa de Trabajo</b> y CotizaCloud AI</li>
+          <li>Termómetro y ranking del equipo</li>
+          <li>Costos avanzados, proveedores y marketing</li>
+          <li>Permisos por asesor</li>
+          <li>Demo y 4 horas de capacitación</li>
+        </ul>
+        <a class="cta" href="#" onclick="var f=document.getElementById('czl-fab');if(f){f.click();}return false;">Agenda una demo</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="close rev">
     <div>
-      <div class="pred-label" style="color:#fbbf24">Rentabilidad real · Planes Pro y Business</div>
-      <div class="pred-title">Sabes exactamente cuanto ganas en cada proyecto</div>
-      <div class="pred-desc">No es Excel. Es un sistema que registra tus costos por operacion y te muestra el margen real — por venta, por cliente, por periodo. Sin sorpresas al final del mes.</div>
-      <ul class="pred-list">
-        <li><span class="pred-dot" style="background:#fbbf24"></span><strong>Costo por venta</strong> — Registra materiales, mano de obra, gastos. Todo desglosado.</li>
-        <li><span class="pred-dot" style="background:#4ade80"></span><strong>Margen real</strong> — Ve tu utilidad neta por cada proyecto cerrado.</li>
-        <li><span class="pred-dot" style="background:#60a5fa"></span><strong>Reportes</strong> — Dashboards de ingresos, gastos y utilidad por periodo.</li>
-      </ul>
-    </div>
-    <div class="pred-right">
-      <div class="pipeline">
-        <div class="pipe-row">
-          <span class="pipe-label">Venta</span>
-          <div class="pipe-bar" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);width:100%;color:rgba(255,255,255,.7)">$34,500 MXN<span class="pipe-tag">Ingreso</span></div>
-        </div>
-        <div class="pipe-row">
-          <span class="pipe-label">Costos</span>
-          <div class="pipe-bar" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);width:62%;color:#ef4444">$21,400 MXN<span class="pipe-tag">62%</span></div>
-        </div>
-        <div class="pipe-row">
-          <span class="pipe-label">Utilidad</span>
-          <div class="pipe-bar" style="background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);width:38%;color:#4ade80">$13,100 MXN<span class="pipe-tag">38%</span></div>
-        </div>
+      <h2>Deja de adivinar <em>a quién llamarle</em>.</h2>
+      <p>Manda tu primera cotización hoy y mira quién está más cerca de decir que sí.</p>
+      <div class="warr">
+        <span>30 días gratis</span><span>Sin tarjeta</span><span>Cancelas cuando quieras</span>
       </div>
+      <a class="btn btn-primary" href="/registro">Probar 30 días gratis</a>
+    </div>
+    <div class="rviz" aria-hidden="true">
+      <span class="ring r1"></span><span class="ring r2"></span>
+      <span class="ring r3"></span><span class="ring r4"></span>
+      <span class="sweep"></span>
+      <span class="blip b1"></span><span class="blip b2"></span><span class="blip b3"></span>
+      <span class="core">RADAR</span>
     </div>
   </div>
-</section>
 
-<!-- PLATAFORMA — Features compactos, no roban protagonismo -->
-<section class="features">
-  <span class="section-label">Plataforma completa</span>
-  <div class="section-title">Cotiza, vende, cobra — todo en un lugar</div>
-  <p class="section-sub">El Radar es el cerebro. Esto es todo lo que lo rodea.</p>
-
-  <div class="features-grid">
-    <div class="feat-card">
-      <div class="feat-ico" style="background:var(--g-bg)">
-        <svg viewBox="0 0 24 24" stroke="var(--g)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      </div>
-      <div class="feat-title">Cotizaciones profesionales</div>
-      <div class="feat-desc">Con tu marca, articulos, descuentos y cupones. Compartelas por WhatsApp o correo con un link unico.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-ico" style="background:#dbeafe">
-        <svg viewBox="0 0 24 24" stroke="#1d4ed8"><rect x="1" y="3" width="22" height="18" rx="2"/><line x1="1" y1="9" x2="23" y2="9"/><line x1="8" y1="15" x2="16" y2="15"/></svg>
-      </div>
-      <div class="feat-title">Ventas y recibos</div>
-      <div class="feat-desc">Genera recibos, registra abonos parciales o totales. Tu cliente ve su saldo en tiempo real.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-ico" style="background:#fef3c7">
-        <svg viewBox="0 0 24 24" stroke="#92400e"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-      </div>
-      <div class="feat-title">Catalogo de articulos</div>
-      <div class="feat-desc">Precios, descripciones y categorias siempre actualizados. Cotiza rapido y sin errores.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-ico" style="background:var(--g-bg)">
-        <svg viewBox="0 0 24 24" stroke="var(--g)"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-      </div>
-      <div class="feat-title">Directorio de clientes</div>
-      <div class="feat-desc">Historial completo por cliente: cotizaciones, ventas, pagos y nivel de actividad.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-ico" style="background:#fce7f3">
-        <svg viewBox="0 0 24 24" stroke="#be185d"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      </div>
-      <div class="feat-title">Reportes de ventas</div>
-      <div class="feat-desc">Dashboards claros con ingresos, gastos y utilidad. Filtra por periodo, vendedor o cliente. Incluido en Pro y Business.</div>
-    </div>
-    <div class="feat-card">
-      <div class="feat-ico" style="background:#dbeafe">
-        <svg viewBox="0 0 24 24" stroke="#1d4ed8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      </div>
-      <div class="feat-title">Multi-usuario y permisos</div>
-      <div class="feat-desc">Usuarios ilimitados en Pro y Business, sin cobro por usuario. Permisos granulares por vendedor en Business.</div>
-    </div>
-  </div>
-</section>
-
-
-<!-- AUDIENCE -->
-
-
-<!-- ACCELERATORS - Sales psychology tools -->
-<section class="accel">
-  <div class="accel-inner">
-    <div class="accel-sparkle">Incluido</div>
-    <div class="accel-label">Acelera el cierre</div>
-    <div class="accel-title">Gatillos de venta que convierten interes en decision</div>
-    <div class="accel-sub">Las mismas tecnicas que usan Amazon, Booking y Mercado Libre para que la gente compre ahora y no "despues". Urgencia, escasez y precio especial — integradas en cada cotizacion.</div>
-    <div class="accel-grid">
-      <div class="accel-item">
-        <div class="accel-item-ico">&#9200;</div>
-        <div class="accel-item-name">Cuenta regresiva</div>
-        <div class="accel-item-desc">Un cronometro visible en tu cotizacion. Tu cliente sabe que el precio tiene fecha limite.</div>
-      </div>
-      <div class="accel-item">
-        <div class="accel-item-ico">&#127915;</div>
-        <div class="accel-item-name">Cupones de descuento</div>
-        <div class="accel-item-desc">Codigos exclusivos que tu cliente aplica al aceptar. Le das el poder de "ganar" su descuento.</div>
-      </div>
-      <div class="accel-item">
-        <div class="accel-item-ico">&#128184;</div>
-        <div class="accel-item-name">Precio tachado</div>
-        <div class="accel-item-desc">Muestra el precio original junto al precio especial. El ancla visual que acelera la decision de compra.</div>
-      </div>
-      <div class="accel-item">
-        <div class="accel-item-ico">&#128165;</div>
-        <div class="accel-item-name">Oferta por tiempo limitado</div>
-        <div class="accel-item-desc">Descuento + cronometro. La oferta desaparece y tu cliente lo sabe desde que abre la cotizacion.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- APC THERMOMETER -->
-<section class="apc">
-  <div class="apc-card">
-    <div class="apc-left">
-      <div class="apc-badge">Exclusivo del plan Business</div>
-      <div class="apc-title">Termometro de <em>Productividad Comercial</em></div>
-      <div class="apc-desc">Un algoritmo que mide la efectividad real de cada vendedor — automaticamente. No es opinion, son datos. Se auto-ajusta a tu empresa y evoluciona con tu equipo.</div>
-      <div class="apc-dims">
-        <div class="apc-dim">
-          <div class="apc-dim-pct" style="color:#34d399">20%</div>
-          <div class="apc-dim-info">
-            <div class="apc-dim-name">Activacion</div>
-            <div class="apc-dim-sub">¿Las cotizaciones llegan al cliente? Detecta dormidas y problemas de entrega.</div>
-          </div>
-        </div>
-        <div class="apc-dim">
-          <div class="apc-dim-pct" style="color:#60a5fa">35%</div>
-          <div class="apc-dim-info">
-            <div class="apc-dim-name">Seguimiento</div>
-            <div class="apc-dim-sub">¿Da seguimiento activo? Mide velocidad de reaccion, uso del Radar y atencion a senales calientes.</div>
-          </div>
-        </div>
-        <div class="apc-dim">
-          <div class="apc-dim-pct" style="color:#f59e0b">45%</div>
-          <div class="apc-dim-info">
-            <div class="apc-dim-name">Conversion</div>
-            <div class="apc-dim-sub">¿Cierra ventas? Lo que mas pesa. Tasa de cierre, calidad del cierre y consistencia semanal.</div>
-          </div>
-        </div>
-      </div>
-      <div class="apc-feats">
-        <div class="apc-feat">
-          <div class="apc-feat-val">15d</div>
-          <div class="apc-feat-lbl">Ventana rolling</div>
-        </div>
-        <div class="apc-feat">
-          <div class="apc-feat-val">17</div>
-          <div class="apc-feat-lbl">Senales analizadas</div>
-        </div>
-        <div class="apc-feat">
-          <div class="apc-feat-val">Auto</div>
-          <div class="apc-feat-lbl">Benchmarks por empresa</div>
-        </div>
-      </div>
-    </div>
-    <div class="apc-right">
-      <div class="apc-demo">
-        <!-- Pregunta que engancha -->
-        <div style="text-align:center;margin-bottom:20px">
-          <div style="font:800 18px var(--body);color:#fff;line-height:1.3">¿Sabes quien vende bien<br>y quien necesita ayuda?</div>
-          <div style="font:400 12px var(--body);color:#64748b;margin-top:6px">Diagnostico automatico por vendedor. Tu solo lees el resultado.</div>
-        </div>
-
-        <!-- Vendedor #1 — Top -->
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.15);border-radius:10px;margin-bottom:8px">
-          <div style="width:28px;height:28px;border-radius:8px;background:#16a34a;display:flex;align-items:center;justify-content:center;font:700 12px var(--body);color:#fff;flex-shrink:0">M</div>
-          <div style="flex:1;min-width:0">
-            <div style="font:600 13px var(--body);color:#fff">Maria Lopez</div>
-            <div style="font:400 11px var(--body);color:#94a3b8;margin-top:1px">Excelente cierre. Usa el Radar. Tendencia en mejora.</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font:800 18px var(--num);color:#2563eb">87</div>
-            <div style="font:600 9px var(--body);color:#2563eb;background:rgba(37,99,235,.15);padding:1px 6px;border-radius:6px;letter-spacing:.04em">TOP</div>
-          </div>
-        </div>
-
-        <!-- Vendedor #2 — Regular -->
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;margin-bottom:8px">
-          <div style="width:28px;height:28px;border-radius:8px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 12px var(--body);color:#fff;flex-shrink:0">C</div>
-          <div style="flex:1;min-width:0">
-            <div style="font:600 13px var(--body);color:#fff">Carlos Ruiz</div>
-            <div style="font:400 11px var(--body);color:#94a3b8;margin-top:1px">Cotiza bien pero no cierra. No revisa el Radar.</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font:800 18px var(--num);color:#d97706">48</div>
-            <div style="font:600 9px var(--body);color:#d97706;background:rgba(217,119,6,.12);padding:1px 6px;border-radius:6px;letter-spacing:.04em">REGULAR</div>
-          </div>
-        </div>
-
-        <!-- Vendedor #3 — Bajo -->
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;margin-bottom:16px">
-          <div style="width:28px;height:28px;border-radius:8px;background:#64748b;display:flex;align-items:center;justify-content:center;font:700 12px var(--body);color:#fff;flex-shrink:0">R</div>
-          <div style="flex:1;min-width:0">
-            <div style="font:600 13px var(--body);color:#fff">Roberto Diaz</div>
-            <div style="font:400 11px var(--body);color:#94a3b8;margin-top:1px">Sus cotizaciones no se abren. Ignora senales calientes.</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font:800 18px var(--num);color:#dc2626">19</div>
-            <div style="font:600 9px var(--body);color:#dc2626;background:rgba(220,38,38,.12);padding:1px 6px;border-radius:6px;letter-spacing:.04em">BAJO</div>
-          </div>
-        </div>
-
-        <!-- Insight del algoritmo -->
-        <div class="apc-demo-diag">El algoritmo detecta que <b>Carlos cotiza mucho pero no cierra</b> — necesita coaching de seguimiento. <b>Roberto</b> tiene problemas de entrega. Cada vendedor recibe tips personalizados.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- PRICING -->
-<section class="pricing" id="precios">
-  <span class="section-label">Planes y precios</span>
-  <div class="section-title">¿Cual plan mueve tu negocio?</div>
-  <p class="section-sub">Del primer cliente al equipo completo. Crece a tu ritmo.</p>
-
-  <div class="pricing-toggle">
-    <span class="toggle-label" id="toggleMensual">Mensual</span>
-    <label class="toggle-switch">
-      <input type="checkbox" id="billingToggle">
-      <span class="toggle-slider"></span>
-    </label>
-    <span class="toggle-label" id="toggleAnual">Anual</span>
-    <span class="toggle-save">Ahorra 20%</span>
-  </div>
-
-  <div class="pricing-toggle" style="margin-top:-32px;margin-bottom:36px">
-    <span class="toggle-label active" id="toggleMXN">MXN</span>
-    <label class="toggle-switch">
-      <input type="checkbox" id="currencyToggle">
-      <span class="toggle-slider"></span>
-    </label>
-    <span class="toggle-label" id="toggleUSD">USD</span>
-  </div>
-
-  <div class="pricing-grid">
-
-    <!-- LITE -->
-    <div class="price-card">
-      <div class="price-header">
-        <div class="price-plan-name">Lite</div>
-        <div class="price-plan-desc">Lo esencial para cotizar y vender.</div>
-      </div>
-      <div class="price-amount">
-        <span class="price-currency">$</span>
-        <span class="price-value monthly-price" data-mxn="199">199</span>
-        <span class="price-value annual-price" data-mxn="159" style="display:none">159</span>
-        <span class="price-mo">/mes</span>
-      </div>
-      <div class="price-period monthly-price"><span data-mxn="2388">$2,388</span> <span class="cur-lbl">MXN</span>/año</div>
-      <div class="price-period annual-price" style="display:none"><span data-mxn="1910">$1,910</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="478">$478</span></strong></div>
-      <a href="/registro?plan=lite" class="price-btn price-btn-outline">Crear cuenta gratis</a>
-      <div class="price-trial-note">Prueba 30 dias gratis. Sin tarjeta. Cancela cuando quieras.</div>
-      <div class="price-features">
-        <div class="price-feat-header">Para el que vende solo:</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Cotizaciones ilimitadas</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Sabe quien abre tu cotizacion y cuantas veces</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Clientes ilimitados</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Ventas, recibos y abonos</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Cupones y extras</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Descuentos Inteligentes</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Portal publico del cliente</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>1 usuario</div>
-      </div>
-    </div>
-
-    <!-- PRO -->
-    <div class="price-card price-card-featured">
-      <div class="price-badge-popular">Mas popular</div>
-      <div class="price-header">
-        <div class="price-plan-name">Pro</div>
-        <div class="price-plan-desc">Tu equipo completo, con el Radar.</div>
-      </div>
-      <div class="price-amount">
-        <span class="price-currency">$</span>
-        <span class="price-value monthly-price" data-mxn="499">499</span>
-        <span class="price-value annual-price" data-mxn="399" style="display:none">399</span>
-        <span class="price-mo">/mes</span>
-      </div>
-      <div class="price-period monthly-price"><span data-mxn="5988">$5,988</span> <span class="cur-lbl">MXN</span>/año</div>
-      <div class="price-period annual-price" style="display:none"><span data-mxn="4788">$4,788</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="1200">$1,200</span></strong></div>
-      <a href="/registro?plan=pro" class="price-btn price-btn-solid">Crear cuenta gratis</a>
-      <div class="price-trial-note">Prueba 30 dias gratis. Sin tarjeta. Cancela cuando quieras.</div>
-      <div class="price-features">
-        <div class="price-feat-header">Todo lo de Lite, para tu equipo:</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Usuarios ilimitados — sin cobro por usuario*</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Radar de inteligencia completo</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Cada vendedor con su login y sus cotizaciones</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos y margenes por venta</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Descuentos Inteligentes</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes de tu negocio</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Articulos ilimitados</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>App movil + notificaciones push</div>
-      </div>
-    </div>
-
-    <!-- BUSINESS -->
-    <div class="price-card price-card-business">
-      <div class="price-header">
-        <div class="price-plan-name">Business</div>
-        <div class="price-plan-desc">Dirige a tu equipo de ventas con datos, no con corazonadas.</div>
-      </div>
-      <div class="price-amount">
-        <span class="price-currency">$</span>
-        <span class="price-value monthly-price" data-mxn="2999">2,999</span>
-        <span class="price-value annual-price" data-mxn="2399" style="display:none">2,399</span>
-        <span class="price-mo">/mes</span>
-      </div>
-      <div class="price-period monthly-price"><span data-mxn="35988">$35,988</span> <span class="cur-lbl">MXN</span>/año</div>
-      <div class="price-period annual-price" style="display:none"><span data-mxn="28788">$28,788</span> <span class="cur-lbl">MXN</span>/año · <strong>Ahorras <span data-mxn="7200">$7,200</span></strong></div>
-      <a href="#" class="price-btn price-btn-business" onclick="var f=document.getElementById('czl-fab');if(f){f.click();}return false;">Agenda una demo</a>
-      <div class="price-trial-note">Implementacion asistida — te acompañamos en la puesta en marcha.</div>
-      <div class="price-features">
-        <div class="price-feat-header">Todo de Pro + la direccion de tu equipo:</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Termometro: califica a cada vendedor (0-100) automaticamente</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Mesa de Trabajo: a quien llamar HOY, en orden, por vendedor</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Ranking del equipo con diagnostico: quien vende y quien necesita ayuda</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>CotizaCloud AI: tips de venta y analisis de cada vendedor, generados con tus datos</strong></div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Descuentos Inteligentes</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Permisos por vendedor</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Costos avanzados y proveedores</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Reportes avanzados de equipo</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span>Marketing y retargeting</div>
-        <div class="price-feat"><span class="feat-check">&#10003;</span><strong>Demo personalizada + 4 horas de capacitacion incluidas</strong></div>
-      </div>
-    </div>
-
-  </div>
-
-  <p class="pricing-note"><span class="cur-lbl-note">Precios en MXN.</span> IVA no incluido. Pago con tarjeta, transferencia o SPEI. *Ilimitado sujeto a <a href="/terminos" style="color:inherit">politica de uso justo</a>. <span id="usdNoteWrap" style="display:none">USD es solo referencia (cobro en MXN al tipo de cambio del día).</span></p>
-</section>
-
-<!-- CTA -->
-<section class="cta">
-  <div class="cta-card">
-    <h2>Tu proximo cliente ya esta revisando tu cotizacion. Lo sabes?</h2>
-    <p class="cta-sub">Con el Radar de Cotiza.cloud, sabras quien esta listo para cerrar — antes de hacer una sola llamada.</p>
-    <a href="/registro" class="btn-cta">Probar el Radar gratis</a>
-    <p class="cta-note">Prueba completa 30 dias. Sin tarjeta. Sin contratos.</p>
-  </div>
-</section>
-
-<!-- LIVE NOTIFICATIONS (demo) -->
-<div class="notif-stack" id="notifStack">
-
-  <div class="notif" id="notif1">
-    <button class="notif-close" onclick="this.parentElement.classList.remove('show')" aria-label="Cerrar">&times;</button>
-    <div class="notif-ico">🔥</div>
-    <div class="notif-body">
-      <div class="notif-title">3 cotizaciones en Cierre Inminente</div>
-      <div class="notif-desc">Arq. Rodriguez, Ing. Vega y Despacho Luna las revisaron varias veces hoy</div>
-      <div class="notif-badge" style="background:#fff1f2;color:#991b1b">🔥 Cierre Inminente</div>
-    </div>
-    <div class="notif-time">ahora</div>
-  </div>
-
-  <div class="notif" id="notif2">
-    <button class="notif-close" onclick="this.parentElement.classList.remove('show')" aria-label="Cerrar">&times;</button>
-    <div class="notif-ico">❌</div>
-    <div class="notif-body">
-      <div class="notif-title">4 cotizaciones no han sido vistas</div>
-      <div class="notif-desc">Enviadas hace mas de 48h sin ninguna apertura</div>
-      <div class="notif-badge" style="background:#fef2f2;color:#dc2626">❌ No abierta</div>
-    </div>
-    <div class="notif-time">hace 1m</div>
-  </div>
-
-  <div class="notif" id="notif3">
-    <button class="notif-close" onclick="this.parentElement.classList.remove('show')" aria-label="Cerrar">&times;</button>
-    <div class="notif-ico">💸</div>
-    <div class="notif-body">
-      <div class="notif-title">5 cotizaciones Validando Precio</div>
-      <div class="notif-desc">Tus clientes estan comparando. Buen momento para llamar.</div>
-      <div class="notif-badge" style="background:#fffbeb;color:#92400e">💸 Validando precio</div>
-    </div>
-    <div class="notif-time">hace 3m</div>
-  </div>
-
-  <div class="notif" id="notif4">
-    <button class="notif-close" onclick="this.parentElement.classList.remove('show')" aria-label="Cerrar">&times;</button>
-    <div class="notif-ico">🔮</div>
-    <div class="notif-body">
-      <div class="notif-title">1 cotizacion con Prediccion Alta</div>
-      <div class="notif-desc">Constructora MBL — 94% probabilidad de cierre</div>
-      <div class="notif-badge" style="background:#f0fdf4;color:#166534">🔮 Prediccion alta</div>
-    </div>
-    <div class="notif-time">hace 5m</div>
-  </div>
-
+  <footer>
+    Cotiza.cloud &copy; <?= date('Y') ?> &middot; <a href="/login">Iniciar sesión</a> &middot; <a href="/registro">Crear cuenta</a> &middot; <a href="/terminos">Términos</a> &middot; <a href="/privacidad">Privacidad</a>
+  </footer>
 </div>
 
 <script>
 (function(){
-  function showAndAutoDismiss(id, showDelay, dismissDelay) {
-    setTimeout(function(){
-      var el = document.getElementById(id);
-      if(el) el.classList.add('show');
-    }, showDelay);
-    setTimeout(function(){
-      var el = document.getElementById(id);
-      if(el) el.classList.remove('show');
-    }, dismissDelay);
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // pintar los puntos de intención con su color
+  document.querySelectorAll('.dots').forEach(function(d){
+    var n = parseInt(d.dataset.on,10) || 0, c = d.dataset.color;
+    d.querySelectorAll('i').forEach(function(el,i){ if(i<n) el.style.background = c; });
+    if (reduce) d.querySelectorAll('i').forEach(function(el,i){ if(i<n) el.classList.add('on'); });
+  });
+
+  if (reduce) {
+    document.querySelectorAll('.rev').forEach(function(el){ el.classList.add('in'); });
+    document.querySelectorAll('.tfill').forEach(function(f){ f.style.width = f.dataset.w + '%'; });
+    document.querySelectorAll('.gcol i').forEach(function(g){ g.style.height = g.dataset.h + '%'; });
+    return;
   }
 
-  /* DISPARO 1: entre Pipeline y Flow → las primeras 2 notificaciones */
-  var fired1=false;
-  var target1=document.querySelector('.flow');
-  if(target1){
-    var io1=new IntersectionObserver(function(entries){
-      if(entries[0].isIntersecting && !fired1){
-        fired1=true;
-        showAndAutoDismiss('notif1', 400, 18000);
-        showAndAutoDismiss('notif2', 1300, 20000);
-      }
-    },{threshold:0.2});
-    io1.observe(target1);
+
+  // ── precios: ciclo (mensual/anual) y moneda (MXN/USD)
+  var swCiclo=document.getElementById('swCiclo'), swMon=document.getElementById('swMoneda');
+  if (swCiclo && swMon) {
+    var TC = <?= json_encode($usd_rate) ?>;   // MXN→USD, del servidor (cache 12h)
+    var pesos = function(v){ return '$' + v.toLocaleString('es-MX'); };
+    var dolares = function(v){ return 'US$' + Math.round(v*TC).toLocaleString('en-US'); };
+    var pintar = function(){
+      var anual = swCiclo.checked, usd = swMon.checked;
+      document.querySelectorAll('[data-m]').forEach(function(el){
+        var v = parseInt(anual ? el.dataset.a : el.dataset.m, 10);
+        el.textContent = usd ? dolares(v) : pesos(v);
+      });
+      document.getElementById('lbMensual').classList.toggle('on', !anual);
+      document.getElementById('lbAnual').classList.toggle('on', anual);
+      document.getElementById('lbMXN').classList.toggle('on', !usd);
+      document.getElementById('lbUSD').classList.toggle('on', usd);
+    };
+    swCiclo.addEventListener('change', pintar);
+    swMon.addEventListener('change', pintar);
+    pintar();
   }
 
-  /* DISPARO 2: al ver Pricing → las segundas 2 notificaciones */
-  var fired2=false;
-  var target2=document.querySelector('.pricing');
-  if(target2){
-    var io2=new IntersectionObserver(function(entries){
-      if(entries[0].isIntersecting && !fired2){
-        fired2=true;
-        showAndAutoDismiss('notif3', 400, 18000);
-        showAndAutoDismiss('notif4', 1300, 20000);
-      }
-    },{threshold:0.2});
-    io2.observe(target2);
-  }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (!e.isIntersecting) return;
+      e.target.classList.add('in');
+      e.target.querySelectorAll('.tfill').forEach(function(f,i){
+        setTimeout(function(){ f.style.width = f.dataset.w + '%'; }, 120 + i*90);
+      });
+      e.target.querySelectorAll('.gcol i').forEach(function(g,i){
+        setTimeout(function(){ g.style.height = g.dataset.h + '%'; }, 120 + i*80);
+      });
+      e.target.querySelectorAll('.dots').forEach(function(d){
+        var n = parseInt(d.dataset.on,10) || 0;
+        d.querySelectorAll('i').forEach(function(el,i){
+          if (i<n) setTimeout(function(){ el.classList.add('on'); }, 140 + i*90);
+        });
+      });
+      io.unobserve(e.target);
+    });
+  }, { threshold:.18, rootMargin:'0px 0px -8% 0px' });
+
+  document.querySelectorAll('.rev').forEach(function(el){ io.observe(el); });
 })();
 </script>
-
-<script>
-(function(){
-  var toggle = document.getElementById('billingToggle');
-  var lblMensual = document.getElementById('toggleMensual');
-  var lblAnual = document.getElementById('toggleAnual');
-  if(!toggle) return;
-
-  function updatePricing(){
-    var isAnual = toggle.checked;
-    var monthly = document.querySelectorAll('.monthly-price');
-    var annual = document.querySelectorAll('.annual-price');
-
-    for(var i=0;i<monthly.length;i++){
-      monthly[i].style.display = isAnual ? 'none' : '';
-    }
-    for(var i=0;i<annual.length;i++){
-      annual[i].style.display = isAnual ? '' : 'none';
-    }
-
-    lblMensual.classList.toggle('active', !isAnual);
-    lblAnual.classList.toggle('active', isAnual);
-  }
-
-  toggle.addEventListener('change', updatePricing);
-  lblMensual.addEventListener('click', function(){ toggle.checked=false; updatePricing(); });
-  lblAnual.addEventListener('click', function(){ toggle.checked=true; updatePricing(); });
-
-  // Init
-  lblMensual.classList.add('active');
-})();
-
-// ─── Toggle MXN ↔ USD ────────────────────────────────────────
-(function(){
-  var USD_RATE = <?= json_encode((float)$usd_rate) ?>;
-  var curToggle = document.getElementById('currencyToggle');
-  var lblMXN = document.getElementById('toggleMXN');
-  var lblUSD = document.getElementById('toggleUSD');
-  if (!curToggle) return;
-
-  // Guarda los valores originales en MXN al cargar
-  var nodes = document.querySelectorAll('[data-mxn]');
-  nodes.forEach(function(n){ n.dataset.mxnText = n.textContent; });
-
-  function fmtMoney(amount, currency) {
-    // Sin centavos, separador de miles con coma
-    var n = Math.round(amount);
-    return '$' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  }
-
-  function updateCurrency() {
-    var isUSD = curToggle.checked;
-    nodes.forEach(function(n){
-      var mxn = parseFloat(n.dataset.mxn);
-      if (isNaN(mxn)) return;
-      if (isUSD) {
-        n.textContent = fmtMoney(mxn * USD_RATE, 'USD');
-      } else {
-        n.textContent = n.dataset.mxnText;
-      }
-    });
-    document.querySelectorAll('.cur-lbl').forEach(function(el){
-      el.textContent = isUSD ? 'USD' : 'MXN';
-    });
-    var note = document.getElementById('usdNoteWrap');
-    if (note) note.style.display = isUSD ? '' : 'none';
-    lblMXN.classList.toggle('active', !isUSD);
-    lblUSD.classList.toggle('active', isUSD);
-  }
-
-  curToggle.addEventListener('change', updateCurrency);
-  lblMXN.addEventListener('click', function(){ curToggle.checked=false; updateCurrency(); });
-  lblUSD.addEventListener('click', function(){ curToggle.checked=true; updateCurrency(); });
-})();
-</script>
-
-<!-- FOOTER -->
-<footer class="footer">
-  Cotiza.cloud &copy; <?= date('Y') ?> &middot; <a href="/login">Iniciar sesion</a> &middot; <a href="/registro">Crear cuenta</a>
-</footer>
 
 <!-- ── Chat de soporte / captura de lead (landing, anónimo) ── -->
 <style>
