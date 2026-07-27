@@ -386,6 +386,67 @@ se termina ignorando, y entonces el día que falle de verdad tampoco se lee.
 gunzip -c /var/backups/cotizacloud/bd_FECHA.sql.gz | mysql -u root prueba_restauracion
 ```
 
+### 6c. Endurecimiento del servidor ✅ HECHO (27 jul)
+cPanel traía firewall, parches y protección de SSH del hosting. Ubuntu limpio en
+una IP pública **no**. Revisión completa y lo que se encontró:
+
+**Ya estaba bien (no se tocó):** `ufw` activo negando todo lo entrante salvo
+22/80/443 · **MariaDB escuchando solo en `127.0.0.1`** (inalcanzable desde
+internet, que es lo que hace que el firewall no sea la única defensa) ·
+`fail2ban` activo · `unattended-upgrades` activo · los 7 servicios en `enabled` ·
+zona horaria `America/Hermosillo` (deliberada, ver el gotcha de `APP_TIMEZONE`).
+
+**⚠️ El hallazgo: SSH aceptaba contraseña de root desde internet.**
+```
+permitrootlogin yes · passwordauthentication yes · authorized_keys VACÍO
+1555 intentos fallidos en el log · 314 IPs baneadas por fail2ban
+```
+`PasswordAuthentication` aparecía **dos veces con valores contrarios**: `no` en
+`/etc/ssh/sshd_config` y `yes` en `sshd_config.d/50-cloud-init.conf`. Leer los
+archivos no basta — **la verdad la da `sshd -T`**, que mostró `yes` efectivo.
+
+Arreglo: llave ed25519 desde la Mac (`ssh-copy-id`) y luego
+`/etc/ssh/sshd_config.d/00-hardening.conf`:
+```
+PermitRootLogin prohibit-password
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+```
+**El prefijo `00` es obligatorio, no estético:** SSH toma el **primer** valor que
+encuentra y `sshd_config` hace el `Include` de esa carpeta en la línea 12, antes
+de todo. Un archivo `99-*` NUNCA ganaría sobre `50-cloud-init.conf`.
+
+Secuencia segura, en este orden: instalar la llave → probarla con
+`ssh -o PasswordAuthentication=no root@IP hostname` (falla a propósito si la
+llave no sirve) → `sshd -t` → `sshd -T` para ver cómo quedaría → recargar **sin
+cerrar la sesión abierta** → verificar desde una terminal nueva que la llave
+entra y que la contraseña da `Permission denied (publickey)`.
+Revertir: `rm /etc/ssh/sshd_config.d/00-hardening.conf && systemctl reload ssh`.
+
+**Cada dispositivo necesita su llave.** Para sumar la laptop: generar la llave
+ahí, y desde un equipo que ya entra, `echo "ssh-ed25519 AAAA..." >> /root/.ssh/authorized_keys`.
+Red de seguridad si se pierden todas: la **consola VNC de Contabo** sigue
+aceptando la contraseña de root — se cerró el SSH desde internet, no el acceso
+local.
+
+**⚠️ Gotcha: `systemctl is-enabled ssh` devuelve `disabled` y NO es un problema.**
+Ubuntu 24.04 arranca SSH por activación de socket: el habilitado es `ssh.socket`
+(`enabled` + `active`, dispara `ssh.service` al llegar una conexión). Pista
+previa: en `ss -tlnp` el puerto 22 aparece en manos de `systemd` (pid 1) además
+de `sshd`. Verificar con `systemctl is-enabled ssh.socket` antes de alarmarse.
+
+**Parches:** 6 de seguridad pendientes, todos glibc (`libc6` y hermanos) +
+`locales`. Aplicados con `NEEDRESTART_MODE=l` para **no** reiniciar servicios en
+horario laboral (glibc reiniciaría nginx, PHP-FPM y MariaDB). Los procesos vivos
+siguen con la glibc vieja en memoria: **la protección real llega con el
+reinicio**, pendiente de hacer a hora muerta.
+
+**Rotación del log de la app:** `/etc/logrotate.d/cotizacloud`, semanal, 8
+copias comprimidas. Usa `copytruncate` **a propósito**: PHP-FPM mantiene el
+archivo abierto, así que si logrotate lo renombrara, PHP seguiría escribiendo en
+el archivo viejo y el nuevo quedaría vacío para siempre. Importa más desde que
+`config.php` corre con `E_ALL`.
+
 ### 7. Probar SIN tocar el DNS (`/etc/hosts`)
 En la Mac, agregar temporalmente:
 ```
