@@ -113,9 +113,34 @@ $puede_asignar           = Auth::puede('asignar_cotizaciones');
 $vendedores = [];
 if ($puede_asignar) {
     $vendedores = DB::query(
-        "SELECT id, nombre FROM usuarios WHERE empresa_id = ? AND activo = 1 ORDER BY nombre",
+        "SELECT id, nombre, rol FROM usuarios WHERE empresa_id = ? AND activo = 1 ORDER BY nombre",
         [$empresa_id]
     );
+}
+
+// ── A quien se le asigna por defecto ─────────────────────────────────────
+// La lista de arriba trae a TODOS los usuarios activos, admin incluido, para
+// poder asignarle una cotizacion tambien al dueno. Pero para decidir si hay
+// ambiguedad se cuentan ASESORES, no cuentas de usuario: una sucursal con
+// admin + un asesor no tiene nada que elegir, y pedirselo seria una molestia
+// diaria sin motivo.
+$asesores_ids = [];
+foreach ($vendedores as $v) {
+    if (($v['rol'] ?? '') === 'asesor') $asesores_ids[] = (int)$v['id'];
+}
+// Con dos o mas asesores NO se preselecciona nadie: ahi es donde se asignaban
+// cotizaciones al asesor equivocado, porque el selector aparentaba una
+// eleccion que nadie habia hecho.
+$forzar_asesor = count($asesores_ids) > 1;
+$vendedor_pre  = 0;
+if (!$forzar_asesor) {
+    if (count($asesores_ids) === 1) {
+        $vendedor_pre = $asesores_ids[0];          // el unico asesor de la sucursal
+    } else {
+        foreach ($vendedores as $v) {              // sin asesores: quien captura
+            if ((int)$v['id'] === (int)Auth::id()) { $vendedor_pre = (int)Auth::id(); break; }
+        }
+    }
 }
 
 // JSON para JS
@@ -655,18 +680,14 @@ $page_title = 'Nueva cotización';
         <div class="panel-section">
             <div class="panel-lbl">Vendedor asignado</div>
             <select id="cot-vendedor" style="width:100%;border:none;background:transparent;font:400 14px var(--body);color:var(--text);padding:8px 0;outline:none;cursor:pointer">
-                <?php /* Arranca VACIO a proposito. Antes venia preseleccionado
-                         el usuario que creaba la cotizacion, y cuando ese
-                         usuario no pertenece a la empresa (caso del superadmin)
-                         ninguna opcion quedaba marcada y el navegador mostraba
-                         la primera de la lista. En los dos casos parecia una
-                         eleccion sin que nadie hubiera elegido, y las
-                         cotizaciones terminaban asignadas al asesor
-                         equivocado. Con un solo usuario este bloque ni se
-                         imprime (count > 1), asi que no estorba. */ ?>
+                <?php if ($forzar_asesor): /* Solo con 2+ asesores: arranca vacio
+                         para que la asignacion sea una decision, no un default.
+                         Con un solo asesor va preseleccionado y esto ni se
+                         imprime. */ ?>
                 <option value="" selected disabled>— Seleccionar asesor —</option>
+                <?php endif; ?>
                 <?php foreach ($vendedores as $v): ?>
-                <option value="<?= (int)$v['id'] ?>"><?= e($v['nombre']) ?></option>
+                <option value="<?= (int)$v['id'] ?>" <?= (int)$v['id'] === $vendedor_pre ? 'selected' : '' ?>><?= e($v['nombre']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>

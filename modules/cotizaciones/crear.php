@@ -61,11 +61,14 @@ if (!empty($body['vendedor_id']) && Auth::puede('asignar_cotizaciones')) {
     // y si es el superadmin, ni siquiera pertenece a la empresa. El selector
     // del formulario ya obliga a elegir; esta es la misma regla del lado del
     // servidor, para que no dependa del navegador.
-    $usuarios_activos = (int)DB::val(
-        "SELECT COUNT(*) FROM usuarios WHERE empresa_id = ? AND activo = 1",
+    // Se cuentan ASESORES, no usuarios: una sucursal con admin + un asesor no
+    // tiene ambiguedad que resolver. Mismo criterio que el selector de
+    // nueva.php — si se cambia uno, cambiar el otro.
+    $asesores_activos = (int)DB::val(
+        "SELECT COUNT(*) FROM usuarios WHERE empresa_id = ? AND activo = 1 AND rol = 'asesor'",
         [$empresa_id]
     );
-    if ($usuarios_activos > 1) {
+    if ($asesores_activos > 1) {
         json_error('Selecciona el asesor al que se le asigna esta cotización');
     }
 }
