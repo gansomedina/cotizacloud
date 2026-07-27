@@ -512,6 +512,56 @@ mysql -u root -e "SELECT @@global.time_zone, @@session.time_zone, NOW();"
 
 ---
 
+# EVALUADO Y DESCARTADO POR RIESGO (27 jul)
+
+Tres cambios se construyeron, se auditaron y **se descartaron**. No están
+perdidos: quedan aquí con su razón, para retomarlos si algún día el contexto lo
+justifica. El criterio fue del CEO y es el correcto — el sistema estaba estable y
+estas eran mejoras marginales sobre piezas delicadas.
+
+| Cambio | Por qué se descartó |
+|---|---|
+| **Hallazgo 9 — `HEAD` en el router** | El de menor valor de todos (que un monitor de disponibilidad no reporte falsos caídos) sobre la ruta más crítica del sistema: el despachador. Y fue donde casi se introduce un bug serio: `/logout` es GET y `Auth::logout()` expira la sesión **en la base**, así que un `HEAD` desde un escáner de enlaces habría deslogueado al asesor → Capa 0 ciega → visitas fantasma. **Alternativa sin código: configurar el monitor con `GET`.** |
+| **Hallazgo 10 — cookie de sesión host-aware** | El motivo es **hipotético**: hoy ningún flujo necesita `$_SESSION` en dominio custom (los 5 endpoints con CSRF viven en el panel). Y tiene un efecto secundario **negativo**: `core/layout.php:52` usa `$_SESSION['_sessions_cleaned']` para correr la limpieza retroactiva del Escudo una vez al día; en dominio custom hoy `$_SESSION` nace vacía y esa limpieza corre en **cada carga**, así que persistirla la bajaría a una vez al día justo en los dominios donde se originan las fugas. **Se hará el día que se agregue CSRF a `quote_action.php` — no antes.** |
+| **`es_interno` en la deduplicación** | Beneficio angosto: solo actúa **después** de que la limpieza marcó la sesión del asesor, y esa limpieza corre como mucho una vez al día. Además creaba una fuga nueva con el toggle `excluir_internos` apagado (la Capa 1 de `track.php` sí lo respeta, el filtro no), que hubo que parchear. |
+
+## Lo que la auditoría adversarial encontró en los cambios del propio día
+
+Vale registrarlo porque es el argumento a favor de auditar antes de desplegar:
+
+1. **Código muerto con comentario falso** (`Radar.php`). El bloque de "rescate de
+   fantasmas" no rescataba nada — toda sesión que entraba cumplía `(0,0)` y el
+   umbral de abajo la mataba igual. Comprobado: **0 de 140** combinaciones se
+   salvan. Encima llevaba cinco líneas justificando por qué hace match por
+   `visitor_id` en vez de IP, describiendo una decisión que el código nunca toma.
+   **Corregido:** bloque eliminado (ahorra recorrer 150 días de eventos por cada
+   sesión `(0,0)`, en los dos bucles) y el comentario dice la verdad.
+2. **Otro comentario falso** (`calibrar()`). Se justificó el `ON`-vs-`WHERE`
+   diciendo que en el `WHERE` se perderían las cotizaciones sin sesiones. Falso:
+   el `if ($sess <= 1) continue` ya las descarta. La razón real son las **bandas
+   de importe** (`$totales` recorre todo `$cots`). **Corregido.**
+3. **Regresión introducida** (`track.php`). El filtro de dedupe no estaba atado al
+   toggle `excluir_internos` pero la Capa 1 sí → con el toggle apagado se
+   insertaba una sesión nueva marcada como cliente. Ya no aplica: el cambio
+   completo se descartó.
+4. **Consulta viva sin filtrar** (`modules/dashboard/index.php`). **Corregido.**
+
+## Inconsistencia registrada, no corregida
+
+La regla de "qué cuenta como engagement" existe en **cuatro variantes** en el
+sistema, y unificarlas es una decisión de diseño, no un arreglo:
+
+| Umbral | Dónde |
+|---|---|
+| `scroll>0 OR visible>=2000` | historial del editor (`cotizaciones/ver.php`), ejecutivo |
+| `visible>3000 OR scroll>10` | alertas de competencia, ejecutivo |
+| `scroll>0 AND visible>0` | `Radar::engage_avg()` |
+| `visible<200 AND scroll<35` | `Radar::score()` — el calibrado con 60 días de datos |
+
+Por eso "fuente única" solo aplica **dentro de `score()`**, no a nivel sistema.
+
+---
+
 # ORDEN SUGERIDO
 
 | # | Qué | Dónde | Esfuerzo |
