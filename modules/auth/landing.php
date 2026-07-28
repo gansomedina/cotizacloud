@@ -462,6 +462,28 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
 .tarrow{font:700 15px var(--body);flex-shrink:0;width:14px;text-align:center}
 @media (prefers-reduced-motion: reduce){ .tfill{transition:none} }
 
+/* notificaciones de demostración (flotantes) */
+.demo-stack{position:fixed;left:20px;bottom:20px;z-index:60;display:flex;flex-direction:column;
+  gap:10px;width:min(370px,calc(100vw - 40px));pointer-events:none}
+.dnoti{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 18px 46px -18px rgba(0,0,0,.85);padding:13px 14px;display:flex;gap:11px;
+  align-items:flex-start;pointer-events:auto;
+  opacity:0;transform:translateY(14px) scale(.97);
+  transition:opacity .45s ease, transform .5s cubic-bezier(.2,.8,.3,1.05);}
+.dnoti.on{opacity:1;transform:none}
+.dnoti .di{width:36px;height:36px;border-radius:10px;flex-shrink:0;display:grid;place-items:center;
+  font-size:18px;background:var(--panel-2);border:1px solid var(--line)}
+.dnoti .dx{flex:1;min-width:0}
+.dnoti .dt{font:700 14px var(--body);letter-spacing:-.01em;color:var(--ink)}
+.dnoti .dd{font:500 13px/1.4 var(--body);color:var(--muted);margin-top:3px}
+.dnoti .dm{display:inline-block;margin-top:8px;font:800 11.5px var(--body);
+  border-radius:999px;padding:4px 10px}
+.dnoti .dc{background:none;border:0;color:var(--faint);font-size:17px;line-height:1;
+  cursor:pointer;padding:2px 4px;flex-shrink:0}
+.dnoti .dc:hover{color:var(--ink)}
+@media(max-width:700px){ .demo-stack{left:12px;right:12px;bottom:96px;width:auto} }
+@media (prefers-reduced-motion: reduce){ .dnoti{transition:none} }
+
 /* motion */
 .rev{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.7,.3,1)}
 .rev.in{opacity:1;transform:none}
@@ -997,6 +1019,45 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
   </footer>
 </div>
 
+<div class="demo-stack" id="demoStack" aria-live="polite">
+  <div class="dnoti" id="dn1">
+    <span class="di">🔥</span>
+    <div class="dx">
+      <div class="dt">3 cotizaciones en cierre inminente</div>
+      <div class="dd">Arq. Rodríguez, Ing. Vega y Despacho Luna las revisaron varias veces hoy.</div>
+      <span class="dm" style="color:var(--fire);background:rgba(224,59,52,.14)">🔥 Cierre inminente</span>
+    </div>
+    <button class="dc" aria-label="Cerrar">&times;</button>
+  </div>
+  <div class="dnoti" id="dn2">
+    <span class="di">✕</span>
+    <div class="dx">
+      <div class="dt">4 cotizaciones sin abrir</div>
+      <div class="dd">Enviadas hace más de 48 h y nadie las ha visto.</div>
+      <span class="dm" style="color:var(--bad);background:rgba(220,38,38,.14)">✕ No abierta</span>
+    </div>
+    <button class="dc" aria-label="Cerrar">&times;</button>
+  </div>
+  <div class="dnoti" id="dn3">
+    <span class="di">💸</span>
+    <div class="dx">
+      <div class="dt">5 cotizaciones validando precio</div>
+      <div class="dd">Tus clientes están comparando. Buen momento para llamar.</div>
+      <span class="dm" style="color:var(--mid);background:rgba(217,119,6,.16)">💸 Validando precio</span>
+    </div>
+    <button class="dc" aria-label="Cerrar">&times;</button>
+  </div>
+  <div class="dnoti" id="dn4">
+    <span class="di">🔮</span>
+    <div class="dx">
+      <div class="dt">1 cotización con predicción alta</div>
+      <div class="dd">Constructora MBL — 94% de probabilidad de cierre.</div>
+      <span class="dm" style="color:var(--g);background:var(--g-soft)">🔮 Predicción alta</span>
+    </div>
+    <button class="dc" aria-label="Cerrar">&times;</button>
+  </div>
+</div>
+
 <script>
 (function(){
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1015,6 +1076,29 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
     return;
   }
 
+
+
+  // ── notificaciones de demostración: aparecen al pasar por ciertas secciones
+  (function(){
+    var mostrar = function(id, entra, sale){
+      var el = document.getElementById(id); if(!el) return;
+      setTimeout(function(){ el.classList.add('on'); }, entra);
+      setTimeout(function(){ el.classList.remove('on'); }, sale);
+    };
+    document.querySelectorAll('.dnoti .dc').forEach(function(b){
+      b.addEventListener('click', function(){ b.closest('.dnoti').classList.remove('on'); });
+    });
+    var disparo = function(sel, a, b2){
+      var t = document.querySelector(sel); if(!t) return;
+      var ya = false;
+      var ob = new IntersectionObserver(function(e){
+        if(e[0].isIntersecting && !ya){ ya = true; mostrar(a, 500, 15000); mostrar(b2, 1600, 17000); ob.disconnect(); }
+      }, {threshold:.2});
+      ob.observe(t);
+    };
+    disparo('#radar', 'dn1', 'dn2');
+    disparo('#precios', 'dn3', 'dn4');
+  })();
 
   // ── precios: ciclo (mensual/anual) y moneda (MXN/USD)
   var swCiclo=document.getElementById('swCiclo'), swMon=document.getElementById('swMoneda');
