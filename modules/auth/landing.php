@@ -332,6 +332,9 @@ section.blk{padding:clamp(56px,9vw,104px) 0 0}
 @media (prefers-reduced-motion: reduce){ .rviz .sweep,.rviz .blip{animation:none} }
 
 footer{padding:34px 0 60px;color:var(--faint);font-size:13.5px;text-align:center}
+footer a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
+footer a:hover{color:var(--ink);border-bottom-color:var(--line)}
+footer a:focus-visible{outline:2px solid var(--g);outline-offset:3px;border-radius:4px}
 
 /* interruptores de precio */
 .sw-bar{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
@@ -395,10 +398,6 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
 .mot{display:inline-flex;align-items:center;gap:6px;font:700 12px var(--body);
   border-radius:999px;padding:4px 11px;margin-top:8px;white-space:nowrap}
 .mot .eye{font:600 11.5px var(--num);opacity:.8}
-.feats{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
-.feats span{border:1px solid var(--line);background:var(--panel);border-radius:999px;
-  padding:8px 15px;font:600 14px var(--body);color:var(--muted)}
-.capt{margin:16px 0 0;font-size:14.5px;color:var(--faint);text-align:center}
 
 /* dos columnas: caso + ventas */
 .two{display:grid;grid-template-columns:1fr;gap:clamp(16px,2.2vw,22px);
@@ -591,19 +590,6 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
           </tbody>
         </table>
       </div>
-    </div>
-
-    <p class="capt">Tu lista, con el termómetro de cada cotización al lado.</p>
-
-    <div class="feats rev">
-      <span>Catálogo y precios</span>
-      <span>Cupones</span>
-      <span>Descuentos inteligentes</span>
-      <span>Extras</span>
-      <span>Archivos adjuntos</span>
-      <span>Notas internas</span>
-      <span>Se acepta en línea</span>
-      <span>Se convierte en venta</span>
     </div>
   </section>
 
