@@ -63,10 +63,9 @@ if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativ
   --g-soft:#14251c;
   --g-line:#254432;
 
-  --ground:#121613;
+  --ground:#0e110f;
   --panel:#191e1b;
-  --band:#1a211d;
-  --sep:rgba(79,174,124,.30);
+  --side:#222b25;
   --panel-2:#1e241f;
   --line:#252b26;
   --ink:#e9ebe7;
@@ -88,7 +87,7 @@ if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativ
 
 *{box-sizing:border-box}
 body{
-  margin:0;background:var(--ground);color:var(--ink);
+  margin:0;background:var(--side);color:var(--ink);
   font-family:var(--body);font-size:17px;line-height:1.6;font-weight:500;
   -webkit-font-smoothing:antialiased;
 }
@@ -97,6 +96,9 @@ b,strong{font-weight:700}
 em{font-style:normal}
 
 .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+.shell{max-width:1240px;margin:0 auto;background:var(--ground);border-radius:30px;
+  overflow:hidden;box-shadow:0 40px 120px -50px rgba(0,0,0,.85)}
+@media(max-width:1000px){ .shell{border-radius:0;max-width:none} }
 
 /* ── marca ─────────────────────────────────────────────── */
 .brandbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0}
@@ -181,8 +183,7 @@ em{font-style:normal}
 .nrow .nb b{color:#141613;font-weight:700}
 
 /* ── secciones ─────────────────────────────────────────── */
-section.blk{padding:clamp(52px,8vw,92px) 0;border-top:1px solid var(--sep)}
-section.blk.band-b{background:var(--band)}
+section.blk{padding:clamp(52px,8vw,92px) 0}
 .head{max-width:58rem}
 .head .kick{color:var(--g)}
 .head h2{
@@ -481,6 +482,8 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
 </style>
 </head>
 <body>
+<div class="shell">
+
 <div class="wrap">
 
   <div class="brandbar">
@@ -601,7 +604,7 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
   </section>
 
   <!-- ── PROCESO ───────────────────────────────────────── -->
-  <section class="blk band-b" id="proceso">
+  <section class="blk" id="proceso">
   <div class="wrap">
     <div class="head rev" style="max-width:46rem">
       <p class="kick">Tu proceso, potenciado</p>
@@ -685,7 +688,7 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
   </section>
 
   <!-- ── LA PRUEBA + VENTAS ────────────────────────────── -->
-  <section class="blk band-b">
+  <section class="blk">
   <div class="wrap">
     <div class="head rev">
       <p class="kick">La frase que ya conoces</p>
@@ -809,7 +812,7 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
   </section>
 
   <!-- ── TERMÓMETRO / RANKING ──────────────────────────── -->
-  <section class="blk band-b">
+  <section class="blk">
   <div class="wrap">
     <div class="head rev">
       <p class="kick">Termómetro del equipo <span class="plan">Business</span></p>
@@ -904,7 +907,7 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
   </section>
 
   <!-- ── PRECIOS ───────────────────────────────────────── -->
-  <section class="blk band-b" id="precios">
+  <section class="blk" id="precios">
   <div class="wrap">
     <div class="head rev">
       <p class="kick">Precios</p>
@@ -999,6 +1002,8 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
     Cotiza.cloud &copy; <?= date('Y') ?> &middot; <a href="/login">Iniciar sesión</a> &middot; <a href="/registro">Crear cuenta</a> &middot; <a href="/terminos">Términos</a> &middot; <a href="/privacidad">Privacidad</a>
   </footer>
 </div>
+
+</div><!-- /shell -->
 
 <script>
 (function(){
