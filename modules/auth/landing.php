@@ -63,9 +63,11 @@ if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativ
   --g-soft:#14251c;
   --g-line:#254432;
 
-  --ground:#0e110f;
-  --panel:#161a17;
-  --panel-2:#1b201c;
+  --ground:#121613;
+  --panel:#191e1b;
+  --band:#1a211d;
+  --sep:rgba(79,174,124,.30);
+  --panel-2:#1e241f;
   --line:#252b26;
   --ink:#e9ebe7;
   --muted:#9aa39c;
@@ -179,7 +181,8 @@ em{font-style:normal}
 .nrow .nb b{color:#141613;font-weight:700}
 
 /* ── secciones ─────────────────────────────────────────── */
-section.blk{padding:clamp(56px,9vw,104px) 0 0}
+section.blk{padding:clamp(52px,8vw,92px) 0;border-top:1px solid var(--sep)}
+section.blk.band-b{background:var(--band)}
 .head{max-width:58rem}
 .head .kick{color:var(--g)}
 .head h2{
@@ -298,7 +301,7 @@ section.blk{padding:clamp(56px,9vw,104px) 0 0}
 .tier .cta:focus-visible{outline:2px solid var(--g);outline-offset:2px}
 
 /* cierre */
-.close{margin:clamp(56px,9vw,104px) 0 0;border-radius:var(--r-lg);overflow:hidden;color:#fff;
+.close{margin:clamp(48px,7vw,84px) 0 0;border-radius:var(--r-lg);overflow:hidden;color:#fff;
   background:radial-gradient(120% 95% at 76% 18%, #14402c 0%, #0d2a20 46%, #0b1a24 100%);
   padding:clamp(36px,5.6vw,62px) clamp(22px,4vw,52px);
   display:grid;grid-template-columns:1fr;gap:clamp(30px,4vw,50px);align-items:center}
@@ -527,8 +530,11 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
     </div>
   </div>
 
+</div><!-- /wrap del héroe -->
+
   <!-- ── EL SISTEMA ────────────────────────────────────── -->
   <section class="blk" id="sistema">
+  <div class="wrap">
     <div class="head rev">
       <p class="kick">El sistema</p>
       <h2>Cotizaciones profesionales, <em>en minutos</em>.</h2>
@@ -591,10 +597,12 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
         </table>
       </div>
     </div>
+  </div>
   </section>
 
   <!-- ── PROCESO ───────────────────────────────────────── -->
-  <section class="blk" id="proceso">
+  <section class="blk band-b" id="proceso">
+  <div class="wrap">
     <div class="head rev" style="max-width:46rem">
       <p class="kick">Tu proceso, potenciado</p>
       <h2>Tu expertise cierra ventas. Nosotros te decimos <em>a quién llamar primero</em>.</h2>
@@ -611,10 +619,12 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
       <div class="step end"><div class="num">5</div><b>Tú cierras</b>
         <span>Con el momento exacto para levantar el teléfono.</span></div>
     </div>
+  </div>
   </section>
 
   <!-- ── RADAR ─────────────────────────────────────────── -->
   <section class="blk" id="radar">
+  <div class="wrap">
     <div class="head rev">
       <p class="kick">Radar de ventas</p>
       <h2>El Radar detecta el <em>interés real</em> de tu cliente.</h2>
@@ -671,10 +681,12 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
       <div><b><span class="mk">✕</span> Nadie la abrió</b><span>Días enviada y sin abrirse. Te enteras antes de que se enfríe.</span></div>
       <div><b><span class="mk">✕</span> Ni siquiera se mandó</b><span>Tú lo ves aunque el asesor no lo diga.</span></div>
     </div>
+  </div>
   </section>
 
   <!-- ── LA PRUEBA + VENTAS ────────────────────────────── -->
-  <section class="blk">
+  <section class="blk band-b">
+  <div class="wrap">
     <div class="head rev">
       <p class="kick">La frase que ya conoces</p>
       <h2>«Lo voy a pensar…»<br><em>Cotiza igual. Cierra más.</em></h2>
@@ -716,10 +728,12 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
         <div class="gleg"><span>sin Radar</span><span class="on">con Radar</span></div>
       </div>
     </div>
+  </div>
   </section>
 
   <!-- ── MESA ──────────────────────────────────────────── -->
   <section class="blk">
+  <div class="wrap">
     <div class="head rev">
       <p class="kick">La Mesa de Trabajo <span class="plan">Business</span></p>
       <h2>Tu día ya viene <em>priorizado</em>.</h2>
@@ -791,10 +805,12 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
         </div>
       </div>
     </div>
+  </div>
   </section>
 
   <!-- ── TERMÓMETRO / RANKING ──────────────────────────── -->
-  <section class="blk">
+  <section class="blk band-b">
+  <div class="wrap">
     <div class="head rev">
       <p class="kick">Termómetro del equipo <span class="plan">Business</span></p>
       <h2>¿Quién de tu equipo <em>sí está vendiendo</em>?</h2>
@@ -834,10 +850,12 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
       </div>
 
     </div>
+  </div>
   </section>
 
   <!-- ── MÓVIL ─────────────────────────────────────────── -->
   <section class="blk">
+  <div class="wrap">
     <div class="mob">
       <div class="head rev">
         <p class="kick">Dónde se usa</p>
@@ -882,10 +900,12 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
         </div>
       </div>
     </div>
+  </div>
   </section>
 
   <!-- ── PRECIOS ───────────────────────────────────────── -->
-  <section class="blk" id="precios">
+  <section class="blk band-b" id="precios">
+  <div class="wrap">
     <div class="head rev">
       <p class="kick">Precios</p>
       <h2>Empieza gratis <em>30 días</em>.</h2>
@@ -952,7 +972,10 @@ table.qt{width:100%;border-collapse:collapse;min-width:640px}
         <a class="cta" href="#" onclick="var f=document.getElementById('czl-fab');if(f){f.click();}return false;">Agenda una demo</a>
       </div>
     </div>
+  </div>
   </section>
+
+<div class="wrap">
 
   <div class="close rev">
     <div>
