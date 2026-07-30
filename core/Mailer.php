@@ -26,6 +26,9 @@ class Mailer
         $mail->SMTPSecure = defined('SMTP_SECURE')    ? SMTP_SECURE    : 'ssl';
         $mail->Port       = defined('SMTP_PORT')      ? SMTP_PORT      : 465;
         $mail->CharSet    = 'UTF-8';
+        // Sin esto PHPMailer espera 300 s por operacion SMTP: un relay lento
+        // retiene el worker de PHP-FPM y basta un puñado para tumbar el sitio.
+        $mail->Timeout    = defined('SMTP_TIMEOUT')   ? SMTP_TIMEOUT   : 10;
         $from      = defined('SMTP_FROM')      ? SMTP_FROM      : 'noreply@cotiza.cloud';
         $from_name = defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'CotizaCloud';
         $mail->setFrom($from, $from_name);
