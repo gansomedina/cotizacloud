@@ -1528,19 +1528,30 @@ class Radar
             );
             $ncfg_radar = notif_config($empresa_id);
             if ($ya_enviado === 0 && ($ncfg_radar['radar_alerta'] ?? true)) {
-                try {
-                    $label = self::PUSH_BUCKETS[$r['bucket']];
-                    $ref = $cot['numero'] ?: $cot['titulo'] ?: "#{$cotizacion_id}";
-                    PushNotification::enviar_a_empresa(
-                        $empresa_id,
-                        'radar_' . $r['bucket'],
-                        "Radar: {$label}",
-                        "{$ref} — {$label}",
-                        ['cotizacion_id' => $cotizacion_id, 'url' => '/radar']
-                    );
-                } catch (\Exception $e) {
-                    // No bloquear el recálculo si falla el push
-                }
+                // DIFERIDO: recalcular() corre EN LINEA cuando el cliente abre el
+                // slug publico, asi que el envio del push lo pagaba la visita del
+                // cliente (APNs/WebPush por HTTP). Se manda al cierre de la
+                // peticion, con la conexion ya cerrada: mismo aviso, sin costo
+                // para quien esta leyendo la cotizacion.
+                $pb_eid    = $empresa_id;
+                $pb_cotid  = $cotizacion_id;
+                $pb_bucket = $r['bucket'];
+                $pb_label  = self::PUSH_BUCKETS[$r['bucket']];
+                $pb_ref    = $cot['numero'] ?: $cot['titulo'] ?: "#{$cotizacion_id}";
+                register_shutdown_function(function () use ($pb_eid, $pb_cotid, $pb_bucket, $pb_label, $pb_ref) {
+                    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+                    try {
+                        PushNotification::enviar_a_empresa(
+                            $pb_eid,
+                            'radar_' . $pb_bucket,
+                            "Radar: {$pb_label}",
+                            "{$pb_ref} — {$pb_label}",
+                            ['cotizacion_id' => $pb_cotid, 'url' => '/radar']
+                        );
+                    } catch (\Throwable $e) {
+                        error_log('Push radar error: ' . $e->getMessage());
+                    }
+                });
             }
         }
     }

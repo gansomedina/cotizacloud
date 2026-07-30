@@ -298,39 +298,49 @@ if ($accion === 'aceptar') {
         // Verificar si las notificaciones están activas
         $ncfg = notif_config(EMPRESA_ID);
 
-        // Push notification a los usuarios de la empresa
+        // Push + email DIFERIDOS (mismo patron que public/cotizacion.php:363).
+        // Dos razones:
+        //  1. El cliente ve su confirmacion al instante; los avisos salen despues,
+        //     con la conexion ya cerrada. Antes esperaba el push Y el correo.
+        //  2. Quedan FUERA del try de la transaccion: un fallo de correo ya no
+        //     dispara el rollback ni devuelve 500 sobre una cotizacion que SI se
+        //     acepto y SI se guardo.
         if ($ncfg['cotizacion_aceptada']) {
-            try {
-                PushNotification::enviar_a_empresa(
-                    EMPRESA_ID,
-                    'cotizacion_aceptada',
-                    'Cotización aceptada',
-                    $nombre . ' aceptó la cotización: ' . $cot['titulo'],
-                    ['cotizacion_id' => $cot_id, 'url' => '/cotizaciones/' . $cot_id]
-                );
-            } catch (\Exception $e) {
-                if (DEBUG) error_log('Push error: ' . $e->getMessage());
-            }
-        }
-
-        // Email al correo de notificaciones de la empresa
-        if ($ncfg['cotizacion_aceptada']) {
-            try {
-                $empresa_mail = DB::row("SELECT nombre, moneda, notif_email FROM empresas WHERE id=?", [EMPRESA_ID]);
-                $notif_email = $empresa_mail['notif_email'] ?? '';
-                if ($notif_email) {
-                Mailer::enviar_cotizacion_aceptada(
-                    $notif_email,
-                    $empresa_mail['nombre'] ?? '',
-                    $cot['titulo'],
-                    $nombre,
-                    $total_guardar,
-                    $empresa_mail['moneda'] ?? 'MXN'
-                );
-            }
-        } catch (\Exception $e) {
-            if (DEBUG) error_log('Email aceptada error: ' . $e->getMessage());
-        }
+            $nt_eid    = EMPRESA_ID;
+            $nt_cotid  = (int)$cot_id;
+            $nt_titulo = (string)($cot['titulo'] ?? '');
+            $nt_nombre = (string)$nombre;
+            $nt_total  = (float)$total_guardar;
+            register_shutdown_function(function () use ($nt_eid, $nt_cotid, $nt_titulo, $nt_nombre, $nt_total) {
+                if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+                try {
+                    PushNotification::enviar_a_empresa(
+                        $nt_eid,
+                        'cotizacion_aceptada',
+                        'Cotización aceptada',
+                        $nt_nombre . ' aceptó la cotización: ' . $nt_titulo,
+                        ['cotizacion_id' => $nt_cotid, 'url' => '/cotizaciones/' . $nt_cotid]
+                    );
+                } catch (\Throwable $e) {
+                    error_log('Push aceptada error: ' . $e->getMessage());
+                }
+                try {
+                    $empresa_mail = DB::row("SELECT nombre, moneda, notif_email FROM empresas WHERE id=?", [$nt_eid]);
+                    $notif_email  = $empresa_mail['notif_email'] ?? '';
+                    if ($notif_email) {
+                        Mailer::enviar_cotizacion_aceptada(
+                            $notif_email,
+                            $empresa_mail['nombre'] ?? '',
+                            $nt_titulo,
+                            $nt_nombre,
+                            $nt_total,
+                            $empresa_mail['moneda'] ?? 'MXN'
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    error_log('Email aceptada error: ' . $e->getMessage());
+                }
+            });
         }
     } catch (Exception $e) {
         DB::rollback();
@@ -341,10 +351,18 @@ if ($accion === 'aceptar') {
     // CAPI: enviar Lead server-side (auditoría 17-jul: usaba $empresa_id/$empresa/
     // $cot['total'] INDEFINIDOS → TypeError tragado por el catch → NUNCA se enviaba.
     // Ahora con EMPRESA_ID, el total realmente cobrado y la moneda de la empresa).
-    try {
-        MarketingPixels::capi_lead(EMPRESA_ID, (float)$total_guardar,
-            DB::val("SELECT moneda FROM empresas WHERE id=?", [EMPRESA_ID]) ?: 'MXN');
-    } catch (\Throwable $e) {}
+    // CAPI DIFERIDO: es una llamada HTTP a Meta; el cliente no tiene por que esperarla.
+    $capi_eid   = EMPRESA_ID;
+    $capi_total = (float)$total_guardar;
+    register_shutdown_function(function () use ($capi_eid, $capi_total) {
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        try {
+            MarketingPixels::capi_lead($capi_eid, $capi_total,
+                DB::val("SELECT moneda FROM empresas WHERE id=?", [$capi_eid]) ?: 'MXN');
+        } catch (\Throwable $e) {
+            error_log('CAPI lead error: ' . $e->getMessage());
+        }
+    });
 
     echo json_encode(['ok'=>true, 'estado'=>'aceptada']); exit;
 }
@@ -387,34 +405,42 @@ if ($accion === 'rechazar') {
 
         // Push notification a los usuarios de la empresa
         $ncfg_r = notif_config(EMPRESA_ID);
+        // Push + email DIFERIDOS — misma razon que en la rama de aceptar:
+        // el cliente no espera los avisos, y un fallo de correo ya no puede
+        // provocar rollback ni 500 sobre un rechazo que si se guardo.
         if ($ncfg_r['cotizacion_rechazada']) {
-        try {
-            PushNotification::enviar_a_empresa(
-                EMPRESA_ID,
-                'cotizacion_rechazada',
-                'Cotización rechazada',
-                'La cotización "' . $cot['titulo'] . '" fue rechazada' . ($motivo ? ': ' . $motivo : ''),
-                ['cotizacion_id' => $cot_id, 'url' => '/cotizaciones/' . $cot_id]
-            );
-        } catch (\Exception $e) {
-            if (DEBUG) error_log('Push error: ' . $e->getMessage());
-        }
-
-        // Email al correo de notificaciones de la empresa
-        try {
-            $empresa_mail = DB::row("SELECT nombre, notif_email FROM empresas WHERE id=?", [EMPRESA_ID]);
-            $notif_email = $empresa_mail['notif_email'] ?? '';
-            if ($notif_email) {
-                Mailer::enviar_cotizacion_rechazada(
-                    $notif_email,
-                    $empresa_mail['nombre'] ?? '',
-                    $cot['titulo'],
-                    $motivo
-                );
-            }
-        } catch (\Exception $e) {
-            if (DEBUG) error_log('Email rechazada error: ' . $e->getMessage());
-        }
+            $nr_eid    = EMPRESA_ID;
+            $nr_cotid  = (int)$cot_id;
+            $nr_titulo = (string)($cot['titulo'] ?? '');
+            $nr_motivo = (string)$motivo;
+            register_shutdown_function(function () use ($nr_eid, $nr_cotid, $nr_titulo, $nr_motivo) {
+                if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+                try {
+                    PushNotification::enviar_a_empresa(
+                        $nr_eid,
+                        'cotizacion_rechazada',
+                        'Cotización rechazada',
+                        'La cotización "' . $nr_titulo . '" fue rechazada' . ($nr_motivo !== '' ? ': ' . $nr_motivo : ''),
+                        ['cotizacion_id' => $nr_cotid, 'url' => '/cotizaciones/' . $nr_cotid]
+                    );
+                } catch (\Throwable $e) {
+                    error_log('Push rechazada error: ' . $e->getMessage());
+                }
+                try {
+                    $empresa_mail = DB::row("SELECT nombre, notif_email FROM empresas WHERE id=?", [$nr_eid]);
+                    $notif_email  = $empresa_mail['notif_email'] ?? '';
+                    if ($notif_email) {
+                        Mailer::enviar_cotizacion_rechazada(
+                            $notif_email,
+                            $empresa_mail['nombre'] ?? '',
+                            $nr_titulo,
+                            $nr_motivo
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    error_log('Email rechazada error: ' . $e->getMessage());
+                }
+            });
         } // cierre if ncfg cotizacion_rechazada
     } catch (Exception $e) {
         DB::rollback();
@@ -423,7 +449,16 @@ if ($accion === 'rechazar') {
     }
 
     // CAPI: enviar QuoteRejected server-side ($empresa_id era indefinido → nunca corría)
-    try { MarketingPixels::capi_rechazar(EMPRESA_ID); } catch (\Throwable $e) {}
+    // CAPI DIFERIDO — misma razon que en la rama de aceptar.
+    $capi_eid_r = EMPRESA_ID;
+    register_shutdown_function(function () use ($capi_eid_r) {
+        if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+        try {
+            MarketingPixels::capi_rechazar($capi_eid_r);
+        } catch (\Throwable $e) {
+            error_log('CAPI rechazar error: ' . $e->getMessage());
+        }
+    });
 
     echo json_encode(['ok'=>true,'estado'=>'rechazada']); exit;
 }

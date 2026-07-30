@@ -6,6 +6,13 @@
 
 defined('COTIZAAPP') or die;
 
+// El candado de la sesion de PHP serializa las peticiones que comparten cookie:
+// mientras esta pagina se pinta, los avisos del rastreo del Radar (/api/track)
+// del MISMO visitante se quedan esperando en fila. Aqui no se lee ni se escribe
+// $_SESSION (verificado), asi que se suelta de inmediato. Los datos siguen
+// disponibles para lectura en esta peticion; solo no se persisten escrituras.
+if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+
 $slug = $slug ?? '';
 if (!$slug) { http_response_code(404); die('No encontrado'); }
 
