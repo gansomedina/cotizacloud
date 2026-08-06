@@ -310,7 +310,7 @@ class RitmoReporte
         if ($de['precio'] > 0) $g[]="\"Revisemos las {$de['precio']} que se cayeron por precio — ¿cómo manejas cuando te dicen que está caro?\"";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $g[]="\"{$ve['con_dto']} de tus {$ve['cierres']} ventas fueron con descuento — ¿por qué necesitaste bajar el precio?\"";
         if ($rd['sin_feedback'] >= 2) $g[]="\"Tienes {$rd['sin_feedback']} calientes sin marcar — revísalas conmigo ahorita.\"";
-        if ($card && $card['citas_estado'] === 'amarillo') $g[]="\"Tus citas bajaron esta semana ({$card['citas_txt']}) — ¿qué pasó?\"";
+        if ($card && $card['citas_estado'] === 'amarillo') $g[]="\"Bajaste el ritmo de citas: {$card['citas_txt']} — ¿qué pasó?\"";
         if ($card && $card['cont_estado'] !== 'verde' && $card['cont_estado'] !== 'gris') $g[]="\"" . $card['cont_txt'] . " — ¿a qué hora y por qué medio les marcas?\"";
         if (!$g) $g[]="\"Vas bien — ¿qué necesitas de mí para cerrar más rápido?\"";
 
