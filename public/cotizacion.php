@@ -135,6 +135,12 @@ if ($cot['impuesto_modo'] === 'suma') {
 // Meta los empareje y cuente como cubiertos (sube la "cobertura de eventos" del
 // pixel). Es un id opaco, sin BD ni datos del cliente.
 $mp_view_eid = bin2hex(random_bytes(16));
+// Advanced Matching (Fase 2): SOLO si la empresa activó el opt-in Y hay cliente
+// identificado. Navegador = valores en claro (la librería hashea); CAPI = ya
+// hasheado. Sin opt-in → null/[] → comportamiento idéntico al de antes.
+$mp_am_on      = MarketingPixels::advanced_matching_on(EMPRESA_ID) && !empty($cot['cliente_id']);
+$mp_am_browser = $mp_am_on ? MarketingPixels::am_browser($cot['cliente_nombre'] ?? '', $cot['cli_tel'] ?? '', (int)$cot['cliente_id']) : null;
+$mp_am_hashed  = $mp_am_on ? MarketingPixels::am_capi_hashed($cot['cliente_nombre'] ?? '', $cot['cli_tel'] ?? '', (int)$cot['cliente_id']) : [];
 // Extras gravados (mismo criterio que el accept): para el display del DI, el
 // "Total con descuento" = nuevo_total (base descontada con IVA, sin extras) +
 // extras gravados. Y la base del DI ($di_precio) = total sin esos extras.
@@ -438,9 +444,9 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
             $capi_tot = (float)$total_base;              // MISMO monto que el navegador (:2145)
             $capi_mon = $cot['moneda'] ?? 'MXN';
             $capi_veid = $mp_view_eid;                   // dedup con el fbq del navegador
-            register_shutdown_function(function () use ($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid) {
+            register_shutdown_function(function () use ($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid, $mp_am_hashed) {
                 if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-                try { MarketingPixels::capi_view($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid); } catch (\Throwable $e) {}
+                try { MarketingPixels::capi_view($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid, $mp_am_hashed); } catch (\Throwable $e) {}
             });
 
         } else {
@@ -456,9 +462,9 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
             $capi_eid = EMPRESA_ID; $capi_num = $cot['numero'];
             $capi_tot = (float)$total_base; $capi_mon = $cot['moneda'] ?? 'MXN';
             $capi_veid = $mp_view_eid;
-            register_shutdown_function(function () use ($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid) {
+            register_shutdown_function(function () use ($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid, $mp_am_hashed) {
                 if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-                try { MarketingPixels::capi_view($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid); } catch (\Throwable $e) {}
+                try { MarketingPixels::capi_view($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid, $mp_am_hashed); } catch (\Throwable $e) {}
             });
         }
 
@@ -820,7 +826,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     color:#666; text-align:center; line-height:1.6 }
 }
 </style>
-<?= MarketingPixels::scripts_base(EMPRESA_ID) ?>
+<?= MarketingPixels::scripts_base(EMPRESA_ID, $mp_am_browser ?? null) ?>
 </head>
 <body>
 

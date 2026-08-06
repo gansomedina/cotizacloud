@@ -105,6 +105,7 @@
     <li><strong>Google Analytics y Google Ads:</strong> <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a></li>
     <li><strong>TikTok:</strong> <a href="https://tiktok.com/legal/privacy-policy" target="_blank" rel="noopener">tiktok.com/legal/privacy-policy</a></li>
 </ul>
+<p><strong>Coincidencia avanzada (Advanced Matching).</strong> Algunas empresas emisoras pueden activar, bajo su responsabilidad, el envío a Meta de datos de contacto del cliente (nombre y teléfono) en forma <strong>cifrada</strong> (hash irreversible), con el único fin de mejorar la coincidencia de los eventos de medición. CotizaCloud no habilita esta opción por su cuenta ni comparte los datos en texto claro; la empresa emisora es la responsable de contar con el consentimiento correspondiente. Si no desea que sus datos se compartan con estas plataformas, contacte a la empresa emisora.</p>
 <p>Para más información sobre las tecnologías concretas activadas en una cotización específica, contacte directamente a la empresa emisora.</p>
 
 <h2>12. Cambios a este aviso</h2>
