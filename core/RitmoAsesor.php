@@ -89,7 +89,7 @@ class RitmoAsesor
         try { $trabajo = self::_trabajo($empresa_id, $uid, $win); } catch (Throwable $e) {}
         try { [$desc, $sincita, $rapido] = self::_descartes($empresa_id, $uid, $win, $win, $rapido_dias); } catch (Throwable $e) {}
         try { [$contactados, $no_conecta] = self::_contacto($empresa_id, $uid, $win); } catch (Throwable $e) {}
-        [$venc_now, $venc_sube, $venc_base, $venc_week, $venc_prior] = self::_vencidas($empresa_id, $uid);
+        [$venc_cnt, $venc_hoy] = self::_reloj($empresa_id, $uid);
         [$citas7, $citas_base, $citas_baja] = self::_citas($empresa_id, $uid);
 
         $conv_rate  = $trabajo > 0 ? (int)round($cierres / $trabajo * 100) : 0;
@@ -137,22 +137,18 @@ class RitmoAsesor
             $citas_txt    = "{$citas7} citas esta semana{$citas_ref}";
         }
 
-        // ── PILAR 4: Seguimiento (vencidas) — mide si SUBEN vs su nivel ──
-        //   Sube vs su norma → amarillo. 0 vencidas → verde. Sin histórico para
-        //   juzgar la tendencia (asesor nuevo) → gris con el número (NO verde
-        //   regalado). Estable en su propio nivel → verde.
-        if ($venc_sube) {
+        // ── PILAR 4: Seguimiento — el RELOJ de la Mesa (mismo que ve el asesor).
+        //   Una vencida es una vencida (sin histórico): tiene vencidas → rojo.
+        //   Solo "vence hoy" (esperó al último) → amarillo. Ninguna cerca → verde.
+        if ($venc_cnt > 0) {
+            $venc_estado = 'rojo';
+            $venc_txt    = "{$venc_cnt} vencidas" . ($venc_hoy > 0 ? " · {$venc_hoy} vencen hoy" : "");
+        } elseif ($venc_hoy > 0) {
             $venc_estado = 'amarillo';
-            $venc_txt    = "{$venc_week} vencidas esta semana (vs ~{$venc_base}/sem)";
-        } elseif ($venc_week === 0) {
-            $venc_estado = 'verde';
-            $venc_txt    = "0 vencidas esta semana";
-        } elseif ($venc_prior === 0) {
-            $venc_estado = 'gris';
-            $venc_txt    = "{$venc_week} vencidas esta semana (sin histórico aún)";
+            $venc_txt    = "{$venc_hoy} vencen hoy (esperó al último)";
         } else {
             $venc_estado = 'verde';
-            $venc_txt    = "{$venc_week} vencidas esta semana (estable ~{$venc_base}/sem)";
+            $venc_txt    = "al día (0 vencidas)";
         }
 
         // ── PILAR 5: Contacto — de los que intentó contactar, cuántos NO LE
@@ -180,7 +176,7 @@ class RitmoAsesor
         $problemas = count(array_filter($estados, fn($s) => $s === 'amarillo' || $s === 'rojo'));
         $flag = ($sem === 'rojo');
 
-        $motivo = self::_motivo($conv_estado, $desc_estado, $cont_estado, $venc_sube, $citas_baja);
+        $motivo = self::_motivo($conv_estado, $desc_estado, $cont_estado, $venc_estado, $citas_baja);
 
         return [
             'usuario_id' => $uid, 'nombre' => $nombre, 'semaforo' => $sem, 'flag' => $flag, 'problemas' => $problemas,
@@ -204,14 +200,15 @@ class RitmoAsesor
         return $base . ($sub ? " · " . implode(' · ', $sub) : "");
     }
 
-    private static function _motivo(string $conv_estado, string $desc_estado, string $cont_estado, bool $venc_sube, bool $citas_baja): string
+    private static function _motivo(string $conv_estado, string $desc_estado, string $cont_estado, string $venc_estado, bool $citas_baja): string
     {
         if ($desc_estado === 'rojo') return "Descarta mal — sin llegar a cita y muy rápido. Que trabaje el lead antes de tirarlo.";
+        if ($venc_estado === 'rojo') return "Trae seguimientos VENCIDOS — inexcusable. Que se ponga al día hoy mismo.";
         if ($cont_estado === 'rojo') return "A la mayoría no le contestan — revisa cómo, cuándo y por qué medio les marca.";
         if ($conv_estado === 'rojo') return "Trabajó varias y no ha cerrado nada — ¿qué lo está frenando?";
         if ($desc_estado === 'amarillo') return "Cuida sus descartes — que llegue a cita antes de tirar.";
         if ($cont_estado === 'amarillo') return "A varios no le contestan — ajusta su forma de contactar (horario/medio/insistencia).";
-        if ($venc_sube) return "Se le está acumulando el seguimiento esta semana — presiónalo.";
+        if ($venc_estado === 'amarillo') return "Trae seguimientos al límite (vencen hoy) — que no los deje caer.";
         if ($citas_baja) return "Bajó su ritmo de citas esta semana — su embudo se está secando.";
         return "Va bien — cierra, descarta sano y da seguimiento.";
     }
@@ -289,24 +286,17 @@ class RitmoAsesor
         return [(int)($row['contactados'] ?? 0), (int)($row['no_conecta'] ?? 0)];
     }
 
-    private static function _vencidas(int $empresa_id, int $uid): array
+    /**
+     * Reloj de seguimiento — MISMO que ve el asesor en su Mesa. Read-only
+     * (Mesa::armar en modo solo_lectura no escribe mesa_vencidos). Devuelve
+     * [vencidas, vence_hoy] del estado ACTUAL del reloj, sin histórico.
+     */
+    private static function _reloj(int $empresa_id, int $uid): array
     {
-        $v7 = 0; $vprior = 0; $vnow = 0;
         try {
-            $row = DB::row(
-                "SELECT
-                    COUNT(DISTINCT CASE WHEN fecha >= CURDATE() THEN cotizacion_id END) AS vnow,
-                    COUNT(DISTINCT CASE WHEN fecha >= CURDATE() - INTERVAL 6 DAY THEN cotizacion_id END) AS v7,
-                    COUNT(DISTINCT CASE WHEN fecha <  CURDATE() - INTERVAL 6 DAY THEN cotizacion_id END) AS vprior
-                 FROM mesa_vencidos
-                 WHERE empresa_id = ? AND usuario_id = ? AND fecha >= CURDATE() - INTERVAL 27 DAY",
-                [$empresa_id, $uid]
-            );
-            $vnow = (int)($row['vnow'] ?? 0); $v7 = (int)($row['v7'] ?? 0); $vprior = (int)($row['vprior'] ?? 0);
-        } catch (Throwable $e) {}
-        $base_wk = $vprior / 3.0;
-        $sube = ($vprior > 0) && ($v7 >= 3) && ($v7 > $base_wk * 1.5);
-        return [$vnow, $sube, (int)round($base_wk), $v7, $vprior];
+            $r = Mesa::armar($empresa_id, $uid, true)['resumen'] ?? [];
+            return [(int)($r['vencidas'] ?? 0), (int)($r['vence_hoy'] ?? 0)];
+        } catch (Throwable $e) { return [0, 0]; }
     }
 
     private static function _citas(int $empresa_id, int $uid): array

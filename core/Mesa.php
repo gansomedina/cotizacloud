@@ -28,9 +28,12 @@ class Mesa
      * Retorna ['rows'=>[], 'limpieza'=>['n'=>..,'monto'=>..,'linea_dias'=>..],
      *          'ciclo'=>[...], 'resumen'=>[...]]
      */
-    public static function armar(int $empresa_id, int $vendedor_id): array
+    public static function armar(int $empresa_id, int $vendedor_id, bool $solo_lectura = false): array
     {
-        $ck = "$empresa_id:$vendedor_id";
+        // $solo_lectura: NO escribe mesa_vencidos (lo usa RitmoAsesor para leer
+        // el reloj sin efectos secundarios). Cache separado para no cruzarse con
+        // la llamada normal que SÍ debe registrar las vencidas del día.
+        $ck = "$empresa_id:$vendedor_id:" . ($solo_lectura ? 'ro' : 'rw');
         if (isset(self::$cache[$ck])) return self::$cache[$ck];
 
         // Radar vive en modules/, fuera del autoloader de core/
@@ -614,17 +617,20 @@ class Mesa
         }
         $rows = $capped;
 
-        $sin_postura = 0; $monto = 0.0; $mas_viejo = 0; $atendidas = 0; $descartadas = 0; $frias = 0; $vencidas = 0;
+        $sin_postura = 0; $monto = 0.0; $mas_viejo = 0; $atendidas = 0; $descartadas = 0; $frias = 0; $vencidas = 0; $vence_hoy = 0;
         foreach ($rows as $r) {
             if (!empty($r['es_fria']))          { $frias++; continue; } // sección aparte, no son pendientes
             if ($r['cat'] === 'descartada_hoy') { $descartadas++; continue; }
             // Vencidas ANTES del skip de atendida_hoy: un tap de postura hoy
             // marca atendida pero NO es toque — la fila puede seguir vencida
-            if (($r['seguimiento']['estado'] ?? '') === 'vencida') {
+            $seg_estado = $r['seguimiento']['estado'] ?? '';
+            if ($seg_estado === 'vencida') {
                 $vencidas++;
                 // Registrar SOLO hoy, SOLO filas visibles (post-cap): lo que
                 // se castiga = lo que se ve. Idempotente por PK (cot, fecha).
                 $venc_ins[] = '(' . (int)$r['id'] . ',' . $vendedor_id . ',' . $empresa_id . ",'" . $hoy_db . "')";
+            } elseif ($seg_estado === 'hoy') {
+                $vence_hoy++; // "se espera a lo último": vence HOY, aún no vencida
             }
             if ($r['atendida_hoy'])             { $atendidas++; continue; }
             $monto += $r['total'];
@@ -647,7 +653,7 @@ class Mesa
             try { $ma_cache[$empresa_id] = ((int)DB::val("SELECT mesa_activa FROM empresas WHERE id=?", [$empresa_id])) >= 1; }
             catch (\Throwable $e) { $ma_cache[$empresa_id] = true; } // columna sin migrar → sin castigo aguas abajo, inofensivo
         }
-        if ($venc_ins && empty($cita_anc_fail) && $ma_cache[$empresa_id]) {
+        if ($venc_ins && empty($cita_anc_fail) && $ma_cache[$empresa_id] && !$solo_lectura) {
             try {
                 DB::execute("INSERT IGNORE INTO mesa_vencidos (cotizacion_id, usuario_id, empresa_id, fecha) VALUES " . implode(',', $venc_ins));
             } catch (\Throwable $e) {}
@@ -661,7 +667,7 @@ class Mesa
             'ciclo'    => $ciclo,
             'resumen'  => ['n' => count($rows) - $atendidas - $descartadas - $frias, 'monto' => $monto,
                            'atendidas' => $atendidas, 'descartadas' => $descartadas, 'frias' => $frias,
-                           'vencidas' => $vencidas,
+                           'vencidas' => $vencidas, 'vence_hoy' => $vence_hoy,
                            'universo' => $universo, 'sin_postura' => $sin_postura, 'mas_viejo_dias' => $mas_viejo],
         ];
     }

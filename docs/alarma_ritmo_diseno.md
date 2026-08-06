@@ -31,9 +31,11 @@ el gerente diagnostica el porqué.
    dominan ≥60%).
 3. **Citas** — su ritmo de agendar (`nos_citamos`): 7 días vs su propio promedio
    semanal (28d/4). Alarma solo si tenía ritmo (base ≥ 2) y cae a la mitad.
-4. **Seguimiento** — el cronómetro de la Mesa (`mesa_vencidos`): vencidas de esta
-   semana vs el promedio de las 3 previas. Radar de quién dejó de mantenerse al
-   día (normalmente bajo, porque la Mesa ya presiona).
+4. **Seguimiento** — el **reloj de la Mesa** (el mismo que ve el asesor, vía
+   `Mesa::armar` en modo solo-lectura). Una vencida es una vencida, **sin
+   histórico ni tendencia**: tiene vencidas → 🔴 ; solo "vence hoy" (esperó al
+   último) → 🟠 ; ninguna acercándose → 🟢. Muestra los dos datos: # vencidas y
+   # que vencen hoy.
 5. **Contacto** — leads que lo buscaron y **no logra contactar** (nunca llegó a
    `hablamos`). Rojo ≥60%, amarillo ≥35%.
 
