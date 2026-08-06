@@ -31,7 +31,7 @@ class MarketingPixels
      * Generar scripts base de pixels (para inyectar en <head> o inicio de <body>)
      * Incluye PageView automático
      */
-    public static function scripts_base(int $empresa_id): string
+    public static function scripts_base(int $empresa_id, ?array $am = null): string
     {
         $cfg = self::cargar($empresa_id);
         if (empty($cfg)) return '';
@@ -41,7 +41,12 @@ class MarketingPixels
         // Meta Pixel
         $meta = $cfg['pixel_meta'] ?? '';
         if ($meta && preg_match('/^\d{15,16}$/', $meta)) {
-            $html .= "<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','{$meta}');fbq('track','PageView');</script>\n";
+            // Advanced Matching (opt-in): datos del cliente EN CLARO normalizado;
+            // la librería fbevents.js los hashea sola. NO hashear aquí (si hasheas
+            // tú y la librería re-hashea, el match falla). El hash manual es solo
+            // para el CAPI. json_encode → seguro para el contexto JS.
+            $am_js = ($am && is_array($am) && $am) ? ',' . json_encode($am, JSON_UNESCAPED_UNICODE) : '';
+            $html .= "<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','{$meta}'{$am_js});fbq('track','PageView');</script>\n";
             $html .= "<noscript><img height=\"1\" width=\"1\" style=\"display:none\" src=\"https://www.facebook.net/tr?id={$meta}&ev=PageView&noscript=1\"/></noscript>\n";
         }
 
@@ -153,7 +158,7 @@ class MarketingPixels
      * Enviar evento server-side a Meta Conversions API
      * Se ejecuta en background (no bloquea el response)
      */
-    public static function capi_enviar(int $empresa_id, string $event_name, array $event_data = [], ?string $event_id = null): void
+    public static function capi_enviar(int $empresa_id, string $event_name, array $event_data = [], ?string $event_id = null, array $user_data_extra = []): void
     {
         $cfg = self::cargar($empresa_id);
         $pixel = $cfg['pixel_meta'] ?? '';
@@ -177,6 +182,8 @@ class MarketingPixels
         ];
         if ($fbp) $user_data['fbp'] = $fbp;
         if ($fbc) $user_data['fbc'] = $fbc;
+        // PII de Advanced Matching, YA hasheada (SHA-256) — solo si opt-in ON.
+        if ($user_data_extra) $user_data = array_merge($user_data, $user_data_extra);
 
         $event = [
             'event_name'  => $event_name,
@@ -224,13 +231,77 @@ class MarketingPixels
     /**
      * Enviar evento ViewContent via CAPI
      */
-    public static function capi_view(int $empresa_id, string $numero, float $total, string $moneda = 'MXN', ?string $event_id = null): void
+    public static function capi_view(int $empresa_id, string $numero, float $total, string $moneda = 'MXN', ?string $event_id = null, array $am_hashed = []): void
     {
         self::capi_enviar($empresa_id, 'ViewContent', [
             'content_name' => "Cotización {$numero}",
             'value'        => $total,
             'currency'     => $moneda,
-        ], $event_id);
+        ], $event_id, $am_hashed);
+    }
+
+    // ─── Advanced Matching (Fase 2 — opt-in por empresa) ────────────────────
+
+    /** ¿La empresa activó el envío de datos del cliente a Meta? Guardado:
+     *  columna sin migrar → false (nunca revienta el pixel). */
+    public static function advanced_matching_on(int $empresa_id): bool
+    {
+        try {
+            return (int) DB::val(
+                "SELECT advanced_matching_optin FROM marketing_config WHERE empresa_id = ?",
+                [$empresa_id]
+            ) === 1;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /** Normalización de texto (nombre/apellido): minúsculas, sin acentos, solo
+     *  letras. Igual en navegador y CAPI; el hash solo se aplica en CAPI. */
+    private static function norm_text(string $s): string
+    {
+        $s = strtolower(trim($s));
+        $t = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+        if ($t !== false) $s = $t;
+        return preg_replace('/[^a-z]/', '', $s);
+    }
+
+    /** Normalización de teléfono a E.164 sin '+': dígitos con código de país.
+     *  MX-céntrico (la base es MX): 10 díg → 52 + díg; 521… → 52…; EU/frontera
+     *  (1+10) se deja. */
+    private static function norm_phone(string $tel): string
+    {
+        $d = preg_replace('/\D/', '', $tel);
+        if (strlen($d) === 10) return '52' . $d;
+        if (strlen($d) === 13 && substr($d, 0, 3) === '521') return '52' . substr($d, 3);
+        if (strlen($d) === 12 && substr($d, 0, 2) === '52')  return $d;
+        if (strlen($d) === 11 && substr($d, 0, 1) === '1')   return $d;
+        return $d;
+    }
+
+    /** Advanced Matching para el NAVEGADOR (valores EN CLARO normalizados; la
+     *  librería fbevents los hashea). Sin email (casi nunca se llena) ni ciudad
+     *  (la de la empresa no es la del cliente → dato incorrecto). */
+    public static function am_browser(string $nombre, string $tel, int $cliente_id): array
+    {
+        $partes = preg_split('/\s+/', trim($nombre), 2);
+        return array_filter([
+            'ph'          => self::norm_phone($tel),
+            'fn'          => self::norm_text($partes[0] ?? ''),
+            'ln'          => self::norm_text($partes[1] ?? ''),
+            'external_id' => $cliente_id > 0 ? (string)$cliente_id : '',
+        ]);
+    }
+
+    /** Advanced Matching para el CAPI: los MISMOS campos, ya hasheados SHA-256
+     *  (Meta los quiere hasheados server-side; en el navegador van en claro). */
+    public static function am_capi_hashed(string $nombre, string $tel, int $cliente_id): array
+    {
+        $out = [];
+        foreach (self::am_browser($nombre, $tel, $cliente_id) as $k => $v) {
+            if ($v !== '') $out[$k] = hash('sha256', $v);
+        }
+        return $out;
     }
 
     /**

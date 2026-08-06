@@ -1268,6 +1268,15 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
                 </label>
               </div>
             </div>
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+              <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+                <input type="checkbox" id="mkt_am_optin" <?= !empty($mkt['advanced_matching_optin'])?'checked':'' ?> style="margin-top:3px">
+                <span style="font-size:12px;color:var(--t2);line-height:1.5">
+                  <b>Advanced Matching</b> — enviar a Meta los datos de contacto del cliente (teléfono y nombre), <b>cifrados</b>, para mejorar el emparejamiento de eventos y bajar el costo por resultado.
+                  <span style="display:block;color:var(--t3);margin-top:3px">Al activarlo confirmas que cuentas con el consentimiento de tus clientes; se refleja en tu Aviso de Privacidad. Tú eres el responsable de los datos — CotizaCloud solo los transmite cifrados.</span>
+                </span>
+              </label>
+            </div>
           </div>
         </div>
         <label class="toggle">
@@ -2265,6 +2274,7 @@ async function guardarMarketing(){
       body: JSON.stringify({
         pixel_meta:       document.getElementById('mkt_meta')?.value.trim() || '',
         capi_token:       document.getElementById('mkt_capi_token')?.value.trim() || '',
+        advanced_matching_optin: document.getElementById('mkt_am_optin')?.checked ? 1 : 0,
         pixel_ga4:        document.getElementById('mkt_ga4')?.value.trim() || '',
         pixel_gads_id:    document.getElementById('mkt_gads_id')?.value.trim() || '',
         pixel_gads_label: document.getElementById('mkt_gads_label')?.value.trim() || '',

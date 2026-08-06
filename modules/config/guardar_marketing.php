@@ -77,4 +77,14 @@ DB::execute(
     ]
 );
 
+// Advanced Matching opt-in (Fase 2) — UPDATE separado y defensivo: si la
+// columna aún no está migrada, el resto del guardado NO se rompe. Solo puede
+// quedar ON si hay Pixel de Meta configurado (sin pixel no tiene sentido).
+$am_optin = (!empty($body['advanced_matching_optin']) && $pixel_meta !== '') ? 1 : 0;
+try {
+    DB::execute("UPDATE marketing_config SET advanced_matching_optin = ? WHERE empresa_id = ?", [$am_optin, $empresa_id]);
+} catch (\Throwable $e) {
+    error_log('[marketing optin] ' . $e->getMessage());
+}
+
 json_ok(['saved' => true]);
