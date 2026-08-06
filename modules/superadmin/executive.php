@@ -1311,7 +1311,7 @@ if ($rt_todas):
                          . '<span style="width:7px;height:7px;border-radius:50%;background:' . $dc . ';flex:none;align-self:center"></span>'
                          . '<b style="color:var(--t2);min-width:58px">' . $label . '</b>'
                          . '<span style="color:' . $tc . '">' . e($txt) . '</span></div>'; }; ?>
-          <div style="display:flex;align-items:center;gap:6px"><span style="font:600 13px 'Inter',sans-serif;color:var(--text)"><?= e($rt_f['nombre']) ?></span><?php if (!empty($rt_f['flag'])): ?><span style="font:700 9px 'Inter',sans-serif;color:var(--r)">no sigue proceso</span><?php endif; ?></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="font:600 13px 'Inter',sans-serif;color:var(--text)"><?= e($rt_f['nombre']) ?></span><?php if (!empty($rt_f['flag'])): ?><span style="font:700 9px 'Inter',sans-serif;color:var(--r)">no sigue proceso<?= !empty($rt_f['flag_pilares']) ? ': ' . e($rt_f['flag_pilares']) : '' ?></span><?php endif; ?></div>
           <?= $rt_prow($rt_f['conv_estado'],  'Conv',     $rt_f['conv_txt']) ?>
           <?= $rt_prow($rt_f['desc_estado'],  'Descart.', $rt_f['desc_txt']) ?>
           <?= $rt_prow($rt_f['citas_estado'], 'Citas',    $rt_f['citas_txt']) ?>
