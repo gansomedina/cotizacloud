@@ -221,7 +221,7 @@ class RitmoReporte
         $res = [];
         if ($card && !empty($card['flag'])) $res[] = "No sigue el proceso — falla en " . $card['flag_pilares'] . ".";
         if ($card) foreach (array_merge($rojos, $ambar) as $p) $res[] = ucfirst($p['label']) . ": " . $p['txt'] . ".";
-        if ($ca['se_fueron'] > 0) $res[] = "Además, {$ca['se_fueron']} cotizaciones pasaron el ciclo sin ningún toque suyo (" . self::_money($ca['monto']) . ").";
+        if ($ca['se_fueron'] > 0) $res[] = "En su cartera hay {$ca['se_fueron']} cotizaciones viejas sin ningún toque suyo (" . self::_money($ca['monto']) . ").";
         if (!$res) $res[] = ($card ? "Va al corriente — sin pilares en rojo." : "Sin datos de Ritmo para este asesor.");
 
         // ── Embudo (para render con color) — se pasa aparte ──
@@ -277,9 +277,9 @@ class RitmoReporte
             }
         }
 
-        // ── Cartera (solo el HECHO: pasaron el ciclo sin ningún toque suyo) ──
+        // ── Cartera (acumulado ACTUAL, NO la ventana: cots viejas y sin toque) ──
         $car = [];
-        if ($ca['se_fueron'] > 0) $car[] = "{$ca['se_fueron']} cotizaciones pasaron el ciclo sin ningún toque suyo (ni captura, ni feedback, ni edición): " . self::_money($ca['monto']) . ".";
+        if ($ca['se_fueron'] > 0) $car[] = "En su cartera hay {$ca['se_fueron']} cotizaciones viejas (ya pasaron el ciclo) que siguen sin ningún toque suyo (ni captura, ni feedback, ni edición): " . self::_money($ca['monto']) . ". Es el acumulado de su cartera, no solo de la ventana.";
 
         // ── Consejo del Director: el motivo de la tarjeta + refuerzos ──
         $cons = [];
@@ -292,7 +292,7 @@ class RitmoReporte
         }
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $cons[] = "Y cuida el margen: cierra regalando descuento ({$ve['con_dto']} de {$ve['cierres']}). Enséñale a defender el precio.";
         if ($rd['sin_feedback'] >= 2) $cons[] = "Tiene {$rd['sin_feedback']} calientes sin revisar en el Radar — son sus ventas más fáciles, siéntate con él a trabajarlas hoy.";
-        if ($ca['se_fueron'] >= 5) $cons[] = "Hay {$ca['se_fueron']} cotizaciones que pasaron el ciclo sin ningún toque suyo (" . self::_money($ca['monto']) . ") — revísenlas juntos.";
+        if ($ca['se_fueron'] >= 5) $cons[] = "En su cartera hay {$ca['se_fueron']} cotizaciones viejas sin ningún toque (" . self::_money($ca['monto']) . ") — revísenlas juntos.";
         if (!$cons) $cons[] = "Va sólido. Súbele la vara: más volumen o mejor ticket, y que no baje el ritmo de citas.";
 
         // ── Guion 1:1 ──
