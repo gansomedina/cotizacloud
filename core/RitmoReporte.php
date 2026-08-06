@@ -241,9 +241,11 @@ class RitmoReporte
         if ($rd['calientes'] === 0) $rad[] = "Sin señales calientes del Radar en la ventana.";
         else {
             $rad[] = "{$rd['calientes']} clientes se pusieron calientes en la ventana.";
-            if ($de['hot'] > 0) $rad[] = "Descartó {$de['hot']} de esos {$rd['calientes']} calientes — tiró leads con señal de compra.";
+            if ($de['hot'] > 0) $rad[] = "Descartó {$de['hot']} de esos {$rd['calientes']} calientes — tiró " . ($de['hot'] === 1 ? "un lead" : "leads") . " con señal de compra.";
             if ($rd['sin_feedback'] > 0) {
-                $rad[] = "{$rd['sin_feedback']} calientes sin revisar (ni las tocó):";
+                $rad[] = $rd['sin_feedback'] === 1
+                    ? "1 caliente sin revisar (ni la tocó):"
+                    : "{$rd['sin_feedback']} calientes sin revisar (ni las tocó):";
                 foreach ($rd['casos'] as $c) $rad[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']);
             }
             if ($de['hot'] === 0 && $rd['sin_feedback'] === 0) $rad[] = "Trabajó todas sus calientes — bien.";
@@ -282,7 +284,12 @@ class RitmoReporte
         // ── Consejo del Director: el motivo de la tarjeta + refuerzos ──
         $cons = [];
         if ($card && !empty($card['motivo'])) $cons[] = $card['motivo'];
-        if ($de['hot'] > 0) $cons[] = "Peor aún: {$de['hot']} de las {$de['n']} que tiró estaban calientes en el Radar — mandó a la basura leads con señal de compra. Eso es lo primero que hay que frenar.";
+        if ($de['hot'] > 0) {
+            $fh = $de['hot'] >= $de['n']
+                ? "las {$de['n']} que tiró estaban calientes en el Radar"
+                : "{$de['hot']} de las {$de['n']} que tiró estaban calientes en el Radar";
+            $cons[] = "Peor aún: {$fh} — mandó a la basura leads con señal de compra. Eso es lo primero que hay que frenar.";
+        }
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $cons[] = "Y cuida el margen: cierra regalando descuento ({$ve['con_dto']} de {$ve['cierres']}). Enséñale a defender el precio.";
         if ($rd['sin_feedback'] >= 2) $cons[] = "Tiene {$rd['sin_feedback']} calientes sin revisar en el Radar — son sus ventas más fáciles, siéntate con él a trabajarlas hoy.";
         if ($ca['se_fueron'] >= 5) $cons[] = "Hay {$ca['se_fueron']} cotizaciones que pasaron el ciclo sin ningún toque suyo (" . self::_money($ca['monto']) . ") — revísenlas juntos.";
