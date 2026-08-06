@@ -1,9 +1,8 @@
 <?php
 // ============================================================
 //  Dashboard partial — Rendimiento del equipo (desde la Mesa)
-//  SOLO ADMIN. Solo lectura (RitmoAsesor).
-//  Veredicto (Cierra · Limpio) + Ritmo (vencidas · citas), todo
-//  auto-ajustable a la empresa / al propio asesor. Sin valores fijos.
+//  SOLO ADMIN. Solo lectura (RitmoAsesor). Semanal, ciclo real,
+//  auto-ajustable. Conversión + Limpio (gaming) + ritmo.
 //  NOTA: comparte scope con index.php — variables con prefijo rt_.
 // ============================================================
 defined('COTIZAAPP') or die;
@@ -18,10 +17,10 @@ if (!$rt_on) return;
 $rt_filas = RitmoAsesor::empresa(EMPRESA_ID);
 if (!$rt_filas) return;
 
-$rt_colmap  = ['rojo' => '#dc2626', 'amarillo' => '#d97706', 'verde' => '#16a34a'];
+$rt_colmap   = ['rojo' => '#dc2626', 'amarillo' => '#d97706', 'verde' => '#16a34a'];
 $rt_n_alerta = count(array_filter($rt_filas, fn($x) => $x['semaforo'] !== 'verde'));
 ?>
-<div class="slabel">Rendimiento del equipo
+<div class="slabel">Rendimiento del equipo · esta semana
   <?php if ($rt_n_alerta > 0): ?><span style="font:700 11px var(--body);color:#dc2626"><?= $rt_n_alerta ?> por atender</span><?php endif; ?>
 </div>
 <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:16px">
@@ -37,9 +36,8 @@ $rt_n_alerta = count(array_filter($rt_filas, fn($x) => $x['semaforo'] !== 'verde
         <?php if (!empty($rt_f['gaming'])): ?><span style="font:700 10px var(--body);color:#b91c1c;background:#fdeaea;padding:2px 7px;border-radius:999px">🚩 gaming</span><?php endif; ?>
       </div>
       <div style="font:500 12px var(--num);color:var(--t3);margin-top:3px">
-        Cierra <b style="color:var(--text)"><?= (int)$rt_f['cierra'] ?></b> ·
-        Limpio <b style="color:var(--text)"><?= (int)$rt_f['limpio'] ?></b>
-        <span style="color:var(--t3)">· <?= (int)$rt_f['ventas'] ?> ventas / <?= (int)$rt_f['descartes'] ?> descartes</span>
+        Cerró <b style="color:var(--text)"><?= (int)$rt_f['cierres7'] ?></b> de <b style="color:var(--text)"><?= (int)$rt_f['trabajo7'] ?></b> que trabajó
+        <?php if ($rt_f['desc7'] > 0): ?> · 🗑 <b style="color:var(--text)"><?= (int)$rt_f['desc7'] ?></b><?php if ($rt_f['sincita7'] > 0): ?> <span style="color:#b91c1c">(<?= (int)$rt_f['sincita7'] ?> sin cita)</span><?php endif; ?><?php endif; ?>
         <?php if (!empty($rt_f['venc_sube'])): ?> · <span style="color:#d97706;font-weight:700">⏰ vencidas ▲</span><?php endif; ?>
         <?php if (!empty($rt_f['citas_baja'])): ?> · <span style="color:#d97706;font-weight:700">📅 citas ↓</span><?php endif; ?>
       </div>
@@ -48,6 +46,6 @@ $rt_n_alerta = count(array_filter($rt_filas, fn($x) => $x['semaforo'] !== 'verde
   </div>
   <?php endforeach; ?>
   <div style="padding:9px 16px;font:400 11px var(--body);color:var(--t3);background:var(--bg);line-height:1.5">
-    <strong>Rendimiento</strong> = <b>Cierra</b> (vs el histórico de tu empresa) + <b>Limpio</b> (descartes vs ventas). Las alertas <b>⏰ vencidas</b> y <b>📅 citas</b> avisan cuándo un asesor empieza a soltarse — antes de que caiga la venta. Todo relativo a su empresa / su propio ritmo.
+    <strong>Rendimiento</strong> = <b>cerró vs trabajó</b> esta semana + <b>limpio</b> (descarta sin cita / más de lo que cierra = 🚩). <b>⏰ vencidas</b> y <b>📅 citas</b> avisan cuándo se suelta. Todo sobre el ciclo real de tu empresa, relativo a su propio ritmo. Descartar cartera vieja heredada no cuenta como gaming.
   </div>
 </div>
