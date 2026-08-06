@@ -37,3 +37,16 @@ respaldo*
 # Datos privados del superadmin (no commit)
 /data/comisiones_pagadas_*.json
 /data/exchange_rate.json
+
+# ── Secretos y datos de clientes — nunca versionar ──────────
+*.pem
+*.p8
+*.key
+respaldoconfig.php
+config.php
+*.csv
+cotizacl_*.sql
+import_*.sql
+reimport_*.sql
+error_log
+logs/
