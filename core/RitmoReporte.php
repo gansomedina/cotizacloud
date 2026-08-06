@@ -285,47 +285,37 @@ class RitmoReporte
             $solop = array_values(array_filter($de['casos'], fn($c) => $c['es_precio']));
             foreach (array_slice($solop, 0, 4) as $c)
                 $prc[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . $tags($c);
-            $prc[] = "Revísalo con él: ¿está comunicando el valor o baja el precio a la primera? Perder por precio no es lo mismo que no saber defenderlo.";
+            $prc[] = "Perder por precio no es lo mismo que no saber defenderlo — conviene revisar si fue precio real o comunicación de valor.";
         }
 
-        // ── Consejo del Director: proporcional (tono duro SOLO si Descartadas rojo) ──
+        // ── Consejo del Director: recomendaciones IMPERSONALES (el reporte puede
+        //   leerlo el propio asesor — sin "con él / conmigo", sin tono de guion). ──
         $cons = [];
         if ($card && !empty($card['motivo'])) $cons[] = $card['motivo'];
-        // "Tiró leads calientes" en tono duro solo si es dumper real (Descartadas rojo).
-        //   Excluye las de precio (esas van en su sección) para no doble-contar.
+        // Tono duro de "tiró leads calientes" solo si es dumper real (Descartadas rojo).
         if ($card && $card['desc_estado'] === 'rojo' && $de['hot_noprecio'] > 0)
-            $cons[] = "Peor aún: {$de['hot_noprecio']} de las que tiró estaban calientes en el Radar — mandó a la basura leads con señal de compra. Eso es lo primero que hay que frenar.";
-        if ($de['precio'] > 0) $cons[] = "{$de['precio']} se cayeron por objeción de precio" . ($de['precio_hot'] > 0 ? " ({$de['precio_hot']} calientes)" : "") . ". Revisen si fue precio real o le faltó comunicar el valor — no lo den por hecho.";
-        if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $cons[] = "Y cuida el margen: cierra regalando descuento ({$ve['con_dto']} de {$ve['cierres']}). Enséñale a defender el precio.";
-        if ($rd['sin_feedback'] >= 2) $cons[] = "Tiene {$rd['sin_feedback']} calientes sin revisar en el Radar — son sus ventas más fáciles, siéntate con él a trabajarlas hoy.";
-        if (!$cons) $cons[] = "Va sólido. Súbele la vara: más volumen o mejor ticket, y que no baje el ritmo de citas.";
-
-        // ── Guion 1:1 ──
-        $g = [];
-        if ($m['vencidas'] > 0 && $m['casos']) { $c0=$m['casos'][0]; $g[]="\"Ábreme la #{$c0['numero']} de {$c0['cliente']} — lleva {$c0['dias']} días vencida. ¿Qué pasó?\""; }
-        if ($card && $card['desc_estado'] === 'rojo') $g[]="\"¿Por qué descartas antes de agendar? {$de['sincita']} de tus {$de['n']} nunca llegaron a cita.\"";
-        if ($card && $card['conv_estado'] === 'rojo') $g[]="\"Trabajaste varias y no has cerrado — muéstrame dónde se te caen.\"";
+            $cons[] = "Peor aún: {$de['hot_noprecio']} de las que descartó estaban calientes en el Radar — leads con señal de compra que no deben irse a la basura. Es lo primero que hay que frenar.";
+        // Caso concreto de lead caliente descartado (recomendación, no pregunta).
         $hc = null; foreach ($de['casos'] as $c) if ($c['hot'] && !$c['es_precio']) { $hc = $c; break; }
-        if ($hc) $g[]="\"El Radar marcaba caliente a {$hc['cliente']} (#{$hc['numero']}) y la descartaste — ¿la buscaste cuando estaba viendo la cotización?\"";
-        if ($de['precio'] > 0) $g[]="\"Revisemos las {$de['precio']} que se cayeron por precio — ¿cómo manejas cuando te dicen que está caro?\"";
-        if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $g[]="\"{$ve['con_dto']} de tus {$ve['cierres']} ventas fueron con descuento — ¿por qué necesitaste bajar el precio?\"";
-        if ($rd['sin_feedback'] >= 2) $g[]="\"Tienes {$rd['sin_feedback']} calientes sin marcar — revísalas conmigo ahorita.\"";
-        if ($card && $card['citas_estado'] === 'amarillo') $g[]="\"Bajaste el ritmo de citas: {$card['citas_txt']} — ¿qué pasó?\"";
-        if ($card && $card['cont_estado'] !== 'verde' && $card['cont_estado'] !== 'gris') $g[]="\"" . $card['cont_txt'] . " — ¿a qué hora y por qué medio les marcas?\"";
-        if (!$g) $g[]="\"Vas bien — ¿qué necesitas de mí para cerrar más rápido?\"";
+        if ($hc) $cons[] = "{$hc['cliente']} (#{$hc['numero']}) estaba caliente en el Radar al descartarse — los calientes conviene retomarlos mientras el cliente sigue viendo la cotización.";
+        if ($de['precio'] > 0) $cons[] = "{$de['precio']} se cayeron por objeción de precio" . ($de['precio_hot'] > 0 ? " ({$de['precio_hot']} calientes)" : "") . ". Conviene revisar si fue precio real o comunicación de valor — no darlo por hecho.";
+        if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $cons[] = "Cierra regalando descuento ({$ve['con_dto']} de {$ve['cierres']}) — conviene cuidar el margen defendiendo el precio.";
+        if ($rd['sin_feedback'] >= 1) $cons[] = ($rd['sin_feedback'] === 1 ? "1 caliente del Radar sin marcar" : "{$rd['sin_feedback']} calientes del Radar sin marcar") . " — son de las ventas más fáciles, conviene atenderlas.";
+        if ($card && $card['citas_estado'] === 'amarillo') $cons[] = "Bajó el ritmo de citas ({$card['citas_txt']}) — conviene recuperarlo.";
+        if (!$cons) $cons[] = "Va sólido. Para subir: más volumen o mejor ticket, sin bajar el ritmo de citas.";
 
-        // ── Meta ──
+        // ── Meta de la semana (acciones, impersonales) ──
         $meta = [];
         if ($m['vencidas'] > 0) $meta[]="Poner al día las {$m['vencidas']} vencidas antes del viernes.";
         if ($card && $card['desc_estado'] === 'rojo') $meta[]="No descartar ninguna sin al menos 1 intento de cita.";
         if ($card && $card['conv_estado'] === 'rojo') $meta[]="Cerrar al menos 1 venta esta semana.";
-        if ($de['precio'] > 0) $meta[]="Practicar el manejo de la objeción de precio en la próxima cotización cara.";
-        if ($rd['sin_feedback'] >= 2) $meta[]="Marcar (👍/👎) las {$rd['sin_feedback']} calientes del Radar.";
+        if ($de['precio'] > 0) $meta[]="Trabajar una respuesta a la objeción de precio para la próxima cotización cara.";
+        if ($rd['sin_feedback'] >= 1) $meta[]="Marcar (👍/👎) las calientes del Radar sin revisar.";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $meta[]="Cerrar la próxima venta sin descuento.";
         if ($card && $card['citas_estado'] === 'amarillo') $meta[]="Recuperar el ritmo de citas de la semana.";
         if (!$meta) $meta[]="Sostener el ritmo: mesa al día y seguir cerrando.";
 
-        return ['resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'precio'=>$prc,'consejo'=>$cons,'guion'=>$g,'meta'=>$meta];
+        return ['resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'precio'=>$prc,'consejo'=>$cons,'meta'=>$meta];
     }
 
     private static function _money(float $n): string { return '$' . number_format($n, 0, '.', ','); }
@@ -375,7 +365,6 @@ class RitmoReporte
         $h .= $sec('Calidad de cierre', $s['calidad']);
         $h .= $sec('Radar', $s['radar']);
         $h .= $sec('Consejo del Director', $s['consejo'], 'rr-consejo');
-        $h .= $sec('Guion para el 1:1', $s['guion']);
         $h .= $sec('Meta de la semana', $s['meta']);
         $h .= '<div class="rr-foot">Datos reales de la Mesa, el Radar y las ventas. Cada cifra sale del sistema — nada inventado.</div></div>';
         return $h;
