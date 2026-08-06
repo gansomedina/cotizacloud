@@ -77,14 +77,18 @@ class RitmoReporte
     // casos coincidan EXACTO con el pilar Descartadas de RitmoAsesor.
     private static function _descartes(int $eid, int $uid, int $win, int $rapido_dias): array
     {
-        $o = ['n'=>0,'sincita'=>0,'rapido'=>0,'casos'=>[]];
+        $o = ['n'=>0,'sincita'=>0,'rapido'=>0,'hot'=>0,'casos'=>[]];
         $nc = "(NOT EXISTS (SELECT 1 FROM mesa_estados mc WHERE mc.cotizacion_id=c.id AND mc.area='compromiso' AND mc.estado='nos_citamos'))";
+        // ¿esta cotización estuvo caliente en la ventana? → para "descartó calientes",
+        //   garantizado subconjunto de los descartes (mismo set, misma ventana).
+        $hotset = "('probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida')";
+        $hot = "EXISTS (SELECT 1 FROM bucket_transitions bt WHERE bt.cotizacion_id=c.id AND bt.bucket_nuevo IN $hotset AND bt.created_at >= NOW() - INTERVAL $win DAY)";
         try {
             $rows = DB::query(
-                "SELECT d.numero, d.total, d.cliente, MAX(d.sin_cita) AS sin_cita, MAX(d.rapido) AS rapido
+                "SELECT d.numero, d.total, d.cliente, MAX(d.sin_cita) AS sin_cita, MAX(d.rapido) AS rapido, MAX(d.hot) AS hot
                  FROM (
                     SELECT c.id AS cid, c.numero, c.total, COALESCE(cl.nombre,'—') AS cliente,
-                           $nc AS sin_cita, (DATEDIFF(m.created_at, c.created_at) <= $rapido_dias) AS rapido
+                           $nc AS sin_cita, (DATEDIFF(m.created_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot
                       FROM mesa_estados m JOIN cotizaciones c ON c.id=m.cotizacion_id
                       LEFT JOIN clientes cl ON cl.id=c.cliente_id
                      WHERE m.empresa_id=? AND m.area='postura' AND m.estado='descartada'
@@ -92,7 +96,7 @@ class RitmoReporte
                        AND m.created_at >= NOW() - INTERVAL $win DAY AND c.created_at >= NOW() - INTERVAL $win DAY
                     UNION
                     SELECT c.id AS cid, c.numero, c.total, COALESCE(cl.nombre,'—') AS cliente,
-                           $nc AS sin_cita, (DATEDIFF(rf.updated_at, c.created_at) <= $rapido_dias) AS rapido
+                           $nc AS sin_cita, (DATEDIFF(rf.updated_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot
                       FROM radar_feedback rf JOIN cotizaciones c ON c.id=rf.cotizacion_id
                       LEFT JOIN clientes cl ON cl.id=c.cliente_id
                      WHERE rf.empresa_id=? AND rf.tipo='sin_interes'
@@ -106,6 +110,7 @@ class RitmoReporte
             foreach ($rows as $x) {
                 if ((int)$x['sin_cita']) $o['sincita']++;
                 if ((int)$x['rapido'])   $o['rapido']++;
+                if ((int)$x['hot'])      $o['hot']++;
                 if (count($o['casos']) < 4)
                     $o['casos'][] = ['numero'=>$x['numero'],'cliente'=>$x['cliente'],'total'=>(float)$x['total'],'sin_cita'=>(int)$x['sin_cita'],'rapido'=>(int)$x['rapido']];
             }
@@ -152,22 +157,12 @@ class RitmoReporte
     private static function _radar(int $eid, int $uid, int $win): array
     {
         $hot = "('probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida')";
-        $r = ['calientes'=>0,'descarto_cal'=>0,'sin_feedback'=>0,'casos'=>[]];
+        $r = ['calientes'=>0,'sin_feedback'=>0,'casos'=>[]];
         try {
             $r['calientes'] = (int)DB::val(
                 "SELECT COUNT(DISTINCT bt.cotizacion_id) FROM bucket_transitions bt JOIN cotizaciones c ON c.id=bt.cotizacion_id
                   WHERE COALESCE(c.vendedor_id,c.usuario_id)=? AND c.empresa_id=? AND bt.bucket_nuevo IN $hot
                     AND bt.created_at >= NOW() - INTERVAL $win DAY AND c.suspendida=0",
-                [$uid, $eid]);
-        } catch (Throwable $e) {}
-        try {
-            // Tiró leads con señal de compra: calientes que ADEMÁS descartó (👎 o postura).
-            $r['descarto_cal'] = (int)DB::val(
-                "SELECT COUNT(DISTINCT c.id) FROM cotizaciones c
-                  WHERE COALESCE(c.vendedor_id,c.usuario_id)=? AND c.empresa_id=?
-                    AND EXISTS (SELECT 1 FROM bucket_transitions bt WHERE bt.cotizacion_id=c.id AND bt.bucket_nuevo IN $hot AND bt.created_at >= NOW() - INTERVAL $win DAY)
-                    AND ( EXISTS (SELECT 1 FROM radar_feedback rf WHERE rf.cotizacion_id=c.id AND rf.usuario_id=COALESCE(c.vendedor_id,c.usuario_id) AND rf.tipo='sin_interes')
-                       OR EXISTS (SELECT 1 FROM mesa_estados mp WHERE mp.cotizacion_id=c.id AND mp.area='postura' AND mp.estado='descartada') )",
                 [$uid, $eid]);
         } catch (Throwable $e) {}
         try {
@@ -240,12 +235,12 @@ class RitmoReporte
         if ($rd['calientes'] === 0) $rad[] = "Sin señales calientes del Radar en la ventana.";
         else {
             $rad[] = "{$rd['calientes']} clientes se pusieron calientes en la ventana.";
-            if ($rd['descarto_cal'] > 0) $rad[] = "Descartó {$rd['descarto_cal']} que el Radar tenía caliente — tiró leads con señal de compra.";
+            if ($de['hot'] > 0) $rad[] = "Descartó {$de['hot']} de esos {$rd['calientes']} calientes — tiró leads con señal de compra.";
             if ($rd['sin_feedback'] > 0) {
                 $rad[] = "{$rd['sin_feedback']} calientes sin revisar (ni las tocó):";
                 foreach ($rd['casos'] as $c) $rad[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']);
             }
-            if ($rd['descarto_cal'] === 0 && $rd['sin_feedback'] === 0) $rad[] = "Trabajó todas sus calientes — bien.";
+            if ($de['hot'] === 0 && $rd['sin_feedback'] === 0) $rad[] = "Trabajó todas sus calientes — bien.";
         }
 
         // ── Casos concretos de los focos ──
@@ -271,7 +266,7 @@ class RitmoReporte
         // ── Consejo del Director: el motivo de la tarjeta + refuerzos ──
         $cons = [];
         if ($card && !empty($card['motivo'])) $cons[] = $card['motivo'];
-        if ($rd['descarto_cal'] > 0) $cons[] = "Peor aún: {$rd['descarto_cal']} de las que tiró estaban calientes en el Radar — mandó a la basura leads con señal de compra. Eso es lo primero que hay que frenar.";
+        if ($de['hot'] > 0) $cons[] = "Peor aún: {$de['hot']} de las {$de['n']} que tiró estaban calientes en el Radar — mandó a la basura leads con señal de compra. Eso es lo primero que hay que frenar.";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $cons[] = "Y cuida el margen: cierra regalando descuento ({$ve['con_dto']} de {$ve['cierres']}). Enséñale a defender el precio.";
         if ($rd['sin_feedback'] >= 2) $cons[] = "Tiene {$rd['sin_feedback']} calientes sin revisar en el Radar — son sus ventas más fáciles, siéntate con él a trabajarlas hoy.";
         if ($ca['se_fueron'] >= 5) $cons[] = "Hay {$ca['se_fueron']} cotizaciones que pasaron el ciclo sin ningún toque suyo (" . self::_money($ca['monto']) . ") — revísenlas juntos.";
