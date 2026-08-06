@@ -292,6 +292,47 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
 <?php
 // ── Bloque por asesor: franja expandible dentro de su tarjeta del ranking ──
 $MESA_BLOQUES = [];
+
+// ── Marcador del MES por asesor: Cierres vs Descartadas ──────────────
+// "El scoreboard honesto del mes" (idea del CEO): ventas cerradas (pago real)
+// vs cotizaciones mandadas al bote. Si descartadas ≫ cierres, la barra lo grita.
+// Atribución al asesor DUEÑO (igual que el reporte). Dos queries batcheadas por
+// empresa — cero por fila. Fail-open: si truena, no se muestra el segmento.
+//   Cierre    = venta pagado>0, estado<>'cancelada' (regla del sistema 14-may)
+//   Descartada= cotización con postura 'Descartar' o 👎 este mes calendario
+$mesa_mes = [];
+try {
+    foreach (DB::query(
+        "SELECT COALESCE(v.vendedor_id, v.usuario_id, c2.vendedor_id, c2.usuario_id) AS uid,
+                COUNT(*) AS n
+           FROM ventas v
+           LEFT JOIN cotizaciones c2 ON c2.id = v.cotizacion_id
+          WHERE v.empresa_id = ? AND v.estado <> 'cancelada'
+            AND v.pagado > 0 AND v.total > 0
+            AND v.created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')
+          GROUP BY uid", [$empresa_id]) as $r) {
+        $u = (int)$r['uid']; if (!$u) continue;
+        $mesa_mes[$u]['cierres'] = (int)$r['n'];
+    }
+} catch (\Throwable $e) { error_log('[Mesa mes cierres] ' . $e->getMessage()); }
+try {
+    foreach (DB::query(
+        "SELECT uid, COUNT(DISTINCT cid) AS n FROM (
+            SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, m.cotizacion_id AS cid
+              FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
+             WHERE m.empresa_id = ? AND m.area = 'postura' AND m.estado = 'descartada'
+               AND m.created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')
+            UNION
+            SELECT COALESCE(c.vendedor_id, c.usuario_id) AS uid, rf.cotizacion_id AS cid
+              FROM radar_feedback rf JOIN cotizaciones c ON c.id = rf.cotizacion_id
+             WHERE rf.empresa_id = ? AND rf.tipo = 'sin_interes'
+               AND rf.updated_at >= DATE_FORMAT(NOW(), '%Y-%m-01')
+         ) x GROUP BY uid", [$empresa_id, $empresa_id]) as $r) {
+        $u = (int)$r['uid']; if (!$u) continue;
+        $mesa_mes[$u]['descartes'] = (int)$r['n'];
+    }
+} catch (\Throwable $e) { error_log('[Mesa mes descartes] ' . $e->getMessage()); }
+
 foreach ($mesa_all as $mesa_vid => $mesa):
     $mr = $mesa['resumen'];
     // Frías (viejas ya trabajadas) van a su propia sección — fuera de la principal.
@@ -340,6 +381,11 @@ foreach ($mesa_all as $mesa_vid => $mesa):
         <?php endif; ?>
       <?php else: ?>
         <span style="color:#16a34a;font-weight:700">✓ al corriente</span>
+      <?php endif; ?>
+      <?php $mm = $mesa_mes[(int)$mesa_vid] ?? null;
+            if ($mm && ((int)($mm['cierres'] ?? 0) > 0 || (int)($mm['descartes'] ?? 0) > 0)):
+                $mm_ci = (int)($mm['cierres'] ?? 0); $mm_de = (int)($mm['descartes'] ?? 0); ?>
+      <span style="display:inline-block;margin-left:4px;color:#8a8a84;font-size:11px" title="Este mes: ventas cerradas (con pago real) vs cotizaciones descartadas — el marcador honesto del mes">📅 Mes: <b style="color:#16a34a"><?= $mm_ci ?></b> cierre<?= $mm_ci === 1 ? '' : 's' ?> · <b style="color:#b91c1c"><?= $mm_de ?></b> descartada<?= $mm_de === 1 ? '' : 's' ?></span>
       <?php endif; ?>
     </span>
     <span style="margin-left:auto;color:#a8a8a2;font-size:11px">tap para expandir ▾</span>
