@@ -1,251 +1,215 @@
 <?php
 // ============================================================
-//  RitmoAsesor — Alarma de Ritmo Semanal por Asesor
-//  SOLO LECTURA. No toca ActividadScore ni escribe en la Mesa.
-//  Responde: "¿quién está bajando el ritmo de seguimiento?" con
-//  indicadores ADELANTADOS de la PROPIA Mesa (no ventas cerradas,
-//  que son el resultado atrasado ~28 días).
+//  RitmoAsesor — Rendimiento de asesores desde la Mesa
+//  SOLO LECTURA. No toca la Mesa ni ActividadScore.
 //
-//  3 ejes, TODOS de la Mesa (cero contador paralelo):
-//   1) 🔴 vencidas subiendo   — dejó pudrir el seguimiento
-//      (resumen['vencidas'] hoy + tendencia de mesa_vencidos)
-//   2) 🟡 por vencer sin tocar — vence hoy/mañana y no la ha movido
-//      (reloj de Mesa::armar: estado 'hoy' o 'ok' que vence mañana)
-//   3) 🗑 candado de descartes — descartó SIN seguimiento previo
-//      (la puerta trasera: limpiar la mesa descartando, no trabajando)
+//  Método (gerente de ventas), TODO auto-ajustable, cero valores fijos:
 //
-//  Diseño: docs/alarma_ritmo_diseno.md
+//  VEREDICTO (cómo va):
+//    1. Cierra  — sus ventas vs el histórico de cierre de SU empresa
+//    2. Limpio  — descartes vs ventas (gaming) vs la norma de SU empresa
+//
+//  RITMO (leading — quién se está soltando, presiona YA):
+//    3. Vencidas subiendo — límite de seguimiento de la Mesa (normal = bajo;
+//       sube vs SU propio nivel = se soltó)
+//    4. Citas bajando — su ritmo de agendar cae vs SU propio promedio
+//
+//  Guarda: solo empresas con Mesa activa. SIN gracia para nuevos (ventana
+//  corta → se llena rápido). Diseño acordado con el CEO.
 // ============================================================
 defined('COTIZAAPP') or die;
 
 class RitmoAsesor
 {
-    // Umbrales PROVISIONALES — se calibran con datos reales de producción
-    // (no hay BD en el contenedor de build). Todos comentados donde se usan.
-    private const ROJO_VENC_FOTO   = 6;  // vencidas AHORA que ya es emergencia
-    private const AMBAR_VENC_FOTO  = 3;  // vencidas AHORA que ya avisan
-    private const ROJO_VENC_SUBE   = 5;  // vencidas de la semana subiendo → emergencia
-    private const AMBAR_VENC_SUBE  = 3;  // vencidas de la semana subiendo → aviso
-                                         //   (piso: 1→2 NO alarma; se calibró con
-                                         //    datos reales — Kevin salía 🟡 de más)
-    private const AMBAR_PORVENCER  = 3;  // por-vencer-sin-tocar que ya avisan
-    private const ROJO_DUMP        = 3;  // descartes sin trabajar → emergencia
-    private const VENTANA_DESC     = 7;  // días de la ventana de descartes
+    private const DIAS_VEREDICTO = 30;   // cierre/gaming: resultado sobre ~un ciclo
+    private const DIAS_RITMO     = 7;     // vencidas/citas de la semana
+    private const DIAS_BASE      = 28;    // baseline propio del ritmo (4 semanas)
+    // Umbrales del semáforo — RELATIVOS al promedio (50 = promedio de su empresa),
+    // no magic numbers absolutos. Calibrables sin tocar la lógica.
+    private const CIERRA_BAJO    = 50;    // por debajo del promedio de su empresa
+    private const SCORE_ROJO     = 35;    // muy por debajo del promedio
+    private const SCORE_VERDE    = 58;    // claramente arriba del promedio
 
-    /**
-     * Ritmo del equipo de UNA empresa. Filas ordenadas por severidad
-     * (el que más necesita presión, arriba).
-     */
     public static function empresa(int $empresa_id): array
     {
-        $asesores = DB::query(
-            "SELECT id, nombre FROM usuarios
-              WHERE empresa_id = ? AND activo = 1 AND rol <> 'superadmin'
-              ORDER BY nombre ASC",
-            [$empresa_id]
-        );
+        // Guarda: solo con Mesa activa (sin Mesa no hay reloj ni datos).
+        try {
+            if ((int)DB::val("SELECT mesa_activa FROM empresas WHERE id=?", [$empresa_id]) < 1) return [];
+        } catch (Throwable $e) { return []; }
+
+        // Reporte del equipo (ventas, descartes, activas) — fuente única de la Mesa.
+        try {
+            $rep = Mesa::reporte($empresa_id, self::DIAS_VEREDICTO)['asesores'] ?? [];
+        } catch (Throwable $e) { error_log('[RitmoAsesor reporte] ' . $e->getMessage()); return []; }
+        if (!$rep) return [];
+
+        // Benchmark de cierre HISTÓRICO de la empresa (antes de la ventana): así
+        // un asesor solo NO se compara consigo mismo (sigmoid(x,x)=0.5). Auto-ajuste.
+        $emp_close_hist = self::_close_hist($empresa_id);
+
+        // Benchmark de descarte de la empresa (agregado del período).
+        $tot_v = 0; $tot_d = 0; $tot_a = 0;
+        foreach ($rep as $r) { $tot_v += (int)($r['ventas_n'] ?? 0); $tot_d += (int)($r['descartes'] ?? 0); $tot_a += (int)($r['activas'] ?? 0); }
+        $emp_close_now = $tot_a > 0 ? $tot_v / $tot_a : 0.0;
+        $bench_close   = $emp_close_hist > 0 ? $emp_close_hist : $emp_close_now;
+        $emp_dump      = ($tot_v + $tot_d) > 0 ? $tot_d / ($tot_v + $tot_d) : 0.0;
 
         $filas = [];
-        foreach ($asesores as $a) {
-            $r = self::_indicadores($empresa_id, (int)$a['id'], $a['nombre']);
-            if ($r !== null) $filas[] = $r;
+        foreach ($rep as $uid => $r) {
+            $f = self::_asesor($empresa_id, (int)$uid, $r, $bench_close, $emp_dump);
+            if ($f !== null) $filas[] = $f;
         }
 
-        // 🔴 → 🟡 → 🟢; dentro de cada banda, mayor severidad arriba.
-        $peso = ['rojo' => 0, 'amarillo' => 1, 'verde' => 2, 'sin_datos' => 3];
+        $peso = ['rojo' => 0, 'amarillo' => 1, 'verde' => 2];
         usort($filas, function ($x, $y) use ($peso) {
-            $px = $peso[$x['semaforo']] ?? 3;
-            $py = $peso[$y['semaforo']] ?? 3;
+            $px = $peso[$x['semaforo']] ?? 3; $py = $peso[$y['semaforo']] ?? 3;
             if ($px !== $py) return $px <=> $py;
-            return $y['severidad'] <=> $x['severidad']; // más severo primero
+            return $x['score'] <=> $y['score']; // peor score arriba dentro de la banda
         });
         return $filas;
     }
 
-    /**
-     * Ritmo de TODAS las empresas (vista superadmin). Solo empresas con la
-     * Mesa activa (mesa_activa >= 1); sin Mesa no hay reloj ni señal.
-     */
     public static function todas(): array
     {
         try {
-            $emps = DB::query(
-                "SELECT id, nombre FROM empresas
-                  WHERE mesa_activa >= 1 AND slug <> '_system'
-                  ORDER BY nombre ASC"
-            );
-        } catch (Throwable $e) {
-            return [];
-        }
-
+            $emps = DB::query("SELECT id, nombre FROM empresas WHERE mesa_activa >= 1 AND slug <> '_system' ORDER BY nombre ASC");
+        } catch (Throwable $e) { return []; }
         $out = [];
         foreach ($emps as $e) {
             $filas = self::empresa((int)$e['id']);
-            $con_cartera = array_filter($filas, fn($f) => $f['semaforo'] !== 'sin_datos');
-            if (!$con_cartera) continue;
+            if (!$filas) continue;
             $out[] = ['empresa_id' => (int)$e['id'], 'empresa' => $e['nombre'], 'asesores' => $filas];
         }
         return $out;
     }
 
-    // ── Cálculo por asesor, todo de la Mesa ──
-    private static function _indicadores(int $empresa_id, int $uid, string $nombre): ?array
+    // ── Un asesor ──
+    private static function _asesor(int $empresa_id, int $uid, array $r, float $bench_close, float $emp_dump): ?array
     {
-        // 1) La Mesa del asesor: reloj de seguimiento por cotización + resumen.
-        try {
-            $mesa = Mesa::armar($empresa_id, $uid);
-        } catch (Throwable $e) {
-            error_log('[RitmoAsesor armar] ' . $e->getMessage());
-            return null;
-        }
-        $mr    = $mesa['resumen'] ?? [];
-        $rows  = $mesa['rows'] ?? [];
-        $cartera  = (int)($mr['universo'] ?? count($rows));
-        $vencidas = (int)($mr['vencidas'] ?? 0);   // FOTO de hoy: reloj ya pasó
+        $nombre   = (string)($r['nombre'] ?? '');
+        $ventas   = (int)($r['ventas_n'] ?? 0);
+        $descartes= (int)($r['descartes'] ?? 0);
+        $activas  = (int)($r['activas'] ?? 0);
 
-        // 2) Por vencer SIN tocar (alarma temprana): vence hoy o mañana y no la
-        //    movió hoy. El reloj lo da la propia Mesa (seguimiento.estado/vence).
-        //    'hoy' = dias_venc 0 · 'ok' + vence==mañana = dias_venc -1. El rojo
-        //    (vencida) es +1 día vencido — esta banda abre ANTES.
-        $manana = date('Y-m-d', strtotime('+1 day'));
-        $por_vencer = 0;
-        foreach ($rows as $r) {
-            if (!empty($r['es_fria']) || ($r['cat'] ?? '') === 'descartada_hoy') continue;
-            if (!empty($r['atendida_hoy'])) continue; // ya la trabajó hoy
-            $sg = $r['seguimiento'] ?? null;
-            if (!$sg) continue;                        // vírgenes sin reloj: "por trabajar", otro eje
-            $est = $sg['estado'] ?? '';
-            if ($est === 'hoy') { $por_vencer++; continue; }
-            if ($est === 'ok' && ($sg['vence'] ?? '') === $manana) $por_vencer++;
-        }
+        // ── 1. CIERRA (vs histórico de su empresa) ──
+        $his_close   = $activas > 0 ? $ventas / $activas : 0.0;
+        $cierra_ratio= $bench_close > 0 ? $his_close / $bench_close : 1.0;
+        $cierra      = self::_clamp((int)round($cierra_ratio * 50), 0, 100);
 
-        // 3) Tendencia de vencidas — el "empezó a soltar". mesa_vencidos guarda
-        //    un registro diario por asesor (memoria permanente). Comparamos las
-        //    cotizaciones que se le vencieron esta semana vs la anterior.
-        $venc_now = 0; $venc_prev = 0;
-        try {
-            $venc_now = (int) DB::val(
-                "SELECT COUNT(DISTINCT cotizacion_id) FROM mesa_vencidos
-                  WHERE empresa_id = ? AND usuario_id = ?
-                    AND fecha >= CURDATE() - INTERVAL 6 DAY",
-                [$empresa_id, $uid]
-            );
-            $venc_prev = (int) DB::val(
-                "SELECT COUNT(DISTINCT cotizacion_id) FROM mesa_vencidos
-                  WHERE empresa_id = ? AND usuario_id = ?
-                    AND fecha >= CURDATE() - INTERVAL 13 DAY
-                    AND fecha <  CURDATE() - INTERVAL 6 DAY",
-                [$empresa_id, $uid]
-            );
-        } catch (Throwable $e) {
-            // mesa_vencidos sin migrar: sin tendencia, seguimos con la foto.
-        }
-        $venc_sube = $venc_now > $venc_prev;
+        // ── 2. LIMPIO (gaming: descartes vs ventas, vs norma de la empresa) ──
+        $his_dump = ($ventas + $descartes) > 0 ? $descartes / ($ventas + $descartes) : 0.0;
+        $exceso   = max(0.0, $his_dump - $emp_dump);            // cuánto descarta por encima de la norma
+        $limpio   = self::_clamp((int)round(100 - $exceso * 200), 0, 100);
+        // Gaming = descarta MÁS que su empresa Y cierra por debajo del promedio.
+        // (El que descarta mucho pero cierra bien —Kevin— NO es gaming.)
+        $gaming   = ($his_dump > $emp_dump + 0.05) && ($cierra < self::CIERRA_BAJO) && ($descartes >= 3);
 
-        // 4) Candado de descartes — la puerta trasera. Descartes de la semana y,
-        //    de esos, cuántos SIN seguimiento previo (nunca habló con el cliente
-        //    y no agotó la escalera de 4 "no contestó") = "solo descarté".
-        $descartes = 0; $sin_trabajo = 0;
-        try {
-            $dq = DB::query(
-                "SELECT COUNT(*) AS descartes,
-                        COALESCE(SUM(sin_trabajo), 0) AS sin_trabajo
-                 FROM (
-                    SELECT d.cid,
-                      (NOT EXISTS (SELECT 1 FROM mesa_estados h
-                                    WHERE h.cotizacion_id = d.cid
-                                      AND h.area = 'contacto' AND h.estado = 'hablamos')
-                       AND (SELECT COUNT(*) FROM mesa_estados nc
-                             WHERE nc.cotizacion_id = d.cid
-                               AND nc.area = 'contacto' AND nc.estado = 'no_contesta') < 4
-                      ) AS sin_trabajo
-                    FROM (
-                        SELECT DISTINCT m.cotizacion_id AS cid
-                          FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
-                         WHERE m.empresa_id = ? AND m.area = 'postura' AND m.estado = 'descartada'
-                           AND COALESCE(c.vendedor_id, c.usuario_id) = ?
-                           AND m.created_at >= NOW() - INTERVAL " . self::VENTANA_DESC . " DAY
-                        UNION
-                        SELECT DISTINCT rf.cotizacion_id AS cid
-                          FROM radar_feedback rf JOIN cotizaciones c ON c.id = rf.cotizacion_id
-                         WHERE rf.empresa_id = ? AND rf.tipo = 'sin_interes'
-                           AND COALESCE(c.vendedor_id, c.usuario_id) = ?
-                           AND rf.updated_at >= NOW() - INTERVAL " . self::VENTANA_DESC . " DAY
-                    ) d
-                 ) z",
-                [$empresa_id, $uid, $empresa_id, $uid]
-            );
-            if ($dq) {
-                $descartes   = (int)$dq[0]['descartes'];
-                $sin_trabajo = (int)$dq[0]['sin_trabajo'];
-            }
-        } catch (Throwable $e) {
-            error_log('[RitmoAsesor desc] ' . $e->getMessage());
-        }
+        // ── 3. RITMO: vencidas (límite de seguimiento) ──
+        [$venc_now, $venc_sube, $venc_prev] = self::_vencidas($empresa_id, $uid);
 
-        // Sin cartera y sin nada que medir → no es asesor operativo esta semana.
-        if ($cartera === 0 && $vencidas === 0 && $por_vencer === 0
-            && $venc_now === 0 && $descartes === 0) {
-            return [
-                'usuario_id' => $uid, 'nombre' => $nombre, 'semaforo' => 'sin_datos',
-                'vencidas' => 0, 'venc_now' => 0, 'venc_prev' => 0, 'venc_sube' => false,
-                'por_vencer' => 0, 'descartes' => 0, 'sin_trabajo' => 0,
-                'cartera' => 0, 'severidad' => 0,
-                'motivo' => 'Sin cartera activa esta semana.',
-            ];
-        }
+        // ── 4. RITMO: citas bajando (vs su propio promedio) ──
+        [$citas7, $citas_base, $citas_baja] = self::_citas($empresa_id, $uid);
 
-        // ── Semáforo (umbrales provisionales, a calibrar) ──
-        $rojo  = false; $amar = false;
-        // Candado descartes: tiró varias SIN haberlas trabajado.
-        if ($sin_trabajo >= self::ROJO_DUMP)      $rojo = true;
-        elseif ($sin_trabajo >= 1)                $amar = true;
-        // Vencidas subiendo (el "empezó a soltar"). Con piso: subir de 1→2 no
-        // alarma; solo cuando ya hay una pila real creciendo.
-        if ($venc_sube && $venc_now >= self::ROJO_VENC_SUBE)       $rojo = true;
-        elseif ($venc_sube && $venc_now >= self::AMBAR_VENC_SUBE)  $amar = true;
-        // Vencidas AHORA (foto): pila ya acumulada.
-        if ($vencidas >= self::ROJO_VENC_FOTO)    $rojo = true;
-        elseif ($vencidas >= self::AMBAR_VENC_FOTO) $amar = true;
-        // Por vencer sin tocar (alarma temprana pura).
-        if ($por_vencer >= self::AMBAR_PORVENCER) $amar = true;
+        // ── Score (veredicto). Limpio de candado: gaming lo aplasta. ──
+        $score = (int)round(0.6 * $cierra + 0.4 * $limpio);
+        if ($gaming) $score = min($score, 30);
 
-        $sem = $rojo ? 'rojo' : ($amar ? 'amarillo' : 'verde');
-
-        // Mensaje según el disparador dominante (nunca dice algo que no midió).
-        $p = self::_primer($nombre);
-        if ($sin_trabajo >= self::ROJO_DUMP) {
-            $motivo = "Descartó {$sin_trabajo} sin haberlas trabajado esta semana — está limpiando la mesa, no dando seguimiento.";
-        } elseif ($venc_sube && $venc_now >= self::ROJO_VENC_SUBE) {
-            $motivo = "Se le vencieron {$venc_now} esta semana (antes {$venc_prev}) — el seguimiento se le está acumulando, presiona a {$p}.";
-        } elseif ($vencidas >= self::ROJO_VENC_FOTO) {
-            $motivo = "Tiene {$vencidas} cotizaciones con el seguimiento vencido — que las retome antes de que se enfríen.";
-        } elseif ($sin_trabajo >= 1) {
-            $motivo = "Descartó {$sin_trabajo} sin trabajar — ojo que no esté limpiando la mesa en vez de dar seguimiento.";
-        } elseif ($venc_sube && $venc_now >= self::AMBAR_VENC_SUBE) {
-            $motivo = "Empiezan a vencérsele seguimientos ({$venc_prev}→{$venc_now}) — vigílalo esta semana.";
-        } elseif ($vencidas >= self::AMBAR_VENC_FOTO) {
-            $motivo = "Tiene {$vencidas} con seguimiento vencido — aún a tiempo de retomarlas.";
-        } elseif ($por_vencer >= self::AMBAR_PORVENCER) {
-            $motivo = "{$por_vencer} vencen hoy/mañana y no las ha tocado — que las mueva antes de que se pongan rojas.";
+        // ── Semáforo — relativo (50 = promedio de su empresa), + ritmo ──
+        $alerta_ritmo = $venc_sube || $citas_baja;
+        if ($gaming || $score < self::SCORE_ROJO) {
+            $sem = 'rojo';
+        } elseif ($cierra < self::CIERRA_BAJO || $alerta_ritmo || $score < self::SCORE_VERDE) {
+            $sem = 'amarillo';
         } else {
-            $motivo = "Al corriente con su seguimiento.";
+            $sem = 'verde';
         }
 
-        // Severidad para ordenar (más = más urgente).
-        $severidad = $sin_trabajo * 4 + $vencidas * 2 + max(0, $venc_now - $venc_prev) * 3 + $por_vencer;
+        $motivo = self::_motivo($nombre, $sem, $gaming, $cierra, $venc_sube, $venc_now, $venc_prev, $citas_baja, $citas7, $citas_base, $descartes, $ventas);
 
         return [
-            'usuario_id' => $uid, 'nombre' => $nombre, 'semaforo' => $sem,
-            'vencidas' => $vencidas, 'venc_now' => $venc_now, 'venc_prev' => $venc_prev,
-            'venc_sube' => $venc_sube, 'por_vencer' => $por_vencer,
-            'descartes' => $descartes, 'sin_trabajo' => $sin_trabajo,
-            'cartera' => $cartera, 'severidad' => $severidad, 'motivo' => $motivo,
+            'usuario_id' => $uid, 'nombre' => $nombre, 'semaforo' => $sem, 'score' => $score,
+            'cierra' => $cierra, 'limpio' => $limpio, 'gaming' => $gaming,
+            'ventas' => $ventas, 'descartes' => $descartes, 'activas' => $activas,
+            'venc_now' => $venc_now, 'venc_prev' => $venc_prev, 'venc_sube' => $venc_sube,
+            'citas7' => $citas7, 'citas_base' => $citas_base, 'citas_baja' => $citas_baja,
+            'motivo' => $motivo,
         ];
     }
 
-    private static function _primer(string $nombre): string
+    // Cierre histórico de la empresa (antes de la ventana): benchmark auto-ajustable.
+    private static function _close_hist(int $empresa_id): float
     {
-        return trim(explode(' ', trim($nombre))[0] ?? $nombre);
+        try {
+            $row = DB::row(
+                "SELECT
+                    (SELECT COUNT(*) FROM ventas v
+                      WHERE v.empresa_id = ? AND v.pagado > 0 AND v.estado <> 'cancelada'
+                        AND v.created_at <  NOW() - INTERVAL " . self::DIAS_VEREDICTO . " DAY
+                        AND v.created_at >= NOW() - INTERVAL 180 DAY) AS vh,
+                    (SELECT COUNT(*) FROM cotizaciones c
+                      WHERE c.empresa_id = ? AND c.estado <> 'borrador'
+                        AND c.created_at <  NOW() - INTERVAL " . self::DIAS_VEREDICTO . " DAY
+                        AND c.created_at >= NOW() - INTERVAL 180 DAY) AS ch",
+                [$empresa_id, $empresa_id]
+            );
+            $ch = (int)($row['ch'] ?? 0);
+            return $ch > 0 ? ((int)($row['vh'] ?? 0)) / $ch : 0.0;
+        } catch (Throwable $e) { return 0.0; }
     }
+
+    // Vencidas (límite de seguimiento): foto de hoy + ¿subiendo vs su propio nivel?
+    private static function _vencidas(int $empresa_id, int $uid): array
+    {
+        $now = 0;
+        try { $now = (int)(Mesa::armar($empresa_id, $uid)['resumen']['vencidas'] ?? 0); } catch (Throwable $e) {}
+        $v7 = 0; $vprior = 0;
+        try {
+            $row = DB::row(
+                "SELECT
+                    COUNT(DISTINCT CASE WHEN fecha >= CURDATE() - INTERVAL 6 DAY THEN cotizacion_id END) AS v7,
+                    COUNT(DISTINCT CASE WHEN fecha <  CURDATE() - INTERVAL 6 DAY THEN cotizacion_id END) AS vprior
+                 FROM mesa_vencidos
+                 WHERE empresa_id = ? AND usuario_id = ? AND fecha >= CURDATE() - INTERVAL 27 DAY",
+                [$empresa_id, $uid]
+            );
+            $v7 = (int)($row['v7'] ?? 0); $vprior = (int)($row['vprior'] ?? 0);
+        } catch (Throwable $e) {}
+        $base_wk = $vprior / 3.0;                 // promedio semanal de las 3 semanas previas
+        $sube    = ($v7 > $base_wk) && ($v7 >= 2); // sube vs su propio nivel (piso 2 para no marcar 0→1)
+        return [$now > 0 ? $now : $v7, $sube, (int)round($base_wk)];
+    }
+
+    // Citas: hechas en 7d vs su propio promedio semanal (28d/4).
+    private static function _citas(int $empresa_id, int $uid): array
+    {
+        try {
+            $row = DB::row(
+                "SELECT
+                    SUM(CASE WHEN m.created_at >= NOW() - INTERVAL 7 DAY THEN 1 ELSE 0 END) AS c7,
+                    COUNT(*) AS c28
+                 FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 WHERE m.empresa_id = ? AND m.area = 'compromiso' AND m.estado = 'nos_citamos'
+                   AND COALESCE(c.vendedor_id, c.usuario_id) = ?
+                   AND m.created_at >= NOW() - INTERVAL " . self::DIAS_BASE . " DAY",
+                [$empresa_id, $uid]
+            );
+            $c7 = (int)($row['c7'] ?? 0); $c28 = (int)($row['c28'] ?? 0);
+        } catch (Throwable $e) { return [0, 0, false]; }
+        $base_wk = $c28 / 4.0;
+        // Solo alarma si tenía ritmo de agendar (base>=1) Y esta semana cayó.
+        $baja = ($base_wk >= 1.0) && ($c7 < $base_wk);
+        return [$c7, (int)round($base_wk), $baja];
+    }
+
+    private static function _motivo(string $nombre, string $sem, bool $gaming, int $cierra, bool $venc_sube, int $venc_now, int $venc_prev, bool $citas_baja, int $citas7, int $citas_base, int $descartes, int $ventas): string
+    {
+        $p = trim(explode(' ', trim($nombre))[0] ?? $nombre);
+        if ($gaming) return "Descarta más de lo que cierra ({$descartes} descartes vs {$ventas} ventas) — revisa qué está tirando.";
+        if ($cierra < self::CIERRA_BAJO && $sem !== 'verde') return "Cierra por debajo del promedio de la empresa — apóyalo a cerrar.";
+        if ($venc_sube) return "Se le empiezan a vencer seguimientos ({$venc_prev}→{$venc_now}/sem) — dejó de mantenerse al día.";
+        if ($citas_baja) return "Bajó su ritmo de citas ({$citas7} esta semana vs ~{$citas_base} normal) — su embudo se está secando.";
+        return "Va bien — cierra y juega limpio.";
+    }
+
+    private static function _clamp(int $v, int $lo, int $hi): int { return max($lo, min($hi, $v)); }
 }

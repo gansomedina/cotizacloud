@@ -1294,18 +1294,18 @@ if ($rt_todas):
 ?>
 <div class="sec" style="margin:0">
     <div class="sec-hdr">
-        <div class="sec-title">Ritmo de seguimiento · 7 días</div>
+        <div class="sec-title">Rendimiento de asesores</div>
         <?php if ($rt_alertas): ?><div class="sec-count" style="color:var(--r)"><?= $rt_alertas ?> por atender</div><?php endif; ?>
     </div>
     <div class="tbl-card" style="max-height:400px;overflow-y:auto">
     <?php foreach ($rt_todas as $rt_g): ?>
       <div style="padding:9px 12px 5px;font:700 11px 'Inter',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:var(--t2);border-bottom:1px solid var(--border)"><?= e($rt_g['empresa']) ?></div>
-      <?php foreach ($rt_g['asesores'] as $rt_f): if ($rt_f['semaforo'] === 'sin_datos') continue; $rt_c = $rt_colmap[$rt_f['semaforo']]; $rt_tr = $rt_f['venc_prev'] . ' → ' . $rt_f['venc_now'] . ($rt_f['venc_sube'] ? ' ▲' : ''); ?>
+      <?php foreach ($rt_g['asesores'] as $rt_f): $rt_c = $rt_colmap[$rt_f['semaforo']] ?? 'var(--t3)'; ?>
       <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)">
-        <span style="width:10px;height:10px;border-radius:50%;background:<?= $rt_c ?>;flex-shrink:0;margin-top:3px"></span>
+        <span style="width:10px;height:10px;border-radius:50%;background:<?= $rt_c ?>;flex-shrink:0;margin-top:4px"></span>
         <div style="flex:1;min-width:0">
-          <div style="font:600 13px 'Inter',sans-serif;color:var(--text)"><?= e($rt_f['nombre']) ?></div>
-          <div style="font:500 11px 'Inter',sans-serif;color:var(--t3);margin-top:1px"><?php if ($rt_f['vencidas'] > 0): ?><span style="color:var(--t3)">⏳ <b><?= $rt_f['vencidas'] ?></b></span> · <?php endif; ?>vencidas sem: <b style="color:<?= $rt_f['venc_sube'] ? 'var(--r)' : 'var(--text)' ?>"><?= $rt_tr ?></b><?php if ($rt_f['por_vencer'] > 0): ?> · por vencer: <b style="color:var(--a)"><?= $rt_f['por_vencer'] ?></b><?php endif; ?><?php if ($rt_f['descartes'] > 0): ?> · 🗑 <b><?= $rt_f['descartes'] ?></b><?php if ($rt_f['sin_trabajo'] > 0): ?> <span style="color:var(--r)">(<?= $rt_f['sin_trabajo'] ?> sin trabajar)</span><?php endif; ?><?php endif; ?></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="font:600 13px 'Inter',sans-serif;color:var(--text)"><?= e($rt_f['nombre']) ?></span><span style="font:750 13px 'Inter',sans-serif;color:<?= $rt_c ?>"><?= (int)$rt_f['score'] ?><span style="font-size:9px;color:var(--t3)">/100</span></span><?php if (!empty($rt_f['gaming'])): ?><span style="font-size:11px">🚩</span><?php endif; ?></div>
+          <div style="font:500 11px 'Inter',sans-serif;color:var(--t3);margin-top:1px">Cierra <b style="color:var(--text)"><?= (int)$rt_f['cierra'] ?></b> · Limpio <b style="color:var(--text)"><?= (int)$rt_f['limpio'] ?></b> · <?= (int)$rt_f['ventas'] ?>v/<?= (int)$rt_f['descartes'] ?>d<?php if (!empty($rt_f['venc_sube'])): ?> · <span style="color:var(--a);font-weight:700">⏰▲</span><?php endif; ?><?php if (!empty($rt_f['citas_baja'])): ?> · <span style="color:var(--a);font-weight:700">📅↓</span><?php endif; ?></div>
           <div style="font:500 11px 'Inter',sans-serif;color:<?= $rt_f['semaforo'] === 'verde' ? 'var(--t3)' : $rt_c ?>;margin-top:2px"><?= e($rt_f['motivo']) ?></div>
         </div>
       </div>
