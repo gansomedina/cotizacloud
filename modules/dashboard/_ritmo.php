@@ -44,7 +44,7 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
         <span style="font:700 14px var(--body);color:var(--text)"><?= e($rt_f['nombre']) ?></span>
-        <?php if (!empty($rt_f['flag'])): ?><span style="font:700 10px var(--body);color:#b91c1c;background:#fdeaea;padding:2px 7px;border-radius:999px">no sigue el proceso</span><?php endif; ?>
+        <?php if (!empty($rt_f['flag'])): ?><span style="font:700 10px var(--body);color:#b91c1c;background:#fdeaea;padding:2px 7px;border-radius:999px">no sigue el proceso<?= !empty($rt_f['flag_pilares']) ? ': ' . e($rt_f['flag_pilares']) : '' ?></span><?php endif; ?>
       </div>
       <?= $rt_pill($rt_f['conv_estado'],  'Conversión',  $rt_f['conv_txt']) ?>
       <?= $rt_pill($rt_f['desc_estado'],  'Descartadas', $rt_f['desc_txt']) ?>

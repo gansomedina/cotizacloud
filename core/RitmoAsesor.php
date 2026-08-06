@@ -165,17 +165,23 @@ class RitmoAsesor
         }
 
         // Semáforo del asesor = el PEOR de sus 5 pilares (gris/verde = sin alarma).
+        $labels  = ['Conversión', 'Descartadas', 'Citas', 'Seguimiento', 'Contacto'];
         $estados = [$conv_estado, $desc_estado, $citas_estado, $venc_estado, $cont_estado];
         $ord = ['gris' => 0, 'verde' => 0, 'amarillo' => 1, 'rojo' => 2];
         $sem = 'verde';
         foreach ($estados as $st) if (($ord[$st] ?? 0) > $ord[$sem]) $sem = $st;
         $problemas = count(array_filter($estados, fn($s) => $s === 'amarillo' || $s === 'rojo'));
         $flag = ($sem === 'rojo');
+        // Badge: "no sigue el proceso" + el/los pilar(es) en rojo (accionable).
+        $rojos = [];
+        foreach ($estados as $i => $st) if ($st === 'rojo') $rojos[] = $labels[$i];
+        $flag_pilares = implode(', ', $rojos);
 
         $motivo = self::_motivo($conv_estado, $desc_estado, $cont_estado, $venc_estado, $citas_baja);
 
         return [
             'usuario_id' => $uid, 'nombre' => $nombre, 'semaforo' => $sem, 'flag' => $flag, 'problemas' => $problemas,
+            'flag_pilares' => $flag_pilares,
             'conv_estado' => $conv_estado, 'conv_txt' => $conv_txt,
             'desc_estado' => $desc_estado, 'desc_txt' => $desc_txt,
             'citas_estado' => $citas_estado, 'citas_txt' => $citas_txt,
