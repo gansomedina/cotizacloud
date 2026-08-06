@@ -280,7 +280,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
         <?php if ($plan === 'free' && (int)$e['num_cots'] >= TRIAL_LIMIT): ?>
             <span class="badge badge-red">FREE AGOTADO</span>
         <?php else: ?>
-            <span class="badge <?= match($plan) { 'business' => 'badge-blue', 'pro' => 'badge-green', 'lite' => 'badge-amber', default => 'badge-amber' } ?>"><?= strtoupper($plan) ?></span>
+            <span class="badge <?= match($plan) { 'business' => 'badge-blue', 'pro' => 'badge-green', 'lite' => 'badge-amber', default => 'badge-amber' } ?>"><?= strtoupper($plan) ?><?= !empty($e['es_trial']) && in_array($plan, ['lite','pro','business']) ? ' · PRUEBA' : '' ?></span>
         <?php endif; ?>
     </td>
     <td>

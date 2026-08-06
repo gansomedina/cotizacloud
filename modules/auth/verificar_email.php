@@ -125,6 +125,8 @@ unset($_SESSION['verificar_error']);
         <form method="POST" action="/verificar-email" id="verify-form">
             <?= csrf_field() ?>
             <input type="hidden" name="codigo" id="codigo-hidden">
+            <input type="hidden" id="vid_field" name="visitor_id" value="">
+            <input type="hidden" id="dsig_field" name="device_sig" value="">
 
             <div class="code-inputs">
                 <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="code-digit" data-idx="0" autofocus>
@@ -229,6 +231,59 @@ unset($_SESSION['verificar_error']);
         var btn = document.getElementById('btn-submit');
         btn.disabled = true;
         btn.textContent = 'Verificando...';
+    });
+})();
+
+// ─── Señales del Escudo (mismo JS que login.php): el auto-login post-
+//     verificación registra visitor_id + device_sig — sin esto la sesión
+//     nueva quedaría sin señales y el Radar contaría al dueño como cliente ───
+(function() {
+    function uuidv4() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    }
+    function getCookie(n) {
+        var m = document.cookie.match(new RegExp('(?:^|; )' + n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+    function setCookie(n, v, sec) {
+        var d = location.hostname, dom = '';
+        if (d === 'cotiza.cloud' || d.endsWith('.cotiza.cloud')) dom = '; domain=.cotiza.cloud';
+        var secureFlag = location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = n + '=' + encodeURIComponent(v) + '; path=/' + dom + '; max-age=' + sec + '; SameSite=Lax' + secureFlag;
+    }
+    function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch(e) { return ''; } }
+    function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+    var lk = 'cz_visitor_id', ck = 'cz_vid';
+    var vid = lsGet(lk) || getCookie(ck) || uuidv4();
+    lsSet(lk, vid); setCookie(ck, vid, 60 * 60 * 24 * 730);
+    var f = document.getElementById('vid_field'); if (f) f.value = vid;
+    function getDeviceSig() {
+        try {
+            var sw = Math.min(screen.width, screen.height);
+            var sh = Math.max(screen.width, screen.height);
+            var dpr = Math.round((window.devicePixelRatio || 1) * 100) / 100;
+            var tp = navigator.maxTouchPoints || 0;
+            var maxTex = 0;
+            try { var c = document.createElement('canvas'), gl = c.getContext('webgl'); if (gl) maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0; } catch(e) {}
+            var lang = navigator.language || '';
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+            var hc = Intl.DateTimeFormat().resolvedOptions().hourCycle || '';
+            var motion = window.matchMedia('(prefers-reduced-motion:reduce)').matches ? 1 : 0;
+            var contrast = window.matchMedia('(prefers-contrast:more)').matches ? 1 : 0;
+            var inverted = window.matchMedia('(inverted-colors:inverted)').matches ? 1 : 0;
+            var transp = window.matchMedia('(prefers-reduced-transparency:reduce)').matches ? 1 : 0;
+            var iosM = (navigator.userAgent.match(/OS (\d+)/) || [])[1] || '0';
+            return [sw,sh,dpr,tp,maxTex,lang,tz.split('/').pop()||tz,hc,motion,contrast,inverted,transp,iosM].join('|');
+        } catch(e) { return ''; }
+    }
+    var df = document.getElementById('dsig_field'); if (df && !df.value) df.value = getDeviceSig();
+    var vf = document.getElementById('verify-form');
+    if (vf) vf.addEventListener('submit', function() {
+        try { var d2 = document.getElementById('dsig_field'); if (d2 && !d2.value) d2.value = getDeviceSig(); } catch(e) {}
     });
 })();
 </script>

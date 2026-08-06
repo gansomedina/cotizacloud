@@ -6,6 +6,10 @@ defined('COTIZAAPP') or die;
 header('Content-Type: application/json; charset=utf-8');
 if (!Auth::logueado()) { http_response_code(401); echo json_encode(['ok'=>false,'error'=>'sesion']); exit; }
 csrf_check();
+// Paquetes 23-jul: la Mesa es BUSINESS — sin esto, un admin Free/Pro obtenía
+// por POST directo la sugerencia completa (motor de tips Business) y sembraba
+// mesa_estados/radar_feedback fuera del plan.
+if (empty(trial_info(EMPRESA_ID)['es_business'])) { echo json_encode(['ok'=>false,'error'=>'plan']); exit; }
 
 $b = json_decode(file_get_contents('php://input'), true) ?? [];
 $cot_id = (int)($b['cotizacion_id'] ?? 0);

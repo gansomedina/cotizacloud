@@ -293,8 +293,12 @@ chk('todas las filas tienen sugerencia no vacía', $sug_vacias, 0);
 echo "═ ORDEN ═\n";
 $ids_orden = array_map(fn($r) => (int)$r['id'], $rows);
 chk('grupo 0 = revividas/milagros (M15,M4 revividas; M20,M5 milagros)', array_slice($ids_orden, 0, 4), [15, 4, 20, 5]);
+// Regla CEO 23-jul: el tier ya NO es divisor — con la MISMA urgencia del
+// reloj, deciden calor/monto y el tier queda de desempate. M1/M8/M9/M10
+// comparten urgencia (sin reloj vencido) y M8 sigue cayendo al final por
+// monto/tier. La regla de urgencia se prueba en la sección del vendedor 509.
 $tier2_pos = array_search(8, $ids_orden); $tier1_max = max(array_search(1, $ids_orden), array_search(9, $ids_orden), array_search(10, $ids_orden));
-chk('tier 1 antes que tier 2 (M8 después de M1/M9/M10)', $tier2_pos > $tier1_max, true);
+chk('desempate con misma urgencia: M8 (tier 2) después de M1/M9/M10', $tier2_pos > $tier1_max, true);
 
 echo "═ RESUMEN Y LIMPIEZA ═\n";
 $mr = $mesa['resumen'];
@@ -372,6 +376,32 @@ $mv_ids = array_map(fn($r) => (int)$r['id'], $mv['rows']);
 chk('la vencida (R1) va PRIMERO en el orden', $mv_ids[0], 9601);
 chk('R1 registró SOLO HOY en mesa_vencidos (sin backfill retroactivo — fix 2ª auditoría)',
     (int)DB::val("SELECT COUNT(*) FROM mesa_vencidos WHERE cotizacion_id = 9601"), 1);
+
+echo "═ ORDEN POR URGENCIA (vendedor 509 — regla CEO 23-jul) ═\n";
+// UNA sola escala: vencida (MÁS días vencida primero) → límite HOY → al
+// corriente. Montos CRECIENTES a propósito ($5k→$999k) para probar que la
+// urgencia manda sobre el monto; O1 además es tier 2 (edad 25 > p75 20) para
+// probar que la ventana ya NO entierra a la más abandonada (antes una vencida
+// 4d + $119k quedaba en el lugar 14 de la mesa real solo por ser vieja).
+cot(9951, 509, 5000,   25, ['visitas' => 2, 'vista_d' => 3]);  // vencida 4d, tier 2
+tap(9951, 'contacto', 'no_contesta', 6);
+cot(9952, 509, 50000,   8, ['visitas' => 2, 'vista_d' => 3]);  // vencida 2d
+tap(9952, 'contacto', 'no_contesta', 4);
+cot(9953, 509, 80000,   8, ['visitas' => 2, 'vista_d' => 3]);  // límite HOY
+tap(9953, 'contacto', 'no_contesta', 2);
+cot(9954, 509, 999000,  8, ['visitas' => 2, 'vista_d' => 3]);  // al corriente
+tap(9954, 'contacto', 'no_contesta', 1);
+$mo = Mesa::armar(5, 509);
+$mo_ids = array_map(fn($r) => (int)$r['id'], $mo['rows']);
+$moby = [];
+foreach ($mo['rows'] as $r) $moby[(int)$r['id']] = $r;
+chk('urgencia manda: vencida4d(t2,$5k) > vencida2d($50k) > límite HOY($80k) > al corriente($999k)',
+    $mo_ids, [9951, 9952, 9953, 9954]);
+chk('estados del reloj: O1 vencida4d / O2 vencida2d / O3 hoy / O4 ok',
+    [$moby[9951]['seguimiento']['dias'] ?? -1, $moby[9952]['seguimiento']['dias'] ?? -1,
+     $moby[9953]['seguimiento']['estado'] ?? '', $moby[9954]['seguimiento']['estado'] ?? ''],
+    [4, 2, 'hoy', 'ok']);
+chk('O1 es tier 2 (fuera de ventana) y aun así encabeza', $moby[9951]['tier'] ?? -1, 2);
 
 echo "═ CITA FIRME + HUELLA (vendedores 505/506 — Fase B) ═\n";
 // C1 (9701): cita hace 12d (cad mediana=10 → venció hace 2d) + RE-TAP pelón

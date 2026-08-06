@@ -24,13 +24,15 @@ class MercadoPago
                 'mensual' => 199.00,
                 'anual'   => 1910.00,   // 20% desc (≈ $159/mes)
             ],
+            // Precios relanzamiento 23-jul-2026 (decisión CEO). La landing y
+            // /licencia deben reflejar SIEMPRE estos números.
             'pro' => [
-                'mensual' => 299.00,
-                'anual'   => 2868.00,
+                'mensual' => 499.00,
+                'anual'   => 4788.00,   // 20% desc (= $399/mes)
             ],
             'business' => [
-                'mensual' => 799.00,
-                'anual'   => 7668.00,
+                'mensual' => 2999.00,   // asistido — no comprable self-serve
+                'anual'   => 28788.00,  // 20% desc (= $2,399/mes)
             ],
         ];
     }

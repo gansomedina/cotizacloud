@@ -100,9 +100,19 @@ class Auth
 
         $usuario = DB::row(
             "SELECT * FROM usuarios
-             WHERE empresa_id = ? AND email = ? AND activo = 1",
+             WHERE empresa_id = ? AND email = ?",
             [$empresa_id, trim($email)]
         );
+        // Cuenta DESACTIVADA con contraseña correcta → mensaje claro (antes caía
+        // en "contraseña incorrectos" — críptico para asesores desactivados al
+        // terminar el trial de su empresa). Solo tras validar el password: no
+        // revela existencia de cuentas a terceros.
+        if ($usuario && (int)$usuario['activo'] !== 1) {
+            if (password_verify($password, $usuario['password_hash'])) {
+                return ['ok' => false, 'error' => 'Tu cuenta está desactivada. Pide a tu administrador que la reactive en Configuración → Usuarios.'];
+            }
+            $usuario = null;
+        }
 
         // Si no existe en esa empresa, buscar superadmin global
         if (!$usuario) {

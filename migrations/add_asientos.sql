@@ -1,0 +1,11 @@
+-- ============================================================
+-- Asientos (paquetes 23-jul-2026): tope de usuarios ACTIVOS por
+-- empresa. NULL = default del plan (Free/Lite=1, Pro/Business=
+-- ilimitado). Perilla para Business por asiento pactado en demo
+-- o para capar un caso puntual desde el superadmin.
+--
+-- NOTA: trial_info() auto-migra esta columna en runtime (mismo
+-- patrón que la columna plan) — este archivo documenta el ALTER
+-- para correrlo explícito en el servidor si se prefiere.
+-- ============================================================
+ALTER TABLE empresas ADD COLUMN asientos TINYINT UNSIGNED NULL DEFAULT NULL;

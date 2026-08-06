@@ -129,12 +129,28 @@ try {
         );
     }
 
-    DB::execute(
-        "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1, ultima_sync_mp=NOW() WHERE id=?",
-        [$plan, $vence, $empresa_id]
-    );
+    try {
+        DB::execute(
+            "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1, es_trial=0, trial_usado=0, ultima_sync_mp=NOW() WHERE id=?",
+            [$plan, $vence, $empresa_id]
+        );
+    } catch (Throwable $e) { // columnas trial sin migrar
+        DB::execute(
+            "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1, ultima_sync_mp=NOW() WHERE id=?",
+            [$plan, $vence, $empresa_id]
+        );
+    }
 
     DB::commit();
+
+    // Ajustar usuarios activos al tope del plan comprado (ej. trial Pro con 3
+    // asesores que paga Lite=1 usuario) — auditoría J2
+    $antes_aj = 0; $despues_aj = 0;
+    try {
+        $antes_aj = (int)DB::val("SELECT COUNT(*) FROM usuarios WHERE empresa_id=? AND activo=1 AND rol <> 'superadmin'", [$empresa_id]);
+        planes_ajustar_asientos($empresa_id);
+        $despues_aj = (int)DB::val("SELECT COUNT(*) FROM usuarios WHERE empresa_id=? AND activo=1 AND rol <> 'superadmin'", [$empresa_id]);
+    } catch (Throwable $e) {}
 
     unset($_SESSION['mp_intento']);
 
@@ -143,7 +159,8 @@ try {
         : '';
     $_SESSION['flash'] = [
         'tipo' => 'ok',
-        'msg'  => '¡Pago recibido! Tu plan ' . ucfirst($plan) . ' está activo hasta el ' . date('d/m/Y', strtotime($vence)) . '.' . $guardada,
+        'msg'  => '¡Pago recibido! Tu plan ' . ucfirst($plan) . ' está activo hasta el ' . date('d/m/Y', strtotime($vence)) . '.' . $guardada
+             . ($despues_aj < $antes_aj ? ' Tu plan incluye ' . $despues_aj . ' usuario(s): los demás quedaron desactivados.' : ''),
     ];
 } catch (Throwable $e) {
     DB::rollBack();
