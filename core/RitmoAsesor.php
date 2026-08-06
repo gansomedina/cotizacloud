@@ -97,59 +97,65 @@ class RitmoAsesor
         $r_rapido   = $desc >= self::DUMP_MIN ? $rapido / $desc : 0.0;
         $r_noc      = $contactados >= self::CONTACTO_MIN ? $no_conecta / $contactados : 0.0;
 
+        $pct = fn(int $n, int $d): int => $d > 0 ? (int)round($n / $d * 100) : 0;
+
         // ── PILAR 1: Conversión (resultado directo, sin comparación) ──
-        //   cerró algo → verde ; trabajó y NO cerró nada → rojo (0% es lo peor) ;
-        //   muy poca actividad para juzgar → gris (neutral, NO verde).
+        //   Todo sobre el MISMO denominador: cotizaciones trabajadas. Muestra %.
+        //   cerró algo → verde ; trabajó y cerró 0 → rojo (0% es lo peor) ;
+        //   muestra chica para juzgar → gris (neutral, NO verde/elogio).
         if ($cierres > 0) {
             $conv_estado = 'verde';
             $conv_txt    = "cerró {$cierres} de {$trabajo} ({$conv_rate}%)";
         } elseif ($trabajo >= self::CERO_MIN) {
             $conv_estado = 'rojo';
-            $conv_txt    = "no ha cerrado nada ({$trabajo} trabajadas)";
+            $conv_txt    = "cerró 0 de {$trabajo} (0%)";
         } else {
             $conv_estado = 'gris';
-            $conv_txt    = $trabajo > 0 ? "sin cierres aún ({$trabajo} trabajadas)" : "sin actividad";
+            $conv_txt    = $trabajo > 0 ? "cerró 0 de {$trabajo} — muestra chica" : "sin actividad";
         }
 
-        // ── PILAR 2: Descartadas (volumen vs cierres · sin cita · muy rápido) ──
+        // ── PILAR 2: Descartadas (% de lo trabajado · sin cita · muy rápido) ──
+        //   El "vs cierres" ya se ve en Conversión arriba (mismo denominador) →
+        //   aquí no se repite "cerró 0". sin-cita/rápido en % de los descartes.
         $dumping = ($desc >= self::DUMP_MIN && $desc > $cierres);
         if ($dumping && ($r_sincita >= 0.6 || $r_rapido >= 0.6))       $desc_estado = 'rojo';
         elseif ($desc >= self::DUMP_MIN && ($r_sincita >= 0.35 || $r_rapido >= 0.3 || $desc > 2 * max($cierres, 1))) $desc_estado = 'amarillo';
         elseif ($desc === 0)                                          $desc_estado = 'gris';
         else                                                          $desc_estado = 'verde';
-        $desc_txt = self::_desc_txt($desc_estado, $desc, $sincita, $rapido, $cierres);
+        $desc_txt = self::_desc_txt($desc_estado, $desc, $sincita, $rapido, $trabajo, $pct);
 
-        // ── PILAR 3: Citas (su ritmo de agendar) ──
-        //   Sin ritmo de citas → gris "casi no agenda" (NO verde falso: el que
-        //   descarta todo sin cita no puede salir "al ritmo").
+        // ── PILAR 3: Citas (su ritmo de agendar) — texto FACTUAL, verde = sin alarma ──
+        $citas_ref = $citas_base >= 1 ? " (~{$citas_base}/sem)" : "";
         if ($citas_base < 1 && $citas7 < 1) {
             $citas_estado = 'gris';
             $citas_txt    = "casi no agenda";
         } elseif ($citas_baja) {
             $citas_estado = 'amarillo';
-            $citas_txt    = "bajó su ritmo ({$citas7} esta semana vs ~{$citas_base})";
+            $citas_txt    = "{$citas7} citas esta semana{$citas_ref}";
         } else {
             $citas_estado = 'verde';
-            $citas_txt    = "✓ al ritmo ({$citas7} esta semana)";
+            $citas_txt    = "{$citas7} citas esta semana{$citas_ref}";
         }
 
-        // ── PILAR 4: Seguimiento (vencidas, el cronómetro) ──
+        // ── PILAR 4: Seguimiento (vencidas) — factual, verde = sin alarma ──
         $venc_estado = $venc_sube ? 'amarillo' : 'verde';
-        $venc_txt    = $venc_sube ? "se le vencen seguimientos ({$venc_week} esta semana vs ~{$venc_base})" : "✓ al día";
+        $venc_txt    = $venc_sube
+            ? "{$venc_week} vencidas esta semana (vs ~{$venc_base}/sem)"
+            : "{$venc_week} vencidas esta semana";
 
-        // ── PILAR 5: Contacto (no logra contactar) ──
+        // ── PILAR 5: Contacto (no logra contactar) — con % ──
         if ($contactados < self::CONTACTO_MIN) {
             $cont_estado = 'gris';
             $cont_txt    = "pocos contactos aún";
         } elseif ($r_noc >= 0.6) {
             $cont_estado = 'rojo';
-            $cont_txt    = "no logró contactar a {$no_conecta} de {$contactados}";
+            $cont_txt    = "no contactó a {$no_conecta} de {$contactados} (" . $pct($no_conecta, $contactados) . "%)";
         } elseif ($r_noc >= 0.35) {
             $cont_estado = 'amarillo';
-            $cont_txt    = "no logró contactar a {$no_conecta} de {$contactados}";
+            $cont_txt    = "no contactó a {$no_conecta} de {$contactados} (" . $pct($no_conecta, $contactados) . "%)";
         } else {
             $cont_estado = 'verde';
-            $cont_txt    = $no_conecta > 0 ? "contactó a " . ($contactados - $no_conecta) . " de {$contactados}" : "✓ contacta";
+            $cont_txt    = "contactó a " . ($contactados - $no_conecta) . " de {$contactados} (" . $pct($contactados - $no_conecta, $contactados) . "%)";
         }
 
         // Semáforo del asesor = el PEOR de sus 5 pilares (gris/verde = sin alarma).
@@ -173,14 +179,15 @@ class RitmoAsesor
         ];
     }
 
-    private static function _desc_txt(string $estado, int $desc, int $sincita, int $rapido, int $cierres): string
+    private static function _desc_txt(string $estado, int $desc, int $sincita, int $rapido, int $trabajo, callable $pct): string
     {
-        if ($estado === 'gris')  return "sin descartes";
-        if ($estado === 'verde') return "descarta sano ({$desc}, cerró {$cierres})";
+        if ($estado === 'gris') return "0 descartes";
+        $base = "descartó {$desc} de {$trabajo} (" . $pct($desc, $trabajo) . "%)";
+        if ($estado === 'verde') return $base;
         $sub = [];
-        if ($sincita > 0) $sub[] = "{$sincita} sin cita";
-        if ($rapido > 0)  $sub[] = "{$rapido} muy rápido";
-        return "descartó {$desc}" . ($sub ? " (" . implode(', ', $sub) . ")" : "") . " · cerró {$cierres}";
+        if ($sincita > 0) $sub[] = $pct($sincita, $desc) . "% sin cita";
+        if ($rapido > 0)  $sub[] = $pct($rapido, $desc) . "% muy rápido";
+        return $base . ($sub ? " · " . implode(' · ', $sub) : "");
     }
 
     private static function _motivo(string $conv_estado, string $desc_estado, string $cont_estado, bool $venc_sube, bool $citas_baja): string
