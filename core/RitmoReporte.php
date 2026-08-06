@@ -295,7 +295,7 @@ class RitmoReporte
         //   Excluye las de precio (esas van en su sección) para no doble-contar.
         if ($card && $card['desc_estado'] === 'rojo' && $de['hot_noprecio'] > 0)
             $cons[] = "Peor aún: {$de['hot_noprecio']} de las que tiró estaban calientes en el Radar — mandó a la basura leads con señal de compra. Eso es lo primero que hay que frenar.";
-        if ($de['precio'] > 0) $cons[] = "Trabajen la objeción de precio: {$de['precio']} se le cayeron por ahí" . ($de['precio_hot'] > 0 ? " ({$de['precio_hot']} calientes)" : "") . ". Que practique defender el valor antes de ceder.";
+        if ($de['precio'] > 0) $cons[] = "{$de['precio']} se cayeron por objeción de precio" . ($de['precio_hot'] > 0 ? " ({$de['precio_hot']} calientes)" : "") . ". Revisen si fue precio real o le faltó comunicar el valor — no lo den por hecho.";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $cons[] = "Y cuida el margen: cierra regalando descuento ({$ve['con_dto']} de {$ve['cierres']}). Enséñale a defender el precio.";
         if ($rd['sin_feedback'] >= 2) $cons[] = "Tiene {$rd['sin_feedback']} calientes sin revisar en el Radar — son sus ventas más fáciles, siéntate con él a trabajarlas hoy.";
         if (!$cons) $cons[] = "Va sólido. Súbele la vara: más volumen o mejor ticket, y que no baje el ritmo de citas.";
