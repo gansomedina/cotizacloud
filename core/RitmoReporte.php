@@ -32,6 +32,8 @@ class RitmoReporte
         } catch (Throwable $e) {}
         $win = 2 * $p75;
         $rapido_dias = max(1, (int)floor($mediana / 2));
+        // Cadencia de "abandonada" que usa Mesa::reporte (sin actividad en K días).
+        $k_aband = max(3, (int)ceil($p75 / 2));
 
         // ── Pilares: EXACTOS de la tarjeta ──
         $card = null;
@@ -41,7 +43,7 @@ class RitmoReporte
         } catch (Throwable $e) {}
 
         $d = [
-            'nombre' => $nombre, 'win' => $win, 'card' => $card,
+            'nombre' => $nombre, 'win' => $win, 'k' => $k_aband, 'card' => $card,
             'score'  => self::_score($asesor_id, $empresa_id),
             'desc'   => self::_descartes($empresa_id, $asesor_id, $win, $rapido_dias),
             'vent'   => self::_ventas($empresa_id, $asesor_id, $win),
@@ -223,7 +225,7 @@ class RitmoReporte
         $res = [];
         if ($card && !empty($card['flag'])) $res[] = "No sigue el proceso — falla en " . $card['flag_pilares'] . ".";
         if ($card) foreach (array_merge($rojos, $ambar) as $p) $res[] = ucfirst($p['label']) . ": " . $p['txt'] . ".";
-        if ($ca['se_fueron'] > 0) $res[] = "En su cartera hay {$ca['se_fueron']} cotizaciones viejas sin ningún toque suyo (" . self::_money($ca['monto']) . ").";
+        if ($ca['se_fueron'] > 0) $res[] = "En su cartera hay {$ca['se_fueron']} cotizaciones viejas sin moverlas en más de {$d['k']} días (" . self::_money($ca['monto']) . ").";
         if (!$res) $res[] = ($card ? "Va al corriente — sin pilares en rojo." : "Sin datos de Ritmo para este asesor.");
 
         // ── Embudo (para render con color) — se pasa aparte ──
@@ -300,7 +302,7 @@ class RitmoReporte
 
         // ── Cartera (acumulado ACTUAL, NO la ventana: cots viejas y sin toque) ──
         $car = [];
-        if ($ca['se_fueron'] > 0) $car[] = "En su cartera hay {$ca['se_fueron']} cotizaciones viejas (ya pasaron el ciclo) que siguen sin ningún toque suyo (ni captura, ni feedback, ni edición): " . self::_money($ca['monto']) . ". Es el acumulado de su cartera, no solo de la ventana.";
+        if ($ca['se_fueron'] > 0) $car[] = "En su cartera, {$ca['se_fueron']} cotizaciones ya pasaron el ciclo y llevan más de {$d['k']} días sin ningún movimiento (ni captura, ni feedback, ni edición reciente): " . self::_money($ca['monto']) . ". No significa que nunca las tocó — es que no las ha movido últimamente. Es el acumulado de su cartera, no solo de la ventana.";
 
         // ── Consejo del Director: el motivo de la tarjeta + refuerzos ──
         $cons = [];
@@ -313,7 +315,7 @@ class RitmoReporte
         }
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $cons[] = "Y cuida el margen: cierra regalando descuento ({$ve['con_dto']} de {$ve['cierres']}). Enséñale a defender el precio.";
         if ($rd['sin_feedback'] >= 2) $cons[] = "Tiene {$rd['sin_feedback']} calientes sin revisar en el Radar — son sus ventas más fáciles, siéntate con él a trabajarlas hoy.";
-        if ($ca['se_fueron'] >= 5) $cons[] = "En su cartera hay {$ca['se_fueron']} cotizaciones viejas sin ningún toque (" . self::_money($ca['monto']) . ") — revísenlas juntos.";
+        if ($ca['se_fueron'] >= 5) $cons[] = "En su cartera hay {$ca['se_fueron']} cotizaciones que no ha movido en más de {$d['k']} días (" . self::_money($ca['monto']) . ") — que retome las que sigan vivas.";
         if (!$cons) $cons[] = "Va sólido. Súbele la vara: más volumen o mejor ticket, y que no baje el ritmo de citas.";
 
         // ── Guion 1:1 ──
