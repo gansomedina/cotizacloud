@@ -77,7 +77,7 @@ class RitmoReporte
     // casos coincidan EXACTO con el pilar Descartadas de RitmoAsesor.
     private static function _descartes(int $eid, int $uid, int $win, int $rapido_dias): array
     {
-        $o = ['n'=>0,'sincita'=>0,'rapido'=>0,'hot'=>0,'casos'=>[]];
+        $o = ['n'=>0,'sincita'=>0,'rapido'=>0,'hot'=>0,'precio'=>0,'precio_hot'=>0,'casos'=>[]];
         $nc = "(NOT EXISTS (SELECT 1 FROM mesa_estados mc WHERE mc.cotizacion_id=c.id AND mc.area='compromiso' AND mc.estado='nos_citamos'))";
         // ¿esta cotización estuvo caliente en la ventana? → para "descartó calientes",
         //   garantizado subconjunto de los descartes (mismo set, misma ventana).
@@ -115,10 +115,12 @@ class RitmoReporte
                 if ((int)$x['sin_cita']) $o['sincita']++;
                 if ((int)$x['rapido'])   $o['rapido']++;
                 if ((int)$x['hot'])      $o['hot']++;
-                if (count($o['casos']) < 4)
+                $es_precio = ($x['razon'] === 'precio' || $x['postura'] === 'objecion_precio');
+                if ($es_precio) { $o['precio']++; if ((int)$x['hot']) $o['precio_hot']++; }
+                if (count($o['casos']) < 10)
                     $o['casos'][] = ['numero'=>$x['numero'],'cliente'=>$x['cliente'],'total'=>(float)$x['total'],
                         'sin_cita'=>(int)$x['sin_cita'],'rapido'=>(int)$x['rapido'],'hot'=>(int)$x['hot'],
-                        'razon'=>$x['razon'],'postura'=>$x['postura']];
+                        'razon'=>$x['razon'],'postura'=>$x['postura'],'es_precio'=>$es_precio ? 1 : 0];
             }
         } catch (Throwable $e) {}
         return $o;
@@ -257,24 +259,43 @@ class RitmoReporte
             $casos[] = "Vencidas más urgentes:";
             foreach ($m['casos'] as $c) $casos[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . " · {$c['dias']}d vencida";
         }
-        if (($card && ($card['desc_estado'] === 'rojo' || $card['desc_estado'] === 'amarillo')) && $de['casos']) {
-            $RZ = ['precio'=>'objeción de precio','competencia'=>'se fue con competencia','despues'=>'lo dejó para después',
-                   'no_responde'=>'no responde','no_comprador'=>'no era comprador','otro'=>'otro motivo'];
-            $PP = ['objecion_precio'=>'objeción de precio','pidio_cambios'=>'pidió cambios','en_el_aire'=>'quedó en el aire',
-                   'decidiendo'=>'estaba decidiendo','sin_compromiso'=>'sin compromiso'];
-            $casos[] = "Descartadas de mayor monto:";
-            foreach ($de['casos'] as $c) {
-                // El "por qué": razón declarada al descartar → si no, la última postura → si no, 👎 del Radar.
-                if (!empty($c['razon']) && isset($RZ[$c['razon']]))       $why = $RZ[$c['razon']];
-                elseif (!empty($c['postura']) && isset($PP[$c['postura']])) $why = $PP[$c['postura']];
-                elseif (empty($c['razon']))                                 $why = 'descartada en el Radar (👎)';
-                else                                                        $why = $c['razon'];
-                $tag = [];
-                if ($c['hot'])      $tag[] = 'estaba caliente';
-                if ($c['sin_cita']) $tag[] = 'sin cita';
-                if ($c['rapido'])   $tag[] = 'muy rápido';
-                $casos[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . " · " . $why . ($tag ? ' · ' . implode(', ', $tag) : '');
+        $RZ = ['precio'=>'objeción de precio','competencia'=>'se fue con competencia','despues'=>'lo dejó para después',
+               'no_responde'=>'no responde','no_comprador'=>'no era comprador','otro'=>'otro motivo'];
+        $PP = ['objecion_precio'=>'objeción de precio','pidio_cambios'=>'pidió cambios','en_el_aire'=>'quedó en el aire',
+               'decidiendo'=>'estaba decidiendo','sin_compromiso'=>'sin compromiso'];
+        $tags = function ($c) {
+            $t = [];
+            if ($c['hot'])      $t[] = 'estaba caliente';
+            if ($c['sin_cita']) $t[] = 'sin cita';
+            if ($c['rapido'])   $t[] = 'muy rápido';
+            return $t ? ' · ' . implode(', ', $t) : '';
+        };
+        $desc_rojo = $card && ($card['desc_estado'] === 'rojo' || $card['desc_estado'] === 'amarillo');
+
+        // Casos para revisar: descartes SIN objeción de precio (esos van aparte).
+        if ($desc_rojo) {
+            $noprecio = array_values(array_filter($de['casos'], fn($c) => !$c['es_precio']));
+            if ($noprecio) {
+                $casos[] = "Descartadas de mayor monto:";
+                foreach (array_slice($noprecio, 0, 4) as $c) {
+                    if (!empty($c['razon']) && isset($RZ[$c['razon']]))         $why = $RZ[$c['razon']];
+                    elseif (!empty($c['postura']) && isset($PP[$c['postura']]))  $why = $PP[$c['postura']];
+                    elseif (empty($c['razon']))                                  $why = 'descartada en el Radar (👎)';
+                    else                                                         $why = $c['razon'];
+                    $casos[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . " · " . $why . $tags($c);
+                }
             }
+        }
+
+        // ── Objeción por precio (sección aparte: habilidad de comunicar valor) ──
+        $prc = [];
+        if ($de['precio'] > 0) {
+            $prc[] = "{$de['precio']} de sus {$de['n']} descartes se cayeron por objeción de precio"
+                   . ($de['precio_hot'] > 0 ? " ({$de['precio_hot']} estaban calientes)" : "") . ".";
+            $solop = array_values(array_filter($de['casos'], fn($c) => $c['es_precio']));
+            foreach (array_slice($solop, 0, 4) as $c)
+                $prc[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . $tags($c);
+            $prc[] = "Revísalo con él: ¿está comunicando el valor o baja el precio a la primera? Perder por precio no es lo mismo que no saber defenderlo.";
         }
 
         // ── Cartera (acumulado ACTUAL, NO la ventana: cots viejas y sin toque) ──
@@ -314,7 +335,7 @@ class RitmoReporte
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $meta[]="Cerrar la próxima venta sin descuento.";
         if (!$meta) $meta[]="Sostener el ritmo: mesa al día y seguir cerrando.";
 
-        return ['resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'cartera'=>$car,'consejo'=>$cons,'guion'=>$g,'meta'=>$meta];
+        return ['resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'precio'=>$prc,'cartera'=>$car,'consejo'=>$cons,'guion'=>$g,'meta'=>$meta];
     }
 
     private static function _money(float $n): string { return '$' . number_format($n, 0, '.', ','); }
@@ -360,6 +381,7 @@ class RitmoReporte
         $h .= $sec('Resumen', $s['resumen']);
         $h .= $emb;
         $h .= $sec('Casos para revisar', $s['casos']);
+        $h .= $sec('Objeción por precio', $s['precio']);
         $h .= $sec('Calidad de cierre', $s['calidad']);
         $h .= $sec('Radar', $s['radar']);
         $h .= $sec('Cartera en riesgo', $s['cartera']);
