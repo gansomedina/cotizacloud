@@ -47,16 +47,19 @@ class RitmoAsesor
         // un asesor solo NO se compara consigo mismo (sigmoid(x,x)=0.5). Auto-ajuste.
         $emp_close_hist = self::_close_hist($empresa_id);
 
-        // Benchmark de descarte de la empresa (agregado del período).
+        // Benchmark de la empresa (agregado del período).
         $tot_v = 0; $tot_d = 0; $tot_a = 0;
         foreach ($rep as $r) { $tot_v += (int)($r['ventas_n'] ?? 0); $tot_d += (int)($r['descartes'] ?? 0); $tot_a += (int)($r['activas'] ?? 0); }
-        $emp_close_now = $tot_a > 0 ? $tot_v / $tot_a : 0.0;
-        $bench_close   = $emp_close_hist > 0 ? $emp_close_hist : $emp_close_now;
-        $emp_dump      = ($tot_v + $tot_d) > 0 ? $tot_d / ($tot_v + $tot_d) : 0.0;
+        $emp_dump = ($tot_v + $tot_d) > 0 ? $tot_d / ($tot_v + $tot_d) : 0.0;
+        // Cierra = ventas ABSOLUTAS vs el promedio del equipo (premia cerrar, NO
+        // castiga tener pipeline grande — el bug de ventas/activas). Con 1 solo
+        // asesor no hay pares → se compara contra su propio esperado histórico.
+        $n_adv = count($rep);
+        $team_avg_ventas = $n_adv >= 2 ? $tot_v / $n_adv : null;
 
         $filas = [];
         foreach ($rep as $uid => $r) {
-            $f = self::_asesor($empresa_id, (int)$uid, $r, $bench_close, $emp_dump);
+            $f = self::_asesor($empresa_id, (int)$uid, $r, $team_avg_ventas, $emp_close_hist, $emp_dump);
             if ($f !== null) $filas[] = $f;
         }
 
@@ -84,17 +87,21 @@ class RitmoAsesor
     }
 
     // ── Un asesor ──
-    private static function _asesor(int $empresa_id, int $uid, array $r, float $bench_close, float $emp_dump): ?array
+    private static function _asesor(int $empresa_id, int $uid, array $r, ?float $team_avg_ventas, float $emp_close_hist, float $emp_dump): ?array
     {
         $nombre   = (string)($r['nombre'] ?? '');
         $ventas   = (int)($r['ventas_n'] ?? 0);
         $descartes= (int)($r['descartes'] ?? 0);
         $activas  = (int)($r['activas'] ?? 0);
 
-        // ── 1. CIERRA (vs histórico de su empresa) ──
-        $his_close   = $activas > 0 ? $ventas / $activas : 0.0;
-        $cierra_ratio= $bench_close > 0 ? $his_close / $bench_close : 1.0;
-        $cierra      = self::_clamp((int)round($cierra_ratio * 50), 0, 100);
+        // ── 1. CIERRA (ventas ABSOLUTAS vs sus pares; solo → vs su esperado
+        //    histórico). NO ventas/activas: castigaba el pipeline grande. ──
+        if ($team_avg_ventas !== null && $team_avg_ventas > 0) {
+            $bench_v = $team_avg_ventas;                          // promedio del equipo
+        } else {
+            $bench_v = $emp_close_hist > 0 ? max(1.0, $activas * $emp_close_hist) : max(1.0, (float)$ventas);
+        }
+        $cierra = self::_clamp((int)round($ventas / max($bench_v, 0.5) * 50), 0, 100);
 
         // ── 2. LIMPIO (gaming: descartes vs ventas, vs norma de la empresa) ──
         $his_dump = ($ventas + $descartes) > 0 ? $descartes / ($ventas + $descartes) : 0.0;
