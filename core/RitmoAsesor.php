@@ -152,20 +152,16 @@ class RitmoAsesor
         }
 
         // ── PILAR 5: Contacto — de los que intentó contactar, cuántos NO LE
-        //   CONTESTARON (nunca llegó a "hablamos"). Con % sobre los contactados.
-        $le_contestaron = $contactados - $no_conecta;
+        //   CONTESTARON (nunca llegó a "hablamos"). MISMO marco para todos (el
+        //   verde solo significa que el % es bajo, no cambia el texto).
         if ($contactados < self::CONTACTO_MIN) {
             $cont_estado = 'gris';
             $cont_txt    = "pocos contactos aún";
-        } elseif ($r_noc >= 0.6) {
-            $cont_estado = 'rojo';
-            $cont_txt    = "{$no_conecta} de {$contactados} no le contestaron (" . $pct($no_conecta, $contactados) . "%)";
-        } elseif ($r_noc >= 0.35) {
-            $cont_estado = 'amarillo';
-            $cont_txt    = "{$no_conecta} de {$contactados} no le contestaron (" . $pct($no_conecta, $contactados) . "%)";
         } else {
-            $cont_estado = 'verde';
-            $cont_txt    = "le contestaron {$le_contestaron} de {$contactados} (" . $pct($le_contestaron, $contactados) . "%)";
+            $cont_txt = "{$no_conecta} de {$contactados} no le contestaron (" . $pct($no_conecta, $contactados) . "%)";
+            if ($r_noc >= 0.6)      $cont_estado = 'rojo';
+            elseif ($r_noc >= 0.35) $cont_estado = 'amarillo';
+            else                    $cont_estado = 'verde';
         }
 
         // Semáforo del asesor = el PEOR de sus 5 pilares (gris/verde = sin alarma).
