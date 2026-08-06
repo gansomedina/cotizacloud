@@ -113,7 +113,7 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
   #rt-modal .rr-pil b{color:var(--t2);min-width:92px;font-weight:750}
   #rt-modal .rr-dot{width:9px;height:9px;border-radius:50%;flex:none;align-self:center}
   #rt-modal .rr-foot{font:400 10.5px var(--body);color:var(--t3);border-top:1px solid var(--border);padding-top:8px;margin-top:6px}
-  @media print{body *{visibility:hidden}#rt-modal,#rt-modal *{visibility:visible}#rt-modal{position:absolute;inset:0;background:#fff;padding:0}#rt-modal>div{box-shadow:none;margin:0;max-width:100%}}
+  @media print{body *{visibility:hidden}#rt-modal,#rt-modal *{visibility:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact}#rt-modal{position:absolute;inset:0;background:#fff;padding:0}#rt-modal>div{box-shadow:none;margin:0;max-width:100%}}
 </style>
 
 <script>
