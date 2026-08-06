@@ -3,60 +3,69 @@
 //  RitmoAsesor — Rendimiento de asesores desde la Mesa
 //  SOLO LECTURA. No toca la Mesa ni ActividadScore.
 //
-//  Método (gerente de ventas), TODO auto-ajustable, cero valores fijos:
+//  Diseño final (acordado con el CEO), TODO semanal + auto-ajustable
+//  sobre el CICLO REAL de cada empresa (Radar::ciclo_venta), cero
+//  valores fijos de negocio:
 //
-//  VEREDICTO (cómo va):
-//    1. Cierra  — sus ventas vs el histórico de cierre de SU empresa
-//    2. Limpio  — descartes vs ventas (gaming) vs la norma de SU empresa
+//    CONVERSIÓN  — cerró vs trabajó esta semana (7d), vs su empresa
+//    LIMPIO      — gaming de descartes, DOS tells:
+//                    · descartes vs cierres (volumen)
+//                    · descartes SIN cita   (calidad)
+//                  Solo cuenta descartar cotizaciones AÚN EN JUEGO
+//                  (creadas dentro de 2×p75) → limpiar cartera vieja
+//                  heredada NO es gaming (caso Manuel/Israel).
+//    RITMO       — ⏰ vencidas subiendo · 📅 citas bajando (7d vs su nivel)
 //
-//  RITMO (leading — quién se está soltando, presiona YA):
-//    3. Vencidas subiendo — límite de seguimiento de la Mesa (normal = bajo;
-//       sube vs SU propio nivel = se soltó)
-//    4. Citas bajando — su ritmo de agendar cae vs SU propio promedio
-//
-//  Guarda: solo empresas con Mesa activa. SIN gracia para nuevos (ventana
-//  corta → se llena rápido). Diseño acordado con el CEO.
+//  Guarda: solo empresas con Mesa activa. SIN gracia para nuevos.
 // ============================================================
 defined('COTIZAAPP') or die;
 
 class RitmoAsesor
 {
-    private const DIAS_VEREDICTO = 30;   // cierre/gaming: resultado sobre ~un ciclo
-    private const DIAS_RITMO     = 7;     // vencidas/citas de la semana
-    private const DIAS_BASE      = 28;    // baseline propio del ritmo (4 semanas)
-    // Umbrales del semáforo — RELATIVOS al promedio (50 = promedio de su empresa),
-    // no magic numbers absolutos. Calibrables sin tocar la lógica.
-    private const CIERRA_BAJO    = 50;    // por debajo del promedio de su empresa
-    private const SCORE_ROJO     = 35;    // muy por debajo del promedio
-    private const SCORE_VERDE    = 58;    // claramente arriba del promedio
+    private const DIAS       = 7;    // ventana semanal (el ciclo real ≤ p75 = 7-10d)
+    private const DIAS_BENCH = 30;   // benchmark de la empresa (estable)
+    private const DIAS_BASE  = 28;   // baseline propio del ritmo (4 semanas)
+    // Umbrales del semáforo — RELATIVOS al promedio (50 = promedio de su empresa).
+    private const CONV_BAJO  = 50;
+    private const SCORE_ROJO = 35;
+    private const SCORE_VERDE= 58;
+    private const DUMP_MIN   = 3;    // mínimo de descartes en-juego para juzgar gaming
 
     public static function empresa(int $empresa_id): array
     {
-        // Guarda: solo con Mesa activa (sin Mesa no hay reloj ni datos).
         try {
             if ((int)DB::val("SELECT mesa_activa FROM empresas WHERE id=?", [$empresa_id]) < 1) return [];
         } catch (Throwable $e) { return []; }
 
-        // Reporte del equipo (ventas, descartes, activas) — fuente única de la Mesa.
+        // Ciclo REAL de la empresa (para la ventana de "en juego" del gaming).
+        $p75 = 10;
         try {
-            $rep = Mesa::reporte($empresa_id, self::DIAS_VEREDICTO)['asesores'] ?? [];
-        } catch (Throwable $e) { error_log('[RitmoAsesor reporte] ' . $e->getMessage()); return []; }
-        if (!$rep) return [];
+            if (!class_exists('Radar')) require_once MODULES_PATH . '/radar/Radar.php';
+            $c = Radar::ciclo_venta($empresa_id);
+            if (!empty($c['auto']) && !empty($c['p75'])) $p75 = max(3, (int)$c['p75']);
+        } catch (Throwable $e) {}
+        $en_juego_dias = 2 * $p75; // creada dentro de 2×p75 = todavía tenía chance
 
-        // Benchmark de cierre HISTÓRICO de la empresa (antes de la ventana): así
-        // un asesor solo NO se compara consigo mismo (sigmoid(x,x)=0.5). Auto-ajuste.
-        $emp_close_hist = self::_close_hist($empresa_id);
+        // Asesores de la empresa (con cartera). Excluye superadmin.
+        try {
+            $asesores = DB::query(
+                "SELECT DISTINCT u.id, u.nombre
+                   FROM usuarios u
+                   JOIN cotizaciones c ON COALESCE(c.vendedor_id, c.usuario_id) = u.id
+                  WHERE u.empresa_id = ? AND u.activo = 1 AND u.rol <> 'superadmin'
+                    AND c.empresa_id = ? AND c.created_at >= NOW() - INTERVAL 120 DAY
+                  ORDER BY u.nombre ASC",
+                [$empresa_id, $empresa_id]
+            );
+        } catch (Throwable $e) { return []; }
+        if (!$asesores) return [];
 
-        // Benchmark de descarte de la empresa (agregado del período).
-        $tot_v = 0; $tot_d = 0; $tot_a = 0;
-        foreach ($rep as $r) { $tot_v += (int)($r['ventas_n'] ?? 0); $tot_d += (int)($r['descartes'] ?? 0); $tot_a += (int)($r['activas'] ?? 0); }
-        $emp_close_now = $tot_a > 0 ? $tot_v / $tot_a : 0.0;
-        $bench_close   = $emp_close_hist > 0 ? $emp_close_hist : $emp_close_now;
-        $emp_dump      = ($tot_v + $tot_d) > 0 ? $tot_d / ($tot_v + $tot_d) : 0.0;
+        // Benchmark de la empresa (30d): conversión y ratio de descarte.
+        $b = self::_bench($empresa_id, $en_juego_dias);
 
         $filas = [];
-        foreach ($rep as $uid => $r) {
-            $f = self::_asesor($empresa_id, (int)$uid, $r, $bench_close, $emp_dump);
+        foreach ($asesores as $a) {
+            $f = self::_asesor($empresa_id, (int)$a['id'], (string)$a['nombre'], $en_juego_dias, $b);
             if ($f !== null) $filas[] = $f;
         }
 
@@ -64,7 +73,7 @@ class RitmoAsesor
         usort($filas, function ($x, $y) use ($peso) {
             $px = $peso[$x['semaforo']] ?? 3; $py = $peso[$y['semaforo']] ?? 3;
             if ($px !== $py) return $px <=> $py;
-            return $x['score'] <=> $y['score']; // peor score arriba dentro de la banda
+            return $x['score'] <=> $y['score'];
         });
         return $filas;
     }
@@ -83,132 +92,181 @@ class RitmoAsesor
         return $out;
     }
 
-    // ── Un asesor ──
-    private static function _asesor(int $empresa_id, int $uid, array $r, float $bench_close, float $emp_dump): ?array
+    // Benchmark de la empresa (30d): para auto-ajustar conversión y gaming.
+    private static function _bench(int $empresa_id, int $en_juego_dias): array
     {
-        $nombre   = (string)($r['nombre'] ?? '');
-        $ventas   = (int)($r['ventas_n'] ?? 0);
-        $descartes= (int)($r['descartes'] ?? 0);
-        $activas  = (int)($r['activas'] ?? 0);
+        $cierres = 0; $trabajo = 0; $desc = 0;
+        try { $cierres = self::_cierres($empresa_id, null, self::DIAS_BENCH); } catch (Throwable $e) {}
+        try { $trabajo = self::_trabajo($empresa_id, null, self::DIAS_BENCH); } catch (Throwable $e) {}
+        try { [$desc,] = self::_descartes($empresa_id, null, self::DIAS_BENCH, $en_juego_dias); } catch (Throwable $e) {}
+        return [
+            'conv' => $trabajo > 0 ? $cierres / $trabajo : 0.0,
+            'dump' => ($desc + $cierres) > 0 ? $desc / ($desc + $cierres) : 0.0,
+        ];
+    }
 
-        // ── 1. CIERRA (vs histórico de su empresa) ──
-        $his_close   = $activas > 0 ? $ventas / $activas : 0.0;
-        $cierra_ratio= $bench_close > 0 ? $his_close / $bench_close : 1.0;
-        $cierra      = self::_clamp((int)round($cierra_ratio * 50), 0, 100);
+    private static function _asesor(int $empresa_id, int $uid, string $nombre, int $en_juego_dias, array $b): ?array
+    {
+        $cierres7 = 0; $trabajo7 = 0; $desc7 = 0; $sincita7 = 0;
+        try { $cierres7 = self::_cierres($empresa_id, $uid, self::DIAS); } catch (Throwable $e) {}
+        try { $trabajo7 = self::_trabajo($empresa_id, $uid, self::DIAS); } catch (Throwable $e) {}
+        try { [$desc7, $sincita7] = self::_descartes($empresa_id, $uid, self::DIAS, $en_juego_dias); } catch (Throwable $e) {}
 
-        // ── 2. LIMPIO (gaming: descartes vs ventas, vs norma de la empresa) ──
-        $his_dump = ($ventas + $descartes) > 0 ? $descartes / ($ventas + $descartes) : 0.0;
-        $exceso   = max(0.0, $his_dump - $emp_dump);            // cuánto descarta por encima de la norma
-        $limpio   = self::_clamp((int)round(100 - $exceso * 200), 0, 100);
-        // Gaming = descarta MÁS que su empresa Y cierra por debajo del promedio.
-        // (El que descarta mucho pero cierra bien —Kevin— NO es gaming.)
-        $gaming   = ($his_dump > $emp_dump + 0.05) && ($cierra < self::CIERRA_BAJO) && ($descartes >= 3);
+        // ── CONVERSIÓN (cerró vs trabajó, vs su empresa) ──
+        if ($trabajo7 === 0) {
+            $conv = 0;                                   // no movió nada esta semana
+        } else {
+            $his = $cierres7 / $trabajo7;
+            $ratio = $b['conv'] > 0 ? $his / $b['conv'] : 1.0;
+            $conv = self::_clamp((int)round($ratio * 50), 0, 100);
+        }
 
-        // ── 3. RITMO: vencidas (límite de seguimiento) ──
+        // ── LIMPIO (gaming) — dos tells, sobre descartes EN JUEGO ──
+        $dump_ratio = ($desc7 + $cierres7) > 0 ? $desc7 / ($desc7 + $cierres7) : 0.0; // volumen
+        $sincita_ratio = $desc7 > 0 ? $sincita7 / $desc7 : 0.0;                       // calidad
+        if ($desc7 < self::DUMP_MIN) {
+            $limpio = 100;                               // no descarta lo suficiente para juzgar
+        } else {
+            $exceso = max(0.0, $dump_ratio - $b['dump']); // descarta MÁS que su empresa
+            $limpio = self::_clamp((int)round(100 - $exceso * 120 - $sincita_ratio * 40), 0, 100);
+        }
+        // Gaming: descarta en-juego MÁS que su empresa, la mayoría SIN cita, Y
+        // cierra por debajo del promedio. El que cierra bien (Kevin) NO cae.
+        $gaming = ($desc7 >= self::DUMP_MIN) && ($dump_ratio > $b['dump'])
+               && ($sincita_ratio >= 0.5) && ($conv < self::CONV_BAJO);
+
+        // ── RITMO ──
         [$venc_now, $venc_sube, $venc_prev] = self::_vencidas($empresa_id, $uid);
+        [$citas7, $citas_base, $citas_baja]  = self::_citas($empresa_id, $uid);
 
-        // ── 4. RITMO: citas bajando (vs su propio promedio) ──
-        [$citas7, $citas_base, $citas_baja] = self::_citas($empresa_id, $uid);
-
-        // ── Score (veredicto). Limpio de candado: gaming lo aplasta. ──
-        $score = (int)round(0.6 * $cierra + 0.4 * $limpio);
+        // ── Score (Conversión + Limpio; gaming lo aplasta) ──
+        $score = (int)round(0.6 * $conv + 0.4 * $limpio);
         if ($gaming) $score = min($score, 30);
 
-        // ── Semáforo — relativo (50 = promedio de su empresa), + ritmo ──
         $alerta_ritmo = $venc_sube || $citas_baja;
         if ($gaming || $score < self::SCORE_ROJO) {
             $sem = 'rojo';
-        } elseif ($cierra < self::CIERRA_BAJO || $alerta_ritmo || $score < self::SCORE_VERDE) {
+        } elseif ($conv < self::CONV_BAJO || $alerta_ritmo || $score < self::SCORE_VERDE) {
             $sem = 'amarillo';
         } else {
             $sem = 'verde';
         }
 
-        $motivo = self::_motivo($nombre, $sem, $gaming, $cierra, $venc_sube, $venc_now, $venc_prev, $citas_baja, $citas7, $citas_base, $descartes, $ventas);
-
         return [
             'usuario_id' => $uid, 'nombre' => $nombre, 'semaforo' => $sem, 'score' => $score,
-            'cierra' => $cierra, 'limpio' => $limpio, 'gaming' => $gaming,
-            'ventas' => $ventas, 'descartes' => $descartes, 'activas' => $activas,
+            'conv' => $conv, 'limpio' => $limpio, 'gaming' => $gaming,
+            'cierres7' => $cierres7, 'trabajo7' => $trabajo7,
+            'desc7' => $desc7, 'sincita7' => $sincita7,
             'venc_now' => $venc_now, 'venc_prev' => $venc_prev, 'venc_sube' => $venc_sube,
             'citas7' => $citas7, 'citas_base' => $citas_base, 'citas_baja' => $citas_baja,
-            'motivo' => $motivo,
+            'motivo' => self::_motivo($nombre, $sem, $gaming, $conv, $cierres7, $trabajo7, $desc7, $sincita7, $venc_sube, $venc_prev, $venc_now, $citas_baja, $citas7, $citas_base),
         ];
     }
 
-    // Cierre histórico de la empresa (antes de la ventana): benchmark auto-ajustable.
-    private static function _close_hist(int $empresa_id): float
+    // Cierres (pagado>0) en la ventana. $uid null = toda la empresa.
+    private static function _cierres(int $empresa_id, ?int $uid, int $dias): int
     {
-        try {
-            $row = DB::row(
-                "SELECT
-                    (SELECT COUNT(*) FROM ventas v
-                      WHERE v.empresa_id = ? AND v.pagado > 0 AND v.estado <> 'cancelada'
-                        AND v.created_at <  NOW() - INTERVAL " . self::DIAS_VEREDICTO . " DAY
-                        AND v.created_at >= NOW() - INTERVAL 180 DAY) AS vh,
-                    (SELECT COUNT(*) FROM cotizaciones c
-                      WHERE c.empresa_id = ? AND c.estado <> 'borrador'
-                        AND c.created_at <  NOW() - INTERVAL " . self::DIAS_VEREDICTO . " DAY
-                        AND c.created_at >= NOW() - INTERVAL 180 DAY) AS ch",
-                [$empresa_id, $empresa_id]
-            );
-            $ch = (int)($row['ch'] ?? 0);
-            return $ch > 0 ? ((int)($row['vh'] ?? 0)) / $ch : 0.0;
-        } catch (Throwable $e) { return 0.0; }
+        $w = $uid !== null ? "AND COALESCE(v.vendedor_id, v.usuario_id, c.vendedor_id, c.usuario_id) = ?" : "";
+        $p = [$empresa_id]; if ($uid !== null) $p[] = $uid;
+        return (int) DB::val(
+            "SELECT COUNT(*) FROM ventas v
+               LEFT JOIN cotizaciones c ON c.id = v.cotizacion_id
+              WHERE v.empresa_id = ? AND v.estado <> 'cancelada' AND v.pagado > 0 AND v.total > 0
+                AND v.created_at >= NOW() - INTERVAL $dias DAY $w", $p
+        );
     }
 
-    // Vencidas (límite de seguimiento): foto de hoy + ¿subiendo vs su propio nivel?
+    // "Trabajó" = cotizaciones que MOVIÓ en la Mesa (cualquier captura) en la ventana.
+    private static function _trabajo(int $empresa_id, ?int $uid, int $dias): int
+    {
+        $w = $uid !== null ? "AND COALESCE(c.vendedor_id, c.usuario_id) = ?" : "";
+        $p = [$empresa_id]; if ($uid !== null) $p[] = $uid;
+        return (int) DB::val(
+            "SELECT COUNT(DISTINCT m.cotizacion_id)
+               FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
+              WHERE m.empresa_id = ? AND m.created_at >= NOW() - INTERVAL $dias DAY $w", $p
+        );
+    }
+
+    // Descartes EN JUEGO (cot creada dentro de 2×p75) + cuántos SIN cita.
+    private static function _descartes(int $empresa_id, ?int $uid, int $dias, int $en_juego_dias): array
+    {
+        $w = $uid !== null ? "AND COALESCE(c.vendedor_id, c.usuario_id) = ?" : "";
+        $p = [$empresa_id]; if ($uid !== null) $p[] = $uid;
+        $p2 = [$empresa_id]; if ($uid !== null) $p2[] = $uid;
+        $row = DB::row(
+            "SELECT COUNT(DISTINCT d.cid) AS n,
+                    COUNT(DISTINCT CASE WHEN NOT EXISTS (
+                        SELECT 1 FROM mesa_estados mc
+                         WHERE mc.cotizacion_id = d.cid AND mc.area = 'compromiso' AND mc.estado = 'nos_citamos'
+                    ) THEN d.cid END) AS sin_cita
+             FROM (
+                SELECT m.cotizacion_id AS cid
+                  FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
+                 WHERE m.empresa_id = ? AND m.area = 'postura' AND m.estado = 'descartada'
+                   AND m.created_at >= NOW() - INTERVAL $dias DAY
+                   AND c.created_at >= NOW() - INTERVAL $en_juego_dias DAY $w
+                UNION
+                SELECT rf.cotizacion_id AS cid
+                  FROM radar_feedback rf JOIN cotizaciones c ON c.id = rf.cotizacion_id
+                 WHERE rf.empresa_id = ? AND rf.tipo = 'sin_interes'
+                   AND rf.updated_at >= NOW() - INTERVAL $dias DAY
+                   AND c.created_at >= NOW() - INTERVAL $en_juego_dias DAY $w
+             ) d",
+            array_merge($p, $p2)
+        );
+        return [(int)($row['n'] ?? 0), (int)($row['sin_cita'] ?? 0)];
+    }
+
+    // Vencidas: hoy + ¿subiendo vs su propio nivel? (mesa_vencidos).
     private static function _vencidas(int $empresa_id, int $uid): array
     {
-        $now = 0;
-        try { $now = (int)(Mesa::armar($empresa_id, $uid)['resumen']['vencidas'] ?? 0); } catch (Throwable $e) {}
-        $v7 = 0; $vprior = 0;
+        $v7 = 0; $vprior = 0; $vnow = 0;
         try {
             $row = DB::row(
                 "SELECT
+                    COUNT(DISTINCT CASE WHEN fecha >= CURDATE() THEN cotizacion_id END) AS vnow,
                     COUNT(DISTINCT CASE WHEN fecha >= CURDATE() - INTERVAL 6 DAY THEN cotizacion_id END) AS v7,
                     COUNT(DISTINCT CASE WHEN fecha <  CURDATE() - INTERVAL 6 DAY THEN cotizacion_id END) AS vprior
                  FROM mesa_vencidos
                  WHERE empresa_id = ? AND usuario_id = ? AND fecha >= CURDATE() - INTERVAL 27 DAY",
                 [$empresa_id, $uid]
             );
-            $v7 = (int)($row['v7'] ?? 0); $vprior = (int)($row['vprior'] ?? 0);
+            $vnow = (int)($row['vnow'] ?? 0); $v7 = (int)($row['v7'] ?? 0); $vprior = (int)($row['vprior'] ?? 0);
         } catch (Throwable $e) {}
-        $base_wk = $vprior / 3.0;                 // promedio semanal de las 3 semanas previas
-        $sube    = ($v7 > $base_wk) && ($v7 >= 2); // sube vs su propio nivel (piso 2 para no marcar 0→1)
-        return [$now > 0 ? $now : $v7, $sube, (int)round($base_wk)];
+        $base_wk = $vprior / 3.0;
+        // Sube vs su propio nivel: exige historial (vprior>0), salto claro y piso 3.
+        $sube = ($vprior > 0) && ($v7 >= 3) && ($v7 > $base_wk * 1.5);
+        return [$vnow, $sube, (int)round($base_wk)];
     }
 
-    // Citas: hechas en 7d vs su propio promedio semanal (28d/4).
+    // Citas: hechas en 7d vs su propio promedio semanal (28d/4). Conservador.
     private static function _citas(int $empresa_id, int $uid): array
     {
         try {
             $row = DB::row(
-                "SELECT
-                    SUM(CASE WHEN m.created_at >= NOW() - INTERVAL 7 DAY THEN 1 ELSE 0 END) AS c7,
-                    COUNT(*) AS c28
-                 FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
-                 WHERE m.empresa_id = ? AND m.area = 'compromiso' AND m.estado = 'nos_citamos'
-                   AND COALESCE(c.vendedor_id, c.usuario_id) = ?
-                   AND m.created_at >= NOW() - INTERVAL " . self::DIAS_BASE . " DAY",
+                "SELECT SUM(CASE WHEN m.created_at >= NOW() - INTERVAL 7 DAY THEN 1 ELSE 0 END) AS c7, COUNT(*) AS c28
+                   FROM mesa_estados m JOIN cotizaciones c ON c.id = m.cotizacion_id
+                  WHERE m.empresa_id = ? AND m.area = 'compromiso' AND m.estado = 'nos_citamos'
+                    AND COALESCE(c.vendedor_id, c.usuario_id) = ?
+                    AND m.created_at >= NOW() - INTERVAL " . self::DIAS_BASE . " DAY",
                 [$empresa_id, $uid]
             );
             $c7 = (int)($row['c7'] ?? 0); $c28 = (int)($row['c28'] ?? 0);
         } catch (Throwable $e) { return [0, 0, false]; }
         $base_wk = $c28 / 4.0;
-        // Solo alarma si tenía ritmo de agendar (base>=1) Y esta semana cayó.
-        $baja = ($base_wk >= 1.0) && ($c7 < $base_wk);
+        $baja = ($base_wk >= 2.0) && ($c7 < $base_wk * 0.5); // tenía ritmo y cayó a la mitad
         return [$c7, (int)round($base_wk), $baja];
     }
 
-    private static function _motivo(string $nombre, string $sem, bool $gaming, int $cierra, bool $venc_sube, int $venc_now, int $venc_prev, bool $citas_baja, int $citas7, int $citas_base, int $descartes, int $ventas): string
+    private static function _motivo(string $nombre, string $sem, bool $gaming, int $conv, int $cierres7, int $trabajo7, int $desc7, int $sincita7, bool $venc_sube, int $venc_prev, int $venc_now, bool $citas_baja, int $citas7, int $citas_base): string
     {
-        $p = trim(explode(' ', trim($nombre))[0] ?? $nombre);
-        if ($gaming) return "Descarta más de lo que cierra ({$descartes} descartes vs {$ventas} ventas) — revisa qué está tirando.";
-        if ($cierra < self::CIERRA_BAJO && $sem !== 'verde') return "Cierra por debajo del promedio de la empresa — apóyalo a cerrar.";
+        if ($gaming) return "Descarta sin trabajar ({$desc7} descartes, {$sincita7} sin cita) y cierra poco — está limpiando la mesa, no vendiendo.";
+        if ($trabajo7 === 0) return "No movió ninguna cotización esta semana — ¿por qué está parado?";
+        if ($conv < self::CONV_BAJO && $sem !== 'verde') return "Convierte poco: cerró {$cierres7} de {$trabajo7} que trabajó — apóyalo a cerrar.";
         if ($venc_sube) return "Se le empiezan a vencer seguimientos ({$venc_prev}→{$venc_now}/sem) — dejó de mantenerse al día.";
         if ($citas_baja) return "Bajó su ritmo de citas ({$citas7} esta semana vs ~{$citas_base} normal) — su embudo se está secando.";
-        return "Va bien — cierra y juega limpio.";
+        return "Va bien — cierra lo que trabaja y juega limpio.";
     }
 
     private static function _clamp(int $v, int $lo, int $hi): int { return max($lo, min($hi, $v)); }
