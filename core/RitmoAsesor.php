@@ -299,18 +299,14 @@ class RitmoAsesor
 
     private static function _motivo(string $sem, bool $flag, int $conv, int $cierres, int $trabajo, int $proceso, int $desc, int $sincita, int $rapido, int $no_conecta, bool $venc_sube, int $venc_week, int $venc_base, bool $citas_baja, int $citas7, int $citas_base): string
     {
-        if ($flag) {
-            $t = self::_proceso_txt($desc, $sincita, $rapido, $no_conecta);
-            return "No sigue el proceso: {$t} — cerró {$cierres}, revísalo.";
-        }
-        if ($trabajo === 0) return "No movió ninguna cotización — ¿por qué está parado?";
-        if ($proceso < self::PROC_BAJO && $sem !== 'verde') {
-            $t = self::_proceso_txt($desc, $sincita, $rapido, $no_conecta);
-            return "Cuida el proceso: {$t} — que llegue a cita antes de tirar.";
-        }
-        if ($conv < self::CONV_BAJO && $sem !== 'verde') return "Convierte poco: cerró {$cierres} de {$trabajo} que trabajó — apóyalo a cerrar.";
+        // El MENSAJE es solo el veredicto + qué hacer. Los NÚMEROS van una sola
+        // vez, en la línea de datos de la tarjeta (no se repiten aquí).
+        if ($flag) return "No sigue el proceso — que trabaje sus leads y llegue a cita antes de tirar.";
+        if ($trabajo === 0) return "No movió ninguna cotización esta semana — ¿por qué está parado?";
+        if ($proceso < self::PROC_BAJO && $sem !== 'verde') return "Cuida el proceso — que consiga cita antes de descartar.";
+        if ($conv < self::CONV_BAJO && $sem !== 'verde') return "Convierte poco de lo que trabaja — apóyalo a cerrar.";
         if ($venc_sube) return "Se le vencieron {$venc_week} seguimientos esta semana vs ~{$venc_base} normal — dejó de mantenerse al día.";
-        if ($citas_baja) return "Bajó su ritmo de citas ({$citas7} esta semana vs ~{$citas_base} normal) — su embudo se está secando.";
+        if ($citas_baja) return "Bajó su ritmo de citas ({$citas7} vs ~{$citas_base} normal) — su embudo se está secando.";
         return "Va bien — cierra lo que trabaja y sigue el proceso.";
     }
 
