@@ -76,11 +76,6 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
       <button type="button" onclick="rtPrint()" style="font:700 11px var(--body);color:var(--t2);background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer">Imprimir</button>
       <button type="button" onclick="rtClose()" style="font:700 16px var(--body);color:var(--t3);background:none;border:0;cursor:pointer;line-height:1">✕</button>
     </div>
-    <div style="display:flex;gap:8px;align-items:flex-end;padding:11px 16px;background:var(--bg);border-bottom:1px solid var(--border);flex-wrap:wrap">
-      <label style="font:600 10px var(--body);color:var(--t3)">Desde<br><input type="date" id="rt-desde" style="font:500 12px var(--body);padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--text)"></label>
-      <label style="font:600 10px var(--body);color:var(--t3)">Hasta<br><input type="date" id="rt-hasta" style="font:500 12px var(--body);padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--text)"></label>
-      <button type="button" id="rt-gen" onclick="rtGen(false)" style="font:700 12px var(--body);color:#fff;background:#1a5c38;border:0;border-radius:7px;padding:7px 13px;cursor:pointer">Generar</button>
-    </div>
     <div id="rt-body" style="padding:16px;min-height:120px"></div>
   </div>
 </div>
@@ -114,6 +109,9 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
   #rt-modal .rr-consejo .rr-list li{font:600 13px var(--body);color:var(--text);margin:0}
   :root[data-theme="dark"] #rt-modal .rr-consejo{background:rgba(46,160,67,.12);border-color:rgba(67,200,119,.32)}
   :root[data-theme="dark"] #rt-modal .rr-consejo .rr-st{color:#43c877}
+  #rt-modal .rr-pil{display:flex;align-items:baseline;gap:8px;font:500 13px var(--body);margin:4px 0}
+  #rt-modal .rr-pil b{color:var(--t2);min-width:92px;font-weight:750}
+  #rt-modal .rr-dot{width:9px;height:9px;border-radius:50%;flex:none;align-self:center}
   #rt-modal .rr-foot{font:400 10.5px var(--body);color:var(--t3);border-top:1px solid var(--border);padding-top:8px;margin-top:6px}
   @media print{body *{visibility:hidden}#rt-modal,#rt-modal *{visibility:visible}#rt-modal{position:absolute;inset:0;background:#fff;padding:0}#rt-modal>div{box-shadow:none;margin:0;max-width:100%}}
 </style>
@@ -123,17 +121,13 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
   const CSRF = <?= json_encode(csrf_token()) ?>;
   let uid = 0;
   const $ = id => document.getElementById(id);
-  const ymd = d => d.toISOString().slice(0,10);
 
   document.querySelectorAll('.rt-rep-btn').forEach(b => b.addEventListener('click', () => {
     uid = parseInt(b.dataset.uid, 10);
     $('rt-modal-title').textContent = 'Reporte — ' + b.dataset.name;
-    const hoy = new Date(), d15 = new Date(Date.now() - 14*864e5);
-    $('rt-hasta').value = ymd(hoy);
-    $('rt-desde').value = ymd(d15);
     $('rt-body').innerHTML = '';
     $('rt-modal').style.display = 'block';
-    rtGen(true);
+    rtGen();
   }));
 
   window.rtClose = () => { $('rt-modal').style.display = 'none'; };
@@ -142,13 +136,12 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
 
   window.rtGen = async function(){
     if (!uid) return;
-    const btn = $('rt-gen'); btn.disabled = true; btn.textContent = 'Generando…';
     $('rt-body').innerHTML = '<div style="padding:24px;text-align:center;color:var(--t3);font:500 13px var(--body)">Cruzando la data del asesor…</div>';
     try {
       const r = await fetch('/api/reporte-asesor', {
         method:'POST',
         headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF,'Accept':'application/json'},
-        body: JSON.stringify({ asesor_id: uid, desde: $('rt-desde').value, hasta: $('rt-hasta').value })
+        body: JSON.stringify({ asesor_id: uid })
       });
       const d = await r.json();
       if (!d.ok) { $('rt-body').innerHTML = '<div style="padding:20px;color:#b91c1c;font:600 13px var(--body)">No se pudo generar ('+(d.error||'error')+').</div>'; }
@@ -158,7 +151,6 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
         $('rt-body').innerHTML = banner + d.data.html;
       }
     } catch(e){ $('rt-body').innerHTML = '<div style="padding:20px;color:#b91c1c">Error de red.</div>'; }
-    btn.disabled = false; btn.textContent = 'Generar';
   };
 })();
 </script>
