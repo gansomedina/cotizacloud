@@ -12,6 +12,10 @@ class RitmoAsesor
 {
     // Estados "vivos" de una cotización (lead activo en el pipeline).
     private const VIVOS = "'enviada','vista'";
+    // Ventana del pipeline ACTIVO (~3 ciclos de venta). Sin esto, "leads vivos"
+    // contaría el cementerio de cotizaciones viejas nunca cerradas → huérfanos
+    // inflados (caso real Abigail: 190). Solo lo reciente es "el trabajo de ahora".
+    private const VENTANA = 90;
 
     /**
      * Ritmo del equipo de UNA empresa. Devuelve filas ya ordenadas por
@@ -95,19 +99,22 @@ class RitmoAsesor
             );
 
             // 2. Leads activos (vivos) del asesor — como usuario_id o vendedor_id.
+            //    Acotado al pipeline reciente (VENTANA) para no contar el cementerio.
             $leads = (int) DB::val(
                 "SELECT COUNT(*) FROM cotizaciones
                   WHERE empresa_id = ? AND estado IN (" . self::VIVOS . ")
-                    AND (usuario_id = ? OR vendedor_id = ?)",
+                    AND (usuario_id = ? OR vendedor_id = ?)
+                    AND created_at >= NOW() - INTERVAL " . self::VENTANA . " DAY",
                 [$empresa_id, $uid, $uid]
             );
 
-            // 3. Huérfanos: leads vivos de >7 días de edad, sin ningún toque en
-            //    los últimos 7 días (se están soltando).
+            // 3. Huérfanos: leads vivos del pipeline reciente (7 a VENTANA días de
+            //    edad) sin ningún toque en los últimos 7 días (se están soltando).
             $huerfanos = (int) DB::val(
                 "SELECT COUNT(*) FROM cotizaciones c
                   WHERE c.empresa_id = ? AND c.estado IN (" . self::VIVOS . ")
                     AND (c.usuario_id = ? OR c.vendedor_id = ?)
+                    AND c.created_at >= NOW() - INTERVAL " . self::VENTANA . " DAY
                     AND c.created_at < NOW() - INTERVAL 7 DAY
                     AND NOT EXISTS (
                         SELECT 1 FROM mesa_estados m
@@ -138,7 +145,7 @@ class RitmoAsesor
         }
 
         $ratio = $leads > 0 ? round($toques_now / $leads, 2) : 0.0;
-        // Delta de toques semana vs semana (para ordenar y para el semáforo).
+        // Delta de toques semana vs semana (para ordenar).
         if ($toques_prev > 0) {
             $delta_pct = ($toques_now - $toques_prev) / $toques_prev;
         } else {
@@ -146,24 +153,36 @@ class RitmoAsesor
         }
         $huerf_ratio = $leads > 0 ? $huerfanos / $leads : 0.0;
 
-        // ── Semáforo (umbrales iniciales — afinar con datos reales) ──
-        if (($toques_now === 0 && $leads > 3) || $delta_pct <= -0.30 || $huerf_ratio >= 0.5) {
+        // ── Disparadores (cada uno con su propio mensaje) ──
+        // El % solo cuenta como "caída" si la base anterior es significativa
+        // (toques_prev >= 5): así no marcamos "bajó" cuando en realidad SUBIÓ
+        // desde una base chica (1 → 34 no es una caída, es un repunte).
+        $parado     = $toques_now === 0 && $leads > 3;
+        $cayo       = $toques_prev >= 5 && $delta_pct <= -0.30;
+        $cayo_leve  = $toques_prev >= 5 && $delta_pct <= -0.10;
+        $huerf_alto = $huerf_ratio >= 0.5 && $huerfanos >= 5;
+        $huerf_med  = $huerf_ratio >= 0.3 && $huerfanos >= 4;
+
+        if ($parado || $cayo || $huerf_alto) {
             $sem = 'rojo';
-        } elseif ($delta_pct <= -0.10 || $huerf_ratio >= 0.30) {
+        } elseif ($cayo_leve || $huerf_med) {
             $sem = 'amarillo';
         } else {
             $sem = 'verde';
         }
 
-        // Frase de acción (para el manager).
-        if ($sem === 'rojo') {
-            $motivo = $toques_now === 0
-                ? "Sin seguimientos esta semana con $leads leads vivos — habla con " . self::_primer($nombre) . " hoy."
-                : "Bajó el ritmo fuerte (" . self::_pct($delta_pct) . ") — presiona esta semana, antes de que caiga la venta.";
-        } elseif ($sem === 'amarillo') {
-            $motivo = $huerf_ratio >= 0.30
-                ? "$huerfanos leads se le están enfriando — que retome seguimiento."
-                : "Bajó un poco el ritmo (" . self::_pct($delta_pct) . ") — vigilar.";
+        // Mensaje según el DISPARADOR real (nunca dice "bajó" si en verdad subió).
+        $primer = self::_primer($nombre);
+        if ($parado) {
+            $motivo = "Sin seguimientos esta semana con $leads leads vivos — habla con $primer hoy.";
+        } elseif ($cayo) {
+            $motivo = "Bajó el ritmo fuerte (de {$toques_prev} a {$toques_now} toques) — presiona esta semana.";
+        } elseif ($huerf_alto) {
+            $motivo = "$huerfanos leads sin tocar en +7 días — se están enfriando, que retome seguimiento.";
+        } elseif ($cayo_leve) {
+            $motivo = "Bajó un poco el ritmo (de {$toques_prev} a {$toques_now} toques) — vigilar.";
+        } elseif ($huerf_med) {
+            $motivo = "$huerfanos leads empiezan a enfriarse — que retome seguimiento.";
         } else {
             $motivo = "Mantiene el ritmo.";
         }
@@ -176,10 +195,6 @@ class RitmoAsesor
         ];
     }
 
-    private static function _pct(float $d): string
-    {
-        return ($d > 0 ? '+' : '') . round($d * 100) . '%';
-    }
     private static function _primer(string $nombre): string
     {
         return trim(explode(' ', trim($nombre))[0] ?? $nombre);

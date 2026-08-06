@@ -1283,12 +1283,14 @@ $hist_total = array_sum($hist_values);
 <div style="display:flex;flex-direction:column;gap:14px">
 <?php
 // ── Ritmo de asesores (Alarma de Ritmo Semanal — indicador adelantado) ──
-$ritmo_todas = RitmoAsesor::todas();
+// OJO: vars con prefijo rt_ para NO pisar $trend (datos de la gráfica de
+// ingresos, líneas 374/2112) ni otras variables de esta página.
+$rt_todas = RitmoAsesor::todas();
 $rt_alertas = 0;
-foreach ($ritmo_todas as $g) foreach ($g['asesores'] as $f)
-    if ($f['semaforo'] === 'rojo' || $f['semaforo'] === 'amarillo') $rt_alertas++;
-if ($ritmo_todas):
-    $rt_col = ['rojo' => 'var(--r)', 'amarillo' => 'var(--a)', 'verde' => 'var(--g)'];
+foreach ($rt_todas as $rt_g) foreach ($rt_g['asesores'] as $rt_f)
+    if ($rt_f['semaforo'] === 'rojo' || $rt_f['semaforo'] === 'amarillo') $rt_alertas++;
+if ($rt_todas):
+    $rt_colmap = ['rojo' => 'var(--r)', 'amarillo' => 'var(--a)', 'verde' => 'var(--g)'];
 ?>
 <div class="sec" style="margin:0">
     <div class="sec-hdr">
@@ -1296,15 +1298,15 @@ if ($ritmo_todas):
         <?php if ($rt_alertas): ?><div class="sec-count" style="color:var(--r)"><?= $rt_alertas ?> por atender</div><?php endif; ?>
     </div>
     <div class="tbl-card" style="max-height:400px;overflow-y:auto">
-    <?php foreach ($ritmo_todas as $g): ?>
-      <div style="padding:9px 12px 5px;font:700 11px 'Inter',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:var(--t2);border-bottom:1px solid var(--border)"><?= e($g['empresa']) ?></div>
-      <?php foreach ($g['asesores'] as $f): if ($f['semaforo'] === 'sin_datos') continue; $c = $rt_col[$f['semaforo']]; $trend = $f['toques_prev'] . ' → ' . $f['toques_now']; ?>
+    <?php foreach ($rt_todas as $rt_g): ?>
+      <div style="padding:9px 12px 5px;font:700 11px 'Inter',sans-serif;letter-spacing:.03em;text-transform:uppercase;color:var(--t2);border-bottom:1px solid var(--border)"><?= e($rt_g['empresa']) ?></div>
+      <?php foreach ($rt_g['asesores'] as $rt_f): if ($rt_f['semaforo'] === 'sin_datos') continue; $rt_c = $rt_colmap[$rt_f['semaforo']]; $rt_tr = $rt_f['toques_prev'] . ' → ' . $rt_f['toques_now']; ?>
       <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)">
-        <span style="width:10px;height:10px;border-radius:50%;background:<?= $c ?>;flex-shrink:0;margin-top:3px"></span>
+        <span style="width:10px;height:10px;border-radius:50%;background:<?= $rt_c ?>;flex-shrink:0;margin-top:3px"></span>
         <div style="flex:1;min-width:0">
-          <div style="font:600 13px 'Inter',sans-serif;color:var(--text)"><?= e($f['nombre']) ?></div>
-          <div style="font:500 11px 'Inter',sans-serif;color:var(--t3);margin-top:1px">Toques/lead: <b style="color:var(--text)"><?= $f['ratio'] ?></b> · semana: <b style="color:<?= $c ?>"><?= $trend ?></b><?php if ($f['huerfanos'] > 0): ?> · huérf: <b style="color:var(--r)"><?= $f['huerfanos'] ?></b><?php endif; ?> · nuevas: <b style="color:var(--text)"><?= $f['nuevas'] ?></b></div>
-          <div style="font:500 11px 'Inter',sans-serif;color:<?= $f['semaforo'] === 'verde' ? 'var(--t3)' : $c ?>;margin-top:2px"><?= e($f['motivo']) ?></div>
+          <div style="font:600 13px 'Inter',sans-serif;color:var(--text)"><?= e($rt_f['nombre']) ?></div>
+          <div style="font:500 11px 'Inter',sans-serif;color:var(--t3);margin-top:1px">Toques/lead: <b style="color:var(--text)"><?= $rt_f['ratio'] ?></b> · semana: <b style="color:<?= $rt_c ?>"><?= $rt_tr ?></b><?php if ($rt_f['huerfanos'] > 0): ?> · huérf: <b style="color:var(--r)"><?= $rt_f['huerfanos'] ?></b><?php endif; ?> · nuevas: <b style="color:var(--text)"><?= $rt_f['nuevas'] ?></b></div>
+          <div style="font:500 11px 'Inter',sans-serif;color:<?= $rt_f['semaforo'] === 'verde' ? 'var(--t3)' : $rt_c ?>;margin-top:2px"><?= e($rt_f['motivo']) ?></div>
         </div>
       </div>
       <?php endforeach; ?>
