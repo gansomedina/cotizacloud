@@ -301,7 +301,7 @@ class RitmoReporte
         if ($de['precio'] > 0) $cons[] = "{$de['precio']} se cayeron por objeción de precio" . ($de['precio_hot'] > 0 ? " ({$de['precio_hot']} calientes)" : "") . ". Conviene revisar si fue precio real o comunicación de valor — no darlo por hecho.";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $cons[] = "Cierra regalando descuento ({$ve['con_dto']} de {$ve['cierres']}) — conviene cuidar el margen defendiendo el precio.";
         if ($rd['sin_feedback'] >= 1) $cons[] = ($rd['sin_feedback'] === 1 ? "1 caliente del Radar sin marcar" : "{$rd['sin_feedback']} calientes del Radar sin marcar") . " — son de las ventas más fáciles, conviene atenderlas.";
-        if ($card && $card['citas_estado'] === 'amarillo') $cons[] = "Bajó el ritmo de citas ({$card['citas_txt']}) — conviene recuperarlo.";
+        if ($card && $card['citas_estado'] === 'amarillo') $cons[] = "Bajó el ritmo de citas: {$card['citas_txt']} — conviene recuperarlo.";
         if (!$cons) $cons[] = "Va sólido. Para subir: más volumen o mejor ticket, sin bajar el ritmo de citas.";
 
         // ── Meta de la semana (acciones, impersonales) ──
