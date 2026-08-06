@@ -1,8 +1,21 @@
-# Alarma de Ritmo Semanal por Asesor — diseño aprobado (24 jul 2026)
+# Alarma de Ritmo Semanal por Asesor — IMPLEMENTADO (24 jul 2026)
 
-> Estado: **DISEÑO APROBADO, pendiente implementar.** Acordado con el usuario.
-> Es SOLO LECTURA — NO toca ActividadScore ni la lógica de la Mesa. Solo lee
-> `mesa_estados` + `cotizaciones`. Riesgo bajo.
+> Estado: **IMPLEMENTADO.** Es SOLO LECTURA — NO toca ActividadScore ni la
+> lógica de la Mesa. Solo lee `mesa_estados` + `cotizaciones`. Riesgo bajo.
+>
+> **Archivos:**
+> - `core/RitmoAsesor.php` — helper: `empresa($id)` y `todas()`.
+> - `modules/dashboard/_ritmo.php` — tarjeta admin (gate: es_admin + mesa_activa>=1).
+> - `modules/dashboard/index.php` — include tras la mesa.
+> - `modules/superadmin/executive.php` — sección "Ritmo de asesores · 7 días".
+>
+> **Pendiente de validar con datos reales:** calibrar los umbrales del semáforo
+> con Abigail/Kevin las primeras semanas (ver más abajo).
+>
+> **Nota de rendimiento:** `RitmoAsesor::todas()` corre ~4 COUNT por asesor por
+> empresa. A escala grande (cientos de empresas) el ejecutivo del superadmin
+> haría muchas queries — optimizar con queries agregadas (GROUP BY) cuando la
+> base crezca. Hoy (pocas empresas) va bien.
 
 ## Problema que resuelve
 Abigail y Kevin (Hermosillo) bajan el ritmo; al presionarlos, suben las ventas.

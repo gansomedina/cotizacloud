@@ -889,6 +889,9 @@ if ($plan_intento && in_array($plan_intento, ['lite','pro','business']) && $tria
      cada asesor). Si el ranking no se renderiza, hay fallback abajo. -->
 <?php include __DIR__ . '/_mesa.php'; ?>
 
+<!-- ══ RITMO DEL EQUIPO (Alarma de Ritmo Semanal — solo admin) ══ -->
+<?php include __DIR__ . '/_ritmo.php'; ?>
+
 <!-- ══ TERMÓMETRO + LEADERBOARD ══ -->
 <?php // Paquetes 23-jul: BUSINESS only (antes !es_lite dejaba pasar Free/Pro con el toggle) ?>
 <?php if (!empty($empresa['termometro_visible']) && !empty($trial['es_business'])):
