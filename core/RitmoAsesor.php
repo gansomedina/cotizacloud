@@ -192,12 +192,13 @@ class RitmoAsesor
     private static function _desc_txt(string $estado, int $desc, int $sincita, int $rapido, int $trabajo, callable $pct): string
     {
         if ($estado === 'gris') return "0 descartes";
-        $base = "descartó {$desc} de {$trabajo} (" . $pct($desc, $trabajo) . "%)";
-        if ($estado === 'verde') return $base;
+        // El desglose (# sin cita, # muy rápido) se muestra SIEMPRE que haya
+        //   descartes — también en verde: sin cita es el dato clave, no se oculta.
         $sub = [];
-        if ($sincita > 0) $sub[] = $pct($sincita, $desc) . "% sin cita";
-        if ($rapido > 0)  $sub[] = $pct($rapido, $desc) . "% muy rápido";
-        return $base . ($sub ? " · " . implode(' · ', $sub) : "");
+        if ($sincita > 0) $sub[] = "{$sincita} sin cita";
+        if ($rapido > 0)  $sub[] = "{$rapido} muy rápido";
+        return "descartó {$desc} de {$trabajo} (" . $pct($desc, $trabajo) . "%)"
+             . ($sub ? " · " . implode(' · ', $sub) : "");
     }
 
     private static function _motivo(string $conv_estado, string $desc_estado, string $cont_estado, string $venc_estado, bool $citas_baja): string
