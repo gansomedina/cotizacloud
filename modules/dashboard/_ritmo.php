@@ -1,8 +1,9 @@
 <?php
 // ============================================================
 //  Dashboard partial — Rendimiento del equipo (desde la Mesa)
-//  SOLO ADMIN. Solo lectura (RitmoAsesor). 4 PILARES etiquetados,
-//  cada uno con su mini-semáforo: Conversión · Proceso · Vencidas · Citas.
+//  SOLO ADMIN. Solo lectura (RitmoAsesor). 5 PILARES etiquetados,
+//  cada uno con su mini-semáforo y TODOS sus parámetros:
+//    Conversión · Descartadas · Citas · Seguimiento · Contacto.
 //  NOTA: comparte scope con index.php — variables con prefijo rt_.
 // ============================================================
 defined('COTIZAAPP') or die;
@@ -27,7 +28,7 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
     $tc = $ok ? 'var(--t3)' : $dc;
     return '<div style="display:flex;align-items:baseline;gap:7px;margin-top:3px;font:500 12px var(--body)">'
          . '<span style="width:8px;height:8px;border-radius:50%;background:' . $dc . ';flex:none;align-self:center"></span>'
-         . '<span style="color:var(--t2);font-weight:700;min-width:78px">' . $label . '</span>'
+         . '<span style="color:var(--t2);font-weight:700;min-width:88px">' . $label . '</span>'
          . '<span style="color:' . $tc . '">' . e($txt) . '</span></div>';
 };
 ?>
@@ -45,15 +46,16 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
         <span style="font:700 14px var(--body);color:var(--text)"><?= e($rt_f['nombre']) ?></span>
         <?php if (!empty($rt_f['flag'])): ?><span style="font:700 10px var(--body);color:#b91c1c;background:#fdeaea;padding:2px 7px;border-radius:999px">no sigue el proceso</span><?php endif; ?>
       </div>
-      <?= $rt_pill($rt_f['conv_estado'],  'Conversión', $rt_f['conv_txt']) ?>
-      <?= $rt_pill($rt_f['proc_estado'],  'Proceso',    $rt_f['proc_txt']) ?>
-      <?= $rt_pill($rt_f['venc_estado'],  'Vencidas',   $rt_f['venc_txt']) ?>
-      <?= $rt_pill($rt_f['citas_estado'], 'Citas',      $rt_f['citas_txt']) ?>
+      <?= $rt_pill($rt_f['conv_estado'],  'Conversión',  $rt_f['conv_txt']) ?>
+      <?= $rt_pill($rt_f['desc_estado'],  'Descartadas', $rt_f['desc_txt']) ?>
+      <?= $rt_pill($rt_f['citas_estado'], 'Citas',       $rt_f['citas_txt']) ?>
+      <?= $rt_pill($rt_f['venc_estado'],  'Seguimiento', $rt_f['venc_txt']) ?>
+      <?= $rt_pill($rt_f['cont_estado'],  'Contacto',    $rt_f['cont_txt']) ?>
       <div style="font:600 12.5px var(--body);color:<?= $rt_f['semaforo'] === 'verde' ? 'var(--t3)' : $rt_c ?>;margin-top:6px">→ <?= e($rt_f['motivo']) ?></div>
     </div>
   </div>
   <?php endforeach; ?>
   <div style="padding:9px 16px;font:400 11px var(--body);color:var(--t3);background:var(--bg);line-height:1.5">
-    <strong>4 pilares</strong> (cada uno con su semáforo): <b>Conversión</b> (cerró vs trabajó) · <b>Proceso</b> (no descarta muy rápido/sin cita, logra contactar) · <b>Vencidas</b> (el cronómetro) · <b>Citas</b> (su ritmo de agendar). Medido contra las reglas de la Mesa — hechos, no acusaciones.
+    <strong>5 pilares</strong> (cada uno con su semáforo): <b>Conversión</b> (cerró vs cotizaciones) · <b>Descartadas</b> (vs cierres, sin cita, muy rápido) · <b>Citas</b> (su ritmo de agendar) · <b>Seguimiento</b> (el cronómetro de vencidas) · <b>Contacto</b> (no logra contactar). Medido contra las reglas de la Mesa — hechos, no acusaciones.
   </div>
 </div>

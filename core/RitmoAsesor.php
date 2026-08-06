@@ -1,19 +1,15 @@
 <?php
 // ============================================================
 //  RitmoAsesor — Rendimiento de asesores desde la Mesa
-//  SOLO LECTURA. No toca la Mesa ni ActividadScore.
+//  SOLO LECTURA. Se mide contra las REGLAS DE LA MESA (no contra
+//  empresa ni historia). Muestra HECHOS; el gerente diagnostica.
 //
-//  Se mide contra las REGLAS DE LA MESA (no contra la empresa ni la
-//  historia — eso se diluye o no sirve en un SaaS de 1/2/N asesores).
-//  El tool muestra HECHOS; el gerente diagnostica el porqué.
-//
-//  3 PILARES (siempre visibles):
-//    CONVERSIÓN — cerró vs trabajó (cierres/cotizaciones). Un valor directo.
-//    PROCESO    — ¿sigue Cotización→Cita→Seguimiento? Roto contra las reglas:
-//                   · descarta muy rápido   → vs la VENTANA DE CIERRE (ciclo real)
-//                   · descarta sin cita     → se saltó la ETAPA del embudo
-//                   · no logró contactar    → no arrancó el proceso
-//    RITMO      — ⏰ vencidas → vs el CRONÓMETRO de la Mesa · 📅 citas bajando
+//  5 PILARES, cada uno con SUS parámetros (nada resumido a uno):
+//    CONVERSIÓN  — cerró vs cotizaciones
+//    DESCARTADAS — vs cierres (volumen) · sin cita · muy rápido (ciclo)
+//    CITAS       — su ritmo de agendar (bajó vs su normal)
+//    SEGUIMIENTO — vencidas (el cronómetro de la Mesa)
+//    CONTACTO    — no logra contactar (leads que lo buscaron)
 //
 //  Guarda: solo empresas con Mesa activa.
 // ============================================================
@@ -22,10 +18,6 @@ defined('COTIZAAPP') or die;
 class RitmoAsesor
 {
     private const DIAS_BASE     = 28;
-    private const W_RAPIDO      = 50;  // peso de "descarta antes del ciclo"
-    private const W_NOCONTACTO  = 40;  // peso de "no logró contactar"
-    private const PROC_ROJO     = 40;  // proceso por debajo → rojo
-    private const PROC_VERDE    = 70;  // proceso arriba → sigue el proceso
     private const DUMP_MIN      = 3;   // mínimo de descartes para juzgar
     private const CONTACTO_MIN  = 4;   // mínimo de contactados para juzgar
     private const CERO_MIN      = 8;   // trabajó esto y cerró 0 → alarma
@@ -36,7 +28,6 @@ class RitmoAsesor
             if ((int)DB::val("SELECT mesa_activa FROM empresas WHERE id=?", [$empresa_id]) < 1) return [];
         } catch (Throwable $e) { return []; }
 
-        // Ciclo REAL de la empresa (regla de la ventana de cierre).
         $p75 = 10; $mediana = 5;
         try {
             if (!class_exists('Radar')) require_once MODULES_PATH . '/radar/Radar.php';
@@ -72,7 +63,7 @@ class RitmoAsesor
         usort($filas, function ($x, $y) use ($peso) {
             $px = $peso[$x['semaforo']] ?? 3; $py = $peso[$y['semaforo']] ?? 3;
             if ($px !== $py) return $px <=> $py;
-            return $x['proceso'] <=> $y['proceso']; // peor proceso arriba
+            return $y['problemas'] <=> $x['problemas']; // más pilares en problema arriba
         });
         return $filas;
     }
@@ -98,91 +89,80 @@ class RitmoAsesor
         try { $trabajo = self::_trabajo($empresa_id, $uid, $win); } catch (Throwable $e) {}
         try { [$desc, $sincita, $rapido] = self::_descartes($empresa_id, $uid, $win, $win, $rapido_dias); } catch (Throwable $e) {}
         try { [$contactados, $no_conecta] = self::_contacto($empresa_id, $uid, $win); } catch (Throwable $e) {}
-
-        // ── CONVERSIÓN: cierres / cotizaciones trabajadas (valor directo) ──
-        $conv_rate = $trabajo > 0 ? (int)round($cierres / $trabajo * 100) : 0;
-
-        // ── PROCESO (arranque): ¿trabaja el lead? contactó y no lo tiró de volada.
-        //    (Lo de "sin cita" vive en el pilar CITAS, no aquí.) ──
-        $proceso = 100;
-        if ($desc >= self::DUMP_MIN) {
-            $proceso -= (int)round($rapido / $desc * self::W_RAPIDO);   // descartó antes del ciclo
-        }
-        if ($contactados >= self::CONTACTO_MIN) {
-            $proceso -= (int)round($no_conecta / $contactados * self::W_NOCONTACTO); // no logró contactar
-        }
-        $proceso = self::_clamp($proceso, 0, 100);
-
-        // ── RITMO: contra el cronómetro de la Mesa ──
         [$venc_now, $venc_sube, $venc_base, $venc_week] = self::_vencidas($empresa_id, $uid);
         [$citas7, $citas_base, $citas_baja] = self::_citas($empresa_id, $uid);
 
-        $cero = ($cierres === 0 && $trabajo >= self::CERO_MIN); // trabajó harto y cerró 0
-        $r_sincita = $desc >= self::DUMP_MIN ? $sincita / $desc : 0.0; // % descartes sin llegar a cita
+        $conv_rate  = $trabajo > 0 ? (int)round($cierres / $trabajo * 100) : 0;
+        $cero       = ($cierres === 0 && $trabajo >= self::CERO_MIN);
+        $r_sincita  = $desc >= self::DUMP_MIN ? $sincita / $desc : 0.0;
+        $r_rapido   = $desc >= self::DUMP_MIN ? $rapido / $desc : 0.0;
+        $r_noc      = $contactados >= self::CONTACTO_MIN ? $no_conecta / $contactados : 0.0;
 
-        // ── Semáforo de CADA pilar ──
-        $conv_estado = $cierres > 0 ? 'verde' : ($trabajo > 0 ? 'amarillo' : 'verde');
-        $proc_estado = $proceso < self::PROC_ROJO ? 'rojo' : ($proceso < self::PROC_VERDE ? 'amarillo' : 'verde');
+        // ── PILAR 1: Conversión ──
+        $conv_estado = $cierres > 0 ? 'verde' : ($cero ? 'amarillo' : 'verde');
+        $conv_txt    = "cerró {$cierres} de {$trabajo}" . ($trabajo > 0 ? " ({$conv_rate}%)" : "");
+
+        // ── PILAR 2: Descartadas (volumen vs cierres · sin cita · muy rápido) ──
+        $dumping = ($desc >= self::DUMP_MIN && $desc > $cierres);
+        if ($dumping && ($r_sincita >= 0.6 || $r_rapido >= 0.6))       $desc_estado = 'rojo';
+        elseif ($desc >= self::DUMP_MIN && ($r_sincita >= 0.35 || $r_rapido >= 0.3 || $desc > 2 * max($cierres, 1))) $desc_estado = 'amarillo';
+        else                                                          $desc_estado = 'verde';
+        $desc_txt = self::_desc_txt($desc_estado, $desc, $sincita, $rapido, $cierres);
+
+        // ── PILAR 3: Citas (su ritmo de agendar) ──
+        $citas_estado = $citas_baja ? 'amarillo' : 'verde';
+        $citas_txt    = $citas_baja ? "bajó su ritmo ({$citas7} esta semana vs ~{$citas_base})" : "✓ al ritmo";
+
+        // ── PILAR 4: Seguimiento (vencidas, el cronómetro) ──
         $venc_estado = $venc_sube ? 'amarillo' : 'verde';
-        // Citas = ¿lleva leads a cita? sin-cita (tiró sin llegar) + su ritmo de agendar
-        if ($sincita >= 8 && $r_sincita >= 0.7)                                    $citas_estado = 'rojo';
-        elseif (($sincita >= self::DUMP_MIN && $r_sincita >= 0.4) || $citas_baja)  $citas_estado = 'amarillo';
-        else                                                                      $citas_estado = 'verde';
-        // El del asesor = el PEOR de sus 4 pilares.
+        $venc_txt    = $venc_sube ? "se le vencen seguimientos ({$venc_week} esta semana vs ~{$venc_base})" : "✓ al día";
+
+        // ── PILAR 5: Contacto (no logra contactar) ──
+        if ($r_noc >= 0.6)       $cont_estado = 'rojo';
+        elseif ($r_noc >= 0.35)  $cont_estado = 'amarillo';
+        else                     $cont_estado = 'verde';
+        $cont_txt = $no_conecta > 0 ? "no logró contactar a {$no_conecta} de {$contactados}" : "✓ contacta";
+
+        // Semáforo del asesor = el PEOR de sus 5 pilares.
+        $estados = [$conv_estado, $desc_estado, $citas_estado, $venc_estado, $cont_estado];
         $ord = ['verde' => 0, 'amarillo' => 1, 'rojo' => 2];
         $sem = 'verde';
-        foreach ([$conv_estado, $proc_estado, $venc_estado, $citas_estado] as $st) if ($ord[$st] > $ord[$sem]) $sem = $st;
-        $flag = ($proc_estado === 'rojo' || $citas_estado === 'rojo');
+        foreach ($estados as $st) if ($ord[$st] > $ord[$sem]) $sem = $st;
+        $problemas = count(array_filter($estados, fn($s) => $s !== 'verde'));
+        $flag = ($sem === 'rojo');
 
-        // ── Textos por pilar ──
-        $conv_txt  = "cerró {$cierres} de {$trabajo}" . ($trabajo > 0 ? " ({$conv_rate}%)" : "");
-        $proc_txt  = self::_proc_txt($proceso, $rapido, $no_conecta);
-        $venc_txt  = $venc_sube ? "se le vencen seguimientos ({$venc_week} esta semana vs ~{$venc_base})" : "✓ al día";
-        $citas_txt = self::_citas_txt($citas_estado, $sincita, $r_sincita, $citas_baja, $citas7, $citas_base);
-        $motivo = self::_motivo($flag, $proc_estado, $cero, $venc_sube, $citas_baja, $sincita, $r_sincita);
+        $motivo = self::_motivo($desc_estado, $cont_estado, $venc_sube, $citas_baja, $cero);
 
         return [
-            'usuario_id' => $uid, 'nombre' => $nombre, 'semaforo' => $sem,
-            'proceso' => $proceso, 'flag' => $flag, 'conv_rate' => $conv_rate,
-            'conv_estado' => $conv_estado, 'proc_estado' => $proc_estado,
-            'venc_estado' => $venc_estado, 'citas_estado' => $citas_estado,
-            'cierres7' => $cierres, 'trabajo7' => $trabajo,
-            'desc7' => $desc, 'sincita7' => $sincita, 'rapido7' => $rapido, 'nocontesta7' => $no_conecta,
-            'venc_sube' => $venc_sube, 'citas_baja' => $citas_baja,
-            'conv_txt' => $conv_txt, 'proc_txt' => $proc_txt, 'venc_txt' => $venc_txt, 'citas_txt' => $citas_txt,
+            'usuario_id' => $uid, 'nombre' => $nombre, 'semaforo' => $sem, 'flag' => $flag, 'problemas' => $problemas,
+            'conv_estado' => $conv_estado, 'conv_txt' => $conv_txt,
+            'desc_estado' => $desc_estado, 'desc_txt' => $desc_txt,
+            'citas_estado' => $citas_estado, 'citas_txt' => $citas_txt,
+            'venc_estado' => $venc_estado, 'venc_txt' => $venc_txt,
+            'cont_estado' => $cont_estado, 'cont_txt' => $cont_txt,
             'motivo' => $motivo,
         ];
     }
 
-    // Pilar PROCESO (arranque): ¿trabaja el lead? (contactó, no lo tiró de volada)
-    private static function _proc_txt(int $proceso, int $rapido, int $no_conecta): string
+    private static function _desc_txt(string $estado, int $desc, int $sincita, int $rapido, int $cierres): string
     {
-        if ($proceso >= self::PROC_VERDE) return "✓ trabaja sus leads";
-        $d = [];
-        if ($rapido > 0)     $d[] = "descartó {$rapido} muy rápido";
-        if ($no_conecta > 0) $d[] = "no logró contactar a {$no_conecta}";
-        return $d ? implode(' · ', $d) : "revisar";
+        if ($estado === 'verde') return $desc > 0 ? "descarta sano ({$desc}, cerró {$cierres})" : "✓ sin descartes";
+        $sub = [];
+        if ($sincita > 0) $sub[] = "{$sincita} sin cita";
+        if ($rapido > 0)  $sub[] = "{$rapido} muy rápido";
+        return "descartó {$desc}" . ($sub ? " (" . implode(', ', $sub) . ")" : "") . " · cerró {$cierres}";
     }
 
-    // Pilar CITAS: ¿lleva leads a cita? (no descarta sin cita · mantiene su ritmo)
-    private static function _citas_txt(string $estado, int $sincita, float $r_sincita, bool $citas_baja, int $citas7, int $citas_base): string
+    private static function _motivo(string $desc_estado, string $cont_estado, bool $venc_sube, bool $citas_baja, bool $cero): string
     {
-        if ($estado === 'verde') return "✓ consigue citas";
-        $d = [];
-        if ($sincita >= self::DUMP_MIN && $r_sincita >= 0.4) $d[] = "descartó {$sincita} sin llegar a cita";
-        if ($citas_baja) $d[] = "bajó su ritmo ({$citas7} esta semana vs ~{$citas_base})";
-        return $d ? implode(' · ', $d) : "revisar";
-    }
-
-    private static function _motivo(bool $flag, string $proc_estado, bool $cero, bool $venc_sube, bool $citas_baja, int $sincita, float $r_sincita): string
-    {
-        if ($flag) return "No sigue el proceso — que trabaje sus leads y los lleve a cita antes de tirar.";
-        if ($proc_estado === 'amarillo') return "Cuida el arranque — que contacte y no descarte tan rápido.";
-        if ($sincita >= self::DUMP_MIN && $r_sincita >= 0.4) return "Descarta sin llegar a cita — que consiga la cita antes de tirar.";
+        if ($desc_estado === 'rojo') return "Descarta mal — sin llegar a cita y muy rápido. Que trabaje el lead antes de tirarlo.";
+        if ($cont_estado === 'rojo') return "No logra contactar a sus leads (que lo buscaron) — revisa cómo y cuándo les habla.";
+        if ($desc_estado === 'amarillo') return "Cuida sus descartes — que llegue a cita antes de tirar.";
+        if ($cont_estado === 'amarillo') return "Le cuesta contactar — algo hace mal en el arranque.";
         if ($venc_sube) return "Se le está acumulando el seguimiento esta semana — presiónalo.";
         if ($citas_baja) return "Bajó su ritmo de citas esta semana — su embudo se está secando.";
         if ($cero) return "Trabajó bastante pero no ha cerrado — ¿qué lo está frenando?";
-        return "Va bien — cierra, trabaja sus leads y los lleva a cita.";
+        return "Va bien — cierra, descarta sano y da seguimiento.";
     }
 
     private static function _cierres(int $empresa_id, ?int $uid, int $dias): int
@@ -295,6 +275,4 @@ class RitmoAsesor
         $baja = ($base_wk >= 2.0) && ($c7 < $base_wk * 0.5);
         return [$c7, (int)round($base_wk), $baja];
     }
-
-    private static function _clamp(int $v, int $lo, int $hi): int { return max($lo, min($hi, $v)); }
 }
