@@ -89,10 +89,11 @@ class RitmoReporte
         try {
             $rows = DB::query(
                 "SELECT d.numero, d.total, d.cliente, MAX(d.sin_cita) AS sin_cita, MAX(d.rapido) AS rapido, MAX(d.hot) AS hot,
-                        MAX(d.razon) AS razon, MAX(d.postura) AS postura
+                        MAX(d.razon) AS razon, MAX(d.postura) AS postura, MAX(d.visitas) AS visitas, MAX(d.dias_vista) AS dias_vista
                  FROM (
                     SELECT c.id AS cid, c.numero, c.total, COALESCE(cl.nombre,'—') AS cliente,
-                           $nc AS sin_cita, (DATEDIFF(m.created_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $pp AS postura
+                           $nc AS sin_cita, (DATEDIFF(m.created_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $pp AS postura,
+                           c.visitas AS visitas, DATEDIFF(NOW(), c.ultima_vista_at) AS dias_vista
                       FROM mesa_estados m JOIN cotizaciones c ON c.id=m.cotizacion_id
                       LEFT JOIN clientes cl ON cl.id=c.cliente_id
                      WHERE m.empresa_id=? AND m.area='postura' AND m.estado='descartada'
@@ -100,7 +101,8 @@ class RitmoReporte
                        AND m.created_at >= NOW() - INTERVAL $win DAY AND c.created_at >= NOW() - INTERVAL $win DAY
                     UNION
                     SELECT c.id AS cid, c.numero, c.total, COALESCE(cl.nombre,'—') AS cliente,
-                           $nc AS sin_cita, (DATEDIFF(rf.updated_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $pp AS postura
+                           $nc AS sin_cita, (DATEDIFF(rf.updated_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $pp AS postura,
+                           c.visitas AS visitas, DATEDIFF(NOW(), c.ultima_vista_at) AS dias_vista
                       FROM radar_feedback rf JOIN cotizaciones c ON c.id=rf.cotizacion_id
                       LEFT JOIN clientes cl ON cl.id=c.cliente_id
                      WHERE rf.empresa_id=? AND rf.tipo='sin_interes'
@@ -121,7 +123,8 @@ class RitmoReporte
                 if (count($o['casos']) < 10)
                     $o['casos'][] = ['numero'=>$x['numero'],'cliente'=>$x['cliente'],'total'=>(float)$x['total'],
                         'sin_cita'=>(int)$x['sin_cita'],'rapido'=>(int)$x['rapido'],'hot'=>(int)$x['hot'],
-                        'razon'=>$x['razon'],'postura'=>$x['postura'],'es_precio'=>$es_precio ? 1 : 0];
+                        'razon'=>$x['razon'],'postura'=>$x['postura'],'es_precio'=>$es_precio ? 1 : 0,
+                        'visitas'=>(int)$x['visitas'], 'dias_vista'=>($x['dias_vista'] === null ? null : (int)$x['dias_vista'])];
             }
         } catch (Throwable $e) {}
         return $o;
@@ -260,6 +263,14 @@ class RitmoReporte
             if ($c['rapido'])   $t[] = 'muy rápido';
             return $t ? ' · ' . implode(', ', $t) : '';
         };
+        // Contexto del Radar: cuántas veces lo vio el cliente y hace cuánto.
+        $vistas = function ($c) {
+            $v = (int)($c['visitas'] ?? 0);
+            if ($v <= 0) return '';
+            $dv = $c['dias_vista'] ?? null;
+            $cuando = ($dv === null) ? '' : ($dv <= 0 ? ', última hoy' : ", última hace {$dv}d");
+            return ' · ' . $v . ($v === 1 ? ' vista' : ' vistas') . $cuando;
+        };
         $desc_rojo = $card && ($card['desc_estado'] === 'rojo' || $card['desc_estado'] === 'amarillo');
 
         // Casos para revisar: descartes SIN objeción de precio (esos van aparte).
@@ -272,7 +283,7 @@ class RitmoReporte
                     elseif (!empty($c['postura']) && isset($PP[$c['postura']]))  $why = $PP[$c['postura']];
                     elseif (empty($c['razon']))                                  $why = 'descartada en el Radar (👎)';
                     else                                                         $why = $c['razon'];
-                    $casos[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . " · " . $why . $tags($c);
+                    $casos[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . " · " . $why . $vistas($c) . $tags($c);
                 }
             }
         }
@@ -284,7 +295,7 @@ class RitmoReporte
                    . ($de['precio_hot'] > 0 ? " ({$de['precio_hot']} estaban calientes)" : "") . ".";
             $solop = array_values(array_filter($de['casos'], fn($c) => $c['es_precio']));
             foreach (array_slice($solop, 0, 4) as $c)
-                $prc[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . $tags($c);
+                $prc[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . $vistas($c) . $tags($c);
             $prc[] = "Perder por precio no es lo mismo que no saber defenderlo — conviene revisar si fue precio real o comunicación de valor.";
         }
 
