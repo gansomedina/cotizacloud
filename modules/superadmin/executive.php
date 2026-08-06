@@ -1304,11 +1304,18 @@ if ($rt_todas):
       <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)">
         <span style="width:10px;height:10px;border-radius:50%;background:<?= $rt_c ?>;flex-shrink:0;margin-top:4px"></span>
         <div style="flex:1;min-width:0">
-          <?php $rt_pc = fn($t) => str_starts_with($t, '✓') ? 'var(--t3)' : $rt_c; ?>
+          <?php $rt_prow = function($estado, $label, $txt) use ($rt_colmap) {
+                    $dc = $rt_colmap[$estado] ?? '#9ca3af';
+                    $tc = str_starts_with($txt, '✓') ? 'var(--t3)' : $dc;
+                    return '<div style="font:500 11px \'Inter\',sans-serif;margin-top:1px;display:flex;align-items:baseline;gap:5px">'
+                         . '<span style="width:7px;height:7px;border-radius:50%;background:' . $dc . ';flex:none;align-self:center"></span>'
+                         . '<b style="color:var(--t2);min-width:58px">' . $label . '</b>'
+                         . '<span style="color:' . $tc . '">' . e($txt) . '</span></div>'; }; ?>
           <div style="display:flex;align-items:center;gap:6px"><span style="font:600 13px 'Inter',sans-serif;color:var(--text)"><?= e($rt_f['nombre']) ?></span><?php if (!empty($rt_f['flag'])): ?><span style="font:700 9px 'Inter',sans-serif;color:var(--r)">no sigue proceso</span><?php endif; ?></div>
-          <div style="font:500 11px 'Inter',sans-serif;color:var(--t3);margin-top:1px"><b style="color:var(--t2)">Conv</b> <?= e($rt_f['conv_txt']) ?></div>
-          <div style="font:500 11px 'Inter',sans-serif;margin-top:1px"><b style="color:var(--t2)">Proc</b> <span style="color:<?= $rt_pc($rt_f['proc_txt']) ?>"><?= e($rt_f['proc_txt']) ?></span></div>
-          <div style="font:500 11px 'Inter',sans-serif;margin-top:1px"><b style="color:var(--t2)">Ritmo</b> <span style="color:<?= $rt_pc($rt_f['ritmo_txt']) ?>"><?= e($rt_f['ritmo_txt']) ?></span></div>
+          <?= $rt_prow($rt_f['conv_estado'],  'Conv',     $rt_f['conv_txt']) ?>
+          <?= $rt_prow($rt_f['proc_estado'],  'Proceso',  $rt_f['proc_txt']) ?>
+          <?= $rt_prow($rt_f['venc_estado'],  'Vencidas', $rt_f['venc_txt']) ?>
+          <?= $rt_prow($rt_f['citas_estado'], 'Citas',    $rt_f['citas_txt']) ?>
           <div style="font:600 11px 'Inter',sans-serif;color:<?= $rt_f['semaforo'] === 'verde' ? 'var(--t3)' : $rt_c ?>;margin-top:3px">→ <?= e($rt_f['motivo']) ?></div>
         </div>
       </div>
