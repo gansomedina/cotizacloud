@@ -1,8 +1,8 @@
 <?php
 // ============================================================
 //  Dashboard partial — Rendimiento del equipo (desde la Mesa)
-//  SOLO ADMIN. Solo lectura (RitmoAsesor). Tarjeta por PILARES:
-//  Conversión · Proceso · Ritmo — los 3 siempre visibles y etiquetados.
+//  SOLO ADMIN. Solo lectura (RitmoAsesor). 4 PILARES etiquetados,
+//  cada uno con su mini-semáforo: Conversión · Proceso · Vencidas · Citas.
 //  NOTA: comparte scope con index.php — variables con prefijo rt_.
 // ============================================================
 defined('COTIZAAPP') or die;
@@ -19,13 +19,16 @@ if (!$rt_filas) return;
 
 $rt_colmap   = ['rojo' => '#dc2626', 'amarillo' => '#d97706', 'verde' => '#16a34a'];
 $rt_n_alerta = count(array_filter($rt_filas, fn($x) => $x['semaforo'] !== 'verde'));
-// Un pilar "bien" (empieza con ✓) va en gris; uno con problema, en el color del asesor.
-$rt_pill = function (string $label, string $txt, string $col): string {
+
+// Un pilar: mini-semáforo (dot del color de SU estado) + etiqueta + texto.
+$rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap): string {
+    $dc = $rt_colmap[$estado] ?? '#9ca3af';
     $ok = str_starts_with($txt, '✓');
-    $c  = $ok ? 'var(--t3)' : $col;
-    return '<div style="font:500 12px var(--body);color:var(--t3);margin-top:2px">'
-         . '<b style="color:var(--t2);font-weight:700">' . $label . '</b> — '
-         . '<span style="color:' . $c . '">' . e($txt) . '</span></div>';
+    $tc = $ok ? 'var(--t3)' : $dc;
+    return '<div style="display:flex;align-items:baseline;gap:7px;margin-top:3px;font:500 12px var(--body)">'
+         . '<span style="width:8px;height:8px;border-radius:50%;background:' . $dc . ';flex:none;align-self:center"></span>'
+         . '<span style="color:var(--t2);font-weight:700;min-width:78px">' . $label . '</span>'
+         . '<span style="color:' . $tc . '">' . e($txt) . '</span></div>';
 };
 ?>
 <div class="slabel">Rendimiento del equipo · esta semana
@@ -38,18 +41,19 @@ $rt_pill = function (string $label, string $txt, string $col): string {
   <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border)">
     <span style="width:12px;height:12px;border-radius:50%;background:<?= $rt_c ?>;flex-shrink:0;margin-top:4px"></span>
     <div style="flex:1;min-width:0">
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
         <span style="font:700 14px var(--body);color:var(--text)"><?= e($rt_f['nombre']) ?></span>
         <?php if (!empty($rt_f['flag'])): ?><span style="font:700 10px var(--body);color:#b91c1c;background:#fdeaea;padding:2px 7px;border-radius:999px">no sigue el proceso</span><?php endif; ?>
       </div>
-      <?= $rt_pill('Conversión', $rt_f['conv_txt'], $rt_c) ?>
-      <?= $rt_pill('Proceso',    $rt_f['proc_txt'], $rt_c) ?>
-      <?= $rt_pill('Ritmo',      $rt_f['ritmo_txt'], $rt_c) ?>
+      <?= $rt_pill($rt_f['conv_estado'],  'Conversión', $rt_f['conv_txt']) ?>
+      <?= $rt_pill($rt_f['proc_estado'],  'Proceso',    $rt_f['proc_txt']) ?>
+      <?= $rt_pill($rt_f['venc_estado'],  'Vencidas',   $rt_f['venc_txt']) ?>
+      <?= $rt_pill($rt_f['citas_estado'], 'Citas',      $rt_f['citas_txt']) ?>
       <div style="font:600 12.5px var(--body);color:<?= $rt_f['semaforo'] === 'verde' ? 'var(--t3)' : $rt_c ?>;margin-top:6px">→ <?= e($rt_f['motivo']) ?></div>
     </div>
   </div>
   <?php endforeach; ?>
   <div style="padding:9px 16px;font:400 11px var(--body);color:var(--t3);background:var(--bg);line-height:1.5">
-    <strong>3 pilares:</strong> <b>Conversión</b> (cerró vs trabajó) · <b>Proceso</b> (no descarta muy rápido —antes del ciclo—, no descarta sin cita, logra contactar) · <b>Ritmo</b> (no se le vencen seguimientos, no bajan sus citas). Muestra HECHOS medidos contra las reglas de la Mesa — el porqué lo revisas tú.
+    <strong>4 pilares</strong> (cada uno con su semáforo): <b>Conversión</b> (cerró vs trabajó) · <b>Proceso</b> (no descarta muy rápido/sin cita, logra contactar) · <b>Vencidas</b> (el cronómetro) · <b>Citas</b> (su ritmo de agendar). Medido contra las reglas de la Mesa — hechos, no acusaciones.
   </div>
 </div>
