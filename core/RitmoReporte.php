@@ -3,11 +3,12 @@
 //  RitmoReporte — Reporte del Director de Ventas por asesor
 //  ANCLADO A LA TARJETA (RitmoAsesor): el veredicto, los 5 pilares y
 //  sus números son EXACTAMENTE los de la tarjeta de Ritmo. Encima
-//  agrega casos concretos, Radar, descuentos, cartera y el consejo.
+//  agrega casos concretos, Radar, descuentos y el consejo. TODO dentro de
+//  la ventana — nada acumulado/fuera del rango.
 //  Nunca puede contradecir a la tarjeta (misma fuente, misma ventana).
 //
 //  Fuentes: RitmoAsesor (pilares) · usuario_score (score) ·
-//  Mesa::armar (vencidas) · Mesa::reporte (se-fueron) ·
+//  Mesa::armar (vencidas) ·
 //  bucket_transitions + radar_feedback (Radar) · ventas (descuentos).
 //  Solo lectura. Fact-lint: cada cifra sale del sistema.
 // ============================================================
@@ -32,8 +33,6 @@ class RitmoReporte
         } catch (Throwable $e) {}
         $win = 2 * $p75;
         $rapido_dias = max(1, (int)floor($mediana / 2));
-        // Cadencia de "abandonada" que usa Mesa::reporte (sin actividad en K días).
-        $k_aband = max(3, (int)ceil($p75 / 2));
 
         // ── Pilares: EXACTOS de la tarjeta ──
         $card = null;
@@ -43,13 +42,12 @@ class RitmoReporte
         } catch (Throwable $e) {}
 
         $d = [
-            'nombre' => $nombre, 'win' => $win, 'k' => $k_aband, 'card' => $card,
+            'nombre' => $nombre, 'win' => $win, 'card' => $card,
             'score'  => self::_score($asesor_id, $empresa_id),
             'desc'   => self::_descartes($empresa_id, $asesor_id, $win, $rapido_dias),
             'vent'   => self::_ventas($empresa_id, $asesor_id, $win),
             'mesa'   => self::_mesa($empresa_id, $asesor_id),
             'radar'  => self::_radar($empresa_id, $asesor_id, $win),
-            'cartera'=> self::_cartera($empresa_id, $asesor_id, $win),
         ];
         $d['secciones'] = self::_componer($d);
         $d['html'] = self::render($d);
@@ -79,7 +77,7 @@ class RitmoReporte
     // casos coincidan EXACTO con el pilar Descartadas de RitmoAsesor.
     private static function _descartes(int $eid, int $uid, int $win, int $rapido_dias): array
     {
-        $o = ['n'=>0,'sincita'=>0,'rapido'=>0,'hot'=>0,'precio'=>0,'precio_hot'=>0,'casos'=>[]];
+        $o = ['n'=>0,'sincita'=>0,'rapido'=>0,'hot'=>0,'hot_noprecio'=>0,'precio'=>0,'precio_hot'=>0,'casos'=>[]];
         $nc = "(NOT EXISTS (SELECT 1 FROM mesa_estados mc WHERE mc.cotizacion_id=c.id AND mc.area='compromiso' AND mc.estado='nos_citamos'))";
         // ¿esta cotización estuvo caliente en la ventana? → para "descartó calientes",
         //   garantizado subconjunto de los descartes (mismo set, misma ventana).
@@ -119,6 +117,7 @@ class RitmoReporte
                 if ((int)$x['hot'])      $o['hot']++;
                 $es_precio = ($x['razon'] === 'precio' || $x['postura'] === 'objecion_precio');
                 if ($es_precio) { $o['precio']++; if ((int)$x['hot']) $o['precio_hot']++; }
+                elseif ((int)$x['hot']) $o['hot_noprecio']++;
                 if (count($o['casos']) < 10)
                     $o['casos'][] = ['numero'=>$x['numero'],'cliente'=>$x['cliente'],'total'=>(float)$x['total'],
                         'sin_cita'=>(int)$x['sin_cita'],'rapido'=>(int)$x['rapido'],'hot'=>(int)$x['hot'],
@@ -192,20 +191,10 @@ class RitmoReporte
         return $r;
     }
 
-    private static function _cartera(int $eid, int $uid, int $win): array
-    {
-        $c = ['se_fueron'=>0,'monto'=>0.0];
-        try {
-            $rep = Mesa::reporte($eid, $win); $a = $rep['asesores'][$uid] ?? null;
-            if ($a) { $c['se_fueron']=(int)($a['se_fueron']??0); $c['monto']=(float)($a['monto_se_fueron']??0); }
-        } catch (Throwable $e) {}
-        return $c;
-    }
-
     // ═══════════ Composición (anclada a la tarjeta) ═══════════
     private static function _componer(array $d): array
     {
-        $card = $d['card']; $de = $d['desc']; $ve = $d['vent']; $m = $d['mesa']; $rd = $d['radar']; $ca = $d['cartera'];
+        $card = $d['card']; $de = $d['desc']; $ve = $d['vent']; $m = $d['mesa']; $rd = $d['radar'];
 
         // Embudo = los 5 pilares EXACTOS de la tarjeta (estado + texto).
         $emb = [];
@@ -225,7 +214,6 @@ class RitmoReporte
         $res = [];
         if ($card && !empty($card['flag'])) $res[] = "No sigue el proceso — falla en " . $card['flag_pilares'] . ".";
         if ($card) foreach (array_merge($rojos, $ambar) as $p) $res[] = ucfirst($p['label']) . ": " . $p['txt'] . ".";
-        if ($ca['se_fueron'] > 0) $res[] = "En su cartera hay {$ca['se_fueron']} cotizaciones viejas sin moverlas en más de {$d['k']} días (" . self::_money($ca['monto']) . ").";
         if (!$res) $res[] = ($card ? "Va al corriente — sin pilares en rojo." : "Sin datos de Ritmo para este asesor.");
 
         // ── Embudo (para render con color) — se pasa aparte ──
@@ -245,14 +233,14 @@ class RitmoReporte
         if ($rd['calientes'] === 0) $rad[] = "Sin señales calientes del Radar en la ventana.";
         else {
             $rad[] = "{$rd['calientes']} clientes se pusieron calientes en la ventana.";
-            if ($de['hot'] > 0) $rad[] = "Descartó {$de['hot']} de esos {$rd['calientes']} calientes — tiró " . ($de['hot'] === 1 ? "un lead" : "leads") . " con señal de compra.";
+            if ($de['hot_noprecio'] > 0) $rad[] = "Descartó {$de['hot_noprecio']} de esos {$rd['calientes']} calientes — tiró " . ($de['hot_noprecio'] === 1 ? "un lead" : "leads") . " con señal de compra.";
             if ($rd['sin_feedback'] > 0) {
                 $rad[] = $rd['sin_feedback'] === 1
                     ? "1 caliente sin revisar (ni la tocó):"
                     : "{$rd['sin_feedback']} calientes sin revisar (ni las tocó):";
                 foreach ($rd['casos'] as $c) $rad[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']);
             }
-            if ($de['hot'] === 0 && $rd['sin_feedback'] === 0) $rad[] = "Trabajó todas sus calientes — bien.";
+            if ($de['hot_noprecio'] === 0 && $rd['sin_feedback'] === 0) $rad[] = "Trabajó todas sus calientes — bien.";
         }
 
         // ── Casos concretos de los focos ──
@@ -300,22 +288,16 @@ class RitmoReporte
             $prc[] = "Revísalo con él: ¿está comunicando el valor o baja el precio a la primera? Perder por precio no es lo mismo que no saber defenderlo.";
         }
 
-        // ── Cartera (acumulado ACTUAL, NO la ventana: cots viejas y sin toque) ──
-        $car = [];
-        if ($ca['se_fueron'] > 0) $car[] = "En su cartera, {$ca['se_fueron']} cotizaciones ya pasaron el ciclo y llevan más de {$d['k']} días sin ningún movimiento (ni captura, ni feedback, ni edición reciente): " . self::_money($ca['monto']) . ". No significa que nunca las tocó — es que no las ha movido últimamente. Es el acumulado de su cartera, no solo de la ventana.";
-
-        // ── Consejo del Director: el motivo de la tarjeta + refuerzos ──
+        // ── Consejo del Director: proporcional (tono duro SOLO si Descartadas rojo) ──
         $cons = [];
         if ($card && !empty($card['motivo'])) $cons[] = $card['motivo'];
-        if ($de['hot'] > 0) {
-            $fh = $de['hot'] >= $de['n']
-                ? "las {$de['n']} que tiró estaban calientes en el Radar"
-                : "{$de['hot']} de las {$de['n']} que tiró estaban calientes en el Radar";
-            $cons[] = "Peor aún: {$fh} — mandó a la basura leads con señal de compra. Eso es lo primero que hay que frenar.";
-        }
+        // "Tiró leads calientes" en tono duro solo si es dumper real (Descartadas rojo).
+        //   Excluye las de precio (esas van en su sección) para no doble-contar.
+        if ($card && $card['desc_estado'] === 'rojo' && $de['hot_noprecio'] > 0)
+            $cons[] = "Peor aún: {$de['hot_noprecio']} de las que tiró estaban calientes en el Radar — mandó a la basura leads con señal de compra. Eso es lo primero que hay que frenar.";
+        if ($de['precio'] > 0) $cons[] = "Trabajen la objeción de precio: {$de['precio']} se le cayeron por ahí" . ($de['precio_hot'] > 0 ? " ({$de['precio_hot']} calientes)" : "") . ". Que practique defender el valor antes de ceder.";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $cons[] = "Y cuida el margen: cierra regalando descuento ({$ve['con_dto']} de {$ve['cierres']}). Enséñale a defender el precio.";
         if ($rd['sin_feedback'] >= 2) $cons[] = "Tiene {$rd['sin_feedback']} calientes sin revisar en el Radar — son sus ventas más fáciles, siéntate con él a trabajarlas hoy.";
-        if ($ca['se_fueron'] >= 5) $cons[] = "En su cartera hay {$ca['se_fueron']} cotizaciones que no ha movido en más de {$d['k']} días (" . self::_money($ca['monto']) . ") — que retome las que sigan vivas.";
         if (!$cons) $cons[] = "Va sólido. Súbele la vara: más volumen o mejor ticket, y que no baje el ritmo de citas.";
 
         // ── Guion 1:1 ──
@@ -323,8 +305,12 @@ class RitmoReporte
         if ($m['vencidas'] > 0 && $m['casos']) { $c0=$m['casos'][0]; $g[]="\"Ábreme la #{$c0['numero']} de {$c0['cliente']} — lleva {$c0['dias']} días vencida. ¿Qué pasó?\""; }
         if ($card && $card['desc_estado'] === 'rojo') $g[]="\"¿Por qué descartas antes de agendar? {$de['sincita']} de tus {$de['n']} nunca llegaron a cita.\"";
         if ($card && $card['conv_estado'] === 'rojo') $g[]="\"Trabajaste varias y no has cerrado — muéstrame dónde se te caen.\"";
+        $hc = null; foreach ($de['casos'] as $c) if ($c['hot'] && !$c['es_precio']) { $hc = $c; break; }
+        if ($hc) $g[]="\"El Radar marcaba caliente a {$hc['cliente']} (#{$hc['numero']}) y la descartaste — ¿la buscaste cuando estaba viendo la cotización?\"";
+        if ($de['precio'] > 0) $g[]="\"Revisemos las {$de['precio']} que se cayeron por precio — ¿cómo manejas cuando te dicen que está caro?\"";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $g[]="\"{$ve['con_dto']} de tus {$ve['cierres']} ventas fueron con descuento — ¿por qué necesitaste bajar el precio?\"";
         if ($rd['sin_feedback'] >= 2) $g[]="\"Tienes {$rd['sin_feedback']} calientes sin marcar — revísalas conmigo ahorita.\"";
+        if ($card && $card['citas_estado'] === 'amarillo') $g[]="\"Tus citas bajaron esta semana ({$card['citas_txt']}) — ¿qué pasó?\"";
         if ($card && $card['cont_estado'] !== 'verde' && $card['cont_estado'] !== 'gris') $g[]="\"" . $card['cont_txt'] . " — ¿a qué hora y por qué medio les marcas?\"";
         if (!$g) $g[]="\"Vas bien — ¿qué necesitas de mí para cerrar más rápido?\"";
 
@@ -333,11 +319,13 @@ class RitmoReporte
         if ($m['vencidas'] > 0) $meta[]="Poner al día las {$m['vencidas']} vencidas antes del viernes.";
         if ($card && $card['desc_estado'] === 'rojo') $meta[]="No descartar ninguna sin al menos 1 intento de cita.";
         if ($card && $card['conv_estado'] === 'rojo') $meta[]="Cerrar al menos 1 venta esta semana.";
+        if ($de['precio'] > 0) $meta[]="Practicar el manejo de la objeción de precio en la próxima cotización cara.";
         if ($rd['sin_feedback'] >= 2) $meta[]="Marcar (👍/👎) las {$rd['sin_feedback']} calientes del Radar.";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $meta[]="Cerrar la próxima venta sin descuento.";
+        if ($card && $card['citas_estado'] === 'amarillo') $meta[]="Recuperar el ritmo de citas de la semana.";
         if (!$meta) $meta[]="Sostener el ritmo: mesa al día y seguir cerrando.";
 
-        return ['resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'precio'=>$prc,'cartera'=>$car,'consejo'=>$cons,'guion'=>$g,'meta'=>$meta];
+        return ['resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'precio'=>$prc,'consejo'=>$cons,'guion'=>$g,'meta'=>$meta];
     }
 
     private static function _money(float $n): string { return '$' . number_format($n, 0, '.', ','); }
@@ -386,7 +374,6 @@ class RitmoReporte
         $h .= $sec('Objeción por precio', $s['precio']);
         $h .= $sec('Calidad de cierre', $s['calidad']);
         $h .= $sec('Radar', $s['radar']);
-        $h .= $sec('Cartera en riesgo', $s['cartera']);
         $h .= $sec('Consejo del Director', $s['consejo'], 'rr-consejo');
         $h .= $sec('Guion para el 1:1', $s['guion']);
         $h .= $sec('Meta de la semana', $s['meta']);
