@@ -24,7 +24,10 @@ class RitmoAsesor
     // (no hay BD en el contenedor de build). Todos comentados donde se usan.
     private const ROJO_VENC_FOTO   = 6;  // vencidas AHORA que ya es emergencia
     private const AMBAR_VENC_FOTO  = 3;  // vencidas AHORA que ya avisan
-    private const ROJO_VENC_SUBE   = 3;  // vencidas nuevas de la semana (subiendo)
+    private const ROJO_VENC_SUBE   = 5;  // vencidas de la semana subiendo → emergencia
+    private const AMBAR_VENC_SUBE  = 3;  // vencidas de la semana subiendo → aviso
+                                         //   (piso: 1→2 NO alarma; se calibró con
+                                         //    datos reales — Kevin salía 🟡 de más)
     private const AMBAR_PORVENCER  = 3;  // por-vencer-sin-tocar que ya avisan
     private const ROJO_DUMP        = 3;  // descartes sin trabajar → emergencia
     private const VENTANA_DESC     = 7;  // días de la ventana de descartes
@@ -197,9 +200,10 @@ class RitmoAsesor
         // Candado descartes: tiró varias SIN haberlas trabajado.
         if ($sin_trabajo >= self::ROJO_DUMP)      $rojo = true;
         elseif ($sin_trabajo >= 1)                $amar = true;
-        // Vencidas subiendo (el "empezó a soltar").
-        if ($venc_sube && $venc_now >= self::ROJO_VENC_SUBE) $rojo = true;
-        elseif ($venc_sube)                                  $amar = true;
+        // Vencidas subiendo (el "empezó a soltar"). Con piso: subir de 1→2 no
+        // alarma; solo cuando ya hay una pila real creciendo.
+        if ($venc_sube && $venc_now >= self::ROJO_VENC_SUBE)       $rojo = true;
+        elseif ($venc_sube && $venc_now >= self::AMBAR_VENC_SUBE)  $amar = true;
         // Vencidas AHORA (foto): pila ya acumulada.
         if ($vencidas >= self::ROJO_VENC_FOTO)    $rojo = true;
         elseif ($vencidas >= self::AMBAR_VENC_FOTO) $amar = true;
@@ -218,7 +222,7 @@ class RitmoAsesor
             $motivo = "Tiene {$vencidas} cotizaciones con el seguimiento vencido — que las retome antes de que se enfríen.";
         } elseif ($sin_trabajo >= 1) {
             $motivo = "Descartó {$sin_trabajo} sin trabajar — ojo que no esté limpiando la mesa en vez de dar seguimiento.";
-        } elseif ($venc_sube) {
+        } elseif ($venc_sube && $venc_now >= self::AMBAR_VENC_SUBE) {
             $motivo = "Empiezan a vencérsele seguimientos ({$venc_prev}→{$venc_now}) — vigílalo esta semana.";
         } elseif ($vencidas >= self::AMBAR_VENC_FOTO) {
             $motivo = "Tiene {$vencidas} con seguimiento vencido — aún a tiempo de retomarlas.";

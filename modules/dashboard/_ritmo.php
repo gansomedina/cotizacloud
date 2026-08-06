@@ -42,7 +42,7 @@ $rt_n_alerta = count(array_filter($rt_utiles, fn($x) => $x['semaforo'] === 'rojo
     <div style="flex:1;min-width:0">
       <div style="font:700 14px var(--body);color:var(--text)"><?= e($rt_f['nombre']) ?></div>
       <div style="font:500 12px var(--num);color:var(--t3);margin-top:2px">
-        <?php if ($rt_f['vencidas'] > 0): ?><span style="color:#dc2626">🔴 vencidas: <b><?= $rt_f['vencidas'] ?></b></span> · <?php endif; ?>
+        <?php if ($rt_f['vencidas'] > 0): ?><span style="color:var(--t3)">⏳ <b><?= $rt_f['vencidas'] ?></b> vencidas ahora</span> · <?php endif; ?>
         vencidas semana: <b style="color:<?= $rt_f['venc_sube'] ? '#dc2626' : 'var(--text)' ?>"><?= $rt_tr ?></b>
         <?php if ($rt_f['por_vencer'] > 0): ?> · <span style="color:#d97706">por vencer: <b><?= $rt_f['por_vencer'] ?></b></span><?php endif; ?>
         <?php if ($rt_f['descartes'] > 0): ?> · 🗑 descartó: <b style="color:var(--text)"><?= $rt_f['descartes'] ?></b><?php if ($rt_f['sin_trabajo'] > 0): ?> <span style="color:#b91c1c">(<?= $rt_f['sin_trabajo'] ?> sin trabajar)</span><?php endif; ?><?php endif; ?>
