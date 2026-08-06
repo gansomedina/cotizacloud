@@ -83,12 +83,16 @@ class RitmoReporte
         //   garantizado subconjunto de los descartes (mismo set, misma ventana).
         $hotset = "('probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida')";
         $hot = "EXISTS (SELECT 1 FROM bucket_transitions bt WHERE bt.cotizacion_id=c.id AND bt.bucket_nuevo IN $hotset AND bt.created_at >= NOW() - INTERVAL $win DAY)";
+        // Cruce por cotización: la razón declarada al descartar + la última postura previa.
+        $rz = "(SELECT mp.razon FROM mesa_estados mp WHERE mp.cotizacion_id=c.id AND mp.area='postura' AND mp.estado='descartada' ORDER BY mp.id DESC LIMIT 1)";
+        $pp = "(SELECT mp2.estado FROM mesa_estados mp2 WHERE mp2.cotizacion_id=c.id AND mp2.area='postura' AND mp2.estado<>'descartada' ORDER BY mp2.id DESC LIMIT 1)";
         try {
             $rows = DB::query(
-                "SELECT d.numero, d.total, d.cliente, MAX(d.sin_cita) AS sin_cita, MAX(d.rapido) AS rapido, MAX(d.hot) AS hot
+                "SELECT d.numero, d.total, d.cliente, MAX(d.sin_cita) AS sin_cita, MAX(d.rapido) AS rapido, MAX(d.hot) AS hot,
+                        MAX(d.razon) AS razon, MAX(d.postura) AS postura
                  FROM (
                     SELECT c.id AS cid, c.numero, c.total, COALESCE(cl.nombre,'—') AS cliente,
-                           $nc AS sin_cita, (DATEDIFF(m.created_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot
+                           $nc AS sin_cita, (DATEDIFF(m.created_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $pp AS postura
                       FROM mesa_estados m JOIN cotizaciones c ON c.id=m.cotizacion_id
                       LEFT JOIN clientes cl ON cl.id=c.cliente_id
                      WHERE m.empresa_id=? AND m.area='postura' AND m.estado='descartada'
@@ -96,7 +100,7 @@ class RitmoReporte
                        AND m.created_at >= NOW() - INTERVAL $win DAY AND c.created_at >= NOW() - INTERVAL $win DAY
                     UNION
                     SELECT c.id AS cid, c.numero, c.total, COALESCE(cl.nombre,'—') AS cliente,
-                           $nc AS sin_cita, (DATEDIFF(rf.updated_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot
+                           $nc AS sin_cita, (DATEDIFF(rf.updated_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $pp AS postura
                       FROM radar_feedback rf JOIN cotizaciones c ON c.id=rf.cotizacion_id
                       LEFT JOIN clientes cl ON cl.id=c.cliente_id
                      WHERE rf.empresa_id=? AND rf.tipo='sin_interes'
@@ -112,7 +116,9 @@ class RitmoReporte
                 if ((int)$x['rapido'])   $o['rapido']++;
                 if ((int)$x['hot'])      $o['hot']++;
                 if (count($o['casos']) < 4)
-                    $o['casos'][] = ['numero'=>$x['numero'],'cliente'=>$x['cliente'],'total'=>(float)$x['total'],'sin_cita'=>(int)$x['sin_cita'],'rapido'=>(int)$x['rapido']];
+                    $o['casos'][] = ['numero'=>$x['numero'],'cliente'=>$x['cliente'],'total'=>(float)$x['total'],
+                        'sin_cita'=>(int)$x['sin_cita'],'rapido'=>(int)$x['rapido'],'hot'=>(int)$x['hot'],
+                        'razon'=>$x['razon'],'postura'=>$x['postura']];
             }
         } catch (Throwable $e) {}
         return $o;
@@ -250,12 +256,22 @@ class RitmoReporte
             foreach ($m['casos'] as $c) $casos[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . " · {$c['dias']}d vencida";
         }
         if (($card && ($card['desc_estado'] === 'rojo' || $card['desc_estado'] === 'amarillo')) && $de['casos']) {
+            $RZ = ['precio'=>'objeción de precio','competencia'=>'se fue con competencia','despues'=>'lo dejó para después',
+                   'no_responde'=>'no responde','no_comprador'=>'no era comprador','otro'=>'otro motivo'];
+            $PP = ['objecion_precio'=>'objeción de precio','pidio_cambios'=>'pidió cambios','en_el_aire'=>'quedó en el aire',
+                   'decidiendo'=>'estaba decidiendo','sin_compromiso'=>'sin compromiso'];
             $casos[] = "Descartadas de mayor monto:";
             foreach ($de['casos'] as $c) {
+                // El "por qué": razón declarada al descartar → si no, la última postura → si no, 👎 del Radar.
+                if (!empty($c['razon']) && isset($RZ[$c['razon']]))       $why = $RZ[$c['razon']];
+                elseif (!empty($c['postura']) && isset($PP[$c['postura']])) $why = $PP[$c['postura']];
+                elseif (empty($c['razon']))                                 $why = 'descartada en el Radar (👎)';
+                else                                                        $why = $c['razon'];
                 $tag = [];
+                if ($c['hot'])      $tag[] = 'estaba caliente';
                 if ($c['sin_cita']) $tag[] = 'sin cita';
                 if ($c['rapido'])   $tag[] = 'muy rápido';
-                $casos[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . ($tag ? ' · ' . implode(', ', $tag) : '');
+                $casos[] = "  #{$c['numero']} {$c['cliente']} · " . self::_money($c['total']) . " · " . $why . ($tag ? ' · ' . implode(', ', $tag) : '');
             }
         }
 
