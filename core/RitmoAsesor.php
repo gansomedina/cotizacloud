@@ -163,9 +163,14 @@ class RitmoAsesor
         $huerf_alto = $huerf_ratio >= 0.5 && $huerfanos >= 5;
         $huerf_med  = $huerf_ratio >= 0.3 && $huerfanos >= 4;
 
-        if ($parado || $cayo || $huerf_alto) {
+        // ROJO = la emergencia de la semana: dejó de dar seguimiento o cayó
+        // fuerte. Los huérfanos (backlog) son señal SECUNDARIA → máximo amarillo,
+        // para no pintar de rojo a un asesor ACTIVO pero con cartera acumulada
+        // (caso real Manuel: 1→34 toques, 23 nuevas, pero 34 sin tocar). El rojo
+        // se reserva para "presiona YA" (caída/paro real).
+        if ($parado || $cayo) {
             $sem = 'rojo';
-        } elseif ($cayo_leve || $huerf_med) {
+        } elseif ($cayo_leve || $huerf_alto || $huerf_med) {
             $sem = 'amarillo';
         } else {
             $sem = 'verde';
