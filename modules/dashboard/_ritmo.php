@@ -49,7 +49,7 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
         <span style="font:700 14px var(--body);color:var(--text)"><?= e($rt_f['nombre']) ?></span>
         <?php if (!empty($rt_f['flag'])): ?><span style="font:700 10px var(--body);color:#b91c1c;background:#fdeaea;padding:2px 7px;border-radius:999px">no sigue el proceso<?= !empty($rt_f['flag_pilares']) ? ': ' . e($rt_f['flag_pilares']) : '' ?></span><?php endif; ?>
         <?php if ($rt_business): ?><button type="button" class="rt-rep-btn" data-uid="<?= (int)$rt_f['usuario_id'] ?>" data-name="<?= e($rt_f['nombre']) ?>"
-          style="margin-left:auto;flex:none;font:700 11px var(--body);color:var(--white);background:#1a5c38;border:0;border-radius:7px;padding:5px 11px;cursor:pointer">Generar reporte</button><?php endif; ?>
+          style="margin-left:auto;flex:none;font:800 11px var(--body);color:#fff;background:linear-gradient(135deg,#1a5c38,#2ea043);border:0;border-radius:999px;padding:6px 13px;cursor:pointer;letter-spacing:.02em;box-shadow:0 2px 7px rgba(26,92,56,.32)">✨ Generar reporte</button><?php endif; ?>
       </div>
       <?= $rt_pill($rt_f['conv_estado'],  'Conversión',  $rt_f['conv_txt']) ?>
       <?= $rt_pill($rt_f['desc_estado'],  'Descartadas', $rt_f['desc_txt']) ?>
@@ -70,7 +70,9 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
 <div id="rt-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,20,25,.55);padding:20px;overflow:auto">
   <div style="max-width:640px;margin:24px auto;background:var(--white);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">
     <div style="display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border)">
-      <strong id="rt-modal-title" style="flex:1;font:800 15px var(--body);color:var(--text)">Reporte</strong>
+      <strong id="rt-modal-title" style="font:800 15px var(--body);color:var(--text)">Reporte</strong>
+      <span class="rt-ai-badge">✨ CotizaCloud AI</span>
+      <span style="flex:1"></span>
       <button type="button" onclick="rtPrint()" style="font:700 11px var(--body);color:var(--t2);background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 10px;cursor:pointer">Imprimir</button>
       <button type="button" onclick="rtClose()" style="font:700 16px var(--body);color:var(--t3);background:none;border:0;cursor:pointer;line-height:1">✕</button>
     </div>
@@ -104,6 +106,14 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
   :root[data-theme="dark"] #rt-modal .rr-ft{color:#f0736f}
   #rt-modal .rr-casos{margin:5px 0 0;padding-left:16px;font-variant-numeric:tabular-nums}
   #rt-modal .rr-casos li{margin:1px 0;color:var(--t2);font-size:12px}
+  .rt-ai-badge{background:linear-gradient(135deg,#1a5c38,#2ea043);color:#fff;font:800 10px var(--body);padding:4px 10px;border-radius:999px;letter-spacing:.04em;white-space:nowrap}
+  #rt-modal .rr-sub{list-style:none;color:var(--t3);font-size:11.5px;margin-left:-6px}
+  #rt-modal .rr-consejo{background:linear-gradient(135deg,rgba(26,92,56,.09),rgba(46,160,67,.05));border:1px solid rgba(26,92,56,.25);border-radius:10px;padding:11px 13px;margin-bottom:14px}
+  #rt-modal .rr-consejo .rr-st{color:#1a5c38;border-bottom:0;padding-bottom:0;margin-bottom:5px}
+  #rt-modal .rr-consejo .rr-list{padding-left:0;list-style:none}
+  #rt-modal .rr-consejo .rr-list li{font:600 13px var(--body);color:var(--text);margin:0}
+  :root[data-theme="dark"] #rt-modal .rr-consejo{background:rgba(46,160,67,.12);border-color:rgba(67,200,119,.32)}
+  :root[data-theme="dark"] #rt-modal .rr-consejo .rr-st{color:#43c877}
   #rt-modal .rr-foot{font:400 10.5px var(--body);color:var(--t3);border-top:1px solid var(--border);padding-top:8px;margin-top:6px}
   @media print{body *{visibility:hidden}#rt-modal,#rt-modal *{visibility:visible}#rt-modal{position:absolute;inset:0;background:#fff;padding:0}#rt-modal>div{box-shadow:none;margin:0;max-width:100%}}
 </style>
