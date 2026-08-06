@@ -89,7 +89,7 @@ class RitmoAsesor
         try { $trabajo = self::_trabajo($empresa_id, $uid, $win); } catch (Throwable $e) {}
         try { [$desc, $sincita, $rapido] = self::_descartes($empresa_id, $uid, $win, $win, $rapido_dias); } catch (Throwable $e) {}
         try { [$contactados, $no_conecta] = self::_contacto($empresa_id, $uid, $win); } catch (Throwable $e) {}
-        [$venc_now, $venc_sube, $venc_base, $venc_week] = self::_vencidas($empresa_id, $uid);
+        [$venc_now, $venc_sube, $venc_base, $venc_week, $venc_prior] = self::_vencidas($empresa_id, $uid);
         [$citas7, $citas_base, $citas_baja] = self::_citas($empresa_id, $uid);
 
         $conv_rate  = $trabajo > 0 ? (int)round($cierres / $trabajo * 100) : 0;
@@ -137,25 +137,39 @@ class RitmoAsesor
             $citas_txt    = "{$citas7} citas esta semana{$citas_ref}";
         }
 
-        // ── PILAR 4: Seguimiento (vencidas) — factual, verde = sin alarma ──
-        $venc_estado = $venc_sube ? 'amarillo' : 'verde';
-        $venc_txt    = $venc_sube
-            ? "{$venc_week} vencidas esta semana (vs ~{$venc_base}/sem)"
-            : "{$venc_week} vencidas esta semana";
+        // ── PILAR 4: Seguimiento (vencidas) — mide si SUBEN vs su nivel ──
+        //   Sube vs su norma → amarillo. 0 vencidas → verde. Sin histórico para
+        //   juzgar la tendencia (asesor nuevo) → gris con el número (NO verde
+        //   regalado). Estable en su propio nivel → verde.
+        if ($venc_sube) {
+            $venc_estado = 'amarillo';
+            $venc_txt    = "{$venc_week} vencidas esta semana (vs ~{$venc_base}/sem)";
+        } elseif ($venc_week === 0) {
+            $venc_estado = 'verde';
+            $venc_txt    = "0 vencidas esta semana";
+        } elseif ($venc_prior === 0) {
+            $venc_estado = 'gris';
+            $venc_txt    = "{$venc_week} vencidas esta semana (sin histórico aún)";
+        } else {
+            $venc_estado = 'verde';
+            $venc_txt    = "{$venc_week} vencidas esta semana (estable ~{$venc_base}/sem)";
+        }
 
-        // ── PILAR 5: Contacto (no logra contactar) — con % ──
+        // ── PILAR 5: Contacto — de los que intentó contactar, cuántos NO LE
+        //   CONTESTARON (nunca llegó a "hablamos"). Con % sobre los contactados.
+        $le_contestaron = $contactados - $no_conecta;
         if ($contactados < self::CONTACTO_MIN) {
             $cont_estado = 'gris';
             $cont_txt    = "pocos contactos aún";
         } elseif ($r_noc >= 0.6) {
             $cont_estado = 'rojo';
-            $cont_txt    = "no contactó a {$no_conecta} de {$contactados} (" . $pct($no_conecta, $contactados) . "%)";
+            $cont_txt    = "{$no_conecta} de {$contactados} no le contestaron (" . $pct($no_conecta, $contactados) . "%)";
         } elseif ($r_noc >= 0.35) {
             $cont_estado = 'amarillo';
-            $cont_txt    = "no contactó a {$no_conecta} de {$contactados} (" . $pct($no_conecta, $contactados) . "%)";
+            $cont_txt    = "{$no_conecta} de {$contactados} no le contestaron (" . $pct($no_conecta, $contactados) . "%)";
         } else {
             $cont_estado = 'verde';
-            $cont_txt    = "contactó a " . ($contactados - $no_conecta) . " de {$contactados} (" . $pct($contactados - $no_conecta, $contactados) . "%)";
+            $cont_txt    = "le contestaron {$le_contestaron} de {$contactados} (" . $pct($le_contestaron, $contactados) . "%)";
         }
 
         // Semáforo del asesor = el PEOR de sus 5 pilares (gris/verde = sin alarma).
@@ -193,10 +207,10 @@ class RitmoAsesor
     private static function _motivo(string $conv_estado, string $desc_estado, string $cont_estado, bool $venc_sube, bool $citas_baja): string
     {
         if ($desc_estado === 'rojo') return "Descarta mal — sin llegar a cita y muy rápido. Que trabaje el lead antes de tirarlo.";
-        if ($cont_estado === 'rojo') return "No logra contactar a sus leads (que lo buscaron) — revisa cómo y cuándo les habla.";
+        if ($cont_estado === 'rojo') return "A la mayoría no le contestan — revisa cómo, cuándo y por qué medio les marca.";
         if ($conv_estado === 'rojo') return "Trabajó varias y no ha cerrado nada — ¿qué lo está frenando?";
         if ($desc_estado === 'amarillo') return "Cuida sus descartes — que llegue a cita antes de tirar.";
-        if ($cont_estado === 'amarillo') return "Le cuesta contactar — algo hace mal en el arranque.";
+        if ($cont_estado === 'amarillo') return "A varios no le contestan — ajusta su forma de contactar (horario/medio/insistencia).";
         if ($venc_sube) return "Se le está acumulando el seguimiento esta semana — presiónalo.";
         if ($citas_baja) return "Bajó su ritmo de citas esta semana — su embudo se está secando.";
         return "Va bien — cierra, descarta sano y da seguimiento.";
@@ -292,7 +306,7 @@ class RitmoAsesor
         } catch (Throwable $e) {}
         $base_wk = $vprior / 3.0;
         $sube = ($vprior > 0) && ($v7 >= 3) && ($v7 > $base_wk * 1.5);
-        return [$vnow, $sube, (int)round($base_wk), $v7];
+        return [$vnow, $sube, (int)round($base_wk), $v7, $vprior];
     }
 
     private static function _citas(int $empresa_id, int $uid): array
