@@ -130,6 +130,11 @@ if ($cot['impuesto_modo'] === 'suma') {
 } else {
     $total_base   = round($taxable, 2);
 }
+// event_id de deduplicación para ViewContent (navegador ↔ CAPI). UNO por render:
+// el mismo id viaja en el fbq del navegador (:2145) y en el evento CAPI, para que
+// Meta los empareje y cuente como cubiertos (sube la "cobertura de eventos" del
+// pixel). Es un id opaco, sin BD ni datos del cliente.
+$mp_view_eid = bin2hex(random_bytes(16));
 // Extras gravados (mismo criterio que el accept): para el display del DI, el
 // "Total con descuento" = nuevo_total (base descontada con IVA, sin extras) +
 // extras gravados. Y la base del DI ($di_precio) = total sin esos extras.
@@ -430,11 +435,12 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
             // egress está filtrado — y un rebote por lentitud contamina el Radar.
             $capi_eid = EMPRESA_ID;
             $capi_num = $cot['numero'];
-            $capi_tot = (float)($cot['total'] ?? 0);
+            $capi_tot = (float)$total_base;              // MISMO monto que el navegador (:2145)
             $capi_mon = $cot['moneda'] ?? 'MXN';
-            register_shutdown_function(function () use ($capi_eid, $capi_num, $capi_tot, $capi_mon) {
+            $capi_veid = $mp_view_eid;                   // dedup con el fbq del navegador
+            register_shutdown_function(function () use ($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid) {
                 if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
-                try { MarketingPixels::capi_view($capi_eid, $capi_num, $capi_tot, $capi_mon); } catch (\Throwable $e) {}
+                try { MarketingPixels::capi_view($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid); } catch (\Throwable $e) {}
             });
 
         } else {
@@ -443,6 +449,17 @@ if (!es_bot($ua) && in_array($cot['estado'], ['enviada','vista','aceptada','rech
             DB::execute("UPDATE quote_sessions SET updated_at=NOW() WHERE id=?", [$session_existe['id']]);
             // Cliente que regresa en la misma sesión — mostrar el descuento si ya disparó
             try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
+            // CAPI ViewContent TAMBIÉN en recargas: el navegador dispara VC en CADA
+            // carga (:2145); si el servidor solo lo mandara en la 1ª visita, quedaría
+            // la brecha de cobertura ("585 eventos menos"). Mismo event_id → Meta lo
+            // deduplica (no doble conteo). Diferido: no relentiza al cliente.
+            $capi_eid = EMPRESA_ID; $capi_num = $cot['numero'];
+            $capi_tot = (float)$total_base; $capi_mon = $cot['moneda'] ?? 'MXN';
+            $capi_veid = $mp_view_eid;
+            register_shutdown_function(function () use ($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid) {
+                if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+                try { MarketingPixels::capi_view($capi_eid, $capi_num, $capi_tot, $capi_mon, $capi_veid); } catch (\Throwable $e) {}
+            });
         }
 
     } catch (Exception $e) {
@@ -2142,6 +2159,6 @@ calc();
   <?php if (!empty($cot['emp_web'])): ?> · <?= e(preg_replace('#^https?://#','',$cot['emp_web'])) ?><?php endif; ?><br>
   Cotización <?= e($cot['numero']) ?> generada en cotiza.cloud
 </div>
-<?= MarketingPixels::evento_view(EMPRESA_ID, $cot['numero'], (float)$total_base, $cot['moneda'] ?? 'MXN') ?>
+<?= MarketingPixels::evento_view(EMPRESA_ID, $cot['numero'], (float)$total_base, $cot['moneda'] ?? 'MXN', $mp_view_eid ?? null) ?>
 </body>
 </html>

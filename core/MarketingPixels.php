@@ -75,16 +75,18 @@ class MarketingPixels
     /**
      * Generar JS para disparar evento ViewContent
      */
-    public static function evento_view(int $empresa_id, string $numero, float $total, string $moneda = 'MXN'): string
+    public static function evento_view(int $empresa_id, string $numero, float $total, string $moneda = 'MXN', ?string $event_id = null): string
     {
         $cfg = self::cargar($empresa_id);
         if (empty($cfg)) return '';
 
         $numero_js = htmlspecialchars($numero, ENT_QUOTES, 'UTF-8');
+        // event_id de dedup (mismo que el CAPI). Solo hex → seguro en JS.
+        $eid_js = ($event_id && preg_match('/^[a-f0-9]{16,64}$/', $event_id)) ? ",{eventID:'{$event_id}'}" : '';
         $js = '';
 
         if (!empty($cfg['pixel_meta'])) {
-            $js .= "if(typeof fbq!=='undefined')fbq('track','ViewContent',{content_name:'Cotización {$numero_js}',value:{$total},currency:'{$moneda}'});\n";
+            $js .= "if(typeof fbq!=='undefined')fbq('track','ViewContent',{content_name:'Cotización {$numero_js}',value:{$total},currency:'{$moneda}'}{$eid_js});\n";
         }
         if (!empty($cfg['pixel_ga4'])) {
             $js .= "if(typeof gtag!=='undefined')gtag('event','view_item',{currency:'{$moneda}',value:{$total},items:[{item_name:'Cotización {$numero_js}'}]});\n";
@@ -151,7 +153,7 @@ class MarketingPixels
      * Enviar evento server-side a Meta Conversions API
      * Se ejecuta en background (no bloquea el response)
      */
-    public static function capi_enviar(int $empresa_id, string $event_name, array $event_data = []): void
+    public static function capi_enviar(int $empresa_id, string $event_name, array $event_data = [], ?string $event_id = null): void
     {
         $cfg = self::cargar($empresa_id);
         $pixel = $cfg['pixel_meta'] ?? '';
@@ -183,6 +185,10 @@ class MarketingPixels
             'action_source'    => 'website',
             'user_data'        => $user_data,
         ];
+
+        // Dedup con el navegador: mismo event_id en ambos lados → Meta los cuenta
+        // como UN evento cubierto (no doble). Sube la "cobertura de eventos".
+        if ($event_id) $event['event_id'] = $event_id;
 
         if (!empty($event_data)) {
             $event['custom_data'] = $event_data;
@@ -218,13 +224,13 @@ class MarketingPixels
     /**
      * Enviar evento ViewContent via CAPI
      */
-    public static function capi_view(int $empresa_id, string $numero, float $total, string $moneda = 'MXN'): void
+    public static function capi_view(int $empresa_id, string $numero, float $total, string $moneda = 'MXN', ?string $event_id = null): void
     {
         self::capi_enviar($empresa_id, 'ViewContent', [
             'content_name' => "Cotización {$numero}",
             'value'        => $total,
             'currency'     => $moneda,
-        ]);
+        ], $event_id);
     }
 
     /**
