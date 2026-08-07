@@ -1,210 +1,139 @@
 # Catálogo de Tips de Ventas — CotizaCloud AI
 
-**Qué es:** el banco de conocimiento del que el motor saca los *tips* del termómetro
-(y enriquece el Consejo del reporte). Cada tip **enseña una técnica de ventas real**
-—no resume los números del asesor—, personalizada con su dato del día y con el tono
-según su score.
+**Qué es:** el banco de conocimiento del que el motor (`core/RitmoTip.php`) saca los
+*tips* del termómetro y el "💡 Tip de la semana" del reporte. Cada tip **enseña una
+técnica de ventas real** —no resume los números del asesor—, personalizada con su dato
+y con el tono según su score.
 
-**Fuente:** metodología probada (LAER, escalera de compromiso, value-before-price,
-closing, qualifying, resurrección, HEAR — repo `louisblythe/Sales-Skills`), adaptada al
-vendedor mexicano de SMB (cocina/mueble/servicio, WhatsApp y cita presencial, ciclo corto).
+**Fuente:** metodología probada (`louisblythe/Sales-Skills`) adaptada al vendedor
+mexicano de SMB (cocina/mueble/servicio, WhatsApp y cita presencial, ciclo corto).
 
-> **Estado: BORRADOR v2 para curar.** José revisa: ¿suena a lo que un buen gerente le
-> diría a su vendedor? Quita, corrige con TUS palabras, agrega.
+> **Este doc = espejo del motor.** Cúralo con tus palabras (José): reescribe lo que no
+> suene a ti, quita lo que no aplique, agrega técnicas. Lo que edites aquí se pasa al
+> motor.
 
-## Cómo rota el motor (para que NO se repita) — LEER
+## Anatomía de un tip
 
-Cada debilidad tiene **3-5 técnicas ordenadas como currículo** (de básica a fina). Dos capas de variación:
+```
+[MARCO con fuerza + dato]  +  [TÉCNICA real de la skill]
+```
 
-1. **Rotación de técnica.** El motor guarda qué técnicas ya le mostró a cada asesor
-   (`asesor_id, tecnica_id, fecha`). Muestra la #1; la próxima, la #2; luego la #3…
-   **No repite una técnica hasta agotar las de esa debilidad.**
-2. **Gancho fresco.** Aunque toque la misma técnica, el **dato del día cambia** (otro
-   folio, cliente, vistas) → mismo mensaje, ejemplo distinto.
-3. **Al agotar:** si la debilidad mejoró → pasa a la siguiente debilidad #1; si no →
-   re-cicla desde la #1 con dato nuevo (ya pasaron semanas).
-4. **Tono por score** (los "diferenciales"): bajo → firme y directo · medio → coach que
-   corrige · alto → refina y reconoce.
-5. **Fact-lint:** el gancho (números) sale de la BD; la técnica es fija. Nunca afirmar del
-   asesor algo que el dato no diga.
+- El **marco** carga las stakes y teje el dato (vive en `_debilidad()`): *"Cada cotización
+  que trabajas cuesta esfuerzo… el cliente estaba listo y lo mandaste a la basura. Esas
+  eran tuyas."*
+- La **técnica** enseña el método con nombre y palabras exactas (vive en `catalogo()`),
+  y **rota**: cada día/reporte la siguiente de esa debilidad.
 
-**Anatomía:** `[gancho con su dato] + [técnica con nombre] + [cómo, con palabras exactas]`.
-Cada técnica lleva un `handle` (id) para que el motor lleve el control de rotación.
+## Reglas del motor
 
----
-
-## 1. Descarta sin CALIFICAR (tira leads a ciegas)
-*Detección: descartes sin cita / muy rápido.*
-> Reencuadre clave: descartar no es malo; descartar **sin calificar** sí. El buen vendedor
-> suelta rápido al que no es comprador — pero después de preguntar, no antes.
-
-1. `d1_calificar` — **Califica antes de tirar.** Antes de descartar, 2-3 preguntas: *"¿para
-   cuándo lo necesita?"*, *"¿ya vio otras opciones?"*, *"¿es usted quien decide?"*. Si de
-   verdad no es comprador, suéltala sin culpa. Descartar sin preguntar es tirar ventas.
-2. `d1_escalera` — **Escalera de pequeños sí.** Descarta porque salta directo al cierre y el
-   cliente aún no está listo. Sube por escalones: *"¿te resolvió la duda del material?"* →
-   *"te mando foto del acabado"* → *"¿te marco 10 min?"*. Cada sí facilita el siguiente.
-3. `d1_intento` — **La regla del intento de cita.** Nunca descartes sin haber propuesto al
-   menos una cita. Si no llegó a cita, no está muerta: está sin trabajar.
-4. `d1_diagnostica` — **Diagnostica antes de tirar.** Una pregunta abierta primero: *"¿qué es
-   lo que más te hace dudar?"*. El silencio del cliente no es un "no".
-
-## 2. Tira leads calientes (descarta con señal de compra)
-*Detección: descartó cotizaciones que el Radar tenía calientes.*
-
-1. `d2_lee` — **Lee la señal.** Que el cliente entre varias veces a tu cotización ES señal de
-   compra, no de molestia. Al que vuelve a abrir, no lo descartes: háblale mientras mira.
-2. `d2_momento` — **El momento caliente no espera.** El interés se enfría en horas. Cuando
-   veas que acaba de abrir, marca hoy, no mañana.
-3. `d2_rescate` — **Rescate antes de tirar.** Si lo ibas a descartar y estaba caliente,
-   mándale un gancho: *"¿pudo revisar la cotización? ¿le ayudo con alguna duda para
-   cerrarlo?"*.
-
-## 3. Pierde por precio ("está caro")
-*Detección: razón de descarte/no-cierre = precio.*
-
-1. `d3_explora` — **Entiende antes de defender.** "Está caro" casi nunca es el precio real:
-   no ve por qué vale eso. No defiendas el número, explora: *"¿caro comparado con qué?"* /
-   *"¿qué esperabas invertir?"*. Ahí sale el freno verdadero.
-2. `d3_sandwich` — **Sándwich de valor.** No repitas el precio: recuérdale el resultado, mete
-   el precio en medio, cierra con otro beneficio. *"Le queda instalado en 3 días con garantía
-   de 2 años, son $X, y le incluimos el primer mantenimiento."*
-3. `d3_no_contra_ti` — **Nunca negocies contra ti mismo.** No bajes el precio antes de que te
-   lo pidan, ni ofrezcas descuento "por si acaso". Si nadie objetó, no hay nada que bajar.
-4. `d3_intercambia` — **Intercambia, no regales.** Si mueves el precio, pide algo a cambio:
-   *"te ajusto si cerramos hoy"* o *"si te llevas también X"*. Bajar por bajar enseña a pedir más.
-5. `d3_valor_primero` — **Valor antes que precio.** Si llega directo al "¿cuánto es lo menos?",
-   regresa al valor: qué le resuelves y cuánto le cuesta NO resolverlo, luego la inversión.
-
-## 4. No maneja otras objeciones ("déjame pensarlo", "en el aire")
-*Detección: posturas "pidió cambios", "quedó en el aire", "decidiendo".*
-
-1. `d4_laer` — **LAER: escucha, valida, explora, responde.** Ante "déjame pensarlo", valida
-   (*"claro, es para pensarse"*) y explora (*"¿qué es lo que quieres terminar de ver?"*). El
-   "lo pienso" esconde una duda concreta.
-2. `d4_aisla` — **Aísla la objeción real.** *"Aparte de eso, ¿hay algo más que te detenga?"*.
-   Si dice que no, ya sabes qué resolver. Si sí, salió la objeción de verdad.
-3. `d4_sus_razones` — **Compra por SUS razones, no las tuyas.** No lo convenzas con lo que a
-   ti te parece importante; pregúntale qué es lo que a ÉL le importa y véndele eso.
-4. `d4_amarra` — **La duda no se resuelve sola.** "En el aire" se enfría. Amárralo: *"¿te
-   parece si el jueves, ya con esto resuelto, lo cerramos?"*.
-
-## 5. No amarra la cita
-*Detección: ritmo de citas bajo vs su normal.*
-
-1. `d5_cierra_contacto` — **Cierra cada contacto con la siguiente cita.** Nunca cuelgues sin
-   fecha: *"¿lo vemos el martes a las 11 o mejor por la tarde?"*.
-2. `d5_doble` — **Doble opción, ningún "no".** No preguntes *"¿quieres que nos veamos?"* (invita
-   al no). Da a elegir entre dos síes: *"¿te queda hoy o mañana?"*.
-3. `d5_temprano` — **La cita se agenda temprano.** Entre más pronto en la conversación la
-   amarras, más fácil. Si esperas al final, ya se enfrió.
-
-## 6. No logra contacto (el cliente no le contesta)
-*Detección: % alto de "no le contestaron".*
-
-1. `d6_canal` — **Cambia de medio.** Si no contesta la llamada, no insistas igual: WhatsApp;
-   si no, un audio corto. Cada cliente tiene su canal.
-2. `d6_horario` — **Cambia el horario, no el mensaje.** Si marcaste a las 10, no vuelvas a las
-   10:15. Prueba otra franja (mediodía, después de las 6). Muchas veces es mal horario, no
-   falta de interés.
-3. `d6_velocidad` — **Velocidad al primer contacto.** Un lead nuevo se contacta en minutos.
-   Entre más tardas en el primer intento, menos te contesta.
-
-## 7. Llega a cita pero no cierra
-*Detección: citas > 0 y cierres = 0.*
-
-1. `d7_diagnostica` — **Diagnostica antes de proponer.** Si tienes citas y no cierras, quizá
-   presentas antes de entender. Primero pregunta y escucha; propón cuando ya sabes qué le importa.
-2. `d7_senal` — **Reconoce la señal de cierre.** Cuando pregunta por tiempos, garantía o formas
-   de pago, ya está listo: no sigas vendiendo, **cierra**.
-3. `d7_pide` — **Pide la venta con confianza.** El cliente espera que TÚ des el paso. No te
-   quedes en "cualquier cosa me avisa": *"¿lo dejamos apartado?"*.
-4. `d7_alternativa` — **Cierre por alternativa.** No preguntes *"¿lo quieres?"*; asume el sí:
-   *"¿lo quieres para esta semana o la próxima?"*, *"¿de contado o a plazos?"*.
-5. `d7_avanza` — **Toda conversación avanza.** Si no cerraste, no la dejes en el aire: sal con
-   el siguiente paso agendado. Una plática sin avance es una venta que se enfría.
-
-## 8. Deja vencer seguimientos
-*Detección: vencidas (cronómetro de la Mesa).*
-
-1. `d8_sistema` — **Sistema, no memoria.** Los seguimientos se agendan, no se recuerdan. Lo que
-   vence hoy, hoy se toca. La memoria es como se pierden ventas.
-2. `d8_servicio` — **Persistencia no es fastidio.** Dar seguimiento es un servicio, siempre que
-   aportes algo (un dato, una foto, una respuesta), no solo *"¿ya decidió?"*.
-3. `d8_enfria` — **Cada día vencido enfría.** El que te dijo "la próxima semana" y no le
-   hablaste, ya se enfrió o compró con otro. El seguimiento a tiempo es la venta.
-
-## 9. Ignora las señales del Radar (calientes sin atender)
-*Detección: calientes sin marcar/sin atención.*
-
-1. `d9_prioridad` — **El Radar te dice a quién hablarle HOY.** Un caliente sin atender es una
-   venta fácil que dejas pasar. Antes que nada en el día, revisa tus calientes.
-2. `d9_marca` — **Marca lo que ves.** El 👍/👎 no es burocracia: te ordena a quién seguir. Un
-   caliente sin marcar es un cliente sin dueño.
-
-## 10. No reacciona cuando el cliente se enfría
-*Detección: cotización baja de bucket sin acción.*
-
-1. `d10_gancho` — **Resurrección con gancho.** Muerto no es muerto para siempre. Al que dejó de
-   abrir, no le mandes *"¿sigue interesado?"* (invita al no): revívelo con algo nuevo — *"me
-   llegaron los tiempos de entrega de lo que viste, ¿te los paso?"*.
-2. `d10_timing` — **El timing, no el interés.** La mayoría no compra al primer intento por
-   *cuándo*, no por *si*. Un frío hoy puede estar listo en dos semanas: reactívalo, no lo tires.
-
-## 11. Cierra regalando descuento
-*Detección: ventas con descuento vs sin.*
-
-1. `d11_valor` — **Sube el valor, no bajes el precio.** Cada descuento sin pelear se come el
-   margen. Antes de ceder, recuérdale todo lo que se lleva; muchas veces el descuento sobra.
-2. `d11_intercambia` — **Si descuentas, intercambia.** El descuento se cambia por algo: cierre
-   hoy, contado, compra más grande. Nunca por nada.
-3. `d11_urgencia` — **Urgencia real en vez de descuento.** En lugar de bajar precio, da una
-   razón verdadera para decidir ya (última pieza, sube el mes que entra) — solo si es cierto.
-
-## 12. Se le seca el embudo (ritmo de citas cayendo)
-*Detección: citas bajando.*
-
-1. `d12_revive` — **No vivas solo de leads nuevos.** Si bajaron tus citas, revive tu cartera:
-   clientes que quedaron en el aire. Ahí hay citas sin gastar en leads nuevos.
-2. `d12_siembra` — **Llena antes de vaciar.** Agenda la siguiente cita antes de cerrar la de
-   hoy. El embudo se seca cuando dejas de sembrar.
-
-## 13. Cierra pero no cobra (ventas sin pago)
-*Detección: ventas con pagado = 0.*
-
-1. `d13_anticipo` — **El cierre incluye el primer pago.** "Sí, lo quiero" no es venta hasta que
-   hay anticipo. Amárralo: *"¿te tomo el anticipo para apartarlo?"*.
-2. `d13_ahora` — **No dejes el cobro "para después".** Entre más pasa entre el sí y el pago, más
-   se cae. El mejor momento de cobrar es cuando dijo que sí.
-
-## 14. Ticket bajo (no sube el valor de la venta)
-*Detección: ticket promedio por debajo.*
-
-1. `d14_necesidad` — **Entiende toda la necesidad.** El ticket sube cuando descubres lo que el
-   cliente NO te pidió pero necesita. Pregunta por el proyecto completo, no solo lo que vino a cotizar.
-2. `d14_complemento` — **Ofrece el complemento en el momento justo.** Cuando ya dijo que sí:
-   *"¿le agregamos X que combina con esto?"*. El cliente comprado compra más.
-
-## 15. Abandona leads nuevos (nunca los trabaja)
-*Detección: cotizaciones nunca trabajadas.*
-
-1. `d15_caliente` — **El primer contacto es en caliente.** Un lead recién llegado tiene el
-   interés arriba; a las horas ya bajó. Contáctalo el mismo día, aunque sea un mensaje corto.
-2. `d15_no_espera` — **Una cotización enviada no es trabajada.** Mandar el PDF y esperar no es
-   vender. Detrás de cada cotización nueva va un contacto que abra la conversación.
+1. Detecta la **debilidad #1** del asesor (misma en termómetro y reporte).
+2. Elige la técnica que le toca, **rotando** (termómetro: por día · reporte: memoria en
+   `ritmo_tips`, no repite hasta agotar la debilidad).
+3. **Personaliza** el marco con su dato real.
+4. **Tono por score** (los "diferenciales"): bajo → firme · alto → refina y reconoce.
+5. **Fact-lint:** el dato del marco sale de la BD; la técnica es fija. Nunca afirmar del
+   asesor algo que el dato no diga, ni evidenciar que trackeamos al cliente.
 
 ---
 
-## Ideas de SISTEMA (no son tips — futuras features)
-De `pipeline-management` y `time-management`: son de gerente/dashboard, no coaching individual.
-Ya los cubre la **Mesa** (prioriza por urgencia/monto) y el **reporte**. Posibles a futuro:
-cobertura de pipeline / forecast en el reporte; "tu hora pico de venta" en la Mesa. **No van al catálogo de tips.**
+## 1. Descarta sin CALIFICAR  (`califica`)
+**Marco:** *"Conseguir cada cotización te costó trabajo. Estás soltando N, y M sin siquiera intentar una cita: ese esfuerzo lo tiras sin pelear la venta."*
+
+1. `d1_calificar` — **Calificación en 3 preguntas.** No descartes a ciegas: situación (*"¿para cuándo lo necesita?"*), problema (*"¿qué quiere resolver?"*), decisión (*"¿es usted quien decide?"*). Comprador real → trabájalo; no → suéltalo sin culpa. Descalificar bien es vender; descartar sin preguntar es tirar ventas.
+2. `d1_diagnostica` — **Diagnostica antes de proponer (SPIN).** Antes de mandar precio o descartar: *"¿qué está usando hoy?"*, *"¿qué es lo que más le molesta de eso?"*. Cuando el cliente dice su dolor en voz alta, la venta se arma sola.
+3. `d1_escalera` — **Escalera de compromiso (micro-sí).** Pide un "sí" chiquito primero: *"¿le mando foto del acabado?"* → *"¿le sirvió?"* → *"¿lo vemos 10 min?"*.
+4. `d1_intento` — **Regla del intento de cita.** Nunca descartes sin proponer al menos una cita.
+
+## 2. Tira leads CALIENTES  (`calientes`)
+**Marco:** *"Cada cotización que trabajas cuesta esfuerzo… Descartaste N que ADEMÁS estaban calientes — el cliente estaba listo y lo mandaste a la basura. Esas eran tuyas."*
+
+1. `d2_senal` — **Lee la señal de compra.** Que un cliente vuelva a entrar a su cotización es intención, no molestia. El que regresa te levantó la mano: háblale el mismo día.
+2. `d2_yesif` — **Micro-compromiso "sí, si…".** En vez de *"¿nos vemos?"*: *"si le enseño en 10 min cómo le queda y cuánto se ahorra, ¿vale la pena?"*. Sí → se comprometió; no → te dio su objeción real.
+3. `d2_urgencia` — **Urgencia real (no inventada).** *"De esto me queda una y hay otro cliente viéndola."* Solo si es cierto — la urgencia falsa quema.
+4. `d2_rescate` — **Rescate antes de tirar.** Gancho neutral: *"¿pudo revisar la cotización? ¿le resuelvo alguna duda para cerrarlo?"*.
+
+## 3. Pierde por PRECIO  (`precio`)
+**Marco:** *"Bajar el precio a la primera es la salida fácil y la que menos vende. N se te cayeron por precio, varias estando calientes: no era el precio, era que no le mostraste por qué vale."*
+
+1. `d3_laer` — **Marco LAER (Explorar antes de Responder).** Ante *"está caro"* no defiendas el número. Escucha, valida, y explora: *"¿caro comparado con qué?"*, *"¿qué esperaba invertir?"*, *"¿es el precio o lo que ve por ese precio?"*. Con el freno real, responde ESO.
+2. `d3_sandwich` — **Sándwich de valor.** Resultado, precio en medio, otro beneficio: *"Le queda instalado en 3 días con garantía de 2 años, son 18 mil, y le incluimos el primer mantenimiento."*
+3. `d3_no_contra_ti` — **Nunca negocies contra ti mismo.** No bajes antes de que te lo pidan.
+4. `d3_intercambia` — **Intercambia, no regales.** *"Le ajusto si cerramos hoy"* / *"si se lleva también X"*.
+5. `d3_comparacion` — **"Competidor más barato": costo total.** *"¿Qué está comparando exactamente?"* — resalta lo que tú incluyes y ellos no.
+
+## 4. No maneja OTRAS OBJECIONES  (`objeciones`)
+1. `d4_laer` — **LAER ante "déjame pensarlo".** No es un no. Valida y explora: *"¿qué es lo que quiere terminar de ver?"*.
+2. `d4_aisla` — **Aísla la objeción real.** *"Aparte de eso, ¿hay algo más que lo detenga?"*.
+3. `d4_sus_razones` — **Compra por SUS razones.** Pregúntale qué le importa a ÉL y véndele eso.
+4. `d4_amarra` — **Amarra la definición.** *"¿Le parece si el jueves, ya con esto resuelto, lo cerramos?"*.
+
+## 5. No amarra la CITA  (`citas`)
+**Marco:** *"Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas esta semana."*
+
+1. `d5_alternativa` — **Doble opción, ningún "no".** *"¿Le queda hoy o mañana?"*.
+2. `d5_cierra_contacto` — **Cierra cada contacto con la siguiente cita.** Nunca cuelgues sin fecha.
+3. `d5_revive` — **Revive cartera para llenar el embudo.** Reactiva a los que quedaron en el aire.
+
+## 6. No logra CONTACTO  (`contacto`)
+**Marco:** *"Un cliente que no contesta no siempre es un no: muchas veces es que no lo buscaste bien. [dato] — ahí hay ventas esperando a que insistas distinto."*
+
+1. `d6_horario` — **Cambia el horario, no el mensaje.** Otra franja (mediodía, después de las 6). Casi siempre es mal momento, no falta de interés.
+2. `d6_canal` — **Cambia de canal.** Llamada → WhatsApp → audio corto.
+3. `d6_velocidad` — **Regla de la primera hora.** El lead nuevo se contacta en minutos.
+
+## 7. Llega a cita pero NO CIERRA  (`cierre`)
+**Marco:** *"Abrir no es cerrar, y ahí es donde se gana o se pierde. Trabajaste N+ y no cerraste ninguna: el cliente llega hasta la puerta y no lo estás haciendo pasar."*
+
+1. `d7_senal` — **Reconoce la señal de cierre.** Pregunta por tiempos/garantía/pago = listo. Deja de vender y cierra.
+2. `d7_asuntivo` — **Cierre asuntivo.** *"Perfecto, ¿lo apartamos hoy?"* / *"¿le empiezo el pedido?"*.
+3. `d7_alternativa` — **Cierre por alternativa.** *"¿De contado o a plazos?"*.
+4. `d7_resumen` — **Cierre de resumen (lo más caro).** Recapitula el valor y pide el paso.
+5. `d7_prueba` — **Cierre de prueba.** *"Si le resuelvo lo del plazo, ¿lo cerramos hoy?"*.
+
+## 8. Deja vencer SEGUIMIENTOS  (`seguimiento`)
+**Marco:** *"Cada cliente que dejas vencer se enfría o se va con otro. Traes N seguimientos caídos: eran ventas en tu mano y las estás soltando por no marcar a tiempo."*
+
+1. `d8_sistema` — **Sistema, no memoria.** Lo que vence hoy, hoy se toca.
+2. `d8_servicio` — **Aporta valor en cada toque.** Un dato, una foto, una respuesta — nunca solo *"¿ya decidió?"*.
+3. `d8_velocidad` — **La velocidad manda.** Al que dejó una duda, contéstale en minutos.
+
+## 9. Ignora el RADAR  (`radar`)
+**Marco:** *"El Radar te está diciendo quién quiere comprarte hoy. Tienes N clientes calientes que ni tocaste: son las ventas más fáciles de la semana y las estás dejando pasar."*
+
+1. `d9_prioridad` — **Empieza el día por tus calientes.**
+2. `d9_marca` — **Marca lo que ves (👍/👎).** Un caliente sin marcar es un cliente sin dueño.
+
+## 10. No reacciona al ENFRIAMIENTO  (`enfriamiento`)
+1. `d10_gancho` — **Resurrección con gancho, no pregunta vacía.** No *"¿sigue interesado?"*; revive con algo nuevo: *"me llegaron los tiempos de entrega, ¿se los paso?"*.
+2. `d10_timing` — **Es timing, no falta de interés.** Un frío hoy puede estar listo en dos semanas.
+
+## 11. Cierra regalando DESCUENTO  (`descuento`)
+**Marco:** *"Regalar descuento se siente como cerrar, pero te come el margen y te acostumbra a vender por precio. Cerraste N de M con descuento: estás comprando la venta en vez de ganártela."*
+
+1. `d11_valor` — **Sube el valor, no bajes el precio.**
+2. `d11_intercambia` — **Si descuentas, intercambia.** Cierre hoy, contado, compra más grande. Nunca por nada.
+3. `d11_urgencia` — **Urgencia real en vez de descuento.** Solo si es cierto.
+
+## 12. TICKET bajo  (`ticket`)
+1. `d14_necesidad` — **Descubre el proyecto completo.** Pregunta por todo, no solo por lo que vino a cotizar.
+2. `d14_complemento` — **Suma en el momento del sí.** *"¿Le agregamos X que combina con esto?"*.
+
+## 13. Va bien  (`bien`)
+1. `ok_sube` — **Sube el ticket** preguntando por el proyecto completo.
+2. `ok_ritmo` — **No sueltes el ritmo:** agenda la siguiente cita antes de cerrar la de hoy.
+3. `ok_radar` — **Exprime el Radar:** el que vuelve a abrir es tu venta más fácil.
+
+---
+
+## Ideas de SISTEMA (no son tips)
+De `pipeline-management` y `time-management`: son de gerente/dashboard, no coaching
+individual — ya los cubre la **Mesa** (prioriza por urgencia/monto) y el **reporte**.
+Futuro posible: cobertura de pipeline / forecast. **No van al catálogo de tips.**
 
 ## Pendiente al curar (José)
-- Marcar qué técnicas NO aplican a tu giro y reescribir con TUS palabras.
-- Confirmar el **orden/currículo** de cada debilidad (cuál se enseña primero → última).
+- Reescribir cada técnica y cada marco con TUS palabras.
+- Confirmar el **orden/currículo** de cada debilidad (cuál se enseña primero).
 - Agregar debilidades o técnicas que falten.
 - Aprobar el mapeo tono ↔ score.
 
-Con el catálogo curado se construye el motor: selección por debilidad #1 + rotación por
-`handle` (memoria de mostradas) + personalización con el dato + tono por score + fact-lint.
+> Al editar aquí, avísame y lo paso al motor (`core/RitmoTip.php`) con su fact-lint.
