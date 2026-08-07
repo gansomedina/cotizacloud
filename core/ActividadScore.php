@@ -342,17 +342,15 @@ class ActividadScore
             [$usuario_id, $periodo]
         );
 
-        // ── Lectura de tips del diagnóstico (3 "ver más") ──
-        // Cuenta días donde el asesor expandió los 3 "ver más" del diagnóstico
+        // ── Lectura de tips del diagnóstico ──
+        // Cuenta días donde el asesor expandió el "ver más" del tip. Antes exigía
+        // los 3 "ver más"; al ocultar el 2do tip (números) quedó 1 sola flecha, así
+        // que ahora basta 1 expansión (tip_expand_1) para acreditar el día.
         $dias_lectura = (int)DB::val(
-            "SELECT COUNT(*) FROM (
-                SELECT DATE(created_at) AS dia
+            "SELECT COUNT(DISTINCT DATE(created_at))
                 FROM actividad_log
                 WHERE usuario_id=? AND tipo IN ('tip_expand_1','tip_expand_2','tip_expand_3')
-                AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-                GROUP BY dia
-                HAVING COUNT(DISTINCT tipo) = 3
-            ) AS t",
+                AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $periodo]
         );
         // Tips reading score. Grace de usuario nuevo ya cubre por early return
