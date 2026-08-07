@@ -57,7 +57,7 @@ Cada técnica lleva un `handle` (id) para que el motor lleve el control de rotac
 2. `d2_momento` — **El momento caliente no espera.** El interés se enfría en horas. Cuando
    veas que acaba de abrir, marca hoy, no mañana.
 3. `d2_rescate` — **Rescate antes de tirar.** Si lo ibas a descartar y estaba caliente,
-   mándale un gancho: *"vi que revisaste la cotización, ¿te ayudo con alguna duda para
+   mándale un gancho: *"¿pudo revisar la cotización? ¿le ayudo con alguna duda para
    cerrarlo?"*.
 
 ## 3. Pierde por precio ("está caro")

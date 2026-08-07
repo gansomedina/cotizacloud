@@ -423,7 +423,7 @@ final class DiagnosticoTips
                 "El que ya abrió y se enfrió no está perdido, está dormido — y tú cierras lo que trabajas. Despiértalo con un motivo nuevo para volver: traer uno de vuelta te cuesta menos que conseguir uno de cero, y con tu cierre casi siempre paga. Es la palanca que te falta, y es la más sencilla.",
             ],
             'sordo_a_senales' => [ // cierra bien pero NO capitaliza las señales calientes
-                "Cierras a los que ya vienen convencidos, pero ignoras las señales: cuando un cliente revisa tu propuesta con interés, el sistema te lo marca y no lo trabajas. Ahí se te escapan los cierres más fáciles. Cada mañana revisa quién se puso caliente y contáctalo el mismo día: «vi que estuvo revisando la propuesta, ¿qué duda le resuelvo para que decida?». El que ya te levantó la mano está a un paso.",
+                "Cierras a los que ya vienen convencidos, pero ignoras las señales: cuando un cliente revisa tu propuesta con interés, el sistema te lo marca y no lo trabajas. Ahí se te escapan los cierres más fáciles. Cada mañana revisa quién se puso caliente y contáctalo el mismo día: «¿pudo revisar la propuesta? ¿qué duda le resuelvo para que decida?». El que ya te levantó la mano está a un paso.",
                 "Tu problema no es rematar, es que no capitalizas lo que ya está caliente: dejas pasar a los que te mostraron interés. Ese interés dura horas, no días. Reacciona a la señal el mismo día que aparece, no cuando tengas hueco.",
                 "Cierras bien lo que trabajas, pero trabajas solo lo que te cae de frente; las señales de compra que el sistema te marca, las ignoras — y ahí está tu venta más cercana. Empieza el día por los calientes de hoy.",
             ],

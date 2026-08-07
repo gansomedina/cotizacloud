@@ -27,7 +27,7 @@ class RitmoTip
             'calientes' => [
                 ['d2_lee',     "Que el cliente entre varias veces a tu cotización ES señal de compra, no de molestia. Al que vuelve a abrir, no lo descartes: háblale mientras la está viendo."],
                 ['d2_momento', "El interés se enfría en horas, no en días. Cuando veas que un cliente acaba de abrir tu cotización, ese es el momento de marcarle, no mañana."],
-                ['d2_rescate', "Si ya la ibas a descartar y estaba caliente, mándale un gancho antes de tirarla: “vi que revisaste la cotización, ¿te ayudo con alguna duda para cerrarlo?”."],
+                ['d2_rescate', "Si ya la ibas a descartar y estaba caliente, mándale un gancho antes de tirarla: “¿pudo revisar la cotización? ¿le ayudo con alguna duda para cerrarlo?”."],
             ],
             'precio' => [
                 ['d3_explora',      "“Está caro” casi nunca es el precio real: es que aún no ve por qué vale eso. No defiendas el número, explora: “¿caro comparado con qué?”. Ahí sale el freno verdadero."],
