@@ -180,46 +180,44 @@ class RitmoTip
 
         // Seguimiento vencido (lo más urgente)
         if (($m['vencidas'] ?? 0) > 0)
-            return ['seguimiento', "Traes {$m['vencidas']} seguimientos vencidos. "];
+            return ['seguimiento', "Cada cliente que dejas vencer se enfría o se va con otro. Traes {$m['vencidas']} seguimientos caídos: eran ventas en tu mano y las estás soltando por no marcar a tiempo. "];
 
         // Descartes: precio > calientes > sin calificar
         $descRojo = $card && in_array($card['desc_estado'] ?? '', ['rojo','amarillo'], true);
         if ($descRojo && ($de['precio'] ?? 0) > 0 && ($de['precio'] ?? 0) >= (int)ceil(($de['n'] ?? 1) * 0.4))
-            return ['precio', "{$de['precio']} de tus descartes se cayeron por precio. "];
+            return ['precio', "Bajar el precio a la primera es la salida fácil y la que menos vende. {$de['precio']} se te cayeron por precio, varias estando calientes: no era el precio, era que no le mostraste por qué vale. "];
         if ($descRojo && ($de['hot_noprecio'] ?? 0) >= 2)
-            return ['calientes', "Descartaste {$de['hot_noprecio']} cotizaciones que estaban calientes. "];
+            return ['calientes', "Cada cotización que trabajas cuesta esfuerzo: tiempo, escuchar al cliente, el primer contacto. Descartaste {$de['hot_noprecio']} que ADEMÁS estaban calientes — el cliente estaba listo y lo mandaste a la basura. Esas eran tuyas. "];
         if ($descRojo)
-            return ['califica', "Descartaste {$de['n']}, {$de['sincita']} sin llegar a cita. "];
+            return ['califica', "Conseguir cada cotización te costó trabajo. Estás soltando {$de['n']}, y {$de['sincita']} sin siquiera intentar una cita: ese esfuerzo lo tiras sin pelear la venta. "];
 
         // No cierra pese a tener citas
         if ($card && ($card['conv_estado'] ?? '') === 'rojo')
-            return ['cierre', "Trabajaste varias y aún no cierras ninguna. "];
+            return ['cierre', "Abrir no es cerrar, y ahí es donde se gana o se pierde. Trabajaste {$de['n']}+ y no cerraste ninguna: el cliente llega hasta la puerta y no lo estás haciendo pasar. "];
 
         // No contesta
         if ($noc)
-            return ['contacto', "" . $card['cont_txt'] . ". "];
+            return ['contacto', "Un cliente que no contesta no siempre es un no: muchas veces es que no lo buscaste bien. {$card['cont_txt']} — ahí hay ventas esperando a que insistas distinto. "];
 
         // Regala descuento
         if (($ve['cierres'] ?? 0) > 0 && ($ve['con_dto'] ?? 0) > ($ve['sin_dto'] ?? 0))
-            return ['descuento', "{$ve['con_dto']} de tus {$ve['cierres']} ventas fueron con descuento. "];
+            return ['descuento', "Regalar descuento se siente como cerrar, pero te come el margen y te acostumbra a vender por precio. {$ve['con_dto']} de tus {$ve['cierres']} ventas fueron con descuento: estás comprando la venta en vez de ganártela. "];
 
         // Citas bajando
         if ($card && ($card['citas_estado'] ?? '') === 'amarillo')
-            return ['citas', "Bajó tu ritmo de citas esta semana. "];
+            return ['citas', "Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas esta semana. Cada semana sin sembrar citas es una quincena floja en camino. "];
 
         // Calientes sin marcar
         if (($rd['sin_feedback'] ?? 0) >= 2)
-            return ['radar', "Tienes {$rd['sin_feedback']} calientes del Radar sin revisar. "];
+            return ['radar', "El Radar te está diciendo quién quiere comprarte hoy. Tienes {$rd['sin_feedback']} clientes calientes que ni tocaste: son las ventas más fáciles de la semana y las estás dejando pasar. "];
 
         // Va bien
         return ['bien', ""];
     }
 
-    /** Tono por score (los "diferenciales"). Prefijo corto antes del gancho. */
+    /** Ajuste de intensidad por score (los "diferenciales"), sin quitarle fuerza al marco. */
     private static function _tono(int $score, string $gancho): string
     {
-        if ($gancho === '') return '';           // caso "bien": la técnica ya trae el tono
-        if ($score < 40)  return "Ojo: " . $gancho;   // firme
-        return $gancho;                                // coach/refina: el gancho tal cual
+        return $gancho; // el marco ya trae la fuerza; el tono se afina en el catálogo
     }
 }
