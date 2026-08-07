@@ -1023,14 +1023,8 @@ $ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
         <span id="td-s2" style="display:none"> <?= e($diag_b2) ?></span>
         <a href="#" id="td-m1" class="td-more" onclick="return tdExp(1)"> ver más →</a>
         <?php endif; ?>
-        <?php if ($diag_b3 !== ''): ?>
-        <span id="td-s3" style="display:none"> <?= e($diag_b3) ?></span>
-        <a href="#" id="td-m2" class="td-more" style="display:none" onclick="return tdExp(2)"> ver más →</a>
-        <?php endif; ?>
-        <?php if ($diag_b4 !== ''): ?>
-        <span id="td-s4" style="display:none"> <?= e($diag_b4) ?></span>
-        <a href="#" id="td-m3" class="td-more" style="display:none" onclick="return tdExp(3)"> ver más →</a>
-        <?php endif; ?>
+        <?php /* Segundo tip (números) OCULTO — demasiada info. Cálculo intacto en
+                 $diag_b3/$diag_b4 por si se reactiva. */ ?>
       </div>
     </div>
     <?php // Mesa del asesor DENTRO de la tarjeta del score, abajo del tip —
@@ -1133,9 +1127,8 @@ if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
       <div class="lb-name">
         <?= e($es['nombre']) ?>
         <div class="lb-diag"><?= e($es_diag) ?></div>
-        <?php $es_num = trim(ActividadScore::diagnostico_numeros($es, $diag_ctx ?? null)); if ($es_num !== ''): ?>
-        <div class="lb-diag" style="opacity:.8;margin-top:3px"><?= e($es_num) ?></div>
-        <?php endif; ?>
+        <?php /* Segundo tip (números) OCULTO — demasiada info. Cálculo intacto: */
+              $es_num = trim(ActividadScore::diagnostico_numeros($es, $diag_ctx ?? null)); ?>
         <?php if (Auth::es_superadmin() && $es['nivel'] !== 'nuevo'):
           $lb_act = min(100, round((float)($es['s_activacion'] ?? 0) * 100));
           $lb_eng = min(100, round((float)($es['s_engagement'] ?? 0) * 100));
