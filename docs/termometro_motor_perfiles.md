@@ -66,7 +66,7 @@ Mecanismo: ventana de intención se cierra 21× de 5 a 30 min (Oldroyd/MIT); cur
 
 | Estado | Significado | Jugada / Reconocimiento |
 |---|---|---|
-| **BAJO** | No las abren, o abren y se enfrían, o no lee la guía. Abandono de la ventana, no falta de leads. Si además no lee = desconexión (no cree que su esfuerzo sirva). | **Regla de la primera hora + cerrar un loop antes de abrir otro.** Rescate de dormida: *"vi que alcanzó a revisar la cotización; ¿hubo algo del precio o del alcance que no le cuadró? Se lo aclaro o se lo ajusto. ¿Le marco hoy a las [hora] o lo dejo por aquí?"* |
+| **BAJO** | No las abren, o abren y se enfrían, o no lee la guía. Abandono de la ventana, no falta de leads. Si además no lee = desconexión (no cree que su esfuerzo sirva). | **Regla de la primera hora + cerrar un loop antes de abrir otro.** Rescate de dormida: *"¿pudo revisar la cotización? ¿hubo algo del precio o del alcance que no le cuadró? Se lo aclaro o se lo ajusto. ¿Le marco hoy a las [hora] o lo dejo por aquí?"* |
 | **MEDIO** | Sabe arrancar pero le crece la cola de dormidas: trabaja lo nuevo, descuida lo de 7 días. | Antes de mandar una nueva, toca una dormida. |
 | **ALTO** *(real solo si dormidas bajas)* | Capitaliza la ventana de intención. | Reconocer: *"lo que mandas se abre y no lo dejas enfriar — el arranque lo tienes."* |
 

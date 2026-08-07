@@ -117,7 +117,7 @@ $GLOBALS['PLAYBOOK'] = [
         'messages' => [
             [
                 'canal' => '📱 WhatsApp — motivo Inminente/On Fire',
-                'texto' => '[Nombre], vi que ha estado revisando su cotización. ¿Le gustaría agendar para resolver cualquier duda y arrancar esta semana?',
+                'texto' => '[Nombre], ¿pudo revisar su cotización? ¿Le gustaría agendar para resolver cualquier duda y arrancar esta semana?',
                 'nota'  => 'Directo al cierre. Esta persona ya decidió, solo necesita el empujón final.',
             ],
             [
