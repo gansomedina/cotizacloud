@@ -24,9 +24,14 @@ class RitmoAsesor
 
     public static function empresa(int $empresa_id): array
     {
+        // Memo por request: el termómetro llama expediente() por asesor y cada uno
+        // pediría toda la empresa → sin esto sería O(N²).
+        static $memo = [];
+        if (isset($memo[$empresa_id])) return $memo[$empresa_id];
+
         try {
-            if ((int)DB::val("SELECT mesa_activa FROM empresas WHERE id=?", [$empresa_id]) < 1) return [];
-        } catch (Throwable $e) { return []; }
+            if ((int)DB::val("SELECT mesa_activa FROM empresas WHERE id=?", [$empresa_id]) < 1) return $memo[$empresa_id] = [];
+        } catch (Throwable $e) { return $memo[$empresa_id] = []; }
 
         $p75 = 10; $mediana = 5;
         try {
@@ -50,8 +55,8 @@ class RitmoAsesor
                   ORDER BY u.nombre ASC",
                 [$empresa_id, $empresa_id]
             );
-        } catch (Throwable $e) { return []; }
-        if (!$asesores) return [];
+        } catch (Throwable $e) { return $memo[$empresa_id] = []; }
+        if (!$asesores) return $memo[$empresa_id] = [];
 
         $filas = [];
         foreach ($asesores as $a) {
@@ -65,7 +70,7 @@ class RitmoAsesor
             if ($px !== $py) return $px <=> $py;
             return $y['problemas'] <=> $x['problemas']; // más pilares en problema arriba
         });
-        return $filas;
+        return $memo[$empresa_id] = $filas;
     }
 
     public static function todas(): array
