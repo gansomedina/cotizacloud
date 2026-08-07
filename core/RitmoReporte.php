@@ -49,6 +49,14 @@ class RitmoReporte
             'mesa'   => self::_mesa($empresa_id, $asesor_id),
             'radar'  => self::_radar($empresa_id, $asesor_id, $win),
         ];
+        // Tip de coaching rotado (no repite técnica hasta agotar la debilidad).
+        $vistos = [];
+        try {
+            foreach (DB::query("SELECT handle FROM ritmo_tips WHERE empresa_id=? AND asesor_id=? ORDER BY created_at DESC LIMIT 40",
+                     [$empresa_id, $asesor_id]) as $r) $vistos[] = $r['handle'];
+        } catch (Throwable $e) {}
+        try { $d['tip'] = RitmoTip::elegir($d, $vistos); } catch (Throwable $e) { $d['tip'] = null; }
+
         $d['secciones'] = self::_componer($d);
         $d['html'] = self::render($d);
         return $d;
@@ -345,6 +353,12 @@ class RitmoReporte
             $h .= '<div class="rr-dims">';
             foreach ($sc['dim'] as $lab => $v) $h .= '<span class="rr-dim"><b>' . e($lab) . '</b> ' . (int)round($v*100) . '%</span>';
             $h .= '</div><div class="rr-note">Los pilares y el veredicto son los MISMOS de la tarjeta de Ritmo (misma ventana). El score es la ventana estándar de 15 días.</div>';
+        }
+
+        // 💡 Tip de la semana (técnica de ventas rotada, personalizada)
+        if (!empty($d['tip']['texto'])) {
+            $h .= '<div class="rr-tip"><div class="rr-tip-h">💡 Tip de la semana</div>'
+                . '<div class="rr-tip-b">' . e($d['tip']['texto']) . '</div></div>';
         }
 
         $sec = function (string $t, array $items, string $cls = '') {

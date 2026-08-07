@@ -112,6 +112,11 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
   #rt-modal .rr-pil{display:flex;align-items:baseline;gap:8px;font:500 13px var(--body);margin:4px 0}
   #rt-modal .rr-pil b{color:var(--t2);min-width:92px;font-weight:750}
   #rt-modal .rr-dot{width:9px;height:9px;border-radius:50%;flex:none;align-self:center}
+  #rt-modal .rr-tip{background:linear-gradient(135deg,rgba(217,119,6,.10),rgba(245,158,11,.05));border:1px solid rgba(217,119,6,.28);border-radius:10px;padding:11px 13px;margin-bottom:14px}
+  #rt-modal .rr-tip-h{font:800 11px var(--body);text-transform:uppercase;letter-spacing:.05em;color:#b45309;margin-bottom:4px}
+  #rt-modal .rr-tip-b{font:500 13px var(--body);color:var(--text);line-height:1.5}
+  :root[data-theme="dark"] #rt-modal .rr-tip{background:rgba(217,119,6,.14);border-color:rgba(245,158,11,.3)}
+  :root[data-theme="dark"] #rt-modal .rr-tip-h{color:#dca247}
   #rt-modal .rr-foot{font:400 10.5px var(--body);color:var(--t3);border-top:1px solid var(--border);padding-top:8px;margin-top:6px}
   @media print{body *{visibility:hidden}#rt-modal,#rt-modal *{visibility:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact}#rt-modal{position:absolute;inset:0;background:#fff;padding:0}#rt-modal>div{box-shadow:none;margin:0;max-width:100%}}
 </style>
