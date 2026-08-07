@@ -68,4 +68,12 @@ try {
     );
 } catch (Throwable $e) { /* si falla el guardado, igual devolvemos el reporte */ }
 
+// Registrar la técnica mostrada (rotación del tip: no repetir hasta agotar).
+if (!empty($rep['tip']['handle'])) {
+    try {
+        DB::execute("INSERT INTO ritmo_tips (empresa_id, asesor_id, handle) VALUES (?,?,?)",
+            [EMPRESA_ID, $asesor_id, $rep['tip']['handle']]);
+    } catch (Throwable $e) {}
+}
+
 json_ok(['html'=>$rep['html'], 'cache'=>false, 'desde'=>$desde, 'hasta'=>$hasta]);
