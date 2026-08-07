@@ -107,6 +107,52 @@ class RitmoTip
         return ['handle' => $elegida[0], 'texto' => $texto, 'debilidad' => $deb];
     }
 
+    /**
+     * Variante para el TERMÓMETRO: detecta la debilidad desde el row de
+     * usuario_score (sin queries por asesor) y rota POR DÍA (estable en el día,
+     * avanza cada día). Para el dashboard y el leaderboard.
+     */
+    public static function desdeScore(array $s): ?array
+    {
+        if (($s['nivel'] ?? '') === 'nuevo') return null;      // "recopilando info" → deja el legacy
+        if ((int)($s['cot_asignadas'] ?? 0) === 0) return null;
+
+        [$deb, $gancho] = self::_debilidadScore($s);
+        $cat = self::catalogo();
+        $tecs = $cat[$deb] ?? $cat['bien'];
+        if (!$tecs) return null;
+
+        // Rotación diaria determinista: misma técnica todo el día, siguiente mañana.
+        $uid = (int)($s['usuario_id'] ?? 0);
+        $idx = ((int)date('z') + $uid) % count($tecs);
+        $t = $tecs[$idx];
+
+        $score = (int)($s['score'] ?? 50);
+        return ['handle' => $t[0], 'texto' => self::_tono($score, $gancho) . $t[1], 'debilidad' => $deb];
+    }
+
+    /** Debilidad #1 desde el score row (lo detectable sin queries extra). */
+    private static function _debilidadScore(array $s): array
+    {
+        $vist    = (int)($s['cot_vistas'] ?? 0);
+        $cierres = (int)($s['conversiones'] ?? 0);
+        $dorm    = (int)($s['cot_dormidas'] ?? 0);
+        $nab     = (int)($s['no_abiertas_5d'] ?? 0);
+        $cal     = (int)($s['cots_calientes'] ?? $s['radar_benchmark'] ?? 0);
+        $fb      = (int)($s['fb_total'] ?? $s['radar_views'] ?? 0);
+        $ign     = max(0, $cal - $fb);
+        $venc    = (int)($s['mesa_dias_vencidos'] ?? 0);
+        $sdto    = (int)($s['cierres_sin_dto'] ?? 0);
+
+        if ($venc > 0)                         return ['seguimiento', "Se te están acumulando seguimientos vencidos. "];
+        if ($cierres === 0 && $vist >= 8)      return ['cierre', "Trabajaste {$vist} cotizaciones y aún no cierras ninguna. "];
+        if ($ign >= 2)                         return ['radar', "Tienes {$ign} calientes del Radar sin marcar. "];
+        if ($cierres > 0 && $sdto < $cierres)  return ['descuento', "Cerraste con descuento en " . ($cierres - $sdto) . " de {$cierres}. "];
+        if ($dorm > 0)                         return ['enfriamiento', "Tienes {$dorm} clientes que dejaron de volver. "];
+        if ($nab > 0)                          return ['contacto', "Tienes {$nab} cotizaciones que el cliente no ha abierto. "];
+        return ['bien', ""];
+    }
+
     /** Debilidad #1 + gancho con su dato real, en orden de prioridad. */
     private static function _debilidad(array $d): array
     {
