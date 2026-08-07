@@ -958,7 +958,9 @@ $ts_cal   = (int)($ts['cots_calientes'] ?? $ts['radar_benchmark'] ?? 0);
 $ts_fb    = (int)($ts['fb_total'] ?? $ts['radar_views'] ?? 0);
 $ts_ign   = max(0, $ts_cal - $ts_fb); // calientes sin feedback
 $ts_pen   = (float)($ts['penalizaciones'] ?? 0);
-$ts_diag  = ActividadScore::diagnostico($ts, $diag_ctx ?? null);
+// Tip del termómetro: motor nuevo (RitmoTip) con fallback al legacy.
+$ts_rt   = RitmoTip::desdeScore($ts);
+$ts_diag = ($ts_rt && trim($ts_rt['texto']) !== '') ? $ts_rt['texto'] : ActividadScore::diagnostico($ts, $diag_ctx ?? null);
 ?>
 <div class="thermo<?= !empty($MESA_ASESOR) ? ' thermo-wmesa' : '' ?>">
     <div class="thermo-gauge">
@@ -1119,7 +1121,8 @@ if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
       $es_arrow = $es_mom >= 1.05 ? '↑' : ($es_mom <= 0.95 ? '↓' : '→');
       $es_mom_c = $es_mom >= 1.05 ? '#16a34a' : ($es_mom <= 0.95 ? '#dc2626' : '#9ca3af');
       $rank_cls = $rank <= 3 ? "lb-rank-{$rank}" : '';
-      $es_diag = ActividadScore::diagnostico($es, $diag_ctx ?? null);
+      $es_rt   = RitmoTip::desdeScore($es);
+      $es_diag = ($es_rt && trim($es_rt['texto']) !== '') ? $es_rt['texto'] : ActividadScore::diagnostico($es, $diag_ctx ?? null);
     ?>
     <div class="lb-row">
       <div class="lb-rank <?= $rank_cls ?>"><?= $rank ?></div>
