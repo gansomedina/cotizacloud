@@ -16,8 +16,17 @@ defined('COTIZAAPP') or die;
 
 class RitmoReporte
 {
-    public static function generar(int $empresa_id, int $asesor_id, string $desde = '', string $hasta = ''): array
+    /**
+     * Expediente del asesor (datos, sin render): pilares de la tarjeta + score +
+     * descartes + ventas + mesa + radar. Lo consume el reporte Y el termómetro,
+     * para que ambos detecten la MISMA debilidad #1. Memoizado por (empresa,asesor).
+     */
+    public static function expediente(int $empresa_id, int $asesor_id): array
     {
+        static $memo = [];
+        $mk = "$empresa_id:$asesor_id";
+        if (isset($memo[$mk])) return $memo[$mk];
+
         $nombre = (string) DB::val("SELECT nombre FROM usuarios WHERE id=? AND empresa_id=?", [$asesor_id, $empresa_id]);
         if ($nombre === '') $nombre = "Asesor #{$asesor_id}";
 
@@ -41,7 +50,7 @@ class RitmoReporte
                 if ((int)$r['usuario_id'] === $asesor_id) { $card = $r; break; }
         } catch (Throwable $e) {}
 
-        $d = [
+        return $memo[$mk] = [
             'nombre' => $nombre, 'win' => $win, 'card' => $card,
             'score'  => self::_score($asesor_id, $empresa_id),
             'desc'   => self::_descartes($empresa_id, $asesor_id, $win, $rapido_dias),
@@ -49,6 +58,12 @@ class RitmoReporte
             'mesa'   => self::_mesa($empresa_id, $asesor_id),
             'radar'  => self::_radar($empresa_id, $asesor_id, $win),
         ];
+    }
+
+    public static function generar(int $empresa_id, int $asesor_id, string $desde = '', string $hasta = ''): array
+    {
+        $d = self::expediente($empresa_id, $asesor_id);
+
         // Tip de coaching rotado (no repite técnica hasta agotar la debilidad).
         $vistos = [];
         try {

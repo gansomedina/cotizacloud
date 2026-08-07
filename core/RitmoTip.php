@@ -108,9 +108,27 @@ class RitmoTip
     }
 
     /**
-     * Variante para el TERMÓMETRO: detecta la debilidad desde el row de
-     * usuario_score (sin queries por asesor) y rota POR DÍA (estable en el día,
-     * avanza cada día). Para el dashboard y el leaderboard.
+     * Variante para el TERMÓMETRO (coherente con el reporte): usa el expediente
+     * granular ($d de RitmoReporte::expediente) para detectar la MISMA debilidad
+     * #1 que el reporte, y rota POR DÍA (estable en el día, avanza mañana).
+     */
+    public static function paraTermometro(array $d): ?array
+    {
+        if (empty($d['card'])) return null;                    // sin tarjeta → deja el legacy
+        [$deb, $gancho] = self::_debilidad($d);
+        $cat = self::catalogo();
+        $tecs = $cat[$deb] ?? $cat['bien'];
+        if (!$tecs) return null;
+
+        $uid = (int)($d['card']['usuario_id'] ?? 0);
+        $idx = ((int)date('z') + $uid) % count($tecs);        // rotación diaria por asesor
+        $t = $tecs[$idx];
+        $score = (int)($d['score']['score'] ?? 50);
+        return ['handle' => $t[0], 'texto' => self::_tono($score, $gancho) . $t[1], 'debilidad' => $deb];
+    }
+
+    /**
+     * Variante ligera (solo score row) — fallback si no hay expediente. Rota por día.
      */
     public static function desdeScore(array $s): ?array
     {
