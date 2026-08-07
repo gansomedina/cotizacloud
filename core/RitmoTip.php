@@ -31,7 +31,7 @@ class RitmoTip
             ],
             'precio' => [
                 ['d3_explora',      "“Está caro” casi nunca es el precio real: es que aún no ve por qué vale eso. No defiendas el número, explora: “¿caro comparado con qué?”. Ahí sale el freno verdadero."],
-                ['d3_sandwich',     "Cuando te objeten el precio, no repitas el número: recuérdale el resultado, mete el precio en medio y cierra con otro beneficio. “Le queda instalado en 3 días con garantía de 2 años, son $X, y le incluimos el primer mantenimiento.”"],
+                ['d3_sandwich',     "Cuando te objeten el precio, no repitas el número: recuérdale el resultado, mete el precio en medio y cierra con otro beneficio. “Le queda instalado en 3 días con garantía de 2 años, son 18 mil, y le incluimos el primer mantenimiento.”"],
                 ['d3_no_contra_ti', "Nunca negocies contra ti mismo: no bajes el precio antes de que te lo pidan, ni ofrezcas descuento “por si acaso”. Si nadie objetó, no hay nada que bajar."],
                 ['d3_intercambia',  "Si mueves el precio, pide algo a cambio: “te ajusto si cerramos hoy” o “si te llevas también X”. Bajar por bajar le enseña al cliente a pedir más."],
                 ['d3_valor',        "Si llega directo al “¿cuánto es lo menos?”, regresa al valor primero: qué le resuelves y cuánto le cuesta NO resolverlo. Luego hablas de la inversión."],
