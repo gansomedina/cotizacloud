@@ -254,7 +254,9 @@ foreach ($raw as $c) {
 
     // Probable cierre es cross-bucket: agrupa TODOS los buckets calientes
     // El motivo es el bucket de mayor rango que la activó
-    $hot_cross = ['onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
+    // = Mesa::HOT menos probable_cierre (que ES el bucket agrupador). Derivado,
+    // no copiado: un caliente nuevo se vuelve origen de probable_cierre solo.
+    $hot_cross = array_values(array_diff(Mesa::HOT, ['probable_cierre']));
     $es_probable = in_array('probable_cierre', $all_buckets, true) && $pc_source;
     $es_hot = in_array($bucket, $hot_cross, true);
     if ($es_probable || $es_hot) {
@@ -287,9 +289,12 @@ rsort_arr($activos48,$sort,$dir);
 $rows_all = array_slice($rows_all,0,$limit);
 
 // probable_cierre es cross-bucket: ya está duplicada en su bucket origen.
-// Contar solo cotizaciones ÚNICAS entre los 3 buckets urgentes.
+// Contar solo cotizaciones ÚNICAS entre los buckets urgentes.
+// Fuente única (Mesa::HOT): esta lista se había quedado en 6 y dejaba fuera
+// validando_precio y prediccion_alta — buckets que SÍ disparan push y SÍ
+// entran a la mesa, pero no contaban en el KPI de esta misma pantalla.
 $urgentes_ids = [];
-foreach (['onfire','inminente','probable_cierre','lectura_comprometida','multi_persona','alto_importe'] as $ub) {
+foreach (Mesa::HOT as $ub) {
     foreach ($buckets[$ub] as $r) $urgentes_ids[(int)$r['id']] = true;
 }
 $cnt_urgentes = count($urgentes_ids);
@@ -353,7 +358,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
     // pintar una columna vacía. Replica la condición de $show_fb_td/$already_shown
     // de abajo SIN mutar $GLOBALS['fb_shown'] (el feedback se pinta una sola vez por
     // cotización, en la primera tabla donde aparece).
-    $hot_bkts_hd = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
+    $hot_bkts_hd = Mesa::HOT;
     $tabla_con_fb = false;
     foreach ($items as $r_pre) {
         $vend_pre = (int)($r_pre['vendedor_id'] ?? 0);
@@ -401,7 +406,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
         $r_fb_data = ($GLOBALS['feedback_map'] ?? [])[(int)$r['id']] ?? null;
         $r_fb_tipo = $r_fb_data['tipo'] ?? null;
         $r_fb_asesor = $r_fb_data['asesor'] ?? null;
-        $hot_bkts_fb = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
+        $hot_bkts_fb = Mesa::HOT;
         $show_fb_td = in_array($r_bucket_fb, $hot_bkts_fb) && ($r_vendedor_fb === Auth::id() || Auth::es_admin());
         $fb_html = '';
         $cot_id_fb = (int)$r['id'];
@@ -417,7 +422,7 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
             $GLOBALS['fb_shown'][$cot_id_fb] = true;
             $cls_ci = $r_fb_tipo === 'con_interes' ? 'fb-active fb-pos' : '';
             $cls_si = $r_fb_tipo === 'sin_interes' ? 'fb-active fb-neg' : '';
-            $hot_why = ['probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida','multi_persona','alto_importe'];
+            $hot_why = Mesa::HOT;
             $why_btn = '';
             if (in_array($r_bucket_fb, $hot_why, true) && !empty($r['senales']) && empty($r['accepted'])) {
                 $why_fb = $r_fb_tipo ?? null;

@@ -12,11 +12,30 @@ defined('COTIZAAPP') or die;
 
 class Mesa
 {
-    // Buckets calientes — mismo set que gatea el feedback del Radar
+    /**
+     * ⚑ FUENTE ÚNICA DE "CALIENTE" ⚑
+     *
+     * Al agregar un bucket caliente nuevo, se agrega AQUÍ y en ningún otro
+     * lado: la mesa, el score (Seguimiento y Radar Health), el reporte del
+     * Director y la UI del Radar leen de esta lista. Radar.php conserva sus
+     * copias (PUSH_BUCKETS / HIGH_PRIORITY_BUCKETS) porque debe poder cargarse
+     * sin el autoloader de core (tools/test_radar_fix.php) — pero
+     * tools/test_buckets_calientes.php falla si alguna se desincroniza.
+     *
+     * Historia: multi_persona y alto_importe se agregaron y ni el score ni el
+     * reporte se enteraron — una cotización salía urgente en la mesa del
+     * asesor y no le contaba para nada.
+     */
     public const HOT = [
         'probable_cierre','onfire','inminente','validando_precio',
         'prediccion_alta','lectura_comprometida','multi_persona','alto_importe',
     ];
+
+    /** Lista SQL lista para un IN (...) — para no re-escribir el set a mano. */
+    public static function hot_sql(array $extra = []): string
+    {
+        return "('" . implode("','", array_merge(self::HOT, $extra)) . "')";
+    }
 
     // Sin tope de lista (decisión CEO): se muestra la mesa completa. El único
     // cap vivo es el de milagros/revividas, para que no inunden la cabecera.

@@ -552,7 +552,10 @@ class ActividadScore
 
         // Cotizaciones que FUERON calientes en el período (bucket_transitions)
         // Incluye las que se enfriaron o aceptaron — el asesor debía dar feedback
-        $hot_buckets_sql = "('probable_cierre','onfire','inminente','validando_precio','prediccion_alta')";
+        // FUENTE ÚNICA (Mesa::HOT): antes era una copia de 5 buckets a la que
+        // nunca le llegaron lectura_comprometida, multi_persona ni alto_importe
+        // — la mesa se los exigía al asesor y el score no se los contaba.
+        $hot_buckets_sql = Mesa::hot_sql();
         $cots_calientes = (int)DB::val(
             "SELECT COUNT(DISTINCT bt.cotizacion_id)
              FROM bucket_transitions bt
@@ -841,9 +844,11 @@ class ActividadScore
         //  s = 1 − muertas/calientes. Mide acción del vendedor, no temporada.
         // ═══════════════════════════════════════════════════
 
-        $cal_buckets = "'re_enganche_caliente','lectura_comprometida','multi_persona',"
-                     . "'alto_importe','decision_activa','prediccion_alta',"
-                     . "'validando_precio','inminente','onfire','probable_cierre'";
+        // Radar Health mide algo MÁS AMPLIO que "caliente" ("el cliente la ve
+        // con interés"): son los calientes MÁS re_enganche_caliente y
+        // decision_activa. Se deriva de Mesa::HOT para que un bucket caliente
+        // nuevo entre aquí solo, sin acordarse de esta lista.
+        $cal_buckets = trim(Mesa::hot_sql(['re_enganche_caliente','decision_activa']), '()');
 
         $rh = DB::row(
             "SELECT

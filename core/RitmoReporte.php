@@ -138,7 +138,7 @@ class RitmoReporte
         $nc = "(NOT EXISTS (SELECT 1 FROM mesa_estados mc WHERE mc.cotizacion_id=c.id AND mc.area='compromiso' AND mc.estado='nos_citamos'))";
         // ¿esta cotización estuvo caliente en la ventana? → para "descartó calientes",
         //   garantizado subconjunto de los descartes (mismo set, misma ventana).
-        $hotset = "('probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida')";
+        $hotset = Mesa::hot_sql();   // fuente única (Mesa::HOT)
         $hot = "EXISTS (SELECT 1 FROM bucket_transitions bt WHERE bt.cotizacion_id=c.id AND bt.bucket_nuevo IN $hotset AND bt.created_at >= NOW() - INTERVAL $win DAY)";
         // Cruce por cotización: la razón declarada al descartar + la última postura previa.
         $rz = "(SELECT mp.razon FROM mesa_estados mp WHERE mp.cotizacion_id=c.id AND mp.area='postura' AND mp.estado='descartada' ORDER BY mp.id DESC LIMIT 1)";
@@ -228,7 +228,7 @@ class RitmoReporte
 
     private static function _radar(int $eid, int $uid, int $win): array
     {
-        $hot = "('probable_cierre','onfire','inminente','validando_precio','prediccion_alta','lectura_comprometida')";
+        $hot = Mesa::hot_sql();      // fuente única (Mesa::HOT)
         $r = ['calientes'=>0,'sin_feedback'=>0,'casos'=>[]];
         try {
             $r['calientes'] = (int)DB::val(
