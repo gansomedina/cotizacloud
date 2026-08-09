@@ -192,6 +192,13 @@ class RitmoAsesor
             'citas_estado' => $citas_estado, 'citas_txt' => $citas_txt,
             'venc_estado' => $venc_estado, 'venc_txt' => $venc_txt,
             'cont_estado' => $cont_estado, 'cont_txt' => $cont_txt,
+            // Crudos de los pilares: quien construya un texto encima (tips,
+            // reporte) usa ESTOS y no puede contradecir al pilar. Sin queries
+            // extra — ya están calculados arriba.
+            'n_trabajo' => $trabajo, 'n_cierres' => $cierres,
+            'n_desc' => $desc, 'n_sincita' => $sincita, 'n_rapido' => $rapido,
+            'n_contactados' => $contactados, 'n_noc' => $no_conecta,
+            'n_venc' => $venc_cnt, 'n_venc_hoy' => $venc_hoy,
             'motivo' => $motivo,
         ];
     }

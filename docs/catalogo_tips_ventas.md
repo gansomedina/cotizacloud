@@ -27,10 +27,14 @@ mexicano de SMB (cocina/mueble/servicio, WhatsApp y cita presencial, ciclo corto
 ## Reglas del motor
 
 1. Detecta la **debilidad #1** del asesor (misma en termómetro y reporte).
-2. Elige la técnica que le toca, **rotando** (termómetro: por día · reporte: memoria en
-   `ritmo_tips`, no repite hasta agotar la debilidad).
-3. **Personaliza** el marco con su dato real.
-4. **Tono por score** (los "diferenciales"): bajo → firme · alto → refina y reconoce.
+2. Elige la técnica que le toca, **rotando** (termómetro: por día · reporte: round-robin
+   por memoria en `ritmo_tips` — siempre sale la que lleva más tiempo sin mostrarse, así
+   que al agotar la debilidad el ciclo vuelve a empezar en vez de clavarse en la #1).
+3. **Personaliza** el marco con su dato real, tomado de los crudos del pilar
+   (`n_trabajo`, `n_desc`, `n_sincita`…) para que el tip **nunca** contradiga a la tarjeta.
+4. **Tono por score** (los "diferenciales"): <35 → *"Esto es lo que más te está costando
+   ahora mismo."* · 35-70 → directo, sin prefijo · >70 → *"Traes buen score, y aun así por
+   aquí se te va dinero."* El "va bien" no lleva prefijo.
 5. **Fact-lint:** el dato del marco sale de la BD; la técnica es fija. Nunca afirmar del
    asesor algo que el dato no diga, ni evidenciar que trackeamos al cliente.
 
@@ -62,6 +66,9 @@ mexicano de SMB (cocina/mueble/servicio, WhatsApp y cita presencial, ciclo corto
 5. `d3_comparacion` — **"Competidor más barato": costo total.** *"¿Qué está comparando exactamente?"* — resalta lo que tú incluyes y ellos no.
 
 ## 4. No maneja OTRAS OBJECIONES  (`objeciones`)
+**Marco:** *"Un “déjame pensarlo” no es un no: es una duda que no destapaste. N de tus descartes quedaron en el aire y ahí se enfriaron, con una objeción que nadie resolvió."*
+*(Dispara con ≥2 descartes cuya razón fue “para después” o cuya última postura fue “en el aire”/“decidiendo”.)*
+
 1. `d4_laer` — **LAER ante "déjame pensarlo".** No es un no. Valida y explora: *"¿qué es lo que quiere terminar de ver?"*.
 2. `d4_aisla` — **Aísla la objeción real.** *"Aparte de eso, ¿hay algo más que lo detenga?"*.
 3. `d4_sus_razones` — **Compra por SUS razones.** Pregúntale qué le importa a ÉL y véndele eso.
@@ -115,6 +122,9 @@ mexicano de SMB (cocina/mueble/servicio, WhatsApp y cita presencial, ciclo corto
 3. `d11_urgencia` — **Urgencia real en vez de descuento.** Solo si es cierto.
 
 ## 12. TICKET bajo  (`ticket`)
+**Marco:** *"Estás cerrando, pero chico: tu ticket promedio es $X y el del equipo $Y. Cada venta te cuesta el mismo trabajo — lo que cambia tu quincena es el tamaño."*
+*(Dispara si cerró en la ventana y su ticket va por debajo del 70% del promedio del equipo. Con un solo asesor no dispara — se compararía contra sí mismo.)*
+
 1. `d14_necesidad` — **Descubre el proyecto completo.** Pregunta por todo, no solo por lo que vino a cotizar.
 2. `d14_complemento` — **Suma en el momento del sí.** *"¿Le agregamos X que combina con esto?"*.
 
