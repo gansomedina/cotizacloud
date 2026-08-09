@@ -25,18 +25,9 @@ if (!$asesor_id) { echo json_encode(['ok'=>false,'error'=>'asesor']); exit; }
 $existe = DB::val("SELECT 1 FROM usuarios WHERE id=? AND empresa_id=?", [$asesor_id, EMPRESA_ID]);
 if (!$existe) { echo json_encode(['ok'=>false,'error'=>'no_encontrado']); exit; }
 
-// Rango: default últimos 15 días (hoy − 14 → hoy). Validado y acotado a 90d.
-$hoy   = date('Y-m-d');
-$hasta = $hoy;
-$desde = date('Y-m-d', strtotime('-14 days'));
-$rx = '/^\d{4}-\d{2}-\d{2}$/';
-if (preg_match($rx, (string)($b['desde'] ?? '')) && preg_match($rx, (string)($b['hasta'] ?? ''))) {
-    $bd = $b['desde']; $bh = $b['hasta'];
-    if ($bd <= $bh && $bh <= $hoy) {
-        // acota a máximo 90 días
-        if ((strtotime($bh) - strtotime($bd)) / 86400 <= 90) { $desde = $bd; $hasta = $bh; }
-    }
-}
+// El rango NO lo elige el cliente: la ventana es la del ciclo real de la empresa
+// (2×p75), la MISMA de la tarjeta de Ritmo. Se deriva del reporte ya generado y
+// se guarda tal cual, para que el snapshot no diga un rango que no midió.
 
 // Rate-limit semanal (solo admin). Dentro de la semana → devuelve el snapshot.
 if (!$es_super) {
@@ -58,7 +49,12 @@ if (!$es_super) {
     }
 }
 
-$rep = RitmoReporte::generar(EMPRESA_ID, $asesor_id, $desde, $hasta);
+$rep = RitmoReporte::generar(EMPRESA_ID, $asesor_id);
+
+// Rango REAL medido = la ventana del reporte (2×p75), no un default inventado.
+$win   = max(1, (int)($rep['win'] ?? 15));
+$hasta = date('Y-m-d');
+$desde = date('Y-m-d', strtotime("-{$win} days"));
 
 try {
     DB::execute(

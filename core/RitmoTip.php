@@ -100,9 +100,17 @@ class RitmoTip
         $cat = self::catalogo();
         $tecnicas = $cat[$deb] ?? $cat['bien'];
 
-        // Primera no mostrada (currículo). Si todas mostradas, re-cicla a la #1.
-        $elegida = null;
-        foreach ($tecnicas as $t) { if (!in_array($t[0], $vistos, true)) { $elegida = $t; break; } }
+        // ROUND-ROBIN real: gana la que lleva MÁS tiempo sin mostrarse. $vistos
+        // viene ordenado del más reciente al más viejo, así que la posición ES la
+        // antigüedad; la que nunca se mostró gana siempre (y entre esas, el
+        // currículo). Antes se tomaba "la primera no vista, si no la [0]" — al
+        // agotar la debilidad se quedaba clavada en la #1 para siempre.
+        $elegida = null; $mejor = -1;
+        foreach ($tecnicas as $t) {
+            $pos  = array_search($t[0], $vistos, true);
+            $edad = ($pos === false) ? PHP_INT_MAX : (int)$pos;
+            if ($edad > $mejor) { $mejor = $edad; $elegida = $t; }
+        }
         if ($elegida === null) $elegida = $tecnicas[0];
 
         $score = (int)($d['score']['score'] ?? 50);
@@ -187,16 +195,38 @@ class RitmoTip
 
         // Descartes: precio > calientes > sin calificar
         $descRojo = $card && in_array($card['desc_estado'] ?? '', ['rojo','amarillo'], true);
-        if ($descRojo && ($de['precio'] ?? 0) > 0 && ($de['precio'] ?? 0) >= (int)ceil(($de['n'] ?? 1) * 0.4))
-            return ['precio', "Bajar el precio a la primera es la salida fácil y la que menos vende. {$de['precio']} se te cayeron por precio, varias estando calientes: no era el precio, era que no le mostraste por qué vale. "];
+        if ($descRojo && ($de['precio'] ?? 0) > 0 && ($de['precio'] ?? 0) >= (int)ceil(($de['n'] ?? 1) * 0.4)) {
+            // "estando calientes" solo si de verdad lo estaban (precio_hot).
+            $ph  = (int)($de['precio_hot'] ?? 0);
+            $cal = $ph >= 2 ? ", varias estando calientes" : ($ph === 1 ? ", una de ellas estando caliente" : "");
+            return ['precio', "Bajar el precio a la primera es la salida fácil y la que menos vende. {$de['precio']} se te cayeron por precio{$cal}: no era el precio, era que no le mostraste por qué vale. "];
+        }
         if ($descRojo && ($de['hot_noprecio'] ?? 0) >= 2)
             return ['calientes', "Cada cotización que trabajas cuesta esfuerzo: tiempo, escuchar al cliente, el primer contacto. Descartaste {$de['hot_noprecio']} que ADEMÁS estaban calientes — el cliente estaba listo y lo mandaste a la basura. Esas eran tuyas. "];
-        if ($descRojo)
-            return ['califica', "Conseguir cada cotización te costó trabajo. Estás soltando {$de['n']}, y {$de['sincita']} sin siquiera intentar una cita: ese esfuerzo lo tiras sin pelear la venta. "];
+        // Objeción sin destapar: descartes que quedaron "en el aire"/"para después".
+        if ($descRojo && ($de['aire'] ?? 0) >= 2)
+            return ['objeciones', "Un “déjame pensarlo” no es un no: es una duda que no destapaste. {$de['aire']} de tus descartes quedaron en el aire y ahí se enfriaron, con una objeción que nadie resolvió. "];
+
+        if ($descRojo) {
+            // Números del PILAR (no de otra ventana) — el detalle se adapta a lo
+            // que de verdad pasó: sin cita, o descartadas casi sin darles tiempo.
+            $nd = (int)($card['n_desc'] ?? $de['n'] ?? 0);
+            $ns = (int)($card['n_sincita'] ?? $de['sincita'] ?? 0);
+            $nr = (int)($card['n_rapido'] ?? $de['rapido'] ?? 0);
+            $nt = (int)($card['n_trabajo'] ?? 0);
+            $det = $ns > 0 ? ", {$ns} sin siquiera intentar una cita"
+                 : ($nr > 0 ? ", {$nr} casi sin darles tiempo" : "");
+            return ['califica', "Conseguir cada cotización te costó trabajo. Estás soltando {$nd}"
+                . ($nt > 0 ? " de {$nt} que trabajaste" : "") . "{$det}: ese esfuerzo lo tiras sin pelear la venta. "];
+        }
 
         // No cierra pese a tener citas
-        if ($card && ($card['conv_estado'] ?? '') === 'rojo')
-            return ['cierre', "Abrir no es cerrar, y ahí es donde se gana o se pierde. Trabajaste {$de['n']}+ y no cerraste ninguna: el cliente llega hasta la puerta y no lo estás haciendo pasar. "];
+        if ($card && ($card['conv_estado'] ?? '') === 'rojo') {
+            $nt = (int)($card['n_trabajo'] ?? 0);   // TRABAJADAS, no descartes
+            return ['cierre', "Abrir no es cerrar, y ahí es donde se gana o se pierde. "
+                . ($nt > 0 ? "Trabajaste {$nt} y no cerraste ninguna" : "Aún no cierras ninguna")
+                . ": el cliente llega hasta la puerta y no lo estás haciendo pasar. "];
+        }
 
         // No contesta
         if ($noc)
@@ -214,13 +244,30 @@ class RitmoTip
         if (($rd['sin_feedback'] ?? 0) >= 2)
             return ['radar', "El Radar te está diciendo quién quiere comprarte hoy. Tienes {$rd['sin_feedback']} clientes calientes que ni tocaste: son las ventas más fáciles de la semana y las estás dejando pasar. "];
 
+        // Cierra, pero chico (solo si hay con quién comparar en la empresa)
+        $tk = (float)($d['score']['ticket'] ?? 0); $bt = (float)($d['bench_ticket'] ?? 0);
+        if (($ve['cierres'] ?? 0) > 0 && $tk > 0 && $bt > 0 && $tk < $bt * 0.7)
+            return ['ticket', "Estás cerrando, pero chico: tu ticket promedio es " . self::_mx($tk)
+                . " y el del equipo " . self::_mx($bt) . ". Cada venta te cuesta el mismo trabajo — lo que cambia tu quincena es el tamaño. "];
+
         // Va bien
         return ['bien', ""];
     }
 
-    /** Ajuste de intensidad por score (los "diferenciales"), sin quitarle fuerza al marco. */
+    /**
+     * Diferencial de intensidad por score. NO agrega hechos nuevos: solo enmarca.
+     * Bajo → esto es lo primero; medio → directo (sin prefijo); alto → reconoce
+     * el score (dato real: >70 es Activo/Top) y aun así señala la fuga.
+     * Si no hay marco (va bien), no se antepone nada.
+     */
     private static function _tono(int $score, string $gancho): string
     {
-        return $gancho; // el marco ya trae la fuerza; el tono se afina en el catálogo
+        if (trim($gancho) === '') return $gancho;
+        if ($score < 35) return "Esto es lo que más te está costando ahora mismo. " . $gancho;
+        if ($score > 70) return "Traes buen score, y aun así por aquí se te va dinero. " . $gancho;
+        return $gancho;
     }
+
+    /** Pesos en formato corto para los marcos. */
+    private static function _mx(float $n): string { return '$' . number_format($n, 0, '.', ','); }
 }

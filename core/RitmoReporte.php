@@ -27,9 +27,6 @@ class RitmoReporte
         $mk = "$empresa_id:$asesor_id";
         if (isset($memo[$mk])) return $memo[$mk];
 
-        $nombre = (string) DB::val("SELECT nombre FROM usuarios WHERE id=? AND empresa_id=?", [$asesor_id, $empresa_id]);
-        if ($nombre === '') $nombre = "Asesor #{$asesor_id}";
-
         // Ventana = la MISMA de la tarjeta (2×p75 del ciclo real de la empresa).
         $p75 = 10; $mediana = 5;
         try {
@@ -50,9 +47,18 @@ class RitmoReporte
                 if ((int)$r['usuario_id'] === $asesor_id) { $card = $r; break; }
         } catch (Throwable $e) {}
 
+        // El nombre sale de la tarjeta; solo se consulta si no hubo tarjeta.
+        $nombre = (string)($card['nombre'] ?? '');
+        if ($nombre === '') {
+            try { $nombre = (string) DB::val("SELECT nombre FROM usuarios WHERE id=? AND empresa_id=?", [$asesor_id, $empresa_id]); }
+            catch (Throwable $e) { $nombre = ''; }
+        }
+        if ($nombre === '') $nombre = "Asesor #{$asesor_id}";
+
         return $memo[$mk] = [
             'nombre' => $nombre, 'win' => $win, 'card' => $card,
             'score'  => self::_score($asesor_id, $empresa_id),
+            'bench_ticket' => self::_bench_ticket($empresa_id),
             'desc'   => self::_descartes($empresa_id, $asesor_id, $win, $rapido_dias),
             'vent'   => self::_ventas($empresa_id, $asesor_id, $win),
             'mesa'   => self::_mesa($empresa_id, $asesor_id),
@@ -60,14 +66,20 @@ class RitmoReporte
         ];
     }
 
-    public static function generar(int $empresa_id, int $asesor_id, string $desde = '', string $hasta = ''): array
+    /**
+     * Reporte completo. NO recibe rango: la ventana la manda el ciclo real de la
+     * empresa (2×p75), igual que la tarjeta. Quien lo llame lee $rep['win'].
+     */
+    public static function generar(int $empresa_id, int $asesor_id): array
     {
         $d = self::expediente($empresa_id, $asesor_id);
 
         // Tip de coaching rotado (no repite técnica hasta agotar la debilidad).
         $vistos = [];
         try {
-            foreach (DB::query("SELECT handle FROM ritmo_tips WHERE empresa_id=? AND asesor_id=? ORDER BY created_at DESC LIMIT 40",
+            // id DESC desempata: dos reportes en el MISMO segundo tienen igual
+            // created_at y el orden decidiría mal cuál es "la más reciente".
+            foreach (DB::query("SELECT handle FROM ritmo_tips WHERE empresa_id=? AND asesor_id=? ORDER BY created_at DESC, id DESC LIMIT 40",
                      [$empresa_id, $asesor_id]) as $r) $vistos[] = $r['handle'];
         } catch (Throwable $e) {}
         try { $d['tip'] = RitmoTip::elegir($d, $vistos); } catch (Throwable $e) { $d['tip'] = null; }
@@ -75,6 +87,28 @@ class RitmoReporte
         $d['secciones'] = self::_componer($d);
         $d['html'] = self::render($d);
         return $d;
+    }
+
+    /**
+     * Ticket promedio del EQUIPO (referencia para "cierra chico"). Exige al menos
+     * 2 asesores con ticket — con uno solo se compararía contra sí mismo. 0 = no
+     * hay con quién comparar (el tip de ticket no se dispara).
+     */
+    private static function _bench_ticket(int $eid): float
+    {
+        static $c = [];
+        if (isset($c[$eid])) return $c[$eid];
+        $v = 0.0;
+        try {
+            // Mismo filtro canónico que RitmoAsesor/ActividadScore: sin superadmin
+            // ni usuarios dados de baja (si no, inflan o ensucian el promedio).
+            $r = DB::row("SELECT COUNT(*) AS n, AVG(us.ticket_promedio) AS t
+                            FROM usuario_score us JOIN usuarios u ON u.id = us.usuario_id
+                           WHERE us.empresa_id=? AND us.ticket_promedio>0
+                             AND u.activo=1 AND COALESCE(u.rol,'') <> 'superadmin'", [$eid]);
+            if ((int)($r['n'] ?? 0) >= 2) $v = (float)($r['t'] ?? 0);
+        } catch (Throwable $e) {}
+        return $c[$eid] = $v;
     }
 
     private static function _score(int $uid, int $eid): ?array
@@ -100,7 +134,7 @@ class RitmoReporte
     // casos coincidan EXACTO con el pilar Descartadas de RitmoAsesor.
     private static function _descartes(int $eid, int $uid, int $win, int $rapido_dias): array
     {
-        $o = ['n'=>0,'sincita'=>0,'rapido'=>0,'hot'=>0,'hot_noprecio'=>0,'precio'=>0,'precio_hot'=>0,'casos'=>[]];
+        $o = ['n'=>0,'sincita'=>0,'rapido'=>0,'hot'=>0,'hot_noprecio'=>0,'precio'=>0,'precio_hot'=>0,'aire'=>0,'casos'=>[]];
         $nc = "(NOT EXISTS (SELECT 1 FROM mesa_estados mc WHERE mc.cotizacion_id=c.id AND mc.area='compromiso' AND mc.estado='nos_citamos'))";
         // ¿esta cotización estuvo caliente en la ventana? → para "descartó calientes",
         //   garantizado subconjunto de los descartes (mismo set, misma ventana).
@@ -143,6 +177,9 @@ class RitmoReporte
                 $es_precio = ($x['razon'] === 'precio' || $x['postura'] === 'objecion_precio');
                 if ($es_precio) { $o['precio']++; if ((int)$x['hot']) $o['precio_hot']++; }
                 elseif ((int)$x['hot']) $o['hot_noprecio']++;
+                // "En el aire" / "para después" = objeción que nunca se destapó.
+                if (!$es_precio && (($x['razon'] ?? '') === 'despues'
+                    || in_array($x['postura'] ?? '', ['en_el_aire','decidiendo'], true))) $o['aire']++;
                 if (count($o['casos']) < 10)
                     $o['casos'][] = ['numero'=>$x['numero'],'cliente'=>$x['cliente'],'total'=>(float)$x['total'],
                         'sin_cita'=>(int)$x['sin_cita'],'rapido'=>(int)$x['rapido'],'hot'=>(int)$x['hot'],
