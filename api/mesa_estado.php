@@ -171,9 +171,17 @@ try {
 $sugerencia = null;
 $fb_hint = false;
 $calificada = false;
+// $decl y $hoy_db se USAN al final, FUERA del try. Si el bloque truena a media
+// (cualquiera de las ~10 queries de abajo), quedaban sin definir y el warning de
+// PHP se imprimía ANTES del JSON → respuesta corrupta para un tap que YA hizo
+// commit. Se inicializan aquí. El "hoy" sigue siendo el de la BD (si los
+// timezone de PHP y MySQL difieren, clasificaría distinto que Mesa::armar);
+// solo si esa consulta falla se cae al reloj de PHP.
+$decl = []; $nc = 0;
+try { $hoy_db = (string)DB::val("SELECT CURDATE()"); }
+catch (Throwable $e) { $hoy_db = date('Y-m-d'); }
 try {
     // Última declaración por área (incluye la recién insertada)
-    $decl = []; $nc = 0;
     foreach (DB::query(
         "SELECT m.area, m.estado, m.razon, m.created_at
          FROM mesa_estados m
@@ -261,9 +269,7 @@ try {
     $calificada = (($fb_row['tipo'] ?? null) !== null) && !empty($decl['postura']);
     $revivida_now = false; $milagro_now = false;
     $descartada_ahora = ($estado === 'descartada' || $estado === 'sin_interes');
-    // "Hoy" con el reloj de la BD (igual que armar): si los timezone de PHP
-    // y MySQL difieren, strtotime('today') clasifica distinto que la recarga
-    $hoy_db = (string)DB::val("SELECT CURDATE()");
+    // ($hoy_db ya viene del reloj de la BD, resuelto antes del try)
     // descartada_hoy también si el 👎 vigente es de HOY (fila ya en esa sección
     // recibiendo otro tap): igual que armar (fb updated_at >= hoy)
     $descartada_hoy_fb = ($fb_row['tipo'] ?? '') === 'sin_interes'

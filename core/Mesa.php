@@ -18,7 +18,8 @@ class Mesa
         'prediccion_alta','lectura_comprometida','multi_persona','alto_importe',
     ];
 
-    private const CAP_MESA     = 25;
+    // Sin tope de lista (decisión CEO): se muestra la mesa completa. El único
+    // cap vivo es el de milagros/revividas, para que no inunden la cabecera.
     private const CAP_MILAGROS = 6;
 
     private static array $cache = [];
@@ -124,9 +125,14 @@ class Mesa
         $venc_hist = [];
         try {
             foreach (DB::query(
+                // usuario_id: la huella que se MUESTRA debe ser la del asesor que
+                // la tiene hoy — el castigo del score ya filtra así
+                // (ActividadScore). Sin esto, una cotización reasignada le
+                // enseñaba al nuevo dueño los días vencidos del anterior.
                 "SELECT cotizacion_id, COUNT(*) AS n FROM mesa_vencidos
-                 WHERE cotizacion_id IN ($in) AND fecha >= CURDATE() - INTERVAL 14 DAY
-                 GROUP BY cotizacion_id", []) as $r) {
+                 WHERE cotizacion_id IN ($in) AND usuario_id = ?
+                   AND fecha >= CURDATE() - INTERVAL 14 DAY
+                 GROUP BY cotizacion_id", [$vendedor_id]) as $r) {
                 $venc_hist[(int)$r['cotizacion_id']] = (int)$r['n'];
             }
         } catch (\Throwable $e) {} // tabla sin migrar → sin huella
