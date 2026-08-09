@@ -238,7 +238,7 @@ class RitmoTip
 
         // Citas bajando
         if ($card && ($card['citas_estado'] ?? '') === 'amarillo')
-            return ['citas', "Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas esta semana. Cada semana sin sembrar citas es una quincena floja en camino. "];
+            return ['citas', "Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas en los últimos 7 días, muy por debajo de lo tuyo. Cada semana sin sembrar citas es una quincena floja en camino. "];
 
         // Calientes sin marcar
         if (($rd['sin_feedback'] ?? 0) >= 2)

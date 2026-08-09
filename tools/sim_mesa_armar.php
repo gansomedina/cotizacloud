@@ -65,6 +65,11 @@ CREATE TABLE clientes (id INT UNSIGNED PRIMARY KEY, nombre VARCHAR(100), telefon
 CREATE TABLE ventas (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, cotizacion_id INT UNSIGNED,
   empresa_id INT UNSIGNED NOT NULL, total DECIMAL(12,2) NOT NULL DEFAULT 0,
+  -- pagado/usuario_id/vendedor_id: existen en producción y los usan el
+  -- '📅 Mes: N cierres' y la columna de ventas del reporte. Sin ellos esas
+  -- dos queries tronaban (fail-open) y el render se probaba con ceros.
+  pagado DECIMAL(12,2) NOT NULL DEFAULT 0,
+  usuario_id INT UNSIGNED NULL, vendedor_id INT UNSIGNED NULL,
   estado VARCHAR(20) NOT NULL DEFAULT 'activa', created_at DATETIME NOT NULL
 );
 CREATE TABLE mesa_estados (
@@ -202,6 +207,14 @@ cot(13, 500, 22000, 5, ['estado' => 'aceptada', 'visitas' => 2]);
 // M14 (14): con venta → FUERA del universo
 cot(14, 500, 23000, 5, ['visitas' => 2]);
 DB::execute("INSERT INTO ventas (cotizacion_id, empresa_id, total, estado, created_at) VALUES (14,5,23000,'activa',?)", [$d(1)]);
+// M99 (99): venta COBRADA de ESTE MES — existe solo para que el render pruebe
+// de verdad el "📅 Mes: N cierres" y la columna de ventas del reporte (antes la
+// tabla no tenía pagado/vendedor_id, las queries tronaban y se probaba con 0).
+// Es 'aceptada' → fuera del universo de la mesa; creada HOY con la venta HOY →
+// DATEDIFF 0, así que NO mueve max_hist ni la línea de limpieza.
+cot(99, 500, 30000, 0, ['estado' => 'aceptada', 'visitas' => 2]);
+DB::execute("INSERT INTO ventas (cotizacion_id, empresa_id, total, pagado, vendedor_id, estado, created_at)
+             VALUES (99,5,30000,15000,500,'activa',NOW())");
 
 // M15 (15): CALOR SOSTENIDO revive — 👎 -5d, bucket hot desde -10d (SIN
 //   transición nueva), cliente ABRIÓ -2d → debe volver como revivida

@@ -47,6 +47,11 @@ chk('bloque 501: lista completa, solo 2 milagros ocultos por CAP_MILAGROS (top 2
 chk('sin referencias huérfanas a #mesa-card', str_contains($MESA_SHARED . implode('', $MESA_BLOQUES), '#mesa-card') || str_contains($MESA_SHARED . implode('', $MESA_BLOQUES), 'mesa-card'), false);
 chk('aviso de limpieza vive en el bloque del asesor', str_contains($MESA_BLOQUES[500], 'jamás ha cerrado') || !str_contains($MESA_SHARED, 'jamás ha cerrado'), true);
 chk('binding de filas diferido a DOMContentLoaded', str_contains($MESA_ASSETS ?? '', "addEventListener('DOMContentLoaded'"), true);
+// Las queries que dependen de ventas.pagado/vendedor_id: si la tabla del fixture
+// se queda corta, _mesa.php las falla en silencio (fail-open) y el render pasaba
+// con ceros sin que nadie se enterara. M99 es una venta cobrada de ESTE mes.
+chk('la query de cierres del mes CORRIÓ (no fail-open silencioso)', isset($mesa_mes), true);
+chk('bloque 500: pinta el marcador del mes con el cierre real', str_contains($MESA_BLOQUES[500], '📅 Mes:') && (int)($mesa_mes[500]['cierres'] ?? 0) === 1, true);
 
 // ── Segundo render CON ?mesa_dias: el reporte debe aparecer ──
 $_GET['mesa_dias'] = '30';
