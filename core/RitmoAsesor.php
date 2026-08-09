@@ -130,16 +130,21 @@ class RitmoAsesor
         $desc_txt = self::_desc_txt($desc_estado, $desc, $sincita, $rapido, $trabajo, $pct);
 
         // ── PILAR 3: Citas (su ritmo de agendar) — texto FACTUAL, verde = sin alarma ──
+        // "en 7 días", no "esta semana": la ventana es RODANTE (NOW() - 7 DAY),
+        // no la semana de calendario. Y en ámbar se dice contra qué se compara
+        // (su propio promedio) — la alerta no es "0 citas", es "cayó a menos de
+        // la mitad de SU ritmo"; sin eso el pilar parecía un umbral fijo.
         $citas_ref = $citas_base >= 1 ? " (~{$citas_base}/sem)" : "";
+        $cita_pal  = $citas7 === 1 ? 'cita' : 'citas';
         if ($citas_base < 1 && $citas7 < 1) {
             $citas_estado = 'gris';
             $citas_txt    = "casi no agenda";
         } elseif ($citas_baja) {
             $citas_estado = 'amarillo';
-            $citas_txt    = "{$citas7} citas esta semana{$citas_ref}";
+            $citas_txt    = "{$citas7} {$cita_pal} en 7 días · venía en ~{$citas_base}/sem";
         } else {
             $citas_estado = 'verde';
-            $citas_txt    = "{$citas7} citas esta semana{$citas_ref}";
+            $citas_txt    = "{$citas7} {$cita_pal} en 7 días{$citas_ref}";
         }
 
         // ── PILAR 4: Seguimiento — el RELOJ de la Mesa (mismo que ve el asesor).
@@ -224,7 +229,7 @@ class RitmoAsesor
         if ($desc_estado === 'amarillo') return "Cuida sus descartes — que llegue a cita antes de tirar.";
         if ($cont_estado === 'amarillo') return "A varios no le contestan — ajusta su forma de contactar (horario/medio/insistencia).";
         if ($venc_estado === 'amarillo') return "Trae seguimientos al límite (vencen hoy) — que no los deje caer.";
-        if ($citas_baja) return "Bajó su ritmo de citas esta semana — su embudo se está secando.";
+        if ($citas_baja) return "Bajó su ritmo de citas en los últimos 7 días — su embudo se está secando.";
         return "Va bien — cierra, descarta sano y da seguimiento.";
     }
 
