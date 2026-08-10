@@ -62,14 +62,10 @@ $libre = [
     '/core/Mesa.php',                    // la fuente
     '/modules/radar/Radar.php',          // copias a propósito (ver arriba); ya se validan
     '/tools/test_buckets_calientes.php', // este archivo
-    // SUBCONJUNTOS DELIBERADOS — no son "la lista de calientes", son un recorte
-    // con intención. Si alguno debiera abrirse a los 8, se decide y se quita de
-    // aquí; lo que NO puede pasar es que crezca una copia silenciosa.
-    '/core/MesaSugerencias.php',         // solo los 3 más intensos, para una FRASE
-                                         // ("rechazó el compromiso y sigue onfire"):
-                                         // con alto_importe la frase pierde sentido
     '/tools/factlint_tips_v2.php',       // fixture de pruebas, no lógica de producto
 ];
+// MesaSugerencias ya NO está exento: se abrió a los 8 (decisión CEO 10-ago) y
+// lee Mesa::HOT. Si alguien vuelve a escribir ahí una lista a mano, esto falla.
 $rx    = '/(?:\'|")(?:probable_cierre|onfire|inminente|validando_precio|prediccion_alta|lectura_comprometida|multi_persona|alto_importe)(?:\'|")\s*,\s*(?:\'|")(?:probable_cierre|onfire|inminente|validando_precio|prediccion_alta|lectura_comprometida|multi_persona|alto_importe)(?:\'|")\s*,\s*(?:\'|")(?:probable_cierre|onfire|inminente|validando_precio|prediccion_alta|lectura_comprometida|multi_persona|alto_importe)(?:\'|")/';
 $copias = [];
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($raiz, FilesystemIterator::SKIP_DOTS));
