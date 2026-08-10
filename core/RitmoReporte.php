@@ -372,7 +372,8 @@ class RitmoReporte
         if ($de['precio'] > 0) $cons[] = "{$de['precio']} se cayeron por objeción de precio" . ($de['precio_hot'] > 0 ? " ({$de['precio_hot']} calientes)" : "") . ". Conviene revisar si fue precio real o comunicación de valor — no darlo por hecho.";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $cons[] = "Cierra regalando descuento ({$ve['con_dto']} de {$ve['cierres']}) — conviene cuidar el margen defendiendo el precio.";
         if ($rd['sin_feedback'] >= 1) $cons[] = ($rd['sin_feedback'] === 1 ? "1 caliente del Radar sin marcar" : "{$rd['sin_feedback']} calientes del Radar sin marcar") . " — son de las ventas más fáciles, conviene atenderlas.";
-        if ($card && $card['citas_estado'] === 'amarillo') $cons[] = "Bajó el ritmo de citas: {$card['citas_txt']} — conviene recuperarlo.";
+        if ($card && $card['citas_estado'] === 'rojo') $cons[] = "Ni una cita en 7 días: {$card['citas_txt']}. Con el embudo parado, lo que se deja de sembrar hoy falta en el cierre del mes.";
+        elseif ($card && $card['citas_estado'] === 'amarillo') $cons[] = "Bajó el ritmo de citas: {$card['citas_txt']} — conviene recuperarlo.";
         if (!$cons) $cons[] = "Va sólido. Para subir: más volumen o mejor ticket, sin bajar el ritmo de citas.";
 
         // ── Meta de la semana (acciones, impersonales) ──
@@ -383,7 +384,10 @@ class RitmoReporte
         if ($de['precio'] > 0) $meta[]="Trabajar una respuesta a la objeción de precio para la próxima cotización cara.";
         if ($rd['sin_feedback'] >= 1) $meta[]="Marcar (👍/👎) las calientes del Radar sin revisar.";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $meta[]="Cerrar la próxima venta sin descuento.";
-        if ($card && $card['citas_estado'] === 'amarillo') $meta[]="Recuperar el ritmo de citas de la semana.";
+        if ($card && in_array($card['citas_estado'] ?? '', ['rojo','amarillo'], true))
+            $meta[] = ($card['citas_estado'] === 'rojo')
+                ? "Agendar al menos 1 cita esta semana — el embudo no puede quedar en cero."
+                : "Recuperar el ritmo de citas de la semana.";
         if (!$meta) $meta[]="Sostener el ritmo: mesa al día y seguir cerrando.";
 
         return ['resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'precio'=>$prc,'consejo'=>$cons,'meta'=>$meta];

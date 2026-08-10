@@ -236,9 +236,15 @@ class RitmoTip
         if (($ve['cierres'] ?? 0) > 0 && ($ve['con_dto'] ?? 0) > ($ve['sin_dto'] ?? 0))
             return ['descuento', "Regalar descuento se siente como cerrar, pero te come el margen y te acostumbra a vender por precio. {$ve['con_dto']} de tus {$ve['cierres']} ventas fueron con descuento: estás comprando la venta en vez de ganártela. "];
 
-        // Citas bajando
-        if ($card && ($card['citas_estado'] ?? '') === 'amarillo')
-            return ['citas', "Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas en los últimos 7 días, muy por debajo de lo tuyo. Cada semana sin sembrar citas es una quincena floja en camino. "];
+        // Citas: rojo = ni una en 7 días · amarillo = cayó a la mitad de lo suyo
+        $ce = $card['citas_estado'] ?? '';
+        if ($card && ($ce === 'rojo' || $ce === 'amarillo')) {
+            $cb = (int)($card['n_citas_base'] ?? 0);
+            $ref = $cb > 0 ? " y venías en ~{$cb} por semana" : "";
+            return ['citas', $ce === 'rojo'
+                ? "Sin cita no hay venta, y tu embudo se PARÓ: no agendaste ni una en 7 días{$ref}. Lo que no siembras hoy es la quincena que no cobras. "
+                : "Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas en los últimos 7 días{$ref}. Cada semana sin sembrar citas es una quincena floja en camino. "];
+        }
 
         // Calientes sin marcar
         if (($rd['sin_feedback'] ?? 0) >= 2)
