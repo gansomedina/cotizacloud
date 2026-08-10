@@ -21,7 +21,7 @@ class RitmoAsesor
     private const DUMP_MIN      = 3;   // mínimo de descartes para juzgar
     private const CONTACTO_MIN  = 4;   // mínimo de contactados para juzgar
     private const CERO_MIN      = 8;   // trabajó esto y cerró 0 → alarma
-    private const CITAS_BASE_MIN = 2.0; // citas/sem que prueban ritmo (gate de ámbar Y rojo)
+    private const CITAS_BASE_MIN = 2.0; // citas/sem que prueban ritmo (gate SOLO del ámbar; el rojo del cero no tiene gate)
 
     public static function empresa(int $empresa_id): array
     {
@@ -132,15 +132,20 @@ class RitmoAsesor
 
         // ── PILAR 3: Citas (su ritmo de agendar) — texto FACTUAL, verde = sin alarma ──
         // "en 7 días", no "esta semana": la ventana es RODANTE (NOW() - 7 DAY).
-        // CERO ES ROJO (regla CEO): con ritmo probado, no agendar NI UNA en 7
-        // días no es "una caída a la mitad", es el embudo parado — mismo criterio
-        // que Seguimiento ("una vencida es una vencida"). El ámbar queda para la
-        // caída parcial, y siempre se dice contra qué se compara (su promedio).
+        // CERO ES ROJO SIEMPRE (regla CEO): no agendar NI UNA en 7 días es el
+        // embudo parado, sin importar su historia — mismo criterio que Seguimiento
+        // ("una vencida es una vencida"). El ámbar queda para la caída parcial.
         $citas_ref = $citas_base >= 1 ? " (~{$citas_base}/sem)" : "";
         $cita_pal  = $citas7 === 1 ? 'cita' : 'citas';
+        $citas_28  = (int)round($citas_base_wk * 4);   // total de la base (28 días)
         $citas_estado = self::_citas_semaforo($citas7, $citas_base_wk, $citas_baja);
-        if ($citas_estado === 'gris')          $citas_txt = "casi no agenda";
-        elseif ($citas_estado === 'rojo')      $citas_txt = "0 citas en 7 días · venía en ~{$citas_base}/sem";
+        if ($citas_estado === 'rojo') {
+            // El cero manda, pero el contexto se dice con la verdad de cada caso:
+            // el que venía con ritmo, el que agendaba poco y el que nunca agenda.
+            if ($citas_28 === 0)        $citas_txt = "0 citas en 7 días · ninguna en 28 días";
+            elseif ($citas_base >= 1)   $citas_txt = "0 citas en 7 días · venía en ~{$citas_base}/sem";
+            else                        $citas_txt = "0 citas en 7 días · solo {$citas_28} en 28 días";
+        }
         elseif ($citas_estado === 'amarillo')  $citas_txt = "{$citas7} {$cita_pal} en 7 días · venía en ~{$citas_base}/sem";
         else                                   $citas_txt = "{$citas7} {$cita_pal} en 7 días{$citas_ref}";
 
@@ -201,7 +206,7 @@ class RitmoAsesor
             'n_desc' => $desc, 'n_sincita' => $sincita, 'n_rapido' => $rapido,
             'n_contactados' => $contactados, 'n_noc' => $no_conecta,
             'n_venc' => $venc_cnt, 'n_venc_hoy' => $venc_hoy,
-            'n_citas7' => $citas7, 'n_citas_base' => $citas_base,
+            'n_citas7' => $citas7, 'n_citas_base' => $citas_base, 'n_citas28' => $citas_28,
             'motivo' => $motivo,
         ];
     }
@@ -221,17 +226,16 @@ class RitmoAsesor
     /**
      * Semáforo del pilar Citas. Puro (sin BD) a propósito: la tabla de verdad se
      * verifica en tools/test_citas_semaforo.php.
-     *   gris     = nunca agenda (no hay ritmo que juzgar)
-     *   rojo     = tenía ritmo probado y NO agendó NI UNA en 7 días (embudo parado)
-     *   amarillo = cayó a menos de la mitad de su propio ritmo, pero agendó algo
+     *   rojo     = NO agendó NI UNA en 7 días. SIEMPRE, sin importar su historia
+     *              (decisión CEO): cero es cero. Sin citas no hay embudo, y da
+     *              igual si antes agendaba mucho, poco o nunca.
+     *   amarillo = agendó algo, pero cayó a menos de la mitad de su propio ritmo
      *   verde    = sin alarma
-     * El rojo es un SUBCONJUNTO del ámbar de antes (mismo gate de ritmo probado:
-     * base >= 2/sem) — no aparecen alertas nuevas, solo sube la severidad del cero.
+     * NO hay 'gris' en este pilar: el "casi no agenda" de antes también es cero.
      */
     private static function _citas_semaforo(int $c7, float $base_wk, bool $baja): string
     {
-        if ($base_wk < 1.0 && $c7 < 1)          return 'gris';
-        if ($c7 === 0 && $base_wk >= self::CITAS_BASE_MIN) return 'rojo';
+        if ($c7 === 0) return 'rojo';
         return $baja ? 'amarillo' : 'verde';
     }
 
@@ -241,7 +245,7 @@ class RitmoAsesor
         if ($venc_estado === 'rojo') return "Trae seguimientos VENCIDOS — inexcusable. Que se ponga al día hoy mismo.";
         if ($cont_estado === 'rojo') return "A la mayoría no le contestan — revisa cómo, cuándo y por qué medio les marca.";
         if ($conv_estado === 'rojo') return "Trabajó varias y no ha cerrado nada — ¿qué lo está frenando?";
-        if ($citas_estado === 'rojo') return "No agendó NI UNA cita en 7 días y venía con ritmo — su embudo se paró.";
+        if ($citas_estado === 'rojo') return "No agendó NI UNA cita en 7 días — sin citas no hay embudo.";
         if ($desc_estado === 'amarillo') return "Cuida sus descartes — que llegue a cita antes de tirar.";
         if ($cont_estado === 'amarillo') return "A varios no le contestan — ajusta su forma de contactar (horario/medio/insistencia).";
         if ($venc_estado === 'amarillo') return "Trae seguimientos al límite (vencen hoy) — que no los deje caer.";

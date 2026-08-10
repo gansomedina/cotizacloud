@@ -239,8 +239,13 @@ class RitmoTip
         // Citas: rojo = ni una en 7 días · amarillo = cayó a la mitad de lo suyo
         $ce = $card['citas_estado'] ?? '';
         if ($card && ($ce === 'rojo' || $ce === 'amarillo')) {
-            $cb = (int)($card['n_citas_base'] ?? 0);
-            $ref = $cb > 0 ? " y venías en ~{$cb} por semana" : "";
+            $cb  = (int)($card['n_citas_base'] ?? 0);
+            $c28 = (int)($card['n_citas28'] ?? 0);
+            // Nunca afirmar un ritmo que no existió: si no agendó nada en el mes,
+            // se dice eso; si agendaba poco, se dice el total real.
+            $ref = $cb > 0   ? " y venías en ~{$cb} por semana"
+                 : ($c28 > 0 ? " y en todo el mes llevas {$c28}"
+                             : " y tampoco ninguna en el último mes");
             return ['citas', $ce === 'rojo'
                 ? "Sin cita no hay venta, y tu embudo se PARÓ: no agendaste ni una en 7 días{$ref}. Lo que no siembras hoy es la quincena que no cobras. "
                 : "Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas en los últimos 7 días{$ref}. Cada semana sin sembrar citas es una quincena floja en camino. "];
