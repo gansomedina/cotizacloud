@@ -96,9 +96,10 @@ class RitmoTip
      */
     public static function elegir(array $d, array $vistos = []): ?array
     {
-        [$deb, $gancho] = self::_debilidad($d);
+        [$deb, $marcos] = self::_debilidad($d);
         $cat = self::catalogo();
         $tecnicas = $cat[$deb] ?? $cat['bien'];
+        $gancho = self::_marco($marcos, (int)($d['card']['usuario_id'] ?? 0));
 
         // ROUND-ROBIN real: gana la que lleva MÁS tiempo sin mostrarse. $vistos
         // viene ordenado del más reciente al más viejo, así que la posición ES la
@@ -126,12 +127,13 @@ class RitmoTip
     public static function paraTermometro(array $d): ?array
     {
         if (empty($d['card'])) return null;                    // sin tarjeta → deja el legacy
-        [$deb, $gancho] = self::_debilidad($d);
+        [$deb, $marcos] = self::_debilidad($d);
         $cat = self::catalogo();
         $tecs = $cat[$deb] ?? $cat['bien'];
         if (!$tecs) return null;
 
         $uid = (int)($d['card']['usuario_id'] ?? 0);
+        $gancho = self::_marco($marcos, $uid);
         $idx = ((int)date('z') + $uid) % count($tecs);        // rotación diaria por asesor
         $t = $tecs[$idx];
         $score = (int)($d['score']['score'] ?? 50);
@@ -146,13 +148,14 @@ class RitmoTip
         if (($s['nivel'] ?? '') === 'nuevo') return null;      // "recopilando info" → deja el legacy
         if ((int)($s['cot_asignadas'] ?? 0) === 0) return null;
 
-        [$deb, $gancho] = self::_debilidadScore($s);
+        [$deb, $marcos] = self::_debilidadScore($s);
         $cat = self::catalogo();
         $tecs = $cat[$deb] ?? $cat['bien'];
         if (!$tecs) return null;
 
         // Rotación diaria determinista: misma técnica todo el día, siguiente mañana.
         $uid = (int)($s['usuario_id'] ?? 0);
+        $gancho = self::_marco($marcos, $uid);
         $idx = ((int)date('z') + $uid) % count($tecs);
         $t = $tecs[$idx];
 
@@ -172,22 +175,47 @@ class RitmoTip
         $ign     = max(0, $cal - $fb);
         $venc    = (int)($s['mesa_dias_vencidos'] ?? 0);
         $sdto    = (int)($s['cierres_sin_dto'] ?? 0);
+        $cdto    = $cierres - $sdto;
 
-        if ($venc > 0)                         return ['seguimiento', "Se te están acumulando seguimientos vencidos. "];
-        if ($cierres === 0 && $vist >= 8)      return ['cierre', "Trabajaste {$vist} cotizaciones y aún no cierras ninguna. "];
-        if ($ign >= 2)                         return ['radar', "Tienes {$ign} calientes del Radar sin marcar. "];
-        if ($cierres > 0 && $sdto < $cierres)  return ['descuento', "Cerraste con descuento en " . ($cierres - $sdto) . " de {$cierres}. "];
-        if ($dorm > 0)                         return ['enfriamiento', "Tienes {$dorm} clientes que dejaron de volver. "];
-        if ($nab > 0)                          return ['contacto', "Tienes {$nab} cotizaciones que el cliente no ha abierto. "];
-        return ['bien', ""];
+        if ($venc > 0) return ['seguimiento', [
+            "Se te están acumulando seguimientos vencidos. ",
+            "Traes seguimientos que ya se te pasaron de fecha. ",
+        ]];
+        if ($cierres === 0 && $vist >= 8) return ['cierre', [
+            "Trabajaste {$vist} cotizaciones y aún no cierras ninguna. ",
+            "Llevas {$vist} trabajadas sin una sola venta. ",
+        ]];
+        if ($ign >= 2) return ['radar', [
+            "Tienes {$ign} calientes del Radar sin marcar. ",
+            "Traes {$ign} en caliente sin atender. ",
+        ]];
+        if ($cierres > 0 && $sdto < $cierres) return ['descuento', [
+            "Cerraste con descuento en {$cdto} de {$cierres}. ",
+            "De tus {$cierres} ventas, {$cdto} llevaron descuento. ",
+        ]];
+        if ($dorm > 0) return ['enfriamiento', [
+            "Tienes {$dorm} clientes que dejaron de volver. ",
+            "Traes {$dorm} que se enfriaron y no han regresado. ",
+        ]];
+        if ($nab > 0) return ['contacto', [
+            "Tienes {$nab} cotizaciones que el cliente no ha abierto. ",
+            "Traes {$nab} que el cliente ni siquiera ha abierto. ",
+        ]];
+        return ['bien', []];
     }
 
-    /** Debilidad #1 + gancho con su dato real, en orden de prioridad. */
+    /**
+     * Debilidad #1 + marco con su dato real, en orden de prioridad.
+     * Devuelve VARIAS redacciones del mismo hecho: el dato es idéntico en todas,
+     * cambia cómo se dice. Así dos asesores con el mismo problema no leen el
+     * mismo párrafo (queja real: "parece plantilla y dejan de leerlo").
+     */
     private static function _debilidad(array $d): array
     {
         $card = $d['card'] ?? null; $de = $d['desc'] ?? []; $ve = $d['vent'] ?? [];
         $m = $d['mesa'] ?? []; $rd = $d['radar'] ?? [];
         $noc = ($card && ($card['cont_estado'] ?? '') !== 'verde' && ($card['cont_estado'] ?? '') !== 'gris');
+        $pl  = fn(int $n, string $uno, string $varios): string => $n === 1 ? $uno : $varios;
 
         // ── CITAS EN CERO: lo PRIMERO (decisión CEO) ──
         // Sin citas no hay ventas. Es la raíz del embudo, y a diferencia de las
@@ -195,25 +223,42 @@ class RitmoTip
         // las vencidas hasta arriba de su fila, con reloj. El tip es coaching y
         // el coaching ataca la raíz, no repite lo que la Mesa ya está gritando.
         if ($card && ($card['citas_estado'] ?? '') === 'rojo')
-            return ['citas', self::_marco_citas($card, true)];
+            return ['citas', self::_marcos_citas($card, true)];
 
         // Seguimiento vencido
-        if (($m['vencidas'] ?? 0) > 0)
-            return ['seguimiento', "Cada cliente que dejas vencer se enfría o se va con otro. Traes {$m['vencidas']} seguimientos caídos: eran ventas en tu mano y las estás soltando por no marcar a tiempo. "];
+        if (($v = (int)($m['vencidas'] ?? 0)) > 0)
+            return ['seguimiento', [
+                "Cada cliente que dejas vencer se enfría o se va con otro. Traes {$v} " . $pl($v, 'seguimiento caído', 'seguimientos caídos') . ": eran ventas en tu mano y las estás soltando por no marcar a tiempo. ",
+                "Traes {$v} " . $pl($v, 'seguimiento vencido', 'seguimientos vencidos') . ". Ese cliente ya te dijo que sí a que le hablaras; el que no llegó a tiempo fuiste tú, y mientras tanto la competencia sí marca. ",
+                "{$v} " . $pl($v, 'cliente esperando que le marques', 'clientes esperando que les marques') . " y no lo has hecho. Esas ventas no se pierden por precio ni por producto: se pierden por silencio. ",
+            ]];
 
-        // Descartes: precio > calientes > sin calificar
+        // Descartes: precio > calientes > objeción en el aire > sin calificar
         $descRojo = $card && in_array($card['desc_estado'] ?? '', ['rojo','amarillo'], true);
         if ($descRojo && ($de['precio'] ?? 0) > 0 && ($de['precio'] ?? 0) >= (int)ceil(($de['n'] ?? 1) * 0.4)) {
             // "estando calientes" solo si de verdad lo estaban (precio_hot).
+            $n   = (int)$de['precio'];
             $ph  = (int)($de['precio_hot'] ?? 0);
             $cal = $ph >= 2 ? ", varias estando calientes" : ($ph === 1 ? ", una de ellas estando caliente" : "");
-            return ['precio', "Bajar el precio a la primera es la salida fácil y la que menos vende. {$de['precio']} se te cayeron por precio{$cal}: no era el precio, era que no le mostraste por qué vale. "];
+            return ['precio', [
+                "Bajar el precio a la primera es la salida fácil y la que menos vende. {$n} se te cayeron por precio{$cal}: no era el precio, era que no le mostraste por qué vale. ",
+                "{$n} cotizaciones muertas por precio{$cal}. Cuando el cliente dice que está caro casi nunca habla del número: habla de que no ve qué recibe por él. ",
+                "Se te fueron {$n} por precio{$cal}. El que compite por precio pierde dos veces: pierde el margen y pierde igual al cliente. ",
+            ]];
         }
-        if ($descRojo && ($de['hot_noprecio'] ?? 0) >= 2)
-            return ['calientes', "Cada cotización que trabajas cuesta esfuerzo: tiempo, escuchar al cliente, el primer contacto. Descartaste {$de['hot_noprecio']} que ADEMÁS estaban calientes — el cliente estaba listo y lo mandaste a la basura. Esas eran tuyas. "];
+        if ($descRojo && ($n = (int)($de['hot_noprecio'] ?? 0)) >= 2)
+            return ['calientes', [
+                "Cada cotización que trabajas cuesta esfuerzo: tiempo, escuchar al cliente, el primer contacto. Descartaste {$n} que ADEMÁS estaban calientes — el cliente estaba listo y lo mandaste a la basura. Esas eran tuyas. ",
+                "Tiraste {$n} cotizaciones que el Radar traía calientes. El cliente estaba entrando a verlas: eso no es un lead muerto, es uno que te levantó la mano y no volteaste. ",
+                "{$n} de tus descartes estaban calientes. De todo lo que traes en la mesa, esas eran las más fáciles de cerrar — y son justo las que soltaste. ",
+            ]];
         // Objeción sin destapar: descartes que quedaron "en el aire"/"para después".
-        if ($descRojo && ($de['aire'] ?? 0) >= 2)
-            return ['objeciones', "Un “déjame pensarlo” no es un no: es una duda que no destapaste. {$de['aire']} de tus descartes quedaron en el aire y ahí se enfriaron, con una objeción que nadie resolvió. "];
+        if ($descRojo && ($n = (int)($de['aire'] ?? 0)) >= 2)
+            return ['objeciones', [
+                "Un “déjame pensarlo” no es un no: es una duda que no destapaste. {$n} de tus descartes quedaron en el aire y ahí se enfriaron, con una objeción que nadie resolvió. ",
+                "{$n} cotizaciones se te quedaron “para después”. Nadie deja para después lo que sí quiere: hay un freno que no te dijeron y que tampoco preguntaste. ",
+                "Traes {$n} que murieron en el aire. El cliente no te dijo que no — te dijo que ahorita no, que es otra cosa, y ahí es justo donde se trabaja. ",
+            ]];
 
         if ($descRojo) {
             // Números del PILAR (no de otra ventana) — el detalle se adapta a lo
@@ -224,42 +269,72 @@ class RitmoTip
             $nt = (int)($card['n_trabajo'] ?? 0);
             $det = $ns > 0 ? ", {$ns} sin siquiera intentar una cita"
                  : ($nr > 0 ? ", {$nr} casi sin darles tiempo" : "");
-            return ['califica', "Conseguir cada cotización te costó trabajo. Estás soltando {$nd}"
-                . ($nt > 0 ? " de {$nt} que trabajaste" : "") . "{$det}: ese esfuerzo lo tiras sin pelear la venta. "];
+            $ref = $nt > 0 ? " de {$nt} que trabajaste" : "";
+            return ['califica', [
+                "Conseguir cada cotización te costó trabajo. Estás soltando {$nd}{$ref}{$det}: ese esfuerzo lo tiras sin pelear la venta. ",
+                "Vas soltando {$nd}{$ref}{$det}. Cada una costó tiempo y una llamada — tirarlas sin pelearlas es tirar el trabajo que ya hiciste. ",
+                "{$nd} descartes{$ref}{$det}. Descartar bien es de buen vendedor; descartar sin haber preguntado nada es otra cosa muy distinta. ",
+            ]];
         }
 
         // No cierra pese a tener citas
         if ($card && ($card['conv_estado'] ?? '') === 'rojo') {
             $nt = (int)($card['n_trabajo'] ?? 0);   // TRABAJADAS, no descartes
-            return ['cierre', "Abrir no es cerrar, y ahí es donde se gana o se pierde. "
-                . ($nt > 0 ? "Trabajaste {$nt} y no cerraste ninguna" : "Aún no cierras ninguna")
-                . ": el cliente llega hasta la puerta y no lo estás haciendo pasar. "];
+            return ['cierre', $nt > 0 ? [
+                "Abrir no es cerrar, y ahí es donde se gana o se pierde. Trabajaste {$nt} y no cerraste ninguna: el cliente llega hasta la puerta y no lo estás haciendo pasar. ",
+                "{$nt} cotizaciones trabajadas y cero cerradas. El problema no está en conseguir clientes — está en el último paso, que es el único que se paga. ",
+                "Llevas {$nt} trabajadas sin una sola venta. Todo lo de antes lo estás haciendo bien; lo que falta es pedir la firma. ",
+            ] : [
+                "Abrir no es cerrar, y ahí es donde se gana o se pierde. Aún no cierras ninguna: el cliente llega hasta la puerta y no lo estás haciendo pasar. ",
+                "Aún sin cerrar una sola. El último paso es el único que se paga, y ahí es donde se está quedando la venta. ",
+            ]];
         }
 
         // No contesta
-        if ($noc)
-            return ['contacto', "Un cliente que no contesta no siempre es un no: muchas veces es que no lo buscaste bien. {$card['cont_txt']} — ahí hay ventas esperando a que insistas distinto. "];
+        if ($noc) {
+            $t = (string)($card['cont_txt'] ?? '');
+            return ['contacto', [
+                "Un cliente que no contesta no siempre es un no: muchas veces es que no lo buscaste bien. {$t} — ahí hay ventas esperando a que insistas distinto. ",
+                "{$t}. Antes de darlos por perdidos: casi nadie ignora a propósito, la mayoría simplemente estaba ocupado cuando marcaste. ",
+                "{$t}. Ese número no dice que no te quieran comprar — dice que tu forma de buscarlos no está funcionando. ",
+            ]];
+        }
 
         // Regala descuento
-        if (($ve['cierres'] ?? 0) > 0 && ($ve['con_dto'] ?? 0) > ($ve['sin_dto'] ?? 0))
-            return ['descuento', "Regalar descuento se siente como cerrar, pero te come el margen y te acostumbra a vender por precio. {$ve['con_dto']} de tus {$ve['cierres']} ventas fueron con descuento: estás comprando la venta en vez de ganártela. "];
+        if (($ve['cierres'] ?? 0) > 0 && ($ve['con_dto'] ?? 0) > ($ve['sin_dto'] ?? 0)) {
+            $a = (int)$ve['con_dto']; $b = (int)$ve['cierres'];
+            return ['descuento', [
+                "Regalar descuento se siente como cerrar, pero te come el margen y te acostumbra a vender por precio. {$a} de tus {$b} ventas fueron con descuento: estás comprando la venta en vez de ganártela. ",
+                "{$a} de {$b} ventas con descuento. Cada punto que regalas sale de tu comisión y de la empresa — y le enseña al cliente que tu precio siempre baja. ",
+                "Cierras con descuento {$a} de {$b} veces. Eso no es negociar, es ceder: negociar es cambiar algo por algo. ",
+            ]];
+        }
 
         // Citas en ÁMBAR (cayó a la mitad de lo suyo). El CERO se atiende arriba.
         if ($card && ($card['citas_estado'] ?? '') === 'amarillo')
-            return ['citas', self::_marco_citas($card, false)];
+            return ['citas', self::_marcos_citas($card, false)];
 
         // Calientes sin marcar
-        if (($rd['sin_feedback'] ?? 0) >= 2)
-            return ['radar', "El Radar te está diciendo quién quiere comprarte hoy. Tienes {$rd['sin_feedback']} clientes calientes que ni tocaste: son las ventas más fáciles de la semana y las estás dejando pasar. "];
+        if (($n = (int)($rd['sin_feedback'] ?? 0)) >= 2)
+            return ['radar', [
+                "El Radar te está diciendo quién quiere comprarte hoy. Tienes {$n} clientes calientes que ni tocaste: son las ventas más fáciles de la semana y las estás dejando pasar. ",
+                "{$n} clientes calientes sin tocar. El sistema ya hizo el trabajo de decirte quién está listo; falta la parte que solo tú puedes hacer. ",
+                "Traes {$n} en caliente sin atender. Mientras tú no marcas, ese cliente sigue comparando — y alguien más sí le va a contestar. ",
+            ]];
 
         // Cierra, pero chico (solo si hay con quién comparar en la empresa)
         $tk = (float)($d['score']['ticket'] ?? 0); $bt = (float)($d['bench_ticket'] ?? 0);
-        if (($ve['cierres'] ?? 0) > 0 && $tk > 0 && $bt > 0 && $tk < $bt * 0.7)
-            return ['ticket', "Estás cerrando, pero chico: tu ticket promedio es " . self::_mx($tk)
-                . " y el del equipo " . self::_mx($bt) . ". Cada venta te cuesta el mismo trabajo — lo que cambia tu quincena es el tamaño. "];
+        if (($ve['cierres'] ?? 0) > 0 && $tk > 0 && $bt > 0 && $tk < $bt * 0.7) {
+            $a = self::_mx($tk); $b = self::_mx($bt);
+            return ['ticket', [
+                "Estás cerrando, pero chico: tu ticket promedio es {$a} y el del equipo {$b}. Cada venta te cuesta el mismo trabajo — lo que cambia tu quincena es el tamaño. ",
+                "Tu ticket va en {$a} contra {$b} del equipo. Vender más veces cansa; vender más grande no — es la misma llamada con otro número. ",
+                "Cierras en {$a} y el equipo en {$b}. No te falta cerrar: te falta preguntar por todo lo que el cliente necesita, no solo por lo que vino a pedir. ",
+            ]];
+        }
 
         // Va bien
-        return ['bien', ""];
+        return ['bien', []];
     }
 
     /**
@@ -277,19 +352,40 @@ class RitmoTip
     }
 
     /**
-     * Marco del pilar Citas. El dato sale de los crudos de la tarjeta y NUNCA
-     * afirma un ritmo que no existió: si no agendó nada en el mes, se dice eso.
+     * Elige UNA redacción del marco. Dos asesores con la MISMA debilidad no
+     * deben leer el mismo párrafo palabra por palabra — parece plantilla y
+     * dejan de leerlo. El hash mezcla asesor Y día: si hoy a dos les toca la
+     * misma, mañana ya no (sumar el día por separado conservaría el choque
+     * para siempre).
      */
-    private static function _marco_citas(array $card, bool $cero): string
+    private static function _marco(array $variantes, int $uid): string
+    {
+        if (!$variantes) return '';
+        $n = count($variantes);
+        return $variantes[$n === 1 ? 0 : abs(crc32($uid . ':' . date('z'))) % $n];
+    }
+
+    /**
+     * Marcos del pilar Citas (varias redacciones del MISMO hecho). El dato sale
+     * de los crudos de la tarjeta y NUNCA afirma un ritmo que no existió: si no
+     * agendó nada en el mes, se dice exactamente eso.
+     */
+    private static function _marcos_citas(array $card, bool $cero): array
     {
         $cb  = (int)($card['n_citas_base'] ?? 0);
         $c28 = (int)($card['n_citas28'] ?? 0);
         $ref = $cb > 0   ? " y venías en ~{$cb} por semana"
              : ($c28 > 0 ? " y en todo el mes llevas {$c28}"
                          : " y tampoco ninguna en el último mes");
-        return $cero
-            ? "Sin cita no hay venta, y tu embudo se PARÓ: no agendaste ni una en 7 días{$ref}. Lo que no siembras hoy es la quincena que no cobras. "
-            : "Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas en los últimos 7 días{$ref}. Cada semana sin sembrar citas es una quincena floja en camino. ";
+        return $cero ? [
+            "Sin cita no hay venta, y tu embudo se PARÓ: no agendaste ni una en 7 días{$ref}. Lo que no siembras hoy es la quincena que no cobras. ",
+            "Se te secó la agenda: cero citas en 7 días{$ref}. Un vendedor sin citas no está vendiendo, está esperando — y esperar no se cobra. ",
+            "Ninguna cita en 7 días{$ref}. Todo lo demás que hagas bien no sirve si nadie se sienta contigo: la venta empieza ahí. ",
+        ] : [
+            "Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas en los últimos 7 días{$ref}. Cada semana sin sembrar citas es una quincena floja en camino. ",
+            "Le bajaste al ritmo de citas esta racha{$ref}. Lo que no agendas hoy no se nota mañana: se nota en la quincena. ",
+            "Vienes agendando menos de lo tuyo{$ref}. El embudo se llena ANTES de quedarte sin nada que trabajar, no después. ",
+        ];
     }
 
     /** Pesos en formato corto para los marcos. */
