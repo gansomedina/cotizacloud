@@ -8,6 +8,7 @@
 //  50 reglas del catálogo (workflow). 0 violaciones = motor sano.
 // ============================================================
 define('COTIZAAPP', 1);
+require __DIR__ . '/../core/Mesa.php';            // MesaSugerencias lee Mesa::HOT
 require __DIR__ . '/../core/MesaSugerencias.php';
 $RULES = require __DIR__ . '/factlint_tips_rules.php';
 

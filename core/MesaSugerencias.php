@@ -494,7 +494,7 @@ class MesaSugerencias
                         'El cliente ya tiene la cotización actualizada después de rechazar la anterior — márcale ya mismo: "¿con estos cambios sí cerramos?".',
                         'La cotización nueva ya está en manos del cliente — no esperes: llámale sin tardar y pregunta si así ya se decide.',
                     ]);
-            } elseif ($hot_fresco && in_array($bucket, ['onfire', 'inminente', 'probable_cierre'], true)) {
+            } elseif ($hot_fresco && in_array($bucket, Mesa::HOT, true)) {
                 $f = $pk([
                     'El cliente te dijo que no pero el Radar trae la cotización ' . self::bnom($bucket) . ' — interés sí hay: pregúntale de frente qué le falta para cerrar.',
                     'El cliente rechazó el compromiso y aun así el Radar marca la cotización ' . self::bnom($bucket) . ' — el freno no es interés: llámale de inmediato y pregunta directo qué lo detiene.',
@@ -1134,12 +1134,25 @@ class MesaSugerencias
         return $r >= 3 ? "por {$r}" : ($r === 2 ? 'el doble' : 'más');
     }
 
+    /**
+     * Nombre del bucket como FRAGMENTO, para caber en "el Radar trae la
+     * cotización ___". Cubre los 8 calientes (Mesa::HOT): antes solo 3 tenían
+     * nombre y el resto caía al default, así que una cotización 'alto_importe'
+     * se anunciaba como "en probable cierre".
+     */
     private static function bnom(?string $b): string
     {
         return match ($b) {
-            'onfire' => 'On Fire',
-            'inminente' => 'en cierre inminente',
-            default => 'en probable cierre',
+            'onfire'               => 'On Fire',
+            'inminente'            => 'en cierre inminente',
+            // Fragmentos CORTOS a propósito: la frase más larga que los usa mide
+            // 152 caracteres de base y el fact-lint corta en 185 (F_oracion).
+            'validando_precio'     => 'clavada en el precio',
+            'prediccion_alta'      => 'con predicción alta',
+            'lectura_comprometida' => 'leída a fondo',
+            'multi_persona'        => 'vista por varias personas',
+            'alto_importe'         => 'como venta grande',
+            default                => 'en probable cierre',
         };
     }
 }

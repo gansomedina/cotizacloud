@@ -189,7 +189,15 @@ class RitmoTip
         $m = $d['mesa'] ?? []; $rd = $d['radar'] ?? [];
         $noc = ($card && ($card['cont_estado'] ?? '') !== 'verde' && ($card['cont_estado'] ?? '') !== 'gris');
 
-        // Seguimiento vencido (lo más urgente)
+        // ── CITAS EN CERO: lo PRIMERO (decisión CEO) ──
+        // Sin citas no hay ventas. Es la raíz del embudo, y a diferencia de las
+        // vencidas no tiene otro mecanismo que se lo grite: la Mesa ya le pone
+        // las vencidas hasta arriba de su fila, con reloj. El tip es coaching y
+        // el coaching ataca la raíz, no repite lo que la Mesa ya está gritando.
+        if ($card && ($card['citas_estado'] ?? '') === 'rojo')
+            return ['citas', self::_marco_citas($card, true)];
+
+        // Seguimiento vencido
         if (($m['vencidas'] ?? 0) > 0)
             return ['seguimiento', "Cada cliente que dejas vencer se enfría o se va con otro. Traes {$m['vencidas']} seguimientos caídos: eran ventas en tu mano y las estás soltando por no marcar a tiempo. "];
 
@@ -236,20 +244,9 @@ class RitmoTip
         if (($ve['cierres'] ?? 0) > 0 && ($ve['con_dto'] ?? 0) > ($ve['sin_dto'] ?? 0))
             return ['descuento', "Regalar descuento se siente como cerrar, pero te come el margen y te acostumbra a vender por precio. {$ve['con_dto']} de tus {$ve['cierres']} ventas fueron con descuento: estás comprando la venta en vez de ganártela. "];
 
-        // Citas: rojo = ni una en 7 días · amarillo = cayó a la mitad de lo suyo
-        $ce = $card['citas_estado'] ?? '';
-        if ($card && ($ce === 'rojo' || $ce === 'amarillo')) {
-            $cb  = (int)($card['n_citas_base'] ?? 0);
-            $c28 = (int)($card['n_citas28'] ?? 0);
-            // Nunca afirmar un ritmo que no existió: si no agendó nada en el mes,
-            // se dice eso; si agendaba poco, se dice el total real.
-            $ref = $cb > 0   ? " y venías en ~{$cb} por semana"
-                 : ($c28 > 0 ? " y en todo el mes llevas {$c28}"
-                             : " y tampoco ninguna en el último mes");
-            return ['citas', $ce === 'rojo'
-                ? "Sin cita no hay venta, y tu embudo se PARÓ: no agendaste ni una en 7 días{$ref}. Lo que no siembras hoy es la quincena que no cobras. "
-                : "Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas en los últimos 7 días{$ref}. Cada semana sin sembrar citas es una quincena floja en camino. "];
-        }
+        // Citas en ÁMBAR (cayó a la mitad de lo suyo). El CERO se atiende arriba.
+        if ($card && ($card['citas_estado'] ?? '') === 'amarillo')
+            return ['citas', self::_marco_citas($card, false)];
 
         // Calientes sin marcar
         if (($rd['sin_feedback'] ?? 0) >= 2)
@@ -277,6 +274,22 @@ class RitmoTip
         if ($score < 35) return "Esto es lo que más te está costando ahora mismo. " . $gancho;
         if ($score > 70) return "Traes buen score, y aun así por aquí se te va dinero. " . $gancho;
         return $gancho;
+    }
+
+    /**
+     * Marco del pilar Citas. El dato sale de los crudos de la tarjeta y NUNCA
+     * afirma un ritmo que no existió: si no agendó nada en el mes, se dice eso.
+     */
+    private static function _marco_citas(array $card, bool $cero): string
+    {
+        $cb  = (int)($card['n_citas_base'] ?? 0);
+        $c28 = (int)($card['n_citas28'] ?? 0);
+        $ref = $cb > 0   ? " y venías en ~{$cb} por semana"
+             : ($c28 > 0 ? " y en todo el mes llevas {$c28}"
+                         : " y tampoco ninguna en el último mes");
+        return $cero
+            ? "Sin cita no hay venta, y tu embudo se PARÓ: no agendaste ni una en 7 días{$ref}. Lo que no siembras hoy es la quincena que no cobras. "
+            : "Sin cita no hay venta, y tu embudo se está secando: bajó tu ritmo de citas en los últimos 7 días{$ref}. Cada semana sin sembrar citas es una quincena floja en camino. ";
     }
 
     /** Pesos en formato corto para los marcos. */
