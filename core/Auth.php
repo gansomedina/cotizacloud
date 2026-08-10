@@ -19,6 +19,17 @@ defined('SESSION_VERSION') or define('SESSION_VERSION', '2000-01-01');
 defined('SESSION_BROWSER_SECONDS') or define('SESSION_BROWSER_SECONDS', 60 * 60 * 24 * 14);
 defined('SESSION_APP_SECONDS')     or define('SESSION_APP_SECONDS',     60 * 60 * 24 * 30);
 
+// SESSION_LIFETIME — SOLO la impersonación del superadmin (modules/superadmin/
+// impersonar.php). Es CORTA a propósito (8h = una jornada): el super entra a la
+// empresa de un cliente, revisa y la sesión muere el mismo día. NO usar
+// SESSION_BROWSER_SECONDS aquí — 14 días de sesión del super dentro de la cuenta
+// ajena es un riesgo que no tiene por qué existir.
+// El default replica el valor que ya vive en el config.php de producción: hasta
+// hoy la constante SOLO existía ahí, así que un entorno nuevo (staging, otra
+// migración de servidor) tumbaba impersonar.php con Error fatal de constante
+// indefinida — en PHP 8 no es warning. Verificado en producción: 28800.
+defined('SESSION_LIFETIME') or define('SESSION_LIFETIME', 60 * 60 * 8);
+
 class Auth
 {
     private static $usuario  = null;
