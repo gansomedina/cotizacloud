@@ -485,10 +485,16 @@ foreach ($compensaciones as $cc) {
 // Ventas por asesor este mes
 $va_asesor = [];
 $rows = DB::query(
-    "SELECT COALESCE(v.vendedor_id, v.usuario_id) AS uid,
+    // pagado>0 + atribución de 4 niveles: MISMA regla del sistema (14-may) que
+    // usan el score, el marcador del mes y la tarjeta de Ritmo. Esta query quedó
+    // fuera de aquella corrección y mostraba "3 ventas" junto a un score
+    // calculado con 2 cierres, para el mismo asesor y el mismo mes.
+    "SELECT COALESCE(v.vendedor_id, v.usuario_id, c2.vendedor_id, c2.usuario_id) AS uid,
             COUNT(*) AS num, COALESCE(SUM(v.total),0) AS monto
      FROM ventas v
+     LEFT JOIN cotizaciones c2 ON c2.id = v.cotizacion_id
      WHERE v.empresa_id IN ({$emp_ids}) AND v.estado != 'cancelada'
+       AND v.pagado > 0 AND v.total > 0
        AND v.created_at BETWEEN ? AND ?
      GROUP BY uid",
     [$p_ini_dt, $p_fin_dt]

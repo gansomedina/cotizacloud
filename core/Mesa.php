@@ -465,12 +465,18 @@ class Mesa
                     // pospusieron de verdad). Se usa el último Hablamos NO-auto
                     // ($con_real), no el contacto vigente: un implícito posterior
                     // (razon='auto') tapaba al Hablamos real y la cita pospuesta
-                    // quedaba 'vencida'. El > estricto descarta el Hablamos
-                    // implícito del mismo segundo en que se declaró la cita.
+                    // quedaba 'vencida'. El >= del segundo término es a
+                    // propósito: created_at tiene resolución de 1 SEGUNDO y la
+                    // captura postea contacto y compromiso en secuencia (~200ms),
+                    // así que caen en el mismo segundo y con > estricto la cita
+                    // NUNCA se re-anclaba — el asesor hacía justo lo que el rojo
+                    // le pide ("Hablamos + re-citar") y el 🔴 no se apagaba.
+                    // El implícito del mismo segundo ya lo excluye $con_real por
+                    // razon<>'auto', así que el estricto era redundante.
                     $ancla  = (int)strtotime($cita_anc[$cid]);
                     $con_at = isset($con_real[$cid]) ? (int)strtotime($con_real[$cid]) : 0;
                     $com_at = (int)strtotime($me[$cid]['compromiso']['at']);
-                    if ($con_at > $ancla && $com_at > $con_at) $ancla = $con_at;
+                    if ($con_at > $ancla && $com_at >= $con_at) $ancla = $con_at;
                 } else {
                     $ancla = $con_d ? (int)strtotime($con_d['at']) : 0;
                     if (!$ancla) {
@@ -737,7 +743,12 @@ class Mesa
                 $ped++;
                 $tiene_fb   = (($r['postura'] ?? null) !== null);    // 👍👎 del dueño
                 $tiene_post = !empty($r['decl']['postura'] ?? null); // postura declarada
-                if ($tiene_fb && $tiene_post) { $ate++; }
+                // DESCARTAR ES UNA DECISIÓN TOMADA (decisión CEO): el 👎 solo
+                // escribe la manita, no la postura, y contaba como FALLA el mismo
+                // día — asimétrico con el pill Descartar, que sí auto-completa la
+                // manita y queda completo. Matar una cotización con el pulgar es
+                // atenderla, no ignorarla.
+                if (($tiene_fb && $tiene_post) || ($r['cat'] ?? '') === 'descartada_hoy') { $ate++; }
                 else { $fal[] = (string)($r['numero'] ?? $r['id'] ?? '?'); } // folios para el drill-down
             }
             return ['pedidas' => $ped, 'atendidas' => $ate, 'fallas' => $ped - $ate, 'fallas_cots' => $fal];
@@ -787,12 +798,14 @@ class Mesa
             if (!empty($r['es_fria'])) continue; // mismas exclusiones que el contador
             $manita  = (($r['postura'] ?? null) !== null);    // 👍👎 del dueño
             $postura = !empty($r['decl']['postura'] ?? null); // postura declarada
+            // Descartada hoy = atendida (misma regla que cobertura_senales)
+            $ok = ($manita && $postura) || ($r['cat'] ?? '') === 'descartada_hoy';
             $out[] = [
                 'cotizacion_id' => (int)($r['id'] ?? 0),
                 'numero'   => (string)($r['numero'] ?? ''),
                 'titulo'   => (string)($r['titulo'] ?? ''),
-                'atendida' => ($manita && $postura) ? 1 : 0,
-                'falta'    => ($manita && $postura) ? ''
+                'atendida' => $ok ? 1 : 0,
+                'falta'    => $ok ? ''
                             : (!$manita && !$postura ? 'manita y postura'
                             : (!$manita ? 'manita' : 'postura')),
             ];
@@ -1340,6 +1353,7 @@ class Mesa
                     FROM ventas v JOIN cotizaciones c2 ON c2.id = v.cotizacion_id
                     WHERE v.empresa_id = ? AND v.estado != 'cancelada'
                       AND v.cotizacion_id IS NOT NULL AND v.total > 0
+                      AND v.pagado > 0   -- misma regla que la columna Ventas
                       AND v.created_at >= NOW() - INTERVAL $dias DAY
                       -- DI (Opción B): cierre del sistema, no de la mesa
                       {$dx('v.cotizacion_id')}
@@ -1463,6 +1477,10 @@ class Mesa
                  FROM ventas v JOIN cotizaciones c2 ON c2.id = v.cotizacion_id
                  WHERE v.empresa_id = ? AND v.estado != 'cancelada'
                    AND v.cotizacion_id IS NOT NULL AND v.total > 0
+                   -- pagado>0: misma regla del sistema (14-may) que ya exige la
+                   -- columna Ventas de ESTA tabla. Sin esto, 'Recuperaste $X'
+                   -- incluía dinero que todavía no entra.
+                   AND v.pagado > 0
                    AND v.created_at >= NOW() - INTERVAL $dias DAY
                    -- DI (Opción B): el Descuento Inteligente la tomó — el cierre
                    -- es mérito del sistema, no de la mesa. Fuera de recuperado

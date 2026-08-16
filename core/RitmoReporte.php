@@ -262,7 +262,7 @@ class RitmoReporte
         // Embudo = los 5 pilares EXACTOS de la tarjeta (estado + texto).
         $emb = [];
         if ($card) {
-            $emb[] = ['estado'=>$card['conv_estado'],  'label'=>'Cierre',      'txt'=>$card['conv_txt']];
+            $emb[] = ['estado'=>$card['conv_estado'],  'label'=>'Conversión',  'txt'=>$card['conv_txt']];
             $emb[] = ['estado'=>$card['desc_estado'],  'label'=>'Descartadas', 'txt'=>$card['desc_txt']];
             $emb[] = ['estado'=>$card['citas_estado'], 'label'=>'Citas',       'txt'=>$card['citas_txt']];
             $emb[] = ['estado'=>$card['venc_estado'],  'label'=>'Seguimiento', 'txt'=>$card['venc_txt']];
@@ -288,7 +288,11 @@ class RitmoReporte
             if ($ve['con_dto'] > $ve['sin_dto']) $cal[] = "De {$ve['cierres']} cierres, {$ve['con_dto']} con descuento. Está comprando la venta con precio, no con valor.";
             elseif ($ve['con_dto'] > 0) $cal[] = "{$ve['con_dto']} de {$ve['cierres']} con descuento — vigílalo, que no se haga costumbre.";
             else $cal[] = "Cerró {$ve['cierres']} sin dar descuentos — vende por valor. Muy bien.";
-            if (($d['score']['ticket'] ?? 0) > 0) $cal[] = "Ticket promedio " . self::_money($d['score']['ticket']) . ".";
+            // Ticket de ESTOS cierres (la ventana), no usuario_score.ticket_promedio
+            // — esa columna guarda el promedio de la EMPRESA, igual para todos los
+            // asesores, y aquí se leía como si fuera personal.
+            if ($ve['cierres'] > 0 && $ve['monto'] > 0)
+                $cal[] = "Ticket promedio de esos cierres " . self::_money($ve['monto'] / $ve['cierres']) . ".";
         }
 
         // ── Radar ──
@@ -447,7 +451,9 @@ class RitmoReporte
         $h .= $sec('Radar', $s['radar']);
         $h .= $sec('Consejo del Director', $s['consejo'], 'rr-consejo');
         $h .= $sec('Meta de la semana', $s['meta']);
-        $h .= '<div class="rr-foot">Datos reales de la Mesa, el Radar y las ventas. Cada cifra sale del sistema — nada inventado.</div></div>';
+        $h .= '<div class="rr-foot">Generado el ' . date('d/M/Y H:i') . ' · ventana de ' . (int)$d['win']
+            . ' días (' . date('d/M', strtotime('-' . (int)$d['win'] . ' days')) . ' a ' . date('d/M') . ')'
+            . '<br>Datos reales de la Mesa, el Radar y las ventas. Cada cifra sale del sistema — nada inventado.</div></div>';
         return $h;
     }
 }

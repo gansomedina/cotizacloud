@@ -228,9 +228,13 @@ class RitmoTip
         // Seguimiento vencido
         if (($v = (int)($m['vencidas'] ?? 0)) > 0)
             return ['seguimiento', [
+                // El reloj vencido es un hecho DEL ASESOR (él declaró el
+                // seguimiento), NO un acuerdo del cliente: la cadencia corre
+                // incluso con 'no contestó'. Nada de "el cliente te dijo que sí"
+                // ni "te está esperando" — eso el dato no lo respalda.
                 "Cada cliente que dejas vencer se enfría o se va con otro. Traes {$v} " . $pl($v, 'seguimiento caído', 'seguimientos caídos') . ": eran ventas en tu mano y las estás soltando por no marcar a tiempo. ",
-                "Traes {$v} " . $pl($v, 'seguimiento vencido', 'seguimientos vencidos') . ". Ese cliente ya te dijo que sí a que le hablaras; el que no llegó a tiempo fuiste tú, y mientras tanto la competencia sí marca. ",
-                "{$v} " . $pl($v, 'cliente esperando que le marques', 'clientes esperando que les marques') . " y no lo has hecho. Esas ventas no se pierden por precio ni por producto: se pierden por silencio. ",
+                "Traes {$v} " . $pl($v, 'seguimiento vencido', 'seguimientos vencidos') . ". La fecha la pusiste tú y ya se te pasó; mientras tanto, la competencia sí está marcando. ",
+                "{$v} " . $pl($v, 'seguimiento que tú mismo agendaste', 'seguimientos que tú mismo agendaste') . " y ya vencieron. Esas ventas no se pierden por precio ni por producto: se pierden por silencio. ",
             ]];
 
         // Descartes: precio > calientes > objeción en el aire > sin calificar
@@ -322,8 +326,13 @@ class RitmoTip
                 "Traes {$n} en caliente sin atender. Mientras tú no marcas, ese cliente sigue comparando — y alguien más sí le va a contestar. ",
             ]];
 
-        // Cierra, pero chico (solo si hay con quién comparar en la empresa)
-        $tk = (float)($d['score']['ticket'] ?? 0); $bt = (float)($d['bench_ticket'] ?? 0);
+        // Cierra, pero chico. OJO: usuario_score.ticket_promedio NO es del asesor
+        // — ActividadScore lo persiste desde el benchmark de EMPRESA (mismo valor
+        // para todos), así que comparar eso contra bench_ticket era comparar un
+        // número contra sí mismo y esta rama NUNCA podía dispararse. El ticket
+        // real del asesor sale de SUS ventas de la ventana, que _ventas ya trae.
+        $tk = ((int)($ve['cierres'] ?? 0) > 0) ? ((float)($ve['monto'] ?? 0) / (int)$ve['cierres']) : 0.0;
+        $bt = (float)($d['bench_ticket'] ?? 0);
         if (($ve['cierres'] ?? 0) > 0 && $tk > 0 && $bt > 0 && $tk < $bt * 0.7) {
             $a = self::_mx($tk); $b = self::_mx($bt);
             return ['ticket', [
