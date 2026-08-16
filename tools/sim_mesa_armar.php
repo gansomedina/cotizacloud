@@ -498,14 +498,29 @@ echo "═ DESCARTE con auto-manita (vendedor 508 — regla 18-jul) ═\n";
 cot(9911, 508, 10000, 8, ['visitas' => 2, 'vista_d' => 3]);
 tap(9911, 'postura', 'descartada', 0.1);
 fb(9911, 508, 'sin_interes', 0.1);
-// D2: descarte de UN SOLO gesto (postura sin manita) — comportamiento viejo →
-// cobertura lo cuenta como FALLA. Con el auto-manita del endpoint este caso ya
-// no ocurre por el pill Descartar; se conserva para documentar la diferencia.
+// D2: descarte de UN SOLO gesto (postura sin manita). Ya no ocurre por la UI
+// (el pill Descartar auto-escribe la manita desde el 18-jul); se conserva para
+// probar que el descarte cuenta ATENDIDO por cualquiera de sus dos gestos.
 cot(9912, 508, 12000, 8, ['visitas' => 2, 'vista_d' => 3]);
 tap(9912, 'postura', 'descartada', 0.1);
 $cd = Mesa::cobertura_senales(5, 508);
-chk('descarte con 👎 auto = ATENDIDO; descarte sin manita = falla (pedidas 2, atendidas 1)',
-    [$cd['pedidas'], $cd['atendidas'], $cd['fallas']], [2, 1, 1]);
+// REGLA CEO (11-ago): DESCARTAR ES UNA DECISIÓN TOMADA → cuenta como atendida.
+// Antes el 👎 solo escribía la manita y la fila contaba FALLA ese día, mientras
+// el pill Descartar (postura+manita) contaba completo: asimetría que castigaba
+// al asesor por matar una cotización con el pulgar. Ahora cualquier
+// descartada_hoy es atendida, venga del pulgar o del pill.
+chk('descartar cuenta ATENDIDO por cualquiera de sus dos gestos (pedidas 2, atendidas 2)',
+    [$cd['pedidas'], $cd['atendidas'], $cd['fallas']], [2, 2, 0]);
+
+// D3: 👎 SIN postura (el caso que reportó la auditoría) — antes falla, ahora
+// atendida. Es el gesto que el asesor hace desde la fila de la mesa.
+// Vendedor NUEVO a propósito: Mesa::armar cachea por (empresa,vendedor), así
+// que reusar el 508 devolvería su resultado ya memoizado sin esta cotización.
+cot(9913, 510, 9000, 8, ['visitas' => 2, 'vista_d' => 3]);
+fb(9913, 510, 'sin_interes', 0.1);
+$cd3 = Mesa::cobertura_senales(5, 510);
+chk('👎 sin postura tambien cuenta ATENDIDO (pedidas 1, atendidas 1)',
+    [$cd3['pedidas'], $cd3['atendidas'], $cd3['fallas']], [1, 1, 0]);
 
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

@@ -131,7 +131,7 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
     $udd = $r['ult_decl_dias'];
     ?>
     <?php $has_ql = $ql && !empty($r['sugerencia']); ?>
-    <div class="mrow<?= $es_milagro ? ' milagro' : '' ?><?= !empty($r['atendida_hoy']) ? ' done' : '' ?><?= $has_ql ? ' has-ql' : '' ?>" data-drawer="md<?= (int)$r['id'] ?>">
+    <div class="mrow<?= $es_milagro ? ' milagro' : '' ?><?= !empty($r['atendida_hoy']) ? ' done' : '' ?><?= $has_ql ? ' has-ql' : '' ?>" data-drawer="md<?= (int)$r['id'] ?>" data-con="<?= e($r['decl']['contacto']['estado'] ?? '') ?>">
       <?php if ($rank !== null): ?><span class="mrank" title="Orden sugerido de ataque"><?= (int)$rank ?></span><?php else: ?><span class="mrank off"></span><?php endif; ?>
       <?php if ($dot): ?><span class="mdot" style="background:<?= $dot ?>" title="<?= e($dott) ?>"></span>
       <?php else: ?><span class="mdot off" title="<?= e($dott) ?>"></span><?php endif; ?>
@@ -863,10 +863,14 @@ function mesaFb(cotId, tipo, btn){
   // 📵 solo aplica a clientes que no responden: pre-check en el cliente (el
   // servidor re-valida) para explicar el candado sin viaje a la red
   if(tipo === 'sin_info'){
+    // El contacto VIGENTE viene del servidor en data-con de la fila. Antes se
+    // leía '.mpill.on' — una clase que NADIE pone desde el rediseño v3 (su
+    // único setter, mesaTap, quedó sin invocaciones), así que el pre-check
+    // bloqueaba SIEMPRE y el botón 📵 estaba muerto en su caso de uso exacto.
+    // Si por lo que sea no hay dato, se deja pasar: el servidor re-valida.
     var row0 = btn.closest('.mrow');
-    var dr0 = row0 ? document.getElementById(row0.dataset.drawer) : null;
-    var conOn = dr0 ? dr0.querySelector('.marea[data-area="contacto"] .mpill.on') : null;
-    if(!conOn || conOn.dataset.e !== 'no_contesta'){
+    var con0 = row0 ? (row0.dataset.con || '') : '';
+    if(con0 !== '' && con0 !== 'no_contesta'){
       mesaToast('📵 es para clientes que no responden — marca primero "No contestó" en Contacto; si ya hablaron, califícalo 👍/👎.');
       return;
     }

@@ -16,6 +16,15 @@ catch (Throwable $rt_e) { $rt_on = false; }
 if (!$rt_on) return;
 
 $rt_filas = RitmoAsesor::empresa(EMPRESA_ID);
+// La ventana REAL de los pilares es 2×p75 del ciclo de la empresa (típico 20d),
+// no "esta semana" como decía el título. Solo el pilar Citas usa 7 días y ya lo
+// dice en su texto.
+$rt_win = 20;
+try {
+    if (!class_exists('Radar')) require_once MODULES_PATH . '/radar/Radar.php';
+    $rt_c = Radar::ciclo_venta(EMPRESA_ID);
+    if (!empty($rt_c['auto']) && !empty($rt_c['p75'])) $rt_win = 2 * max(3, (int)$rt_c['p75']);
+} catch (Throwable $rt_e2) {}
 if (!$rt_filas) return;
 
 // El botón "Generar reporte" es solo Business (el endpoint también lo exige).
@@ -35,7 +44,7 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
          . '<span style="color:' . $tc . '">' . e($txt) . '</span></div>';
 };
 ?>
-<div class="slabel">Rendimiento del equipo · esta semana
+<div class="slabel">Rendimiento del equipo · <?= (int)$rt_win ?> días
   <?php if ($rt_n_alerta > 0): ?><span style="font:700 11px var(--body);color:#dc2626"><?= $rt_n_alerta ?> por atender</span><?php endif; ?>
 </div>
 <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:16px">
@@ -118,7 +127,7 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
   :root[data-theme="dark"] #rt-modal .rr-tip{background:rgba(217,119,6,.14);border-color:rgba(245,158,11,.3)}
   :root[data-theme="dark"] #rt-modal .rr-tip-h{color:#dca247}
   #rt-modal .rr-foot{font:400 10.5px var(--body);color:var(--t3);border-top:1px solid var(--border);padding-top:8px;margin-top:6px}
-  @media print{body *{visibility:hidden}#rt-modal,#rt-modal *{visibility:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact}#rt-modal{position:absolute;inset:0;background:#fff;padding:0}#rt-modal>div{box-shadow:none;margin:0;max-width:100%}}
+  @media print{body *{visibility:hidden}#rt-modal,#rt-modal *{visibility:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact}#rt-modal{position:static!important;inset:auto;overflow:visible!important;height:auto;background:#fff;padding:0}#rt-modal>div{max-width:100%!important;max-height:none!important;overflow:visible!important}#rt-modal>div{box-shadow:none;margin:0;max-width:100%}}
 </style>
 
 <script>
@@ -152,7 +161,10 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
       if (!d.ok) { $('rt-body').innerHTML = '<div style="padding:20px;color:#b91c1c;font:600 13px var(--body)">No se pudo generar ('+(d.error||'error')+').</div>'; }
       else {
         let banner = '';
-        if (d.data.cache) banner = '<div style="margin-bottom:10px;padding:7px 10px;background:var(--bg);border-radius:7px;font:500 11px var(--body);color:var(--t3)">'+(d.msg||'Reporte de esta semana.')+'</div>';
+        if (d.data.cache) {
+          var f = d.data.fecha ? (' · generado el ' + String(d.data.fecha).slice(0,16).replace('T',' ')) : '';
+          banner = '<div style="margin-bottom:10px;padding:7px 10px;background:var(--bg);border-radius:7px;font:500 11px var(--body);color:var(--t3)">'+(d.msg||'Reporte de esta semana.')+f+'</div>';
+        }
         $('rt-body').innerHTML = banner + d.data.html;
       }
     } catch(e){ $('rt-body').innerHTML = '<div style="padding:20px;color:#b91c1c">Error de red.</div>'; }

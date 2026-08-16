@@ -109,7 +109,17 @@ class RitmoAsesor
         //   Todo sobre el MISMO denominador: cotizaciones trabajadas. Muestra %.
         //   cerró algo → verde ; trabajó y cerró 0 → rojo (0% es lo peor) ;
         //   muestra chica para juzgar → gris (neutral, NO verde/elogio).
-        if ($cierres > 0) {
+        if ($cierres > 0 && $cierres > $trabajo) {
+            // Numerador y denominador son universos distintos: cierres = ventas
+            // pagadas de la ventana (incluye ventas sin cotización y cotizaciones
+            // que nunca se tocaron en la Mesa); trabajo = cotizaciones CON captura
+            // en la Mesa. Sin este guard salían "cerró 3 de 0 (0%)" y ratios de
+            // 167%. Cuando no caben en la misma fracción, se dicen por separado.
+            $conv_estado = 'verde';
+            $conv_txt    = $trabajo > 0
+                ? "cerró {$cierres} · {$trabajo} en su Mesa"
+                : "cerró {$cierres} (ninguna pasó por su Mesa)";
+        } elseif ($cierres > 0) {
             $conv_estado = 'verde';
             $conv_txt    = "cerró {$cierres} de {$trabajo} ({$conv_rate}%)";
         } elseif ($trabajo >= self::CERO_MIN) {

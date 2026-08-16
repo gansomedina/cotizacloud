@@ -1524,7 +1524,10 @@ class Radar
                 "SELECT COUNT(*) FROM notificaciones_push
                  WHERE empresa_id = ? AND tipo LIKE 'radar_%'
                    AND datos LIKE ? AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
-                [$empresa_id, '%"cotizacion_id":' . $cotizacion_id . '%']
+                // La coma es obligatoria: sin ella '%"cotizacion_id":403%' también
+                // matchea 4038 y el push de la 403 se suprime en silencio.
+                // El JSON siempre lleva 'url' después, así que la coma existe.
+                [$empresa_id, '%"cotizacion_id":' . $cotizacion_id . ',%']
             );
             $ncfg_radar = notif_config($empresa_id);
             if ($ya_enviado === 0 && ($ncfg_radar['radar_alerta'] ?? true)) {

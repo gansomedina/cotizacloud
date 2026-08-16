@@ -167,9 +167,11 @@ class MesaSugerencias
             };
         }
         if (!empty($c['milagro'])) {
-            // "AHORA" solo si abrió HOY (v24>=1). Si el bucket se calentó hace
-            // días pero el cliente no ha vuelto a abrir, NO está "viéndola ahora".
-            if (!$leyendo) {
+            // "AHORA" exige apertura de HOY. $leyendo es v24>=1, pero v24 es
+            // ventana RODANTE: con una apertura de anoche (dsv=1) afirmar "está
+            // viéndola AHORA" es falso. Se pide además dsv===0; lo de las últimas
+            // 24h pero de ayer cae a la rama de abajo, que cita el día real.
+            if (!$leyendo || $dsv > 0) {
                 $ev = $dsv <= 1 ? 'ayer' : "hace {$dsv}d";
                 return $pk([
                     "Una cotización que ya dabas por vieja se volvió a calentar ({$ev} la última apertura) — fuera de tu ciclo pero con señal: contáctalo ya mismo antes de que se enfríe.",
@@ -389,7 +391,7 @@ class MesaSugerencias
                 // Acuerdo con el reloj vencido/al límite: el espacio se acabó —
                 // el toque declarado es lo que lo pone al corriente
                 $f = $pk([
-                    "El acuerdo tiene {$dcom}d y tu seguimiento ya llegó a su límite — un mensaje corto HOY (\u00bfsigue en pie lo que quedamos?) te pone al corriente.",
+                    "El acuerdo tiene {$dcom}d y tu seguimiento ya llegó a su límite — un mensaje corto HOY (¿sigue en pie lo que quedamos?) te pone al corriente.",
                     "Quedaron hace {$dcom}d y la cotización ya pide toque — mensaje breve cuanto antes confirmando lo acordado; con eso queda al corriente.",
                     "Pasaron {$dcom}d del acuerdo y el reloj de seguimiento venció — escríbele sin tardar citando lo que quedaron.",
                 ]);
@@ -912,8 +914,12 @@ class MesaSugerencias
         $v24 = (int)($c['vistas_24h'] ?? 0);
         $v7  = (int)($c['vistas_7d'] ?? 0);
         $ev  = null;
-        if ($v24 >= 2)      $ev = "El cliente la abrió {$v24} veces hoy";
-        elseif ($v24 === 1) $ev = 'El cliente la abrió hoy';
+        // v24 es ventana RODANTE de 24h, NO día calendario: con visita de anoche
+        // (dsv=1) decir "hoy" es mentira. Ya se corrigió en $ev_abrio (línea 57);
+        // aquí seguía vivo. Se cita el día real igual que allá.
+        $hoy24 = ($dsv === 0);
+        if ($v24 >= 2)      $ev = "El cliente la abrió {$v24} veces " . ($hoy24 ? 'hoy' : 'en las últimas 24h');
+        elseif ($v24 === 1) $ev = 'El cliente la abrió ' . ($hoy24 ? 'hoy' : 'hace menos de 24h');
         elseif ($dsv === 1) $ev = 'El cliente la abrió ayer';
         elseif ($v7 >= 3)   $ev = "El cliente la abrió {$v7} veces esta semana";
         elseif ($dsv >= 2 && $dsv < 7 && (int)($c['visitas'] ?? 0) > 0) $ev = "El cliente lleva {$dsv}d sin volver a abrirla";
