@@ -95,6 +95,13 @@ class RitmoAsesor
         try { $trabajo = self::_trabajo($empresa_id, $uid, $win); } catch (Throwable $e) {}
         try { [$desc, $sincita, $rapido] = self::_descartes($empresa_id, $uid, $win, $win, $rapido_dias); } catch (Throwable $e) {}
         try { [$contactados, $no_conecta] = self::_contacto($empresa_id, $uid, $win); } catch (Throwable $e) {}
+        $vistas = 0;
+        try { $vistas = self::_vistas($empresa_id, $uid, $win); } catch (Throwable $e) {}
+        // Vara: la tasa de cierre HISTÓRICA de la empresa (la misma que usa el
+        // termómetro). Se compara contra la del asesor sobre el MISMO
+        // denominador (cotizaciones que el cliente abrió).
+        $bench_hist = ['rate' => 0.0, 'muestra' => 0];
+        try { $bench_hist = ActividadScore::close_rate_historico($empresa_id); } catch (Throwable $e) {}
         [$venc_cnt, $venc_hoy] = self::_reloj($empresa_id, $uid);
         [$citas7, $citas_base, $citas_baja, $citas_base_wk] = self::_citas($empresa_id, $uid);
 
@@ -109,25 +116,38 @@ class RitmoAsesor
         //   Todo sobre el MISMO denominador: cotizaciones trabajadas. Muestra %.
         //   cerró algo → verde ; trabajó y cerró 0 → rojo (0% es lo peor) ;
         //   muestra chica para juzgar → gris (neutral, NO verde/elogio).
-        if ($cierres > 0 && $cierres > $trabajo) {
-            // Numerador y denominador son universos distintos: cierres = ventas
-            // pagadas de la ventana (incluye ventas sin cotización y cotizaciones
-            // que nunca se tocaron en la Mesa); trabajo = cotizaciones CON captura
-            // en la Mesa. Sin este guard salían "cerró 3 de 0 (0%)" y ratios de
-            // 167%. Cuando no caben en la misma fracción, se dicen por separado.
-            $conv_estado = 'verde';
-            $conv_txt    = $trabajo > 0
-                ? "cerró {$cierres} · {$trabajo} en su Mesa"
-                : "cerró {$cierres} (ninguna pasó por su Mesa)";
-        } elseif ($cierres > 0) {
-            $conv_estado = 'verde';
-            $conv_txt    = "cerró {$cierres} de {$trabajo} ({$conv_rate}%)";
-        } elseif ($trabajo >= self::CERO_MIN) {
-            $conv_estado = 'rojo';
-            $conv_txt    = "cerró 0 de {$trabajo} (0%)";
-        } else {
+        // Denominador = cotizaciones que el CLIENTE ABRIÓ, igual que el benchmark
+        // de empresa. Antes se dividía entre "trabajadas en la Mesa", que es otro
+        // universo (daba "cerró 3 de 0" y ratios de 167%).
+        $conv_rate_r = $vistas > 0 ? ($cierres / $vistas) : 0.0;
+        $conv_rate   = (int)round($conv_rate_r * 100);
+        $hist_r      = (float)$bench_hist['rate'];
+        $hist_ok     = ((int)$bench_hist['muestra'] >= 5) && $hist_r > 0;
+        $hist_pct    = (int)round($hist_r * 100);
+        $vs          = $hist_ok ? " · la empresa cierra {$hist_pct}%" : "";
+
+        if ($vistas < self::CERO_MIN) {
+            // Muestra chica: no se juzga a nadie con 3 cotizaciones.
             $conv_estado = 'gris';
-            $conv_txt    = $trabajo > 0 ? "cerró 0 de {$trabajo} — muestra chica" : "sin actividad";
+            $conv_txt    = $vistas > 0
+                ? "cerró {$cierres} de {$vistas} abiertas — muestra chica"
+                : "sin actividad";
+        } elseif ($hist_ok) {
+            // REGLA CEO (11-ago): el color lo decide la comparación contra la
+            // tasa HISTÓRICA de su propia empresa, no "cerró algo = verde".
+            // Antes, 1 de 24 (4%) salía VERDE con el motivo "va bien".
+            //   >= histórico          → verde
+            //   >= mitad del histórico→ amarillo
+            //   <  mitad              → rojo
+            if     ($conv_rate_r >= $hist_r)       $conv_estado = 'verde';
+            elseif ($conv_rate_r >= $hist_r * 0.5) $conv_estado = 'amarillo';
+            else                                   $conv_estado = 'rojo';
+            $conv_txt = "cerró {$cierres} de {$vistas} abiertas ({$conv_rate}%){$vs}";
+        } else {
+            // Empresa sin historial suficiente: se conserva la regla vieja
+            // (binaria) para no inventar un veredicto sin vara.
+            $conv_estado = $cierres > 0 ? 'verde' : 'rojo';
+            $conv_txt    = "cerró {$cierres} de {$vistas} abiertas ({$conv_rate}%)";
         }
 
         // ── PILAR 2: Descartadas (% de lo trabajado · sin cita · muy rápido) ──
@@ -212,7 +232,7 @@ class RitmoAsesor
             // Crudos de los pilares: quien construya un texto encima (tips,
             // reporte) usa ESTOS y no puede contradecir al pilar. Sin queries
             // extra — ya están calculados arriba.
-            'n_trabajo' => $trabajo, 'n_cierres' => $cierres,
+            'n_trabajo' => $trabajo, 'n_cierres' => $cierres, 'n_vistas' => $vistas,
             'n_desc' => $desc, 'n_sincita' => $sincita, 'n_rapido' => $rapido,
             'n_contactados' => $contactados, 'n_noc' => $no_conecta,
             'n_venc' => $venc_cnt, 'n_venc_hoy' => $venc_hoy,
@@ -275,6 +295,25 @@ class RitmoAsesor
         );
     }
 
+    /**
+     * Cotizaciones del asesor que el CLIENTE ABRIÓ en la ventana (o que se
+     * cerraron). Es la MISMA definición de "vistas" que usa el benchmark de
+     * empresa en ActividadScore::_benchmarks — sin esto, comparar la tasa del
+     * asesor contra la de la empresa sería comparar universos distintos.
+     */
+    private static function _vistas(int $empresa_id, ?int $uid, int $dias): int
+    {
+        $w = $uid !== null ? "AND COALESCE(c.vendedor_id, c.usuario_id) = ?" : "";
+        $p = [$empresa_id]; if ($uid !== null) $p[] = $uid;
+        return (int) DB::val(
+            "SELECT COUNT(*) FROM cotizaciones c
+              WHERE c.empresa_id = ? AND c.total > 0 AND c.suspendida = 0
+                AND c.estado != 'borrador'
+                AND (c.visitas > 0 OR c.estado IN ('aceptada','convertida','aceptada_cliente'))
+                AND c.created_at >= NOW() - INTERVAL $dias DAY $w", $p
+        );
+    }
+
     private static function _trabajo(int $empresa_id, ?int $uid, int $dias): int
     {
         $w = $uid !== null ? "AND COALESCE(c.vendedor_id, c.usuario_id) = ?" : "";
@@ -304,6 +343,25 @@ class RitmoAsesor
                  WHERE m.empresa_id = ? AND m.area='postura' AND m.estado='descartada'
                    AND m.created_at >= NOW() - INTERVAL $dias DAY
                    AND c.created_at >= NOW() - INTERVAL $en_juego_dias DAY $w
+                   -- DESCARTADA VIGENTE (misma regla que Mesa::armar y
+                   -- Mesa::reporte): la ÚLTIMA postura debe seguir siendo
+                   -- 'descartada' y no puede haber un 👍 posterior que la
+                   -- anule. mesa_estados es insert-only: sin esto, un
+                   -- descarte CORREGIDO —o una descartada que revivió y se
+                   -- VENDIÓ— seguía contando como descarte y pintaba al
+                   -- asesor rojo mientras la Mesa la celebraba como
+                   -- recuperada.
+                   AND m.id = (SELECT MAX(mv.id) FROM mesa_estados mv
+                                WHERE mv.cotizacion_id = m.cotizacion_id AND mv.area = 'postura')
+                   AND NOT EXISTS (SELECT 1 FROM mesa_estados mfv
+                                    WHERE mfv.cotizacion_id = m.cotizacion_id
+                                      AND mfv.area = 'feedback' AND mfv.estado = 'con_interes'
+                                      AND mfv.id > m.id)
+                   AND NOT EXISTS (SELECT 1 FROM radar_feedback rfv
+                                    WHERE rfv.cotizacion_id = m.cotizacion_id
+                                      AND rfv.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                      AND rfv.tipo = 'con_interes' AND rfv.updated_at > m.created_at)
+
                 UNION
                 SELECT rf.cotizacion_id AS cid,
                        (NOT EXISTS (SELECT 1 FROM mesa_estados mc
