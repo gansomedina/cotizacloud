@@ -126,6 +126,10 @@ class RitmoReporte
                 'Conversión'   => (float)($r['s_conversion'] ?? 0),
             ],
             'ticket' => (float)($r['ticket_promedio'] ?? 0),
+            // Clientes que ABRIERON y no volvieron en 7+ días. La tarjeta ya los
+            // pinta en rojo; se exponen para que el tip pueda hablar de ellos en
+            // vez de felicitar al asesor junto a su propio número en rojo.
+            'dormidas' => (int)($r['cot_dormidas'] ?? 0),
         ];
     }
 
