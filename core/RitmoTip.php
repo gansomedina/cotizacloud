@@ -344,6 +344,19 @@ class RitmoTip
             ]];
         }
 
+        // ── DORMIDAS: el cliente abrió y no volvió ──
+        // Va al final: solo habla cuando no hay nada más urgente. Antes esta
+        // rama no existía en la cascada principal y un asesor con la mesa
+        // limpia leía "Vas bien, sube el ticket" en la MISMA línea donde su
+        // tarjeta le pintaba "5 dormidas" en rojo. Las técnicas ya estaban
+        // escritas en el catálogo ('enfriamiento'); solo faltaba llegar a ellas.
+        if (($dm = (int)($d['score']['dormidas'] ?? 0)) >= 2)
+            return ['enfriamiento', [
+                "Lo más caro de tu cartera no son los que dijeron que no: son los que se quedaron a medias. Tienes {$dm} clientes que abrieron tu cotización y no volvieron — ni un no, ni un sí, solo silencio. ",
+                "{$dm} clientes se enfriaron contigo: entraron a ver la cotización y ahí se quedaron. Ese cliente ya te dedicó tiempo; dejarlo enfriar es tirar lo único que cuesta conseguir, que es su atención. ",
+                "Traes {$dm} clientes en el limbo — abrieron y desaparecieron. No están perdidos, están esperando un motivo para volver, y ese motivo lo tienes que poner tú. ",
+            ]];
+
         // Va bien
         return ['bien', []];
     }
