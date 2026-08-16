@@ -32,9 +32,16 @@ if (!$existe) { echo json_encode(['ok'=>false,'error'=>'no_encontrado']); exit; 
 // Rate-limit semanal (solo admin). Dentro de la semana → devuelve el snapshot.
 if (!$es_super) {
     try {
+        // Solo cuentan los reportes generados por la PROPIA empresa. Las vistas
+        // del superadmin son invisibles para este reloj: si no, revisar a un
+        // asesor un lunes le consumía al admin su reporte de la semana y se lo
+        // dejaba fechado en MI horario, no el suyo.
         $last = DB::row(
-            "SELECT contenido, created_at, rango_desde, rango_hasta FROM ritmo_reportes
-              WHERE empresa_id=? AND asesor_id=? ORDER BY created_at DESC LIMIT 1",
+            "SELECT r.contenido, r.created_at, r.rango_desde, r.rango_hasta
+               FROM ritmo_reportes r
+               JOIN usuarios u ON u.id = r.generado_por
+              WHERE r.empresa_id=? AND r.asesor_id=? AND COALESCE(u.rol,'') <> 'superadmin'
+              ORDER BY r.created_at DESC LIMIT 1",
             [EMPRESA_ID, $asesor_id]
         );
     } catch (Throwable $e) { $last = null; }
@@ -65,7 +72,10 @@ try {
 } catch (Throwable $e) { /* si falla el guardado, igual devolvemos el reporte */ }
 
 // Registrar la técnica mostrada (rotación del tip: no repetir hasta agotar).
-if (!empty($rep['tip']['handle'])) {
+// SOLO si el reporte lo generó la empresa. El superadmin tiene generación
+// ilimitada: sin este gate, cada vistazo suyo quemaba una técnica que el
+// asesor NUNCA vio — a las pocas revisiones les saltaba media rotación.
+if (!$es_super && !empty($rep['tip']['handle'])) {
     try {
         DB::execute("INSERT INTO ritmo_tips (empresa_id, asesor_id, handle) VALUES (?,?,?)",
             [EMPRESA_ID, $asesor_id, $rep['tip']['handle']]);
