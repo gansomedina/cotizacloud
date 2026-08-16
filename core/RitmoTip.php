@@ -283,11 +283,13 @@ class RitmoTip
 
         // No cierra pese a tener citas
         if ($card && ($card['conv_estado'] ?? '') === 'rojo') {
-            $nt = (int)($card['n_trabajo'] ?? 0);   // TRABAJADAS, no descartes
+            // Mismo número que el pilar: cotizaciones que el CLIENTE ABRIÓ
+            // (n_vistas). Si el marco dijera otra cosa, contradiría a la tarjeta.
+            $nt = (int)($card['n_vistas'] ?? $card['n_trabajo'] ?? 0);
             return ['cierre', $nt > 0 ? [
                 "Abrir no es cerrar, y ahí es donde se gana o se pierde. Trabajaste {$nt} y no cerraste ninguna: el cliente llega hasta la puerta y no lo estás haciendo pasar. ",
-                "{$nt} cotizaciones trabajadas y cero cerradas. El problema no está en conseguir clientes — está en el último paso, que es el único que se paga. ",
-                "Llevas {$nt} trabajadas sin una sola venta. Todo lo de antes lo estás haciendo bien; lo que falta es pedir la firma. ",
+                "{$nt} cotizaciones abiertas por el cliente y cero cerradas. El problema no está en que te lean — está en el último paso, que es el único que se paga. ",
+                "Llevas {$nt} que el cliente abrió y ni una venta. Todo lo de antes lo estás haciendo bien; lo que falta es pedir la firma. ",
             ] : [
                 "Abrir no es cerrar, y ahí es donde se gana o se pierde. Aún no cierras ninguna: el cliente llega hasta la puerta y no lo estás haciendo pasar. ",
                 "Aún sin cerrar una sola. El último paso es el único que se paga, y ahí es donde se está quedando la venta. ",

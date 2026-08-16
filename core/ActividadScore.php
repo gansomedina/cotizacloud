@@ -110,6 +110,25 @@ class ActividadScore
      * largo) — expuesto para que el widget de cobertura del asesor use la
      * MISMA ventana que lo examina (trampa #1 del doc de integración).
      */
+    /**
+     * Tasa de cierre HISTÓRICA de la empresa (cierres/vistas de todo lo anterior
+     * a la ventana). Es la vara con la que el score juzga la Conversión; se
+     * expone para que la tarjeta de Ritmo use EXACTAMENTE la misma y no invente
+     * la suya. Devuelve ['rate'=>float, 'muestra'=>int]; muestra<5 = sin
+     * historial suficiente para juzgar a nadie.
+     */
+    public static function close_rate_historico(int $empresa_id): array
+    {
+        static $c = [];
+        if (isset($c[$empresa_id])) return $c[$empresa_id];
+        $o = ['rate' => 0.0, 'muestra' => 0];
+        try {
+            $b = self::_benchmarks($empresa_id, self::PERIODO);
+            $o = ['rate' => (float)($b['close_rate_hist'] ?? 0), 'muestra' => (int)($b['emp_vistas_hist'] ?? 0)];
+        } catch (\Throwable $e) {}
+        return $c[$empresa_id] = $o;
+    }
+
     public static function periodo_efectivo(int $empresa_id): int
     {
         $bench = self::_benchmarks($empresa_id, self::PERIODO);
@@ -1711,6 +1730,9 @@ class ActividadScore
         self::$_bench[$empresa_id][$periodo] = [
             'close_rate'      => max((float)$close_rate, 0.03),
             'close_rate_hist' => max((float)$close_rate_hist, 0.03),
+            // tamaño de la muestra histórica: quien consuma close_rate_hist como
+            // vara necesita saber si hay con qué juzgar (5+ = confiable)
+            'emp_vistas_hist' => (int)$emp_vistas_hist,
             'time_to_close'   => max((float)($avg_ttc ?? 14), 3),
             'ticket_promedio' => $ticket_promedio,
         ];

@@ -156,6 +156,24 @@ class RitmoReporte
                      WHERE m.empresa_id=? AND m.area='postura' AND m.estado='descartada'
                        AND COALESCE(c.vendedor_id,c.usuario_id)=?
                        AND m.created_at >= NOW() - INTERVAL $win DAY AND c.created_at >= NOW() - INTERVAL $win DAY
+                       -- DESCARTADA VIGENTE (misma regla que Mesa::armar y
+                       -- Mesa::reporte): la ÚLTIMA postura debe seguir siendo
+                       -- 'descartada' y no puede haber un 👍 posterior que la
+                       -- anule. mesa_estados es insert-only: sin esto, un
+                       -- descarte CORREGIDO —o una descartada que revivió y se
+                       -- VENDIÓ— seguía contando como descarte y pintaba al
+                       -- asesor rojo mientras la Mesa la celebraba como
+                       -- recuperada.
+                       AND m.id = (SELECT MAX(mv.id) FROM mesa_estados mv
+                                    WHERE mv.cotizacion_id = m.cotizacion_id AND mv.area = 'postura')
+                       AND NOT EXISTS (SELECT 1 FROM mesa_estados mfv
+                                        WHERE mfv.cotizacion_id = m.cotizacion_id
+                                          AND mfv.area = 'feedback' AND mfv.estado = 'con_interes'
+                                          AND mfv.id > m.id)
+                       AND NOT EXISTS (SELECT 1 FROM radar_feedback rfv
+                                        WHERE rfv.cotizacion_id = m.cotizacion_id
+                                          AND rfv.usuario_id = COALESCE(c.vendedor_id, c.usuario_id)
+                                          AND rfv.tipo = 'con_interes' AND rfv.updated_at > m.created_at)
                     UNION
                     SELECT c.id AS cid, c.numero, c.total, COALESCE(cl.nombre,'—') AS cliente,
                            $nc AS sin_cita, (DATEDIFF(rf.updated_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $pp AS postura,
