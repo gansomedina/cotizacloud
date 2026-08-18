@@ -182,7 +182,7 @@ foreach ($emps as $e) {
 
     printf("── %s   período %dd%s · zona muerta ≥%dd · close_rate %.0f%% (amplifica ×%.2f)\n",
         $e['nombre'], $p, $p_ok ? '' : ' (base, no leído)', $d_mue, $cr * 100, $amp);
-    echo '   ' . pad('ASESOR', 20) . pad('asig', 6, false) . '  '
+    echo '   ' . pad('ASESOR', 20) . pad('asign', 6, false) . '  '
        . pad('estancados', 12) . pad('zona muerta', 13) . pad('pen', 6, false) . '  '
        . pad('s_conv', 14) . pad('score', 6, false) . "\n";
 
@@ -202,10 +202,10 @@ foreach ($emps as $e) {
         $sconv = isset($sc[$uid]) && $sc[$uid]['s_conversion'] !== null ? (float)$sc[$uid]['s_conversion'] : null;
         $score = $sc[$uid]['score'] ?? null;
 
-        echo '   ' . pad(mb_substr($f['nombre'], 0, 20), 20) . pad((string)$as, 6, false) . '  '
+        echo '   ' . pad(mb_substr($f['nombre'], 0, 20), 20) . pad($den . $marca, 6, false) . '  '
            . pad("$eh → $er", 12) . pad("$mh → $mr", 13) . pad(number_format($pen, 2), 6, false) . '  '
            . pad($sconv === null ? '—' : sprintf('%.2f → %.2f', $sconv, max(0.0, $sconv - $pen)), 14)
-           . pad((string)($score ?? '—'), 6, false) . $marca . "\n";
+           . pad((string)($score ?? '—'), 6, false) . "\n";
     }
     echo "\n";
 }
@@ -218,4 +218,6 @@ echo "  · 'hoy 0 → real N' con N>0 → la penalización mira la columna equiv
 echo "  · ambos en 0               → de verdad no hay cotizaciones abandonadas.\n";
 echo "  · pen es el TECHO del daño a la Conversión; conv_floor puede absorber parte.\n";
 echo "  · Conversión pesa 35% del score: una caída de 0.30 en s_conv son ~10 puntos.\n";
-echo "  · '*' = sin fila en usuario_score; el denominador es el conteo propio.\n";
+echo "  · 'asign' es el cot_asignadas del motor (ActividadScore.php:253): TODO lo que\n";
+echo "    salió de borrador, incluidas aceptadas y rechazadas. Es el denominador real\n";
+echo "    de la penalización. '*' = sin fila en usuario_score; se usó el conteo propio.\n";
