@@ -21,6 +21,7 @@ class RitmoAsesor
     private const DUMP_MIN      = 3;   // mínimo de descartes para juzgar
     private const CONTACTO_MIN  = 4;   // mínimo de contactados para juzgar
     private const CERO_MIN      = 8;   // trabajó esto y cerró 0 → alarma
+    private const DUMP_VOLUMEN  = 0.25; // tirar >= 1/4 de la cartera para el ROJO
     private const HIST_VENTANAS = 8;   // cuántas ventanas de historia forman la vara
     private const HIST_MIN       = 8;   // cohorte histórica mínima para juzgar
     private const CITAS_BASE_MIN = 2.0; // citas/sem que prueban ritmo (gate SOLO del ámbar; el rojo del cero no tiene gate)
@@ -157,9 +158,20 @@ class RitmoAsesor
         }
 
         // ── PILAR 2: Descartadas (% de lo trabajado · sin cita · muy rápido) ──
-        //   El "vs cierres" ya se ve en Conversión arriba (mismo denominador) →
-        //   aquí no se repite "cerró 0". sin-cita/rápido en % de los descartes.
-        $dumping = ($desc >= self::DUMP_MIN && $desc > $cierres);
+        //   OJO: el denominador es TRABAJADAS (taps de Mesa en la ventana), que
+        //   NO es el de Conversión (cotizaciones nacidas en la ventana). Por eso
+        //   el texto lo dice con todas sus letras — sin el sustantivo, el lector
+        //   asumía que era el mismo número de la línea de arriba.
+        //
+        //   EL ROJO EXIGE LAS DOS COSAS (regla CEO): mala proporción Y volumen.
+        //   Antes solo miraba la proporción interna de los descartes, así que
+        //   Abigail (4 descartes, 3 sin cita = 75%) recibía el MISMO rojo y el
+        //   MISMO consejo que Manuel (24 descartes, 22 sin cita = 92%) — aunque
+        //   ella tira el 13% de su cartera y él el 63%. Con el badge diciendo lo
+        //   mismo para los dos, dejaba de servir para saber a quién sentar.
+        $r_volumen = $trabajo > 0 ? $desc / $trabajo : 0.0;
+        $dumping = ($desc >= self::DUMP_MIN && $desc > $cierres
+                    && $r_volumen >= self::DUMP_VOLUMEN);
         if ($dumping && ($r_sincita >= 0.6 || $r_rapido >= 0.6))       $desc_estado = 'rojo';
         elseif ($desc >= self::DUMP_MIN && ($r_sincita >= 0.35 || $r_rapido >= 0.3 || $desc > 2 * max($cierres, 1))) $desc_estado = 'amarillo';
         elseif ($desc === 0)                                          $desc_estado = 'gris';
@@ -256,7 +268,7 @@ class RitmoAsesor
         $sub = [];
         if ($sincita > 0) $sub[] = "{$sincita} sin cita";
         if ($rapido > 0)  $sub[] = "{$rapido} muy rápido";
-        return "descartó {$desc} de {$trabajo} (" . $pct($desc, $trabajo) . "%)"
+        return "descartó {$desc} de {$trabajo} trabajadas (" . $pct($desc, $trabajo) . "%)"
              . ($sub ? " · " . implode(' · ', $sub) : "");
     }
 
