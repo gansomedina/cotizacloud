@@ -145,6 +145,86 @@ foreach ($emps as $e) {
 
 printf("TOTAL estancados:  hoy %d → real %d\n", $tot['est_hoy'], $tot['est_real']);
 printf("TOTAL zona muerta: hoy %d → real %d\n", $tot['mue_hoy'], $tot['mue_real']);
+
+// ─────────────────────────────────────────────────────────────
+// [3] GOLPE REAL AL SCORE
+//
+// El conteo crudo NO es la penalización. core/ActividadScore.php:790 hace:
+//     pen_zona_muerta = (zona_muerta / asignadas) * sqrt(1 / close_rate)
+// El sqrt AMPLIFICA cuando cerrar es raro en esa empresa. Después:
+//     pen_conversion = min(pen_zona + pen_volumen, 1.0)          (:799)
+//     s_conversion   = max(conv_floor, componentes - pen_conv)   (:831)
+// El piso (conv_floor) puede absorber parte del golpe para quien cierra por
+// encima del histórico de su empresa. Por eso lo de abajo es el TECHO del
+// daño, no el daño exacto: la caída real es igual o menor.
+//
+// close_rate sale de ActividadScore::bench_publico() — la MISMA vara del
+// motor, no una copia del SQL que se podría separar con el tiempo.
+// ─────────────────────────────────────────────────────────────
+if (!class_exists('ActividadScore') || !method_exists('ActividadScore', 'bench_publico')) {
+    echo "\n[3] (omitido: ActividadScore::bench_publico no disponible en este entorno)\n";
+} else {
+    echo "\n[3] GOLPE REAL AL SCORE — techo del daño por asesor\n";
+    echo "    pen = (zona_muerta / asignadas) × sqrt(1 / close_rate de la empresa)\n";
+    echo "    s_conv y score son los GUARDADOS hoy en usuario_score.\n\n";
+
+    foreach ($emps as $e) {
+        $eid = (int)$e['id'];
+        $cr  = 0.0;
+        $b   = ActividadScore::bench_publico($eid);
+        if (isset($b['close_rate'])) $cr = (float)$b['close_rate'];
+        $cr_safe = max($cr, 0.01);
+        $amp = sqrt(1.0 / $cr_safe);
+
+        $rows = [];
+        try {
+            $rows = DB::query(
+                "SELECT s.usuario_id, u.nombre, s.cot_asignadas, s.s_conversion, s.score
+                   FROM usuario_score s JOIN usuarios u ON u.id = s.usuario_id
+                  WHERE s.empresa_id = ? AND COALESCE(u.rol,'') <> 'superadmin'
+                  ORDER BY u.nombre",
+                [$eid]
+            );
+        } catch (Throwable $ex) { $rows = []; }
+        if (!$rows) continue;
+
+        $zona = [];
+        try {
+            foreach (DB::query(
+                "SELECT COALESCE(c.vendedor_id,c.usuario_id) AS uid, COUNT(*) AS n
+                   FROM cotizaciones c
+                  WHERE c.empresa_id = ? AND c.suspendida = 0 AND c.estado IN ('enviada','vista')
+                    AND c.created_at >= DATE_SUB(NOW(), INTERVAL $PERIODO DAY)
+                    AND $col_muerta_real < DATE_SUB(NOW(), INTERVAL $d_muerta DAY)
+                  GROUP BY uid", [$eid]) as $z) {
+                $zona[(int)$z['uid']] = (int)$z['n'];
+            }
+        } catch (Throwable $ex) {}
+
+        $imp = [];
+        foreach ($rows as $r) {
+            $zm = $zona[(int)$r['usuario_id']] ?? 0;
+            $as = max(1, (int)$r['cot_asignadas']);
+            if ($zm === 0) continue;
+            $pen = min(($zm / $as) * $amp, 1.0);
+            $sc  = $r['s_conversion'] === null ? null : (float)$r['s_conversion'];
+            $imp[] = [$r['nombre'], $zm, $as, $pen, $sc, $r['score']];
+        }
+        if (!$imp) continue;
+
+        printf("── %s (close_rate empresa %.0f%% → amplifica ×%.2f)\n", $e['nombre'], $cr * 100, $amp);
+        foreach ($imp as [$nom, $zm, $as, $pen, $sc, $score]) {
+            $nuevo = $sc === null ? null : max(0.0, $sc - $pen);
+            printf("   %-22s zona %2d/%2d · pen %.2f · s_conv %s → %s  (score hoy %s)\n",
+                mb_substr($nom, 0, 22), $zm, $as, $pen,
+                $sc === null ? '—' : sprintf('%.2f', $sc),
+                $nuevo === null ? '—' : sprintf('%.2f', $nuevo),
+                $score ?? '—');
+        }
+        echo "\n";
+    }
+}
+
 echo "\n";
 echo "Cómo leerlo:\n";
 echo "  · 'hoy' en 0 con 'real' > 0  → la penalización mira la columna equivocada.\n";

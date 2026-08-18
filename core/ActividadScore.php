@@ -129,6 +129,19 @@ class ActividadScore
         return $c[$empresa_id] = $o;
     }
 
+    /**
+     * Los benchmarks de la empresa, tal cual los usa el score. Getter puro y
+     * de SOLO LECTURA: no calcula nada nuevo ni escribe. Existe para que una
+     * herramienta de diagnóstico pueda proyectar una penalización con la
+     * MISMA vara que el motor, en vez de copiar su SQL y arriesgar que las
+     * dos versiones se separen con el tiempo.
+     */
+    public static function bench_publico(int $empresa_id): array
+    {
+        try { return self::_benchmarks($empresa_id, self::PERIODO); }
+        catch (\Throwable $e) { return []; }
+    }
+
     public static function periodo_efectivo(int $empresa_id): int
     {
         $bench = self::_benchmarks($empresa_id, self::PERIODO);
