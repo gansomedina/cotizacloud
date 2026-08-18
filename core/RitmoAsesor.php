@@ -265,9 +265,13 @@ class RitmoAsesor
         if ($estado === 'gris') return "0 descartes";
         // El desglose (# sin cita, # muy rápido) se muestra SIEMPRE que haya
         //   descartes — también en verde: sin cita es el dato clave, no se oculta.
+        // El % es sobre los DESCARTES (no sobre trabajadas): es exactamente el
+        // número que decide el color (>=60% sin cita o muy rápido → rojo).
+        // Sin él, el lector veía "21 sin cita" y no podía saber si eso era
+        // mucho o poco sobre 23 descartes.
         $sub = [];
-        if ($sincita > 0) $sub[] = "{$sincita} sin cita";
-        if ($rapido > 0)  $sub[] = "{$rapido} muy rápido";
+        if ($sincita > 0) $sub[] = "{$sincita} sin cita (" . $pct($sincita, $desc) . "%)";
+        if ($rapido > 0)  $sub[] = "{$rapido} muy rápido (" . $pct($rapido, $desc) . "%)";
         return "descartó {$desc} de {$trabajo} trabajadas (" . $pct($desc, $trabajo) . "%)"
              . ($sub ? " · " . implode(' · ', $sub) : "");
     }
