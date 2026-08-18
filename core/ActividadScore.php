@@ -325,18 +325,29 @@ class ActividadScore
         );
         // Misma ventana y exclusión de imports que asignadas — pen_buckets divide
         // contra asignadas del período, el numerador debe ser del mismo universo
+        // UMBRALES PROPORCIONALES A LA VENTANA, no números fijos.
+        //
+        // Estaban en 14 y 21 días fijos, de cuando el período era de 30. Al
+        // bajarlo a 15 quedaron pidiendo algo IMPOSIBLE: una cotización nacida
+        // hace <=15 días no puede llevar 21 abandonada. Las dos penalizaciones
+        // daban 0 SIEMPRE y nadie lo notaba — no sale ningún número raro en
+        // pantalla, simplemente los scores salían más altos de lo diseñado.
+        // Como fracción del período se ajustan solos si la ventana vuelve a
+        // moverse, que es exactamente lo que falló la vez pasada.
+        $d_estanc = max(5, (int)round($periodo * 0.5));   // 15d → 8 días
+        $d_muerta = max(7, (int)round($periodo * 0.6));   // 15d → 9 días
         $buckets_estancados = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND radar_bucket IS NOT NULL AND radar_bucket != 'no_abierta'
              AND estado IN ('enviada','vista')
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND radar_updated_at < DATE_SUB(NOW(), INTERVAL 14 DAY)",
+             AND radar_updated_at < DATE_SUB(NOW(), INTERVAL $d_estanc DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $zona_muerta = (int)DB::val(
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado IN ('enviada','vista')
-             AND COALESCE(radar_updated_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL 21 DAY)
+             AND COALESCE(radar_updated_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL $d_muerta DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
