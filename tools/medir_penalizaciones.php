@@ -148,7 +148,7 @@ foreach ($emps as $e) {
 
     $cr = 0.0; $crh = 0.0;
     if ($HAY_SCORE && method_exists('ActividadScore', 'bench_publico')) {
-        $b = ActividadScore::bench_publico($eid);
+        $b = ActividadScore::bench_publico($eid, $p); // $p = período de ESTA empresa
         if (isset($b['close_rate']))      $cr  = (float)$b['close_rate'];
         if (isset($b['close_rate_hist'])) $crh = (float)$b['close_rate_hist'];
     }

@@ -100,10 +100,15 @@ foreach ($emps as $e) {
         $ab, $ci, $cr, $nota ? '   ← ' . implode(' · ', $nota) : '');
 
     // HISTÓRICO
+    // El tope solo puede haber actuado si la muestra alcanzó el mínimo; por
+    // debajo de eso el valor ni siquiera se usa (cae al actual). Avisar
+    // "RECORTADO" ahí era una falsa alarma — la daba Apple Review Demo, que
+    // con 2 cotizaciones tiene ratio crudo 1.00 y jamás llega al tope.
     $notah = [];
     if ($abh < $MIN_MUESTRA)                  $notah[] = "sin historial → cae al actual";
     elseif ($abh < 20)                        $notah[] = "muestra CHICA ($abh)";
-    if ($crudo_h !== null && $crudo_h > $CAP) $notah[] = sprintf("RECORTADO: el ratio crudo era %.2f", $crudo_h);
+    if ($abh >= $MIN_MUESTRA && $crudo_h !== null && $crudo_h > $CAP)
+                                              $notah[] = sprintf("RECORTADO: el ratio crudo era %.2f", $crudo_h);
     if (!empty($rango['d1']))                 $notah[] = 'desde ' . substr($rango['d1'], 0, 10);
     printf("   histórico  abiertas %3d · cerradas %3d · close_rate %.2f%s\n",
         $abh, $cih, $crh, $notah ? '   ← ' . implode(' · ', $notah) : '');
@@ -126,8 +131,8 @@ foreach ($emps as $e) {
     } catch (Throwable $ex) {}
 
     // Alertas para el resumen
-    if ($crudo !== null && $crudo > $CAP)     $alertas[] = "{$e['nombre']}: close_rate ACTUAL recortado al tope (crudo " . number_format($crudo, 2) . ")";
-    if ($crudo_h !== null && $crudo_h > $CAP) $alertas[] = "{$e['nombre']}: close_rate HISTÓRICO recortado al tope (crudo " . number_format($crudo_h, 2) . ")";
+    if ($ab  >= $MIN_MUESTRA && $crudo   !== null && $crudo   > $CAP) $alertas[] = "{$e['nombre']}: close_rate ACTUAL recortado al tope (crudo " . number_format($crudo, 2) . ")";
+    if ($abh >= $MIN_MUESTRA && $crudo_h !== null && $crudo_h > $CAP) $alertas[] = "{$e['nombre']}: close_rate HISTÓRICO recortado al tope (crudo " . number_format($crudo_h, 2) . ")";
     if ($fuera > 0)                           $alertas[] = "{$e['nombre']}: $fuera cierre(s) suman al numerador sin estar en el denominador";
     if ($abh >= $MIN_MUESTRA && $abh < 20)    $alertas[] = "{$e['nombre']}: la vara histórica se fija con solo $abh cotizaciones";
     echo "\n";

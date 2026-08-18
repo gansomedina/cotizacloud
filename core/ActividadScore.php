@@ -135,10 +135,17 @@ class ActividadScore
      * herramienta de diagnóstico pueda proyectar una penalización con la
      * MISMA vara que el motor, en vez de copiar su SQL y arriesgar que las
      * dos versiones se separen con el tiempo.
+     *
+     * El PERÍODO IMPORTA: calcular() arranca con PERIODO y, si el ciclo de
+     * venta pasa de 20 días, lo extiende y RECALCULA los benchmarks con la
+     * ventana nueva (línea 213). Dejar esto clavado en PERIODO devolvía, para
+     * una empresa de ciclo largo, una vara que el motor no usa: en Granito
+     * Depot (período real 38d) daba close_rate 0.90 contra el 0.67 verdadero.
+     * Por defecto usa el período efectivo de esa empresa, que es el correcto.
      */
-    public static function bench_publico(int $empresa_id): array
+    public static function bench_publico(int $empresa_id, ?int $periodo = null): array
     {
-        try { return self::_benchmarks($empresa_id, self::PERIODO); }
+        try { return self::_benchmarks($empresa_id, $periodo ?? self::periodo_efectivo($empresa_id)); }
         catch (\Throwable $e) { return []; }
     }
 
