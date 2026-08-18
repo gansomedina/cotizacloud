@@ -113,17 +113,26 @@ foreach ($emps as $e) {
 // ─────────────────────────────────────────────────────────────
 // [2] Qué contaría la columna correcta, y qué costaría
 //
-// El conteo crudo NO es la penalización. core/ActividadScore.php:790:
+// El conteo crudo NO es la penalización, y la penalización NO es la caída.
+// core/ActividadScore.php:802-803, 813, 840-842:
 //     pen_zona_muerta = (zona_muerta / asignadas) * sqrt(1 / close_rate)
-// El sqrt AMPLIFICA cuando cerrar es raro en esa empresa. Después:
-//     pen_conversion = min(pen_zona + pen_volumen, 1.0)          (:799)
-//     s_conversion   = max(conv_floor, componentes - pen_conv)   (:831)
-// conv_floor (:830) puede absorber parte del golpe para quien cierra por
-// encima del histórico de su empresa → lo de abajo es el TECHO del daño.
+//     pen_conversion  = min(pen_zona + pen_volumen, 1.0)
+//     perf_ratio      = min(tasa_cierre / close_rate_hist, 1.0)
+//     conv_floor      = componentes_conv * perf_ratio
+//     s_conversion    = max(conv_floor, componentes_conv - pen_conversion)
 //
-// asignadas y s_conv salen de usuario_score (lo que el motor ya calculó),
-// y el conteo usa el MISMO período de esa empresa. Mismo universo en el
-// numerador y en el denominador.
+// El PISO manda. Como componentes_conv >= s_conversion siempre (el piso nunca
+// supera a componentes y la resta tampoco), sale una cota DURA sin conocer
+// componentes_conv:
+//     s_conv_nuevo >= s_conv_hoy * perf_ratio
+// o sea, caída máxima = s_conv_hoy * (1 - perf_ratio). Con perf_ratio = 1.0
+// —cierra igual o mejor que el histórico de su empresa— la caída máxima es
+// CERO: es inmune a esta penalización por grande que sea.
+//
+// asignadas, s_conv y tasa_cierre salen de usuario_score (lo que el motor ya
+// calculó; verificado que la posición 18 del INSERT es round($tasa_cierre,3),
+// la MISMA variable del perf_ratio), y el conteo usa el período de ESTA
+// empresa. Mismo universo en el numerador y en el denominador.
 // ─────────────────────────────────────────────────────────────
 echo "\n[2] QUÉ CONTARÍA LA COLUMNA CORRECTA Y QUÉ COSTARÍA\n";
 echo "    'hoy → real' = lo que cuenta el código actual → lo que contaría bien.\n";
@@ -137,10 +146,11 @@ foreach ($emps as $e) {
     $d_est = max(5, (int)round($p * 0.5));
     $d_mue = max(7, (int)round($p * 0.6));
 
-    $cr = 0.0;
+    $cr = 0.0; $crh = 0.0;
     if ($HAY_SCORE && method_exists('ActividadScore', 'bench_publico')) {
         $b = ActividadScore::bench_publico($eid);
-        if (isset($b['close_rate'])) $cr = (float)$b['close_rate'];
+        if (isset($b['close_rate']))      $cr  = (float)$b['close_rate'];
+        if (isset($b['close_rate_hist'])) $crh = (float)$b['close_rate_hist'];
     }
     $amp = sqrt(1.0 / max($cr, 0.01));
 
@@ -173,18 +183,18 @@ foreach ($emps as $e) {
     $sc = [];
     try {
         foreach (DB::query(
-            "SELECT usuario_id, cot_asignadas, s_conversion, score FROM usuario_score WHERE empresa_id = ?",
+            "SELECT usuario_id, cot_asignadas, s_conversion, score, tasa_cierre FROM usuario_score WHERE empresa_id = ?",
             [$eid]) as $r) { $sc[(int)$r['usuario_id']] = $r; }
     } catch (Throwable $ex) {}
 
     $filas = array_filter($filas, fn($f) => (int)$f['asignadas'] > 0);
     if (!$filas) continue;
 
-    printf("── %s   período %dd%s · zona muerta ≥%dd · close_rate %.0f%% (amplifica ×%.2f)\n",
-        $e['nombre'], $p, $p_ok ? '' : ' (base, no leído)', $d_mue, $cr * 100, $amp);
+    printf("── %s   período %dd%s · zona muerta ≥%dd · close_rate %.0f%% (amplifica ×%.2f) · histórico %.0f%%\n",
+        $e['nombre'], $p, $p_ok ? '' : ' (base, no leído)', $d_mue, $cr * 100, $amp, $crh * 100);
     echo '   ' . pad('ASESOR', 20) . pad('asign', 6, false) . '  '
-       . pad('estancados', 12) . pad('zona muerta', 13) . pad('pen', 6, false) . '  '
-       . pad('s_conv', 14) . pad('score', 6, false) . "\n";
+       . pad('zona muerta', 13) . pad('pen', 6, false) . pad('perf', 6, false) . '  '
+       . pad('s_conv: hoy → mínimo', 22) . pad('máx.baja', 9, false) . "\n";
 
     foreach ($filas as $f) {
         $uid = (int)$f['uid'];
@@ -202,10 +212,40 @@ foreach ($emps as $e) {
         $sconv = isset($sc[$uid]) && $sc[$uid]['s_conversion'] !== null ? (float)$sc[$uid]['s_conversion'] : null;
         $score = $sc[$uid]['score'] ?? null;
 
+        // EL PISO. ActividadScore.php:840-842:
+        //     perf_ratio  = min(tasa_cierre / close_rate_hist, 1.0)
+        //     conv_floor  = componentes_conv * perf_ratio
+        //     s_conversion = max(conv_floor, componentes_conv - pen_conversion)
+        //
+        // De ahí sale una cota DURA, sin necesidad de conocer componentes_conv:
+        //   componentes_conv >= s_conv_hoy  (el piso nunca lo supera)
+        //   => conv_floor >= s_conv_hoy * perf_ratio
+        //   => s_conv_nuevo >= s_conv_hoy * perf_ratio
+        // Es decir: la caída MÁXIMA posible es s_conv_hoy * (1 - perf_ratio),
+        // sin importar de qué tamaño sea la penalización.
+        //
+        // Corolario: perf_ratio = 1.0 (cierra igual o mejor que el histórico de
+        // su empresa) => caída máxima 0. INMUNE a esta penalización.
+        $tc   = isset($sc[$uid]) && $sc[$uid]['tasa_cierre'] !== null ? (float)$sc[$uid]['tasa_cierre'] : null;
+        $perf = ($tc === null || $crh <= 0) ? null : min($tc / max($crh, 0.01), 1.0);
+
+        if ($sconv === null || $perf === null) {
+            $celda = '—'; $baja = '—';
+        } elseif ($pen <= 0) {
+            $celda = sprintf('%.2f (sin muertas)', $sconv); $baja = '0.00';
+        } else {
+            $min  = $sconv * $perf;                 // cota dura
+            $cae  = $sconv - $min;
+            $celda = $perf >= 1.0
+                ? sprintf('%.2f  INMUNE', $sconv)
+                : sprintf('%.2f → %.2f o más', $sconv, $min);
+            $baja = number_format($cae, 2);
+        }
+
         echo '   ' . pad(mb_substr($f['nombre'], 0, 20), 20) . pad($den . $marca, 6, false) . '  '
-           . pad("$eh → $er", 12) . pad("$mh → $mr", 13) . pad(number_format($pen, 2), 6, false) . '  '
-           . pad($sconv === null ? '—' : sprintf('%.2f → %.2f', $sconv, max(0.0, $sconv - $pen)), 14)
-           . pad((string)($score ?? '—'), 6, false) . "\n";
+           . pad("$mh → $mr", 13) . pad(number_format($pen, 2), 6, false)
+           . pad($perf === null ? '—' : number_format($perf, 2), 6, false) . '  '
+           . pad($celda, 22) . pad($baja, 9, false) . "\n";
     }
     echo "\n";
 }
@@ -216,8 +256,11 @@ echo "\n";
 echo "Cómo leerlo:\n";
 echo "  · 'hoy 0 → real N' con N>0 → la penalización mira la columna equivocada.\n";
 echo "  · ambos en 0               → de verdad no hay cotizaciones abandonadas.\n";
-echo "  · pen es el TECHO del daño a la Conversión; conv_floor puede absorber parte.\n";
-echo "  · Conversión pesa 35% del score: una caída de 0.30 en s_conv son ~10 puntos.\n";
+echo "  · perf = tu tasa de cierre ÷ el histórico de tu empresa (tope 1.00).\n";
+echo "  · perf 1.00 = INMUNE: el piso de la Conversión (ActividadScore.php:841)\n";
+echo "    iguala al puntaje completo, así que la penalización no lo puede mover.\n";
+echo "  · 'máx.baja' es una COTA DURA, no una estimación: la caída real es igual\n";
+echo "    o menor. Multiplícala por 35 para los puntos del score (Conversión = 35%).\n";
 echo "  · 'asign' es el cot_asignadas del motor (ActividadScore.php:253): TODO lo que\n";
 echo "    salió de borrador, incluidas aceptadas y rechazadas. Es el denominador real\n";
 echo "    de la penalización. '*' = sin fila en usuario_score; se usó el conteo propio.\n";
