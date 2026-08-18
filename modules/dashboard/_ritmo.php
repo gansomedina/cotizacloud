@@ -89,7 +89,7 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
   </div>
 </div>
 
-<style>
+<style id="rt-css">
   #rt-modal .rr{font:400 13px var(--body);color:var(--text);line-height:1.5}
   #rt-modal .rr-hd{display:flex;align-items:center;gap:12px;margin-bottom:12px}
   #rt-modal .rr-k{font:700 10px var(--body);letter-spacing:.05em;text-transform:uppercase;color:#1a5c38}
@@ -145,7 +145,50 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
   }));
 
   window.rtClose = () => { $('rt-modal').style.display = 'none'; };
-  window.rtPrint = () => window.print();
+  // Imprimir desde una VENTANA LIMPIA con solo el reporte.
+  //
+  // Por qué no window.print() sobre el dashboard: la regla @media print usaba
+  // 'body *{visibility:hidden}', que oculta pero NO quita el espacio — el
+  // dashboard entero (tarjetas, leaderboard, mesas) sigue paginando en blanco y
+  // el reporte cae varias páginas abajo, recortado por los contenedores que lo
+  // envuelven. De ahí el "solo imprime un pedazo". Pelear ese CSS desde afuera
+  // es interminable; una ventana propia es determinista.
+  //
+  // Se copia el <style> del reporte tal cual y se replican SOLO las variables de
+  // color que usa (viven en el layout, que aquí no existe). El HTML se envuelve
+  // en #rt-modal para que los mismos selectores apliquen sin tocar el render.
+  window.rtPrint = function () {
+    var cont = $('rt-body');
+    if (!cont || !cont.innerHTML.trim()) return;
+    var css = (document.getElementById('rt-css') || {}).textContent || '';
+    var w = window.open('', '_blank');
+    if (!w) { window.print(); return; }   // popup bloqueado → comportamiento viejo
+    var titulo = ($('rt-modal-title') || {}).textContent || 'Reporte';
+    w.document.open();
+    w.document.write(
+      '<!doctype html><html lang="es"><head><meta charset="utf-8">' +
+      '<title>' + titulo.replace(/[<>&]/g, '') + '</title><style>' +
+      ':root{--bg:#f4f4f0;--white:#fff;--border:#e2e2dc;--text:#1a1a18;' +
+      '--t2:#4a4a46;--t3:#6a6a64;--g:#1a5c38;--danger:#c53030;' +
+      "--body:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif}" +
+      'html,body{margin:0;padding:0;background:#fff}' +
+      '@page{margin:14mm}' +
+      '#rt-modal{padding:0}#rt-modal>div{max-width:100%;margin:0;box-shadow:none}' +
+      '#rt-body{padding:0}' +
+      // que ninguna sección se parta a la mitad entre páginas
+      '.rr-sec,.rr-tip,.rr-pil{break-inside:avoid;page-break-inside:avoid}' +
+      '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+      css +
+      '</style></head><body><div id="rt-modal"><div><div id="rt-body">' +
+      cont.innerHTML +
+      '</div></div></div></body></html>'
+    );
+    w.document.close();
+    // esperar al layout antes de abrir el diálogo (si no, imprime en blanco)
+    var go = function () { try { w.focus(); w.print(); } catch (e) {} };
+    if (w.document.readyState === 'complete') setTimeout(go, 120);
+    else w.onload = function () { setTimeout(go, 120); };
+  };
   $('rt-modal').addEventListener('click', e => { if (e.target === $('rt-modal')) rtClose(); });
 
   window.rtGen = async function(){
