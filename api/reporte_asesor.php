@@ -81,13 +81,25 @@ $win   = max(1, (int)($rep['win'] ?? 15));
 $hasta = date('Y-m-d');
 $desde = date('Y-m-d', strtotime("-{$win} days"));
 
-try {
-    DB::execute(
-        "INSERT INTO ritmo_reportes (empresa_id, asesor_id, generado_por, rango_desde, rango_hasta, contenido)
-         VALUES (?,?,?,?,?,?)",
-        [$emp_objetivo, $asesor_id, Auth::id(), $desde, $hasta, $rep['html']]
-    );
-} catch (Throwable $e) { /* si falla el guardado, igual devolvemos el reporte */ }
+// El snapshot lo guarda SOLO la empresa. Un observador (superadmin o
+// supervisor) que consulta no debe dejar fila:
+//
+//   · El supervisor tiene rol 'admin', así que la consulta del límite semanal
+//     de abajo NO lo distingue del dueño (solo excluye 'superadmin'). Su fila
+//     le habría consumido al admin su reporte de la semana y se lo habría
+//     dejado fechado a la hora en que el supervisor entró.
+//   · Las filas del superadmin ya eran peso muerto: esa misma consulta las
+//     descarta, así que nunca se servían. Nadie más lee ritmo_reportes
+//     (verificado con grep en todo el repo).
+if (!$observador) {
+    try {
+        DB::execute(
+            "INSERT INTO ritmo_reportes (empresa_id, asesor_id, generado_por, rango_desde, rango_hasta, contenido)
+             VALUES (?,?,?,?,?,?)",
+            [$emp_objetivo, $asesor_id, Auth::id(), $desde, $hasta, $rep['html']]
+        );
+    } catch (Throwable $e) { /* si falla el guardado, igual devolvemos el reporte */ }
+}
 
 // Registrar la técnica mostrada (rotación del tip: no repetir hasta agotar).
 // SOLO si el reporte lo generó la empresa. El superadmin tiene generación
