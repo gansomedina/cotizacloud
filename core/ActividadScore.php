@@ -356,18 +356,37 @@ class ActividadScore
         // moverse, que es exactamente lo que falló la vez pasada.
         $d_estanc = max(5, (int)round($periodo * 0.5));   // 15d → 8 días
         $d_muerta = max(7, (int)round($periodo * 0.6));   // 15d → 9 días
+
+        // NO USAR radar_updated_at PARA MEDIR ABANDONO.
+        // Esa columna registra cuándo recalculó el Radar, no cuándo se movió la
+        // cotización: modules/radar/Radar.php:1495 le escribe NOW() en CADA
+        // recálculo, cambie o no el bucket (el ternario de :1489 demuestra que
+        // solo radar_bucket_at es condicional al cambio). Y el recálculo de
+        // TODA la empresa se dispara al abrir el dashboard o el Radar si el
+        // dato pasa de 5 minutos (dashboard/index.php:401, radar/index.php:54,
+        // que recorre todas las cotizaciones vivas en Radar.php:1566).
+        // Resultado: la columna no envejece mientras alguien use el sistema, y
+        // las dos penalizaciones contaban 0 aunque hubiera abandono real.
+        // Medido en producción: 0 con esta columna, 23 con las de abajo.
         $buckets_estancados = (int)DB::val(
+            // radar_bucket_at SÍ marca el movimiento: Radar.php:1489 la escribe
+            // solo cuando el bucket cambia. COALESCE a created_at para las que
+            // nacieron antes de que existiera la columna (acotado: la ventana
+            // ya limita a created_at >= hoy - periodo).
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND radar_bucket IS NOT NULL AND radar_bucket != 'no_abierta'
              AND estado IN ('enviada','vista')
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             AND radar_updated_at < DATE_SUB(NOW(), INTERVAL $d_estanc DAY)",
+             AND COALESCE(radar_bucket_at, created_at) < DATE_SUB(NOW(), INTERVAL $d_estanc DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
         $zona_muerta = (int)DB::val(
+            // Actividad HUMANA: la última visita real del cliente o, si nunca
+            // abrió, la última edición del asesor. Nada de timestamps que
+            // escribe el sistema solo.
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado IN ('enviada','vista')
-             AND COALESCE(radar_updated_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL $d_muerta DAY)
+             AND COALESCE(ultima_vista_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL $d_muerta DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
