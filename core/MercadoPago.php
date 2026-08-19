@@ -410,10 +410,20 @@ class MercadoPago
                 );
             }
 
+            $plan_antes = planes_snapshot($empresa_id); // bitácora, ANTES del UPDATE
             DB::execute(
                 "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1 WHERE id=?",
                 [$plan, $vence, $empresa_id]
             );
+            // El webhook corre sin sesión (lo llama MercadoPago, no un humano).
+            planes_log($empresa_id, 'pago_webhook', $plan_antes, [
+                'ciclo'       => $ciclo,
+                'monto'       => $monto,
+                'ref'         => 'preap:' . $preapprovalId,
+                'motivo'      => 'preapproval_authorized',
+                'sin_usuario' => true,
+                'forzar'      => true,
+            ]);
 
             return ['processed' => true, 'action' => 'activated', 'empresa_id' => $empresa_id];
         }
@@ -479,20 +489,43 @@ class MercadoPago
             $base = ($vence_actual && $vence_actual >= date('Y-m-d')) ? $vence_actual : date('Y-m-d');
             $nuevo_vence = date('Y-m-d', strtotime($base . " +{$dias} days"));
 
+            $plan_antes = planes_snapshot((int)$sub['empresa_id']);
             DB::execute(
                 "UPDATE empresas SET plan_vence=?, grace_hasta=NULL, activa=1 WHERE id=?",
                 [$nuevo_vence, $sub['empresa_id']]
             );
+            // forzar: el plan no cambia, solo la fecha — que es justo el dato
+            // que hoy no queda registrado en ningún lado.
+            planes_log((int)$sub['empresa_id'], 'pago_webhook', $plan_antes, [
+                'dias'        => $dias,
+                'ciclo'       => $ciclo,
+                'monto'       => $monto,
+                'ref'         => 'mp_pay:' . (string)$paymentId,
+                'motivo'      => 'payment_approved',
+                'sin_usuario' => true,
+                'forzar'      => true,
+            ]);
 
             return ['processed' => true, 'action' => 'payment_approved', 'empresa_id' => $sub['empresa_id']];
         }
 
         if ($status === 'rejected') {
             $grace = date('Y-m-d', strtotime('+7 days'));
-            DB::execute(
+            $filas = DB::execute(
                 "UPDATE empresas SET grace_hasta=? WHERE id=? AND grace_hasta IS NULL",
                 [$grace, $sub['empresa_id']]
             );
+            // Solo si de verdad se abrió la gracia: el WHERE lleva
+            // "grace_hasta IS NULL", así que un webhook repetido afecta 0 filas
+            // y no debe dejar una fila de bitácora que miente.
+            if ($filas > 0) {
+                planes_log((int)$sub['empresa_id'], 'grace_inicio', planes_snapshot((int)$sub['empresa_id']), [
+                    'motivo'      => 'pago_rechazado',
+                    'sin_usuario' => true,
+                    'forzar'      => true,
+                    'detalle'     => 'Gracia hasta ' . $grace . '.',
+                ]);
+            }
             return ['processed' => true, 'action' => 'payment_rejected_grace', 'empresa_id' => $sub['empresa_id']];
         }
 

@@ -470,13 +470,136 @@ function planes_ajustar_asientos(int $empresa_id): void
 // (queda solo el admin más antiguo — sin esto un trial de Pro con 10 usuarios
 // quedaba multiusuario gratis para siempre: el login no valida plan).
 // trial_usado=1 SOLO si la empresa jamás tuvo un pago aprobado.
-function planes_degradar_free(int $empresa_id): void
+// ─── planes_log ─────────────────────────────────────────────
+// Bitácora de movimientos de plan (tabla plan_log). Sin esto, la tabla
+// empresas solo guarda el ESTADO ACTUAL: cada cambio pisa al anterior y no
+// queda rastro de qué paquete tenía la empresa antes, ni cuándo se renovó.
+//
+// VIVE AQUÍ, NO EN UNA CLASE NUEVA. Este repo no tiene autoloader:
+// index.php:83 solo hace require de config.php, y config.php (que hace los
+// require de core/) está en .gitignore y NO se despliega. Un core/PlanLog.php
+// nuevo llegaría al servidor y jamás sería cargado → "Class not found" DENTRO
+// de la transacción de api/mp_return.php = cliente que pagó y no se le activa
+// el plan. Helpers.php está garantizado cargado en web y en CLI (el cron llama
+// a planes_degradar_free con solo require config.php).
+//
+// NUNCA LANZA. Todo el cuerpo va en try/catch: si la tabla no existe (migración
+// sin correr) o el INSERT falla, el cobro, la renovación y el alta siguen su
+// curso. Mismo patrón que escudo_log_decision().
+//
+// Se llama DESPUÉS del UPDATE y FUERA de cualquier transacción abierta: una
+// INSERT fallida dentro de una transacción la deja inutilizable.
+//
+// $antes = la fila de empresas ANTES del cambio (plan, plan_vence), que casi
+// todos los llamadores ya tienen a mano. Si va null, se registra sin el "de
+// dónde venía" en vez de inventarlo.
+function planes_log(int $empresa_id, string $evento, ?array $antes = null, array $opts = []): void
+{
+    try {
+        // El "después" se lee de la BD: es el estado real que quedó, no lo que
+        // el llamador creyó escribir.
+        $hoy = DB::row("SELECT plan, plan_vence FROM empresas WHERE id = ?", [$empresa_id]);
+        if (!$hoy) return;
+
+        $plan_antes  = $antes['plan'] ?? null;
+        $vence_antes = $antes['plan_vence'] ?? null;
+        $plan_hoy    = $hoy['plan'] ?? null;
+        $vence_hoy   = $hoy['plan_vence'] ?? null;
+
+        // Sin cambio real y sin nada que contar → no ensuciar la bitácora.
+        // 'forzar' es para los hechos que importan aunque el plan no se mueva
+        // (apertura de gracia, cobro que solo extiende la fecha, tope de
+        // asientos).
+        if (empty($opts['forzar'])
+            && $plan_antes === $plan_hoy
+            && (string)$vence_antes === (string)$vence_hoy) return;
+
+        // El origen no lo elige el llamador: se deriva del evento, para que dos
+        // puntos del código no lo escriban distinto.
+        static $origenes = [
+            'alta'                  => 'registro',
+            'activacion'            => 'superadmin',
+            'renovacion'            => 'superadmin',
+            'cambio_plan'           => 'superadmin',
+            'regreso_free'          => 'superadmin',
+            'asientos'              => 'superadmin',
+            'suspension'            => 'superadmin',
+            'reactivacion'          => 'superadmin',
+            'pago_mp'               => 'mp_return',
+            'pago_webhook'          => 'mp_webhook',
+            'cobro_cron'            => 'cron',
+            'grace_inicio'          => 'cron',
+            'degradacion'           => 'cron',
+        ];
+        $origen = (string)($opts['origen'] ?? ($origenes[$evento] ?? 'sistema'));
+
+        // Auth puede no existir en cron/webhook. Nunca debe hacer fallar el log.
+        $uid = null; $unom = null;
+        if (empty($opts['sin_usuario']) && class_exists('Auth')) {
+            try {
+                $uid = Auth::id() ?: null;
+                if ($uid) {
+                    $u = Auth::usuario();
+                    $unom = is_array($u) ? ($u['nombre'] ?? null) : null;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        $ip = null;
+        if (function_exists('ip_real')) { try { $ip = ip_real(); } catch (\Throwable $e) {} }
+
+        DB::execute(
+            "INSERT INTO plan_log
+                (empresa_id, evento, origen, motivo,
+                 plan_anterior, plan_nuevo, vence_anterior, vence_nuevo,
+                 dias, ciclo, monto_mxn,
+                 usuario_id, usuario_nombre, ip,
+                 ref, confianza, hecho_uid, detalle, ocurrio_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [
+                $empresa_id,
+                mb_substr($evento, 0, 30, 'UTF-8'),
+                mb_substr($origen, 0, 24, 'UTF-8'),
+                isset($opts['motivo']) ? mb_substr((string)$opts['motivo'], 0, 40, 'UTF-8') : null,
+                $plan_antes  !== null ? mb_substr((string)$plan_antes, 0, 20, 'UTF-8') : null,
+                $plan_hoy    !== null ? mb_substr((string)$plan_hoy, 0, 20, 'UTF-8') : null,
+                $vence_antes ?: null,
+                $vence_hoy   ?: null,
+                isset($opts['dias'])  ? (int)$opts['dias'] : null,
+                isset($opts['ciclo']) ? mb_substr((string)$opts['ciclo'], 0, 10, 'UTF-8') : null,
+                isset($opts['monto']) ? (float)$opts['monto'] : null,
+                $uid,
+                $unom !== null ? mb_substr($unom, 0, 120, 'UTF-8') : null,
+                $ip !== null ? mb_substr((string)$ip, 0, 45, 'UTF-8') : null,
+                isset($opts['ref'])       ? mb_substr((string)$opts['ref'], 0, 100, 'UTF-8') : null,
+                mb_substr((string)($opts['confianza'] ?? 'probado'), 0, 10, 'UTF-8'),
+                isset($opts['hecho_uid']) ? mb_substr((string)$opts['hecho_uid'], 0, 120, 'UTF-8') : null,
+                isset($opts['detalle'])   ? mb_substr((string)$opts['detalle'], 0, 4000, 'UTF-8') : null,
+                $opts['ocurrio_at'] ?? date('Y-m-d H:i:s'),
+            ]
+        );
+    } catch (\Throwable $e) {
+        // Silencioso a propósito: la bitácora jamás bloquea un cobro ni un alta.
+        error_log('[PlanLog] ' . $e->getMessage());
+    }
+}
+
+// Lee el estado de plan de una empresa para pasarlo como $antes a planes_log().
+// Tolerante: si algo falla devuelve null y la bitácora registra sin el origen.
+function planes_snapshot(int $empresa_id): ?array
+{
+    try { return DB::row("SELECT plan, plan_vence FROM empresas WHERE id = ?", [$empresa_id]); }
+    catch (\Throwable $e) { return null; }
+}
+
+function planes_degradar_free(int $empresa_id, ?string $motivo = null): void
 {
     // Solo el TRIAL EXPLÍCITO (es_trial=1, lo pone únicamente el registro) recibe
     // el tratamiento de trial: trial_usado=1 + usuarios extra desactivados +
     // email. Un cliente que pagó (MP o manual/transferencia) que caiga aquí vía
     // cron solo baja a free — como antes de Fase B (auditoría: la inferencia por
     // pagos MP degradaba y desactivaba usuarios a toda la base de pago manual).
+    $antes = planes_snapshot($empresa_id); // para la bitácora, ANTES del UPDATE
     $fila = null;
     try {
         $fila = DB::row("SELECT es_trial, email, nombre FROM empresas WHERE id = ?", [$empresa_id]);
@@ -494,6 +617,15 @@ function planes_degradar_free(int $empresa_id): void
         // columnas sin migrar — degradar sin flags (el límite de 25 respalda)
         DB::execute("UPDATE empresas SET plan='free', plan_vence=NULL, grace_hasta=NULL, activa=1 WHERE id = ?", [$empresa_id]);
     }
+    // Bitácora ANTES del return de la línea de abajo: un cliente de pago manual
+    // que baja a Free también es un movimiento que el superadmin debe poder ver.
+    planes_log($empresa_id, 'degradacion', $antes, [
+        'motivo'      => $motivo ?? ($es_trial ? 'trial_vencido' : 'licencia_vencida'),
+        'sin_usuario' => true, // corre en cron o dentro de trial_info, sin sesión propia
+        'detalle'     => $es_trial
+            ? 'Fin de prueba: trial_usado=1 y usuarios extra desactivados.'
+            : 'Baja a Free sin tratamiento de trial (cliente de pago manual o MP).',
+    ]);
     if (!$es_trial) return;
 
     // Usuarios extra fuera (SOLO trials); se conserva (y reactiva) el admin más

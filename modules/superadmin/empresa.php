@@ -63,6 +63,25 @@ try {
     );
 } catch (\Throwable $e) { $consentimientos = []; }
 
+// ── Historial de planes (bitácora plan_log) ───────────────
+// Tabla nueva; puede no existir hasta correr migrations/add_plan_log.sql.
+// $plan_log_ok distingue "tabla ausente" de "empresa sin movimientos": sin esa
+// bandera el superadmin no sabría cuál de las dos cosas está viendo.
+$plan_log_ok = true;
+$historial_planes = [];
+try {
+    $historial_planes = DB::query(
+        "SELECT evento, origen, motivo, plan_anterior, plan_nuevo,
+                vence_anterior, vence_nuevo, dias, ciclo, monto_mxn,
+                usuario_nombre, ip, ref, confianza, detalle, ocurrio_at
+           FROM plan_log
+          WHERE empresa_id = ?
+          ORDER BY ocurrio_at DESC, id DESC
+          LIMIT 60",
+        [$empresa_id]
+    );
+} catch (\Throwable $e) { $plan_log_ok = false; $historial_planes = []; }
+
 // ── Métricas ──────────────────────────────────────────────
 $num_cots = (int)DB::val("SELECT COUNT(*) FROM cotizaciones WHERE empresa_id = ?", [$empresa_id]);
 $num_ventas = (int)DB::val("SELECT COUNT(*) FROM ventas WHERE empresa_id = ?", [$empresa_id]);
@@ -360,6 +379,144 @@ tr:hover td{background:#fafaf8}
     <?php if ($trial['en_grace'] ?? false): ?>
     <div style="margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:var(--r-sm);font:500 12px var(--body);color:var(--danger)">
         En período de gracia hasta <?= date('d/m/Y', strtotime($trial['grace_hasta'])) ?>
+    </div>
+    <?php endif; ?>
+</div>
+
+<!-- Historial de planes -->
+<div class="section">
+    <h2>Historial de planes</h2>
+    <?php if ($historial_planes):
+        // Colores iguales a los de la caja de plan de arriba, para que el ojo
+        // reconozca el paquete sin leer.
+        $plan_badge = ['free'=>'badge-amber','lite'=>'badge-slate','pro'=>'badge-green','business'=>'badge-blue'];
+        $ev_lbl = [
+            'alta'         => ['Alta de cuenta',    'badge-slate'],
+            'activacion'   => ['Activación',        'badge-green'],
+            'renovacion'   => ['Renovación',        'badge-green'],
+            'cambio_plan'  => ['Cambio de plan',    'badge-blue'],
+            'regreso_free' => ['Regresó a Free',    'badge-amber'],
+            'degradacion'  => ['Bajó a Free',       'badge-amber'],
+            'grace_inicio' => ['Período de gracia', 'badge-amber'],
+            'pago_mp'      => ['Pago MercadoPago',  'badge-green'],
+            'pago_webhook' => ['Pago MercadoPago',  'badge-green'],
+            'cobro_cron'   => ['Cobro automático',  'badge-green'],
+        ];
+        $or_lbl = [
+            'registro'   => 'Registro',
+            'superadmin' => 'Superadmin',
+            'mp_return'  => 'MercadoPago (checkout)',
+            'mp_webhook' => 'MercadoPago (webhook)',
+            'cron'       => 'Cron diario',
+            'sistema'    => 'Sistema',
+            'backfill'   => 'Reconstruido',
+        ];
+        $mot_lbl = [
+            'manual'                  => 'alta manual',
+            'toggle_legacy'           => 'toggle legacy',
+            'trial_30d'               => 'prueba de 30 días',
+            'trial_vencido'           => 'se acabó la prueba',
+            'licencia_vencida'        => 'licencia vencida',
+            'grace_expirado'          => 'se acabó la gracia',
+            'vencido_sin_suscripcion' => 'venció sin suscripción',
+            'cobro_recurrente'        => 'cobro recurrente',
+            'cobro_fallido_3_intentos'=> '3 cobros fallidos',
+            'pago_rechazado'          => 'pago rechazado',
+            'preapproval_authorized'  => 'suscripción autorizada',
+            'payment_approved'        => 'pago aprobado',
+            'checkout'                => 'checkout',
+            'pago_reprocesado'        => 'página reabierta',
+        ];
+    ?>
+    <div class="tbl-wrap">
+    <table>
+    <thead>
+    <tr>
+        <th>Fecha</th>
+        <th>Movimiento</th>
+        <th>Antes</th>
+        <th>Después</th>
+        <th>Vence</th>
+        <th>Detalle</th>
+        <th>Origen</th>
+    </tr>
+    </thead>
+    <tbody>
+    <?php foreach ($historial_planes as $h):
+        [$ev_txt, $ev_cls] = $ev_lbl[$h['evento']] ?? [ucfirst(str_replace('_', ' ', $h['evento'])), 'badge-slate'];
+        // Solo el reconstructor marca 'acotado': ahí la fecha es un límite
+        // inferior, no el momento exacto. Se dice, no se disimula.
+        $aprox = ($h['confianza'] ?? '') === 'acotado';
+        $det = [];
+        if (!empty($h['dias']))      $det[] = '+' . (int)$h['dias'] . ' días';
+        if (!empty($h['monto_mxn'])) $det[] = '$' . number_format((float)$h['monto_mxn'], 2) . ' MXN';
+        if (!empty($h['ciclo']))     $det[] = ucfirst($h['ciclo']);
+        if (!empty($h['motivo']))    $det[] = $mot_lbl[$h['motivo']] ?? str_replace('_', ' ', $h['motivo']);
+    ?>
+    <tr>
+        <td>
+            <span class="ago"><?= e(date('d/m/Y H:i', strtotime($h['ocurrio_at']))) ?></span>
+            <?php if ($aprox): ?><span style="color:var(--t3);font-size:11px"> (aprox.)</span><?php endif; ?>
+            <?php if (($h['origen'] ?? '') === 'backfill'): ?>
+            <span class="badge badge-slate" style="font-size:10px"
+                  title="Reconstruido a partir de la evidencia que quedó. Confianza: <?= e($h['confianza']) ?>">reconstruido</span>
+            <?php endif; ?>
+        </td>
+        <td><span class="badge <?= e($ev_cls) ?>"><?= e($ev_txt) ?></span></td>
+        <td>
+            <?php if ($h['plan_anterior']): ?>
+            <span class="badge <?= e($plan_badge[$h['plan_anterior']] ?? 'badge-slate') ?>"><?= e(strtoupper($h['plan_anterior'])) ?></span>
+            <?php else: ?>
+            <span style="color:var(--t3)" title="No quedó registrado en ningún lado">—</span>
+            <?php endif; ?>
+        </td>
+        <td>
+            <?php if ($h['plan_nuevo']): ?>
+            <span class="badge <?= e($plan_badge[$h['plan_nuevo']] ?? 'badge-slate') ?>"><?= e(strtoupper($h['plan_nuevo'])) ?></span>
+            <?php else: ?>
+            <span style="color:var(--t3)" title="No quedó registrado en ningún lado">—</span>
+            <?php endif; ?>
+        </td>
+        <td class="num"><?php
+            // "indefinido" solo cuando de verdad no hay vencimiento (Free).
+            // En una fila reconstruida el vacío significa "no lo sabemos", que
+            // no es lo mismo, y decir "indefinido" ahí sería mentir.
+            if ($h['vence_nuevo']) {
+                echo e(date('d/m/Y', strtotime($h['vence_nuevo'])));
+            } elseif (($h['origen'] ?? '') === 'backfill') {
+                echo '<span style="color:var(--t3)" title="No quedó registrado">—</span>';
+            } else {
+                echo '<span style="color:var(--t3)">indefinido</span>';
+            }
+        ?></td>
+        <td style="font-size:12px" title="<?= e($h['detalle'] ?? '') ?>"><?= e(implode(' · ', $det)) ?></td>
+        <td style="font-size:12px">
+            <?php if (!empty($h['usuario_nombre'])): ?>
+                <?= e($h['usuario_nombre']) ?>
+            <?php else: ?>
+                <span class="badge badge-slate"><?= e($or_lbl[$h['origen']] ?? $h['origen']) ?></span>
+            <?php endif; ?>
+        </td>
+    </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    <div style="font-size:12px;color:var(--t3);margin-top:8px;line-height:1.5">
+        Cada movimiento de plan: alta, activación manual, renovación, cambio de paquete, cobro de
+        MercadoPago, período de gracia y baja a Free.
+        <?php if (count($historial_planes) >= 60): ?>Se muestran los 60 más recientes.<?php endif; ?>
+        Un guion en «Antes» o «Después» significa que ese dato no quedó registrado — no que fuera Free.
+    </div>
+    <?php elseif (!$plan_log_ok): ?>
+    <div style="color:var(--t3);font-size:13px">
+        La bitácora de planes aún no está instalada en este servidor. Correr <code>migrations/add_plan_log.sql</code>.
+    </div>
+    <?php else: ?>
+    <div style="color:var(--t3);font-size:13px">
+        Sin movimientos registrados. La bitácora empieza a llenarse a partir de su instalación;
+        los cambios de plan anteriores no quedaron guardados en ningún lado
+        (la tabla <code>empresas</code> solo conserva el estado actual).
     </div>
     <?php endif; ?>
 </div>
