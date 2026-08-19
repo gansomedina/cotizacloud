@@ -470,6 +470,41 @@ function planes_ajustar_asientos(int $empresa_id): void
 // (queda solo el admin más antiguo — sin esto un trial de Pro con 10 usuarios
 // quedaba multiusuario gratis para siempre: el login no valida plan).
 // trial_usado=1 SOLO si la empresa jamás tuvo un pago aprobado.
+// ─── mp_vence_tras_pago ─────────────────────────────────────
+// Hasta cuándo queda vigente el plan después de un pago de MercadoPago.
+//
+// EXISTE PARA CERRAR UNA FUGA DE DINERO. api/mp_return.php es la back_url del
+// checkout (MercadoPago.php:83-85): el cliente aterriza ahí al pagar. Extendía
+// plan_vence tomando como base el vencimiento ACTUAL si estaba en el futuro,
+// SIN mirar si ese pago ya se había procesado. Recargar la página con F5
+// —o que MercadoPago repita el redirect— sumaba otros 30 días. Cada recarga,
+// un mes gratis. El guard que existía ($ya_registrado) protegía únicamente el
+// INSERT en pagos_suscripcion, no este cálculo.
+//
+// El webhook (MercadoPago::procesarPago) NO tiene el problema: ahí el INSERT
+// en pagos_suscripcion va primero y mp_payment_id es UNIQUE
+// (migrations/add_suscripciones.sql:27), así que un aviso repetido revienta
+// antes de llegar al UPDATE y api/mp_webhook.php:69 lo atrapa.
+//
+// Vive en Helpers.php —y no dentro de mp_return.php— para poder probarla:
+// ese archivo corre de arriba abajo y no se puede cargar suelto.
+function mp_vence_tras_pago(?string $vence_actual, int $dias, bool $ya_registrado): string
+{
+    $hoy = date('Y-m-d');
+
+    // Pago ya procesado: la extensión ya se aplicó en su momento (INSERT del
+    // pago y UPDATE de empresas viven en la MISMA transacción, así que si uno
+    // pasó el otro también). Respetar la fecha que hay.
+    // Se exige $vence_actual no vacío: si por lo que sea quedó en NULL, vale
+    // más recalcular que dejar al cliente pagado y sin vigencia.
+    if ($ya_registrado && $vence_actual) return $vence_actual;
+
+    // Renovación legítima: si aún le queda vigencia, los días nuevos se suman
+    // a lo que tiene, no se los comen.
+    $base = ($vence_actual && $vence_actual >= $hoy) ? $vence_actual : $hoy;
+    return date('Y-m-d', strtotime($base . " +{$dias} days"));
+}
+
 // ─── planes_log ─────────────────────────────────────────────
 // Bitácora de movimientos de plan (tabla plan_log). Sin esto, la tabla
 // empresas solo guarda el ESTADO ACTUAL: cada cambio pisa al anterior y no

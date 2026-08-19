@@ -80,9 +80,13 @@ try {
     $ya_registrado = DB::row("SELECT id FROM pagos_suscripcion WHERE mp_payment_id=?", [$datos['payment_id']]);
     $sub = DB::row("SELECT id FROM suscripciones WHERE empresa_id=?", [$empresa_id]);
 
+    // Esta página es la back_url del checkout: el cliente puede recargarla, y
+    // MercadoPago puede repetir el redirect. Sin mirar $ya_registrado, cada
+    // recarga sumaba otros 30 días de vigencia gratis (y empujaba el próximo
+    // cobro con ellos). La regla vive en mp_vence_tras_pago() para poder
+    // probarla — ver tools/test_mp_vence.php.
     $vence_actual = DB::val("SELECT plan_vence FROM empresas WHERE id=?", [$empresa_id]);
-    $base  = ($vence_actual && $vence_actual >= date('Y-m-d')) ? $vence_actual : date('Y-m-d');
-    $vence = date('Y-m-d', strtotime($base . " +{$dias} days"));
+    $vence = mp_vence_tras_pago($vence_actual, $dias, (bool)$ya_registrado);
     $prox_cobro = $vence;
 
     if ($sub) {
