@@ -85,6 +85,17 @@ if ($device_sig_post !== '' && $cur_token !== '') {
 }
 
 // Registrar las 3 señales: visitor_id + IP + (device_sig ya guardado arriba)
+//
+// $emp_marcar SE DEFINE ANTES DEL if, no dentro del else. Estaba solo en la
+// rama de no-superadmin y más abajo se usa en código COMÚN (el payload del
+// bridge): al superadmin le llegaba null y array_values(null) es TypeError
+// fatal en PHP 8 — sin handler que lo atrape, o sea login en blanco para el
+// operador del sistema. Reproducido antes de corregir.
+//
+// Para el superadmin queda con su empresa de sesión: su cobertura real la da
+// la rama de abajo, que lo marca en TODAS las empresas activas.
+$emp_marcar = [(int)$emp['id'] => (int)$emp['id']];
+
 if ($es_super) {
     $todas = DB::query("SELECT id FROM empresas WHERE activa = 1 AND slug != '_system'");
     if ($todas) foreach ($todas as $te) {
@@ -92,15 +103,14 @@ if ($es_super) {
         Radar::aprender_ip_radar((int)$te['id'], $ip_login);
     }
 } else {
-    // Su propia empresa, siempre. Y si es un SUPERVISOR multi-sucursal,
-    // también las sucursales que supervisa: su trabajo es revisar cotizaciones
-    // ajenas, y el Escudo trabaja por empresa (Radar::es_visitor_interno filtra
+    // Si es un SUPERVISOR multi-sucursal, se suman las sucursales que
+    // supervisa: su trabajo es revisar cotizaciones ajenas, y el Escudo
+    // trabaja por empresa (Radar::es_visitor_interno filtra
     // por empresa_id). Sin esto, cada slug que abriera de otra sucursal contaba
     // como VISITA DE CLIENTE: subía visitas, volteaba enviada→vista, movía
     // buckets y disparaba push. Su sesión tampoco lo salva — la Capa 0 exige
     // que la empresa de la sesión sea la del host (core/Auth.php:220) y la suya
     // es otra.
-    $emp_marcar = [(int)$emp['id'] => (int)$emp['id']];
     if (function_exists('supervisor_empresas')) {
         foreach (supervisor_empresas() as $se) $emp_marcar[(int)$se] = (int)$se;
     }

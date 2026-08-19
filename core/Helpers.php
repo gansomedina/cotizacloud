@@ -519,13 +519,26 @@ function supervisor_empresas(): array
 
     $u = Auth::usuario();
     $email = strtolower(trim((string)($u['email'] ?? '')));
-    if ($email === '') return [];
+    $uid   = (int)($u['id'] ?? 0);
+    if ($email === '' || $uid <= 0) return [];
 
     $cfg = supervisores_config();
     // Comparación normalizada: un correo con mayúsculas en el JSON no debe
     // dejar a alguien fuera de su propio acceso.
     foreach ($cfg as $k => $v) {
         if (strtolower(trim((string)$k)) !== $email) continue;
+
+        // EL CORREO NO ES IDENTIDAD. La unicidad de usuarios.email es POR
+        // EMPRESA (modules/config/usuario.php:94 y :139 comparan
+        // "empresa_id=? AND email=?"). O sea: el admin de CUALQUIER otro
+        // cliente del SaaS puede dar de alta en SU empresa un usuario con este
+        // mismo correo, ponerle la contraseña que quiera, entrar y quedarse
+        // viendo estas sucursales. El id de usuario sí es único global e
+        // inmutable, así que se exige y tiene que coincidir.
+        // Sin usuario_id en el archivo NO hay acceso: el default es negar.
+        $cfg_uid = (int)($v['usuario_id'] ?? 0);
+        if ($cfg_uid <= 0 || $cfg_uid !== $uid) return [];
+
         $ids = [];
         foreach ((array)($v['empresas'] ?? []) as $n) {
             $n = (int)$n;

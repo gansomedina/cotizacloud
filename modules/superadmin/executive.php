@@ -1317,6 +1317,16 @@ $hist_total = array_sum($hist_values);
 // OJO: vars con prefijo rt_ para NO pisar $trend (datos de la gráfica de
 // ingresos, líneas 374/2112) ni otras variables de esta página.
 $rt_todas = RitmoAsesor::todas();
+// todas() barre TODAS las empresas con mesa_activa>=1 (core/RitmoAsesor.php:82)
+// — correcto para el superadmin, fuga para el supervisor: le mostraba asesores
+// de clientes que no supervisa. Este bloque quedó fuera de los nueve gates de
+// $modo_supervisor de arriba porque no se recorta, se FILTRA.
+if ($modo_supervisor) {
+    $rt_todas = array_values(array_filter(
+        $rt_todas,
+        fn($g) => isset($empresas_cfg[(int)$g['empresa_id']])
+    ));
+}
 $rt_alertas = 0;
 foreach ($rt_todas as $rt_g) foreach ($rt_g['asesores'] as $rt_f)
     if ($rt_f['semaforo'] === 'rojo' || $rt_f['semaforo'] === 'amarillo') $rt_alertas++;
