@@ -205,6 +205,11 @@ class Router
         self::post('/radar/descartar-comp',  fn()   => self::app('radar',       'descartar_comp'));
 
         // ── Super Admin ──────────────────────────────────
+        // Supervisor multi-sucursal — panel propio, NO cuelga de superadmin()
+        self::get('/supervisor',                     fn()   => redirect('/supervisor/ejecutivo'));
+        self::get('/supervisor/ejecutivo',           fn()   => self::supervisor('index'));
+        self::get('/supervisor/mesas',               fn()   => self::supervisor('mesas'));
+
         self::get('/superadmin',                     fn()   => self::superadmin('index'));
         self::get('/superadmin/executive',            fn()   => self::superadmin('executive'));
         self::get('/superadmin/soporte',              fn()   => self::superadmin('soporte'));
@@ -319,6 +324,20 @@ class Router
         Auth::requerir_login('/login');
 
         $file = MODULES_PATH . '/' . $modulo . '/' . $accion . '.php';
+        if (!file_exists($file)) self::not_found();
+
+        extract($params);
+        require $file;
+    }
+
+    // Módulo supervisor (requiere rol supervisor CON sucursales asignadas).
+    // Deliberadamente SEPARADO de superadmin(): así los 12 archivos del panel
+    // de superadmin siguen rechazando al supervisor sin tocar ninguno.
+    private static function supervisor(string $accion, array $params = []): void
+    {
+        supervisor_requerir();
+
+        $file = MODULES_PATH . '/supervisor/' . $accion . '.php';
         if (!file_exists($file)) self::not_found();
 
         extract($params);

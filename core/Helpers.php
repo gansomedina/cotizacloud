@@ -470,6 +470,109 @@ function planes_ajustar_asientos(int $empresa_id): void
 // (queda solo el admin más antiguo — sin esto un trial de Pro con 10 usuarios
 // quedaba multiusuario gratis para siempre: el login no valida plan).
 // trial_usado=1 SOLO si la empresa jamás tuvo un pago aprobado.
+// ─── SUPERVISOR MULTI-SUCURSAL ──────────────────────────────
+// Un supervisor de asesores que ve el Ejecutivo y las Mesas de VARIAS
+// sucursales, sin ser superadmin (que vería TODOS los tenants, podría
+// impersonar cualquier empresa y tocar planes y cobros).
+//
+// SIN TOCAR LA BASE DE DATOS, a propósito: el alcance vive en
+// data/supervisores.json, no en una columna nueva. Razones:
+//   · Es la necesidad de UN usuario, no un feature del producto. Meterle un
+//     rol y una columna al esquema multi-tenant por eso es caro y permanente.
+//   · El repo ya usa este patrón: executive.php lee data/equilibrio.json.
+//   · El deploy NO sincroniza data/ (ver .cpanel.yml y deploy-cotizacloud.sh),
+//     así que el archivo no se pisa en cada despliegue ni viaja en git.
+//   · Quitarle el acceso = borrar una línea del JSON. Sin migración, sin
+//     esperar deploy.
+//
+// El usuario del supervisor es un usuario NORMAL de la empresa '_system'
+// (un INSERT, que es dato y no esquema). Ahí no tiene datos de nadie: es una
+// empresa vacía. Lo que le da acceso a /supervisor es estar en el JSON.
+//
+// Formato de data/supervisores.json:
+//   { "correo@ejemplo.com": { "nombre": "Quien sea", "empresas": [12,13,14,2] } }
+
+function supervisores_config(): array
+{
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    $f = dirname(__DIR__) . '/data/supervisores.json';
+    if (!is_file($f)) return $cache = [];
+    $j = json_decode((string)file_get_contents($f), true);
+    return $cache = is_array($j) ? $j : [];
+}
+
+/**
+ * FUENTE ÚNICA del alcance de un supervisor. Todo lo que le muestre datos
+ * DEBE filtrar por esto: si dos pantallas resuelven el alcance por su cuenta,
+ * tarde o temprano una deja pasar una empresa que no le toca.
+ *
+ * Devuelve [] para cualquiera que no esté en el archivo — sin alcance
+ * explícito no ve nada, que es el default seguro.
+ */
+function supervisor_empresas(): array
+{
+    if (!class_exists('Auth') || !Auth::logueado()) return [];
+    // El superadmin NO entra por aquí: tiene su propio panel y su propio
+    // ejecutivo sin recortes. Mezclarlos solo confunde los guards.
+    if (Auth::es_superadmin()) return [];
+
+    $u = Auth::usuario();
+    $email = strtolower(trim((string)($u['email'] ?? '')));
+    if ($email === '') return [];
+
+    $cfg = supervisores_config();
+    // Comparación normalizada: un correo con mayúsculas en el JSON no debe
+    // dejar a alguien fuera de su propio acceso.
+    foreach ($cfg as $k => $v) {
+        if (strtolower(trim((string)$k)) !== $email) continue;
+        $ids = [];
+        foreach ((array)($v['empresas'] ?? []) as $n) {
+            $n = (int)$n;
+            if ($n > 0) $ids[$n] = $n; // clave = valor: deduplica solo
+        }
+        return array_values($ids);
+    }
+    return [];
+}
+
+function es_supervisor(): bool
+{
+    return supervisor_empresas() !== [];
+}
+
+/** ¿Este supervisor puede ver datos de esta empresa? */
+function supervisor_ve_empresa(int $empresa_id): bool
+{
+    return in_array($empresa_id, supervisor_empresas(), true);
+}
+
+// Middleware: exige supervisor CON sucursales asignadas.
+// No usa Auth::acceso_denegado() porque es privado, y el punto de todo esto es
+// NO tocar Auth.php. Hace lo mismo que aquella: 403 y fuera.
+function supervisor_requerir(): void
+{
+    Auth::requerir_login();
+    if (es_supervisor()) return;
+    http_response_code(403);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
+       . '<meta name="viewport" content="width=device-width,initial-scale=1">'
+       . '<title>Acceso denegado</title></head>'
+       . '<body style="font-family:system-ui,sans-serif;background:#f7f7f5;display:flex;'
+       . 'align-items:center;justify-content:center;min-height:100vh;margin:0">'
+       . '<div style="background:#fff;border:1px solid #e5e5e3;border-radius:16px;'
+       . 'padding:40px 32px;max-width:420px;text-align:center">'
+       . '<div style="font-size:32px;margin-bottom:12px">🔒</div>'
+       . '<h1 style="font-size:20px;color:#1a1a18;margin:0 0 8px">Acceso denegado</h1>'
+       . '<p style="font-size:14px;color:#6b7280;line-height:1.6;margin:0 0 20px">'
+       . 'Esta sección es solo para supervisores con sucursales asignadas.</p>'
+       . '<a href="/dashboard" style="display:inline-block;padding:11px 22px;border-radius:10px;'
+       . 'background:#1a5c38;color:#fff;text-decoration:none;font-weight:700;font-size:13px">Volver</a>'
+       . '</div></body></html>';
+    exit;
+}
+
 // ─── mp_vence_tras_pago ─────────────────────────────────────
 // Hasta cuándo queda vigente el plan después de un pago de MercadoPago.
 //

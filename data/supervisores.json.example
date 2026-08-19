@@ -1,0 +1,28 @@
+{
+  "_COMENTARIO": [
+    "Supervisores multi-sucursal. Copiar a data/supervisores.json EN EL SERVIDOR",
+    "(el deploy no sincroniza data/, así que este archivo no se pisa ni viaja en git).",
+    "",
+    "La llave es el CORREO del usuario, tal como está en la tabla usuarios.",
+    "'empresas' son los IDs que puede ver. Sin lista, o sin estar en este archivo,",
+    "no ve nada: el default es negar.",
+    "",
+    "Para quitarle el acceso: borrar su bloque. Efecto inmediato, sin migración",
+    "y sin esperar un deploy.",
+    "",
+    "El usuario en sí es un INSERT normal en 'usuarios', de la empresa _system",
+    "(id 4) para que no aparezca en el equipo de ninguna sucursal:",
+    "",
+    "  INSERT INTO usuarios (empresa_id, nombre, usuario, email, password_hash, rol, activo)",
+    "  VALUES (4, 'Nombre Supervisor', 'supervisor', 'correo@ejemplo.com',",
+    "          '$2y$12$...', 'admin', 1);",
+    "",
+    "El hash se genera con: password_hash('la-contraseña', PASSWORD_BCRYPT, ['cost'=>12])",
+    "Entra por /login usando la empresa '_admin' y su propio correo y contraseña."
+  ],
+
+  "correo@ejemplo.com": {
+    "nombre": "Nombre del Supervisor",
+    "empresas": [12, 13, 14, 2]
+  }
+}
