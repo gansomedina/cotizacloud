@@ -16,6 +16,12 @@ if (empty($trial['es_business'])) return;
 // Gate: admin → mesa completa (todas las mesas + reporte + recuperado);
 // asesor → SU mesa, solo si la empresa abrió el rollout (mesa_activa>=1:
 // 0=off, 1=UI asesores, 2=UI+score). La columna puede no existir aún.
+// SOLO LECTURA: lo enciende el panel del supervisor. Mesa::armar() sin este
+// flag ESCRIBE en mesa_vencidos (Mesa.php:687), que alimenta el castigo de
+// Seguimiento — sin él, que un supervisor MIRE la mesa le movería el score al
+// asesor. Por defecto false: el dashboard del dueño se comporta igual que
+// siempre.
+$mesa_ro        = !empty($mesa_solo_lectura);
 $mesa_es_admin  = !empty($es_admin_dash);
 $mesa_ui_asesor = !$mesa_es_admin && ((int)($empresa['mesa_activa'] ?? 0) >= 1);
 if (!$mesa_es_admin && !$mesa_ui_asesor) return;
@@ -60,7 +66,7 @@ if (!$mesa_es_admin) {
 $MESA_EMITIDO = false;
 $mesa_all = []; $mesa_nombres = [];
 foreach ($mesa_vendedores as $mv) {
-    $mesa_all[(int)$mv['id']] = Mesa::armar($empresa_id, (int)$mv['id']);
+    $mesa_all[(int)$mv['id']] = Mesa::armar($empresa_id, (int)$mv['id'], $mesa_ro);
     $mesa_nombres[(int)$mv['id']] = $mv['nombre'];
 }
 $mesa_first = reset($mesa_all);

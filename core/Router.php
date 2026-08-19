@@ -206,8 +206,8 @@ class Router
 
         // ── Super Admin ──────────────────────────────────
         // Supervisor multi-sucursal — panel propio, NO cuelga de superadmin()
-        self::get('/supervisor',                     fn()   => redirect('/supervisor/ejecutivo'));
-        self::get('/supervisor/ejecutivo',           fn()   => self::supervisor('index'));
+        self::get('/supervisor',                     fn()   => self::supervisor('index'));
+        self::get('/supervisor/ejecutivo',           fn()   => self::supervisor('ejecutivo'));
 
         self::get('/superadmin',                     fn()   => self::superadmin('index'));
         self::get('/superadmin/executive',            fn()   => self::superadmin('executive'));
