@@ -149,6 +149,44 @@ class ActividadScore
         catch (\Throwable $e) { return []; }
     }
 
+    /**
+     * Promedio mensual REAL del score por asesor, de score_diario.
+     *
+     * El score vivo es una ventana móvil de 15 días que se sobrescribe: leerlo
+     * hoy no dice cómo estuvo el mes. snapshot_diario() guarda un punto por
+     * asesor por día (la foto más alta del día, decisión CEO) y el promedio de
+     * esos puntos SÍ es el mes.
+     *
+     * Vive aquí, y no copiada en cada pantalla, porque ya la usan el reporte de
+     * la empresa y el panel del supervisor: dos copias del mismo SQL terminan
+     * separándose y mostrando números distintos para el mismo asesor.
+     *
+     * @return array filas [mes, usuario_id, asesor, score_prom, score_min, score_max, dias]
+     *               vacío si la tabla no está migrada (nunca lanza)
+     */
+    public static function promedio_mensual(int $empresa_id, int $meses = 6): array
+    {
+        $meses = max(1, min(36, $meses));
+        try {
+            return DB::query(
+                "SELECT DATE_FORMAT(sd.fecha,'%Y-%m') AS mes,
+                        sd.usuario_id,
+                        u.nombre AS asesor,
+                        ROUND(AVG(sd.score),1) AS score_prom,
+                        MIN(sd.score) AS score_min,
+                        MAX(sd.score) AS score_max,
+                        COUNT(*) AS dias
+                   FROM score_diario sd
+                   JOIN usuarios u ON u.id = sd.usuario_id
+                  WHERE sd.empresa_id = ?
+                    AND sd.fecha >= DATE_SUB(CURDATE(), INTERVAL $meses MONTH)
+                  GROUP BY mes, sd.usuario_id
+                  ORDER BY mes DESC, score_prom DESC",
+                [$empresa_id]
+            );
+        } catch (\Throwable $e) { return []; } // tabla sin migrar
+    }
+
     public static function periodo_efectivo(int $empresa_id): int
     {
         $bench = self::_benchmarks($empresa_id, self::PERIODO);

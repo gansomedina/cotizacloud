@@ -209,6 +209,7 @@ class Router
         self::get('/supervisor',                     fn()   => redirect('/supervisor/ejecutivo'));
         self::get('/supervisor/ejecutivo',           fn()   => self::supervisor('index'));
         self::get('/supervisor/mesas',               fn()   => self::supervisor('mesas'));
+        self::get('/supervisor/scores',              fn()   => self::supervisor('scores'));
 
         self::get('/superadmin',                     fn()   => self::superadmin('index'));
         self::get('/superadmin/executive',            fn()   => self::superadmin('executive'));

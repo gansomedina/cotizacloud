@@ -269,26 +269,12 @@ foreach ($por_asesor as $a) $nombre_asesor[(int)$a['usr_id']] = $a['asesor'];
 // ── Promedio mensual del score APC por asesor (de score_diario) ──
 // El score vivo es una ventana móvil de 15d que se sobrescribe; aquí se
 // promedia el punto diario capturado al abrir el dashboard. Últimos 6 meses.
+// FUENTE ÚNICA: ActividadScore::promedio_mensual. El SQL vivía aquí en línea,
+// pero el panel del supervisor muestra lo mismo — dos copias del mismo query
+// terminan separándose y dando números distintos para el mismo asesor.
 $score_mensual = [];
 if ($es_admin && $es_business_rep) { // score = termómetro = Business
-    try {
-        $score_mensual = DB::query(
-            "SELECT DATE_FORMAT(sd.fecha,'%Y-%m') AS mes,
-                    sd.usuario_id,
-                    u.nombre AS asesor,
-                    ROUND(AVG(sd.score),1) AS score_prom,
-                    MIN(sd.score) AS score_min,
-                    MAX(sd.score) AS score_max,
-                    COUNT(*) AS dias
-             FROM score_diario sd
-             JOIN usuarios u ON u.id = sd.usuario_id
-             WHERE sd.empresa_id = ?
-               AND sd.fecha >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-             GROUP BY mes, sd.usuario_id
-             ORDER BY mes DESC, score_prom DESC",
-            [$empresa_id]
-        );
-    } catch (\Throwable $e) { $score_mensual = []; } // tabla sin migrar
+    $score_mensual = ActividadScore::promedio_mensual($empresa_id, 6);
 }
 
 // ── Candidatos a Descuento Inteligente (pipeline muerto listo para recuperar) ──
