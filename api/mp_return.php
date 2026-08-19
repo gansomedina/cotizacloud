@@ -73,6 +73,8 @@ if (!$plan || !$ciclo) {
 $monto = $datos['transaction_amount'];
 $dias  = $ciclo === 'anual' ? 365 : 30;
 
+$plan_antes = planes_snapshot($empresa_id); // para la bitácora, ANTES de tocar nada
+
 DB::beginTransaction();
 try {
     $ya_registrado = DB::row("SELECT id FROM pagos_suscripcion WHERE mp_payment_id=?", [$datos['payment_id']]);
@@ -142,6 +144,21 @@ try {
     }
 
     DB::commit();
+
+    // Bitácora DESPUÉS del commit y FUERA de la transacción: si el INSERT
+    // fallara dentro, la transacción quedaría inutilizable y el cliente se
+    // quedaría sin plan después de haber pagado. planes_log además nunca lanza.
+    planes_log($empresa_id, 'pago_mp', $plan_antes, [
+        'dias'    => $dias,
+        'ciclo'   => $ciclo,
+        'monto'   => $monto,
+        'ref'     => 'mp_pay:' . $datos['payment_id'],
+        'motivo'  => $ya_registrado ? 'pago_reprocesado' : 'checkout',
+        'forzar'  => true, // una renovación al mismo plan solo mueve la fecha
+        'detalle' => $ya_registrado
+            ? 'El pago ya estaba registrado y la página se volvió a abrir.'
+            : null,
+    ]);
 
     // Ajustar usuarios activos al tope del plan comprado (ej. trial Pro con 3
     // asesores que paga Lite=1 usuario) — auditoría J2

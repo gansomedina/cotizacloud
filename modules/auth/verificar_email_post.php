@@ -164,6 +164,18 @@ try {
     redirect('/registro');
 }
 
+// ─── Bitácora de planes: el alta con su trial ───────────────
+// FUERA de la transacción (ya se hizo commit): si el INSERT de la bitácora
+// fallara dentro, se perdería la cuenta recién creada. planes_log además
+// nunca lanza. 'antes' va null a propósito: no había plan previo.
+planes_log($empresa_id, 'alta', null, [
+    'motivo'      => 'trial_30d',
+    'dias'        => 30,
+    'sin_usuario' => true, // el usuario aún no inicia sesión
+    'forzar'      => true,
+    'detalle'     => 'Alta con prueba de 30 días en plan ' . $plan_elegido . '.',
+]);
+
 // ─── Registrar evidencia de consentimiento (Términos + Privacidad) ──
 // El usuario aceptó en el formulario de registro; aquí ya existen
 // empresa_id y usuario_id reales para atribuir la aceptación.

@@ -74,6 +74,7 @@ foreach ($por_cobrar as $sub) {
              WHERE id=?",
             [$vence, (string)$resp['id'], $sub['id']]
         );
+        $plan_antes = planes_snapshot($empresa_id); // bitácora, ANTES del UPDATE
         try {
             DB::execute(
                 "UPDATE empresas SET plan=?, plan_vence=?, grace_hasta=NULL, activa=1, es_trial=0, trial_usado=0 WHERE id=?",
@@ -94,6 +95,17 @@ foreach ($por_cobrar as $sub) {
                 json_encode(['tipo' => 'renovacion', 'status_detail' => $status_detail]),
             ]
         );
+
+        // El cron corre sin sesión: sin_usuario evita que Auth se consulte.
+        // forzar porque una renovación al mismo plan solo mueve la fecha.
+        planes_log($empresa_id, 'cobro_cron', $plan_antes, [
+            'ciclo'       => $sub['ciclo'] ?? null,
+            'monto'       => (float)$sub['monto_mxn'],
+            'ref'         => 'mp_pay:' . (string)$resp['id'],
+            'motivo'      => 'cobro_recurrente',
+            'sin_usuario' => true,
+            'forzar'      => true,
+        ]);
 
         $cobros_ok++;
         $log("Cobro OK: empresa #{$empresa_id} — nuevo vence {$vence}");
@@ -141,6 +153,14 @@ foreach ($fallidas as $row) {
     if (!$grace_existente) {
         $grace = date('Y-m-d', strtotime('+7 days'));
         DB::execute("UPDATE empresas SET grace_hasta=? WHERE id=?", [$grace, $empresa_id]);
+        // forzar: el plan no cambia, solo se abre la gracia — pero es
+        // exactamente el movimiento que hay que poder ver después.
+        planes_log($empresa_id, 'grace_inicio', planes_snapshot($empresa_id), [
+            'motivo'      => 'cobro_fallido_3_intentos',
+            'sin_usuario' => true,
+            'forzar'      => true,
+            'detalle'     => 'Gracia hasta ' . $grace . '.',
+        ]);
         $log("Grace iniciado: empresa #{$empresa_id} hasta {$grace}");
     }
 }
@@ -156,7 +176,7 @@ $expiradas_grace = DB::query(
 );
 
 foreach ($expiradas_grace as $emp) {
-    planes_degradar_free((int)$emp['id']); // plan=free (usuarios solo se desactivan si es TRIAL)
+    planes_degradar_free((int)$emp['id'], 'grace_expirado'); // plan=free (usuarios solo se desactivan si es TRIAL)
     DB::execute(
         "UPDATE suscripciones SET estado='cancelled', cancel_al_vencer=1, cancelled_at=NOW() WHERE empresa_id=?",
         [$emp['id']]
@@ -193,7 +213,7 @@ foreach ($vencidas_sin_grace as $emp) {
     );
     if ($tiene_sub_activa) continue; // el paso 1 la está cobrando
 
-    planes_degradar_free((int)$emp['id']); // plan=free (usuarios solo se desactivan si es TRIAL)
+    planes_degradar_free((int)$emp['id'], 'vencido_sin_suscripcion'); // plan=free (usuarios solo se desactivan si es TRIAL)
     $log("Degradada a Free (sin suscripción activa): empresa #{$emp['id']}");
 }
 
