@@ -87,8 +87,18 @@ if ($es_super) {
         }
     }
 } else if ($eid > 0) {
-    Radar::marcar_visitor_interno($eid, $vid, 'safari_bridge', $uid, $ip, $ua);
-    Radar::aprender_ip_radar($eid, $ip);
+    // 'eids' (login_post) trae las empresas donde este visitor debe quedar
+    // interno: la suya y, si es supervisor multi-sucursal, las que supervisa.
+    // Viene dentro del payload firmado, así que no es manipulable. Si el token
+    // es viejo y no la trae, se cae al comportamiento de siempre.
+    $eids = array_values(array_unique(array_filter(
+        array_map('intval', (array)($data['eids'] ?? [])), fn($n) => $n > 0
+    )));
+    if (!$eids) $eids = [$eid];
+    foreach ($eids as $ei) {
+        Radar::marcar_visitor_interno($ei, $vid, 'safari_bridge', $uid, $ip, $ua);
+        Radar::aprender_ip_radar($ei, $ip);
+    }
 }
 
 // ── Capturar vid legacy del custom domain ────────────────────

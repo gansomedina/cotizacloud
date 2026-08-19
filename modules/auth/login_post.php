@@ -92,8 +92,22 @@ if ($es_super) {
         Radar::aprender_ip_radar((int)$te['id'], $ip_login);
     }
 } else {
-    Radar::marcar_visitor_interno((int)$emp['id'], $visitor_id_post, 'login', (int)Auth::id(), $ip_login, $ua_login);
-    Radar::aprender_ip_radar((int)$emp['id'], $ip_login);
+    // Su propia empresa, siempre. Y si es un SUPERVISOR multi-sucursal,
+    // también las sucursales que supervisa: su trabajo es revisar cotizaciones
+    // ajenas, y el Escudo trabaja por empresa (Radar::es_visitor_interno filtra
+    // por empresa_id). Sin esto, cada slug que abriera de otra sucursal contaba
+    // como VISITA DE CLIENTE: subía visitas, volteaba enviada→vista, movía
+    // buckets y disparaba push. Su sesión tampoco lo salva — la Capa 0 exige
+    // que la empresa de la sesión sea la del host (core/Auth.php:220) y la suya
+    // es otra.
+    $emp_marcar = [(int)$emp['id'] => (int)$emp['id']];
+    if (function_exists('supervisor_empresas')) {
+        foreach (supervisor_empresas() as $se) $emp_marcar[(int)$se] = (int)$se;
+    }
+    foreach ($emp_marcar as $te) {
+        Radar::marcar_visitor_interno($te, $visitor_id_post, 'login', (int)Auth::id(), $ip_login, $ua_login);
+        Radar::aprender_ip_radar($te, $ip_login);
+    }
 }
 
 // Verificar que las 3 señales se registraron
@@ -130,9 +144,15 @@ if ($visitor_id_post !== '' && !$is_native_app) {
             "SELECT dominio_custom FROM empresas WHERE dominio_custom IS NOT NULL AND dominio_custom != '' AND activa = 1"
         );
     } else {
+        // $emp_marcar viene de arriba: su empresa + las sucursales que
+        // supervisa. En un dominio propio las cookies de .cotiza.cloud NO
+        // viajan, así que sin pasar por el bridge de cada dominio su cz_vid
+        // nunca llega ahí y la Capa 1 queda ciega justo donde más se usa.
+        $ph_dc = implode(',', array_fill(0, count($emp_marcar), '?'));
         $dominios_custom = DB::query(
-            "SELECT dominio_custom FROM empresas WHERE id = ? AND dominio_custom IS NOT NULL AND dominio_custom != '' AND activa = 1",
-            [(int)$emp['id']]
+            "SELECT dominio_custom FROM empresas
+              WHERE id IN ($ph_dc) AND dominio_custom IS NOT NULL AND dominio_custom != '' AND activa = 1",
+            array_values($emp_marcar)
         );
     }
 
@@ -142,6 +162,13 @@ if ($visitor_id_post !== '' && !$is_native_app) {
             'vid'   => $visitor_id_post,
             'uid'   => (int)Auth::id(),
             'eid'   => (int)$emp['id'],
+            // 'eids': las empresas donde este visitor debe quedar marcado como
+            // interno. Para casi todos es solo la suya (igual que 'eid'); para
+            // un SUPERVISOR multi-sucursal, también las que supervisa. Sin esto
+            // el bridge lo marcaba en SU empresa aunque estuviera parado en el
+            // dominio propio de otra sucursal, y la Capa 1 quedaba ciega ahí.
+            // Va dentro del payload firmado con HMAC: no se puede alterar.
+            'eids'  => array_values($emp_marcar),
             'super' => $es_super ? 1 : 0,
             'exp'   => time() + 300,
         ]));
