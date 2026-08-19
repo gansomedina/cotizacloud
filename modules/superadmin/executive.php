@@ -5,7 +5,13 @@
 //  Solo SuperAdmin
 // ============================================================
 defined('COTIZAAPP') or die;
-Auth::requerir_superadmin();
+
+// MODO SUPERVISOR — lo activa modules/supervisor/index.php antes del require.
+// Cada rama tiene su PROPIO guard: nunca se llega aquí sin verificar, ni
+// siquiera si alguien incluyera el archivo por otro camino.
+$modo_supervisor = !empty($modo_supervisor);
+if ($modo_supervisor) { supervisor_requerir(); }
+else                  { Auth::requerir_superadmin(); }
 
 // ─── Empresas monitoreadas ──────────────────────────────────
 $empresas_cfg = [
@@ -15,6 +21,15 @@ $empresas_cfg = [
     2  => ['nombre' => 'Closet Factory','color' => '#f97316', 'short' => 'CF'],
     7  => ['nombre' => 'Granito Depot', 'color' => '#64748b', 'short' => 'GD'],
 ];
+
+// El supervisor solo ve SUS sucursales. El filtro va ANTES de $emp_ids, que
+// es lo que alimenta todos los WHERE de este archivo — así ninguna consulta
+// puede tocar una empresa fuera de su alcance, sin tener que auditar las 123
+// veces que aparece empresa_id más abajo.
+if ($modo_supervisor) {
+    $empresas_cfg = array_intersect_key($empresas_cfg, array_flip($empresas_cfg_ok ?? []));
+    if (!$empresas_cfg) { supervisor_requerir(); } // sin alcance válido → 403
+}
 $emp_ids = implode(',', array_keys($empresas_cfg));
 
 // Metas de equilibrio (archivo JSON, sin BD)
@@ -770,6 +785,7 @@ tbody tr:hover td{background:var(--card-hover)}
     </div>
 </div>
 
+<?php if (!$modo_supervisor): /* oculto al supervisor: Compensación: botones e historial — acción de superadmin */ ?>
 <!-- Botones de compensación -->
 <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">
     <button class="comp-btn" onclick="openComp(12,'OnTime Hermosillo','hermosillo')" style="border-left:3px solid #22c55e">Compensación HMO</button>
@@ -819,7 +835,9 @@ tbody tr:hover td{background:var(--card-hover)}
 </div>
 </div>
 <?php endif; ?>
+<?php endif; /* Compensación: botones e historial — acción de superadmin */ ?>
 
+<?php if (!$modo_supervisor): /* oculto al supervisor: Compensación: modal */ ?>
 <!-- Modal compensación -->
 <div id="compOverlay" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center" onclick="if(event.target===this)closeComp()">
     <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:420px">
@@ -852,6 +870,7 @@ tbody tr:hover td{background:var(--card-hover)}
         </div>
     </div>
 </div>
+<?php endif; /* Compensación: modal */ ?>
 
 <!-- KPIs -->
 <div class="kpi-grid">
@@ -1143,6 +1162,7 @@ $hist_total = array_sum($hist_values);
     </div>
 </div>
 
+<?php if (!$modo_supervisor): /* oculto al supervisor: Pagos de hoy */ ?>
 <!-- Pagos del día -->
 <div class="sec">
     <div class="sec-hdr">
@@ -1172,6 +1192,7 @@ $hist_total = array_sum($hist_values);
     </table>
     </div>
 </div>
+<?php endif; /* Pagos de hoy */ ?>
 
 </div><!-- /grid-2 -->
 
@@ -1181,6 +1202,7 @@ $hist_total = array_sum($hist_values);
 <!-- COLUMNA IZQUIERDA -->
 <div style="display:flex;flex-direction:column;gap:14px">
 
+<?php if (!$modo_supervisor): /* oculto al supervisor: Sin cobrar */ ?>
 <!-- Sin cobrar -->
 <div class="sec" style="margin:0">
     <div class="sec-hdr">
@@ -1214,6 +1236,7 @@ $hist_total = array_sum($hist_values);
     </table>
     </div>
 </div>
+<?php endif; /* Sin cobrar */ ?>
 
 <!-- Sin abrir -->
 <div class="sec" style="margin:0">
@@ -1249,6 +1272,7 @@ $hist_total = array_sum($hist_values);
     </div>
 </div>
 
+<?php if (!$modo_supervisor): /* oculto al supervisor: Ventas con saldo */ ?>
 <!-- Ventas con saldo -->
 <div class="sec" style="margin:0">
     <div class="sec-hdr">
@@ -1282,6 +1306,7 @@ $hist_total = array_sum($hist_values);
     </table>
     </div>
 </div>
+<?php endif; /* Ventas con saldo */ ?>
 
 </div><!-- /col izquierda -->
 
@@ -1572,6 +1597,7 @@ usort($sorted, fn($a,$b) => $b['monto'] <=> $a['monto']);
 
 </div><!-- /grid-3 -->
 
+<?php if (!$modo_supervisor): /* oculto al supervisor: Tabs de Operaciones: pagos / por cobrar / cobradas */ ?>
 <!-- ══ TABS OPERACIONES ══════════════════════════════════════ -->
 <div class="sec">
     <div style="display:flex;gap:4px;margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px;width:fit-content">
@@ -1679,6 +1705,7 @@ usort($sorted, fn($a,$b) => $b['monto'] <=> $a['monto']);
     </div>
     </div>
 </div>
+<?php endif; /* Tabs de Operaciones: pagos / por cobrar / cobradas */ ?>
 
 <!-- ÚLTIMO LOGIN POR ASESOR -->
 <?php
@@ -1741,6 +1768,7 @@ $logins_asesores = DB::query(
     </div>
 </div>
 
+<?php if (!$modo_supervisor): /* oculto al supervisor: Monitor de filtrado */ ?>
 <!-- MONITOR: Sesiones internas no filtradas -->
 <?php
 $fugas = DB::query(
@@ -1793,6 +1821,7 @@ $fugas_limpias = array_filter($fugas, fn($f) => (int)$f['es_interno']);
     <div class="tbl-card" style="padding:24px;text-align:center;color:var(--g);font:600 14px 'Inter',sans-serif">✓ Sin fugas — el filtrado funciona correctamente</div>
     <?php endif; ?>
 </div>
+<?php endif; /* Monitor de filtrado */ ?>
 
 <!-- Alerta Competencia por empresa -->
 <?php
@@ -1864,6 +1893,7 @@ foreach ($empresas_cfg as $eid => $ecfg) {
     <?php endif; ?>
 </div>
 
+<?php if (!$modo_supervisor): /* oculto al supervisor: Comisiones por pagar */ ?>
 <!-- ─── COMISIONES ─────────────────────────────────────────── -->
 <?php
 $total_comi_empresas = count($comi_por_empresa);
@@ -1942,7 +1972,9 @@ $total_comi_rows = $total_comi_abiertas; // solo abiertas (ya excluidas las paga
         <?php endforeach; ?>
     <?php endif; ?>
 </div>
+<?php endif; /* Comisiones por pagar */ ?>
 
+<?php if (!$modo_supervisor): /* oculto al supervisor: Monitor de bots */ ?>
 <!-- Monitor de bots (datacenter) — tras desactivar BOT_IP el 29-may-2026 -->
 <?php
 // Rangos de datacenter/proxy que ANTES bloqueaba BOT_IP. Ahora entran y se
@@ -2043,6 +2075,7 @@ $bot_sospechosos = array_filter($bot_rows, fn($r) => (int)$r['con_engagement'] =
     <div class="tbl-card" style="padding:24px;text-align:center;color:var(--g);font:600 14px 'Inter',sans-serif">✓ Sin tráfico de datacenter en 30 días</div>
     <?php endif; ?>
 </div>
+<?php endif; /* Monitor de bots */ ?>
 
 </div><!-- /wrap -->
 

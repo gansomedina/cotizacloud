@@ -150,6 +150,14 @@ if (Auth::es_superadmin()) {
     $menu[] = ['href' => '/superadmin', 'icon' => 'shield', 'label' => 'Super Admin'];
 }
 
+// Supervisor multi-sucursal: sus dos pantallas. El resto del menú le queda
+// inservible (su usuario vive en la empresa _system, que está vacía), así que
+// estas dos entradas son su navegación real.
+if (function_exists('es_supervisor') && es_supervisor()) {
+    $menu[] = ['href' => '/supervisor/ejecutivo', 'icon' => 'bar-chart-2', 'label' => 'Ejecutivo'];
+    $menu[] = ['href' => '/supervisor/mesas', 'icon' => 'clipboard',   'label' => 'Mesas'];
+}
+
 if (!function_exists('menu_activo')) {
     function menu_activo(string $href, string $path): bool {
         if ($href === '/dashboard') return $path === '/' || $path === '/dashboard';
