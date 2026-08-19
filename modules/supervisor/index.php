@@ -227,14 +227,20 @@ if ($MESA_SHARED) echo $MESA_SHARED . $MESA_ASSETS;
       <?= $pill($f['venc_estado'],  'Seguimiento', $f['venc_txt']) ?>
       <?= $pill($f['cont_estado'],  'Contacto',    $f['cont_txt']) ?>
       <div style="font:600 12.5px var(--body);color:<?= $f['semaforo'] === 'verde' ? 'var(--t3)' : $c ?>;margin-top:6px">→ <?= e($f['motivo']) ?></div>
-      <?php
-      // La mesa de ESTE asesor, justo bajo sus pilares — igual que en el
-      // dashboard del dueño, donde va bajo su tip en el ranking.
-      $mu = (int)$f['usuario_id'];
-      if (!empty($MESA_BLOQUES[$mu])) { echo $MESA_BLOQUES[$mu]; unset($MESA_BLOQUES[$mu]); }
-      ?>
     </div>
   </div>
+  <?php
+  // La mesa de ESTE asesor va FUERA de la fila de pilares y al nivel de la
+  // tarjeta, exactamente como en el dashboard del dueño (index.php:1173, donde
+  // se emite después de cerrar el <div> de su fila del ranking).
+  //
+  // Meterla DENTRO del div de los pilares la metía en un flex con su propio
+  // padding: el .mstrip ya trae padding-left:52px pensado para el ancho de la
+  // tarjeta, así que se comprimía y el "tap para expandir" —que va con
+  // margin-left:auto al final del <summary>— se caía a una segunda línea.
+  $mu = (int)$f['usuario_id'];
+  if (!empty($MESA_BLOQUES[$mu])) { echo $MESA_BLOQUES[$mu]; unset($MESA_BLOQUES[$mu]); }
+  ?>
   <?php endforeach; ?>
   <?php // Asesores con mesa pero sin fila de pilares (sin cartera para el Ritmo)
   if (!empty($MESA_BLOQUES)): foreach ($MESA_BLOQUES as $mb): ?>
