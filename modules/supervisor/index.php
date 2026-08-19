@@ -144,6 +144,118 @@ uasort($sc, function ($a, $b) {
     return $pb <=> $pa;
 });
 
+// ── Período para el comparativo y el Descuento Inteligente ──
+// Mismos rangos que modules/reportes/index.php (líneas 28-71), incluida la
+// zona horaria: si el supervisor y el dueño no miden el mismo mes, comparar
+// sus pantallas es imposible.
+$sv_now = new DateTimeImmutable('now', new DateTimeZone('America/Hermosillo'));
+$sv_per = $_GET['per'] ?? 'mes_actual';
+switch ($sv_per) {
+    case 'mes_ant':
+        $sv_ini = $sv_now->modify('first day of last month')->format('Y-m-d');
+        $sv_fin = $sv_now->modify('last day of last month')->format('Y-m-d');
+        $sv_per_lbl = 'Mes anterior'; break;
+    case '90_dias':
+        $sv_ini = $sv_now->modify('-89 days')->format('Y-m-d');
+        $sv_fin = $sv_now->format('Y-m-d');
+        $sv_per_lbl = 'Últimos 90 días'; break;
+    case '12_meses':
+        $sv_ini = $sv_now->modify('-11 months')->modify('first day of this month')->format('Y-m-d');
+        $sv_fin = $sv_now->format('Y-m-d');
+        $sv_per_lbl = 'Últimos 12 meses'; break;
+    default:
+        $sv_per = 'mes_actual';
+        $sv_ini = $sv_now->format('Y-m') . '-01';
+        $sv_fin = $sv_now->format('Y-m-d');
+        $sv_per_lbl = 'Mes actual';
+}
+$sv_ini_dt = $sv_ini . ' 00:00:00';
+$sv_fin_dt = $sv_fin . ' 23:59:59';
+
+// ── Comparativo detallado por asesor ────────────────────────
+// Espeja la consulta de reportes/index.php:196 PERO SIN la parte de costos:
+// el CEO pidió cotizaciones, % de conversión, número de ventas e ingresos —
+// gastos y margen NO se le muestran al supervisor. Por eso también desaparece
+// el JOIN con gastos_venta.
+// OJO AL MANTENER: si allá cambia cómo se cuenta una "aceptada", hay que
+// cambiarlo aquí. La condición es la misma: estado aceptada/convertida CON
+// venta pagada (pagado > 0), contada por aceptada_at.
+$sv_asesores = [];
+if ($sel) {
+    try {
+        $sv_asesores = DB::query(
+            "SELECT u.nombre AS asesor, u.id AS usr_id,
+                    COALESCE(sv.num_ventas, 0) AS num_ventas,
+                    COALESCE(sv.ingresos, 0)   AS ingresos,
+                    COALESCE(sc.num_cots, 0)   AS num_cots,
+                    COALESCE(sa.aceptadas, 0)  AS aceptadas
+               FROM usuarios u
+               LEFT JOIN (
+                   SELECT COALESCE(v.vendedor_id, v.usuario_id) AS vid,
+                          COUNT(*) AS num_ventas, SUM(v.total) AS ingresos
+                     FROM ventas v
+                    WHERE v.empresa_id=? AND v.estado != 'cancelada'
+                      AND v.created_at BETWEEN ? AND ?
+                    GROUP BY vid
+               ) sv ON sv.vid = u.id
+               LEFT JOIN (
+                   SELECT COALESCE(c.vendedor_id, c.usuario_id) AS vid, COUNT(*) AS num_cots
+                     FROM cotizaciones c
+                    WHERE c.empresa_id=? AND c.created_at BETWEEN ? AND ?
+                    GROUP BY vid
+               ) sc ON sc.vid = u.id
+               LEFT JOIN (
+                   SELECT COALESCE(c.vendedor_id, c.usuario_id) AS vid, COUNT(*) AS aceptadas
+                     FROM cotizaciones c
+                    WHERE c.empresa_id=? AND estado IN ('aceptada','convertida')
+                      AND aceptada_at BETWEEN ? AND ?
+                      AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = c.id
+                                    AND v.pagado > 0 AND v.estado != 'cancelada')
+                    GROUP BY vid
+               ) sa ON sa.vid = u.id
+              WHERE u.empresa_id=? AND u.activo=1
+              ORDER BY ingresos DESC",
+            [$sel, $sv_ini_dt, $sv_fin_dt,
+             $sel, $sv_ini_dt, $sv_fin_dt,
+             $sel, $sv_ini_dt, $sv_fin_dt,
+             $sel]
+        );
+    } catch (Throwable $e) { $sv_asesores = []; }
+}
+// Fuera los que no tuvieron NADA en el período: una lista de ceros no informa.
+$sv_asesores = array_values(array_filter($sv_asesores,
+    fn($a) => (int)$a['num_cots'] > 0 || (int)$a['num_ventas'] > 0));
+
+// ── Descuento Inteligente por asesor ────────────────────────
+// Espeja reportes/index.php:251. El DI dispara sobre la cotización del asesor
+// pero la venta la cierra el vendedor virtual "DI": aquí se ve, por asesor,
+// cuánto negocio muerto recuperó el sistema.
+$sv_di = [];
+if ($sel) {
+    try {
+        $sv_di = DB::query(
+            "SELECT COALESCE(c.vendedor_id, c.usuario_id) AS vid,
+                    COUNT(*) AS ofrecidos,
+                    SUM(di.estado='utilizado') AS cerrados,
+                    SUM(CASE WHEN di.estado='utilizado' THEN di.nuevo_total ELSE 0 END) AS recuperado,
+                    SUM(CASE WHEN di.estado='utilizado' THEN di.monto_desc  ELSE 0 END) AS descontado
+               FROM desc_int_activaciones di
+               JOIN cotizaciones c ON c.id = di.cotizacion_id
+              WHERE di.empresa_id = ? AND di.created_at BETWEEN ? AND ?
+              GROUP BY vid",
+            [$sel, $sv_ini_dt, $sv_fin_dt]
+        );
+    } catch (Throwable $e) { $sv_di = []; } // tabla sin migrar
+}
+usort($sv_di, fn($x, $y) => (float)$y['recuperado'] <=> (float)$x['recuperado']);
+
+// Nombre por id de vendedor, para la tabla del DI
+$sv_nom = [];
+foreach ($sv_asesores as $a) $sv_nom[(int)$a['usr_id']] = $a['asesor'];
+
+$sv_mny = fn(float $n): string => '$' . number_format($n, 0, '.', ',');
+$sv_pct = fn(float $n): string => number_format($n, 1) . '%';
+
 $colmap = ['rojo' => '#dc2626', 'amarillo' => '#d97706', 'verde' => '#16a34a'];
 $n_alerta = count(array_filter($filas, fn($x) => $x['semaforo'] !== 'verde'));
 
@@ -182,6 +294,8 @@ ob_start();
 .sv-tb td{font:400 13px var(--body);padding:10px 14px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
 .sv-tb td:first-child{text-align:left;font-weight:600;color:var(--text)}
 .sv-tb tr:last-child td{border-bottom:none}
+.sv-tb td.mono{font-variant-numeric:tabular-nums}
+.sv-tb tfoot td{border-top:2px solid var(--border);border-bottom:none}
 </style>
 
 <div class="svt">
@@ -298,6 +412,108 @@ if ($MESA_SHARED) echo $MESA_SHARED . $MESA_ASSETS;
     El score del termómetro es una ventana móvil de 15 días que se sobrescribe; esto es el promedio
     de los puntos diarios, que sí es el mes. Bajo cada número, el rango (mínimo–máximo) y los días
     con registro: pocos días = promedio menos confiable.
+</div>
+<?php endif; ?>
+
+
+<!-- ── Comparativo detallado por asesor ── -->
+<div class="slabel">Comparativo detallado · <?= e($sv_per_lbl) ?>
+  <span style="font-weight:400;font-size:11px;color:var(--t3)">
+    <?= e(date('d/m/Y', strtotime($sv_ini))) ?> – <?= e(date('d/m/Y', strtotime($sv_fin))) ?>
+  </span>
+</div>
+
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+  <?php foreach (['mes_actual'=>'Mes actual','mes_ant'=>'Mes anterior','90_dias'=>'90 días','12_meses'=>'12 meses'] as $pk => $pl): ?>
+  <a href="/supervisor?emp=<?= $sel ?>&per=<?= $pk ?>"
+     style="padding:5px 12px;border-radius:7px;text-decoration:none;font:700 11.5px var(--body);
+            <?= $sv_per === $pk ? 'background:var(--white);border:1px solid var(--border);color:var(--text)' : 'color:var(--t3);border:1px solid transparent' ?>"><?= $pl ?></a>
+  <?php endforeach; ?>
+</div>
+
+<?php if (!$sv_asesores): ?>
+<div class="sv-vac">Sin cotizaciones ni ventas de asesores en este período.</div>
+<?php else: ?>
+<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:auto;box-shadow:var(--sh);margin-bottom:16px">
+<table class="sv-tb">
+<thead><tr>
+  <th>Asesor</th><th>Cotizaciones</th><th>Conversión</th><th>Ventas</th><th>Ingresos</th>
+</tr></thead>
+<tbody>
+<?php
+  $sv_t_cot = 0; $sv_t_ace = 0; $sv_t_ven = 0; $sv_t_ing = 0.0;
+  foreach ($sv_asesores as $a):
+    $a_cot = (int)$a['num_cots']; $a_ace = (int)$a['aceptadas'];
+    $a_ven = (int)$a['num_ventas']; $a_ing = (float)$a['ingresos'];
+    $a_tc  = $a_cot > 0 ? round($a_ace / $a_cot * 100, 1) : 0;
+    $sv_t_cot += $a_cot; $sv_t_ace += $a_ace; $sv_t_ven += $a_ven; $sv_t_ing += $a_ing;
+?>
+<tr>
+  <td><?= e($a['asesor']) ?></td>
+  <td class="mono"><?= $a_cot ?></td>
+  <td class="mono"><?= $sv_pct($a_tc) ?>
+    <div style="font:400 10px var(--body);color:var(--t3)"><?= $a_ace ?> cerrada<?= $a_ace === 1 ? '' : 's' ?></div></td>
+  <td class="mono"><?= $a_ven ?></td>
+  <td class="mono" style="color:var(--g);font-weight:700"><?= $sv_mny($a_ing) ?></td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+<tfoot>
+<tr style="border-top:2px solid var(--border);font-weight:700">
+  <td>Total</td>
+  <td class="mono"><?= $sv_t_cot ?></td>
+  <td class="mono"><?= $sv_pct($sv_t_cot > 0 ? round($sv_t_ace / $sv_t_cot * 100, 1) : 0) ?></td>
+  <td class="mono"><?= $sv_t_ven ?></td>
+  <td class="mono" style="color:var(--g)"><?= $sv_mny($sv_t_ing) ?></td>
+</tr>
+</tfoot>
+</table>
+</div>
+<div style="font:400 11.5px var(--body);color:var(--t3);line-height:1.55;margin-bottom:16px">
+  Conversión = cotizaciones aceptadas <strong>con pago real</strong> sobre las creadas en el período.
+  Una aceptada sin un solo abono no cuenta, que es el mismo criterio del reporte del dueño.
+</div>
+<?php endif; ?>
+
+<!-- ── Descuento Inteligente ── -->
+<?php if ($sv_di): ?>
+<div class="slabel">✨ Descuento Inteligente
+  <span style="font-weight:400;font-size:11px;color:var(--t3);text-transform:none">ventas que recuperó el sistema — no cuentan al termómetro del asesor</span>
+</div>
+<div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:auto;box-shadow:var(--sh);margin-bottom:16px">
+<table class="sv-tb">
+<thead><tr>
+  <th>Asesor</th><th>Ofrecidos</th><th>Cerrados</th><th>Tasa</th><th>Recuperado</th><th>Descuento dado</th>
+</tr></thead>
+<tbody>
+<?php
+  $d_of = 0; $d_ce = 0; $d_re = 0.0; $d_ds = 0.0;
+  foreach ($sv_di as $d):
+    $of = (int)$d['ofrecidos']; $ce = (int)$d['cerrados'];
+    $re = (float)$d['recuperado']; $ds = (float)$d['descontado'];
+    $d_of += $of; $d_ce += $ce; $d_re += $re; $d_ds += $ds;
+?>
+<tr>
+  <td><?= e($sv_nom[(int)$d['vid']] ?? '—') ?></td>
+  <td class="mono"><?= $of ?></td>
+  <td class="mono" style="color:var(--g)"><?= $ce ?></td>
+  <td class="mono"><?= $sv_pct($of > 0 ? round($ce / $of * 100, 1) : 0) ?></td>
+  <td class="mono" style="color:var(--g);font-weight:700"><?= $sv_mny($re) ?></td>
+  <td class="mono" style="color:#b45309"><?= $sv_mny($ds) ?></td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+<tfoot>
+<tr style="border-top:2px solid var(--border);font-weight:700">
+  <td>Total</td>
+  <td class="mono"><?= $d_of ?></td>
+  <td class="mono" style="color:var(--g)"><?= $d_ce ?></td>
+  <td class="mono"><?= $sv_pct($d_of > 0 ? round($d_ce / $d_of * 100, 1) : 0) ?></td>
+  <td class="mono" style="color:var(--g)"><?= $sv_mny($d_re) ?></td>
+  <td class="mono" style="color:#b45309"><?= $sv_mny($d_ds) ?></td>
+</tr>
+</tfoot>
+</table>
 </div>
 <?php endif; ?>
 
