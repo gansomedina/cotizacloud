@@ -156,6 +156,7 @@ if (Auth::es_superadmin()) {
 if (function_exists('es_supervisor') && es_supervisor()) {
     $menu[] = ['href' => '/supervisor/ejecutivo', 'icon' => 'bar-chart-2', 'label' => 'Ejecutivo'];
     $menu[] = ['href' => '/supervisor/mesas', 'icon' => 'clipboard',   'label' => 'Mesas'];
+    $menu[] = ['href' => '/supervisor/scores','icon' => 'trending-up', 'label' => 'Score mensual'];
 }
 
 if (!function_exists('menu_activo')) {
