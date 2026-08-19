@@ -73,8 +73,51 @@ if ($sel) {
 $es_admin_dash = true;          // la mesa completa de la sucursal, no la de un asesor
 $empresa_id    = $sel;          // los partials del dashboard leen esta variable
 $trial         = $sel ? trial_info($sel) : [];
-if ($sel && $empresa && $business) {
-    try { include MODULES_PATH . '/dashboard/_mesa.php'; } catch (Throwable $e) {}
+
+// Por qué NO va en un try/catch mudo: si el include falla o sale temprano, la
+// página se veía completa pero SIN mesa, y sin una sola pista de por qué.
+// Aquí se guarda el motivo y se muestra abajo — un fallo silencioso en una
+// herramienta de diagnóstico es peor que ningún diagnóstico.
+$mesa_motivo = '';
+if (!$sel)                 $mesa_motivo = 'sin sucursal seleccionada';
+elseif (!$empresa)         $mesa_motivo = 'no se pudo leer la empresa';
+elseif (!$business)        $mesa_motivo = 'la sucursal no está en plan Business (la Mesa es de ese plan)';
+else {
+    // Las mismas condiciones que _mesa.php evalúa al entrar, comprobadas aquí
+    // para poder DECIR cuál falló en vez de mostrar un hueco.
+    $mesa_vend_n = 0;
+    try {
+        $mesa_vend_n = (int)DB::val(
+            "SELECT COUNT(DISTINCT u.id)
+               FROM usuarios u
+               JOIN cotizaciones c ON COALESCE(c.vendedor_id, c.usuario_id) = u.id
+              WHERE u.empresa_id = ? AND u.activo = 1
+                AND c.empresa_id = ? AND c.estado IN ('enviada','vista') AND c.suspendida = 0",
+            [$sel, $sel]);
+    } catch (Throwable $e) { $mesa_motivo = 'error leyendo asesores: ' . $e->getMessage(); }
+
+    if ($mesa_motivo === '' && $mesa_vend_n === 0) {
+        $mesa_motivo = 'ningún asesor de esta sucursal tiene cotizaciones enviadas o vistas';
+    }
+    if ($mesa_motivo === '') {
+        // El include va en su PROPIO búfer: _mesa.php no debería emitir nada
+        // directo (llena variables), pero esto corre antes del ob_start() de
+        // la página y cualquier salida suelta —hasta un salto de línea tras
+        // un cierre de etiqueta PHP— se colaría delante del DOCTYPE y rompería
+        // el layout sin dejar rastro.
+        ob_start();
+        try {
+            include MODULES_PATH . '/dashboard/_mesa.php';
+        } catch (Throwable $e) {
+            $mesa_motivo = 'la Mesa falló: ' . $e->getMessage();
+            error_log('[Supervisor] _mesa.php falló para empresa ' . $sel . ': ' . $e->getMessage());
+        }
+        $mesa_suelto = trim((string)ob_get_clean());
+        if ($mesa_motivo === '' && $MESA_SHARED === '' && !$MESA_BLOQUES) {
+            $mesa_motivo = 'la Mesa salió temprano por alguna de sus condiciones internas'
+                         . ($mesa_suelto !== '' ? ' — emitió: ' . mb_substr(strip_tags($mesa_suelto), 0, 120) : '');
+        }
+    }
 }
 
 // ── Score mensual de esa sucursal ───────────────────────────
@@ -161,6 +204,12 @@ ob_start();
 // que los bloques de cada asesor, que dependen de él para verse y funcionar.
 if ($MESA_SHARED) echo $MESA_SHARED . $MESA_ASSETS;
 ?>
+<?php if ($mesa_motivo !== ''): ?>
+<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--r);padding:12px 16px;
+            margin-bottom:14px;font:400 12.5px var(--body);color:#9a3412;line-height:1.55">
+    <strong>La Mesa de Trabajo no se está mostrando.</strong> Motivo: <?= e($mesa_motivo) ?>.
+</div>
+<?php endif; ?>
 <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:16px">
   <?php foreach ($filas as $f): $c = $colmap[$f['semaforo']] ?? '#9ca3af'; ?>
   <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border)">
