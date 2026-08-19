@@ -25,7 +25,15 @@ supervisor_requerir();
 
 $sv_ids = supervisor_empresas();
 $ph  = implode(',', array_fill(0, count($sv_ids), '?'));
-$suc = DB::query("SELECT id, nombre FROM empresas WHERE id IN ($ph) ORDER BY nombre", $sv_ids);
+$suc = DB::query("SELECT id, nombre FROM empresas WHERE id IN ($ph)", $sv_ids);
+
+// LAS PESTAÑAS VAN EN EL ORDEN DEL ARCHIVO, no alfabético. Así el orden lo
+// decide data/supervisores.json —hoy [12,13,14,2,7] = Hermosillo, Obregón,
+// Nogales, Closet Factory, Granito— y cambiarlo es reordenar esa lista, sin
+// tocar código ni esperar un deploy.
+// supervisor_empresas() conserva el orden de aparición en el JSON.
+$sv_pos = array_flip($sv_ids);
+usort($suc, fn($a, $b) => ($sv_pos[(int)$a['id']] ?? 99) <=> ($sv_pos[(int)$b['id']] ?? 99));
 
 // Sucursal activa, validada contra SU lista: ?emp=99 cae al default en vez de
 // mostrar datos de una empresa que no supervisa.
