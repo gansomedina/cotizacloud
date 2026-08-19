@@ -26,14 +26,18 @@
 //  correrlo una.
 //
 //  USO:
-//    php tools/backfill_plan_log.php config.php            → simulacro (no escribe)
-//    php tools/backfill_plan_log.php config.php --apply    → escribe
+//    php tools/backfill_plan_log.php config.php                       → simulacro
+//    php tools/backfill_plan_log.php config.php --apply               → escribe
+//    php tools/backfill_plan_log.php config.php --limpiar --apply     → borra lo
+//        reconstruido y lo vuelve a generar (para cuando el reconstructor mejora).
+//        Solo toca filas con origen='backfill'; las filas vivas jamás.
 // ============================================================
 define('COTIZAAPP', 1);
-$args  = array_slice($argv, 1);
-$apply = in_array('--apply', $args, true);
-$cfg   = null;
-foreach ($args as $a) { if ($a !== '--apply') { $cfg = $a; break; } }
+$args   = array_slice($argv, 1);
+$apply  = in_array('--apply', $args, true);
+$limpia = in_array('--limpiar', $args, true);
+$cfg    = null;
+foreach ($args as $a) { if ($a[0] !== '-') { $cfg = $a; break; } }
 $cfg = $cfg ?: '/var/www/cotizacloud/config.php';
 if (!is_file($cfg)) { fwrite(STDERR, "No encuentro config.php en $cfg\n"); exit(1); }
 require $cfg;
@@ -56,6 +60,29 @@ try {
     echo "AVISO: la tabla plan_log todavía no existe. El simulacro corre igual,\n";
     echo "pero hay que crearla antes de aplicar:\n";
     echo "  php tools/migrar_plan_log.php " . $cfg . "\n\n";
+}
+
+// --limpiar: borra SOLO lo reconstruido, para poder regenerarlo cuando el
+// reconstructor mejora. El WHERE origen='backfill' es la garantía: las filas
+// vivas (las que escribió el sistema al pasar de verdad cada cosa) NO se tocan
+// nunca — ésas son irrecuperables y borrarlas sería destruir el historial real.
+if ($limpia) {
+    if (!$apply) {
+        try {
+            $n = (int)DB::val("SELECT COUNT(*) FROM plan_log WHERE origen='backfill'");
+            $v = (int)DB::val("SELECT COUNT(*) FROM plan_log WHERE origen<>'backfill'");
+            echo "--limpiar borraría $n filas reconstruidas. Las $v filas vivas NO se tocan.\n";
+            echo "Agrega --apply para hacerlo.\n\n";
+        } catch (Throwable $e) { echo "No se pudo contar: " . $e->getMessage() . "\n\n"; }
+    } else {
+        try {
+            $n = DB::execute("DELETE FROM plan_log WHERE origen='backfill'");
+            echo "Borradas $n filas reconstruidas. Las filas vivas quedaron intactas.\n\n";
+        } catch (Throwable $e) {
+            fwrite(STDERR, "ERROR al limpiar: " . $e->getMessage() . "\n");
+            exit(1);
+        }
+    }
 }
 
 // Tarifas históricas, para deducir plan y ciclo desde el monto cobrado.
@@ -128,16 +155,22 @@ foreach ($emps as $e) {
     // es_trial=1 SOLO lo escribe el registro, y lo limpian TODOS los caminos
     // que tocan el plan. Si sigue en 1, nadie lo tocó desde el alta → el plan
     // de hoy ES el plan con el que nació. Eso es deducción dura, no adivinanza.
-    $plan_alta = null; $conf = 'inferido'; $nota = 'No consta con qué paquete se dio de alta.';
+    // El motivo 'trial_30d' SOLO si hay evidencia de que hubo prueba. La prueba
+    // de 30 días nació en julio 2026; poner "prueba de 30 días" en el alta de
+    // una empresa de marzo es afirmar algo que no pasó. Sin evidencia, el alta
+    // se registra sin motivo: "Alta de cuenta", a secas.
+    $plan_alta = null; $conf = 'inferido'; $motivo_alta = null;
+    $nota = 'No consta con qué paquete se dio de alta. Anterior al sistema de prueba de 30 días.';
     if ($es_trial === 1) {
-        $plan_alta = $e['plan']; $conf = 'probado';
+        $plan_alta = $e['plan']; $conf = 'probado'; $motivo_alta = 'trial_30d';
         $nota = 'Sigue marcada como prueba: nadie tocó el plan desde el alta.';
     } elseif ($trial_usado === 1) {
+        $motivo_alta = 'trial_30d';
         $nota = 'Tuvo prueba y ya la agotó. El paquete de esa prueba no quedó registrado en ningún lado.';
         $conf = 'probado'; // el HECHO del alta es exacto; el plan es el que va NULL
     }
     meter([
-        'empresa_id' => $eid, 'evento' => 'alta', 'motivo' => 'trial_30d',
+        'empresa_id' => $eid, 'evento' => 'alta', 'motivo' => $motivo_alta,
         'plan_nuevo' => $plan_alta, 'confianza' => $conf,
         'hecho_uid' => "emp_alta:$eid", 'detalle' => $nota,
         'ocurrio_at' => $e['created_at'],
