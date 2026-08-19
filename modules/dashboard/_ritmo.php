@@ -8,30 +8,27 @@
 // ============================================================
 defined('COTIZAAPP') or die;
 
-// $rt_eid permite renderizar el ritmo de OTRA empresa (panel del supervisor
-// multi-sucursal). Sin definirla se comporta igual que siempre.
-$rt_eid = (int)($rt_eid ?? EMPRESA_ID);
-if (!Auth::es_admin() && !(function_exists('es_supervisor') && es_supervisor())) return;
+if (!Auth::es_admin()) return;
 
 $rt_on = false;
-try { $rt_on = (int) DB::val("SELECT mesa_activa FROM empresas WHERE id = ?", [$rt_eid]) >= 1; }
+try { $rt_on = (int) DB::val("SELECT mesa_activa FROM empresas WHERE id = ?", [EMPRESA_ID]) >= 1; }
 catch (Throwable $rt_e) { $rt_on = false; }
 if (!$rt_on) return;
 
-$rt_filas = RitmoAsesor::empresa($rt_eid);
+$rt_filas = RitmoAsesor::empresa(EMPRESA_ID);
 // La ventana REAL de los pilares es 2×p75 del ciclo de la empresa (típico 20d),
 // no "esta semana" como decía el título. Solo el pilar Citas usa 7 días y ya lo
 // dice en su texto.
 $rt_win = 20;
 try {
     if (!class_exists('Radar')) require_once MODULES_PATH . '/radar/Radar.php';
-    $rt_c = Radar::ciclo_venta($rt_eid);
+    $rt_c = Radar::ciclo_venta(EMPRESA_ID);
     if (!empty($rt_c['auto']) && !empty($rt_c['p75'])) $rt_win = 2 * max(3, (int)$rt_c['p75']);
 } catch (Throwable $rt_e2) {}
 if (!$rt_filas) return;
 
 // El botón "Generar reporte" es solo Business (el endpoint también lo exige).
-$rt_business = !empty(trial_info($rt_eid)['es_business']);
+$rt_business = !empty(trial_info(EMPRESA_ID)['es_business']);
 
 $rt_colmap   = ['rojo' => '#dc2626', 'amarillo' => '#d97706', 'verde' => '#16a34a'];
 $rt_n_alerta = count(array_filter($rt_filas, fn($x) => $x['semaforo'] !== 'verde'));
@@ -60,7 +57,7 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
         <span style="font:700 14px var(--body);color:var(--text)"><?= e($rt_f['nombre']) ?></span>
         <?php if (!empty($rt_f['flag'])): ?><span style="font:700 10px var(--body);color:#b91c1c;background:#fdeaea;padding:2px 7px;border-radius:999px">no sigue el proceso<?= !empty($rt_f['flag_pilares']) ? ': ' . e($rt_f['flag_pilares']) : '' ?></span><?php endif; ?>
-        <?php if ($rt_business): ?><button type="button" class="rt-rep-btn" data-uid="<?= (int)$rt_f['usuario_id'] ?>" data-eid="<?= $rt_eid ?>" data-name="<?= e($rt_f['nombre']) ?>"
+        <?php if ($rt_business): ?><button type="button" class="rt-rep-btn" data-uid="<?= (int)$rt_f['usuario_id'] ?>" data-name="<?= e($rt_f['nombre']) ?>"
           style="margin-left:auto;flex:none;font:800 11px var(--body);color:#fff;background:linear-gradient(135deg,#1a5c38,#2ea043);border:0;border-radius:999px;padding:6px 13px;cursor:pointer;letter-spacing:.02em;box-shadow:0 2px 7px rgba(26,92,56,.32)">✨ Generar reporte</button><?php endif; ?>
       </div>
       <?= $rt_pill($rt_f['conv_estado'],  'Conversión',  $rt_f['conv_txt']) ?>
@@ -136,12 +133,11 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
 <script>
 (function(){
   const CSRF = <?= json_encode(csrf_token()) ?>;
-  let uid = 0, eid = 0;
+  let uid = 0;
   const $ = id => document.getElementById(id);
 
   document.querySelectorAll('.rt-rep-btn').forEach(b => b.addEventListener('click', () => {
     uid = parseInt(b.dataset.uid, 10);
-    eid = parseInt(b.dataset.eid || '0', 10);
     $('rt-modal-title').textContent = 'Reporte — ' + b.dataset.name;
     $('rt-body').innerHTML = '';
     $('rt-modal').style.display = 'block';
@@ -202,7 +198,7 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
       const r = await fetch('/api/reporte-asesor', {
         method:'POST',
         headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF,'Accept':'application/json'},
-        body: JSON.stringify({ asesor_id: uid, empresa_id: eid })
+        body: JSON.stringify({ asesor_id: uid })
       });
       const d = await r.json();
       if (!d.ok) { $('rt-body').innerHTML = '<div style="padding:20px;color:#b91c1c;font:600 13px var(--body)">No se pudo generar ('+(d.error||'error')+').</div>'; }
