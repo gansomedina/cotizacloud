@@ -154,7 +154,7 @@ if (Auth::es_superadmin()) {
 // del equipo por sucursal y score mensual) vive en esa misma página. El resto
 // del menú le queda inservible: su usuario vive en _system, que está vacía.
 if (function_exists('es_supervisor') && es_supervisor()) {
-    $menu[] = ['href' => '/supervisor/ejecutivo', 'icon' => 'bar-chart-2', 'label' => 'Supervisión'];
+    $menu[] = ['href' => '/supervisor', 'icon' => 'bar-chart-2', 'label' => 'Supervisión'];
 }
 
 if (!function_exists('menu_activo')) {
