@@ -150,13 +150,11 @@ if (Auth::es_superadmin()) {
     $menu[] = ['href' => '/superadmin', 'icon' => 'shield', 'label' => 'Super Admin'];
 }
 
-// Supervisor multi-sucursal: sus dos pantallas. El resto del menú le queda
-// inservible (su usuario vive en la empresa _system, que está vacía), así que
-// estas dos entradas son su navegación real.
+// Supervisor multi-sucursal: UNA sola entrada. Todo (ejecutivo, rendimiento
+// del equipo por sucursal y score mensual) vive en esa misma página. El resto
+// del menú le queda inservible: su usuario vive en _system, que está vacía.
 if (function_exists('es_supervisor') && es_supervisor()) {
-    $menu[] = ['href' => '/supervisor/ejecutivo', 'icon' => 'bar-chart-2', 'label' => 'Ejecutivo'];
-    $menu[] = ['href' => '/supervisor/mesas', 'icon' => 'clipboard',   'label' => 'Mesas'];
-    $menu[] = ['href' => '/supervisor/scores','icon' => 'trending-up', 'label' => 'Score mensual'];
+    $menu[] = ['href' => '/supervisor/ejecutivo', 'icon' => 'bar-chart-2', 'label' => 'Supervisión'];
 }
 
 if (!function_exists('menu_activo')) {
