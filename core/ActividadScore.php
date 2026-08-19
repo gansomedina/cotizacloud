@@ -381,12 +381,26 @@ class ActividadScore
             [$usuario_id, $empresa_id, $periodo]
         );
         $zona_muerta = (int)DB::val(
-            // Actividad HUMANA: la última visita real del cliente o, si nunca
-            // abrió, la última edición del asesor. Nada de timestamps que
-            // escribe el sistema solo.
+            // SOLO las que el cliente SÍ abrió y después se enfriaron.
+            //
+            // Nada de COALESCE a updated_at: esa columna es
+            // ON UPDATE CURRENT_TIMESTAMP (verificado en information_schema) y
+            // el UPDATE del Radar la arrastra — medido en producción, 170 de
+            // 170 cotizaciones la tienen pegada a radar_updated_at. Como
+            // respaldo no envejece nunca, así que el tercer término
+            // (created_at) era además inalcanzable: lógica muerta disfrazada
+            // de fallback.
+            //
+            // Dejar fuera las nunca abiertas es DELIBERADO, no un descuido:
+            // a ésas ya las castiga Activación vía no_abiertas_5d, que pone la
+            // operativa en 0. Contarlas aquí sería cobrarlas dos veces — el
+            // mismo criterio con el que se redefinieron las dormidas ("vistas
+            // pero el cliente no regresa", para no duplicar no_abiertas).
+            // Población afectada hoy: 2 cotizaciones.
             "SELECT COUNT(*) FROM cotizaciones WHERE $cw $no_susp $no_import
              AND estado IN ('enviada','vista')
-             AND COALESCE(ultima_vista_at, updated_at, created_at) < DATE_SUB(NOW(), INTERVAL $d_muerta DAY)
+             AND ultima_vista_at IS NOT NULL
+             AND ultima_vista_at < DATE_SUB(NOW(), INTERVAL $d_muerta DAY)
              AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)",
             [$usuario_id, $empresa_id, $periodo]
         );
