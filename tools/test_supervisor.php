@@ -95,6 +95,28 @@ echo "\n8) SIN CORREO\n";
 como(['email' => '', 'rol' => 'admin']);
 chk('alcance vacío',              supervisor_empresas() === []);
 
+echo "\n9) COBERTURA DEL ESCUDO — en qué empresas queda marcado como interno\n";
+// Replica el cálculo de modules/auth/login_post.php:103-106. El Escudo trabaja
+// POR EMPRESA (Radar::es_visitor_interno filtra por empresa_id), así que un
+// supervisor que solo estuviera marcado en SU empresa contaminaría el Radar de
+// las sucursales: cada slug que abriera contaría como visita de cliente.
+$marcar = function (int $emp_propia): array {
+    $m = [$emp_propia => $emp_propia];
+    foreach (supervisor_empresas() as $se) $m[(int)$se] = (int)$se;
+    sort($m);
+    return array_values($m);
+};
+
+como(['email' => 'cualquiera@ejemplo.com', 'rol' => 'asesor']);
+chk('asesor normal: SOLO su empresa',            $marcar(9) === [9]);
+
+como(['email' => 'supervisor@ontime.com', 'rol' => 'asesor']);
+chk('supervisor: su empresa + las 4 que supervisa', $marcar(4) === [2, 4, 12, 13, 14]);
+chk('si su casa YA es una sucursal, no se duplica', $marcar(12) === [2, 12, 13, 14]);
+
+como(['email' => 'supervisor@ontime.com', 'rol' => 'superadmin']);
+chk('superadmin no pasa por esta rama (la suya marca todas)', $marcar(4) === [4]);
+
 // Dejar el entorno como estaba.
 if ($backup !== null) file_put_contents($f, $backup); else @unlink($f);
 
