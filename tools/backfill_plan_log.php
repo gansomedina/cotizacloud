@@ -40,6 +40,24 @@ require $cfg;
 
 echo $apply ? "MODO ESCRITURA\n\n" : "SIMULACRO — no escribe nada. Agrega --apply para aplicar.\n\n";
 
+// Sin tabla no hay nada que hacer: abortar ANTES de intentar, en vez de fallar
+// fila por fila y terminar diciendo "Listo" como si hubiera funcionado.
+// El simulacro sí corre sin tabla (para poder ver qué se reconstruiría).
+try {
+    DB::val("SELECT 1 FROM plan_log LIMIT 1");
+} catch (Throwable $e) {
+    if ($apply) {
+        fwrite(STDERR,
+            "ERROR: la tabla plan_log no existe. No se escribió nada.\n\n" .
+            "Corre primero la migración:\n" .
+            "  php tools/migrar_plan_log.php " . $cfg . "\n");
+        exit(1);
+    }
+    echo "AVISO: la tabla plan_log todavía no existe. El simulacro corre igual,\n";
+    echo "pero hay que crearla antes de aplicar:\n";
+    echo "  php tools/migrar_plan_log.php " . $cfg . "\n\n";
+}
+
 // Tarifas históricas, para deducir plan y ciclo desde el monto cobrado.
 // Un monto que no esté aquí NO se adivina: se guarda con plan NULL y una nota.
 $TARIFAS = [
@@ -50,7 +68,7 @@ $TARIFAS = [
    2999 => ['business','mensual'],28788=> ['business','anual'],
 ];
 
-$stats = ['R1'=>0,'R2'=>0,'R3'=>0,'R4'=>0,'R5'=>0,'dup'=>0];
+$stats = ['R1'=>0,'R2'=>0,'R3'=>0,'R4'=>0,'R5'=>0,'dup'=>0,'err'=>0];
 
 // Inserta un hecho reconstruido. La deduplicación es doble:
 //  (1) INSERT IGNORE contra uk_hecho_uid → re-correr no duplica.
@@ -89,6 +107,7 @@ function meter(array $f, bool $apply, array &$stats, string $clave): void
         );
         if ($n > 0) $stats[$clave]++; else $stats['dup']++;
     } catch (Throwable $e) {
+        $stats['err']++;
         fwrite(STDERR, "  ! " . $e->getMessage() . "\n");
     }
 }
@@ -209,7 +228,8 @@ foreach ($emps as $e) {
         ], $apply, $stats, 'R5');
     }
 
-    $n = array_sum($stats) - array_sum($antes);
+    $n = ($stats['R1']+$stats['R2']+$stats['R3']+$stats['R4']+$stats['R5'])
+       - ($antes['R1']+$antes['R2']+$antes['R3']+$antes['R4']+$antes['R5']);
     if ($n > 0) {
         printf("  %-34s +%d  (alta %d · pagos %d · susc %d · cancel %d · fin-prueba %d)\n",
             mb_substr($e['nombre'], 0, 34), $n,
@@ -222,10 +242,20 @@ echo "\n";
 printf("Altas %d · Pagos MP %d · Suscripciones %d · Cancelaciones %d · Fin de prueba %d\n",
     $stats['R1'], $stats['R2'], $stats['R3'], $stats['R4'], $stats['R5']);
 printf("Omitidos por duplicado: %d\n", $stats['dup']);
-echo $apply
-    ? "\nListo. Re-correrlo no duplica nada.\n"
-    : "\nNada escrito. Agrega --apply para aplicar.\n";
+if ($stats['err'] > 0) printf("FALLARON: %d (ver los mensajes de arriba)\n", $stats['err']);
+// No decir "Listo" si algo falló: un resumen que miente es peor que ninguno.
+if ($apply) {
+    echo $stats['err'] > 0
+        ? "\nTERMINÓ CON ERRORES. Revisa los mensajes antes de dar esto por bueno.\n"
+        : "\nListo. Re-correrlo no duplica nada.\n";
+} else {
+    echo "\nNada escrito. Agrega --apply para aplicar.\n";
+}
 echo "\nTodo lo insertado queda marcado como 'reconstruido' en la pantalla, con su\n";
 echo "nivel de confianza: probado (evidencia directa), inferido (deducido del\n";
 echo "monto o de una fila que se actualiza en sitio) y acotado (la fecha es un\n";
 echo "límite inferior, no el momento exacto).\n";
+
+// Salir con error si algo falló: si no, un "script && siguiente-paso" seguiría
+// como si hubiera funcionado.
+exit($stats['err'] > 0 ? 1 : 0);
