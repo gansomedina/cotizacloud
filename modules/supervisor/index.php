@@ -50,6 +50,33 @@ if ($sel) {
     } catch (Throwable $e) {}
 }
 
+// ── La Mesa de Trabajo REAL, incluyendo el archivo del sistema ──
+//
+// dashboard/_mesa.php NO se modifica: sus condiciones dependen de variables
+// ($empresa, $empresa_id, $es_admin_dash, $trial) que aquí se le preparan con
+// la sucursal elegida. El include no emite nada: llena $MESA_SHARED (CSS, JS y
+// playbook, una sola vez) y $MESA_BLOQUES[uid] (la mesa de cada asesor), que
+// abajo se pintan bajo los pilares de su dueño.
+//
+// OJO — EFECTO CONOCIDO: ese archivo llama a Mesa::armar() SIN solo_lectura, y
+// esa llamada escribe en mesa_vencidos (Mesa.php:687), que alimenta el castigo
+// de Seguimiento. Es la MISMA escritura que hace el dashboard del dueño y es
+// idempotente por PK (cotización + fecha), así que no duplica nada. Pero si un
+// día el dueño no abre su panel y el supervisor sí, ese día queda registrado
+// igual. Evitarlo exigiría tocar _mesa.php, y la instrucción es no tocar el
+// producto.
+$MESA_SHARED = ''; $MESA_BLOQUES = []; $MESA_ASSETS = ''; $MESA_ASESOR = '';
+$empresa = null;
+if ($sel) {
+    try { $empresa = DB::row("SELECT * FROM empresas WHERE id = ?", [$sel]); } catch (Throwable $e) {}
+}
+$es_admin_dash = true;          // la mesa completa de la sucursal, no la de un asesor
+$empresa_id    = $sel;          // los partials del dashboard leen esta variable
+$trial         = $sel ? trial_info($sel) : [];
+if ($sel && $empresa && $business) {
+    try { include MODULES_PATH . '/dashboard/_mesa.php'; } catch (Throwable $e) {}
+}
+
 // ── Score mensual de esa sucursal ───────────────────────────
 $sc = []; $meses = [];
 foreach (ActividadScore::promedio_mensual($sel, 6) as $r) {
@@ -126,9 +153,14 @@ ob_start();
 <div class="sv-vac"><strong><?= e($sel_nombre) ?></strong> no está en plan Business: el Ritmo del equipo y el reporte del Director son de ese plan.</div>
 <?php elseif (!$mesa_on): ?>
 <div class="sv-vac"><strong><?= e($sel_nombre) ?></strong> tiene la Mesa de Trabajo apagada, que es de donde salen estos indicadores.</div>
-<?php elseif (!$filas): ?>
+<?php elseif (!$filas && !$MESA_SHARED): ?>
 <div class="sv-vac">Sin asesores con cartera activa en esta sucursal.</div>
 <?php else: ?>
+<?php
+// El bloque compartido de la Mesa (CSS, JS y playbook) va UNA sola vez y antes
+// que los bloques de cada asesor, que dependen de él para verse y funcionar.
+if ($MESA_SHARED) echo $MESA_SHARED . $MESA_ASSETS;
+?>
 <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:16px">
   <?php foreach ($filas as $f): $c = $colmap[$f['semaforo']] ?? '#9ca3af'; ?>
   <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border)">
@@ -146,9 +178,19 @@ ob_start();
       <?= $pill($f['venc_estado'],  'Seguimiento', $f['venc_txt']) ?>
       <?= $pill($f['cont_estado'],  'Contacto',    $f['cont_txt']) ?>
       <div style="font:600 12.5px var(--body);color:<?= $f['semaforo'] === 'verde' ? 'var(--t3)' : $c ?>;margin-top:6px">→ <?= e($f['motivo']) ?></div>
+      <?php
+      // La mesa de ESTE asesor, justo bajo sus pilares — igual que en el
+      // dashboard del dueño, donde va bajo su tip en el ranking.
+      $mu = (int)$f['usuario_id'];
+      if (!empty($MESA_BLOQUES[$mu])) { echo $MESA_BLOQUES[$mu]; unset($MESA_BLOQUES[$mu]); }
+      ?>
     </div>
   </div>
   <?php endforeach; ?>
+  <?php // Asesores con mesa pero sin fila de pilares (sin cartera para el Ritmo)
+  if (!empty($MESA_BLOQUES)): foreach ($MESA_BLOQUES as $mb): ?>
+  <div style="padding:13px 16px;border-bottom:1px solid var(--border)"><?= $mb ?></div>
+  <?php endforeach; $MESA_BLOQUES = []; endif; ?>
   <div style="padding:9px 16px;font:400 11px var(--body);color:var(--t3);background:var(--bg);line-height:1.5">
     <strong>5 pilares</strong> (cada uno con su semáforo): <b>Conversión</b> (cerró vs cotizaciones) · <b>Descartadas</b> (vs cierres, sin cita, muy rápido) · <b>Citas</b> (su ritmo de agendar) · <b>Seguimiento</b> (el cronómetro de vencidas) · <b>Contacto</b> (a cuántos no le contestan). Medido contra las reglas de la Mesa — hechos, no acusaciones.
   </div>
