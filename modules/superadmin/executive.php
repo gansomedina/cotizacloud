@@ -2077,6 +2077,13 @@ $bot_sospechosos = array_filter($bot_rows, fn($r) => (int)$r['con_engagement'] =
 </div>
 <?php endif; /* Monitor de bots */ ?>
 
+<?php
+// Bloques del supervisor: rendimiento del equipo por sucursal (los mismos 5
+// pilares que ve el dueño), score mensual y reporte del Director. Van DENTRO
+// de esta misma página: una sola URL con todo. El archivo se autoprotege con
+// su propio `if (empty($modo_supervisor)) return;`.
+if ($modo_supervisor) require MODULES_PATH . '/supervisor/_bloques.php';
+?>
 </div><!-- /wrap -->
 
 <script>
