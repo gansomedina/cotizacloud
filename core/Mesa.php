@@ -1519,7 +1519,7 @@ class Mesa
                  WHERE v.empresa_id = ? AND v.estado != 'cancelada'
                    AND v.cotizacion_id IS NOT NULL AND v.total > 0
                    -- pagado>0: misma regla del sistema (14-may) que ya exige la
-                   -- columna Ventas de ESTA tabla. Sin esto, 'Recuperaste $X'
+                   -- columna Ventas de ESTA tabla. Sin esto, 'Recuperaste \$X'
                    -- incluía dinero que todavía no entra.
                    AND v.pagado > 0
                    AND v.created_at >= NOW() - INTERVAL $dias DAY

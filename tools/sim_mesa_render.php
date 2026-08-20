@@ -43,16 +43,27 @@ chk('bloques por asesor: 500 y 501', (function($k){ sort($k); return $k; })(arra
 chk('bloque 500: details con id propio y franja', str_contains($MESA_BLOQUES[500], 'id="mesa-emb-500"') && str_contains($MESA_BLOQUES[500], 'class="mstrip"'), true);
 chk('bloque 500: trae filas (mrow) y cajones (mdrawer)', substr_count($MESA_BLOQUES[500], 'class="mrow') >= 8 && str_contains($MESA_BLOQUES[500], 'mdrawer'), true);
 chk('bloque 500: resumen con por trabajar / en juego', (bool)preg_match('/por trabajar|en seguimiento|en juego/', $MESA_BLOQUES[500]), true);
-// Contador de citas: la única fila con historial es M21 (2 citas, ninguna en
-// pie). Se comprueba en el HTML porque el renglón pinta el compromiso VIGENTE y
-// ahí la cita ya no se ve — el 📅 es justo lo que la rescata.
-chk('bloque 500: el contador 📅 se pinta, con su cuenta y apagado (no hay cita en pie)',
+// Marcadores 📅/📵. La única fila con historial es M21: 2 citas (ninguna en
+// pie) y racha de 3 "no contestó". Se comprueban en el HTML porque el renglón
+// pinta el estado VIGENTE y ahí ese historial ya no se ve — los marcadores son
+// justo lo que lo rescata.
+chk('bloque 500: el 📅 se pinta con su cuenta y apagado (no hay cita en pie)',
     str_contains($MESA_BLOQUES[500], 'class="mcitas"') && str_contains($MESA_BLOQUES[500], '📅2'), true);
 chk('bloque 500: el 📅 no se enciende sin cita en pie', str_contains($MESA_BLOQUES[500], 'mcitas viva'), false);
-chk('bloque 500: el tooltip dice cuántas y cuándo fue la última',
+chk('bloque 500: el tooltip del 📅 dice cuántas y cuándo fue la última',
     (bool)preg_match('/Se citaron 2 veces — la última el \d\d\/\d\d/u', $MESA_BLOQUES[500]), true);
-chk('assets: el 📅 trae su estilo (si no, sale como texto suelto)',
-    str_contains($MESA_ASSETS ?? '', '.mesa-emb .mcitas'), true);
+chk('bloque 500: el 📵 se pinta con la racha y en rojo (3 seguidos)',
+    str_contains($MESA_BLOQUES[500], '📵3') && str_contains($MESA_BLOQUES[500], 'class="mnc alto"'), true);
+chk('bloque 500: el tooltip del 📵 explica la escalera',
+    str_contains($MESA_BLOQUES[500], 'al 4.º intento se habilita suspenderla'), true);
+chk('M9 (hablaron tras 2 intentos) NO trae 📵 — la racha se reinicia',
+    substr_count($MESA_BLOQUES[500], 'class="mnc'), 1);
+chk('los marcadores van pegados al ▶, en columna fija',
+    (bool)preg_match('/<\/span>\s*<span class="mchev">/u', $MESA_BLOQUES[500])
+    && (bool)preg_match('/class="mtags">.*?<span class="mchev">/su', $MESA_BLOQUES[500]), true);
+chk('assets: 📅 y 📵 traen su estilo (si no, salen como texto suelto)',
+    str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtags')
+    && str_contains($MESA_ASSETS ?? '', '.mesa-emb .mnc.alto'), true);
 chk('bloque 501: lista completa, solo 2 milagros ocultos por CAP_MILAGROS (top 26 de 28)', str_contains($MESA_BLOQUES[501], 'top 26 de 28'), true);
 chk('sin referencias huérfanas a #mesa-card', str_contains($MESA_SHARED . implode('', $MESA_BLOQUES), '#mesa-card') || str_contains($MESA_SHARED . implode('', $MESA_BLOQUES), 'mesa-card'), false);
 chk('aviso de limpieza vive en el bloque del asesor', str_contains($MESA_BLOQUES[500], 'jamás ha cerrado') || !str_contains($MESA_SHARED, 'jamás ha cerrado'), true);
