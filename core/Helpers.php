@@ -211,8 +211,33 @@ function ej(mixed $val): string
 }
 
 // ─── CSRF ────────────────────────────────────────────────────
+/**
+ * El CSRF debe valer lo mismo que la sesión que protege.
+ *
+ * Antes vivía SOLO en $_SESSION, o sea en un archivo de /var/lib/php/sessions.
+ * Ubuntu trae un limpiador (phpsessionclean.timer + /etc/cron.d/php) que borra
+ * esos archivos pasados los session.gc_maxlifetime del php.ini — 1440 segundos,
+ * 24 MINUTOS, verificado en producción. Y nadie sobreescribe ese valor.
+ *
+ * Resultado: la sesión real duraba 14 días, pero dejar una pantalla abierta
+ * media hora y darle a un botón fallaba con "Sesión expirada". Le pegaba sobre
+ * todo a quien lee antes de actuar — el panel de superadmin — porque cada
+ * request refresca el archivo y quien tapea seguido nunca lo dejaba envejecer.
+ *
+ * Ahora el token se DERIVA del token de sesión con HMAC: dura lo que dure la
+ * sesión, no depende de ningún archivo temporal y sobrevive a la limpieza.
+ * Sigue siendo seguro — un atacante de otro origen no puede leer la cookie ni
+ * conoce APP_SECRET, así que no puede fabricarlo; y el HMAC no revela el token
+ * de sesión. Es el patrón de "double submit" firmado.
+ *
+ * Sin sesión (login, registro, recuperar contraseña) cae al $_SESSION de
+ * siempre: ahí no hay a qué anclarse, y son pantallas de un solo paso.
+ */
 function csrf_token(): string
 {
+    if (defined('SESSION_NAME') && defined('APP_SECRET') && !empty($_COOKIE[SESSION_NAME])) {
+        return hash_hmac('sha256', 'csrf|' . $_COOKIE[SESSION_NAME], APP_SECRET);
+    }
     if (empty($_SESSION[CSRF_TOKEN_NAME])) {
         $_SESSION[CSRF_TOKEN_NAME] = generar_token(32);
     }
@@ -235,12 +260,15 @@ function csrf_check(): void
     if (!csrf_verify()) {
         $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
             || str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json');
+        // El texto decía "Sesión expirada" y hacía creer que te habían
+        // deslogueado — nunca fue eso: la sesión sigue viva, lo que no coincide
+        // es el token de la página. Se dice lo que de verdad pasó.
         if ($is_ajax) {
             http_response_code(419);
             header('Content-Type: application/json');
-            die(json_encode(['ok' => false, 'error' => 'Token inválido, recarga la página']));
+            die(json_encode(['ok' => false, 'error' => 'La página llevaba mucho abierta — recárgala y vuelve a intentar']));
         }
-        flash('error', 'Sesión expirada, intenta de nuevo.');
+        flash('error', 'La página llevaba mucho tiempo abierta. Recárgala y vuelve a intentar — tu sesión sigue activa.');
         redirect_back('/');
     }
 }
