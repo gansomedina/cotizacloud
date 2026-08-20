@@ -179,7 +179,6 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
       <span class="mfresh<?= $udd === null ? ' warn' : ($udd >= 3 ? ' bad' : ($udd === 0 ? ' ok' : '')) ?>">
         <?= $udd === null ? 'sin actualizar' : ($udd === 0 ? 'hoy' : "hace {$udd}d") ?></span>
       <?php endif; ?>
-      <span class="msp"></span>
       <?php // ── Marcadores de seguimiento ────────────────────────────────
             // Van pegados al ▶, en columna fija: bajando la lista siempre caen
             // en el mismo lugar, que es lo que los hace escaneables.
@@ -195,6 +194,9 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
             // Los DOS huecos se pintan siempre, vacíos o no: así el 📅 cae
             // siempre en la misma x, el 📵 también y el ▶ deja de bailar de
             // renglón en renglón. Una columna que se mueve no se puede escanear.
+            // Van pegados al texto del límite (no a la orilla): esa caja va
+            // centrada y ancha, así que arrimarlos al ▶ los dejaba solos al
+            // final con un hueco enorme en medio.
             $ct_n  = (int)($r['citas_n'] ?? 0);
             $nc_n  = (int)($r['intentos_nc'] ?? 0);
             $ct_ult = !empty($r['citas_ult']) ? date('d/m', strtotime($r['citas_ult'])) : '';
@@ -210,6 +212,7 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
         <?php if ($nc_n): ?><span class="mtag mnc<?= $nc_n >= 3 ? ' on' : '' ?>" title="<?= e($nc_t) ?>">📵<i><?= $nc_n ?></i></span>
         <?php else: ?><span class="mtag off"></span><?php endif; ?>
       </span>
+      <span class="msp"></span>
       <span class="mchev">▶</span>
       <?php if ($has_ql): ?><span class="mql">→ <?= e($r['sugerencia']) ?></span><?php endif; ?>
     </div>
@@ -670,15 +673,17 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mflag{font-size:11px;flex:none;width:18px;text-align:center}
 .mesa-emb .mcheck{color:#16a34a;font-weight:800;flex:none;width:16px;text-align:center}
 /* Marcadores de seguimiento (📅 citas · 📵 no contestó). Dos huecos de ancho
-   fijo pegados al ▶: el hueco existe aunque esté vacío, así la columna no se
-   mueve y se puede escanear bajando la lista. margin-left:auto los ancla a la
-   derecha pase lo que pase con el ancho del texto de la izquierda. */
-.mesa-emb .mtags{flex:none;display:flex;align-items:center;gap:3px;margin-left:auto;margin-right:4px}
-.mesa-emb .mtag{flex:none;width:30px;height:18px;border-radius:5px;
-  display:inline-flex;align-items:center;justify-content:center;gap:1px;
-  font-size:10px;line-height:1;background:transparent;cursor:help;
-  filter:saturate(.35) opacity(.62)}
-.mesa-emb .mtag i{font:700 10px var(--body);font-style:normal;color:#57574f}
+   fijo: el hueco existe aunque esté vacío, así la columna no se mueve y se
+   puede escanear bajando la lista.
+   Van JUNTO al texto del límite, no en la orilla: 'margin-right:auto' se come
+   el espacio que sobra entre ellos y el ▶, así que el chevron se va al borde y
+   los marcadores se quedan donde se leen. */
+.mesa-emb .mtags{flex:none;display:flex;align-items:center;gap:5px;margin:0 auto 0 6px}
+.mesa-emb .mtag{flex:none;width:36px;height:21px;border-radius:6px;
+  display:inline-flex;align-items:center;justify-content:center;gap:2px;
+  font-size:12px;line-height:1;background:transparent;cursor:help;
+  filter:saturate(.4) opacity(.66)}
+.mesa-emb .mtag i{font:700 11.5px var(--body);font-style:normal;color:#57574f}
 .mesa-emb .mtag.off{cursor:default}
 /* Encendidos: cita en pie · 3+ intentos sin contacto. Fondo suave, sin borde
    — son marcadores para leer de reojo, no botones. */

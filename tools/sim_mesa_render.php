@@ -68,8 +68,13 @@ chk('la columna se reserva en todas las filas (mtags) — el ▶ no baila',
 // OJO con el espacio final: sin él, 'class="mtag' también matchea 'class="mtags"'
 chk('dos huecos por fila, llenos o vacíos',
     substr_count($MESA_BLOQUES[500], 'class="mtag '), $n_cols * 2);
-chk('los marcadores van pegados al ▶',
-    (bool)preg_match('/class="mtags">.*?<\/span>\s*<span class="mchev">/su', $MESA_BLOQUES[500]), true);
+// Posición: JUNTO al texto del límite, no en la orilla. La caja del límite va
+// centrada y ancha; arrimarlos al ▶ los dejaba solos al final con un hueco
+// enorme en medio y no se veían.
+chk('los marcadores van justo después del texto del límite',
+    (bool)preg_match('/class="mfresh[^"]*"[^>]*>.*?<\/span>\s*<span class="mtags">/su', $MESA_BLOQUES[500]), true);
+chk('y el ▶ se queda en la orilla (margin-right:auto se come el sobrante)',
+    str_contains($MESA_ASSETS ?? '', 'margin:0 auto 0 6px'), true);
 chk('assets: 📅 y 📵 traen su estilo (si no, salen como texto suelto)',
     str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtags')
     && str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtag')
