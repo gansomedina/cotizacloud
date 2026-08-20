@@ -205,6 +205,12 @@ tap(21, 'compromiso', 'nos_citamos',     4);
 tap(21, 'compromiso', 'sin_compromiso',  3);
 tap(21, 'compromiso', 'nos_citamos',     2);
 tap(21, 'compromiso', 'compromiso',      1);
+// Y encima 3 "no contestó" DESPUÉS del Hablamos → racha 3 (📵 en rojo, al 4.º
+// se habilita suspender). Sigue tocada hoy, así que su cat y su atendida_hoy
+// no se mueven — lo que se agrega es el marcador, no el estado.
+tap(21, 'contacto', 'no_contesta', 0.03);
+tap(21, 'contacto', 'no_contesta', 0.02);
+tap(21, 'contacto', 'no_contesta', 0.01);
 // M11 (11): visitas=0 sin bucket → FUERA (la cubre "Sin abrir" del dashboard)
 cot(11, 500, 20000, 5, ['visitas' => 0]);
 // M12 (12): suspendida → FUERA del universo
@@ -492,6 +498,9 @@ chk('la fecha de la última cita se conserva (para el tooltip)',
     !empty($mcby['COT-9704']['citas_ult']), true);
 chk('M21 (vendedor 500): dos citas, la última ya resuelta → 2 y sin cita en pie',
     [$by[21]['citas_n'] ?? -1, $by[21]['cita_viva'] ?? null], [2, false]);
+chk('M21: racha de 3 "no contestó" tras el Hablamos', $by[21]['intentos_nc'] ?? -1, 3);
+chk('M9: hablaron después de 2 "no contestó" → la racha se reinicia a 0',
+    $by[9]['intentos_nc'] ?? -1, 0);
 // H1 (9801): huella — estuvo vencida 2d (preseed) pero HOY está al corriente
 DB::execute("INSERT INTO mesa_vencidos VALUES (9801,505,5,?),(9801,505,5,?)", [date('Y-m-d', time() - 4 * 86400), date('Y-m-d', time() - 3 * 86400)]);
 cot(9801, 505, 12000, 8, ['visitas' => 2, 'vista_d' => 3]);
