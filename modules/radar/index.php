@@ -443,7 +443,12 @@ function render_bkt(string $tit, string $hint, array $items, string $s, string $
                 : '';
             $fb_html = "<div class='fb-btns' style='flex-shrink:0'>"
                 . "<button class='fb-btn {$cls_ci}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'con_interes',this)\" title='Con interés'>👍</button>"
-                . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_interes',this)\" title='Sin interés'>👎</button>"
+                // El title dice lo que HACE, no solo lo que opina. Este botón
+                // descarta: saca la cotización de la mesa del asesor y cuenta
+                // en su pilar de Descartadas. Decía solo "Sin interés" y los
+                // asesores lo usaban creyendo que era una opinión sobre el
+                // cliente — por eso descartaban sin saber que descartaban.
+                . "<button class='fb-btn {$cls_si}' onclick=\"event.preventDefault();event.stopPropagation();radarFb({$cot_id_fb},'sin_interes',this)\" title='Sin interés — lo descarta de tu mesa; si el cliente revive, vuelve solo'>👎</button>"
                 . $btn_ni
                 . $why_btn
                 . "</div>";
@@ -1387,12 +1392,19 @@ function toggleWhy(id, cotId) {
 }
 
 // Feedback del Radar
-async function radarFb(cotId, tipo, btn) {
+async function radarFb(cotId, tipo, btn, razon) {
+    // 👎 = descartar, y descartar pide motivo (igual que la pastilla de la
+    // Mesa). Se pregunta ANTES de mandar nada: si cancela, no pasa nada.
+    if (tipo === 'sin_interes' && !razon) {
+        if (typeof czPedirRazon !== 'function') return;   // partial no cargado
+        czPedirRazon(function (rz) { radarFb(cotId, tipo, btn, rz); });
+        return;
+    }
     try {
         const r = await fetch('/api/radar-feedback', {
             method: 'POST',
             headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF_R},
-            body: JSON.stringify({cotizacion_id: cotId, tipo: tipo})
+            body: JSON.stringify({cotizacion_id: cotId, tipo: tipo, razon: razon || null})
         });
         const d = await r.json();
         if (d.ok) {
@@ -1526,5 +1538,9 @@ foreach ($_PB as $pb_key => $pb):
 <?php endforeach; ?>
 
 <?php
+// Selector de motivo del 👎 (compartido con la Mesa). Va DENTRO del buffer para
+// que salga en $content — el layout ya cerró su propio ob_start.
+require MODULES_PATH . '/dashboard/_razon_modal.php';
+
 $content = ob_get_clean();
 require ROOT_PATH . '/core/layout.php';

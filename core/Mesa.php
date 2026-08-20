@@ -31,6 +31,38 @@ class Mesa
         'prediccion_alta','lectura_comprometida','multi_persona','alto_importe',
     ];
 
+    /**
+     * MOTIVOS DE DESCARTE — fuente única (clave => etiqueta que ve el asesor).
+     *
+     * Descartar es descartar, se haga con la pastilla "Descartar" del cajón o
+     * con el 👎 del renglón o del Radar: los tres escriben la misma marca, los
+     * tres sacan la cotización de la mesa y los tres pesan igual en el pilar de
+     * Descartadas. Así que los tres piden el mismo motivo, de esta lista.
+     *
+     * Antes la lista vivía suelta en dos archivos y el 👎 no pedía nada — por
+     * ahí salía la mayoría de los descartes y el dato de POR QUÉ perdemos al
+     * cliente se perdía.
+     */
+    public const RAZONES = [
+        'precio'       => 'Muy caro',
+        'competencia'  => 'Se fue con otro',
+        'despues'      => 'Lo dejó para después',
+        'no_responde'  => 'Dejó de responder',
+        'no_comprador' => 'No era comprador',
+        'otro'         => 'Otro',
+    ];
+
+    /**
+     * ¿Este tap DESCARTA? Los dos gestos valen igual y los dos piden motivo.
+     * Vive aquí y no repetida en cada endpoint: si un día se agrega una tercera
+     * forma de descartar, se agrega en un solo lugar y los dos la respetan.
+     */
+    public static function es_descarte(string $area, string $estado): bool
+    {
+        return $estado === 'descartada'
+            || ($area === 'feedback' && $estado === 'sin_interes');
+    }
+
     /** Lista SQL lista para un IN (...) — para no re-escribir el set a mano. */
     public static function hot_sql(array $extra = []): string
     {

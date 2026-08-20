@@ -75,6 +75,24 @@ chk('los marcadores van justo después del texto del límite',
     (bool)preg_match('/class="mfresh[^"]*"[^>]*>.*?<\/span>\s*<span class="mtags">/su', $MESA_BLOQUES[500]), true);
 chk('y el ▶ se queda en la orilla (margin-right:auto se come el sobrante)',
     str_contains($MESA_ASSETS ?? '', 'margin:0 auto 0 6px'), true);
+// DESCARTAR PIDE MOTIVO. El 👎 del renglón descarta igual que la pastilla del
+// cajón, así que abre el mismo selector. Si el partial dejara de viajar en los
+// assets, el 👎 quedaría MUERTO (mesaFb sale temprano si no existe czPedirRazon)
+// — un botón que no hace nada y nadie se entera. Por eso se comprueba aquí.
+chk('el selector de motivo viaja con los assets',
+    str_contains($MESA_ASSETS ?? '', 'id="czrz-back"')
+    && str_contains($MESA_ASSETS ?? '', 'window.czPedirRazon'), true);
+chk('trae los 6 motivos, de la fuente única',
+    substr_count($MESA_ASSETS ?? '', 'czRzElegir('), count(Mesa::RAZONES));
+chk('el 👎 del renglón pide motivo antes de mandar nada',
+    (bool)preg_match("/tipo === 'sin_interes' && !razon[\s\S]{0,220}czPedirRazon/u", $MESA_ASSETS ?? ''), true);
+chk('el motivo viaja en el POST del 👎',
+    (bool)preg_match("/area:'feedback'[^}]*razon:/u", $MESA_ASSETS ?? ''), true);
+chk('cancelar NO descarta (el callback se suelta sin llamarse)',
+    (bool)preg_match('/czRzCerrar[\s\S]{0,220}cb = null/u', $MESA_ASSETS ?? ''), true);
+chk('la pastilla del cajón usa la MISMA lista',
+    substr_count($MESA_BLOQUES[500], 'data-rz="'), $n_rows * count(Mesa::RAZONES));
+
 chk('assets: 📅 y 📵 traen su estilo (si no, salen como texto suelto)',
     str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtags')
     && str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtag')

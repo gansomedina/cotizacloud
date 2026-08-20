@@ -145,7 +145,16 @@ class RitmoReporte
         $hotset = Mesa::hot_sql();   // fuente única (Mesa::HOT)
         $hot = "EXISTS (SELECT 1 FROM bucket_transitions bt WHERE bt.cotizacion_id=c.id AND bt.bucket_nuevo IN $hotset AND bt.created_at >= NOW() - INTERVAL $win DAY)";
         // Cruce por cotización: la razón declarada al descartar + la última postura previa.
-        $rz = "(SELECT mp.razon FROM mesa_estados mp WHERE mp.cotizacion_id=c.id AND mp.area='postura' AND mp.estado='descartada' ORDER BY mp.id DESC LIMIT 1)";
+        // El motivo puede venir de los DOS gestos de descarte: la pastilla
+        // 'descartada' del cajón o el 👎 (area='feedback'). Antes solo miraba la
+        // pastilla, así que todo descarte hecho con 👎 caía al texto genérico
+        // "descartada en el Radar (👎)" — que era la mayoría. Se toma el más
+        // reciente de cualquiera de los dos.
+        $rz = "(SELECT mp.razon FROM mesa_estados mp
+                 WHERE mp.cotizacion_id=c.id AND mp.razon IS NOT NULL
+                   AND ((mp.area='postura'  AND mp.estado='descartada')
+                     OR (mp.area='feedback' AND mp.estado='sin_interes'))
+                 ORDER BY mp.id DESC LIMIT 1)";
         $pp = "(SELECT mp2.estado FROM mesa_estados mp2 WHERE mp2.cotizacion_id=c.id AND mp2.area='postura' AND mp2.estado<>'descartada' ORDER BY mp2.id DESC LIMIT 1)";
         try {
             $rows = DB::query(

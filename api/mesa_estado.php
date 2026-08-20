@@ -24,10 +24,15 @@ $AREAS = [
     'feedback'   => ['con_interes','sin_interes','sin_info'],   // 👍/👎/📵 homologado con el Radar
 ];
 $VALIDOS = $AREAS[$area] ?? [];
-$RAZONES = ['precio','competencia','despues','no_responde','no_comprador','otro'];
+$RAZONES = array_keys(Mesa::RAZONES); // fuente única (core/Mesa.php)
 if (!$cot_id || !in_array($estado, $VALIDOS, true)) { echo json_encode(['ok'=>false,'error'=>'datos']); exit; }
-if ($estado === 'descartada' && !in_array($razon, $RAZONES, true)) { echo json_encode(['ok'=>false,'error'=>'razon']); exit; }
-if ($estado !== 'descartada') $razon = null;
+// LOS DOS GESTOS DE DESCARTE PIDEN MOTIVO: la pastilla 'descartada' del cajón y
+// el 👎 del renglón. Escriben la misma marca y los dos sacan la cotización de
+// la mesa — que uno preguntara el porqué y el otro no era lo que dejaba la
+// mayoría de los descartes sin explicación.
+$es_descarte = Mesa::es_descarte($area, $estado);
+if ($es_descarte && !in_array($razon, $RAZONES, true)) { echo json_encode(['ok'=>false,'error'=>'razon']); exit; }
+if (!$es_descarte) $razon = null;
 
 $cot = DB::row(
     "SELECT id, estado, suspendida, total, visitas, radar_bucket, radar_bucket_at, radar_senales, ultima_vista_at, created_at, agenda_fecha,
