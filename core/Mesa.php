@@ -139,6 +139,41 @@ class Mesa
             $cita_anc_fail = true; // sin anclas de cita: leer sin castigar
             error_log('[Mesa cita_anc] ' . $e->getMessage());
         }
+        // (a2) Historial de citas: CUÁNTAS VECES se citaron con este cliente y
+        // cuándo fue la última. El renglón de la mesa solo muestra el estado
+        // VIGENTE de compromiso, así que en cuanto el asesor declara el
+        // desenlace ("Quedamos", "No quiso") la cita desaparece de la vista
+        // aunque hayan sido dos. Para el seguimiento la cita es el hecho más
+        // importante que hay, y se perdía entre tantos toques.
+        //
+        // Se cuentan RACHAS, no taps: re-tapear "Nos citamos" tres veces
+        // seguidas es UNA cita, no tres — mismo criterio anti-gaming que usa el
+        // ancla de arriba. Cita nueva = 'nos_citamos' cuya declaración ANTERIOR
+        // de compromiso fue otra cosa (o no había ninguna).
+        $citas_hist = [];
+        try {
+            foreach (DB::query(
+                "SELECT cotizacion_id, SUM(nueva) AS n,
+                        MAX(CASE WHEN nueva = 1 THEN created_at END) AS ult
+                 FROM (
+                   SELECT m.cotizacion_id, m.created_at,
+                          CASE WHEN m.estado = 'nos_citamos'
+                                AND COALESCE(LAG(m.estado) OVER (
+                                      PARTITION BY m.cotizacion_id ORDER BY m.id), '') <> 'nos_citamos'
+                               THEN 1 ELSE 0 END AS nueva
+                     FROM mesa_estados m
+                    WHERE m.empresa_id = ? AND m.area = 'compromiso'
+                      AND m.cotizacion_id IN ($in)
+                 ) t
+                 GROUP BY cotizacion_id
+                 HAVING n > 0", [$empresa_id]) as $r) {
+                $citas_hist[(int)$r['cotizacion_id']] = ['n' => (int)$r['n'], 'ult' => $r['ult']];
+            }
+        } catch (\Throwable $e) {
+            // Sin historial de citas la mesa se pinta igual, solo sin el contador.
+            error_log('[Mesa citas_hist] ' . $e->getMessage());
+        }
+
         // (b) Huella: días vencidos ya registrados en la ventana de 15d
         // ("estuvo vencida Nd" — no se borra al ponerse al corriente)
         $venc_hist = [];
@@ -515,6 +550,12 @@ class Mesa
                 'es_fria' => $es_fria,
                 'seguimiento' => $seg,
                 'cita_vencida' => $es_cita && ($seg['estado'] ?? '') === 'vencida',
+                // Cuántas veces se citaron (rachas) y cuándo fue la última.
+                // 'cita_viva' distingue "hay una cita en pie" de "ya se citaron
+                // antes y hoy no hay nada" — el contador solo dice cuántas.
+                'citas_n'    => (int)($citas_hist[$cid]['n'] ?? 0),
+                'citas_ult'  => $citas_hist[$cid]['ult'] ?? null,
+                'cita_viva'  => (($me[$cid]['compromiso']['estado'] ?? '') === 'nos_citamos'),
                 'venc_huella' => $venc_hist[$cid] ?? 0,
                 'agenda_fecha' => ($ag_reaparecida ? ($ag[$cid]['fecha'] ?? null) : null),
                 'bucket' => $bucket, 'es_hot' => $es_hot,

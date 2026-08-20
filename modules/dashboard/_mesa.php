@@ -140,6 +140,19 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
         <span class="mfolio"><?= e($r['numero']) ?><?= $r['cliente'] && $r['titulo'] ? ' · ' . e($r['cliente']) : '' ?></span>
       </span>
       <span class="mflag"><?= $es_milagro ? '⚡' : ($r['dormida'] ? '<span title="' . (int)$r['dias_sin_vista'] . 'd sin volver a abrirla">😴</span>' : '') ?></span>
+      <?php // Contador de citas. La columna de declaraciones solo muestra el
+            // estado VIGENTE: en cuanto se declara el desenlace, la cita se
+            // pierde de vista aunque hayan sido dos. Para el seguimiento es el
+            // hecho más importante, así que aquí queda a primera vista.
+            // Encendido = hay cita en pie. Apagado = ya se citaron, hoy no hay.
+            if (!empty($r['citas_n'])):
+              $ct_n   = (int)$r['citas_n'];
+              $ct_ult = $r['citas_ult'] ? date('d/m', strtotime($r['citas_ult'])) : '';
+              $ct_t   = ($ct_n === 1 ? 'Se citaron 1 vez' : "Se citaron $ct_n veces")
+                      . ($ct_ult ? " — la última el $ct_ult" : '')
+                      . (!empty($r['cita_viva']) ? '. Hay una cita en pie.' : '. Hoy no hay cita en pie.'); ?>
+      <span class="mcitas<?= !empty($r['cita_viva']) ? ' viva' : '' ?>" title="<?= e($ct_t) ?>">📅<?= $ct_n ?></span>
+      <?php endif; ?>
       <span class="mcheck"><?= !empty($r['atendida_hoy']) ? '✓' : '' ?></span>
       <span class="mciclo<?= ($r['fuera_ventana'] && !$es_milagro) ? ' late' : '' ?>">día <?= (int)$r['edad'] ?> de <?= $mp75 ?>
         <?php if ($es_milagro): ?><span class="mvolvio"><?= (int)$r['dias_sin_vista'] <= 0 ? 'la vio hoy' : ((int)$r['dias_sin_vista'] === 1 ? 'la vio ayer' : 'volvió hace ' . (int)$r['dias_sin_vista'] . 'd') ?></span><?php endif; ?>
@@ -639,6 +652,10 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mfolio{font-weight:500;color:#a3a39d;font-size:11px;margin-left:6px}
 .mesa-emb .mflag{font-size:11px;flex:none;width:18px;text-align:center}
 .mesa-emb .mcheck{color:#16a34a;font-weight:800;flex:none;width:16px;text-align:center}
+/* Contador de citas. Apagado = ya se citaron antes; encendido = cita en pie. */
+.mesa-emb .mcitas{flex:none;font:700 10.5px var(--body);color:#8a8a82;background:#f0f0ea;
+  border:1px solid #e2e2d9;border-radius:999px;padding:1px 6px 1px 4px;letter-spacing:-.2px;cursor:help}
+.mesa-emb .mcitas.viva{color:#b45309;background:#fef3c7;border-color:#fcd34d}
 
 .mesa-emb .mciclo{font-size:12px;color:#57534e;font-variant-numeric:tabular-nums;flex:none;width:92px;text-align:right;white-space:nowrap}
 .mesa-emb .mciclo.late{color:#dc2626;font-weight:700}

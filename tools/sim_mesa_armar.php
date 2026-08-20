@@ -198,6 +198,13 @@ fb(10, 500, 'con_interes', 0.04);
 // M21 (21): tocada HOY pero SIN manita ni postura → NO atendida (sigue pendiente)
 cot(21, 500, 1000, 5, ['visitas' => 2, 'vista_d' => 2]);
 tap(21, 'contacto', 'hablamos', 0.04);
+// Además: se citaron DOS veces y ya se resolvió la segunda. Es la única fila de
+// este vendedor con historial de citas, y es la que hace que el render pinte el
+// contador 📅 (sim_mesa_render lo comprueba en el HTML de verdad).
+tap(21, 'compromiso', 'nos_citamos',     4);
+tap(21, 'compromiso', 'sin_compromiso',  3);
+tap(21, 'compromiso', 'nos_citamos',     2);
+tap(21, 'compromiso', 'compromiso',      1);
 // M11 (11): visitas=0 sin bucket → FUERA (la cubre "Sin abrir" del dashboard)
 cot(11, 500, 20000, 5, ['visitas' => 0]);
 // M12 (12): suspendida → FUERA del universo
@@ -438,6 +445,24 @@ tap(9703, 'compromiso', 'nos_citamos', 12);
 tap(9703, 'contacto', 'hablamos', 3);
 tap(9703, 'contacto', 'hablamos', 0.02, 'auto'); // implícito del endpoint, HOY
 tap(9703, 'compromiso', 'nos_citamos', 0.01);
+// C4/C5/C6 alimentan el contador de citas (se comprueba más abajo). Van aquí
+// porque Mesa::armar() memoiza por empresa+vendedor: una segunda llamada
+// devuelve el cache y no vería estas filas.
+// C4 (9704): cita hace 20d → "Quedamos en algo" hace 10d (la cita se resolvió)
+//   → cita otra vez hace 2d. Son DOS citas distintas, y hay una en pie.
+cot(9704, 506, 30000, 22, ['visitas' => 2, 'vista_d' => 3]);
+tap(9704, 'compromiso', 'nos_citamos', 20);
+tap(9704, 'compromiso', 'compromiso',  10);
+tap(9704, 'compromiso', 'nos_citamos',  2);
+// C5 (9705): cita hace 20d → "Propuse, no quiso" hace 3d. UNA cita, y ya no
+//   hay ninguna en pie: el contador debe seguir visible (ese es el punto) pero
+//   apagado.
+cot(9705, 506, 20000, 22, ['visitas' => 2, 'vista_d' => 3]);
+tap(9705, 'compromiso', 'nos_citamos',      20);
+tap(9705, 'compromiso', 'propuse_no_quiso',  3);
+// C6 (9706): nunca se citaron — sin contador.
+cot(9706, 506, 9000, 10, ['visitas' => 2, 'vista_d' => 3]);
+tap(9706, 'compromiso', 'sin_compromiso', 2);
 $mc   = Mesa::armar(5, 506);
 $mcby = [];
 foreach ($mc['rows'] as $r) $mcby[$r['numero']] = $r;
@@ -448,6 +473,25 @@ chk('C2 Hablamos + re-cita (pospuesta real) → re-anclada, al corriente',
     [$mcby['COT-9702']['seguimiento']['estado'] ?? '', $mcby['COT-9702']['cita_vencida'] ?? null], ['ok', false]);
 chk('C3 pospuesta real + implícito auto encima → el auto NO tapa al Hablamos real: re-anclada, al corriente',
     [$mcby['COT-9703']['seguimiento']['estado'] ?? '', $mcby['COT-9703']['cita_vencida'] ?? null], ['ok', false]);
+
+echo "═ CONTADOR DE CITAS (📅 en el renglón) ═\n";
+// El renglón solo enseña el compromiso VIGENTE: en cuanto se declara el
+// desenlace, la cita desaparece de la vista aunque hayan sido dos. El contador
+// guarda ese historial. Se cuentan RACHAS, no taps.
+chk('C1 dos taps seguidos de "Nos citamos" = UNA cita (no se infla con re-taps)',
+    $mcby['COT-9701']['citas_n'] ?? -1, 1);
+chk('C2 cita pospuesta (Hablamos + re-citar) sigue siendo UNA cita',
+    $mcby['COT-9702']['citas_n'] ?? -1, 1);
+chk('C4 cita → se resolvió → cita otra vez = DOS citas, y hay una en pie',
+    [$mcby['COT-9704']['citas_n'] ?? -1, $mcby['COT-9704']['cita_viva'] ?? null], [2, true]);
+chk('C5 se citaron una vez y ya no hay cita en pie → contador visible, apagado',
+    [$mcby['COT-9705']['citas_n'] ?? -1, $mcby['COT-9705']['cita_viva'] ?? null], [1, false]);
+chk('C6 nunca se citaron → sin contador',
+    [$mcby['COT-9706']['citas_n'] ?? -1, $mcby['COT-9706']['cita_viva'] ?? null], [0, false]);
+chk('la fecha de la última cita se conserva (para el tooltip)',
+    !empty($mcby['COT-9704']['citas_ult']), true);
+chk('M21 (vendedor 500): dos citas, la última ya resuelta → 2 y sin cita en pie',
+    [$by[21]['citas_n'] ?? -1, $by[21]['cita_viva'] ?? null], [2, false]);
 // H1 (9801): huella — estuvo vencida 2d (preseed) pero HOY está al corriente
 DB::execute("INSERT INTO mesa_vencidos VALUES (9801,505,5,?),(9801,505,5,?)", [date('Y-m-d', time() - 4 * 86400), date('Y-m-d', time() - 3 * 86400)]);
 cot(9801, 505, 12000, 8, ['visitas' => 2, 'vista_d' => 3]);
