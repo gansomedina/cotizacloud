@@ -18,11 +18,26 @@ csrf_check();
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 $cot_id = (int)($body['cotizacion_id'] ?? 0);
 $tipo   = $body['tipo'] ?? '';
+$razon  = trim((string)($body['razon'] ?? '')) ?: null;
 
 if (!$cot_id || !in_array($tipo, ['con_interes', 'sin_interes', 'sin_info'])) {
     echo json_encode(['ok' => false, 'error' => 'Datos inválidos']);
     exit;
 }
+
+// 👎 EXIGE MOTIVO, igual que la pastilla "Descartar" del cajón de la Mesa.
+// Los dos escriben la misma marca y los dos sacan la cotización de la mesa, así
+// que no hay razón para que uno pida el porqué y el otro no. Antes el 👎 del
+// Radar era un tap sin explicación: el 83% de los descartes salía por aquí y se
+// perdía el dato de por qué perdemos. El motivo se guarda en la fila de
+// historia que este endpoint YA escribía con razon=NULL — sin migración.
+// (aquí el área siempre es 'feedback': este endpoint solo mueve manitas)
+$es_descarte = Mesa::es_descarte('feedback', $tipo);
+if ($es_descarte && !array_key_exists((string)$razon, Mesa::RAZONES)) {
+    echo json_encode(['ok' => false, 'error' => 'Falta el motivo del descarte']);
+    exit;
+}
+if (!$es_descarte) $razon = null;
 
 $empresa_id = EMPRESA_ID;
 $usuario_id = Auth::id();
@@ -95,9 +110,12 @@ try {
     // el CUÁNDO al re-tapear (updated_at se bumpea) — esta fila preserva que
     // la señal se atendió en su momento, para el reporte del equipo.
     DB::execute(
+        // razon: el motivo del 👎 (NULL en 👍/📵, que no son descarte). La
+        // columna ya existía y este INSERT la mandaba en NULL — el hueco estaba
+        // ahí desde el principio, solo faltaba preguntar.
         "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
-         VALUES (?,?,?,'feedback',?,NULL,?)",
-        [$cot_id, $usuario_id, $empresa_id, $tipo, $cot['radar_bucket']]
+         VALUES (?,?,?,'feedback',?,?,?)",
+        [$cot_id, $usuario_id, $empresa_id, $tipo, $razon, $cot['radar_bucket']]
     );
     DB::commit();
 } catch (Throwable $e) {

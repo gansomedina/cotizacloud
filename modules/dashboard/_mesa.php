@@ -294,7 +294,7 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
               <button type="button" data-e="descartada" class="mpill mdesc" onclick="mesaRz(this)">Descartar</button>
               <span class="mrz">
                 <span class="mrz-l">¿motivo?</span>
-                <?php foreach (['precio' => 'Muy caro', 'competencia' => 'Se fue con otro', 'despues' => 'Lo dejó para después', 'no_responde' => 'Dejó de responder', 'no_comprador' => 'No era comprador', 'otro' => 'Otro'] as $rk => $rl): ?>
+                <?php foreach (Mesa::RAZONES as $rk => $rl): /* fuente única — la misma lista que el 👎 */ ?>
                 <button type="button" data-e="descartada" data-rz="<?= $rk ?>" class="mpill mrz-b" onclick="mesaSel(this,<?= (int)$r['id'] ?>)"><?= e($rl) ?></button>
                 <?php endforeach; ?>
               </span>
@@ -912,7 +912,16 @@ function mesaAtendida(row, d){
 
 // Feedback Radar desde la mesa — se guarda a nombre del asesor dueño de la
 // cotización (una sola marca: el descarte voltea el 👍 a 👎 automáticamente)
-function mesaFb(cotId, tipo, btn){
+function mesaFb(cotId, tipo, btn, razon){
+  // 👎 = descartar, y descartar pide motivo (lo mismo que exige la pastilla
+  // "Descartar" del cajón). Se pregunta ANTES de mandar nada: si cancela, no
+  // pasa nada. Sin esto, la mayoría de los descartes salía por aquí sin dejar
+  // registro de POR QUÉ se perdió el cliente.
+  if(tipo === 'sin_interes' && !razon){
+    if(typeof czPedirRazon !== 'function') return;   // partial no cargado
+    czPedirRazon(function(rz){ mesaFb(cotId, tipo, btn, rz); });
+    return;
+  }
   // 📵 solo aplica a clientes que no responden: pre-check en el cliente (el
   // servidor re-valida) para explicar el candado sin viaje a la red
   if(tipo === 'sin_info'){
@@ -934,7 +943,7 @@ function mesaFb(cotId, tipo, btn){
   thumbs.forEach(function(b){ b.disabled = true; });
   fetch('/api/mesa/estado', {method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
-    body: JSON.stringify({cotizacion_id:cotId, area:'feedback', estado:tipo})
+    body: JSON.stringify({cotizacion_id:cotId, area:'feedback', estado:tipo, razon:razon || null})
   }).then(function(r){return r.json();}).then(function(d){
     thumbs.forEach(function(b){ b.disabled = false; });
     if(!d.ok){ mesaToast(mesaErr(d.error)); return; }
@@ -1193,6 +1202,12 @@ function mesaDesagendar(cotId, btn){
   }).catch(function(){ btn.disabled = false; mesaToast('No se pudo guardar (red o sesión).'); });
 }
 </script>
+<?php
+// Selector de motivo del 👎 (el mismo del Radar). Viaja con los assets, así
+// que llega igual al dashboard del dueño, al del asesor y a las pestañas del
+// supervisor — donde quiera que se pinte la mesa, el 👎 puede pedir motivo.
+require __DIR__ . '/_razon_modal.php';
+?>
 <?php $MESA_ASSETS = ob_get_clean(); ?>
 
 <?php if ($mesa_es_admin): ?>
