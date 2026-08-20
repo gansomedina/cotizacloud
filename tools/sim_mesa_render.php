@@ -48,22 +48,32 @@ chk('bloque 500: resumen con por trabajar / en juego', (bool)preg_match('/por tr
 // pinta el estado VIGENTE y ahí ese historial ya no se ve — los marcadores son
 // justo lo que lo rescata.
 chk('bloque 500: el 📅 se pinta con su cuenta y apagado (no hay cita en pie)',
-    str_contains($MESA_BLOQUES[500], 'class="mcitas"') && str_contains($MESA_BLOQUES[500], '📅2'), true);
-chk('bloque 500: el 📅 no se enciende sin cita en pie', str_contains($MESA_BLOQUES[500], 'mcitas viva'), false);
+    str_contains($MESA_BLOQUES[500], 'class="mtag mcitas"') && str_contains($MESA_BLOQUES[500], '📅<i>2</i>'), true);
+chk('bloque 500: el 📅 no se enciende sin cita en pie', str_contains($MESA_BLOQUES[500], 'mcitas on'), false);
 chk('bloque 500: el tooltip del 📅 dice cuántas y cuándo fue la última',
     (bool)preg_match('/Se citaron 2 veces — la última el \d\d\/\d\d/u', $MESA_BLOQUES[500]), true);
-chk('bloque 500: el 📵 se pinta con la racha y en rojo (3 seguidos)',
-    str_contains($MESA_BLOQUES[500], '📵3') && str_contains($MESA_BLOQUES[500], 'class="mnc alto"'), true);
+chk('bloque 500: el 📵 se pinta con la racha y encendido (3 seguidos)',
+    str_contains($MESA_BLOQUES[500], '📵<i>3</i>') && str_contains($MESA_BLOQUES[500], 'class="mtag mnc on"'), true);
 chk('bloque 500: el tooltip del 📵 explica la escalera',
     str_contains($MESA_BLOQUES[500], 'al 4.º intento se habilita suspenderla'), true);
 chk('M9 (hablaron tras 2 intentos) NO trae 📵 — la racha se reinicia',
-    substr_count($MESA_BLOQUES[500], 'class="mnc'), 1);
-chk('los marcadores van pegados al ▶, en columna fija',
-    (bool)preg_match('/<\/span>\s*<span class="mchev">/u', $MESA_BLOQUES[500])
-    && (bool)preg_match('/class="mtags">.*?<span class="mchev">/su', $MESA_BLOQUES[500]), true);
+    substr_count($MESA_BLOQUES[500], 'class="mtag mnc'), 1);
+// LA COLUMNA NO SE MUEVE: los dos huecos se pintan en TODAS las filas, tengan
+// o no marcador. Si un día se vuelven condicionales, el ▶ empieza a bailar de
+// renglón en renglón y la columna deja de ser escaneable.
+$n_rows = substr_count($MESA_BLOQUES[500], 'class="mrow');
+$n_cols = substr_count($MESA_BLOQUES[500], 'class="mtags"');
+chk('la columna se reserva en todas las filas (mtags) — el ▶ no baila',
+    [$n_cols, $n_rows > 0], [$n_rows, true]);
+// OJO con el espacio final: sin él, 'class="mtag' también matchea 'class="mtags"'
+chk('dos huecos por fila, llenos o vacíos',
+    substr_count($MESA_BLOQUES[500], 'class="mtag '), $n_cols * 2);
+chk('los marcadores van pegados al ▶',
+    (bool)preg_match('/class="mtags">.*?<\/span>\s*<span class="mchev">/su', $MESA_BLOQUES[500]), true);
 chk('assets: 📅 y 📵 traen su estilo (si no, salen como texto suelto)',
     str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtags')
-    && str_contains($MESA_ASSETS ?? '', '.mesa-emb .mnc.alto'), true);
+    && str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtag')
+    && str_contains($MESA_ASSETS ?? '', '.mesa-emb .mnc.on'), true);
 chk('bloque 501: lista completa, solo 2 milagros ocultos por CAP_MILAGROS (top 26 de 28)', str_contains($MESA_BLOQUES[501], 'top 26 de 28'), true);
 chk('sin referencias huérfanas a #mesa-card', str_contains($MESA_SHARED . implode('', $MESA_BLOQUES), '#mesa-card') || str_contains($MESA_SHARED . implode('', $MESA_BLOQUES), 'mesa-card'), false);
 chk('aviso de limpieza vive en el bloque del asesor', str_contains($MESA_BLOQUES[500], 'jamás ha cerrado') || !str_contains($MESA_SHARED, 'jamás ha cerrado'), true);
