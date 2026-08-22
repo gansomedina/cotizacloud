@@ -502,6 +502,45 @@ $page_title = 'Nueva cotización';
         <div class="mobile-panel">
             <div class="slabel" style="margin-top:24px">Opciones</div>
 
+            <?php
+            // Las <option> se arman UNA vez y se pintan en los dos selectores
+            // (móvil y panel de escritorio): si se duplicaran a mano, un día
+            // uno de los dos se quedaría sin un asesor nuevo.
+            $vend_opts = '';
+            if ($forzar_asesor) {
+                // Con 2+ asesores arranca vacío a propósito: asignar es una
+                // decisión, no un default. Con uno solo va preseleccionado.
+                $vend_opts .= '<option value="" selected disabled>— Seleccionar asesor —</option>';
+            }
+            foreach ($vendedores as $v) {
+                $vend_opts .= '<option value="' . (int)$v['id'] . '"'
+                            . ((int)$v['id'] === $vendedor_pre ? ' selected' : '') . '>'
+                            . e($v['nombre']) . '</option>';
+            }
+            ?>
+            <?php if ($puede_asignar && count($vendedores) > 1): ?>
+            <?php // El selector de asesor VIVÍA SOLO en el panel de escritorio, que
+                  // en ≤820px se oculta entero. En el teléfono no se podía elegir
+                  // asesor — y con 2+ asesores el guardado exige la elección, así
+                  // que la creación quedaba BLOQUEADA: el asesor tenía que girar
+                  // el teléfono para poder cotizar. Va abierto por default y de
+                  // primero porque es obligatorio, no un extra. ?>
+            <div class="mob-section open">
+                <div class="mob-sec-hdr" onclick="toggleMob(this)">
+                    <span class="mob-sec-title">Asesor asignado<?= $forzar_asesor ? ' *' : '' ?></span>
+                    <span class="mob-sec-arrow">›</span>
+                </div>
+                <div class="mob-sec-body">
+                    <div class="mob-sec-inner">
+                        <select id="cot-vendedor-mob" onchange="syncVendedor('mob')"
+                                style="width:100%;border:1px solid var(--border);border-radius:8px;background:var(--white);font:400 15px var(--body);color:var(--text);padding:11px 10px;outline:none">
+                            <?= $vend_opts ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <?php if (!empty($cupones) && $puede_descuentos): ?>
             <div class="mob-section">
                 <div class="mob-sec-hdr" onclick="toggleMob(this)">
@@ -679,16 +718,8 @@ $page_title = 'Nueva cotización';
         <?php if ($puede_asignar && count($vendedores) > 1): ?>
         <div class="panel-section">
             <div class="panel-lbl">Vendedor asignado</div>
-            <select id="cot-vendedor" style="width:100%;border:none;background:transparent;font:400 14px var(--body);color:var(--text);padding:8px 0;outline:none;cursor:pointer">
-                <?php if ($forzar_asesor): /* Solo con 2+ asesores: arranca vacio
-                         para que la asignacion sea una decision, no un default.
-                         Con un solo asesor va preseleccionado y esto ni se
-                         imprime. */ ?>
-                <option value="" selected disabled>— Seleccionar asesor —</option>
-                <?php endif; ?>
-                <?php foreach ($vendedores as $v): ?>
-                <option value="<?= (int)$v['id'] ?>" <?= (int)$v['id'] === $vendedor_pre ? 'selected' : '' ?>><?= e($v['nombre']) ?></option>
-                <?php endforeach; ?>
+            <select id="cot-vendedor" onchange="syncVendedor('desk')" style="width:100%;border:none;background:transparent;font:400 14px var(--body);color:var(--text);padding:8px 0;outline:none;cursor:pointer">
+                <?= $vend_opts /* mismas opciones que el selector móvil, armadas arriba */ ?>
             </select>
         </div>
         <?php endif; ?>
@@ -1224,6 +1255,26 @@ function syncNotas(from) {
     });
 }
 
+// Los dos selectores de asesor (panel de escritorio y panel móvil) se mantienen
+// iguales: si el asesor gira el teléfono a media captura, no se le pierde lo que
+// ya eligió ni se guarda algo distinto de lo que está viendo.
+function syncVendedor(from) {
+    const src = document.getElementById(from === 'desk' ? 'cot-vendedor' : 'cot-vendedor-mob');
+    const dst = document.getElementById(from === 'desk' ? 'cot-vendedor-mob' : 'cot-vendedor');
+    if (src && dst) dst.value = src.value;
+}
+
+// El selector que el usuario TIENE ENFRENTE. offsetParent es null cuando el
+// elemento o alguno de sus padres está en display:none — que es justo lo que le
+// pasa al panel de escritorio en el teléfono.
+function vendedorVisible() {
+    const desk = document.getElementById('cot-vendedor');
+    const mob  = document.getElementById('cot-vendedor-mob');
+    if (desk && desk.offsetParent !== null) return desk;
+    if (mob  && mob.offsetParent  !== null) return mob;
+    return desk || mob;
+}
+
 // ─── Recolectar items del DOM ───────────────────────────
 function recolectarItems() {
     const items = [];
@@ -1260,19 +1311,26 @@ async function guardarCotizacion() {
         return document.getElementById(deskId)?.checked || document.getElementById(mobId)?.checked || false;
     };
 
+    // El valor se toma de CUALQUIERA de los dos selectores. Antes se leía solo
+    // el del panel de escritorio, que en el teléfono está oculto: con 2+
+    // asesores arranca vacío, así que este mismo guard bloqueaba el guardado y
+    // encima hacía focus() sobre un elemento invisible — la creación desde el
+    // celular quedaba muerta, sin más salida que girar el teléfono.
     const vendedorSel = document.getElementById('cot-vendedor');
+    const vendedorVal = getVal('cot-vendedor', 'cot-vendedor-mob');
     // Con mas de un asesor el selector arranca vacio a proposito: antes venia
     // preseleccionado y se asignaban cotizaciones al asesor equivocado sin que
     // nadie lo hubiera elegido. Aqui se exige la eleccion explicita.
-    if (vendedorSel && !vendedorSel.value) {
+    if (vendedorSel && !vendedorVal) {
         alert('Selecciona el asesor al que se le asigna esta cotizacion.');
-        vendedorSel.focus();
+        const foco = vendedorVisible();
+        if (foco) foco.focus();
         return;
     }
     const payload = {
         titulo,
         cliente_id:            clienteSeleccionado?.id || null,
-        vendedor_id:           vendedorSel ? parseInt(vendedorSel.value) : null,
+        vendedor_id:           vendedorVal ? parseInt(vendedorVal) : null,
         valida_hasta:          document.getElementById('cot-vence')?.value || null,
         notas_cliente:         getVal('notas-cliente-desk', 'notas-cliente-mob'),
         notas_internas:        getVal('notas-internas-desk', 'notas-internas-mob'),
