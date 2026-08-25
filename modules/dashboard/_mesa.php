@@ -137,25 +137,12 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
       <?php else: ?><span class="mdot off" title="<?= e($dott) ?>"></span><?php endif; ?>
       <span class="mcli">
         <a href="/cotizaciones/<?= (int)$r['id'] ?>" onclick="event.stopPropagation()"><?= e($r['titulo'] ?: $r['cliente']) ?></a>
-        <span class="mfolio"><?= e($r['numero']) ?><?= $r['cliente'] && $r['titulo'] ? ' · ' . e($r['cliente']) : '' ?></span>
+        <?php // Folio · cliente · teléfono, en esa línea (decisión CEO). El
+              // teléfono siempre estuvo en la fila —Mesa.php lo trae del LEFT
+              // JOIN con clientes— solo que nunca se pintaba: para verlo había
+              // que abrir la cotización. Texto plano, sin acción de llamar. ?>
+        <span class="mfolio"><?= e($r['numero']) ?><?= $r['cliente'] && $r['titulo'] ? ' · ' . e($r['cliente']) : '' ?><?= !empty($r['telefono']) ? ' · ' . e(trim((string)$r['telefono'])) : '' ?></span>
       </span>
-      <?php // TELÉFONO. El dato siempre estuvo en la fila (Mesa.php lo trae del
-            // LEFT JOIN con clientes), solo que nunca se pintaba: para llamar
-            // había que abrir la cotización.
-            //
-            // Va FUERA de .mcli a propósito. .mcli es una línea con
-            // text-overflow:ellipsis, así que un título largo se lo comía; y
-            // .mfolio —el otro candidato— se oculta en móvil, justo donde más
-            // se llama. Aquí no lo trunca nadie y se ve en el teléfono.
-            //
-            // Es un tel: de verdad: un tap marca desde el celular y desde la app.
-            // stopPropagation para no abrir el cajón al querer llamar.
-            if (!empty($r['telefono'])):
-              $tel_txt  = trim((string)$r['telefono']);
-              $tel_href = preg_replace('/[^0-9+]/', '', $tel_txt); ?>
-      <a class="mtel" href="tel:<?= e($tel_href) ?>" onclick="event.stopPropagation()"
-         title="Llamar a <?= e($r['cliente']) ?>">📞 <?= e($tel_txt) ?></a>
-      <?php endif; ?>
       <span class="mflag"><?= $es_milagro ? '⚡' : ($r['dormida'] ? '<span title="' . (int)$r['dias_sin_vista'] . 'd sin volver a abrirla">😴</span>' : '') ?></span>
       <span class="mcheck"><?= !empty($r['atendida_hoy']) ? '✓' : '' ?></span>
       <span class="mciclo<?= ($r['fuera_ventana'] && !$es_milagro) ? ' late' : '' ?>">día <?= (int)$r['edad'] ?> de <?= $mp75 ?>
@@ -687,11 +674,6 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mcli a{color:#1a1a18;text-decoration:none}
 .mesa-emb .mcli a:hover{color:#1a5c38;text-decoration:underline}
 .mesa-emb .mfolio{font-weight:500;color:#a3a39d;font-size:11px;margin-left:6px}
-/* Teléfono del cliente. flex:none = no lo encoge ni lo trunca nadie, y NO se
-   esconde en móvil (a diferencia de .mfolio): es donde de verdad se llama. */
-.mesa-emb .mtel{flex:none;font:600 11.5px var(--body);color:#57574f;text-decoration:none;
-  white-space:nowrap;padding:2px 7px;border-radius:6px;background:#f3f3ed}
-.mesa-emb .mtel:hover{background:#e6e6dd;color:#1a5c38}
 .mesa-emb .mflag{font-size:11px;flex:none;width:18px;text-align:center}
 .mesa-emb .mcheck{color:#16a34a;font-weight:800;flex:none;width:16px;text-align:center}
 /* Marcadores de seguimiento (📅 citas · 📵 no contestó). Dos huecos de ancho
