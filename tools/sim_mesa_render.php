@@ -75,18 +75,29 @@ chk('los marcadores van justo después del texto del límite',
     (bool)preg_match('/class="mfresh[^"]*"[^>]*>.*?<\/span>\s*<span class="mtags">/su', $MESA_BLOQUES[500]), true);
 chk('y el ▶ se queda en la orilla (margin-right:auto se come el sobrante)',
     str_contains($MESA_ASSETS ?? '', 'margin:0 auto 0 6px'), true);
-// TELÉFONO EN EL RENGLÓN. Batallaban para encontrarlo: había que abrir la
-// cotización para verlo. Va en la misma línea del folio: folio · cliente · tel.
-chk('folio · cliente · teléfono, en esa línea',
-    str_contains($MESA_BLOQUES[500], '<span class="mfolio">COT-1 · Cliente Uno · 662 123-4567</span>'), true);
+// TELÉFONO — COLUMNA PROPIA. Batallaban para encontrarlo: había que abrir la
+// cotización para verlo.
 chk('se pinta tal como lo capturaron (con sus espacios y guiones)',
-    str_contains($MESA_BLOQUES[500], '662 123-4567'), true);
-// Decisión CEO: texto plano. NO es un enlace de llamada.
+    str_contains($MESA_BLOQUES[500], '<span class="mtel">662 123-4567</span>'), true);
+// Metido en la línea del folio se truncaba: los títulos de esta empresa son
+// direcciones y se comían el número — que era justo lo que se quería ver.
+chk('NO va en la línea que se trunca',
+    str_contains($MESA_BLOQUES[500], '662 123-4567</span>')
+    && !str_contains($MESA_BLOQUES[500], 'Cliente Uno · 662'), true);
+chk('vive fuera de .mcli',
+    (bool)preg_match('/<\/span>\s*<span class="mtel">/u', $MESA_BLOQUES[500]), true);
+// Se pidió VER el número, no marcarlo. Que la prueba afirme la ausencia: si
+// alguien lo vuelve a "mejorar" con un botón de llamada, se cae la suite.
 chk('sin acción de llamar',                  str_contains($MESA_BLOQUES[500], 'href="tel:'), false);
-chk('sin 📞 ni pastilla aparte',             str_contains($MESA_BLOQUES[500], 'mtel'),       false);
-// Sin teléfono no se inventa un separador colgando.
-chk('las filas sin teléfono no dejan un " · " suelto',
-    (bool)preg_match('/class="mfolio">[^<]*·\s*<\/span>/u', $MESA_BLOQUES[500]), false);
+chk('sin 📞',                                str_contains($MESA_BLOQUES[500], '📞'),         false);
+// Columna de verdad: el hueco existe en TODAS las filas, tengan teléfono o no.
+chk('la columna se reserva en todas las filas',
+    substr_count($MESA_BLOQUES[500], 'class="mtel"'), $n_rows);
+chk('las filas sin teléfono lo dejan vacío, no inventan',
+    str_contains($MESA_BLOQUES[500], '<span class="mtel"></span>'), true);
+chk('el móvil NO lo esconde',
+    (bool)preg_match('/@media[^{]*max-width:\s*640px[\s\S]{0,600}?\.mtel\s*\{[^}]*display\s*:\s*none/u', $MESA_ASSETS ?? ''), false);
+chk('trae su estilo',                        str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtel'), true);
 
 // DESCARTAR PIDE MOTIVO. El 👎 del renglón descarta igual que la pastilla del
 // cajón, así que abre el mismo selector. Si el partial dejara de viajar en los
