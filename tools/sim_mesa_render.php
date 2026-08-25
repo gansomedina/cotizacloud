@@ -76,23 +76,17 @@ chk('los marcadores van justo después del texto del límite',
 chk('y el ▶ se queda en la orilla (margin-right:auto se come el sobrante)',
     str_contains($MESA_ASSETS ?? '', 'margin:0 auto 0 6px'), true);
 // TELÉFONO EN EL RENGLÓN. Batallaban para encontrarlo: había que abrir la
-// cotización para poder llamar.
-chk('el teléfono se pinta tal como lo capturaron',
-    str_contains($MESA_BLOQUES[500], '📞 662 123-4567'), true);
-chk('es un tel: de verdad, sin espacios ni guiones',
-    str_contains($MESA_BLOQUES[500], 'href="tel:6621234567"'), true);
-chk('no abre el cajón al querer llamar',
-    (bool)preg_match('/class="mtel"[^>]*onclick="event\.stopPropagation\(\)"/u', $MESA_BLOQUES[500]), true);
-// Va FUERA de .mcli (que trunca con ellipsis) y NO dentro de .mfolio (que se
-// oculta en móvil, justo donde se llama). Las dos cosas lo harían inútil.
-chk('vive fuera del texto que se trunca',
-    (bool)preg_match('/<\/span>\s*<a class="mtel"/u', $MESA_BLOQUES[500]), true);
-chk('el móvil NO lo esconde',
-    (bool)preg_match('/@media[^{]*max-width:\s*640px[\s\S]{0,600}?\.mtel\s*\{[^}]*display\s*:\s*none/u', $MESA_ASSETS ?? ''), false);
-chk('trae su estilo',                        str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtel'), true);
-// Sin teléfono no se inventa nada: hay filas con cliente y filas sin él.
-chk('las filas sin teléfono no pintan el 📞',
-    substr_count($MESA_BLOQUES[500], 'class="mtel"') < $n_rows, true);
+// cotización para verlo. Va en la misma línea del folio: folio · cliente · tel.
+chk('folio · cliente · teléfono, en esa línea',
+    str_contains($MESA_BLOQUES[500], '<span class="mfolio">COT-1 · Cliente Uno · 662 123-4567</span>'), true);
+chk('se pinta tal como lo capturaron (con sus espacios y guiones)',
+    str_contains($MESA_BLOQUES[500], '662 123-4567'), true);
+// Decisión CEO: texto plano. NO es un enlace de llamada.
+chk('sin acción de llamar',                  str_contains($MESA_BLOQUES[500], 'href="tel:'), false);
+chk('sin 📞 ni pastilla aparte',             str_contains($MESA_BLOQUES[500], 'mtel'),       false);
+// Sin teléfono no se inventa un separador colgando.
+chk('las filas sin teléfono no dejan un " · " suelto',
+    (bool)preg_match('/class="mfolio">[^<]*·\s*<\/span>/u', $MESA_BLOQUES[500]), false);
 
 // DESCARTAR PIDE MOTIVO. El 👎 del renglón descarta igual que la pastilla del
 // cajón, así que abre el mismo selector. Si el partial dejara de viajar en los
