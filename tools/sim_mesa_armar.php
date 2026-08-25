@@ -158,7 +158,9 @@ function hotbt(int $cot, float $hace_d): void {
 }
 
 DB::execute("INSERT INTO usuarios VALUES (500,5,'Vendedor',1),(501,5,'Cargado',1)");
-DB::execute("INSERT INTO clientes VALUES (1,'Cliente Uno','555')");
+// Teléfono con el formato que de verdad capturan (espacios y guiones): el
+// renglón lo muestra tal cual pero el href tel: va limpio de símbolos.
+DB::execute("INSERT INTO clientes VALUES (1,'Cliente Uno','662 123-4567')");
 
 // ══ VENDEDOR 500 — una cotización por categoría/filtro ══════
 // M1 (1): SIN_POSTURA — hot fresco (bucket_at -1d), visitas 3, nada capturado
