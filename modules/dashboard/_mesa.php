@@ -137,12 +137,22 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
       <?php else: ?><span class="mdot off" title="<?= e($dott) ?>"></span><?php endif; ?>
       <span class="mcli">
         <a href="/cotizaciones/<?= (int)$r['id'] ?>" onclick="event.stopPropagation()"><?= e($r['titulo'] ?: $r['cliente']) ?></a>
-        <?php // Folio · cliente · teléfono, en esa línea (decisión CEO). El
-              // teléfono siempre estuvo en la fila —Mesa.php lo trae del LEFT
-              // JOIN con clientes— solo que nunca se pintaba: para verlo había
-              // que abrir la cotización. Texto plano, sin acción de llamar. ?>
-        <span class="mfolio"><?= e($r['numero']) ?><?= $r['cliente'] && $r['titulo'] ? ' · ' . e($r['cliente']) : '' ?><?= !empty($r['telefono']) ? ' · ' . e(trim((string)$r['telefono'])) : '' ?></span>
+        <span class="mfolio"><?= e($r['numero']) ?><?= $r['cliente'] && $r['titulo'] ? ' · ' . e($r['cliente']) : '' ?></span>
       </span>
+      <?php // TELÉFONO — columna propia. El dato siempre estuvo en la fila
+            // (Mesa.php lo trae del LEFT JOIN con clientes), solo que nunca se
+            // pintaba: para verlo había que abrir la cotización.
+            //
+            // Va FUERA de .mcli porque esa línea trunca con ellipsis: metido
+            // ahí, un título largo —y en esta empresa los títulos son
+            // direcciones— se comía el número, que es justo lo que se quería
+            // ver. Aquí no lo encoge nadie, y de paso se ve en el teléfono
+            // (.mfolio se oculta en ≤640px).
+            //
+            // Texto plano, SIN enlace de llamada: se pidió ver el número, no
+            // marcarlo. El hueco se reserva aunque no haya teléfono, para que
+            // sea una columna de verdad al bajar la lista. ?>
+      <span class="mtel"><?= !empty($r['telefono']) ? e(trim((string)$r['telefono'])) : '' ?></span>
       <span class="mflag"><?= $es_milagro ? '⚡' : ($r['dormida'] ? '<span title="' . (int)$r['dias_sin_vista'] . 'd sin volver a abrirla">😴</span>' : '') ?></span>
       <span class="mcheck"><?= !empty($r['atendida_hoy']) ? '✓' : '' ?></span>
       <span class="mciclo<?= ($r['fuera_ventana'] && !$es_milagro) ? ' late' : '' ?>">día <?= (int)$r['edad'] ?> de <?= $mp75 ?>
@@ -674,6 +684,11 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mcli a{color:#1a1a18;text-decoration:none}
 .mesa-emb .mcli a:hover{color:#1a5c38;text-decoration:underline}
 .mesa-emb .mfolio{font-weight:500;color:#a3a39d;font-size:11px;margin-left:6px}
+/* Teléfono: columna propia. flex:none = no lo encoge ni lo trunca nadie (a
+   diferencia de .mcli, que corta con ellipsis), min-width = el hueco existe
+   aunque la fila no traiga teléfono, así la columna no baila. NO se esconde en
+   móvil, al revés que .mfolio. */
+.mesa-emb .mtel{flex:none;min-width:104px;font:500 11.5px var(--body);color:#8a8a82;white-space:nowrap}
 .mesa-emb .mflag{font-size:11px;flex:none;width:18px;text-align:center}
 .mesa-emb .mcheck{color:#16a34a;font-weight:800;flex:none;width:16px;text-align:center}
 /* Marcadores de seguimiento (📅 citas · 📵 no contestó). Dos huecos de ancho
