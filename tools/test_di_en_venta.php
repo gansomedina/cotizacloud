@@ -57,6 +57,14 @@ $pub = $src['public/venta.php'];
 chk('en pantalla y en impresión',
     substr_count($pub, 'Descuento (<?= (float)$desc_int_act'), 2);
 chk('con el porcentaje y el monto', str_contains($pub, "monto_desc"), true);
+// La FECHA en que el cliente aceptó, para que el asesor sepa de cuándo viene
+// ese precio. La activación no la guarda: se toma de aceptada_at, con el
+// created_at de la venta como respaldo (nacen en la misma transacción).
+chk('y la fecha en que el cliente lo aceptó',
+    substr_count($pub, 'aceptado \' . e($di_fecha)'), 2);
+chk('sale de aceptada_at, no de la activación',
+    str_contains($pub, "c.aceptada_at AS cot_aceptada_at")
+    && str_contains($pub, "cot_aceptada_at'] ?: \$venta['created_at']"), true);
 // Antes del total, no después: un descuento listado debajo del total no explica
 // nada.
 chk('antes de la línea del Total',
