@@ -77,6 +77,23 @@ $ini_emp = ini_v($venta['emp_nombre']);
 $pagado  = (float)$venta['pagado'];
 $saldo   = (float)$venta['saldo'];
 $total   = (float)$venta['total'];
+
+// ── Descuento Inteligente aplicado a esta venta ──────────────────────────
+// El DI vive en su propia tabla y NO escribe en ventas.descuento_auto_amt
+// (decisión de diseño: "feature independiente, no toca descuento_auto ni
+// cupones"). ventas/ver.php y ventas/guardar.php ya la consultan; esta vista
+// —la que ve el CLIENTE— era la única que no, así que su total salía con el
+// descuento aplicado pero sin una sola línea que lo explicara: veía $37,051
+// donde la lista dice $38,403 y nada le decía por qué.
+// Misma consulta que modules/ventas/ver.php:90 — una sola fuente del dato,
+// así que las ventas ya cerradas lo muestran sin tener que rellenar nada.
+$desc_int_act = null;
+try {
+    $desc_int_act = DB::row(
+        "SELECT pct, monto_desc FROM desc_int_activaciones
+         WHERE cotizacion_id=? AND empresa_id=? AND estado='utilizado' ORDER BY id DESC LIMIT 1",
+        [(int)$venta['cotizacion_id'], EMPRESA_ID]);
+} catch (\Throwable $e) {} // tabla sin migrar → la venta se pinta igual
 $pct_pag = $total > 0 ? min(100, round($pagado / $total * 100)) : 0;
 
 $estado_map = [
@@ -464,6 +481,12 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <?php if ((float)($venta['descuento_auto_amt'] ?? 0) > 0): ?>
     <div class="tot-row disc"><span class="tot-lbl">Descuento<?= ($venta['descuento_auto_pct'] ?? 0) > 0 ? ' ('.$venta['descuento_auto_pct'].'%)' : '' ?></span><span class="tot-val">-<?= fmt_v((float)$venta['descuento_auto_amt']) ?></span></div>
     <?php endif; ?>
+    <?php // Mismo lugar y mismo orden que modules/ventas/ver.php: después del
+          // descuento y antes del total. Sin el enlace "quitar" — esa es una
+          // acción del asesor, no del cliente. ?>
+    <?php if ($desc_int_act): ?>
+    <div class="tot-row disc"><span class="tot-lbl">✨ Descuento inteligente (<?= (float)$desc_int_act['pct'] ?>%)</span><span class="tot-val">-<?= fmt_v((float)$desc_int_act['monto_desc']) ?></span></div>
+    <?php endif; ?>
     <div class="tot-row final"><span class="tot-lbl">Total</span><span class="tot-val"><?= fmt_v($total) ?></span></div>
     <div class="tot-row pag-row"><span class="tot-lbl">Pagado</span><span class="tot-val"><?= fmt_v($pagado) ?></span></div>
     <?php if ($saldo > 0): ?>
@@ -648,6 +671,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <?php endif; ?>
       <?php if ((float)($venta['descuento_auto_amt'] ?? 0) > 0): ?>
       <div class="fac-tot-row"><span class="fac-tot-lbl">Descuento<?= ($venta['descuento_auto_pct'] ?? 0) > 0 ? ' ('.$venta['descuento_auto_pct'].'%)' : '' ?></span><span class="fac-tot-val" style="color:#c05">-<?= fmt_v((float)$venta['descuento_auto_amt']) ?></span></div>
+      <?php endif; ?>
+      <?php if ($desc_int_act): /* también en la vista de impresión: el cliente
+            se guarda ese PDF y ahí tiene que constar el descuento */ ?>
+      <div class="fac-tot-row"><span class="fac-tot-lbl">✨ Descuento inteligente (<?= (float)$desc_int_act['pct'] ?>%)</span><span class="fac-tot-val" style="color:#c05">-<?= fmt_v((float)$desc_int_act['monto_desc']) ?></span></div>
       <?php endif; ?>
       <div class="fac-tot-row final"><span class="fac-tot-lbl">Total</span><span class="fac-tot-val"><?= fmt_v($total) ?></span></div>
       <div class="fac-saldo-box">
