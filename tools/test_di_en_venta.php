@@ -54,17 +54,22 @@ echo "\n2) LA LÍNEA SE PINTA EN LAS DOS VISTAS DE LA URL PÚBLICA\n";
 $pub = $src['public/venta.php'];
 // Pantalla e impresión son bloques distintos: el cliente se guarda el PDF, así
 // que el descuento tiene que constar en los dos.
-chk('en pantalla',    substr_count($pub, 'Descuento inteligente') >= 1, true);
-chk('y en impresión', substr_count($pub, 'Descuento inteligente'), 2);
-chk('con el porcentaje y el monto',
-    (bool)preg_match('/Descuento inteligente \(<\?=[^>]*pct[^>]*\?>%\)/u', $pub)
-    && str_contains($pub, "monto_desc"), true);
+chk('en pantalla y en impresión',
+    substr_count($pub, 'Descuento (<?= (float)$desc_int_act'), 2);
+chk('con el porcentaje y el monto', str_contains($pub, "monto_desc"), true);
 // Antes del total, no después: un descuento listado debajo del total no explica
 // nada.
 chk('antes de la línea del Total',
-    (bool)preg_match('/Descuento inteligente[\s\S]{0,600}?tot-row final/u', $pub), true);
+    (bool)preg_match('/desc_int_act\[.pct.\][\s\S]{0,600}?tot-row final/u', $pub), true);
 
-echo "\n3) LA VISTA PÚBLICA NO TRAE ACCIONES DE ASESOR\n";
+echo "\n3) LA VISTA PÚBLICA NO HABLA EN INTERNO\n";
+// "Descuento Inteligente" es el nombre del motor, no algo que el cliente tenga
+// por qué leer en su recibo (decisión CEO). Para él es un descuento y ya. En el
+// panel del asesor sí se llama por su nombre — ahí importa distinguirlo del
+// automático y del cupón.
+chk('el cliente lee "Descuento", sin jerga', str_contains($pub, 'Descuento inteligente'), false);
+chk('el asesor sí lo ve por su nombre',
+    str_contains($src['modules/ventas/ver.php'], 'Descuento inteligente'), true);
 chk('sin el enlace "quitar" (eso es del panel interno)',
     str_contains($pub, 'quitarDescInt'), false);
 
