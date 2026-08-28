@@ -388,8 +388,42 @@ comodín es el más peligroso: autorizaba a ese futuro desconocido a enviar corr
 Resultado del simulacro: **envío OK** (DKIM `brevo2` PASS, DMARC PASS) y **recepción
 OK** (`prueba2@cotiza.cloud` → Gmail, con la firma DKIM del emisor original intacta
 tras el reenvío). Con eso, cancelar Limitless es un trámite administrativo sin
-consecuencia técnica. Solo falta bajar el *Full Account Backup* del cPanel antes de
-darle clic, porque cancelar sí es irreversible.
+consecuencia técnica.
+
+### 5e. Limitless CANCELADO ✅ (28 ago 2026)
+
+*Full Account Backup* descargado y **cuenta cancelada**. El proveedor dio **1 mes de
+gracia**, así que hasta finales de septiembre existe un rollback real — aunque no hay
+nada que revertir: ningún registro DNS apunta ya a `107.161.23.124`.
+
+Verificación post-cancelación (DNS autoritativo):
+```
+mail.cotiza.cloud  →  212.28.186.247       (el VPS, ver nota abajo)
+MX                 →  route1/2/3.mx.cloudflare.net
+SPF                →  una sola linea, con Brevo
+brevo1/brevo2._domainkey  →  intactos
+referencias a 107.161.23.124  →  0
+```
+
+**Nota que ahorra un susto:** `mail.cotiza.cloud` sigue resolviendo pese a que su
+registro A se borró — responde el **comodín `*.cotiza.cloud`**, que apunta al VPS. No
+es un resto del host viejo. Y es mejor que si no resolviera: cierra por completo el
+riesgo de que un cliente de correo mal configurado mandara credenciales a la IP
+reciclada por el proveedor.
+
+**Estado del servidor al cerrar:** el webroot se había quedado en `8869e37` (6 ago) y
+el deploy lo trajo a `e973908` de un salto — tres semanas de trabajo de otras ramas.
+Se verificó que ninguna de esas migraciones quedara sin correr consultando
+`information_schema` contra la base viva: todo presente.
+
+⚠️ **Trampa de esa verificación, para no repetirla:** los nombres de archivo de
+`migrations/` NO predicen qué objeto crean. `add_mesa_agenda.sql` no crea la tabla
+`mesa_agenda` — agrega `agenda_fecha` y `agenda_at` a `cotizaciones`. Verificar
+buscando el objeto que el archivo realmente crea, no el nombre del archivo.
+
+⚠️ **`curl -I` sobre este sitio devuelve 404**: manda HEAD, y el router responde el
+estado sin ejecutar el manejador. Para comprobar que el sitio vive, GET:
+`curl -s -o /dev/null -w "%{http_code}\n" https://cotiza.cloud/login` → `200`.
 
 ### Patrón para migrar otro sitio que SÍ tenga correo (ej. ontimecocinas.com)
 Su MX apunta al **dominio** (`MX → ontimecocinas.com`), así que si se mueve el
