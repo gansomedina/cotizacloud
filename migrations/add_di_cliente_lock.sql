@@ -1,3 +1,10 @@
+-- ⚠️ SUPERADO por migrations/add_di_cupo_permanente.sql (28-ago-2026).
+-- Este archivo aflojó el candado para que 'vencido' liberara el cupo. La regla
+-- del negocio resultó ser la contraria: el cupo se gasta al RECIBIR el
+-- descuento, se use o no. Si vas a montar un servidor nuevo, corre
+-- add_descuentos_inteligentes.sql (que ya nace con la regla buena) y sáltate
+-- este. Se conserva solo para entender la historia de una base ya migrada.
+--
 -- Corrige el candado de cliente de Descuentos Inteligentes.
 -- Correr SOLO en servidores donde add_descuentos_inteligentes.sql YA se corrió
 -- con la versión vieja (UNIQUE uk_cliente(cliente_id) permanente).

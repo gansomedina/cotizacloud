@@ -28,10 +28,15 @@ CREATE TABLE IF NOT EXISTS desc_int_config (
 
 -- desc_int_activaciones: log de descuentos que dispararon.
 --   uk_cotizacion   → "una por cotización" (a prueba de doble-clic/carrera).
---   uk_cliente_vivo → "una VIVA por cliente": cliente_lock = cliente_id solo
---     mientras el DI está activo/utilizado; en vencido/cancelado pasa a NULL
---     (MySQL permite múltiples NULL) → un DI que expiró sin usarse o que el
---     admin quitó LIBERA el cupo, el cliente puede recibir otro después.
+--   uk_cliente_vivo → "UNO POR CLIENTE, en su vida": el cupo se gasta al
+--     RECIBIR el descuento, no al usarlo. Dejar pasar las 24h sin comprar NO
+--     lo devuelve — ya tuvo su oportunidad (decisión CEO, 28-ago-2026).
+--     cliente_lock = cliente_id salvo en 'cancelado', que sí libera: quitar el
+--     descuento a mano es una corrección del asesor, no el paso del tiempo.
+--     (MySQL permite múltiples NULL, por eso el candado se suelta con NULL.)
+--     OJO: la versión previa también soltaba en 'vencido'. Se corrigió en
+--     migrations/add_di_cupo_permanente.sql — si esta base es nueva, ya nace
+--     con la regla buena y ese archivo no hace falta.
 -- cliente_id NUNCA NULL (genéricos/NULL no disparan). FK a cotizaciones con
 -- CASCADE para no dejar activaciones huérfanas al borrar una cotización.
 CREATE TABLE IF NOT EXISTS desc_int_activaciones (
@@ -40,7 +45,7 @@ CREATE TABLE IF NOT EXISTS desc_int_activaciones (
     cotizacion_id   INT UNSIGNED NOT NULL,
     cliente_id      INT UNSIGNED NOT NULL,
     cliente_lock    INT UNSIGNED GENERATED ALWAYS AS
-                      (CASE WHEN estado IN ('activo','utilizado') THEN cliente_id ELSE NULL END) STORED,
+                      (CASE WHEN estado <> 'cancelado' THEN cliente_id ELSE NULL END) STORED,
     regla           TINYINT      NOT NULL,             -- 1 = recuperación · 2 = muerto
     pct             DECIMAL(5,2) NOT NULL,
     precio_original DECIMAL(14,2) NOT NULL,
