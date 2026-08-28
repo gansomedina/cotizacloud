@@ -19,12 +19,20 @@ class Mailer
     {
         $mail = new PHPMailer(true);
         $mail->isSMTP();
-        $mail->Host       = defined('SMTP_HOST')      ? SMTP_HOST      : 'mail.cotiza.cloud';
+        // El respaldo era 'mail.cotiza.cloud', el servidor de correo del hosting
+        // viejo (cPanel Limitless). Ese nombre ya no existe y su IP la reciclara
+        // el proveedor para otro cliente: si algun dia se pierde SMTP_HOST del
+        // config, PHPMailer intentaria autenticarse contra el servidor de un
+        // desconocido. Ahora el respaldo es el relay que de verdad se usa.
+        $mail->Host       = defined('SMTP_HOST')      ? SMTP_HOST      : 'smtp-relay.brevo.com';
         $mail->SMTPAuth   = true;
         $mail->Username   = defined('SMTP_USER')      ? SMTP_USER      : 'noreply@cotiza.cloud';
         $mail->Password   = defined('SMTP_PASS')      ? SMTP_PASS      : '';
-        $mail->SMTPSecure = defined('SMTP_SECURE')    ? SMTP_SECURE    : 'ssl';
-        $mail->Port       = defined('SMTP_PORT')      ? SMTP_PORT      : 465;
+        // Coherentes con el Host de respaldo: Brevo es 587 + STARTTLS ('tls'),
+        // NO 465 + 'ssl'. Un respaldo a medias (host nuevo, puerto viejo) parece
+        // correcto y no conecta.
+        $mail->SMTPSecure = defined('SMTP_SECURE')    ? SMTP_SECURE    : 'tls';
+        $mail->Port       = defined('SMTP_PORT')      ? SMTP_PORT      : 587;
         $mail->CharSet    = 'UTF-8';
         // Sin esto PHPMailer espera 300 s por operacion SMTP: un relay lento
         // retiene el worker de PHP-FPM y basta un puñado para tumbar el sitio.

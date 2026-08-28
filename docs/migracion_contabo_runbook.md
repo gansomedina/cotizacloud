@@ -273,16 +273,123 @@ hasta darla de alta en Brevo.**
 ### 5b. Correo — lo que SIGUE dependiendo del hosting viejo
 El **envío** ya salió del hosting viejo (Brevo). Lo que TODAVÍA depende de él:
 
-1. **Recepción de correo (MX)** — `MX → mail.cotiza.cloud → 107.161.23.124`.
-   Hoy no se usan buzones, pero si algún día se quieren (clientes, tickets), el
-   día que se cancele el hosting viejo hay que mover el MX a un proveedor de
-   buzones (Zoho Mail / Google Workspace). **Nunca auto-hospedar correo en el VPS**:
-   IP nueva sin reputación = spam + blacklists + mantenimiento.
+1. ~~**Recepción de correo (MX)** — `MX → mail.cotiza.cloud → 107.161.23.124`~~
+   ✅ **RESUELTO (28 ago) con Cloudflare Email Routing — ver §5c.**
 2. ~~**`api/soporte.php` usa `mail()` de PHP**~~ ✅ **RESUELTO por partida doble**:
    las 2 llamadas se cambiaron a `Mailer::enviar()`, y además se instaló
    `msmtp-mta` (ver §6), así que `mail()` también funciona ya en el servidor.
    Falta la prueba de humo: mandar un mensaje por el chat del landing y confirmar
    que llega el aviso del lead.
+
+### 5c. Correo — recepción migrada a Cloudflare Email Routing ✅ HECHO (28 ago)
+
+Último lazo con Limitless cortado. **El correo ya no toca el hosting viejo en
+ninguna dirección**: sale por Brevo, entra por Cloudflare y se reenvía a Gmail.
+
+**Por qué Cloudflare Email Routing y no Zoho/Google/buzón en el VPS:** el DNS ya
+vivía en Cloudflare, es gratis, no hay buzón que mantener, y el catch-all cubre
+*cualquier* dirección `@cotiza.cloud` (incluidas las que un tercero pudiera tener
+registradas como contacto: registrador, Apple, MercadoPago, banco). El único buzón
+que existía (`noreply@`, 175 KB) tenía **puros rebotes**, nada que rescatar.
+
+**Limitación asumida:** Email Routing **solo recibe**. Al responderle a un cliente,
+la respuesta sale de la dirección personal, no de `@cotiza.cloud`. El atajo de
+"enviar como" desde Gmail vía el SMTP de Brevo **no funciona**: Brevo tiene filtro
+de IPs autorizadas con solo `212.28.186.247`. Para escribir desde `hola@cotiza.cloud`
+haría falta Google Workspace o Zoho, y volver a mover el MX (~15 min).
+
+**Estado final de la zona:**
+```
+MX   cotiza.cloud  →  73 route3 / 81 route1 / 95 route2 .mx.cloudflare.net
+TXT  cotiza.cloud  →  v=spf1 a include:spf.brevo.com include:_spf.mx.cloudflare.net ~all
+Catch-all          →  josealfonsomedina@gmail.com
+```
+
+**Orden de ejecución (importa):**
+1. Verificar la dirección de destino en Cloudflare (no toca DNS).
+2. **Fusionar el SPF ANTES de activar** (ver trampa abajo).
+3. **Borrar el MX viejo primero** — Cloudflare se niega a agregar los suyos
+   mientras exista un MX externo (*"Existing non-Cloudflare MX records conflict"*).
+   El hueco sin MX no pierde correo: el emisor recibe fallo temporal y reintenta.
+4. `Add missing records` → activar → poner el catch-all en **Send to an email**
+   (el default es **Drop**, que tira el correo en silencio).
+
+**⚠️ TRAMPA 1 — el SPF duplicado.** `Add missing records` agrega los 5 de golpe,
+sin dejar elegir, e incluye `TXT cotiza.cloud "v=spf1 include:_spf.mx.cloudflare.net ~all"`.
+Un dominio **solo puede tener UN SPF**; dos = PERMERROR = el correo transaccional
+a spam. Por eso el SPF se fusiona ANTES. Hecho así, Cloudflare detectó el existente
+y **no** agregó el suyo. La fila del SPF queda marcada **"Missing" para siempre** en
+su panel: es correcto y esperado (su propia doc manda fusionar). **No volver a darle
+a "Add missing records"** por arreglar ese "Missing" — recrearía el duplicado.
+
+**⚠️ TRAMPA 2 — la prioridad.** El botón dice *agregar*, no *reemplazar*. Los MX
+nuevos entran con prioridad 73/81/95 y el viejo tenía **0**. En correo gana el número
+más bajo: si el viejo sobrevive, todo sigue yendo al host viejo aunque los nuevos existan.
+
+**Lo que SPF quitó y por qué:** `mx` (autorizaba lo que apuntara el MX, o sea el host
+viejo) y `include:relay.mailchannels.net` (relay de salida de cPanel/LiteSpeed, muere
+con la cuenta). Se conservó `a` como red de seguridad y `include:spf.brevo.com`.
+
+### 🔑 Lo que de verdad sostiene el correo: DKIM, no SPF
+
+Hallazgo de los encabezados reales de un correo entregado en Gmail:
+```
+Return-Path: <bounces-...@ha.d.sender-sib.com>
+spf=pass   smtp.mailfrom=bounces-...@ha.d.sender-sib.com
+dkim=pass  header.i=@cotiza.cloud header.s=brevo2
+dmarc=pass header.from=cotiza.cloud
+```
+El SPF se evalúa contra el dominio del **sobre**, y Brevo lo reescribe al suyo → **el
+registro SPF de `cotiza.cloud` ni siquiera se consulta** para el correo de la app. Lo
+que alinea y hace pasar el DMARC es la **firma DKIM con el selector `brevo2`**.
+
+**Consecuencia operativa: `brevo1._domainkey` y `brevo2._domainkey` son los dos
+registros intocables de la zona.** Si se rompen, DKIM falla → DMARC falla → todo a
+spam, aunque el SPF esté perfecto. El SPF vale tenerlo correcto (defensa en
+profundidad), pero hoy está dormido.
+
+Corolario: los rebotes van a `ha.d.sender-sib.com` (Brevo), no a `noreply@`. Por eso
+ese buzón solo había juntado 175 KB en un año.
+
+### 5d. Inventario previo a cancelar Limitless (28 ago) — todo limpio
+
+| Revisión | Resultado |
+|---|---|
+| Registrador del dominio | **GoDaddy**, no Limitless → cancelar el hosting NO arrastra el dominio. Expira 2027-03-09. Verificado por RDAP (`https://rdap.registry.cloud/rdap/domain/cotiza.cloud`) |
+| Dominios en la cuenta | `cotiza.cloud`, `*.cotiza.cloud` y los 3 de OnTime — **todos resuelven a 212.28.186.247 y responden `nginx/1.24.0`**, con Let's Encrypt vigente. Las entradas del cPanel son cascarones huérfanos |
+| Cron jobs | **Ninguno** → descartado el riesgo de `procesar_suscripciones.php` cobrando en MercadoPago por duplicado contra la base vieja |
+| Bases de datos | Una (`cotizacl_cotizacloud`, 17.67 MB) |
+| **Escrituras posteriores al corte en la BD vieja** | **0 en las 4 tablas** (`cotizaciones`, `ventas`, `recibos`, `quote_sessions`). Ningún resolvedor rezagado escribió ahí. Esta es la revisión que exige el §"Consecuencia de negocio" de los gotchas |
+| Buzones | 1 (`noreply@`, 175 KB), puros rebotes |
+
+Query usada (solo lectura, en phpMyAdmin del cPanel viejo):
+```sql
+SELECT 'cotizaciones' AS tabla, COUNT(*) AS despues_del_corte, MAX(created_at) AS ultimo
+  FROM cotizaciones   WHERE created_at > '2026-07-27'
+UNION ALL SELECT 'ventas',   COUNT(*), MAX(created_at) FROM ventas   WHERE created_at > '2026-07-27'
+UNION ALL SELECT 'recibos',  COUNT(*), MAX(created_at) FROM recibos  WHERE created_at > '2026-07-27'
+UNION ALL SELECT 'quote_sessions', COUNT(*), MAX(created_at) FROM quote_sessions WHERE created_at > '2026-07-27';
+```
+
+**Simulacro "como si Limitless ya no existiera" (28 ago).** En vez de esperar a la
+cancelación para borrar los registros del host viejo, se borraron **antes**, con la
+cuenta todavía viva: si algo se rompía, se veía con la IP aún en nuestro poder. Es el
+orden correcto para un simulacro. Borrados:
+```
+mail.cotiza.cloud    A    107.161.23.124
+*.cotiza.cloud       TXT  "v=spf1 +a +mx +ip4:107.161.23.124 include:relay.mailchannels.net …"
+default._domainkey   TXT  "v=DKIM1; k=rsa; p=…"   (DKIM del servidor viejo)
+```
+Los tres apuntaban a una IP que Limitless reciclará y le dará a otro cliente. El del
+comodín es el más peligroso: autorizaba a ese futuro desconocido a enviar correo como
+`loquesea.cotiza.cloud`. (Opcional, mejor que borrarlo: dejar `*.cotiza.cloud TXT
+"v=spf1 -all"` — declara que ningún subdominio envía.)
+
+Resultado del simulacro: **envío OK** (DKIM `brevo2` PASS, DMARC PASS) y **recepción
+OK** (`prueba2@cotiza.cloud` → Gmail, con la firma DKIM del emisor original intacta
+tras el reenvío). Con eso, cancelar Limitless es un trámite administrativo sin
+consecuencia técnica. Solo falta bajar el *Full Account Backup* del cPanel antes de
+darle clic, porque cancelar sí es irreversible.
 
 ### Patrón para migrar otro sitio que SÍ tenga correo (ej. ontimecocinas.com)
 Su MX apunta al **dominio** (`MX → ontimecocinas.com`), así que si se mueve el
