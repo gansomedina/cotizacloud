@@ -21,6 +21,7 @@ $venta = DB::row(
             c.cupon_monto AS cupon_amt, c.cupon_codigo, c.cupon_pct,
             c.subtotal AS cot_subtotal,
             c.descuento_auto_amt AS cot_desc_auto_amt, c.descuento_auto_pct,
+            c.aceptada_at AS cot_aceptada_at,
             c.impuesto_pct, c.impuesto_modo, c.impuesto_amt,
             0 AS descuento_manual_amt
      FROM ventas v
@@ -94,6 +95,18 @@ try {
          WHERE cotizacion_id=? AND empresa_id=? AND estado='utilizado' ORDER BY id DESC LIMIT 1",
         [(int)$venta['cotizacion_id'], EMPRESA_ID]);
 } catch (\Throwable $e) {} // tabla sin migrar → la venta se pinta igual
+
+// CUÁNDO lo aceptó el cliente. La activación no guarda ese momento —solo
+// fecha_apertura (cuando se le ofreció) y expira_at—, pero la venta nace en el
+// mismo instante en que acepta (api/quote_action.php lo hace en la misma
+// transacción), así que aceptada_at y created_at de la venta son el mismo reloj.
+// Se prefiere aceptada_at por ser el dato canónico; el created_at cubre ventas
+// viejas donde pudiera venir vacío.
+$di_fecha = '';
+if ($desc_int_act) {
+    $ts = strtotime((string)($venta['cot_aceptada_at'] ?: $venta['created_at']));
+    if ($ts) $di_fecha = date('d M Y', $ts);
+}
 $pct_pag = $total > 0 ? min(100, round($pagado / $total * 100)) : 0;
 
 $estado_map = [
@@ -485,7 +498,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
           // descuento y antes del total. Sin el enlace "quitar" — esa es una
           // acción del asesor, no del cliente. ?>
     <?php if ($desc_int_act): ?>
-    <div class="tot-row disc"><span class="tot-lbl">✨ Descuento (<?= (float)$desc_int_act['pct'] ?>%)</span><span class="tot-val">-<?= fmt_v((float)$desc_int_act['monto_desc']) ?></span></div>
+    <div class="tot-row disc"><span class="tot-lbl">✨ Descuento (<?= (float)$desc_int_act['pct'] ?>%)<?= $di_fecha ? ' <small style="font-weight:400;opacity:.75">aceptado ' . e($di_fecha) . '</small>' : '' ?></span><span class="tot-val">-<?= fmt_v((float)$desc_int_act['monto_desc']) ?></span></div>
     <?php endif; ?>
     <div class="tot-row final"><span class="tot-lbl">Total</span><span class="tot-val"><?= fmt_v($total) ?></span></div>
     <div class="tot-row pag-row"><span class="tot-lbl">Pagado</span><span class="tot-val"><?= fmt_v($pagado) ?></span></div>
@@ -674,7 +687,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <?php endif; ?>
       <?php if ($desc_int_act): /* también en la vista de impresión: el cliente
             se guarda ese PDF y ahí tiene que constar el descuento */ ?>
-      <div class="fac-tot-row"><span class="fac-tot-lbl">✨ Descuento (<?= (float)$desc_int_act['pct'] ?>%)</span><span class="fac-tot-val" style="color:#c05">-<?= fmt_v((float)$desc_int_act['monto_desc']) ?></span></div>
+      <div class="fac-tot-row"><span class="fac-tot-lbl">✨ Descuento (<?= (float)$desc_int_act['pct'] ?>%)<?= $di_fecha ? ' <small style="font-weight:400;opacity:.75">aceptado ' . e($di_fecha) . '</small>' : '' ?></span><span class="fac-tot-val" style="color:#c05">-<?= fmt_v((float)$desc_int_act['monto_desc']) ?></span></div>
       <?php endif; ?>
       <div class="fac-tot-row final"><span class="fac-tot-lbl">Total</span><span class="fac-tot-val"><?= fmt_v($total) ?></span></div>
       <div class="fac-saldo-box">
