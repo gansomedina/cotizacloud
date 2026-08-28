@@ -485,7 +485,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
           // descuento y antes del total. Sin el enlace "quitar" — esa es una
           // acción del asesor, no del cliente. ?>
     <?php if ($desc_int_act): ?>
-    <div class="tot-row disc"><span class="tot-lbl">✨ Descuento inteligente (<?= (float)$desc_int_act['pct'] ?>%)</span><span class="tot-val">-<?= fmt_v((float)$desc_int_act['monto_desc']) ?></span></div>
+    <div class="tot-row disc"><span class="tot-lbl">✨ Descuento (<?= (float)$desc_int_act['pct'] ?>%)</span><span class="tot-val">-<?= fmt_v((float)$desc_int_act['monto_desc']) ?></span></div>
     <?php endif; ?>
     <div class="tot-row final"><span class="tot-lbl">Total</span><span class="tot-val"><?= fmt_v($total) ?></span></div>
     <div class="tot-row pag-row"><span class="tot-lbl">Pagado</span><span class="tot-val"><?= fmt_v($pagado) ?></span></div>
@@ -674,7 +674,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <?php endif; ?>
       <?php if ($desc_int_act): /* también en la vista de impresión: el cliente
             se guarda ese PDF y ahí tiene que constar el descuento */ ?>
-      <div class="fac-tot-row"><span class="fac-tot-lbl">✨ Descuento inteligente (<?= (float)$desc_int_act['pct'] ?>%)</span><span class="fac-tot-val" style="color:#c05">-<?= fmt_v((float)$desc_int_act['monto_desc']) ?></span></div>
+      <div class="fac-tot-row"><span class="fac-tot-lbl">✨ Descuento (<?= (float)$desc_int_act['pct'] ?>%)</span><span class="fac-tot-val" style="color:#c05">-<?= fmt_v((float)$desc_int_act['monto_desc']) ?></span></div>
       <?php endif; ?>
       <div class="fac-tot-row final"><span class="fac-tot-lbl">Total</span><span class="fac-tot-val"><?= fmt_v($total) ?></span></div>
       <div class="fac-saldo-box">
