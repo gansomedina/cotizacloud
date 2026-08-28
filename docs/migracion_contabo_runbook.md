@@ -425,6 +425,58 @@ buscando el objeto que el archivo realmente crea, no el nombre del archivo.
 estado sin ejecutar el manejador. Para comprobar que el sitio vive, GET:
 `curl -s -o /dev/null -w "%{http_code}\n" https://cotiza.cloud/login` → `200`.
 
+### 5f. PENDIENTE — subdominio de marca de Brevo (alineación del SPF)
+
+**El problema, confirmado por Google.** Primer informe agregado de DMARC leído
+(28 ago, ventana del 27 ago UTC). Un solo origen —`77.32.148.27`, Brevo— con
+2 mensajes, cero suplantación. Pero:
+```xml
+<policy_evaluated><dkim>pass</dkim><spf>fail</spf></policy_evaluated>
+<auth_results>
+  <dkim><domain>cotiza.cloud</domain>        <result>pass</result><selector>brevo2</selector></dkim>
+  <spf> <domain>ha.d.sender-sib.com</domain> <result>pass</result></spf>
+</auth_results>
+```
+Ojo con la lectura: el SPF **pasó**; lo que falla es la **alineación**. DMARC exige
+que el dominio autenticado coincida con el del `header from`, y Brevo (en su
+configuración compartida) deja el Return-Path en su propio dominio. Resultado:
+**el DMARC de cotiza.cloud se sostiene ÚNICAMENTE del DKIM.**
+
+Esto NO lo causó la migración: el informe es de una ventana anterior a los cambios
+del 28 ago. Es estructural de Brevo, y ningún ajuste al SPF lo arregla.
+
+**Consecuencia:** `brevo1._domainkey` y `brevo2._domainkey` son un **punto único de
+falla**. Si se rompen, DMARC cae entero — no hay SPF alineado que lo respalde. Y con
+una sola señal no conviene subir la política de `p=none`.
+
+**La solución, y por qué HOY sí se puede.** Brevo ofrece un **subdominio de marca**
+que mueve el Return-Path al dominio propio y **alinea el SPF**, dando dos señales
+independientes y permitiendo pasar a `p=quarantine` con red.
+Ver §5 ("Registros de Brevo que se OMITIERON a propósito"): se descartó porque pedía
+un `CNAME` en `mail.cotiza.cloud`, donde vivía el registro A del correo viejo con el
+MX apuntándole. **Ese obstáculo desapareció el 28 ago**: el MX se fue a Cloudflare y
+ese registro A se borró. Hoy `mail.cotiza.cloud` solo lo resuelve el comodín y nada
+lo usa, así que un CNAME ahí ya no rompe nada.
+
+**Al hacerlo, cuidar:**
+- El `_dmarc` que pide Brevo **se sigue omitiendo**: ya existe uno y solo puede haber
+  un registro DMARC por dominio.
+- Los `CNAME img.mail` y `r.mail` dependen del `mail` y entran con él.
+- El SPF del apex **no se toca** hasta confirmar que la alineación funciona.
+- Verificar con el informe DMARC del día siguiente: `policy_evaluated/spf` debe pasar
+  de `fail` a `pass`.
+
+**Cuándo:** no de inmediato. Dejar correr varios informes con la configuración actual
+ya estable, y recién entonces cambiar. Es una mejora de robustez, no una urgencia.
+
+Fuentes: [FAQs subdominios de marca](https://help.brevo.com/hc/en-us/articles/35946791638802-FAQs-About-branded-subdomains) ·
+[Configuración de dominio](https://help.brevo.com/hc/en-us/articles/35852083084178-Domain-setup-for-better-email-deliverability) ·
+[Por qué Brevo no alinea el SPF por defecto](https://www.suped.com/learn/spf/why-doesnt-brevo-offer-full-spf-alignment-and-how-much-does-it-impact-deliverability)
+
+**Aparte, cosmético:** el `rua=` del DMARC apunta a `josealfonsomedina@hotmail.com`,
+pero la bandeja de trabajo es el Gmail. Cambiarlo es editar esa línea del registro
+`_dmarc.cotiza.cloud`.
+
 ### Patrón para migrar otro sitio que SÍ tenga correo (ej. ontimecocinas.com)
 Su MX apunta al **dominio** (`MX → ontimecocinas.com`), así que si se mueve el
 registro A del apex al VPS, **el correo se va con él y se cae**. Orden correcto:
