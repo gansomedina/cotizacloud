@@ -275,9 +275,13 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
             <div class="mdln"><span class="mdk">2 · Compromiso</span><span class="mdv<?= ($d['compromiso']['estado'] ?? '') ? '' : ' none' ?>"><?= ($d['compromiso']['estado'] ?? '') ? e($MESA_SHORT[$d['compromiso']['estado']] ?? '') : '—' ?></span><span class="mdd"><?= $mdf($d['compromiso']['at'] ?? null) ?></span></div>
             <div class="mdln"><span class="mdk">3 · ¿Cómo lo ves?</span><span class="mdv<?= ($d['postura']['estado'] ?? '') ? '' : ' none' ?>"><?= ($d['postura']['estado'] ?? '') ? e($MESA_SHORT[$d['postura']['estado']] ?? '') : 'sin declarar' ?></span><span class="mdd"><?= $mdf($d['postura']['at'] ?? null) ?></span></div>
           </div>
-          <?php $mhh = $mesa_hist[(int)$r['id']] ?? []; if (count($mhh) > 1): ?>
+          <?php // Se dibuja desde UN toque. Antes exigía dos, y eso escondía justo
+                // el caso más común: la cotización descartada de un solo 👎 —donde
+                // ahora vive el motivo escrito de "Otro", que es obligatorio—.
+                // Obligar a escribirlo y luego no mostrarlo lo vuelve un dato muerto.
+                $mhh = $mesa_hist[(int)$r['id']] ?? []; if (count($mhh) >= 1): ?>
           <div class="mhist">
-            <button type="button" class="mhist-t" onclick="this.closest('.mhist').classList.toggle('open')"><span class="chev">▶</span> Historial (<?= count($mhh) ?> toques)</button>
+            <button type="button" class="mhist-t" onclick="this.closest('.mhist').classList.toggle('open')"><span class="chev">▶</span> Historial (<?= count($mhh) ?> toque<?= count($mhh) === 1 ? '' : 's' ?>)</button>
             <div class="mhist-b">
               <?php foreach (array_reverse($mhh) as $he): ?>
               <div class="mhist-i"><span class="mho"><?= e($MESA_SHORT[$he['estado']] ?? $he['estado']) ?><?php /* el motivo escrito de "Otro": sin esto se guarda y nadie lo lee */

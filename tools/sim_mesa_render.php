@@ -99,6 +99,15 @@ chk('el móvil NO lo esconde',
     (bool)preg_match('/@media[^{]*max-width:\s*640px[\s\S]{0,600}?\.mtel\s*\{[^}]*display\s*:\s*none/u', $MESA_ASSETS ?? ''), false);
 chk('trae su estilo',                        str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtel'), true);
 
+// EL HISTORIAL SE DIBUJA DESDE UN SOLO TOQUE.
+// Antes exigia dos, y eso escondia el caso mas comun: la cotizacion descartada
+// de un solo 👎 — justo donde vive el motivo escrito de "Otro", que es
+// obligatorio. Obligar a escribirlo y no mostrarlo lo vuelve un dato muerto.
+chk('el historial aparece con un solo toque',
+    str_contains($MESA_BLOQUES[500], 'Historial (1 toque)'), true);
+chk('y en singular, no "1 toques"',
+    str_contains($MESA_BLOQUES[500], '1 toques'), false);
+
 // EL MOTIVO ESCRITO DE "OTRO" SE VE EN EL HISTORIAL DEL CAJÓN.
 // Si se guardara y nadie lo pintara seria un dato muerto — justo lo que paso
 // con el Descuento Inteligente, que se aplicaba bien y no se mostraba.
