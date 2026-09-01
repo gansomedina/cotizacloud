@@ -155,14 +155,22 @@ class RitmoReporte
                    AND ((mp.area='postura'  AND mp.estado='descartada')
                      OR (mp.area='feedback' AND mp.estado='sin_interes'))
                  ORDER BY mp.id DESC LIMIT 1)";
+        // El motivo ESCRITO cuando el asesor eligió "Otro". Sin esto el reporte
+        // dice "otro motivo" —genérico e inútil— teniendo la explicación real
+        // guardada al lado.
+        $rzt = "(SELECT mp3.razon_texto FROM mesa_estados mp3
+                  WHERE mp3.cotizacion_id=c.id AND mp3.razon_texto IS NOT NULL
+                    AND ((mp3.area='postura'  AND mp3.estado='descartada')
+                      OR (mp3.area='feedback' AND mp3.estado='sin_interes'))
+                  ORDER BY mp3.id DESC LIMIT 1)";
         $pp = "(SELECT mp2.estado FROM mesa_estados mp2 WHERE mp2.cotizacion_id=c.id AND mp2.area='postura' AND mp2.estado<>'descartada' ORDER BY mp2.id DESC LIMIT 1)";
         try {
             $rows = DB::query(
                 "SELECT d.numero, d.total, d.cliente, MAX(d.sin_cita) AS sin_cita, MAX(d.rapido) AS rapido, MAX(d.hot) AS hot,
-                        MAX(d.razon) AS razon, MAX(d.postura) AS postura, MAX(d.visitas) AS visitas, MAX(d.dias_vista) AS dias_vista
+                        MAX(d.razon) AS razon, MAX(d.razon_texto) AS razon_texto, MAX(d.postura) AS postura, MAX(d.visitas) AS visitas, MAX(d.dias_vista) AS dias_vista
                  FROM (
                     SELECT c.id AS cid, c.numero, c.total, COALESCE(cl.nombre,'—') AS cliente,
-                           $nc AS sin_cita, (DATEDIFF(m.created_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $pp AS postura,
+                           $nc AS sin_cita, (DATEDIFF(m.created_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $rzt AS razon_texto, $pp AS postura,
                            c.visitas AS visitas, DATEDIFF(NOW(), c.ultima_vista_at) AS dias_vista
                       FROM mesa_estados m JOIN cotizaciones c ON c.id=m.cotizacion_id
                       LEFT JOIN clientes cl ON cl.id=c.cliente_id
@@ -189,7 +197,7 @@ class RitmoReporte
                                           AND rfv.tipo = 'con_interes' AND rfv.updated_at > m.created_at)
                     UNION
                     SELECT c.id AS cid, c.numero, c.total, COALESCE(cl.nombre,'—') AS cliente,
-                           $nc AS sin_cita, (DATEDIFF(rf.updated_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $pp AS postura,
+                           $nc AS sin_cita, (DATEDIFF(rf.updated_at, c.created_at) <= $rapido_dias) AS rapido, $hot AS hot, $rz AS razon, $rzt AS razon_texto, $pp AS postura,
                            c.visitas AS visitas, DATEDIFF(NOW(), c.ultima_vista_at) AS dias_vista
                       FROM radar_feedback rf JOIN cotizaciones c ON c.id=rf.cotizacion_id
                       LEFT JOIN clientes cl ON cl.id=c.cliente_id
@@ -214,7 +222,7 @@ class RitmoReporte
                 if (count($o['casos']) < 10)
                     $o['casos'][] = ['numero'=>$x['numero'],'cliente'=>$x['cliente'],'total'=>(float)$x['total'],
                         'sin_cita'=>(int)$x['sin_cita'],'rapido'=>(int)$x['rapido'],'hot'=>(int)$x['hot'],
-                        'razon'=>$x['razon'],'postura'=>$x['postura'],'es_precio'=>$es_precio ? 1 : 0,
+                        'razon'=>$x['razon'],'razon_texto'=>$x['razon_texto'],'postura'=>$x['postura'],'es_precio'=>$es_precio ? 1 : 0,
                         'visitas'=>(int)$x['visitas'], 'dias_vista'=>($x['dias_vista'] === null ? null : (int)$x['dias_vista'])];
             }
         } catch (Throwable $e) {}
@@ -374,7 +382,9 @@ class RitmoReporte
             if ($noprecio) {
                 $casos[] = "Descartadas de mayor monto:";
                 foreach (array_slice($noprecio, 0, 4) as $c) {
-                    if (!empty($c['razon']) && isset($RZ[$c['razon']]))         $why = $RZ[$c['razon']];
+                    // Si escribió el motivo, ese manda sobre la etiqueta.
+                    if (!empty($c['razon_texto']))                               $why = $c['razon_texto'];
+                    elseif (!empty($c['razon']) && isset($RZ[$c['razon']]))      $why = $RZ[$c['razon']];
                     elseif (!empty($c['postura']) && isset($PP[$c['postura']]))  $why = $PP[$c['postura']];
                     elseif (empty($c['razon']))                                  $why = 'descartada en el Radar (👎)';
                     else                                                         $why = $c['razon'];

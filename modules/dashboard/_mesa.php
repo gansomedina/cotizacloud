@@ -75,7 +75,7 @@ foreach ($mesa_all as $ma) foreach (($ma['rows'] ?? []) as $rr) $mesa_hist_cids[
 if ($mesa_hist_cids) {
     $in_h = implode(',', array_map('intval', array_unique($mesa_hist_cids)));
     try {
-        foreach (DB::query("SELECT cotizacion_id, area, estado, razon, created_at FROM mesa_estados WHERE cotizacion_id IN ($in_h) AND (razon IS NULL OR razon <> 'auto') ORDER BY id") as $h) {
+        foreach (DB::query("SELECT cotizacion_id, area, estado, razon, razon_texto, created_at FROM mesa_estados WHERE cotizacion_id IN ($in_h) AND (razon IS NULL OR razon <> 'auto') ORDER BY id") as $h) {
             $mesa_hist[(int)$h['cotizacion_id']][] = $h;
         }
     } catch (\Throwable $e) {}
@@ -280,7 +280,8 @@ $mesa_row = function (array $r, ?int $rank = null, bool $ql = false) use ($MESA_
             <button type="button" class="mhist-t" onclick="this.closest('.mhist').classList.toggle('open')"><span class="chev">▶</span> Historial (<?= count($mhh) ?> toques)</button>
             <div class="mhist-b">
               <?php foreach (array_reverse($mhh) as $he): ?>
-              <div class="mhist-i"><span class="mho"><?= e($MESA_SHORT[$he['estado']] ?? $he['estado']) ?></span><span class="mhd"><?= date('d/m', strtotime($he['created_at'])) ?></span></div>
+              <div class="mhist-i"><span class="mho"><?= e($MESA_SHORT[$he['estado']] ?? $he['estado']) ?><?php /* el motivo escrito de "Otro": sin esto se guarda y nadie lo lee */
+                if (!empty($he['razon_texto'])): ?><span class="mhr">— <?= e($he['razon_texto']) ?></span><?php endif; ?></span><span class="mhd"><?= date('d/m', strtotime($he['created_at'])) ?></span></div>
               <?php endforeach; ?>
             </div>
           </div>
@@ -768,6 +769,7 @@ foreach ($mesa_all as $mesa_vid => $mesa):
 .mesa-emb .mhist{margin-top:10px;border-top:1px dashed #e6e6df;padding-top:8px}
 .mesa-emb .mhist-t{background:none;border:0;cursor:pointer;font:700 11px 'Plus Jakarta Sans',system-ui,sans-serif;color:#a8a8a2;padding:0;display:flex;align-items:center;gap:6px}
 .mesa-emb .mhist-t:hover{color:#1a5c38}
+.mesa-emb .mhr{font-weight:500;color:#8a8a82;margin-left:5px}
 .mesa-emb .mhist-t .chev{font-size:9px;transition:transform .15s}
 .mesa-emb .mhist.open .mhist-t .chev{transform:rotate(90deg)}
 .mesa-emb .mhist-b{display:none;margin-top:6px}
@@ -931,14 +933,14 @@ function mesaAtendida(row, d){
 
 // Feedback Radar desde la mesa — se guarda a nombre del asesor dueño de la
 // cotización (una sola marca: el descarte voltea el 👍 a 👎 automáticamente)
-function mesaFb(cotId, tipo, btn, razon){
+function mesaFb(cotId, tipo, btn, razon, razonTxt){
   // 👎 = descartar, y descartar pide motivo (lo mismo que exige la pastilla
   // "Descartar" del cajón). Se pregunta ANTES de mandar nada: si cancela, no
   // pasa nada. Sin esto, la mayoría de los descartes salía por aquí sin dejar
   // registro de POR QUÉ se perdió el cliente.
   if(tipo === 'sin_interes' && !razon){
     if(typeof czPedirRazon !== 'function') return;   // partial no cargado
-    czPedirRazon(function(rz){ mesaFb(cotId, tipo, btn, rz); });
+    czPedirRazon(function(rz, txt){ mesaFb(cotId, tipo, btn, rz, txt); });
     return;
   }
   // 📵 solo aplica a clientes que no responden: pre-check en el cliente (el
@@ -962,7 +964,7 @@ function mesaFb(cotId, tipo, btn, razon){
   thumbs.forEach(function(b){ b.disabled = true; });
   fetch('/api/mesa/estado', {method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-Token':'<?= csrf_token() ?>'},
-    body: JSON.stringify({cotizacion_id:cotId, area:'feedback', estado:tipo, razon:razon || null})
+    body: JSON.stringify({cotizacion_id:cotId, area:'feedback', estado:tipo, razon:razon || null, razon_texto:razonTxt || null})
   }).then(function(r){return r.json();}).then(function(d){
     thumbs.forEach(function(b){ b.disabled = false; });
     if(!d.ok){ mesaToast(mesaErr(d.error)); return; }

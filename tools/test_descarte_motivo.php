@@ -60,7 +60,45 @@ chk('sin etiquetas repetidas',               count(array_unique($rz)), count($rz
 chk('ninguna clave pasa de 30 chars',
     count(array_filter(array_keys($rz), fn($k) => strlen((string)$k) > 30)), 0);
 
-echo "\n4) UNA SOLA REGLA, NO COPIAS\n";
+echo "\n4) \"OTRO\" EXIGE EL MOTIVO ESCRITO\n";
+// "Otro" no explica nada por si solo. Si el texto fuera opcional nadie lo
+// llenaria y volveriamos a tener descartes sin explicacion — el mismo problema
+// que se acaba de arreglar exigiendo motivo al 👎.
+chk('con otro, el texto se conserva',      Mesa::razon_texto('otro', 'se mudo de ciudad'), 'se mudo de ciudad');
+chk('vacio = null (el endpoint lo rechaza)', Mesa::razon_texto('otro', '   '),  null);
+chk('null tambien',                        Mesa::razon_texto('otro', null),     null);
+// Los demas motivos ya se explican con su etiqueta: si llega texto, se ignora.
+chk('precio no guarda texto',              Mesa::razon_texto('precio', 'algo'), null);
+chk('competencia tampoco',                 Mesa::razon_texto('competencia', 'x'), null);
+chk('sin razon tampoco',                   Mesa::razon_texto(null, 'x'),        null);
+// Espacios y saltos de linea colapsados: el historial de la mesa es una linea.
+chk('normaliza espacios',                  Mesa::razon_texto('otro', "  se   mudo \n de ciudad "), 'se mudo de ciudad');
+// La columna es VARCHAR(200): mas largo se truncaria en la BD sin avisar.
+chk('corta a 200 caracteres',              strlen(Mesa::razon_texto('otro', str_repeat('a', 500))), 200);
+chk('el tope coincide con la columna',     Mesa::RAZON_TEXTO_MAX, 200);
+
+echo "\n5) LOS DOS CAMINOS DE DESCARTE LO PIDEN IGUAL\n";
+// El 👎 del Radar y el de la Mesa son el MISMO descarte; si solo uno exigiera
+// el texto, los asesores usarian el otro.
+foreach (['api/mesa_estado.php' => 'la Mesa', 'api/radar_feedback.php' => 'el Radar'] as $f => $quien) {
+    $src = (string)file_get_contents(__DIR__ . '/../' . $f);
+    chk("$quien usa Mesa::razon_texto()",   str_contains($src, 'Mesa::razon_texto('), true);
+    chk("$quien rechaza 'otro' sin texto",  (bool)preg_match("/razon === 'otro' && \\\$razon_texto === null/u", $src), true);
+    chk("$quien lo guarda en la BD",        str_contains($src, 'razon_texto, bucket_snapshot'), true);
+}
+
+echo "\n6) Y SE VE — si no, es un dato que nadie lee\n";
+$mesa_src = (string)file_get_contents(__DIR__ . '/../modules/dashboard/_mesa.php');
+chk('el historial del cajon lo trae',      str_contains($mesa_src, 'estado, razon, razon_texto, created_at'), true);
+chk('y lo pinta',                          str_contains($mesa_src, "razon_texto']"), true);
+$rep_src = (string)file_get_contents(__DIR__ . '/../core/RitmoReporte.php');
+chk('el reporte del Director lo trae',     str_contains($rep_src, 'mp3.razon_texto'), true);
+chk('y le gana a la etiqueta generica',    (bool)preg_match("/!empty\\(\\\$c\\['razon_texto'\\]\\)[\\s\\S]{0,60}\\\$why = \\\$c\\['razon_texto'\\]/u", $rep_src), true);
+$modal = (string)file_get_contents(__DIR__ . '/../modules/dashboard/_razon_modal.php');
+chk('el selector pide el texto en "otro"', str_contains($modal, "clave === 'otro'") && str_contains($modal, 'czRzOtro'), true);
+chk('sin texto no descarta',               str_contains($modal, 'if (!v) { txt.focus(); return; }'), true);
+
+echo "\n7) UNA SOLA REGLA, NO COPIAS\n";
 // Si alguien vuelve a escribir la condición a mano en un endpoint, se
 // desincroniza en silencio la primera vez que cambie.
 foreach (['api/mesa_estado.php', 'api/radar_feedback.php'] as $f) {

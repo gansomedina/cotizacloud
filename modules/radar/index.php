@@ -1392,19 +1392,19 @@ function toggleWhy(id, cotId) {
 }
 
 // Feedback del Radar
-async function radarFb(cotId, tipo, btn, razon) {
+async function radarFb(cotId, tipo, btn, razon, razonTxt) {
     // 👎 = descartar, y descartar pide motivo (igual que la pastilla de la
     // Mesa). Se pregunta ANTES de mandar nada: si cancela, no pasa nada.
     if (tipo === 'sin_interes' && !razon) {
         if (typeof czPedirRazon !== 'function') return;   // partial no cargado
-        czPedirRazon(function (rz) { radarFb(cotId, tipo, btn, rz); });
+        czPedirRazon(function (rz, txt) { radarFb(cotId, tipo, btn, rz, txt); });
         return;
     }
     try {
         const r = await fetch('/api/radar-feedback', {
             method: 'POST',
             headers: {'Content-Type':'application/json','X-CSRF-Token':CSRF_R},
-            body: JSON.stringify({cotizacion_id: cotId, tipo: tipo, razon: razon || null})
+            body: JSON.stringify({cotizacion_id: cotId, tipo: tipo, razon: razon || null, razon_texto: razonTxt || null})
         });
         const d = await r.json();
         if (d.ok) {

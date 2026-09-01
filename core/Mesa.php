@@ -52,6 +52,25 @@ class Mesa
         'otro'         => 'Otro',
     ];
 
+    /** Largo del motivo escrito — igual que mesa_estados.razon_texto. */
+    public const RAZON_TEXTO_MAX = 200;
+
+    /**
+     * Normaliza el motivo ESCRITO del descarte (solo aplica a 'otro').
+     *
+     * Vive aquí y no repetida en cada endpoint para que la regla sea una sola:
+     * si mañana se pide texto en otro motivo, se cambia en un lugar. Devuelve
+     * null cuando no aplica o cuando el asesor no escribió nada — el llamador
+     * decide si eso es error (en 'otro' lo es).
+     */
+    public static function razon_texto(?string $razon, $texto): ?string
+    {
+        if ($razon !== 'otro') return null;            // los demás se explican solos
+        $t = trim(preg_replace('/\s+/u', ' ', (string)$texto));
+        if ($t === '') return null;
+        return mb_substr($t, 0, self::RAZON_TEXTO_MAX);
+    }
+
     /**
      * ¿Este tap DESCARTA? Los dos gestos valen igual y los dos piden motivo.
      * Vive aquí y no repetida en cada endpoint: si un día se agrega una tercera

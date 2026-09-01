@@ -33,6 +33,11 @@ if (!$cot_id || !in_array($estado, $VALIDOS, true)) { echo json_encode(['ok'=>fa
 $es_descarte = Mesa::es_descarte($area, $estado);
 if ($es_descarte && !in_array($razon, $RAZONES, true)) { echo json_encode(['ok'=>false,'error'=>'razon']); exit; }
 if (!$es_descarte) $razon = null;
+// Motivo escrito: SOLO con 'otro', y ahí es obligatorio — si fuera opcional
+// nadie lo llenaría y "otro" seguiría sin explicar nada. En los demás motivos
+// se descarta lo que venga: la etiqueta ya dice todo.
+$razon_texto = Mesa::razon_texto($razon, $b['razon_texto'] ?? null);
+if ($razon === 'otro' && $razon_texto === null) { echo json_encode(['ok'=>false,'error'=>'razon_texto']); exit; }
 
 $cot = DB::row(
     "SELECT id, estado, suspendida, total, visitas, radar_bucket, radar_bucket_at, radar_senales, ultima_vista_at, created_at, agenda_fecha,
@@ -120,9 +125,9 @@ try {
 
     // Historia insert-only
     DB::execute(
-        "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
-         VALUES (?,?,?,?,?,?,?)",
-        [$cot_id, Auth::id(), EMPRESA_ID, $area, $estado, $razon, $cot['radar_bucket']]
+        "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, razon_texto, bucket_snapshot)
+         VALUES (?,?,?,?,?,?,?,?)",
+        [$cot_id, Auth::id(), EMPRESA_ID, $area, $estado, $razon, $razon_texto, $cot['radar_bucket']]
     );
 
     // La manita (radar_feedback) es el JUICIO INDEPENDIENTE del asesor
