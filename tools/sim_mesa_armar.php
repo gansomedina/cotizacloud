@@ -75,7 +75,7 @@ CREATE TABLE ventas (
 CREATE TABLE mesa_estados (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, cotizacion_id INT UNSIGNED NOT NULL,
   usuario_id INT UNSIGNED NOT NULL, empresa_id INT UNSIGNED NOT NULL,
-  area VARCHAR(12) NOT NULL, estado VARCHAR(30) NOT NULL, razon VARCHAR(30) NULL,
+  area VARCHAR(12) NOT NULL, estado VARCHAR(30) NOT NULL, razon VARCHAR(30) NULL, razon_texto VARCHAR(200) NULL,
   bucket_snapshot VARCHAR(40) NULL, created_at DATETIME NOT NULL
 );
 CREATE TABLE radar_feedback (
@@ -142,10 +142,10 @@ function cot(int $id, int $uid, float $total, float $edad, array $x = []): void 
          $x['bucket'] ?? null, isset($x['bucket_at_d']) ? $GLOBALS['d']($x['bucket_at_d']) : null,
          isset($x['vista_d']) ? $GLOBALS['d']($x['vista_d']) : null, $d($edad)]);
 }
-function tap(int $cot, string $area, string $estado, float $hace_d, ?string $razon = null): void {
+function tap(int $cot, string $area, string $estado, float $hace_d, ?string $razon = null, ?string $razon_texto = null): void {
     global $d;
-    DB::execute("INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, created_at)
-                 VALUES (?,900,5,?,?,?,?)", [$cot, $area, $estado, $razon, $d($hace_d)]);
+    DB::execute("INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, razon_texto, created_at)
+                 VALUES (?,900,5,?,?,?,?,?)", [$cot, $area, $estado, $razon, $razon_texto, $d($hace_d)]);
 }
 function fb(int $cot, int $uid, string $tipo, float $upd_d): void {
     global $d;
@@ -168,6 +168,12 @@ cot(1, 500, 10000, 5, ['bucket' => 'probable_cierre', 'bucket_at_d' => 1, 'visit
 // M2 (2): DESCARTADA_HOY — 👎 del dueño hoy (hace 2 horas)
 cot(2, 500, 11000, 8, ['visitas' => 2, 'vista_d' => 2]);
 fb(2, 500, 'sin_interes', 0.08);
+// Y descartada con motivo "Otro" + el texto que escribió el asesor: es la única
+// fila con razon_texto, y es la que hace que el historial del cajón lo pinte
+// (sim_mesa_render lo comprueba en el HTML). Dos toques para que el historial
+// se dibuje — solo aparece con más de uno.
+tap(2, 'contacto', 'hablamos', 0.09);
+tap(2, 'postura', 'descartada', 0.08, 'otro', 'se mudó a Obregón');
 // M3 (3): descartada hace 3d SIN revivir → NO debe aparecer (ni limpieza: edad 10 < 40)
 cot(3, 500, 12000, 10, ['visitas' => 1, 'vista_d' => 5]);
 fb(3, 500, 'sin_interes', 3);

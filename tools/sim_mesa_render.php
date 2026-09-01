@@ -99,6 +99,18 @@ chk('el móvil NO lo esconde',
     (bool)preg_match('/@media[^{]*max-width:\s*640px[\s\S]{0,600}?\.mtel\s*\{[^}]*display\s*:\s*none/u', $MESA_ASSETS ?? ''), false);
 chk('trae su estilo',                        str_contains($MESA_ASSETS ?? '', '.mesa-emb .mtel'), true);
 
+// EL MOTIVO ESCRITO DE "OTRO" SE VE EN EL HISTORIAL DEL CAJÓN.
+// Si se guardara y nadie lo pintara seria un dato muerto — justo lo que paso
+// con el Descuento Inteligente, que se aplicaba bien y no se mostraba.
+chk('el historial pinta el motivo que escribio el asesor',
+    str_contains($MESA_BLOQUES[500], 'se mudó a Obregón'), true);
+chk('con su propio estilo, no pegado al estado',
+    str_contains($MESA_BLOQUES[500], 'class="mhr"')
+    && str_contains($MESA_ASSETS ?? '', '.mesa-emb .mhr'), true);
+// Los toques sin texto no inventan un guion colgando.
+chk('los toques sin motivo escrito no dejan un "—" suelto',
+    (bool)preg_match('/<span class="mhr">—\s*<\/span>/u', $MESA_BLOQUES[500]), false);
+
 // DESCARTAR PIDE MOTIVO. El 👎 del renglón descarta igual que la pastilla del
 // cajón, así que abre el mismo selector. Si el partial dejara de viajar en los
 // assets, el 👎 quedaría MUERTO (mesaFb sale temprano si no existe czPedirRazon)

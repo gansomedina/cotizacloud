@@ -38,6 +38,13 @@ if ($es_descarte && !array_key_exists((string)$razon, Mesa::RAZONES)) {
     exit;
 }
 if (!$es_descarte) $razon = null;
+// Motivo escrito: SOLO con 'otro', y ahí obligatorio (misma regla que la Mesa —
+// la comparten porque el 👎 del Radar y el del renglón son el mismo descarte).
+$razon_texto = Mesa::razon_texto($razon, $body['razon_texto'] ?? null);
+if ($razon === 'otro' && $razon_texto === null) {
+    echo json_encode(['ok' => false, 'error' => 'Escribe el motivo del descarte']);
+    exit;
+}
 
 $empresa_id = EMPRESA_ID;
 $usuario_id = Auth::id();
@@ -113,9 +120,9 @@ try {
         // razon: el motivo del 👎 (NULL en 👍/📵, que no son descarte). La
         // columna ya existía y este INSERT la mandaba en NULL — el hueco estaba
         // ahí desde el principio, solo faltaba preguntar.
-        "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, bucket_snapshot)
-         VALUES (?,?,?,'feedback',?,?,?)",
-        [$cot_id, $usuario_id, $empresa_id, $tipo, $razon, $cot['radar_bucket']]
+        "INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, razon_texto, bucket_snapshot)
+         VALUES (?,?,?,'feedback',?,?,?,?)",
+        [$cot_id, $usuario_id, $empresa_id, $tipo, $razon, $razon_texto, $cot['radar_bucket']]
     );
     DB::commit();
 } catch (Throwable $e) {

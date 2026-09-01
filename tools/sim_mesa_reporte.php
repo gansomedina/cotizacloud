@@ -73,7 +73,7 @@ CREATE TABLE ventas (
 CREATE TABLE mesa_estados (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, cotizacion_id INT UNSIGNED NOT NULL,
   usuario_id INT UNSIGNED NOT NULL, empresa_id INT UNSIGNED NOT NULL,
-  area VARCHAR(12) NOT NULL, estado VARCHAR(30) NOT NULL, razon VARCHAR(30) NULL,
+  area VARCHAR(12) NOT NULL, estado VARCHAR(30) NOT NULL, razon VARCHAR(30) NULL, razon_texto VARCHAR(200) NULL,
   bucket_snapshot VARCHAR(40) NULL, created_at DATETIME NOT NULL,
   KEY idx_cot_time (cotizacion_id, created_at)
 );
