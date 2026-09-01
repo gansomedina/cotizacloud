@@ -94,6 +94,28 @@ chk('y lo pinta',                          str_contains($mesa_src, "razon_texto'
 $rep_src = (string)file_get_contents(__DIR__ . '/../core/RitmoReporte.php');
 chk('el reporte del Director lo trae',     str_contains($rep_src, 'mp3.razon_texto'), true);
 chk('y le gana a la etiqueta generica',    (bool)preg_match("/!empty\\(\\\$c\\['razon_texto'\\]\\)[\\s\\S]{0,60}\\\$why = \\\$c\\['razon_texto'\\]/u", $rep_src), true);
+// Y donde de verdad se lee despues: la COTIZACION. El cajon de la Mesa solo
+// existe el dia del descarte —la fila sale al siguiente— asi que sin esto el
+// motivo escrito era ilegible a las 24 horas de escribirlo.
+$cot_src = (string)file_get_contents(__DIR__ . '/../modules/cotizaciones/ver.php');
+chk('la cotizacion trae los toques de la Mesa',
+    str_contains($cot_src, 'FROM mesa_estados m'), true);
+chk('con el motivo escrito',                 str_contains($cot_src, 'm.razon_texto'), true);
+chk('el texto le gana a la etiqueta',
+    (bool)preg_match("/!empty\\(\\\$t\\['razon_texto'\\]\\)[\\s\\S]{0,60}\\\$mot = \\\$t\\['razon_texto'\\]/u", $cot_src), true);
+chk('el contacto implicito no ensucia',      str_contains($cot_src, "razon <> 'auto'"), true);
+// Base sin migrar: la pagina se pinta igual, no revienta.
+chk('tolera que mesa_estados no exista',
+    (bool)preg_match('/FROM mesa_estados[\\s\\S]{0,400}?catch \\(\\\\Throwable/u', $cot_src), true);
+// El CEO pidio poder revertirlo rapido: las marcas tienen que estar.
+// Son DOS bloques (la consulta arriba, el render abajo) y cada uno tiene que
+// decir como quitarse — si no, revertirlo obliga a leerse el archivo entero.
+chk('los dos bloques dicen como quitarse',   substr_count($cot_src, 'PARA QUITARLO'), 2);
+chk('y estan delimitados de inicio a fin',
+    str_contains($cot_src, 'SEGUIMIENTO DE LA MESA — FIN')
+    && str_contains($cot_src, '══ MESA — INICIO')
+    && str_contains($cot_src, '══ MESA — FIN'), true);
+
 $modal = (string)file_get_contents(__DIR__ . '/../modules/dashboard/_razon_modal.php');
 chk('el selector pide el texto en "otro"', str_contains($modal, "clave === 'otro'") && str_contains($modal, 'czRzOtro'), true);
 chk('sin texto no descarta',               str_contains($modal, 'if (!v) { txt.focus(); return; }'), true);

@@ -62,6 +62,45 @@ $log = DB::query(
     [$cot_id]
 );
 
+// ══ SEGUIMIENTO DE LA MESA EN EL HISTORIAL — INICIO ═══════════════════════
+// PARA QUITARLO: borra este bloque y el que dice "MESA — INICIO/FIN" más
+// abajo, en el render. No hay nada más que dependa de $mesa_toques.
+//
+// Por qué existe: los toques de la Mesa (Hablamos, Nos citamos, Descartada y
+// su motivo escrito) vivían SOLO en el cajón de la Mesa, y una cotización
+// descartada sale de ahí al día siguiente. Después de eso no había forma de
+// leer por qué se perdió el cliente salvo por consulta SQL. La cotización, en
+// cambio, no caduca: es donde uno viene meses después a entender qué pasó.
+//
+// Solo lectura, tolerante a fallo: si mesa_estados no existe (base sin migrar)
+// queda vacío y la página se pinta igual que siempre.
+$mesa_toques = [];
+try {
+    $mesa_toques = DB::query(
+        "SELECT m.area, m.estado, m.razon, m.razon_texto, m.created_at, u.nombre AS usuario_nombre
+           FROM mesa_estados m
+           LEFT JOIN usuarios u ON u.id = m.usuario_id
+          WHERE m.cotizacion_id = ?
+            AND (m.razon IS NULL OR m.razon <> 'auto')  -- el contacto implícito no es un toque real
+          ORDER BY m.created_at DESC
+          LIMIT 20",
+        [$cot_id]
+    );
+} catch (\Throwable $e) {}
+// Etiquetas — mismas palabras que ve el asesor en la Mesa, para que no tenga
+// que traducir entre dos pantallas.
+$MESA_LBL = [
+    'no_contesta' => 'No contestó', 'hablamos' => 'Hablamos',
+    'compromiso' => 'Quedamos en algo', 'nos_citamos' => 'Nos citamos',
+    'propuse_no_quiso' => 'Propuse, no quiso', 'sin_compromiso' => 'Nada concreto',
+    'decidiendo' => 'Decidiendo', 'objecion_precio' => 'Objeción de precio',
+    'pidio_cambios' => 'Pidió cambios', 'en_el_aire' => 'En el aire',
+    'descartada' => 'Descartada',
+    'con_interes' => '👍 Con interés', 'sin_interes' => '👎 Sin interés', 'sin_info' => '📵 Sin comunicación',
+];
+$MESA_RZ = class_exists('Mesa') ? Mesa::RAZONES : [];
+// ══ SEGUIMIENTO DE LA MESA — FIN ══════════════════════════════════════════
+
 // ─── Visitas del cliente (sesiones radar) ────────────────
 // Filtra ghost sessions: scroll=0 AND visible_ms<2s.
 // Heurística: scroll mínimo o tiempo visible mínimo indican interacción
@@ -657,6 +696,33 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <strong>Nota:</strong> Las visitas se cuentan cuando el cliente interactúa con la cotización al menos 2 segundos viéndola. Las aperturas más breves se filtran automáticamente para no inflar el contador con visitas sin lectura o accidentales.
             </div>
         </div>
+
+        <?php /* ══ MESA — INICIO ══════════════════════════════════════════
+             PARA QUITARLO: borra hasta "MESA — FIN" y el bloque marcado igual
+             arriba, donde se consulta. Nada más depende de esto.
+             Va ANTES del historial de cambios porque es lo que de verdad
+             cuenta qué pasó con el cliente; los cambios de la cotización son
+             ruido al lado de "se mudó a Obregón". */ ?>
+        <?php if ($mesa_toques): ?>
+        <div class="panel-section">
+            <div class="panel-lbl">Seguimiento</div>
+            <?php foreach ($mesa_toques as $t):
+                $et = $MESA_LBL[$t['estado']] ?? $t['estado'];
+                // El motivo del descarte: el texto escrito manda sobre la
+                // etiqueta ("se mudó a Obregón" dice más que "Otro").
+                $mot = '';
+                if (!empty($t['razon_texto']))                     $mot = $t['razon_texto'];
+                elseif (!empty($t['razon']) && isset($MESA_RZ[$t['razon']])) $mot = $MESA_RZ[$t['razon']];
+            ?>
+            <div class="log-row">
+                <span class="log-evento"><?= e($et) ?><?= $mot ? ' — ' . e($mot) : '' ?></span>
+                <span class="log-detalle"><?= e($t['usuario_nombre'] ?? '—') ?></span>
+                <span class="log-ts"><?= tiempo_relativo($t['created_at']) ?></span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+        <?php /* ══ MESA — FIN ═══════════════════════════════════════════ */ ?>
 
         <!-- Log interno -->
         <div class="panel-section">
