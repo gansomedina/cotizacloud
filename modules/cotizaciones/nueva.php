@@ -170,6 +170,10 @@ $articulos_js = json_encode(array_map(function($a) use ($es_inmuebles) {
 // haya una segunda versión en JavaScript que se desincronice.
 $lada_emp = lada_pais($empresa_id);
 
+// Se puede apagar por empresa (Configuración › Envío al cliente). Nace prendido:
+// no manda nada solo, abre la app del asesor con el mensaje listo.
+$envio_wa_on = (notif_config($empresa_id)['envio_whatsapp_cliente'] ?? true) ? true : false;
+
 $clientes_js = json_encode(array_map(fn($c) => [
     'id'       => (int)$c['id'],
     'nombre'   => $c['nombre'],
@@ -1409,8 +1413,14 @@ async function guardarCotizacion() {
             ? WA_TPL.replace('{NOMBRE}', nombre.split(' ')[0]).replace('{URL}', urlPublica)
             : WA_TPL_SIN.replace('{URL}', urlPublica);
 
-        document.getElementById('popup-wa').href = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(texto);
-        document.getElementById('popup-wa-sub').textContent = wa ? ('Al ' + (cli.telefono || '')) : 'Elegir contacto';
+        // El botón de WhatsApp puede no existir: la empresa lo puede apagar.
+        // Sin esta guarda, el popup entero reventaría y el asesor se quedaría
+        // sin ver la liga de la cotización que acaba de generar.
+        const btnWa = document.getElementById('popup-wa');
+        if (btnWa) {
+            btnWa.href = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(texto);
+            document.getElementById('popup-wa-sub').textContent = wa ? ('Al ' + (cli.telefono || '')) : 'Elegir contacto';
+        }
 
         document.getElementById('popup-mail').href =
             'mailto:' + encodeURIComponent(mail) +
@@ -1465,13 +1475,15 @@ function toggleMob(hdr)   { hdr.closest('.mob-section').classList.toggle('open')
         <!-- Envío al cliente. Los href los pone el JS al abrir el popup, porque
              la cotización se acaba de crear por fetch y la URL no existe al
              renderizar. El número ya viene normalizado desde PHP en c.wa. -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:<?= $envio_wa_on ? '1fr 1fr' : '1fr' ?>;gap:8px;margin-bottom:16px">
+            <?php if ($envio_wa_on): ?>
             <a id="popup-wa" href="#" target="_blank"
                style="padding:14px;border-radius:var(--r-sm);border:1px solid #a8e6a3;background:#dcf8c6;display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
                 <span style="font-size:24px">💬</span>
                 <span style="font:700 12px var(--body);color:var(--t2)">WhatsApp</span>
                 <span id="popup-wa-sub" style="font:400 10px var(--body);color:var(--t3)"></span>
             </a>
+            <?php endif; ?>
             <a id="popup-mail" href="#"
                style="padding:14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
                 <span style="font-size:24px">✉️</span>

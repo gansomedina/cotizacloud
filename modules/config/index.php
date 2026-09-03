@@ -556,13 +556,31 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <div class="card">
       <div class="field-row h">
         <div>
+          <div class="field-lbl">Botón de WhatsApp</div>
+          <div class="field-sub">Abre WhatsApp con el mensaje y la liga listos, en la conversación del cliente. No manda nada por su cuenta: el asesor decide y envía desde su propio número.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_envio_whatsapp" <?= ($ncfg['envio_whatsapp_cliente'] ?? true)?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="field-row h">
+        <div>
           <div class="field-lbl">Enviar cotizaciones por correo</div>
-          <div class="field-sub">Agrega un botón que manda la cotización al correo del cliente a nombre de tu empresa, con las respuestas dirigidas al asesor. Apagado, el botón abre tu app de correo como siempre.</div>
+          <div class="field-sub">Agrega un botón que manda la cotización al correo del cliente a nombre de tu empresa. Apagado, el botón abre la app de correo del asesor como siempre.</div>
         </div>
         <label class="toggle">
           <input type="checkbox" id="e_envio_correo" <?= !empty($ncfg['envio_correo_cliente'])?'checked':'' ?>>
           <div class="toggle-track"></div><div class="toggle-thumb"></div>
         </label>
+      </div>
+      <div class="field-row">
+        <div class="field-lbl">El cliente responde a</div>
+        <div class="field-sub">Cuando el cliente le da Responder al correo de su cotización, a quién le llega.</div>
+        <select class="field-box" id="e_responde_a" style="margin-top:10px">
+          <option value="asesor"  <?= (($ncfg['correo_responde_a'] ?? 'asesor') === 'asesor')  ? 'selected' : '' ?>>El asesor de la cotización</option>
+          <option value="empresa" <?= (($ncfg['correo_responde_a'] ?? 'asesor') === 'empresa') ? 'selected' : '' ?>>El correo principal de la empresa</option>
+        </select>
       </div>
       <div class="field-row">
         <div class="field-lbl">Código de país para WhatsApp</div>
@@ -1929,7 +1947,9 @@ async function guardarEmpresa() {
             radar_alerta:         document.getElementById('e_notif_radar').checked,
             feedback_recibido:    document.getElementById('e_notif_feedback').checked,
             desc_inteligente:     document.getElementById('e_notif_di').checked,
-            envio_correo_cliente: document.getElementById('e_envio_correo').checked,
+            envio_correo_cliente:   document.getElementById('e_envio_correo').checked,
+            envio_whatsapp_cliente: document.getElementById('e_envio_whatsapp').checked,
+            correo_responde_a:      document.getElementById('e_responde_a').value,
         },
         lada_pais:          (document.getElementById('e_lada_pais').value || '52').replace(/\D/g, '') || '52',
         cot_vigencia_dias:  parseInt(document.getElementById('e_cot_vigencia_dias').value) || 30,

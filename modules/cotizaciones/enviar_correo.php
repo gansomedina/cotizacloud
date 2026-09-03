@@ -84,16 +84,29 @@ $empresa = DB::row(
     [$empresa_id]
 );
 
-// Responder-A: el asesor ASIGNADO a la cotización, no quien aprieta el botón.
-// Si un admin la manda a nombre del asesor, la respuesta del cliente tiene que
-// llegarle al asesor, que es quien va a darle seguimiento.
+// Responder-A. Cuando es el asesor, es el ASIGNADO a la cotización y no quien
+// aprieta el botón: si un admin la manda, la respuesta del cliente tiene que
+// llegarle igual al asesor, que es quien le va a dar seguimiento.
+// La empresa elige a quién en Configuración › Envío al cliente.
 $asesor_id = (int)($cot['vendedor_id'] ?: $cot['usuario_id'] ?: Auth::id());
 $asesor    = $asesor_id
     ? DB::row("SELECT nombre, email FROM usuarios WHERE id=? AND empresa_id=?", [$asesor_id, $empresa_id])
     : null;
 
-$reply_to     = trim((string)($asesor['email'] ?? '')) ?: trim((string)($empresa['email'] ?? ''));
-$reply_nombre = trim((string)($asesor['nombre'] ?? '')) ?: trim((string)($empresa['nombre'] ?? ''));
+$mail_asesor  = trim((string)($asesor['email'] ?? ''));
+$nom_asesor   = trim((string)($asesor['nombre'] ?? ''));
+$mail_empresa = trim((string)($empresa['email'] ?? ''));
+$nom_empresa  = trim((string)($empresa['nombre'] ?? ''));
+
+// Sea cual sea la preferencia, si esa opción no tiene correo se usa la otra:
+// un correo sin Responder-A deja al cliente sin forma de contestar.
+if (($ncfg['correo_responde_a'] ?? 'asesor') === 'empresa') {
+    $reply_to     = $mail_empresa ?: $mail_asesor;
+    $reply_nombre = $mail_empresa ? $nom_empresa : ($nom_asesor ?: $nom_empresa);
+} else {
+    $reply_to     = $mail_asesor ?: $mail_empresa;
+    $reply_nombre = $mail_asesor ? ($nom_asesor ?: $nom_empresa) : $nom_empresa;
+}
 
 $themes = [
     'verde' => '#1a6b3c', 'azul'  => '#1d4ed8', 'rojo'   => '#b91c1c',

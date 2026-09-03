@@ -45,7 +45,8 @@ chk('editor: enlace de WhatsApp',       str_contains($ver, 'https://wa.me/'));
 chk('editor: enlace de correo',         str_contains($ver, 'mailto:'));
 chk('popup: botón de WhatsApp',         str_contains($nueva, "id=\"popup-wa\""));
 chk('popup: botón de correo',           str_contains($nueva, "id=\"popup-mail\""));
-chk('popup: les pone href al abrirse',  str_contains($nueva, "getElementById('popup-wa').href"));
+chk('popup: les pone href al abrirse',
+    str_contains($nueva, "btnWa.href") && str_contains($nueva, "getElementById('popup-mail').href"));
 
 echo "\n3) EL NÚMERO SE NORMALIZA EN UN SOLO LUGAR\n";
 // Si alguien reescribe la normalización en JavaScript, las dos versiones se
@@ -105,7 +106,7 @@ echo "\n8) NACE APAGADO Y SE PRENDE POR EMPRESA\n";
 chk('el default es false',              (bool)preg_match("/'envio_correo_cliente' => false/", $helper));
 chk('el endpoint lo exige',             str_contains($endp, "empty(\$ncfg['envio_correo_cliente'])"));
 chk('hay interruptor en Configuración', str_contains($cfg, 'id="e_envio_correo"'));
-chk('y se guarda',                      str_contains($cfg, 'envio_correo_cliente: document.getElementById'));
+chk('y se guarda',                      str_contains($cfg, 'envio_correo_cliente:'));
 chk('el editor respeta el interruptor', str_contains($ver, '$envio_correo_on'));
 
 echo "\n9) EL ENDPOINT ESTÁ PROTEGIDO\n";
@@ -170,6 +171,33 @@ echo "\n14) UNA BASE SIN MIGRAR NO ROMPE LA CONFIGURACIÓN\n";
 // dejaría de guardar TODA la configuración de la empresa.
 chk('lada_pais se guarda aparte',       str_contains($gemp, 'UPDATE empresas SET lada_pais=?'));
 chk('y tolerando el fallo',             (bool)preg_match('/lada_pais=\?[\s\S]{0,200}catch \(\\\\Throwable/', $gemp));
+
+echo "\n15) WHATSAPP TAMBIÉN SE PUEDE APAGAR\n";
+// Nace PRENDIDO, al revés que el correo: no manda nada por su cuenta —abre la
+// app del asesor— y es por donde se manda el 90% en México.
+chk('el default es true',               (bool)preg_match("/'envio_whatsapp_cliente' => true/", $helper));
+chk('hay interruptor en Configuración', str_contains($cfg, 'id="e_envio_whatsapp"'));
+chk('y se guarda',                      str_contains($cfg, 'envio_whatsapp_cliente:'));
+chk('el editor lo respeta',             str_contains($ver, '$envio_wa_on'));
+chk('el popup también',                 str_contains($nueva, '$envio_wa_on'));
+// Apagado, el botón no existe en el DOM: sin guarda, el JS del popup reventaría
+// y el asesor se quedaría sin ver la liga de lo que acaba de generar.
+chk('el JS tolera que no exista',       str_contains($nueva, "const btnWa = document.getElementById('popup-wa')"));
+chk('y no lo toca si falta',            str_contains($nueva, 'if (btnWa) {'));
+// Con uno solo, la rejilla de dos columnas dejaría un hueco.
+chk('la rejilla se ajusta en el editor', str_contains($ver, "\$envio_wa_on ? '1fr 1fr' : '1fr'"));
+chk('y en el popup',                     str_contains($nueva, "\$envio_wa_on ? '1fr 1fr' : '1fr'"));
+
+echo "\n16) A QUIÉN LE RESPONDE EL CLIENTE ES ELECCIÓN DE LA EMPRESA\n";
+chk('el default es el asesor',          (bool)preg_match("/'correo_responde_a'    => 'asesor'/", $helper));
+chk('hay selector en Configuración',    str_contains($cfg, 'id="e_responde_a"'));
+chk('con las dos opciones',             str_contains($cfg, 'value="asesor"') && str_contains($cfg, 'value="empresa"'));
+chk('y se guarda',                      str_contains($cfg, 'correo_responde_a:'));
+chk('el endpoint lo lee',               str_contains($endp, "\$ncfg['correo_responde_a'] ?? 'asesor'"));
+// Un correo sin Responder-A deja al cliente sin forma de contestar, así que la
+// opción elegida cae a la otra cuando no tiene correo.
+chk('empresa cae al asesor si no tiene', str_contains($endp, '$reply_to     = $mail_empresa ?: $mail_asesor;'));
+chk('asesor cae a la empresa si no tiene', str_contains($endp, '$reply_to     = $mail_asesor ?: $mail_empresa;'));
 
 echo "\n" . ($fail === 0
     ? "✓ ENVÍO AL CLIENTE OK — $ok comprobaciones\n"
