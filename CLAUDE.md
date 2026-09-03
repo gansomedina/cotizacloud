@@ -41,7 +41,7 @@
 - Proyecto usa Swift Package Manager (SPM), NO CocoaPods - no necesita `pod install`
 - `npx cap sync ios` funciona correctamente
 - App compila y corre en simulador iOS
-- Root URL (`/`) redirige a `/login` en vez de mostrar landing (commit 5d0e727)
+- ~~Root URL (`/`) redirige a `/login`~~ — **ya no** (verificado 3 sep 2026). El ápice sirve la **landing** (`Router.php:122`); la app Capacitor se sale de ella por JS. Solo el **subdominio de empresa** redirige a `/login` (`Router.php:94`).
 - App carga correctamente en simulador mostrando pantalla de login
 
 ### Configuración Capacitor (`capacitor.config.ts`)
@@ -73,7 +73,7 @@
 - Cuenta Apple Developer activa
 - App ID `com.cotizacloud.app` registrado con Push Notifications habilitado
 - APNs Key creada (Key ID: `D2AW3CT2UF`, Team ID: `T3LPNPVHZ2`)
-- Archivo `.p8` subido al servidor en `/home/key/AuthKey_D2AW3CT2UF.p8`
+- Archivo `.p8` en el servidor: **`/var/www/cotizacloud-keys/`** (root:www-data, 640). La ruta `/home/key/` era del cPanel viejo y ya no existe.
 - Config APNs configurado en `config.php` con Key ID, Team ID y ruta al .p8
 - Push Notifications capability habilitado en Xcode (`App.entitlements`)
 
@@ -108,30 +108,51 @@
 4. Cambiar `aps-environment` en `App.entitlements` de `development` a `production`
 5. Android: carpeta `android/` ya existe, falta probar y publicar en Google Play
 
-## Sistema de Planes (Free / Pro / Business)
+## Sistema de Planes (Free / Lite / Pro / Business)
+
+> **Corregido el 3 sep 2026 contra el código.** Esta sección tenía los precios
+> del arranque —Pro $299, Business $799, sin Lite— y describía a Business como
+> el único con usuarios múltiples. Las dos cosas dejaron de ser ciertas con el
+> relanzamiento del 23-jul-2026 y nadie actualizó aquí.
 
 ### Implementado
-- ENUM en BD: `free`, `pro`, `business` (migración automática desde `trial`)
-- `core/Helpers.php` → `trial_info()` retorna: `es_free`, `es_pro`, `es_business`, `es_pagado`, `plan_label`
+- ENUM en BD: `free`, `lite`, `pro`, `business` (`Helpers.php:846,850`, auto-migra)
+- `core/Helpers.php` → `trial_info()` retorna: `es_free`, `es_pro`, `es_business`, `es_pagado`, `plan_label`, `es_pro_o_superior`, `asientos_max`
 - `es_trial` se mantiene como alias de `es_free` para compatibilidad
 - Límite de 25 cotizaciones totales en plan Free (enforcement en `modules/cotizaciones/crear.php`)
-- SuperAdmin puede activar/renovar/cambiar entre los 3 planes (`modules/superadmin/toggle_plan.php`)
-- Tab "Usuarios" en Configuración solo visible para plan Business (`modules/config/index.php`)
-- Sidebar muestra nombre del plan dinámico con color (Free=amber, Pro=verde, Business=azul)
-- Landing page con sección de precios en `/landing` (toggle mensual/anual, precios tachados)
-- Ruta `/` sigue yendo a `/login` (seguro para app Capacitor en App Store review)
+- SuperAdmin puede activar/renovar/cambiar de plan (`modules/superadmin/toggle_plan.php`)
+- Tab "Usuarios" en Configuración: **Pro y Business** (`es_pro_o_superior`, `config/index.php:364`; el gate por URL directa está en `:14-18`)
+- Sidebar muestra nombre del plan dinámico con color
+- Landing page con sección de precios en `/landing` (toggle mensual/anual)
+- **Ruta `/`** — depende del host, son dos rutas distintas en el Router:
+  - **Ápice** (`cotiza.cloud/`): dashboard si hay sesión, **landing** si no (`Router.php:122`). La app Capacitor se sale de la landing por JS.
+  - **Subdominio de empresa**: redirige a `BASE_URL/login` (`Router.php:94`, "backward compat")
 
 ### Precios
+**Fuente única: `MercadoPago::precios()` (`core/MercadoPago.php:20-38`).** La
+landing y `/licencia` deben reflejar SIEMPRE esos números; si esta tabla y el
+código no coinciden, manda el código.
+
 | Plan | Mensual | Anual (20% desc) |
 |------|---------|-------------------|
-| Free | $0 | — |
-| Pro | $299 MXN | $239 MXN/mes ($2,868/año) |
-| Business | $799 MXN | $639 MXN/mes ($7,668/año) |
+| Free | $0 — legacy, ya no se vende | — |
+| Lite | $199 MXN | $159 MXN/mes ($1,910/año) |
+| Pro | $499 MXN | $399 MXN/mes ($4,788/año) |
+| Business | $2,999 MXN — asistido, no comprable self-serve | $2,399 MXN/mes ($28,788/año) |
 
 ### Diferenciadores por plan
-- **Free**: 25 cotizaciones total, todos los módulos, 1 usuario
-- **Pro**: cotizaciones ilimitadas, todos los módulos, 1 usuario, app móvil
-- **Business**: usuarios ilimitados, tab Usuarios visible, costos con categorías avanzadas (pendiente), módulo proveedores (pendiente), reportes avanzados (pendiente), soporte prioritario
+El tope de usuarios lo define `asientos_max` de `trial_info()`
+(`Helpers.php:974`): Free y Lite = **1**; Pro y Business = **ilimitado**, salvo
+que el superadmin fije `empresas.asientos`.
+
+- **Free**: 25 cotizaciones total, 1 usuario
+- **Lite**: 1 usuario, radar simplificado dentro de Cotizaciones
+- **Pro**: cotizaciones ilimitadas, **usuarios ilimitados**, Radar completo, costos, reportes
+- **Business**: todo lo de Pro + termómetro, mesa, score, ranking, AI, costos avanzados, proveedores, reportes avanzados, marketing, permisos, demo y capacitación
+
+⚠️ **Los usuarios ilimitados ya NO son el diferenciador de Business** — Pro
+también los tiene desde el relanzamiento. Lo que separa a Business son los
+módulos de la lista de arriba.
 
 ### Pendiente — Próxima sesión
 1. **Módulo Costos Avanzados** (Business) — categorías avanzadas de costos, márgenes por categoría, análisis por proveedor
@@ -281,7 +302,7 @@ npx cap sync android
 ```php
 // Web Push (VAPID)
 define('VAPID_PUBLIC_KEY',  'BH3SNMbyH-Q-f1hIU2TjYc_V6vHjF7s1OPtnBxm3rX5YFPn16Qrbv9-2zg1ghp3vUgVgvHe0YKwSrt45kNdW70s');
-define('VAPID_PRIVATE_PEM', '/home/cotizacl/key/vapid_private.pem');
+define('VAPID_PRIVATE_PEM', '/var/www/cotizacloud-keys/vapid_private.pem'); // ruta actual (VPS); la vieja /home/cotizacl/key/ ya no existe
 define('VAPID_SUBJECT',     'mailto:noreply@cotiza.cloud');
 
 // Email superadmin
@@ -626,13 +647,15 @@ Conversión:   35%  (era 40%)
 2. **Credenciales hardcodeadas** — DB_PASS='Jalfonso234', APP_SECRET='cambiar-en-produccion-32chars' en config.php:20,23
 3. **quote_action.php sin autenticación** — cualquiera puede aceptar/rechazar cotización sin CSRF ni verificación de destinatario
 4. **Escalación de roles** — admin puede crear otros admins sin restricción de superadmin (`modules/config/usuario.php:28`)
-5. **CSRF faltante** — `modules/config/guardar_empresa.php` POST sin csrf_check()
+5. ~~**CSRF faltante** — `modules/config/guardar_empresa.php` POST sin csrf_check()~~
+   ✅ **YA HECHO** (verificado 3 sep 2026): `guardar_empresa.php:8` llama `csrf_check()`.
 
 #### ALTOS
 6. **IDOR en slugs públicos** — cotización/venta/recibo accesibles con slug + empresa_id secuencial
 7. **agregar_extra/eliminar_extra sin ownership check** — usuario puede modificar ventas de otros
 8. **extract() en Router.php:235** — inyección de variables desde URL params
-9. **Open redirect post-login** — session redirect sin validar URL interna (`login_post.php:72`)
+9. ~~**Open redirect post-login** — session redirect sin validar URL interna~~
+   ✅ **YA HECHO** (verificado 3 sep 2026): `login_post.php:137-140` descarta destinos con `://` o que empiecen con `//` y cae a `/dashboard`.
 10. **Race condition plan Free** — check de 25 cotizaciones fuera de transacción (`crear.php:26`)
 11. **Permisos sin validar contra plan** — admin Free puede otorgar permisos Business (`usuario.php:40-56`)
 12. **unsafe unserialize()** — `import_lineas.php:44`, `cleanup_bot_views.php:90`
@@ -640,7 +663,7 @@ Conversión:   35%  (era 40%)
 
 #### MEDIOS
 14. **Sin security headers** — falta HSTS, X-Frame-Options, CSP en .htaccess
-15. **Password mínimo 6 chars** — estándar es 12+ (`registro_post.php:74`)
+15. **Password mínimo 8 chars** — el mínimo real hoy es 8, no 6 (`registro_post.php:82`). Subirlo a 12 sigue pendiente si se quiere.
 16. **Timezone injection DB.php:37** — date('P') interpolado en SQL sin parametrizar
 17. **MarketingPixels.php JS injection** — htmlspecialchars para contexto JS (necesita json_encode)
 18. **Sin rate limiting en abonos** — endpoint de pagos sin límite
@@ -1007,8 +1030,16 @@ self::get('/api/mp/return',         fn() => self::load_api('mp_return'));
 
 ## Sesión 18 abril 2026 (continuación) — Suscripciones MP funcionales
 
-### Estado: SISTEMA FUNCIONAL ✅
+### Estado: SISTEMA FUNCIONAL ✅ (⚠️ el flujo cambió — ver abajo)
 El sistema de suscripciones con MercadoPago está **operativo end-to-end**. El flujo completo funciona: creación del preapproval → redirect al checkout de MP → sincronización por polling al volver al sistema.
+
+> **Corrección 3 sep 2026 — el flujo de cobro ya NO es Preapproval.** Hoy se crea
+> una **Preference de Checkout Pro** (pago único que tokeniza la tarjeta) y las
+> renovaciones se cobran con `/v1/payments` usando la tarjeta guardada, desde el
+> cron. Las funciones de preapproval siguen en `core/MercadoPago.php` pero están
+> marcadas **LEGACY** en el propio código (`:188`), y `sincronizar()` —el polling
+> que describe el párrafo de arriba— quedó sin llamadores.
+> Evidencia: `core/MercadoPago.php:45` ("Crear Preference (Checkout Pro)"), `:111`, `:188`.
 
 ### Testing con pagos reales
 Se hicieron 2 pruebas de pago con tarjetas reales:
@@ -1042,8 +1073,12 @@ Ambas aparecen en `https://www.mercadopago.com.mx/activities` con ref externa `c
 ### Dónde están los logs
 | Log | Ruta | Contiene |
 |-----|------|----------|
-| PHP errors app | `/home/cotizacl/public_html/logs/error.log` | `[MP Crear]`, `[MP sync]`, `[MP Webhook]` |
-| LiteSpeed | `/usr/local/lsws/logs/error.log` | SSL, acme-challenge, 403 de firewall |
+| PHP errors app | **`/var/www/cotizacloud/logs/error.log`** (logrotate semanal) | `[MP Crear]`, `[MP sync]`, `[MP Webhook]` |
+| nginx | **`/var/log/nginx/error.log`** y `access.log` | SSL, acme-challenge, 403 |
+
+> Rutas corregidas el 3 sep 2026. Las viejas (`/home/cotizacl/public_html/logs/`,
+> `/usr/local/lsws/logs/`) eran del cPanel con LiteSpeed y ya no existen: el
+> servidor web es **nginx 1.24**.
 | Panel MP | https://www.mercadopago.com.mx/activities | Motivos reales de rechazo de pagos |
 
 ### Notas importantes
@@ -1450,7 +1485,7 @@ ALTER TABLE usuario_score
 1. **Security headers** — probar `Header set X-Content-Type-Options "nosniff"` en .htaccess primero para verificar que LiteSpeed soporta mod_headers. Si funciona, agregar HSTS, X-Frame-Options, Referrer-Policy
 2. **CSRF en endpoints de config** — 15 endpoints sin csrf_check (articulo.php, cupon.php, usuario.php, etc.). Verificar que el frontend mande el token antes de agregar
 3. **.gitignore** — agregar *.sql, *.csv, *.pem, *_backup*
-4. **Contraseña mínima** — cambiar de 6 a 12 chars en registro_post.php
+4. **Contraseña mínima** — hoy son **8** chars (`registro_post.php:82`), no 6. Subir a 12 sigue pendiente si se quiere.
 5. **Benchmark close_rate** — analizar si usar histórico (14%) vs ventana 15 días (23%). Decisión de impacto, pensar con calma
 6. **Conversión 45.8% con 29% cierre** — revisar por qué no sube más estando arriba del benchmark
 7. **Termómetro: venta cuenta con pagado>0** — ya implementado, verificar que los scores sean correctos con datos reales
@@ -1577,7 +1612,7 @@ ALTER TABLE empresas ADD COLUMN giro ENUM('servicios','inmuebles') NOT NULL DEFA
 4. **Reactivación de cotizaciones** — `reactivada_at` para no penalizar días acumulados (pendiente, requiere análisis)
 5. **.gitignore** — agregar *.sql, *.csv, *.pem, *_backup*
 6. **error_log en repo** — agregarlos a .gitignore para que cPanel no bloquee deploy
-7. **Contraseña mínima** — cambiar de 6 a 12 chars en registro_post.php
+7. **Contraseña mínima** — hoy son **8** chars (`registro_post.php:82`), no 6. Subir a 12 sigue pendiente si se quiere.
 
 ### Branch de trabajo
 - `claude/analyze-domain-change-hmo-AkFAi`
@@ -2209,17 +2244,16 @@ se arreglaron en commit `3f913e3`. Estos quedan pendientes (medio/bajo):
    NO se loguean. Si se usa el log para auditar "cuántas visitas reciben
    mis cots", subestima fuerte. Considerar log también en esos paths.
 
-10. **PHP `$_SESSION` cookie name colisiona con cza_session** (preexistente)
-    `core/Auth.php:32` llama `session_name(SESSION_NAME)` — la cookie PHP
-    nativa para `$_SESSION` comparte nombre con la cookie del token de Auth.
-    Ahora con activity refresh re-seteando la cookie en cada request, el
-    riesgo de override es mayor. Renombrar la PHP session a `PHPSESSID`
-    diferente de `SESSION_NAME`.
+10. ~~**PHP `$_SESSION` cookie name colisiona con cza_session**~~
+    ✅ **YA HECHO** (verificado 3 sep 2026). `Auth::init()` usa un nombre
+    propio: `core/Auth.php:48` → `session_name('cza_php')`, con el comentario
+    en `:43-47` explicando justo este riesgo. `SESSION_NAME` quedó solo para la
+    cookie del token (`:85`, `:102`). Colisión imposible.
 
-11. **`SESSION_LIFETIME` no existe en código pero `impersonar.php` la usa**
-    Verificar que esté en `config.php` del server o el flujo de impersonar
-    superadmin queda silencioso roto (cookie con expires=time()+null=time()
-    → expira inmediato).
+11. ~~**`SESSION_LIFETIME` no existe en código pero `impersonar.php` la usa**~~
+    ✅ **YA HECHO** (verificado 3 sep 2026). `core/Auth.php:31` la define con
+    default de 8 horas si `config.php` no la trae, precisamente para que un
+    entorno nuevo no tumbe `impersonar.php`.
 
 ### Hallazgos preexistentes detectados (no de hoy)
 
@@ -3470,7 +3504,9 @@ Business. **No cuando el juguete brille — cuando el negocio lo pida.**
   contador de recuperado, selector de período 7/15/30/60/90
 - 5 rondas de auditoría (agentes + reproducción en BD real) — todo corregido
 - 3 SIMULACIONES PERMANENTES contra MariaDB real (OBLIGATORIAS tras cualquier
-  cambio a Mesa/reporte/endpoints): tools/sim_mesa_armar.php (35 checks),
+  cambio a Mesa/reporte/endpoints) — **son CUATRO, y los conteos de abajo están
+  viejos; los reales al 3 sep 2026 son armar 77, reporte 46, render 58**:
+  tools/sim_mesa_armar.php (35 checks),
   tools/sim_mesa_reporte.php (34 checks), tools/factlint_tips_v2.php
   Requieren: MariaDB local, BD simtest, usuario sim/sim
 - Principio único del reporte: estado VIGENTE manda; paradero decide la
@@ -3483,7 +3519,7 @@ Business. **No cuando el juguete brille — cuando el negocio lo pida.**
 Todo el plan de docs/mesa_score_integracion.md quedó EN CÓDIGO:
 - Migración migrations/add_mesa_score.sql (CORRER EN SERVIDOR antes del deploy)
 - Mesa::cobertura_senales() + cobertura_detalle() (fuente única) + recuperado personal
-- ActividadScore: blend 25% binario (gate mesa_activa=2), periodo_efectivo(),
+- ActividadScore: ~~blend 25% binario~~ **(ver corrección abajo)**, periodo_efectivo(),
   persistencia mesa_pedidas/atendidas/s_mesa (INSERT 58/58 verificado)
 - DiagnosticoTips: 3 frases del reprobado con gates + wording "en tu mesa"
 - UI asesor: tarjeta propia tras su termómetro (gate mesa_activa>=1), cobertura
@@ -3493,6 +3529,54 @@ Todo el plan de docs/mesa_score_integracion.md quedó EN CÓDIGO:
 - Toggle superadmin en ficha de empresa (0/1/2) + debug panel + executive SELECT
 - Validado: sims 34+35, render 4 modos (admin ×2, asesor flag 1/0), tips-gates,
   fact-lint 0. Checklist de rollout vive en el doc.
+
+### ⚠️ CÓMO PESA LA MESA EN EL SCORE — estado real (verificado 3 sep 2026)
+
+Lo de arriba decía "blend 25% binario" y **las dos palabras están mal**. Esto es
+lo que hace el código, y hay una parte que no estaba documentada en ningún lado.
+
+**1. No es un blend: con `mesa_activa >= 2` el Seguimiento ES la mesa, al 100%.**
+
+```php
+core/ActividadScore.php:843    $s_seguimiento = $s_mesa;   // sustitución, no mezcla
+```
+
+La medida anterior —feedback en cotizaciones calientes— se sigue calculando,
+pero ya no define la dimensión; queda viva solo para empresas SIN mesa. Como
+Seguimiento pesa 0.25 del score (`:1006`), **la mesa vale un cuarto del score
+completo**, no un cuarto del Seguimiento.
+
+**2. No es binario: son tres escalones con crédito parcial** (`:840-843`).
+
+| Cobertura de señales | s_mesa |
+|---|---|
+| Mesa vacía (`pedidas = 0`) | 1.0 — neutro, no castiga por no tener trabajo |
+| < 50% | 0.0 |
+| 50 – 80% | **0.50** ← el escalón que "binario" negaba |
+| ≥ 80% | 1.0 |
+
+**3. Y hay un castigo que NO estaba escrito en ninguna parte** (`:1191-1218`).
+
+Resta puntos **directos al score final**, no a una dimensión:
+
+```php
+$mesa_dias_vencidos = COUNT(*) FROM mesa_vencidos … fecha >= CURDATE() - INTERVAL 14 DAY
+if     ($mesa_dias_vencidos >= 14) $castigo_seguimiento = 8;
+elseif ($mesa_dias_vencidos >= 7)  $castigo_seguimiento = 5;
+elseif ($mesa_dias_vencidos >= 3)  $castigo_seguimiento = 2;
+$score = max($score - $castigo_seguimiento, 0);
+```
+
+- Mismo gate `mesa_activa = 2`
+- Ventana **fija de 15 días**, a propósito distinta de `$periodo`: en ciclo largo
+  el período se estira a 45-60 días y el castigo se volvería eterno
+- Tocar una cotización **detiene** la acumulación pero no borra los días viejos;
+  salen solos de la ventana (~2 semanas para drenar un −5)
+- Si la tabla `mesa_vencidos` no está migrada, el castigo es 0 (try/catch)
+
+**Por qué importa tenerlo escrito:** un asesor puede perder hasta 8 puntos por
+una razón que hasta hoy no estaba documentada. Es la primera explicación que hay
+que revisar cuando alguien reporte "vendí y mi score bajó".
 
 ### (histórico) PENDIENTE APROBADO — Mesa al Termómetro (implementar al salir de beta)
 **Diseño completo en docs/mesa_score_integracion.md** — leerlo ANTES de
@@ -3518,7 +3602,7 @@ checklist de rollout. Sub-proyecto previo: abrir la mesa a asesores
   personal, espejo de su fila, push de revividas)
 
 ### Pendientes menores mesa
-- GRACIA_DIAS está en 7 "temporal testing" (ActividadScore.php:105) — volver a 15
+- ~~GRACIA_DIAS está en 7 "temporal testing"~~ ✅ **YA ESTÁ EN 15** (verificado 3 sep 2026, `ActividadScore.php:105`)
 - Decisión futura: columna declarado_por en mesa_estados al abrir a asesores
 - Preguntas de producto resueltas: propuse_no_quiso NO proyecta 👎 ✓
 
@@ -3582,12 +3666,16 @@ ventas, solo QUÉ se muestra en el menú.
 6. Dashboard: versión básica para Lite (ocultar termómetro/leaderboard)
 
 ### Escalera de precios resultante
+> ⚠️ **Precios de este bloque: obsoletos** (eran los del momento del diseño). Los
+> vigentes están arriba, en "Sistema de Planes → Precios", y la fuente única es
+> `MercadoPago::precios()`. Hoy Pro es **$499** y Business **$2,999**.
+
 | Plan | Precio | Qué ve |
 |------|--------|--------|
 | Free | $0 | 25 cotizaciones, básico |
 | **Lite (NUEVO)** | **$199** | Dashboard + Clientes + Cotizaciones (con visitas/badge) + Ventas |
-| Pro | $299 | Todo lo de hoy (+ Radar dedicado, ilimitado) |
-| Business | $799 | Todo + equipo + módulos avanzados |
+| Pro | ~~$299~~ → $499 | Todo lo de hoy (+ Radar dedicado, ilimitado) |
+| Business | ~~$799~~ → $2,999 | Todo + equipo + módulos avanzados |
 
 ### Advertencia documentada
 A $199 con cobro recurrente, el margen es delgado y el churn de planes baratos
