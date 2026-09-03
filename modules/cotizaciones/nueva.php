@@ -809,13 +809,23 @@ $page_title = 'Nueva cotización';
             <label class="nc-lbl">WhatsApp <span style="color:var(--danger)">*</span></label>
             <input type="tel" class="nc-input" id="nc-telefono" placeholder="662 123 4567">
         </div>
+        <!-- La dirección va ANTES del correo: es el dato que el asesor casi
+             siempre trae a la mano al dar de alta, y el correo el que muchas
+             veces no. Preguntar primero por lo que sí se tiene. -->
+        <div class="nc-field">
+            <label class="nc-lbl">Dirección (opcional)</label>
+            <input type="text" class="nc-input" id="nc-direccion" placeholder="Calle, colonia, ciudad…">
+        </div>
         <div class="nc-field">
             <label class="nc-lbl">Correo (opcional)</label>
             <input type="email" class="nc-input" id="nc-email" placeholder="cliente@correo.com">
         </div>
+        <!-- El de arriba es el móvil (va a WhatsApp); este es el fijo o el de
+             la oficina. Se separaron para que el enlace de WhatsApp nunca
+             apunte a un número que no recibe mensajes. -->
         <div class="nc-field">
-            <label class="nc-lbl">Dirección (opcional)</label>
-            <input type="text" class="nc-input" id="nc-direccion" placeholder="Calle, colonia, ciudad…">
+            <label class="nc-lbl">Teléfono empresa (opcional)</label>
+            <input type="tel" class="nc-input" id="nc-tel-empresa" placeholder="662 123 4567">
         </div>
         <button class="nc-btn" onclick="crearClienteNuevo()">Agregar cliente</button>
     </div>
@@ -1192,8 +1202,10 @@ function switchClientTab(tab) {
 async function crearClienteNuevo() {
     const nombre    = document.getElementById('nc-nombre').value.trim();
     const telefono  = document.getElementById('nc-telefono').value.trim();
-    const email     = document.getElementById('nc-email').value.trim();
     const direccion = document.getElementById('nc-direccion').value.trim();
+    const email     = document.getElementById('nc-email').value.trim();
+    // El fijo/oficina. El servidor ya lo guardaba; solo faltaba pedirlo aquí.
+    const telefono_empresa = document.getElementById('nc-tel-empresa').value.trim();
 
     if (!nombre)   { alert('El nombre es requerido'); return; }
     if (!telefono) { alert('El WhatsApp es requerido'); return; }
@@ -1203,7 +1215,7 @@ async function crearClienteNuevo() {
         const r = await fetch('/clientes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ nombre, telefono, email, direccion })
+            body: JSON.stringify({ nombre, telefono, telefono_empresa, email, direccion })
         });
         const data = await r.json();
         if (!data.ok) { alert(data.error || 'Error al crear cliente'); return; }
@@ -1217,14 +1229,16 @@ async function crearClienteNuevo() {
             telefono,
             email:    data.data.email ?? email,
             wa:       data.data.wa    ?? '',
-            direccion
+            direccion,
+            telefono_empresa
         };
         CLIENTES.unshift(c);
         seleccionarCliente(c.id);
-        document.getElementById('nc-nombre').value    = '';
-        document.getElementById('nc-telefono').value  = '';
-        document.getElementById('nc-email').value     = '';
-        document.getElementById('nc-direccion').value = '';
+        document.getElementById('nc-nombre').value      = '';
+        document.getElementById('nc-telefono').value    = '';
+        document.getElementById('nc-direccion').value   = '';
+        document.getElementById('nc-email').value       = '';
+        document.getElementById('nc-tel-empresa').value = '';
     } catch (e) {
         alert('Error de conexión');
     }

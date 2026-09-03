@@ -83,7 +83,17 @@ echo "\n6) EL CORREO SE CAPTURA EN LOS DOS FORMULARIOS DE ALTA\n";
 // Antes solo se guardaba al EDITAR: un cliente recién creado no tenía a dónde
 // recibir su cotización, y el botón de correo nacía inútil.
 chk('alta rápida (cotización): campo',  str_contains($nueva, 'id="nc-email"'));
-chk('alta rápida: lo manda',            (bool)preg_match('/JSON\.stringify\(\{ nombre, telefono, email, direccion \}\)/', $nueva));
+chk('alta rápida: lo manda',            (bool)preg_match('/JSON\.stringify\(\{ nombre, telefono, telefono_empresa, email, direccion \}\)/', $nueva));
+// El fijo/oficina: el endpoint SIEMPRE lo aceptó, pero la hoja de la cotización
+// no lo pedía — el asesor no tenía dónde capturarlo sin salirse a Clientes.
+chk('alta rápida: pide el teléfono de empresa', str_contains($nueva, 'id="nc-tel-empresa"'));
+chk('y lo limpia al terminar',          str_contains($nueva, "getElementById('nc-tel-empresa').value = ''"));
+// La dirección va ANTES del correo: es el dato que el asesor casi siempre trae
+// a la mano, y el correo el que muchas veces no.
+chk('la dirección se pide antes del correo',
+    strpos($nueva, 'id="nc-direccion"') < strpos($nueva, 'id="nc-email"'));
+chk('y el teléfono de empresa va al final',
+    strpos($nueva, 'id="nc-tel-empresa"') > strpos($nueva, 'id="nc-email"'));
 chk('módulo Clientes: campo',           str_contains($lista, 'id="cli-email"'));
 chk('módulo Clientes: lo manda',        str_contains($lista, 'telefono_empresa, email, direccion, nota'));
 chk('el endpoint lo guarda al CREAR',   str_contains($crear, 'telefono_empresa, email, direccion, nota'));
