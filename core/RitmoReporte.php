@@ -562,6 +562,61 @@ class RitmoReporte
     private static function _money(float $n): string { return '$' . number_format($n, 0, '.', ','); }
 
     // ═══════════ Render HTML ═══════════
+    /**
+     * CSS para la ventana de impresión: mete el reporte en UNA hoja.
+     *
+     * Vive aquí, y no en cada módulo, porque el dashboard y el panel del
+     * supervisor arman la misma ventana de impresión por su cuenta. Con el CSS
+     * duplicado, mejorar el papel en uno dejaba al otro atrás.
+     *
+     * Dos palancas, en este orden:
+     *  1. DOS COLUMNAS. El reporte son viñetas cortas: a una columna se
+     *     desperdicia media hoja de margen derecho. Es lo que de verdad
+     *     recupera espacio (~2×); la tipografía sola no alcanzaba.
+     *  2. Tipografía compacta y menos aire entre secciones (~1.5× más).
+     *
+     * `break-inside: avoid` en cada bloque evita que una sección quede partida
+     * entre columnas — leer media lista arriba a la derecha y la otra media
+     * abajo a la izquierda es peor que gastar una hoja.
+     *
+     * Un reporte con muchos casos concretos puede seguir yéndose a 2 hojas. Es
+     * a propósito: preferimos eso a encoger la letra hasta que no se lea.
+     */
+    public static function css_impresion(): string
+    {
+        return <<<'CSS'
+@page{margin:9mm}
+/* Dos columnas: es la palanca grande. El encabezado y las píldoras cruzan
+   ambas para que el nombre y el score sigan mandando la hoja. */
+#rt-body{columns:2;column-gap:8mm}
+.rr-hd,.rr-dims{column-span:all}
+/* La nota metodológica es para pantalla; en papel se lleva 3 renglones. */
+.rr-note{display:none}
+/* Nada se parte entre columnas ni entre hojas. */
+.rr-sec,.rr-tip,.rr-consejo,.rr-pil,.rr-foco{break-inside:avoid;page-break-inside:avoid}
+.rr-st{break-after:avoid}
+/* Tipografía compacta */
+.rr-name{font-size:15px}
+.rr-sn{font-size:18px}
+.rr-sl{font-size:8px}
+.rr-dim{font-size:9.5px;padding:2px 7px}
+.rr-sec{margin-bottom:7px}
+.rr-st{font-size:9px;margin-bottom:3px;padding-bottom:2px}
+.rr-list{padding-left:13px}
+.rr-list li{font-size:9.5px;line-height:1.32;margin-bottom:1px}
+.rr-sub{font-size:8.5px}
+.rr-casos{padding-left:12px}
+.rr-pil{font-size:10px;margin:2px 0;gap:6px}
+.rr-dot{width:7px;height:7px}
+.rr-tip,.rr-consejo{padding:7px 9px;margin-bottom:7px;border-radius:7px}
+.rr-tip-h{font-size:9px;margin-bottom:2px}
+.rr-tip-b{font-size:10px;line-height:1.35}
+.rr-foco{padding:6px 9px;margin-bottom:6px}
+.rr-ft{font-size:10.5px}
+.rr-foot{font-size:8px;line-height:1.3;margin-top:6px;column-span:all}
+CSS;
+    }
+
     public static function render(array $d): string
     {
         $s = $d['secciones']; $sc = $d['score'];
