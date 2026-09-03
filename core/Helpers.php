@@ -1177,6 +1177,26 @@ function tel_whatsapp(?string $telefono, string $lada = '52'): string
     return '';
 }
 
+// ─── Texto del mensaje de WhatsApp con la cotización ────────────
+// Vive aquí, y no repartido por las vistas, para que el editor y el popup de
+// "cotización generada" manden exactamente el mismo mensaje. El popup lo arma
+// en JavaScript: le pasamos ESTA MISMA plantilla con marcadores
+// (wa_texto_cotizacion('{NOMBRE}', '{URL}')) para que no exista una segunda
+// versión del texto que se desincronice con esta.
+//
+// Corto a propósito: en WhatsApp un mensaje largo se lee menos que uno de una
+// línea con la liga a la vista.
+function wa_texto_cotizacion(string $nombre, string $url): string
+{
+    $nombre = trim($nombre);
+    // Solo el primer nombre: "Hola María Guadalupe" suena a mensaje automático.
+    if ($nombre !== '') $nombre = explode(' ', $nombre)[0];
+
+    return $nombre !== ''
+        ? "Hola {$nombre}, aquí está tu cotización: {$url}"
+        : "Hola, aquí está tu cotización: {$url}";
+}
+
 // ─── Íconos SVG inline (reemplazo de emojis para WebView iOS) ──
 function ico(string $name, int $size = 16, string $color = 'currentColor'): string
 {

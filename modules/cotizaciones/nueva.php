@@ -826,6 +826,12 @@ const EMPRESA_CFG = <?= $empresa_js ?>;
 const ES_INMUEBLES = <?= $es_inmuebles ? 'true' : 'false' ?>;
 const CSRF_TOKEN  = '<?= csrf_token() ?>';
 const URL_PUB_BASE = '<?= e(Router::url_publica('/c/')) ?>';
+// Las MISMAS plantillas que usa el editor, con marcadores. Vienen de PHP para
+// que no exista una segunda versión del texto que se desincronice — ver
+// wa_texto_cotizacion() en Helpers.php. Son dos porque el mensaje cambia si no
+// hay nombre, y así el JS elige en vez de recortar la cadena a mano.
+const WA_TPL     = <?= json_encode(wa_texto_cotizacion('{NOMBRE}', '{URL}'), JSON_HEX_TAG | JSON_HEX_APOS) ?>;
+const WA_TPL_SIN = <?= json_encode(wa_texto_cotizacion('', '{URL}'), JSON_HEX_TAG | JSON_HEX_APOS) ?>;
 const PUEDE_PRECIOS    = <?= $puede_editar_precios ? 'true' : 'false' ?>;
 const PUEDE_DESCUENTOS = <?= $puede_descuentos ? 'true' : 'false' ?>;
 const CUPONES_DATA = <?= json_encode(array_map(fn($c) => [
@@ -1390,6 +1396,28 @@ async function guardarCotizacion() {
         document.getElementById('popup-ver-url').href    = urlPublica;
         document.getElementById('popup-ver-url').target  = '_blank';
         document.getElementById('popup-link-url').value  = urlPublica;
+
+        // ── Botones de envío ───────────────────────────────────────
+        // clienteSeleccionado puede ser null: en el editor se puede asignar
+        // cliente después. Sin esto, el popup reventaba al generar una
+        // cotización sin cliente y el asesor se quedaba sin ver la liga.
+        const cli    = (typeof clienteSeleccionado !== 'undefined' && clienteSeleccionado) ? clienteSeleccionado : null;
+        const nombre = cli ? (cli.nombre || '') : '';
+        const wa     = cli ? (cli.wa     || '') : '';
+        const mail   = cli ? (cli.email  || '') : '';
+        const texto  = nombre
+            ? WA_TPL.replace('{NOMBRE}', nombre.split(' ')[0]).replace('{URL}', urlPublica)
+            : WA_TPL_SIN.replace('{URL}', urlPublica);
+
+        document.getElementById('popup-wa').href = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(texto);
+        document.getElementById('popup-wa-sub').textContent = wa ? ('Al ' + (cli.telefono || '')) : 'Elegir contacto';
+
+        document.getElementById('popup-mail').href =
+            'mailto:' + encodeURIComponent(mail) +
+            '?subject=' + encodeURIComponent('Tu cotización') +
+            '&body='    + encodeURIComponent(texto);
+        document.getElementById('popup-mail-sub').textContent = mail || 'Sin correo registrado';
+
         document.getElementById('popup-overlay').style.display = 'flex';
         document.getElementById('popup-editar-url').href = '/cotizaciones/' + cotId;
         document.getElementById('popup-editar-btn').href = '/cotizaciones/' + cotId;
@@ -1432,6 +1460,24 @@ function toggleMob(hdr)   { hdr.closest('.mob-section').classList.toggle('open')
                    style="flex:1;font:500 12px var(--num);color:var(--g);border:none;background:transparent;outline:none;word-break:break-all;min-width:0">
             <button onclick="const u=document.getElementById('popup-link-url').value;navigator.clipboard.writeText(u);this.textContent='¡Copiado!';setTimeout(()=>this.textContent='Copiar link',2000)"
                     style="padding:8px 13px;border-radius:7px;border:none;background:var(--g);font:700 12px var(--body);color:#fff;cursor:pointer;flex-shrink:0">Copiar link</button>
+        </div>
+
+        <!-- Envío al cliente. Los href los pone el JS al abrir el popup, porque
+             la cotización se acaba de crear por fetch y la URL no existe al
+             renderizar. El número ya viene normalizado desde PHP en c.wa. -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+            <a id="popup-wa" href="#" target="_blank"
+               style="padding:14px;border-radius:var(--r-sm);border:1px solid #a8e6a3;background:#dcf8c6;display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
+                <span style="font-size:24px">💬</span>
+                <span style="font:700 12px var(--body);color:var(--t2)">WhatsApp</span>
+                <span id="popup-wa-sub" style="font:400 10px var(--body);color:var(--t3)"></span>
+            </a>
+            <a id="popup-mail" href="#"
+               style="padding:14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
+                <span style="font-size:24px">✉️</span>
+                <span style="font:700 12px var(--body);color:var(--t2)">Correo</span>
+                <span id="popup-mail-sub" style="font:400 10px var(--body);color:var(--t3)"></span>
+            </a>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:8px;">

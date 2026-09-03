@@ -263,6 +263,13 @@ $cot_js = json_encode([
 
 $url_publica = Router::url_publica('/c/' . $cot['slug']);
 
+// Envío al cliente. $wa_num queda vacío cuando el teléfono no se puede
+// normalizar con certeza: el enlace abre WhatsApp SIN destinatario y el asesor
+// elige el contacto. Ver tel_whatsapp() en Helpers.php.
+$wa_num   = tel_whatsapp($cot['cliente_telefono'] ?? '', lada_pais($empresa_id));
+$wa_texto = wa_texto_cotizacion($cot['cliente_nombre'] ?? '', $url_publica);
+$cli_mail = trim((string)($cot['cliente_email'] ?? ''));
+
 $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 ?>
 <!DOCTYPE html>
@@ -350,6 +357,10 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             <?php if ($es_editable): ?>
                 <button class="accion-btn accion-btn-primary" onclick="guardarCotizacion()" id="btn-guardar">Guardar</button>
             <?php endif; ?>
+            <!-- La hoja de envío existía desde antes (openUrlOverlay) pero NINGÚN
+                 botón la abría: los accesos a WhatsApp y correo llevaban meses
+                 escritos y muertos. Este botón es el que los devuelve. -->
+            <button class="accion-btn accion-btn-primary" onclick="openUrlOverlay()">Enviar</button>
             <button class="accion-btn topbar-secondary" onclick="navigator.clipboard.writeText('<?= e($url_publica) ?>');this.textContent='✓';setTimeout(()=>this.textContent='Copiar',2000)">Copiar</button>
             <a href="<?= e($url_publica) ?>" target="_blank" class="accion-btn topbar-secondary">Ver</a>
             <?php if ($puede_suspender): ?>
@@ -752,23 +763,38 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
      onclick="closeUrlOverlay()">
     <div onclick="event.stopPropagation()" style="background:var(--white);border-radius:20px 20px 0 0;padding:20px 20px 40px;width:100%;max-width:560px;">
         <div style="width:34px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 18px"></div>
-        <div style="font:800 19px var(--body);margin-bottom:4px">URL del cliente</div>
-        <div style="font:400 13px var(--body);color:var(--t3);margin-bottom:16px">Comparte este enlace con el cliente</div>
+        <div style="font:800 19px var(--body);margin-bottom:4px">Enviar al cliente</div>
+        <div style="font:400 13px var(--body);color:var(--t3);margin-bottom:16px">
+            <?php if (!empty($cot['cliente_nombre'])): ?>
+                Para <strong style="color:var(--t2)"><?= e($cot['cliente_nombre']) ?></strong><?php
+                    if ($wa_num) echo ' · ' . e($cot['cliente_telefono']);
+                    if ($cli_mail) echo ' · ' . e($cli_mail);
+                ?>
+            <?php else: ?>
+                Comparte este enlace con el cliente
+            <?php endif; ?>
+        </div>
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;display:flex;align-items:center;gap:8px;margin-bottom:14px">
             <span style="flex:1;font:500 12px var(--num);color:var(--g);word-break:break-all"><?= e($url_publica) ?></span>
             <button onclick="navigator.clipboard.writeText('<?= e($url_publica) ?>');this.textContent='¡Copiado!';setTimeout(()=>this.textContent='Copiar',2000)"
                     style="padding:8px 13px;border-radius:7px;border:none;background:var(--g);font:700 12px var(--body);color:#fff;cursor:pointer;flex-shrink:0">Copiar</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-            <a href="https://wa.me/?text=<?= urlencode($url_publica) ?>" target="_blank"
+            <!-- wa.me/<numero> abre directo la conversación del cliente. Si
+                 $wa_num viene vacío (teléfono que no se pudo normalizar), el
+                 enlace queda sin número y WhatsApp pide elegir contacto: un tap
+                 más, pero nunca le escribe a la persona equivocada. -->
+            <a href="https://wa.me/<?= e($wa_num) ?>?text=<?= rawurlencode($wa_texto) ?>" target="_blank"
                style="padding:14px;border-radius:var(--r-sm);border:1px solid #a8e6a3;background:#dcf8c6;display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
                 <span style="font-size:24px">💬</span>
                 <span style="font:700 12px var(--body);color:var(--t2)">WhatsApp</span>
+                <span style="font:400 10px var(--body);color:var(--t3)"><?= $wa_num ? 'Al ' . e($cot['cliente_telefono']) : 'Elegir contacto' ?></span>
             </a>
-            <a href="mailto:<?= e($cot['cliente_email'] ?? '') ?>?subject=Tu+cotización&body=<?= urlencode($url_publica) ?>"
+            <a href="mailto:<?= rawurlencode($cli_mail) ?>?subject=<?= rawurlencode('Tu cotización ' . $cot['numero']) ?>&body=<?= rawurlencode($wa_texto) ?>"
                style="padding:14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
                 <span style="font-size:24px">✉️</span>
                 <span style="font:700 12px var(--body);color:var(--t2)">Correo</span>
+                <span style="font:400 10px var(--body);color:var(--t3)"><?= $cli_mail ? e($cli_mail) : 'Sin correo registrado' ?></span>
             </a>
         </div>
         <?php if ($es_editable): ?>
