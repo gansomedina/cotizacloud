@@ -165,11 +165,17 @@ $articulos_js = json_encode(array_map(function($a) use ($es_inmuebles) {
     return $r;
 }, $articulos), JSON_HEX_TAG | JSON_HEX_APOS);
 
+// 'wa' = el teléfono ya normalizado para wa.me. Se calcula aquí, en PHP, para
+// que la lógica de normalización viva en un solo lugar (tel_whatsapp) y no
+// haya una segunda versión en JavaScript que se desincronice.
+$lada_emp = lada_pais($empresa_id);
+
 $clientes_js = json_encode(array_map(fn($c) => [
     'id'       => (int)$c['id'],
     'nombre'   => $c['nombre'],
     'telefono' => $c['telefono'],
     'email'    => $c['email'] ?? '',
+    'wa'       => tel_whatsapp($c['telefono'] ?? '', $lada_emp),
 ], $clientes), JSON_HEX_TAG | JSON_HEX_APOS);
 
 $empresa_js = json_encode([
@@ -796,8 +802,12 @@ $page_title = 'Nueva cotización';
             <input type="text" class="nc-input" id="nc-nombre" placeholder="Nombre completo">
         </div>
         <div class="nc-field">
-            <label class="nc-lbl">Teléfono <span style="color:var(--danger)">*</span></label>
+            <label class="nc-lbl">WhatsApp <span style="color:var(--danger)">*</span></label>
             <input type="tel" class="nc-input" id="nc-telefono" placeholder="662 123 4567">
+        </div>
+        <div class="nc-field">
+            <label class="nc-lbl">Correo (opcional)</label>
+            <input type="email" class="nc-input" id="nc-email" placeholder="cliente@correo.com">
         </div>
         <div class="nc-field">
             <label class="nc-lbl">Dirección (opcional)</label>
@@ -1172,25 +1182,38 @@ function switchClientTab(tab) {
 async function crearClienteNuevo() {
     const nombre    = document.getElementById('nc-nombre').value.trim();
     const telefono  = document.getElementById('nc-telefono').value.trim();
+    const email     = document.getElementById('nc-email').value.trim();
     const direccion = document.getElementById('nc-direccion').value.trim();
 
     if (!nombre)   { alert('El nombre es requerido'); return; }
-    if (!telefono) { alert('El teléfono es requerido'); return; }
+    if (!telefono) { alert('El WhatsApp es requerido'); return; }
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { alert('El correo no parece válido'); return; }
 
     try {
         const r = await fetch('/clientes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ nombre, telefono, direccion })
+            body: JSON.stringify({ nombre, telefono, email, direccion })
         });
         const data = await r.json();
         if (!data.ok) { alert(data.error || 'Error al crear cliente'); return; }
 
-        const c = { id: data.data.id, nombre, telefono, direccion };
+        // 'email' y 'wa' tienen que venir aquí: sin ellos, los botones de envío
+        // del popup quedan ciegos para un cliente recién dado de alta. 'wa' lo
+        // normaliza el servidor para no repetir esa lógica en JavaScript.
+        const c = {
+            id:       data.data.id,
+            nombre,
+            telefono,
+            email:    data.data.email ?? email,
+            wa:       data.data.wa    ?? '',
+            direccion
+        };
         CLIENTES.unshift(c);
         seleccionarCliente(c.id);
         document.getElementById('nc-nombre').value    = '';
         document.getElementById('nc-telefono').value  = '';
+        document.getElementById('nc-email').value     = '';
         document.getElementById('nc-direccion').value = '';
     } catch (e) {
         alert('Error de conexión');

@@ -1109,6 +1109,74 @@ function notif_config(int $empresa_id): array
     return $result;
 }
 
+// ─── Lada de país de la empresa (para armar enlaces de WhatsApp) ──
+// Columna nueva (migrations/add_telefono_empresa_lada.sql). Si no se corrió la
+// migración, cae a '52' y todo sigue funcionando.
+function lada_pais(int $empresa_id): string
+{
+    static $cache = [];
+    if (isset($cache[$empresa_id])) return $cache[$empresa_id];
+
+    $lada = '52';
+    try {
+        $v = DB::val("SELECT lada_pais FROM empresas WHERE id=?", [$empresa_id]);
+        if (is_string($v) && preg_match('/^\d{1,4}$/', $v)) $lada = $v;
+    } catch (\Throwable $e) {
+        // columna aún no existe — default 52
+    }
+
+    $cache[$empresa_id] = $lada;
+    return $lada;
+}
+
+// ─── Teléfono en formato WhatsApp (wa.me) ───────────────────────
+// Los teléfonos se GUARDAN como la gente los escribe ("662 142 1858"); aquí se
+// normalizan solo al momento de armar el enlace. Ver el porqué en
+// migrations/add_telefono_empresa_lada.sql.
+//
+// Devuelve solo dígitos listos para wa.me, o '' cuando no se puede afirmar con
+// certeza cuál es el número. Ese '' NO es un error: hace que el botón abra
+// WhatsApp sin destinatario para que el asesor elija el contacto. Preferimos un
+// tap extra a abrirle una conversación a un desconocido.
+function tel_whatsapp(?string $telefono, string $lada = '52'): string
+{
+    $raw = trim((string)$telefono);
+    if ($raw === '') return '';
+
+    // Un '+' adelante es la salida para el cliente extranjero: el asesor ya
+    // escribió la lada completa, se respeta tal cual sin aplicar la de la empresa.
+    $explicito = str_starts_with($raw, '+') || str_starts_with($raw, '00');
+
+    $d = preg_replace('/\D+/', '', $raw) ?? '';
+    if ($d === '') return '';
+
+    // 00 = prefijo internacional escrito a la europea
+    if (str_starts_with($d, '00')) $d = substr($d, 2);
+
+    if ($explicito) {
+        // Se confía en lo que escribió el asesor; solo se descartan longitudes absurdas.
+        return (strlen($d) >= 8 && strlen($d) <= 15) ? $d : '';
+    }
+
+    $lada = preg_replace('/\D+/', '', $lada) ?: '52';
+    $ll   = strlen($lada);
+
+    // Formato viejo de WhatsApp para México: 52 + 1 + 10 dígitos.
+    // El '1' ya no se usa; se quita para no mandar a un número inexistente.
+    if ($lada === '52' && strlen($d) === 13 && str_starts_with($d, '521')) {
+        return '52' . substr($d, 3);
+    }
+
+    // Ya trae la lada del país
+    if (strlen($d) === $ll + 10 && str_starts_with($d, $lada)) return $d;
+
+    // Número nacional de 10 dígitos → se le antepone la lada
+    if (strlen($d) === 10) return $lada . $d;
+
+    // Cualquier otra cosa: no adivinamos.
+    return '';
+}
+
 // ─── Íconos SVG inline (reemplazo de emojis para WebView iOS) ──
 function ico(string $name, int $size = 16, string $color = 'currentColor'): string
 {

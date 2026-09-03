@@ -410,15 +410,21 @@ ob_start();
         </div>
         <div class="sh-field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div>
-                <div class="sh-lbl">Teléfono <span style="color:var(--danger)">*</span></div>
+                <div class="sh-lbl">WhatsApp <span style="color:var(--danger)">*</span></div>
                 <input class="sh-input" type="tel" id="edit-telefono"
                        value="<?= e($cliente['telefono'] ?? '') ?>" style="font-family:var(--num);">
+                <div style="font:400 11px var(--body);color:var(--t3);margin-top:4px">Al que se le manda la cotización</div>
             </div>
             <div>
-                <div class="sh-lbl">Email (opcional)</div>
-                <input class="sh-input" type="email" id="edit-email"
-                       value="<?= e($cliente['email'] ?? '') ?>">
+                <div class="sh-lbl">Teléfono de oficina (opcional)</div>
+                <input class="sh-input" type="tel" id="edit-telefono-empresa"
+                       value="<?= e($cliente['telefono_empresa'] ?? '') ?>" style="font-family:var(--num);">
             </div>
+        </div>
+        <div class="sh-field">
+            <div class="sh-lbl">Correo (opcional)</div>
+            <input class="sh-input" type="email" id="edit-email"
+                   value="<?= e($cliente['email'] ?? '') ?>">
         </div>
         <div class="sh-field">
             <div class="sh-lbl">Dirección (opcional)</div>
@@ -458,12 +464,14 @@ function openEditSheet() { openSheet('shEditCliente'); }
 async function guardarEdicion() {
     const nombre    = document.getElementById('edit-nombre').value.trim();
     const telefono  = document.getElementById('edit-telefono').value.trim();
+    const telefono_empresa = document.getElementById('edit-telefono-empresa').value.trim();
     const email     = document.getElementById('edit-email').value.trim();
     const direccion = document.getElementById('edit-direccion').value.trim();
     const nota      = document.getElementById('edit-nota').value.trim();
 
     if (!nombre)   { alert('El nombre es requerido'); return; }
-    if (!telefono) { alert('El teléfono es requerido'); return; }
+    if (!telefono) { alert('El WhatsApp es requerido'); return; }
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { alert('El correo no parece válido'); return; }
 
     const btn = document.querySelector('#shEditCliente .sh-btn-save');
     btn.disabled = true; btn.textContent = 'Guardando…';
@@ -472,7 +480,7 @@ async function guardarEdicion() {
         const r = await fetch('/clientes/' + CLIENTE_ID, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ nombre, telefono, email, direccion, nota })
+            body: JSON.stringify({ nombre, telefono, telefono_empresa, email, direccion, nota })
         });
         const d = await r.json();
         if (!d.ok) { alert(d.error || 'Error al guardar'); btn.disabled=false; btn.textContent='Guardar cambios'; return; }
