@@ -1857,17 +1857,19 @@ class ActividadScore
                 DB::execute(
                     "INSERT INTO score_historial
                      (usuario_id, empresa_id, periodo, score, nivel,
-                      s_activacion, s_seguimiento, s_conversion,
+                      s_activacion, s_engagement, s_seguimiento, s_radar_health, s_conversion,
                       cot_asignadas, cot_vistas, cot_dormidas,
                       conversiones, cierres_bucket, cierres_sin_dto,
                       transiciones_up, senales_ignoradas,
                       penalizaciones, bonuses, momentum, percentil,
                       ranking, team_size)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                      ON DUPLICATE KEY UPDATE
                       score=VALUES(score), nivel=VALUES(nivel),
                       s_activacion=VALUES(s_activacion),
+                      s_engagement=VALUES(s_engagement),
                       s_seguimiento=VALUES(s_seguimiento),
+                      s_radar_health=VALUES(s_radar_health),
                       s_conversion=VALUES(s_conversion),
                       cot_asignadas=VALUES(cot_asignadas), cot_vistas=VALUES(cot_vistas),
                       cot_dormidas=VALUES(cot_dormidas), conversiones=VALUES(conversiones),
@@ -1879,7 +1881,9 @@ class ActividadScore
                     [
                         (int)$s['usuario_id'], $empresa_id, $periodo_actual,
                         (int)$s['score'], $s['nivel'],
-                        (float)$s['s_activacion'], (float)$s['s_seguimiento'], (float)$s['s_conversion'],
+                        (float)$s['s_activacion'], (float)($s['s_engagement'] ?? 0),
+                        (float)$s['s_seguimiento'], (float)($s['s_radar_health'] ?? 0),
+                        (float)$s['s_conversion'],
                         (int)($s['cot_asignadas'] ?? 0), (int)($s['cot_vistas'] ?? 0), (int)($s['cot_dormidas'] ?? 0),
                         (int)($s['conversiones'] ?? 0), (int)($s['cierres_bucket'] ?? 0), (int)($s['cierres_sin_dto'] ?? 0),
                         (int)($s['transiciones_up'] ?? 0), (int)($s['senales_ignoradas'] ?? 0),
@@ -1889,7 +1893,47 @@ class ActividadScore
                     ]
                 );
             } catch (\Throwable $e) {
-                // El fallo silencioso ya congeló el histórico una vez — dejar rastro
+                // Base sin migrar (add_historial_5_dimensiones.sql): se guarda
+                // el mes SIN las dos columnas nuevas en vez de perderlo. El
+                // fallo silencioso ya congeló el histórico una vez; dejar solo
+                // el error_log lo documenta pero no lo evita.
+                try {
+                    DB::execute(
+                        "INSERT INTO score_historial
+                         (usuario_id, empresa_id, periodo, score, nivel,
+                          s_activacion, s_seguimiento, s_conversion,
+                          cot_asignadas, cot_vistas, cot_dormidas,
+                          conversiones, cierres_bucket, cierres_sin_dto,
+                          transiciones_up, senales_ignoradas,
+                          penalizaciones, bonuses, momentum, percentil,
+                          ranking, team_size)
+                         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                         ON DUPLICATE KEY UPDATE
+                          score=VALUES(score), nivel=VALUES(nivel),
+                          s_activacion=VALUES(s_activacion),
+                          s_seguimiento=VALUES(s_seguimiento),
+                          s_conversion=VALUES(s_conversion),
+                          cot_asignadas=VALUES(cot_asignadas), cot_vistas=VALUES(cot_vistas),
+                          cot_dormidas=VALUES(cot_dormidas), conversiones=VALUES(conversiones),
+                          cierres_bucket=VALUES(cierres_bucket), cierres_sin_dto=VALUES(cierres_sin_dto),
+                          transiciones_up=VALUES(transiciones_up), senales_ignoradas=VALUES(senales_ignoradas),
+                          penalizaciones=VALUES(penalizaciones), bonuses=VALUES(bonuses),
+                          momentum=VALUES(momentum), percentil=VALUES(percentil),
+                          ranking=VALUES(ranking), team_size=VALUES(team_size)",
+                        [
+                            (int)$s['usuario_id'], $empresa_id, $periodo_actual,
+                            (int)$s['score'], $s['nivel'],
+                            (float)$s['s_activacion'], (float)$s['s_seguimiento'], (float)$s['s_conversion'],
+                            (int)($s['cot_asignadas'] ?? 0), (int)($s['cot_vistas'] ?? 0), (int)($s['cot_dormidas'] ?? 0),
+                            (int)($s['conversiones'] ?? 0), (int)($s['cierres_bucket'] ?? 0), (int)($s['cierres_sin_dto'] ?? 0),
+                            (int)($s['transiciones_up'] ?? 0), (int)($s['senales_ignoradas'] ?? 0),
+                            (float)($s['penalizaciones'] ?? 0), (float)($s['bonuses'] ?? 0),
+                            (float)($s['momentum'] ?? 1), (float)($s['percentil'] ?? 0.5),
+                            $rank, $team_size,
+                        ]
+                    );
+                    continue;
+                } catch (\Throwable $e2) { /* cae al log de abajo */ }
                 error_log('[ActividadScore snapshot] ' . $e->getMessage());
             }
         }
@@ -1910,25 +1954,62 @@ class ActividadScore
                 // COMPLETA de ese mejor momento (no se mezclan dimensiones de
                 // fotos distintas). El promedio mensual = AVG de estas fotos.
                 DB::execute(
+                    // OJO con el orden: `score` se asigna AL FINAL a propósito.
+                    // MySQL evalúa las asignaciones de izquierda a derecha, así
+                    // que las dimensiones comparan contra el score VIEJO. Si se
+                    // mueve `score` arriba, todas las demás comparan contra el
+                    // nuevo y se guardan mezcladas de dos fotos distintas.
+                    // Las columnas nuevas (engagement, radar health) van ANTES.
                     "INSERT INTO score_diario
                         (usuario_id, empresa_id, fecha, score, nivel,
-                         s_activacion, s_seguimiento, s_conversion)
-                     VALUES (?,?,?,?,?,?,?,?)
+                         s_activacion, s_engagement, s_seguimiento, s_radar_health, s_conversion)
+                     VALUES (?,?,?,?,?,?,?,?,?,?)
                      ON DUPLICATE KEY UPDATE
-                        nivel        = IF(VALUES(score) > score, VALUES(nivel), nivel),
-                        s_activacion = IF(VALUES(score) > score, VALUES(s_activacion), s_activacion),
-                        s_seguimiento= IF(VALUES(score) > score, VALUES(s_seguimiento), s_seguimiento),
-                        s_conversion = IF(VALUES(score) > score, VALUES(s_conversion), s_conversion),
-                        score        = IF(VALUES(score) > score, VALUES(score), score)",
+                        nivel         = IF(VALUES(score) > score, VALUES(nivel), nivel),
+                        s_activacion  = IF(VALUES(score) > score, VALUES(s_activacion), s_activacion),
+                        s_engagement  = IF(VALUES(score) > score, VALUES(s_engagement), s_engagement),
+                        s_seguimiento = IF(VALUES(score) > score, VALUES(s_seguimiento), s_seguimiento),
+                        s_radar_health= IF(VALUES(score) > score, VALUES(s_radar_health), s_radar_health),
+                        s_conversion  = IF(VALUES(score) > score, VALUES(s_conversion), s_conversion),
+                        score         = IF(VALUES(score) > score, VALUES(score), score)",
                     [
                         (int)$s['usuario_id'], $empresa_id, $hoy,
                         (int)$s['score'], $s['nivel'],
                         (float)($s['s_activacion'] ?? 0),
+                        (float)($s['s_engagement'] ?? 0),
                         (float)($s['s_seguimiento'] ?? 0),
+                        (float)($s['s_radar_health'] ?? 0),
                         (float)($s['s_conversion'] ?? 0),
                     ]
                 );
             } catch (\Throwable $e) {
+                // Base sin migrar (add_historial_5_dimensiones.sql): se guarda
+                // la foto SIN las dos columnas nuevas en vez de perderla. Sin
+                // este respaldo, desplegar antes de correr la migración congela
+                // el historial de TODAS las empresas en silencio — ya pasó una
+                // vez, y el error_log solo lo deja escrito, no lo evita.
+                try {
+                    DB::execute(
+                        "INSERT INTO score_diario
+                            (usuario_id, empresa_id, fecha, score, nivel,
+                             s_activacion, s_seguimiento, s_conversion)
+                         VALUES (?,?,?,?,?,?,?,?)
+                         ON DUPLICATE KEY UPDATE
+                            nivel        = IF(VALUES(score) > score, VALUES(nivel), nivel),
+                            s_activacion = IF(VALUES(score) > score, VALUES(s_activacion), s_activacion),
+                            s_seguimiento= IF(VALUES(score) > score, VALUES(s_seguimiento), s_seguimiento),
+                            s_conversion = IF(VALUES(score) > score, VALUES(s_conversion), s_conversion),
+                            score        = IF(VALUES(score) > score, VALUES(score), score)",
+                        [
+                            (int)$s['usuario_id'], $empresa_id, $hoy,
+                            (int)$s['score'], $s['nivel'],
+                            (float)($s['s_activacion'] ?? 0),
+                            (float)($s['s_seguimiento'] ?? 0),
+                            (float)($s['s_conversion'] ?? 0),
+                        ]
+                    );
+                    continue;
+                } catch (\Throwable $e2) { /* cae al log de abajo */ }
                 error_log('[ActividadScore snapshot_diario] ' . $e->getMessage());
             }
         }
