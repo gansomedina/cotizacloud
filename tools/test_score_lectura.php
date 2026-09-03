@@ -108,20 +108,22 @@ $e2 = dim(['s_engagement'=>0.40,'ventas_periodo'=>3,'ventas_sin_pago'=>2], 'enga
 chk('nombra las ventas sin cobrar',   str_contains($e2['frase'], '2 ventas sin un solo pago'));
 
 echo "\n5) SEGUIMIENTO — 100% puede ser mérito o mesa vacía\n";
+// Los fixtures llevan s_mesa: es el gate de que la mesa manda la dimensión
+// (queda NULL con mesa_activa < 2). Sin él caen en la rama de feedback.
 // Mesa vacía → 1.0 neutro (ActividadScore:842). Es el mismo número que "atendió
 // todo" y significa lo contrario: que no le pidieron nada.
-$s0 = dim(['s_seguimiento'=>1.0,'mesa_pedidas'=>0,'mesa_atendidas'=>0], 'seguimiento');
+$s0 = dim(['s_seguimiento'=>1.0,'s_mesa'=>1.0,'mesa_pedidas'=>0,'mesa_atendidas'=>0], 'seguimiento');
 chk('mesa vacía lleva alerta',        $s0['alerta'] !== null);
 chk('dice que es neutro, no mérito',  str_contains((string)$s0['alerta'], 'no es mérito'));
 // Mesa con trabajo y atendida → mérito real, sin alerta.
-$s1 = dim(['s_seguimiento'=>1.0,'mesa_pedidas'=>12,'mesa_atendidas'=>11], 'seguimiento');
+$s1 = dim(['s_seguimiento'=>1.0,'s_mesa'=>1.0,'mesa_pedidas'=>12,'mesa_atendidas'=>11], 'seguimiento');
 chk('con señales atendidas no hay alerta', $s1['alerta'], null);
 chk('y da el n de m',                 str_contains($s1['frase'], '11 de 12'));
 // Escalón intermedio: 50% cuenta la mitad, y hay que decir cómo llegar al tope.
-$s2 = dim(['s_seguimiento'=>0.5,'mesa_pedidas'=>10,'mesa_atendidas'=>6], 'seguimiento');
+$s2 = dim(['s_seguimiento'=>0.5,'s_mesa'=>0.5,'mesa_pedidas'=>10,'mesa_atendidas'=>6], 'seguimiento');
 chk('el escalón medio se explica',    str_contains($s2['frase'], 'cuenta la mitad'));
 // El castigo directo al score (hasta -8) no estaba documentado en ningún lado.
-$s3 = dim(['s_seguimiento'=>0.0,'mesa_pedidas'=>10,'mesa_atendidas'=>2,
+$s3 = dim(['s_seguimiento'=>0.0,'s_mesa'=>0.0,'mesa_pedidas'=>10,'mesa_atendidas'=>2,
            'mesa_dias_vencidos'=>9,'castigo_seguimiento'=>5], 'seguimiento');
 chk('avisa del castigo directo',      str_contains((string)$s3['alerta'], '5 puntos'));
 chk('y explica cómo se drena',        str_contains((string)$s3['alerta'], 'detiene el reloj'));
@@ -219,6 +221,65 @@ foreach ([[], ['score'=>0], ['s_activacion'=>0.5]] as $i => $row) {
         count(array_filter($d, fn($x) => trim($x['frase']) === '')), 0);
 }
 chk('brecha con fila vacía no truena', ScoreLectura::brecha([])['faltan'], 70);
+
+echo "\n12) LOS SEIS HALLAZGOS DE LA AUDITORÍA\n";
+
+// (1) mesa_pedidas=0 NO significa "mesa vacía": también es 0 con la mesa
+// apagada, y ahí el Seguimiento mide otra cosa (feedback en calientes). El
+// gate real es s_mesa, que queda NULL cuando mesa_activa < 2.
+$sin_mesa = dim(['s_seguimiento'=>0.42,'mesa_pedidas'=>0,'mesa_atendidas'=>0], 'seguimiento');
+chk('sin mesa NO habla de señales',   str_contains($sin_mesa['frase'], 'mesa'), false);
+chk('sin mesa no inventa un 100%',    $sin_mesa['alerta'], null);
+chk('sin mesa habla del feedback',    str_contains($sin_mesa['frase'], 'interés'));
+// Con la mesa mandando (s_mesa presente) sí aplica la lectura de la mesa.
+$con_mesa = dim(['s_seguimiento'=>1.0,'s_mesa'=>1.0,'mesa_pedidas'=>0,'mesa_atendidas'=>0], 'seguimiento');
+chk('con mesa vacía sí avisa que es neutro', str_contains((string)$con_mesa['alerta'], 'no es mérito'));
+
+// (2) Período de gracia: score 0 y dimensiones en cero por early return del
+// motor, no porque el asesor esté mal.
+chk('detecta al nuevo',               ScoreLectura::es_nuevo(['nivel'=>'nuevo']));
+chk('y no confunde al regular',       ScoreLectura::es_nuevo(['nivel'=>'regular']), false);
+chk('el reporte lo trata aparte',
+    str_contains((string)file_get_contents(__DIR__ . '/../core/RitmoReporte.php'), 'ScoreLectura::es_nuevo'));
+
+// (3) Sin ventas, Engagement aterriza en 1 − close_rate (~71-80%). Con umbral
+// de 80 el aviso se escapaba y el texto acusaba de dar descuentos a quien no
+// vendió nada.
+$e75 = dim(['s_engagement'=>0.75,'ventas_periodo'=>0,'ventas_sin_pago'=>0], 'engagement');
+chk('75% sin ventas también avisa',   $e75['alerta'] !== null);
+chk('y no lo acusa de descuentos',    str_contains($e75['frase'], 'descuento'), false);
+
+// (4) veredicto() no tenía fila para 'sin_datos' y caía en 'estable',
+// contradiciendo al renglón que acababa de decir que no hay historial.
+$vsd = ScoreLectura::veredicto(51, 'sin_datos');
+chk('sin_datos no dice "estable"',    str_contains($vsd, 'estable'), false);
+chk('sin_datos reconoce que falta historial', str_contains($vsd, 'historial'));
+foreach ([90,73,65,45] as $sc)
+    chk("sin_datos tiene texto propio para {$sc}", trim(ScoreLectura::veredicto($sc, 'sin_datos')) !== '');
+
+// (5) Los snapshots deben poder guardar aunque falte la migración: si no,
+// desplegar antes de correrla congela el historial de TODAS las empresas.
+$as = (string)file_get_contents(__DIR__ . '/../core/ActividadScore.php');
+chk('score_diario tiene respaldo sin las columnas nuevas',
+    substr_count($as, 'INSERT INTO score_diario') === 2);
+chk('score_historial también',
+    substr_count($as, 'INSERT INTO score_historial') === 2);
+
+// (6) La comparación por dimensión: era código muerto (se calculaba y nadie
+// la consumía). Es la razón de haber agregado las dos columnas al historial.
+$prom = ['activacion'=>0.30,'engagement'=>0.85,'seguimiento'=>1.0,'radar_health'=>0.58,'conversion'=>0.13];
+$hoy  = ['s_activacion'=>0.24,'s_engagement'=>0.89,'s_seguimiento'=>1.0,'s_radar_health'=>0.36,'s_conversion'=>0.11];
+$mv = ScoreLectura::movimiento($hoy, $prom);
+chk('detecta la caída de Radar Health', $mv[0]['clave'], 'radar_health');
+chk('y la redacta',                     str_contains($mv[0]['txt'], 'cayó de 58% a 36%'));
+chk('ignora los movimientos chicos',    count($mv), 1);
+chk('sin historial de dimensiones, no inventa', ScoreLectura::movimiento($hoy, null), []);
+// El más grande primero: es el que explica el cambio de score.
+$mv2 = ScoreLectura::movimiento(['s_conversion'=>0.11,'s_radar_health'=>0.36],
+                                ['conversion'=>0.60,'radar_health'=>0.58]);
+chk('ordena por tamaño del movimiento', $mv2[0]['clave'], 'conversion');
+chk('el reporte sí la consume',
+    str_contains((string)file_get_contents(__DIR__ . '/../core/RitmoReporte.php'), 'ScoreLectura::movimiento'));
 
 echo "\n" . ($fail === 0
     ? "✓ SCORE EN PALABRAS OK — $ok comprobaciones\n"

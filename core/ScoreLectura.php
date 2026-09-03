@@ -143,7 +143,11 @@ class ScoreLectura
         $sinpag = (int)$n('ventas_sin_pago');
 
         $alerta = null;
-        if ($ventas === 0 && $v >= 80) {
+        // El gate es SIN VENTAS, no el porcentaje: con cero ventas el valor
+        // aterriza en 1 − close_rate de la empresa (~71-80%), así que un umbral
+        // de 80 dejaba escapar el caso y el texto acusaba de "dar descuentos" a
+        // quien no vendió nada.
+        if ($ventas === 0) {
             // El caso que más engaña de las cinco.
             $alerta = "Este número está alto porque NO hay ventas que castigar: sin ventas no hay cobros pendientes ni descuentos. No lo leas como algo bueno.";
             $frase  = "Sin ventas en la ventana, así que no hay nada que evaluar aquí.";
@@ -174,8 +178,24 @@ class ScoreLectura
         $venc = (int)$n('mesa_dias_vencidos');
         $cast = (int)$n('castigo_seguimiento');
 
+        // ¿Manda la mesa esta dimensión? El gate real es `s_mesa`, que queda en
+        // NULL cuando mesa_activa < 2 (ActividadScore:816). NO sirve mirar
+        // mesa_pedidas === 0: esa columna también es 0 con la mesa apagada, y
+        // ahí el Seguimiento es la medida vieja de feedback en calientes. Sin
+        // esta distinción el reporte imprimía "Seguimiento 42% — Sin señales en
+        // tu mesa" con un aviso que hablaba de un 100% que no existe.
+        $manda_mesa = ($s['s_mesa'] ?? null) !== null;
+
         $alerta = null;
-        if ($ped === 0) {
+        if (!$manda_mesa) {
+            // Empresa sin mesa con score: la dimensión mide el feedback 👍👎 que
+            // dejó en sus cotizaciones calientes.
+            $frase = $v >= 80
+                ? "Das seguimiento a tus cotizaciones calientes."
+                : ($v >= 40
+                    ? "Estás dejando cotizaciones calientes sin marcar si el cliente tenía interés."
+                    : "Casi no marcas si tus clientes calientes tenían interés. Esa marca es la que alimenta tu seguimiento.");
+        } elseif ($ped === 0) {
             // 1.0 neutro por mesa vacía — NO es mérito (ActividadScore:842).
             $alerta = "Tu mesa no te pidió nada en la ventana. Este 100% es neutro, no es mérito: no hubo nada que atender.";
             $frase  = "Sin señales en tu mesa durante la ventana.";
@@ -249,6 +269,53 @@ class ScoreLectura
                 'pct'=>$v,'frase'=>$frase,
                 'crudo'=>"{$vent} " . ($vent === 1 ? 'venta' : 'ventas') . " · " . round($tc * 100) . "% de cierre",
                 'alerta'=>$alerta,'partes'=>null];
+    }
+
+    /**
+     * ¿Está en el período de gracia de los primeros días?
+     *
+     * ActividadScore hace un early return (:227) para quien lleva menos de
+     * GRACIA_DIAS en la plataforma: score 0, nivel 'nuevo' y TODAS las
+     * dimensiones en cero. Sin este freno el reporte lo etiquetaba "Crítico" y
+     * le soltaba "el caso más grave del tablero" — un veredicto construido
+     * sobre columnas que nadie midió.
+     */
+    public static function es_nuevo(array $s): bool
+    {
+        return (string)($s['nivel'] ?? '') === 'nuevo';
+    }
+
+    /**
+     * Qué dimensión se movió: hoy contra su propio promedio del período.
+     *
+     * $prom = promedios de score_diario, o null cuando no hay datos con las 5
+     * dimensiones (antes de add_historial_5_dimensiones.sql solo se guardaban
+     * 3, y promediar esos ceros diría "cayó" donde no se medía).
+     * Solo se reportan movimientos de 10 puntos o más: por debajo es el vaivén
+     * normal de una ventana rodante de 15 días.
+     */
+    public static function movimiento(array $s, ?array $prom): array
+    {
+        if (!$prom) return [];
+
+        $labels = ['activacion'=>'Activación','engagement'=>'Engagement','seguimiento'=>'Seguimiento',
+                   'radar_health'=>'Radar Health','conversion'=>'Conversión'];
+        $out = [];
+        foreach ($labels as $k => $lab) {
+            if (!isset($prom[$k])) continue;
+            $col = $k === 'radar_health' ? 's_radar_health' : "s_{$k}";
+            $hoy = (int)round(((float)($s[$col] ?? 0)) * 100);
+            $ant = (int)round(((float)$prom[$k]) * 100);
+            $d   = $hoy - $ant;
+            if (abs($d) < 10) continue;
+            $out[] = ['clave'=>$k, 'label'=>$lab, 'hoy'=>$hoy, 'antes'=>$ant, 'delta'=>$d,
+                      'txt'=>$d > 0
+                          ? "{$lab} subió de {$ant}% a {$hoy}%."
+                          : "{$lab} cayó de {$ant}% a {$hoy}%."];
+        }
+        // El movimiento más grande primero: es el que explica el cambio de score.
+        usort($out, fn($a, $b) => abs($b['delta']) <=> abs($a['delta']));
+        return $out;
     }
 
     /**
@@ -351,6 +418,18 @@ class ScoreLectura
                 'baja'    => 'Crítico y empeorando. Urgente.',
             ],
         ];
+
+        // Sin historial no se puede afirmar tendencia. Antes caía en 'estable'
+        // y el reporte decía "Sin historial suficiente" y en el renglón
+        // siguiente "estable, no necesita intervención".
+        if ($tendencia === 'sin_datos') {
+            return [
+                'excelencia' => 'Está en excelencia hoy. Sin historial todavía no se puede decir si viene subiendo o bajando.',
+                'estandar'   => 'Está en el estándar hoy. Falta historial para saber si es sostenido o de un día.',
+                'debajo'     => 'Hoy está debajo del estándar. Sin historial no se sabe si viene mejorando — hay que darle un par de semanas de datos.',
+                'critico'    => 'Hoy está en crítico. Sin historial no se puede saber si es una mala racha o lo normal: revisar de cerca esta semana.',
+            ][$b];
+        }
 
         return $m[$b][$tendencia] ?? $m[$b]['estable'];
     }

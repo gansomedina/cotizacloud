@@ -357,7 +357,16 @@ class RitmoReporte
         $sc = $d['score'] ?? null;
         $hi = $d['hist']  ?? ['prom'=>null,'dias'=>0,'peor'=>null,'mejor'=>null];
 
-        if ($sc && !empty($sc['row'])) {
+        if ($sc && !empty($sc['row']) && ScoreLectura::es_nuevo($sc['row'])) {
+            // Período de gracia: score 0 y las 5 dimensiones en cero porque el
+            // motor hace early return, no porque el asesor esté mal. Etiquetarlo
+            // "Crítico" y darle el veredicto de "el caso más grave del tablero"
+            // sería un juicio sobre datos que nadie midió.
+            $comovas[] = "Todavía está en su período de gracia: el termómetro no lo califica hasta que "
+                       . "cumple sus primeros días en la plataforma.";
+            $comovas[] = "Los pilares y los casos concretos de abajo sí son reales — el score no.";
+
+        } elseif ($sc && !empty($sc['row'])) {
             $row   = $sc['row'];
             $score = (int)$sc['score'];
             $banda = ScoreLectura::banda($score);
@@ -368,6 +377,12 @@ class RitmoReporte
                        . ScoreLectura::ESTANDAR . ", y abajo de " . ScoreLectura::PISO . " es zona crítica.";
             $comovas[] = $tend['txt'];
             $comovas[] = ScoreLectura::veredicto($score, $tend['clave']);
+
+            // Qué dimensión se movió — es lo que explica el cambio de score, y
+            // la razón de haber agregado engagement y radar health al historial.
+            foreach (ScoreLectura::movimiento($row, $hi['dim'] ?? null) as $mv) {
+                $comovas[] = "  {$mv['txt']}";
+            }
 
             // ── Tus cinco números, en palabras ──
             foreach (ScoreLectura::dimensiones($row) as $dim) {
