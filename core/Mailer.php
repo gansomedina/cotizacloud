@@ -40,6 +40,28 @@ class Mailer
         $from      = defined('SMTP_FROM')      ? SMTP_FROM      : 'noreply@cotiza.cloud';
         $from_name = defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'CotizaCloud';
         $mail->setFrom($from, $from_name);
+
+        // ── Sin rastreo de Brevo ────────────────────────────────────────
+        // Brevo reescribe TODOS los enlaces de los correos para contar clics, y
+        // mete un píxel invisible para contar aperturas. Verificado en el fuente
+        // de un correo real: el botón "Ver mi cotización" salía apuntando a
+        // sendibt2.com en vez de a la cotización del cliente.
+        //
+        // Eso hace daño en tres frentes: el cliente ve una dirección que no
+        // reconoce en un correo que debería ser de su proveedor; mete un salto
+        // extra antes de que la visita llegue al Radar; y en los correos de
+        // recuperación de contraseña reescribe justo el enlace que el usuario
+        // necesita poder reconocer.
+        //
+        // No hay forma de apagarlo desde el panel de Brevo — su pantalla de
+        // Tracking solo ofrece "anonymous tracking", que sigue reescribiendo.
+        // Estas cabeceras son la única vía. Van aquí, en crear(), porque NINGÚN
+        // correo del sistema se beneficia del rastreo de Brevo: nosotros medimos
+        // con el Radar, que es propio y más preciso.
+        $mail->addCustomHeader('X-Mailin-Track', 'false');
+        $mail->addCustomHeader('X-Mailin-Track-Clicks', 'false');
+        $mail->addCustomHeader('X-Mailin-Track-Opens', 'false');
+
         return $mail;
     }
 
