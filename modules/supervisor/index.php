@@ -592,6 +592,8 @@ if ($MESA_SHARED) echo $MESA_SHARED . $MESA_ASSETS;
 
   // Ventana limpia para imprimir: con 'body *{visibility:hidden}' la página
   // entera sigue paginando en blanco y el reporte sale recortado.
+  var RT_CSS_PRINT = <?= json_encode(class_exists('RitmoReporte') ? RitmoReporte::css_impresion() : '', JSON_HEX_TAG | JSON_HEX_APOS) ?>;
+
   window.rtPrint = function () {
     var cont = $('rt-body');
     if (!cont || !cont.innerHTML.trim()) return;
@@ -607,12 +609,14 @@ if ($MESA_SHARED) echo $MESA_SHARED . $MESA_ASSETS;
       '--t2:#4a4a46;--t3:#6a6a64;--g:#1a5c38;--danger:#c53030;' +
       "--body:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif}" +
       'html,body{margin:0;padding:0;background:#fff}' +
-      '@page{margin:14mm}' +
       '#rt-modal{padding:0;position:static}#rt-modal>div{max-width:100%;margin:0;box-shadow:none}' +
       '#rt-body{padding:0}' +
-      '.rr-sec,.rr-tip,.rr-pil{break-inside:avoid;page-break-inside:avoid}' +
       '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
       css +
+      // Compactado a una hoja: dos columnas + tipografía apretada.
+      // Vive en RitmoReporte::css_impresion() para que el dashboard y el
+      // panel del supervisor no se separen — los dos arman esta ventana.
+      RT_CSS_PRINT +
       '</style></head><body><div id="rt-modal"><div><div id="rt-body">' +
       cont.innerHTML +
       '</div></div></div></body></html>'

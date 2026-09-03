@@ -157,6 +157,8 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
   // Se copia el <style> del reporte tal cual y se replican SOLO las variables de
   // color que usa (viven en el layout, que aquí no existe). El HTML se envuelve
   // en #rt-modal para que los mismos selectores apliquen sin tocar el render.
+  var RT_CSS_PRINT = <?= json_encode(class_exists('RitmoReporte') ? RitmoReporte::css_impresion() : '', JSON_HEX_TAG | JSON_HEX_APOS) ?>;
+
   window.rtPrint = function () {
     var cont = $('rt-body');
     if (!cont || !cont.innerHTML.trim()) return;
@@ -172,13 +174,14 @@ $rt_pill = function (string $estado, string $label, string $txt) use ($rt_colmap
       '--t2:#4a4a46;--t3:#6a6a64;--g:#1a5c38;--danger:#c53030;' +
       "--body:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif}" +
       'html,body{margin:0;padding:0;background:#fff}' +
-      '@page{margin:14mm}' +
       '#rt-modal{padding:0}#rt-modal>div{max-width:100%;margin:0;box-shadow:none}' +
       '#rt-body{padding:0}' +
-      // que ninguna sección se parta a la mitad entre páginas
-      '.rr-sec,.rr-tip,.rr-pil{break-inside:avoid;page-break-inside:avoid}' +
       '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
       css +
+      // Compactado a una hoja: dos columnas + tipografía apretada.
+      // Vive en RitmoReporte::css_impresion() para que el dashboard y el
+      // panel del supervisor no se separen — los dos arman esta ventana.
+      RT_CSS_PRINT +
       '</style></head><body><div id="rt-modal"><div><div id="rt-body">' +
       cont.innerHTML +
       '</div></div></div></body></html>'

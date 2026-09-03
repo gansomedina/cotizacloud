@@ -320,6 +320,34 @@ chk('y explica de dónde viene el número',    str_contains($eb['frase'], 'no ha
 $eok = dim(['s_engagement'=>0.89,'ventas_periodo'=>4,'ventas_sin_pago'=>0,'bench_ventas'=>3.5], 'engagement');
 chk('al que sí vende, se le reconoce',       str_contains($eok['frase'], 'Cobras lo que vendes'));
 
+echo "\n15) EL REPORTE IMPRESO CABE EN UNA HOJA\n";
+// El reporte creció con las tres secciones nuevas y salía en 3 hojas.
+$rr  = (string)file_get_contents(__DIR__ . '/../core/RitmoReporte.php');
+$rit = (string)file_get_contents(__DIR__ . '/../modules/dashboard/_ritmo.php');
+$sup = (string)file_get_contents(__DIR__ . '/../modules/supervisor/index.php');
+
+chk('existe el CSS de impresión',      str_contains($rr, 'function css_impresion('));
+// Dos columnas es la palanca grande: el reporte son viñetas cortas y a una
+// columna se desperdicia media hoja de margen derecho.
+chk('usa dos columnas',                str_contains($rr, 'columns:2'));
+chk('el encabezado cruza las dos',     str_contains($rr, 'column-span:all'));
+// Media lista arriba a la derecha y la otra media abajo a la izquierda es peor
+// que gastar una hoja.
+chk('ninguna sección se parte',        str_contains($rr, 'break-inside:avoid'));
+
+// El dashboard y el panel del supervisor arman la MISMA ventana de impresión
+// por separado. Con el CSS duplicado, mejorar el papel en uno dejaba al otro
+// atrás — que es justo como estaban antes.
+chk('el dashboard usa el CSS compartido',  str_contains($rit, 'RitmoReporte::css_impresion()'));
+chk('el supervisor también',               str_contains($sup, 'RitmoReporte::css_impresion()'));
+chk('y ninguno conserva su @page viejo',
+    str_contains($rit, '@page{margin:14mm}') || str_contains($sup, '@page{margin:14mm}'), false);
+// Tiene que ir DESPUÉS del css del reporte o no le gana en especificidad.
+foreach (['dashboard'=>$rit, 'supervisor'=>$sup] as $quien => $src2) {
+    chk("en $quien el compacto va después del css base",
+        strpos($src2, 'RT_CSS_PRINT +') > strpos($src2, "      css +\n"));
+}
+
 echo "\n" . ($fail === 0
     ? "✓ SCORE EN PALABRAS OK — $ok comprobaciones\n"
     : "✗ FALLARON $fail de " . ($ok + $fail) . "\n");
