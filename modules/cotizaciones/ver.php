@@ -273,7 +273,11 @@ $cli_mail = trim((string)($cot['cliente_email'] ?? ''));
 // Envío de correo DESDE el sistema. Apagado por default y por empresa: mientras
 // no esté prendido, el botón de correo sigue siendo el mailto de siempre, que
 // abre la app de correo del asesor.
-$envio_correo_on = !empty(notif_config($empresa_id)['envio_correo_cliente']);
+$ncfg_envio      = notif_config($empresa_id);
+$envio_correo_on = !empty($ncfg_envio['envio_correo_cliente']);
+// WhatsApp nace prendido: no manda nada solo, abre la app del asesor. Se puede
+// apagar para empresas que trabajen únicamente por correo.
+$envio_wa_on     = ($ncfg_envio['envio_whatsapp_cliente'] ?? true) ? true : false;
 
 $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 ?>
@@ -784,7 +788,8 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             <button onclick="navigator.clipboard.writeText('<?= e($url_publica) ?>');this.textContent='¡Copiado!';setTimeout(()=>this.textContent='Copiar',2000)"
                     style="padding:8px 13px;border-radius:7px;border:none;background:var(--g);font:700 12px var(--body);color:#fff;cursor:pointer;flex-shrink:0">Copiar</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:<?= $envio_wa_on ? '1fr 1fr' : '1fr' ?>;gap:8px;margin-bottom:14px">
+            <?php if ($envio_wa_on): ?>
             <!-- wa.me/<numero> abre directo la conversación del cliente. Si
                  $wa_num viene vacío (teléfono que no se pudo normalizar), el
                  enlace queda sin número y WhatsApp pide elegir contacto: un tap
@@ -795,6 +800,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 <span style="font:700 12px var(--body);color:var(--t2)">WhatsApp</span>
                 <span style="font:400 10px var(--body);color:var(--t3)"><?= $wa_num ? 'Al ' . e($cot['cliente_telefono']) : 'Elegir contacto' ?></span>
             </a>
+            <?php endif; ?>
             <?php if ($envio_correo_on): ?>
             <!-- Con el envío activado, el sistema manda el correo a nombre de la
                  empresa y con Responder-A al asesor. El asesor no sale de aquí. -->

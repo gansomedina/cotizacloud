@@ -1106,6 +1106,15 @@ function notif_config(int $empresa_id): array
         // empresa; este manda correo AL CLIENTE FINAL desde nuestra
         // infraestructura, así que se prende a propósito, empresa por empresa.
         'envio_correo_cliente' => false,
+        // WhatsApp sí nace prendido: no manda nada por su cuenta —solo abre la
+        // app del asesor con el mensaje listo— y es por donde se manda el 90%
+        // de las cotizaciones en México. Se puede apagar para empresas que
+        // trabajen solo por correo.
+        'envio_whatsapp_cliente' => true,
+        // A dónde llega la respuesta del cliente: 'asesor' (el asignado a la
+        // cotización) o 'empresa' (el correo principal). Default asesor: una
+        // respuesta es señal de compra y en un buzón general no tiene dueño.
+        'correo_responde_a'    => 'asesor',
     ];
 
     $result = array_merge($defaults, $cfg);
