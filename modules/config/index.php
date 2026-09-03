@@ -550,6 +550,29 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     </div>
   </div>
 
+  <!-- Envío al cliente -->
+  <div class="sec">
+    <div class="sec-lbl">Envío al cliente</div>
+    <div class="card">
+      <div class="field-row h">
+        <div>
+          <div class="field-lbl">Enviar cotizaciones por correo</div>
+          <div class="field-sub">Agrega un botón que manda la cotización al correo del cliente a nombre de tu empresa, con las respuestas dirigidas al asesor. Apagado, el botón abre tu app de correo como siempre.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="e_envio_correo" <?= !empty($ncfg['envio_correo_cliente'])?'checked':'' ?>>
+          <div class="toggle-track"></div><div class="toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="field-row">
+        <div class="field-lbl">Código de país para WhatsApp</div>
+        <div class="field-sub">Se usa para armar el enlace cuando el teléfono se guarda con 10 dígitos. México es 52.</div>
+        <input class="field-box" id="e_lada_pais" type="text" inputmode="numeric" maxlength="4" placeholder="52"
+               style="margin-top:10px;max-width:120px" value="<?= e($empresa['lada_pais'] ?? '52') ?>">
+      </div>
+    </div>
+  </div>
+
   <!-- Theme cotización pública -->
   <div class="sec">
     <div class="sec-lbl">Apariencia — Cotización pública</div>
@@ -1906,7 +1929,9 @@ async function guardarEmpresa() {
             radar_alerta:         document.getElementById('e_notif_radar').checked,
             feedback_recibido:    document.getElementById('e_notif_feedback').checked,
             desc_inteligente:     document.getElementById('e_notif_di').checked,
+            envio_correo_cliente: document.getElementById('e_envio_correo').checked,
         },
+        lada_pais:          (document.getElementById('e_lada_pais').value || '52').replace(/\D/g, '') || '52',
         cot_vigencia_dias:  parseInt(document.getElementById('e_cot_vigencia_dias').value) || 30,
         allow_precio_edit:  document.getElementById('e_allow_precio_edit').checked ? 1 : 0,
         ocultar_cant_pu:    document.getElementById('e_ocultar_cant_pu').checked ? 1 : 0,

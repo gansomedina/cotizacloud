@@ -95,4 +95,19 @@ DB::execute(
         $eid,
     ]
 );
+
+// Aparte del UPDATE grande a propósito: `lada_pais` es una columna nueva
+// (migrations/add_telefono_empresa_lada.sql) y meterla arriba haría que TODA la
+// configuración dejara de guardarse en una base sin migrar.
+if (isset($body['lada_pais'])) {
+    $lada = preg_replace('/\D+/', '', (string)$body['lada_pais']);
+    if ($lada !== '' && strlen($lada) <= 4) {
+        try {
+            DB::execute("UPDATE empresas SET lada_pais=? WHERE id=?", [$lada, $eid]);
+        } catch (\Throwable $e) {
+            error_log('[config] lada_pais no se guardó (¿falta la migración?) — ' . $e->getMessage());
+        }
+    }
+}
+
 echo json_encode(['ok' => true]);

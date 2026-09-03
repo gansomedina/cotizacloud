@@ -169,6 +169,7 @@ class Router
         self::post('/cotizaciones/:id',       fn($p)=> self::app('cotizaciones', 'guardar', $p));
         self::post('/cotizaciones/:id/cliente',fn($p)=> self::app('cotizaciones', 'asignar_cliente', $p));
         self::post('/cotizaciones/:id/enviar',fn($p)=> self::app('cotizaciones', 'enviar',  $p));
+        self::post('/cotizaciones/:id/enviar-correo', fn($p) => self::app('cotizaciones', 'enviar_correo', $p));
         self::post('/cotizaciones/:id/convertir', fn($p) => self::app('cotizaciones', 'convertir', $p));
         self::post('/cotizaciones/:id/clonar',    fn($p) => self::app('cotizaciones', 'clonar',    $p));
         self::post('/cotizaciones/:id/eliminar',  fn($p) => self::app('cotizaciones', 'eliminar',  $p));

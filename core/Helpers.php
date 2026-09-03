@@ -1102,11 +1102,103 @@ function notif_config(int $empresa_id): array
         'radar_alerta'         => true,
         'feedback_recibido'    => true,
         'desc_inteligente'     => true,
+        // El único apagado por default. Los demás son avisos que recibe la
+        // empresa; este manda correo AL CLIENTE FINAL desde nuestra
+        // infraestructura, así que se prende a propósito, empresa por empresa.
+        'envio_correo_cliente' => false,
     ];
 
     $result = array_merge($defaults, $cfg);
     $cache[$empresa_id] = $result;
     return $result;
+}
+
+// ─── Lada de país de la empresa (para armar enlaces de WhatsApp) ──
+// Columna nueva (migrations/add_telefono_empresa_lada.sql). Si no se corrió la
+// migración, cae a '52' y todo sigue funcionando.
+function lada_pais(int $empresa_id): string
+{
+    static $cache = [];
+    if (isset($cache[$empresa_id])) return $cache[$empresa_id];
+
+    $lada = '52';
+    try {
+        $v = DB::val("SELECT lada_pais FROM empresas WHERE id=?", [$empresa_id]);
+        if (is_string($v) && preg_match('/^\d{1,4}$/', $v)) $lada = $v;
+    } catch (\Throwable $e) {
+        // columna aún no existe — default 52
+    }
+
+    $cache[$empresa_id] = $lada;
+    return $lada;
+}
+
+// ─── Teléfono en formato WhatsApp (wa.me) ───────────────────────
+// Los teléfonos se GUARDAN como la gente los escribe ("662 142 1858"); aquí se
+// normalizan solo al momento de armar el enlace. Ver el porqué en
+// migrations/add_telefono_empresa_lada.sql.
+//
+// Devuelve solo dígitos listos para wa.me, o '' cuando no se puede afirmar con
+// certeza cuál es el número. Ese '' NO es un error: hace que el botón abra
+// WhatsApp sin destinatario para que el asesor elija el contacto. Preferimos un
+// tap extra a abrirle una conversación a un desconocido.
+function tel_whatsapp(?string $telefono, string $lada = '52'): string
+{
+    $raw = trim((string)$telefono);
+    if ($raw === '') return '';
+
+    // Un '+' adelante es la salida para el cliente extranjero: el asesor ya
+    // escribió la lada completa, se respeta tal cual sin aplicar la de la empresa.
+    $explicito = str_starts_with($raw, '+') || str_starts_with($raw, '00');
+
+    $d = preg_replace('/\D+/', '', $raw) ?? '';
+    if ($d === '') return '';
+
+    // 00 = prefijo internacional escrito a la europea
+    if (str_starts_with($d, '00')) $d = substr($d, 2);
+
+    if ($explicito) {
+        // Se confía en lo que escribió el asesor; solo se descartan longitudes absurdas.
+        return (strlen($d) >= 8 && strlen($d) <= 15) ? $d : '';
+    }
+
+    $lada = preg_replace('/\D+/', '', $lada) ?: '52';
+    $ll   = strlen($lada);
+
+    // Formato viejo de WhatsApp para México: 52 + 1 + 10 dígitos.
+    // El '1' ya no se usa; se quita para no mandar a un número inexistente.
+    if ($lada === '52' && strlen($d) === 13 && str_starts_with($d, '521')) {
+        return '52' . substr($d, 3);
+    }
+
+    // Ya trae la lada del país
+    if (strlen($d) === $ll + 10 && str_starts_with($d, $lada)) return $d;
+
+    // Número nacional de 10 dígitos → se le antepone la lada
+    if (strlen($d) === 10) return $lada . $d;
+
+    // Cualquier otra cosa: no adivinamos.
+    return '';
+}
+
+// ─── Texto del mensaje de WhatsApp con la cotización ────────────
+// Vive aquí, y no repartido por las vistas, para que el editor y el popup de
+// "cotización generada" manden exactamente el mismo mensaje. El popup lo arma
+// en JavaScript: le pasamos ESTA MISMA plantilla con marcadores
+// (wa_texto_cotizacion('{NOMBRE}', '{URL}')) para que no exista una segunda
+// versión del texto que se desincronice con esta.
+//
+// Corto a propósito: en WhatsApp un mensaje largo se lee menos que uno de una
+// línea con la liga a la vista.
+function wa_texto_cotizacion(string $nombre, string $url): string
+{
+    $nombre = trim($nombre);
+    // Solo el primer nombre: "Hola María Guadalupe" suena a mensaje automático.
+    if ($nombre !== '') $nombre = explode(' ', $nombre)[0];
+
+    return $nombre !== ''
+        ? "Hola {$nombre}, aquí está tu cotización: {$url}"
+        : "Hola, aquí está tu cotización: {$url}";
 }
 
 // ─── Íconos SVG inline (reemplazo de emojis para WebView iOS) ──

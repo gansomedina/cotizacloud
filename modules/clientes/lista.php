@@ -302,8 +302,17 @@ ob_start();
             <input class="sh-input" type="text" id="cli-nombre" placeholder="Nombre del cliente" autocomplete="name">
         </div>
         <div class="sh-field">
-            <div class="sh-lbl">Teléfono <span style="color:var(--danger)">*</span></div>
+            <div class="sh-lbl">WhatsApp <span style="color:var(--danger)">*</span></div>
             <input class="sh-input" type="tel" id="cli-telefono" placeholder="662 000 0000" style="font-family:var(--num);">
+            <div style="font:400 11px var(--body);color:var(--t3);margin-top:4px">Es el número al que se le manda la cotización</div>
+        </div>
+        <div class="sh-field">
+            <div class="sh-lbl">Teléfono de oficina (opcional)</div>
+            <input class="sh-input" type="tel" id="cli-telefono-empresa" placeholder="662 000 0000" style="font-family:var(--num);">
+        </div>
+        <div class="sh-field">
+            <div class="sh-lbl">Correo (opcional)</div>
+            <input class="sh-input" type="email" id="cli-email" placeholder="cliente@correo.com" autocomplete="email">
         </div>
         <div class="sh-field">
             <div class="sh-lbl">Dirección (opcional)</div>
@@ -330,6 +339,8 @@ function openSheet(id, data) {
         document.getElementById('cli-id').value       = data?.id       ?? '';
         document.getElementById('cli-nombre').value   = data?.nombre   ?? '';
         document.getElementById('cli-telefono').value = data?.telefono ?? '';
+        document.getElementById('cli-telefono-empresa').value = data?.telefono_empresa ?? '';
+        document.getElementById('cli-email').value    = data?.email    ?? '';
         document.getElementById('cli-direccion').value= data?.direccion ?? '';
         document.getElementById('cli-nota').value     = data?.nota     ?? '';
         document.getElementById('shCliente-title').textContent = data?.id ? 'Editar cliente' : 'Nuevo cliente';
@@ -351,11 +362,14 @@ async function guardarCliente() {
     const id        = document.getElementById('cli-id').value;
     const nombre    = document.getElementById('cli-nombre').value.trim();
     const telefono  = document.getElementById('cli-telefono').value.trim();
+    const telefono_empresa = document.getElementById('cli-telefono-empresa').value.trim();
+    const email     = document.getElementById('cli-email').value.trim();
     const direccion = document.getElementById('cli-direccion').value.trim();
     const nota      = document.getElementById('cli-nota').value.trim();
 
     if (!nombre)   { alert('El nombre es requerido'); return; }
-    if (!telefono) { alert('El teléfono es requerido'); return; }
+    if (!telefono) { alert('El WhatsApp es requerido'); return; }
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { alert('El correo no parece válido'); return; }
 
     const btn = document.querySelector('#shCliente .sh-btn-save');
     btn.disabled = true; btn.textContent = 'Guardando…';
@@ -365,7 +379,7 @@ async function guardarCliente() {
         const r   = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ nombre, telefono, direccion, nota })
+            body: JSON.stringify({ nombre, telefono, telefono_empresa, email, direccion, nota })
         });
         const d = await r.json();
         if (!d.ok) { alert(d.error || 'Error al guardar'); btn.disabled=false; btn.textContent='Guardar cliente'; return; }

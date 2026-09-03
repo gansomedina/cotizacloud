@@ -263,6 +263,18 @@ $cot_js = json_encode([
 
 $url_publica = Router::url_publica('/c/' . $cot['slug']);
 
+// Envío al cliente. $wa_num queda vacío cuando el teléfono no se puede
+// normalizar con certeza: el enlace abre WhatsApp SIN destinatario y el asesor
+// elige el contacto. Ver tel_whatsapp() en Helpers.php.
+$wa_num   = tel_whatsapp($cot['cliente_telefono'] ?? '', lada_pais($empresa_id));
+$wa_texto = wa_texto_cotizacion($cot['cliente_nombre'] ?? '', $url_publica);
+$cli_mail = trim((string)($cot['cliente_email'] ?? ''));
+
+// Envío de correo DESDE el sistema. Apagado por default y por empresa: mientras
+// no esté prendido, el botón de correo sigue siendo el mailto de siempre, que
+// abre la app de correo del asesor.
+$envio_correo_on = !empty(notif_config($empresa_id)['envio_correo_cliente']);
+
 $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
 ?>
 <!DOCTYPE html>
@@ -350,6 +362,10 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             <?php if ($es_editable): ?>
                 <button class="accion-btn accion-btn-primary" onclick="guardarCotizacion()" id="btn-guardar">Guardar</button>
             <?php endif; ?>
+            <!-- La hoja de envío existía desde antes (openUrlOverlay) pero NINGÚN
+                 botón la abría: los accesos a WhatsApp y correo llevaban meses
+                 escritos y muertos. Este botón es el que los devuelve. -->
+            <button class="accion-btn accion-btn-primary" onclick="openUrlOverlay()">Enviar</button>
             <button class="accion-btn topbar-secondary" onclick="navigator.clipboard.writeText('<?= e($url_publica) ?>');this.textContent='✓';setTimeout(()=>this.textContent='Copiar',2000)">Copiar</button>
             <a href="<?= e($url_publica) ?>" target="_blank" class="accion-btn topbar-secondary">Ver</a>
             <?php if ($puede_suspender): ?>
@@ -752,25 +768,69 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
      onclick="closeUrlOverlay()">
     <div onclick="event.stopPropagation()" style="background:var(--white);border-radius:20px 20px 0 0;padding:20px 20px 40px;width:100%;max-width:560px;">
         <div style="width:34px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 18px"></div>
-        <div style="font:800 19px var(--body);margin-bottom:4px">URL del cliente</div>
-        <div style="font:400 13px var(--body);color:var(--t3);margin-bottom:16px">Comparte este enlace con el cliente</div>
+        <div style="font:800 19px var(--body);margin-bottom:4px">Enviar al cliente</div>
+        <div style="font:400 13px var(--body);color:var(--t3);margin-bottom:16px">
+            <?php if (!empty($cot['cliente_nombre'])): ?>
+                Para <strong style="color:var(--t2)"><?= e($cot['cliente_nombre']) ?></strong><?php
+                    if ($wa_num) echo ' · ' . e($cot['cliente_telefono']);
+                    if ($cli_mail) echo ' · ' . e($cli_mail);
+                ?>
+            <?php else: ?>
+                Comparte este enlace con el cliente
+            <?php endif; ?>
+        </div>
         <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;display:flex;align-items:center;gap:8px;margin-bottom:14px">
             <span style="flex:1;font:500 12px var(--num);color:var(--g);word-break:break-all"><?= e($url_publica) ?></span>
             <button onclick="navigator.clipboard.writeText('<?= e($url_publica) ?>');this.textContent='¡Copiado!';setTimeout(()=>this.textContent='Copiar',2000)"
                     style="padding:8px 13px;border-radius:7px;border:none;background:var(--g);font:700 12px var(--body);color:#fff;cursor:pointer;flex-shrink:0">Copiar</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-            <a href="https://wa.me/?text=<?= urlencode($url_publica) ?>" target="_blank"
+            <!-- wa.me/<numero> abre directo la conversación del cliente. Si
+                 $wa_num viene vacío (teléfono que no se pudo normalizar), el
+                 enlace queda sin número y WhatsApp pide elegir contacto: un tap
+                 más, pero nunca le escribe a la persona equivocada. -->
+            <a href="https://wa.me/<?= e($wa_num) ?>?text=<?= rawurlencode($wa_texto) ?>" target="_blank"
                style="padding:14px;border-radius:var(--r-sm);border:1px solid #a8e6a3;background:#dcf8c6;display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
                 <span style="font-size:24px">💬</span>
                 <span style="font:700 12px var(--body);color:var(--t2)">WhatsApp</span>
+                <span style="font:400 10px var(--body);color:var(--t3)"><?= $wa_num ? 'Al ' . e($cot['cliente_telefono']) : 'Elegir contacto' ?></span>
             </a>
-            <a href="mailto:<?= e($cot['cliente_email'] ?? '') ?>?subject=Tu+cotización&body=<?= urlencode($url_publica) ?>"
+            <?php if ($envio_correo_on): ?>
+            <!-- Con el envío activado, el sistema manda el correo a nombre de la
+                 empresa y con Responder-A al asesor. El asesor no sale de aquí. -->
+            <button type="button" id="btn-correo" onclick="enviarPorCorreo()"
+               style="padding:14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-family:inherit">
+                <span style="font-size:24px">✉️</span>
+                <span style="font:700 12px var(--body);color:var(--t2)">Enviar correo</span>
+                <span id="correo-sub" style="font:400 10px var(--body);color:var(--t3)"><?= $cli_mail ? e($cli_mail) : 'Pide el correo' ?></span>
+            </button>
+            <?php else: ?>
+            <!-- Sin activar: abre la app de correo del asesor, como siempre. -->
+            <a href="mailto:<?= rawurlencode($cli_mail) ?>?subject=<?= rawurlencode('Tu cotización ' . $cot['numero']) ?>&body=<?= rawurlencode($wa_texto) ?>"
                style="padding:14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
                 <span style="font-size:24px">✉️</span>
                 <span style="font:700 12px var(--body);color:var(--t2)">Correo</span>
+                <span style="font:400 10px var(--body);color:var(--t3)"><?= $cli_mail ? e($cli_mail) : 'Sin correo registrado' ?></span>
             </a>
+            <?php endif; ?>
         </div>
+
+        <?php if ($envio_correo_on): ?>
+        <!-- Captura del correo al vuelo. El correo es opcional al dar de alta un
+             cliente, así que muchos no lo tienen: en vez de bloquear el envío,
+             se pide aquí y el endpoint lo guarda en el cliente para no volver a
+             preguntarlo. Oculto salvo que haga falta. -->
+        <div id="correo-pedir" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px">
+            <div style="font:600 12px var(--body);color:var(--t2);margin-bottom:8px">¿A qué correo se la mandamos?</div>
+            <div style="display:flex;gap:8px">
+                <input id="correo-input" type="email" placeholder="cliente@correo.com" autocomplete="email"
+                       style="flex:1;min-width:0;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font:500 13px var(--body);outline:none">
+                <button type="button" onclick="enviarPorCorreo(true)"
+                        style="padding:9px 15px;border-radius:7px;border:none;background:var(--g);font:700 12px var(--body);color:#fff;cursor:pointer;flex-shrink:0">Enviar</button>
+            </div>
+            <div style="font:400 11px var(--body);color:var(--t3);margin-top:6px">Se guarda en la ficha del cliente.</div>
+        </div>
+        <?php endif; ?>
         <?php if ($es_editable): ?>
         <button onclick="enviarCotizacion();closeUrlOverlay()"
                 style="width:100%;padding:13px;border-radius:var(--r-sm);border:1px solid var(--border);background:transparent;font:600 14px var(--body);color:var(--t2);cursor:pointer;margin-top:8px">
@@ -1189,6 +1249,65 @@ function closeUrlOverlay(){
     ov.style.opacity = '0';
     ov.style.pointerEvents = 'none';
     setTimeout(()=>{ ov.style.display = 'none'; }, 250);
+}
+
+// ─── Enviar la cotización por correo ────────────────────────────
+// Solo existe cuando la empresa lo tiene activado. Si el cliente no tiene
+// correo, en vez de rebotar se muestra el campo para capturarlo: el endpoint lo
+// guarda en la ficha del cliente y no se vuelve a preguntar.
+const CLIENTE_EMAIL = <?= json_encode($cli_mail ?? '', JSON_HEX_TAG | JSON_HEX_APOS) ?>;
+
+async function enviarPorCorreo(desdeInput) {
+    const pedir = document.getElementById('correo-pedir');
+    const input = document.getElementById('correo-input');
+    if (!pedir) return;
+
+    let email = CLIENTE_EMAIL;
+    if (desdeInput) {
+        email = (input.value || '').trim();
+        if (!email) { input.focus(); return; }
+    }
+
+    // Sin correo registrado: se pide y se sale. El siguiente clic ya trae valor.
+    if (!email) {
+        pedir.style.display = 'block';
+        input.focus();
+        return;
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        alert('El correo no parece válido');
+        if (desdeInput) input.focus();
+        return;
+    }
+
+    const btn = document.getElementById('btn-correo');
+    const sub = document.getElementById('correo-sub');
+    if (btn) btn.disabled = true;
+    if (sub) sub.textContent = 'Enviando…';
+
+    try {
+        const r = await fetch('/cotizaciones/' + COT_ID + '/enviar-correo', {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+            // Solo se manda 'email' cuando el asesor acaba de escribirlo; si no,
+            // el servidor usa el que ya tiene el cliente.
+            body   : JSON.stringify(desdeInput ? { email } : {})
+        });
+        const d = await r.json();
+        if (!d.ok) {
+            alert(d.error || 'No se pudo enviar');
+            if (btn) btn.disabled = false;
+            if (sub) sub.textContent = email;
+            return;
+        }
+        pedir.style.display = 'none';
+        if (sub) sub.textContent = '✓ Enviado a ' + (d.data?.email || email);
+        if (btn) btn.style.background = '#dcf8c6';
+    } catch (e) {
+        alert('Error de conexión');
+        if (btn) btn.disabled = false;
+        if (sub) sub.textContent = email;
+    }
 }
 </script>
 </div><!-- /app-main -->
