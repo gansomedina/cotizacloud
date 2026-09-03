@@ -54,6 +54,12 @@ chk('popup: botón de WhatsApp',         str_contains($nueva, "id=\"popup-wa\"")
 chk('popup: botón de correo',           str_contains($nueva, "id=\"popup-mail\""));
 chk('popup: les pone href al abrirse',
     str_contains($nueva, "btnWa.href") && str_contains($nueva, "getElementById('popup-mail').href"));
+// El de WhatsApp iba en verde WhatsApp (#dcf8c6). Los dos botones hacen lo
+// mismo —abrir un canal de envío—: pintar uno de color lo vuelve el camino
+// "correcto" sin que nadie lo haya decidido. Van iguales, como el de Correo.
+foreach (['editor'=>$ver, 'popup'=>$nueva] as $quien => $src4) {
+    chk("$quien: el de WhatsApp no va pintado", str_contains($src4, 'background:#dcf8c6;display:flex'), false);
+}
 
 echo "\n3) EL NÚMERO SE NORMALIZA EN UN SOLO LUGAR\n";
 // Si alguien reescribe la normalización en JavaScript, las dos versiones se
@@ -95,6 +101,14 @@ chk('la dirección se pide antes del correo',
 chk('y el teléfono de empresa va al final',
     strpos($nueva, 'id="nc-tel-empresa"') > strpos($nueva, 'id="nc-email"'));
 chk('módulo Clientes: campo',           str_contains($lista, 'id="cli-email"'));
+// LOS TRES FORMULARIOS PREGUNTAN IGUAL. Capturan lo mismo; en distinto orden
+// el asesor duda de si son la misma cosa.
+foreach ([['hoja de Clientes', $lista, 'cli-'], ['edición de cliente', $cliver, 'edit-']] as [$quien, $src3, $p]) {
+    chk("$quien: dirección antes del correo",
+        strpos($src3, 'id="' . $p . 'direccion"') < strpos($src3, 'id="' . $p . 'email"'));
+    chk("$quien: teléfono de empresa al final",
+        strpos($src3, 'id="' . $p . 'telefono-empresa"') > strpos($src3, 'id="' . $p . 'email"'));
+}
 chk('módulo Clientes: lo manda',        str_contains($lista, 'telefono_empresa, email, direccion, nota'));
 chk('el endpoint lo guarda al CREAR',   str_contains($crear, 'telefono_empresa, email, direccion, nota'));
 chk('edición de cliente: teléfono de oficina', str_contains($cliver, 'id="edit-telefono-empresa"'));
