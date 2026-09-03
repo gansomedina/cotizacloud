@@ -379,7 +379,11 @@ chk('conserva la nota metodológica',   css_fs($css, '.rr-note') !== null);
 // Jerarquía pareja: el cuerpo por ENCIMA de los encabezados de sección, y todo
 // lo que se lee al mismo tamaño. Antes convivían un 9px y un 13px en la hoja.
 $cuerpo = ['.rr-list li', '.rr-pil', '.rr-tip-b', '.rr-note'];
-foreach ($cuerpo as $sel) chk("$sel se lee (>= 9px)", (float)css_fs($css, $sel) >= 9.0);
+foreach ($cuerpo as $sel) chk("$sel se lee (>= 10px)", (float)css_fs($css, $sel) >= 10.0);
+// El techo está MEDIDO con el reporte real de un asesor en Chromium, tamaño
+// Carta: cuerpo 11px → 1 hoja al 92% · 11.5px → 96% · 12px → SE PARTE EN DOS.
+// Si alguien sube de 11.5, el espacio tiene que salir del aire, no de la letra.
+chk('el cuerpo no rebasa el techo medido', (float)css_fs($css, '.rr-list li') <= 11.5);
 chk('las viñetas superan al título de sección',
     (float)css_fs($css, '.rr-list li') > (float)css_fs($css, '.rr-st'));
 chk('el nombre ya no grita (<= 14px)', (float)css_fs($css, '.rr-name') <= 14.0);

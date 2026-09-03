@@ -586,7 +586,16 @@ class RitmoReporte
      *     recuadros 11→6px, sangría de listas 18→11px. Esto es lo que ahora
      *     permite subir el cuerpo de texto en vez de bajarlo.
      *  3. Jerarquía pareja: encabezados abajo, cuerpo arriba, todo el texto que
-     *     se lee en 10px. Antes convivían un 9px y un 13px en la misma hoja.
+     *     se lee en 11px. Antes convivían un 9px y un 13px en la misma hoja.
+     *
+     * EL TECHO ESTÁ MEDIDO, no supuesto. Con el reporte real de un asesor
+     * (Manuel, 20 días, 10 secciones) renderizado en Chromium a tamaño Carta:
+     *   cuerpo 10px → 1 hoja al 79% · 11px → 1 hoja al 92% · 11.5px → 96%
+     *   cuerpo 12px → SE VA A 2 HOJAS.
+     * Por eso el cuerpo quedó en 11px: es el último escalón que deja holgura
+     * (~2cm) para un reporte algo más largo que ese. Subirlo otro punto lo
+     * parte. Si algún día hace falta más letra, el espacio tiene que salir de
+     * otro lado (menos aire), nunca de borrar frases.
      *
      * `break-inside: avoid` en cada bloque evita que una sección quede partida
      * entre columnas — leer media lista arriba a la derecha y la otra media
@@ -616,31 +625,31 @@ class RitmoReporte
 
 /* ── ENCABEZADOS: abajo. En papel no compiten con nada, no necesitan gritar. */
 #rt-modal .rr-hd{margin-bottom:6px;gap:9px}
-#rt-modal .rr-name{font-size:13px}
-#rt-modal .rr-k{font-size:7.5px}
-#rt-modal .rr-sn{font-size:16px}
-#rt-modal .rr-sl{font-size:7px}
+#rt-modal .rr-name{font-size:14px}
+#rt-modal .rr-k{font-size:8.5px}
+#rt-modal .rr-sn{font-size:17px}
+#rt-modal .rr-sl{font-size:8px}
 #rt-modal .rr-score{padding:3px 9px}
-#rt-modal .rr-st,#rt-modal .rr-tip-h,#rt-modal .rr-consejo .rr-st{font-size:8.5px}
+#rt-modal .rr-st,#rt-modal .rr-tip-h,#rt-modal .rr-consejo .rr-st{font-size:9.5px}
 #rt-modal .rr-st{margin-bottom:2px;padding-bottom:1px}
 #rt-modal .rr-tip-h{margin-bottom:2px}
 
-/* ── CUERPO: arriba y parejo. Todo lo que se LEE va en 10px; antes convivían
+/* ── CUERPO: arriba y parejo. Todo lo que se LEE va en 11px; antes convivían
       viñetas de 9px con píldoras de 13px en la misma hoja. */
 #rt-modal .rr-list li,
 #rt-modal .rr-consejo .rr-list li,
 #rt-modal .rr-pil,
-#rt-modal .rr-tip-b{font-size:10px;line-height:1.35}
-#rt-modal .rr-ft{font-size:11px}
-#rt-modal .rr-casos li,#rt-modal .rr-sub{font-size:9.5px;line-height:1.3}
+#rt-modal .rr-tip-b{font-size:11px;line-height:1.35}
+#rt-modal .rr-ft{font-size:12px}
+#rt-modal .rr-casos li,#rt-modal .rr-sub{font-size:10.5px;line-height:1.3}
 /* La nota metodológica se conserva: se achica, no se esconde. */
-#rt-modal .rr-note{font-size:9px;line-height:1.3;margin-bottom:6px}
+#rt-modal .rr-note{font-size:10px;line-height:1.3;margin-bottom:6px}
 /* El pie NO cruza las columnas. Cuando lo hacía se llevaba él solo una hoja
    entera: un elemento que atraviesa ambas columnas no puede arrancar a media
    página, así que si las columnas ya llegaron abajo, se va completo a la
    siguiente. Una sola línea generaba la segunda hoja. Fluye en la columna. */
-#rt-modal .rr-foot{font-size:8px;line-height:1.3;margin-top:5px;column-span:none}
-#rt-modal .rr-dim{font-size:9px;padding:1px 6px}
+#rt-modal .rr-foot{font-size:9px;line-height:1.3;margin-top:5px;column-span:none}
+#rt-modal .rr-dim{font-size:10px;padding:1px 6px}
 
 /* ── EL AIRE: de aquí sale la hoja que se ahorra, no de la letra. */
 #rt-modal .rr-dims{gap:4px;margin-bottom:5px}
