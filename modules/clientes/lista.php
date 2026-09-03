@@ -306,17 +306,22 @@ ob_start();
             <input class="sh-input" type="tel" id="cli-telefono" placeholder="662 000 0000" style="font-family:var(--num);">
             <div style="font:400 11px var(--body);color:var(--t3);margin-top:4px">Es el número al que se le manda la cotización</div>
         </div>
+        <!-- MISMO ORDEN que el alta rápida de la cotización (nueva.php): la
+             dirección primero, porque es el dato que el asesor casi siempre
+             trae a la mano; el correo después; el fijo de oficina al final.
+             Los dos formularios dan de alta lo mismo — si preguntan en distinto
+             orden, el asesor duda de si son la misma cosa. -->
         <div class="sh-field">
-            <div class="sh-lbl">Teléfono de oficina (opcional)</div>
-            <input class="sh-input" type="tel" id="cli-telefono-empresa" placeholder="662 000 0000" style="font-family:var(--num);">
+            <div class="sh-lbl">Dirección (opcional)</div>
+            <input class="sh-input" type="text" id="cli-direccion" placeholder="Calle, colonia, ciudad…">
         </div>
         <div class="sh-field">
             <div class="sh-lbl">Correo (opcional)</div>
             <input class="sh-input" type="email" id="cli-email" placeholder="cliente@correo.com" autocomplete="email">
         </div>
         <div class="sh-field">
-            <div class="sh-lbl">Dirección (opcional)</div>
-            <input class="sh-input" type="text" id="cli-direccion" placeholder="Calle, colonia, ciudad…">
+            <div class="sh-lbl">Teléfono empresa (opcional)</div>
+            <input class="sh-input" type="tel" id="cli-telefono-empresa" placeholder="662 000 0000" style="font-family:var(--num);">
         </div>
         <div class="sh-field" style="border-bottom:none;">
             <div class="sh-lbl">Nota (opcional)</div>

@@ -1492,7 +1492,7 @@ function toggleMob(hdr)   { hdr.closest('.mob-section').classList.toggle('open')
         <div style="display:grid;grid-template-columns:<?= $envio_wa_on ? '1fr 1fr' : '1fr' ?>;gap:8px;margin-bottom:16px">
             <?php if ($envio_wa_on): ?>
             <a id="popup-wa" href="#" target="_blank"
-               style="padding:14px;border-radius:var(--r-sm);border:1px solid #a8e6a3;background:#dcf8c6;display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
+               style="padding:14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
                 <span style="font-size:24px">💬</span>
                 <span style="font:700 12px var(--body);color:var(--t2)">WhatsApp</span>
                 <span id="popup-wa-sub" style="font:400 10px var(--body);color:var(--t3)"></span>

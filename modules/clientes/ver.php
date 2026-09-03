@@ -408,18 +408,20 @@ ob_start();
             <input class="sh-input" type="text" id="edit-nombre"
                    value="<?= e($cliente['nombre']) ?>" autocomplete="name">
         </div>
-        <div class="sh-field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div>
-                <div class="sh-lbl">WhatsApp <span style="color:var(--danger)">*</span></div>
-                <input class="sh-input" type="tel" id="edit-telefono"
-                       value="<?= e($cliente['telefono'] ?? '') ?>" style="font-family:var(--num);">
-                <div style="font:400 11px var(--body);color:var(--t3);margin-top:4px">Al que se le manda la cotización</div>
-            </div>
-            <div>
-                <div class="sh-lbl">Teléfono de oficina (opcional)</div>
-                <input class="sh-input" type="tel" id="edit-telefono-empresa"
-                       value="<?= e($cliente['telefono_empresa'] ?? '') ?>" style="font-family:var(--num);">
-            </div>
+        <div class="sh-field">
+            <div class="sh-lbl">WhatsApp <span style="color:var(--danger)">*</span></div>
+            <input class="sh-input" type="tel" id="edit-telefono"
+                   value="<?= e($cliente['telefono'] ?? '') ?>" style="font-family:var(--num);">
+            <div style="font:400 11px var(--body);color:var(--t3);margin-top:4px">Al que se le manda la cotización</div>
+        </div>
+        <!-- MISMO ORDEN que el alta rápida de la cotización (nueva.php) y que
+             la hoja de Clientes: dirección, correo, y el fijo de oficina al
+             final. Los tres formularios capturan lo mismo; preguntarlo en
+             distinto orden hace dudar de si son la misma cosa. -->
+        <div class="sh-field">
+            <div class="sh-lbl">Dirección (opcional)</div>
+            <input class="sh-input" type="text" id="edit-direccion"
+                   value="<?= e($cliente['direccion'] ?? '') ?>">
         </div>
         <div class="sh-field">
             <div class="sh-lbl">Correo (opcional)</div>
@@ -427,9 +429,9 @@ ob_start();
                    value="<?= e($cliente['email'] ?? '') ?>">
         </div>
         <div class="sh-field">
-            <div class="sh-lbl">Dirección (opcional)</div>
-            <input class="sh-input" type="text" id="edit-direccion"
-                   value="<?= e($cliente['direccion'] ?? '') ?>">
+            <div class="sh-lbl">Teléfono empresa (opcional)</div>
+            <input class="sh-input" type="tel" id="edit-telefono-empresa"
+                   value="<?= e($cliente['telefono_empresa'] ?? '') ?>" style="font-family:var(--num);">
         </div>
         <div class="sh-field" style="border-bottom:none;">
             <div class="sh-lbl">Nota (opcional)</div>

@@ -795,7 +795,7 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                  enlace queda sin número y WhatsApp pide elegir contacto: un tap
                  más, pero nunca le escribe a la persona equivocada. -->
             <a href="https://wa.me/<?= e($wa_num) ?>?text=<?= rawurlencode($wa_texto) ?>" target="_blank"
-               style="padding:14px;border-radius:var(--r-sm);border:1px solid #a8e6a3;background:#dcf8c6;display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
+               style="padding:14px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:5px;text-decoration:none;cursor:pointer">
                 <span style="font-size:24px">💬</span>
                 <span style="font:700 12px var(--body);color:var(--t2)">WhatsApp</span>
                 <span style="font:400 10px var(--body);color:var(--t3)"><?= $wa_num ? 'Al ' . e($cot['cliente_telefono']) : 'Elegir contacto' ?></span>
