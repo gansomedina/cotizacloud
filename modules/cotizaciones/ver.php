@@ -837,12 +837,10 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
             <div style="font:400 11px var(--body);color:var(--t3);margin-top:6px">Se guarda en la ficha del cliente.</div>
         </div>
         <?php endif; ?>
-        <?php if ($es_editable): ?>
-        <button onclick="enviarCotizacion();closeUrlOverlay()"
-                style="width:100%;padding:13px;border-radius:var(--r-sm);border:1px solid var(--border);background:transparent;font:600 14px var(--body);color:var(--t2);cursor:pointer;margin-top:8px">
-            Marcar como enviada
-        </button>
-        <?php endif; ?>
+        <!-- Aquí estaba "Marcar como enviada". Se quitó porque no hacía nada:
+             crear.php inserta las cotizaciones ya con estado='enviada' y ningún
+             otro punto del sistema las deja en borrador. Era un botón que pedía
+             confirmación, recargaba la página y dejaba todo igual. -->
     </div>
 </div>
 
@@ -1161,13 +1159,9 @@ async function guardarCotizacion(preview){
     }catch(e){alert('Error de conexión');if(btn){btn.disabled=false;btn.textContent='Guardar cambios';}}
 }
 
-async function enviarCotizacion(){
-    if(!confirm('¿Enviar cotización al cliente?'))return;
-    const r=await fetch('/cotizaciones/'+COT_ID+'/enviar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:JSON.stringify({})});
-    const data=await r.json();
-    if(data.ok)window.location.reload();
-    else alert(data.error||'Error al enviar');
-}
+// enviarCotizacion() se eliminó junto con su botón. Se quita la función y no
+// solo el botón: una función sin quien la llame es lo que dejó a openUrlOverlay
+// escrita y muerta durante meses sin que nadie lo notara.
 
 async function convertirAVenta(){
     if(!confirm('¿Convertir esta cotización a venta?'))return;
