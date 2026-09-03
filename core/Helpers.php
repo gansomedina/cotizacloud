@@ -1102,6 +1102,10 @@ function notif_config(int $empresa_id): array
         'radar_alerta'         => true,
         'feedback_recibido'    => true,
         'desc_inteligente'     => true,
+        // El único apagado por default. Los demás son avisos que recibe la
+        // empresa; este manda correo AL CLIENTE FINAL desde nuestra
+        // infraestructura, así que se prende a propósito, empresa por empresa.
+        'envio_correo_cliente' => false,
     ];
 
     $result = array_merge($defaults, $cfg);

@@ -89,6 +89,88 @@ chk('crear.php tiene respaldo sin telefono_empresa',
 chk('lada_pais() tolera que falte la columna',
     (bool)preg_match('/function lada_pais[\s\S]{0,400}catch \(\\\\Throwable/', $helper));
 
+// ════════════════════════════════════════════════════════════
+//  ENVÍO REAL DE CORREO (el sistema manda, no la app del asesor)
+// ════════════════════════════════════════════════════════════
+$mailer = src('core/Mailer.php');
+$endp   = src('modules/cotizaciones/enviar_correo.php');
+$router = src('core/Router.php');
+$cfg    = src('modules/config/index.php');
+$gemp   = src('modules/config/guardar_empresa.php');
+
+echo "\n8) NACE APAGADO Y SE PRENDE POR EMPRESA\n";
+// Prenderlo para todos de golpe pondría a nueve empresas a mandar correo sin
+// haberlo pedido, con los rebotes cayendo sobre la reputación del dominio que
+// también manda las recuperaciones de contraseña.
+chk('el default es false',              (bool)preg_match("/'envio_correo_cliente' => false/", $helper));
+chk('el endpoint lo exige',             str_contains($endp, "empty(\$ncfg['envio_correo_cliente'])"));
+chk('hay interruptor en Configuración', str_contains($cfg, 'id="e_envio_correo"'));
+chk('y se guarda',                      str_contains($cfg, 'envio_correo_cliente: document.getElementById'));
+chk('el editor respeta el interruptor', str_contains($ver, '$envio_correo_on'));
+
+echo "\n9) EL ENDPOINT ESTÁ PROTEGIDO\n";
+chk('ruta registrada',                  str_contains($router, "/cotizaciones/:id/enviar-correo"));
+chk('exige CSRF',                       str_contains($endp, 'csrf_check()'));
+chk('valida que la cotización sea de la empresa', str_contains($endp, 'AND c.empresa_id = ?'));
+// Un doble clic mandándole cinco veces el mismo correo al cliente es la vía
+// rápida a que lo marque como spam.
+chk('limita los envíos',                str_contains($endp, "rate_check('cot_correo_"));
+chk('y registra el intento',            str_contains($endp, "rate_hit('cot_correo_"));
+chk('no manda en cualquier estado',     str_contains($endp, "['borrador','enviada','vista']"));
+
+echo "\n10) A NOMBRE DE LA EMPRESA, RESPONDIENDO AL ASESOR\n";
+// El cliente de "Comercializadora Reyes" no tiene por qué ver nuestra marca
+// donde va la de su proveedor.
+chk('template propio para el cliente',  str_contains($mailer, 'function wrap_template_empresa('));
+chk('usa el nombre de la empresa',      str_contains($mailer, '$emp   = htmlspecialchars($empresa_nombre'));
+// Una respuesta del cliente es señal de compra: si cae en un buzón general no
+// tiene dueño y se muere.
+chk('pone Responder-A',                 str_contains($mailer, '$mail->addReplyTo('));
+chk('es el asesor de la cotización',    str_contains($endp, "\$cot['vendedor_id'] ?: \$cot['usuario_id']"));
+// Sin versión de texto, un correo que es casi solo un enlace huele a spam.
+chk('manda alternativa de texto',       str_contains($mailer, '$mail->AltBody'));
+// Aislar la reputación evita que un rebote de cotización mande a spam la
+// recuperación de contraseña de otro cliente.
+chk('admite subdominio de envíos',      str_contains($mailer, 'SMTP_FROM_ENVIOS'));
+// Dominio propio = se respeta la marca del cliente, igual que en los slugs.
+chk('el pie de marca es condicional',   str_contains($mailer, '$mostrar_marca'));
+chk('y lo apaga el dominio propio',     str_contains($endp, "empty(\$empresa['dominio_custom'])"));
+
+echo "\n11) EL CORREO NO SPOILEA EL TOTAL\n";
+// El correo existe para que el cliente ABRA la cotización: ahí es donde el Radar
+// mide interés y donde puede aceptar. Con el monto en el correo, muchos no
+// entran y perdemos la señal.
+// Acotado al método: otros correos (abonos) sí llevan totales, y con razón.
+$m_cot = '';
+if (preg_match('/public static function enviar_cotizacion\(array \$a\): bool[\s\S]*?\n    \}\n/', $mailer, $mm)) {
+    $m_cot = $mm[0];
+}
+chk('se pudo aislar el método',         $m_cot !== '');
+chk('no arma el total en el mensaje',   str_contains($m_cot, '$total'), false);
+chk('ni el subtotal',                   str_contains($m_cot, 'subtotal'), false);
+chk('sí lleva botón al enlace',         str_contains($m_cot, 'Ver mi cotización'));
+
+echo "\n12) SI NO HAY CORREO, SE PIDE Y SE GUARDA\n";
+// Bloquear el envío por un dato opcional dejaría el botón inútil justo cuando
+// más se necesita.
+chk('el editor tiene el campo',         str_contains($ver, 'id="correo-input"'));
+chk('el endpoint lo acepta',            str_contains($endp, "\$email_nuevo = trim((string)(\$body['email'] ?? ''))"));
+chk('lo valida',                        str_contains($endp, 'FILTER_VALIDATE_EMAIL'));
+chk('y lo guarda en el cliente',        str_contains($endp, 'UPDATE clientes SET email=?'));
+
+echo "\n13) MANDARLO POR CORREO CUENTA COMO ENVIARLO\n";
+// Si no se sella, el Radar y el termómetro empiezan a contar desde otra fecha.
+chk('sella enviada_at',                 str_contains($endp, 'enviada_at = COALESCE(enviada_at, NOW())'));
+// Y si el registro falla, el correo YA salió: no se puede reportar como error.
+chk('el log no tumba el envío',
+    (bool)preg_match('/INSERT INTO cotizacion_log[\s\S]{0,300}catch \(\\\\Throwable/', $endp));
+
+echo "\n14) UNA BASE SIN MIGRAR NO ROMPE LA CONFIGURACIÓN\n";
+// lada_pais va en un UPDATE aparte: metida en el grande, una base sin migrar
+// dejaría de guardar TODA la configuración de la empresa.
+chk('lada_pais se guarda aparte',       str_contains($gemp, 'UPDATE empresas SET lada_pais=?'));
+chk('y tolerando el fallo',             (bool)preg_match('/lada_pais=\?[\s\S]{0,200}catch \(\\\\Throwable/', $gemp));
+
 echo "\n" . ($fail === 0
     ? "✓ ENVÍO AL CLIENTE OK — $ok comprobaciones\n"
     : "✗ FALLARON $fail de " . ($ok + $fail) . "\n");

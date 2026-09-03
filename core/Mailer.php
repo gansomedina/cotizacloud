@@ -114,6 +114,164 @@ class Mailer
 HTML;
     }
 
+    /**
+     * Template para correos que ve el CLIENTE FINAL.
+     *
+     * El template normal lleva el encabezado de CotizaCloud, y eso está bien
+     * para los correos que recibe el asesor. Pero el cliente de "Comercializadora
+     * Reyes" no tiene por qué ver nuestra marca donde debería ir la de su
+     * proveedor: aquí manda el nombre y el color de la empresa emisora.
+     *
+     * El pie con "Enviado con CotizaCloud" solo aparece cuando la cotización
+     * vive en un subdominio nuestro. Si la empresa usa dominio propio, se
+     * respeta su marca por completo — misma regla que ya se decidió para los
+     * slugs públicos.
+     */
+    private static function wrap_template_empresa(
+        string $titulo,
+        string $contenido,
+        string $empresa_nombre,
+        string $color,
+        bool   $mostrar_marca
+    ): string {
+        $year  = date('Y');
+        $emp   = htmlspecialchars($empresa_nombre, ENT_QUOTES, 'UTF-8');
+        $color = preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? $color : '#1a6b3c';
+
+        $marca = $mostrar_marca
+            ? '<div style="margin-top:6px;font-size:11px;color:#9a9a94">Enviado con <a href="https://cotiza.cloud" style="color:#9a9a94;text-decoration:underline">CotizaCloud</a></div>'
+            : '';
+
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{$titulo}</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f0;font-family:'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f0;padding:32px 16px">
+<tr><td align="center">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:12px;border:1px solid #e2e2dc;overflow:hidden">
+
+<tr><td style="background:{$color};padding:24px 32px;text-align:center">
+    <span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-.01em">{$emp}</span>
+</td></tr>
+
+<tr><td style="padding:32px;font-size:15px;line-height:1.6;color:#1a1a18">
+{$contenido}
+</td></tr>
+
+<tr><td style="padding:20px 32px;background:#f9f9f7;border-top:1px solid #e2e2dc;text-align:center;font-size:12px;color:#6a6a64">
+    &copy; {$year} {$emp}
+    {$marca}
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>
+HTML;
+    }
+
+    /**
+     * Manda la cotización al cliente final, a nombre de la empresa.
+     *
+     * Tres decisiones que están aquí a propósito:
+     *
+     * - El REMITENTE es una dirección nuestra (no se puede firmar el dominio del
+     *   cliente sin su DKIM; hacerlo sería suplantación y acabaría en spam).
+     *   Lo que el cliente ve en su bandeja es el NOMBRE de la empresa, que es lo
+     *   que se muestra en Gmail, Outlook y Mail. Idealmente sale de un subdominio
+     *   aparte (SMTP_FROM_ENVIOS) para que un rebote no contamine la reputación
+     *   del correo crítico: verificaciones y recuperación de contraseña.
+     *
+     * - El RESPONDER-A es el asesor. Una respuesta del cliente es una señal de
+     *   compra; si cae en un buzón general no tiene dueño y se muere.
+     *
+     * - NO se incluye el total. El correo existe para que el cliente ABRA la
+     *   cotización: ahí es donde el Radar mide interés y donde puede aceptar.
+     *   Poniendo el monto en el correo, muchos no entran y perdemos la señal.
+     */
+    public static function enviar_cotizacion(array $a): bool
+    {
+        $para = trim((string)($a['para'] ?? ''));
+        if ($para === '' || !filter_var($para, FILTER_VALIDATE_EMAIL)) {
+            error_log('[Mailer] enviar_cotizacion sin destinatario válido: ' . $para);
+            return false;
+        }
+
+        $emp_nombre = trim((string)($a['empresa_nombre'] ?? '')) ?: 'Tu proveedor';
+        $cli_nombre = trim((string)($a['para_nombre'] ?? ''));
+        $saludo     = $cli_nombre !== '' ? 'Hola ' . explode(' ', $cli_nombre)[0] . ',' : 'Hola,';
+        $numero     = trim((string)($a['numero'] ?? ''));
+        $url        = (string)($a['url'] ?? '');
+        $color      = (string)($a['color'] ?? '#1a6b3c');
+        $vigencia   = trim((string)($a['vigencia'] ?? ''));
+
+        $asunto = $numero !== ''
+            ? "Tu cotización {$numero} — {$emp_nombre}"
+            : "Tu cotización — {$emp_nombre}";
+
+        $eNom = htmlspecialchars($emp_nombre, ENT_QUOTES, 'UTF-8');
+        $eSal = htmlspecialchars($saludo,     ENT_QUOTES, 'UTF-8');
+        $eNum = htmlspecialchars($numero,     ENT_QUOTES, 'UTF-8');
+        $eUrl = htmlspecialchars($url,        ENT_QUOTES, 'UTF-8');
+        $eCol = preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? $color : '#1a6b3c';
+
+        $linea_num = $eNum !== '' ? " <strong>{$eNum}</strong>" : '';
+        $linea_vig = $vigencia !== ''
+            ? '<p style="margin:18px 0 0;font-size:13px;color:#6a6a64">Vigente hasta ' . htmlspecialchars($vigencia, ENT_QUOTES, 'UTF-8') . '.</p>'
+            : '';
+
+        $contenido = <<<HTML
+<p style="margin:0 0 14px">{$eSal}</p>
+<p style="margin:0 0 24px">Aquí está tu cotización{$linea_num} de <strong>{$eNom}</strong>. Puedes verla completa, resolver dudas y aceptarla desde este enlace:</p>
+<table cellpadding="0" cellspacing="0" style="margin:0 auto"><tr><td style="border-radius:8px;background:{$eCol}">
+    <a href="{$eUrl}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;border-radius:8px">Ver mi cotización</a>
+</td></tr></table>
+<p style="margin:24px 0 0;font-size:12px;color:#9a9a94;word-break:break-all">Si el botón no funciona, copia esta dirección en tu navegador:<br>{$eUrl}</p>
+{$linea_vig}
+HTML;
+
+        try {
+            $mail = self::crear();
+
+            // Subdominio de envíos si está configurado. Aislar la reputación es
+            // lo que evita que un rebote de una cotización mande a spam el correo
+            // de recuperación de contraseña de otro cliente.
+            $from_addr = defined('SMTP_FROM_ENVIOS') ? SMTP_FROM_ENVIOS
+                       : (defined('SMTP_FROM') ? SMTP_FROM : 'noreply@cotiza.cloud');
+            $mail->setFrom($from_addr, $emp_nombre);
+
+            $reply = trim((string)($a['reply_to'] ?? ''));
+            if ($reply !== '' && filter_var($reply, FILTER_VALIDATE_EMAIL)) {
+                $mail->addReplyTo($reply, trim((string)($a['reply_nombre'] ?? '')) ?: $emp_nombre);
+            }
+
+            $mail->addAddress($para, $cli_nombre !== '' ? $cli_nombre : $para);
+            $mail->isHTML(true);
+            $mail->Subject = $asunto;
+            $mail->Body    = self::wrap_template_empresa(
+                $asunto, $contenido, $emp_nombre, $eCol, (bool)($a['mostrar_marca'] ?? true)
+            );
+            // Un correo HTML que es casi solo un enlace, sin versión de texto,
+            // es una firma clásica de spam. Esta alternativa la evita.
+            $mail->AltBody = $saludo . "\n\n"
+                . "Aquí está tu cotización" . ($numero !== '' ? " {$numero}" : '') . " de {$emp_nombre}.\n\n"
+                . $url . "\n"
+                . ($vigencia !== '' ? "\nVigente hasta {$vigencia}.\n" : '');
+
+            $mail->send();
+            return true;
+        } catch (MailException $e) {
+            error_log('[Mailer] FALLO cotización a ' . $para . ' — ' . $asunto . ' — ' . $e->getMessage());
+            return false;
+        }
+    }
+
     // ─── Emails específicos ────────────────────────────────────
 
     /**
