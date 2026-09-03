@@ -144,6 +144,21 @@ chk('admite subdominio de envíos',      str_contains($mailer, 'SMTP_FROM_ENVIOS
 chk('el pie de marca es condicional',   str_contains($mailer, '$mostrar_marca'));
 chk('y lo apaga el dominio propio',     str_contains($endp, "empty(\$empresa['dominio_custom'])"));
 
+echo "\n10b) SIN RASTREO DE BREVO\n";
+// Comprobado en un correo real: Brevo reescribía el botón "Ver mi cotización"
+// para que apuntara a sendibt2.com, y metía un píxel invisible de apertura. Su
+// panel no tiene cómo apagarlo (solo ofrece "anonymous tracking", que reescribe
+// igual), así que estas cabeceras son la única vía. Van en crear(), o sea para
+// TODOS los correos: en el de recuperación de contraseña reescribir el enlace
+// es todavía peor.
+chk('desactiva el rastreo',             str_contains($mailer, "addCustomHeader('X-Mailin-Track', 'false')"));
+chk('los clics',                        str_contains($mailer, "addCustomHeader('X-Mailin-Track-Clicks', 'false')"));
+chk('y las aperturas',                  str_contains($mailer, "addCustomHeader('X-Mailin-Track-Opens', 'false')"));
+// En crear() y no en un método suelto: si estuviera solo en enviar_cotizacion,
+// los demás correos del sistema seguirían con los enlaces reescritos.
+chk('aplica a todos los correos',
+    (bool)preg_match('/function crear\(\)[\s\S]*?X-Mailin-Track[\s\S]*?return \$mail;/', $mailer));
+
 echo "\n11) EL CORREO NO SPOILEA EL TOTAL\n";
 // El correo existe para que el cliente ABRA la cotización: ahí es donde el Radar
 // mide interés y donde puede aceptar. Con el monto en el correo, muchos no
