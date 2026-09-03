@@ -281,6 +281,45 @@ chk('ordena por tamaño del movimiento', $mv2[0]['clave'], 'conversion');
 chk('el reporte sí la consume',
     str_contains((string)file_get_contents(__DIR__ . '/../core/RitmoReporte.php'), 'ScoreLectura::movimiento'));
 
+echo "\n13) EL ENUM DEL MOTOR YA USA EL ESTÁNDAR\n";
+// Antes 86/61/31: el dashboard decía "Activo" a un 62 que está DEBAJO del
+// estándar, y "Regular" a un 35 que es crítico. Dos veredictos para el mismo
+// asesor en dos pantallas.
+chk('el motor usa las constantes, no números sueltos',
+    str_contains($src, 'ScoreLectura::EXCELENCIA) $nivel = \'top\''));
+chk('y ya no quedan los umbrales viejos',
+    (bool)preg_match('/\$score >= 86|\$score >= 61|\$score >= 31/', $src), false);
+// El backfill tiene que existir y preservar el período de gracia.
+$bf = (string)file_get_contents(__DIR__ . '/../migrations/backfill_niveles_estandar_70.sql');
+chk('hay backfill de las filas viejas',   $bf !== '');
+chk('cubre las tres tablas',              substr_count($bf, 'UPDATE `'), 3);
+chk('preserva el período de gracia',      substr_count($bf, "WHEN `nivel` = 'nuevo' THEN 'nuevo'"), 3);
+chk('usa los cortes nuevos',              substr_count($bf, '>= 85') === 3 && substr_count($bf, '>= 70') === 3);
+
+echo "\n14) LO QUE SALIÓ MAL EN EL REPORTE REAL DE UN ASESOR\n";
+// (a) "30 días vencidos" en una ventana de 15 días es imposible de creer, y le
+// quita credibilidad a todo el reporte. mesa_vencidos tiene PK (cotizacion,
+// fecha): son días-COTIZACIÓN acumulados.
+$venc = dim(['s_seguimiento'=>1.0,'s_mesa'=>1.0,'mesa_pedidas'=>11,'mesa_atendidas'=>11,
+             'mesa_dias_vencidos'=>30,'castigo_seguimiento'=>8], 'seguimiento');
+chk('no dice "30 días vencidos" a secas', str_contains((string)$venc['alerta'], '30 días vencidos'), false);
+chk('dice que son acumulados',            str_contains((string)$venc['alerta'], 'acumulados'));
+chk('y explica cómo se cuentan',          str_contains((string)$venc['alerta'], 'cada cotización por cada día'));
+
+// (b) "Completo." al lado de -8 puntos se lee como contradicción.
+chk('con castigo no dice solo "Completo"', str_contains($venc['frase'], 'el problema es el retraso'));
+chk('sin castigo sí dice "Completo"',
+    str_contains(dim(['s_seguimiento'=>1.0,'s_mesa'=>1.0,'mesa_pedidas'=>11,'mesa_atendidas'=>11], 'seguimiento')['frase'], 'Completo.'));
+
+// (c) Felicitar por Engagement a quien vendió 1 contra un ritmo de 3.5
+// contradice el aviso que la propia Conversión imprime dos renglones abajo.
+$eb = dim(['s_engagement'=>0.89,'ventas_periodo'=>1,'ventas_sin_pago'=>0,'bench_ventas'=>3.5], 'engagement');
+chk('no felicita a secas al que vende poco', str_contains($eb['frase'], 'Cobras lo que vendes y no'), false);
+chk('y explica de dónde viene el número',    str_contains($eb['frase'], 'no hay más que castigar'));
+// Vendiendo al ritmo de la empresa, la felicitación sí es legítima.
+$eok = dim(['s_engagement'=>0.89,'ventas_periodo'=>4,'ventas_sin_pago'=>0,'bench_ventas'=>3.5], 'engagement');
+chk('al que sí vende, se le reconoce',       str_contains($eok['frase'], 'Cobras lo que vendes'));
+
 echo "\n" . ($fail === 0
     ? "✓ SCORE EN PALABRAS OK — $ok comprobaciones\n"
     : "✗ FALLARON $fail de " . ($ok + $fail) . "\n");

@@ -152,7 +152,13 @@ class ScoreLectura
             $alerta = "Este número está alto porque NO hay ventas que castigar: sin ventas no hay cobros pendientes ni descuentos. No lo leas como algo bueno.";
             $frase  = "Sin ventas en la ventana, así que no hay nada que evaluar aquí.";
         } elseif ($v >= 85) {
-            $frase = "Cobras lo que vendes y no estás comprando las ventas con descuento.";
+            // Con ventas MUY por debajo del ritmo de la empresa, el número alto
+            // sigue siendo mayormente ausencia de castigos. Felicitarlo sin más
+            // contradice el aviso que Conversión imprime dos renglones abajo.
+            $bench = (float)$n('bench_ventas');
+            $frase = ($bench > 0 && $ventas < $bench * 0.5)
+                ? "Lo que vendes lo cobras y sin descuentos. Pero son pocas ventas: buena parte de este número es que no hay más que castigar."
+                : "Cobras lo que vendes y no estás comprando las ventas con descuento.";
         } elseif ($v >= 60) {
             $frase = $sinpag > 0
                 ? "Tienes {$sinpag} " . ($sinpag === 1 ? "venta sin cobrar" : "ventas sin cobrar") . " — eso es lo que te está restando."
@@ -201,17 +207,26 @@ class ScoreLectura
             $frase  = "Sin señales en tu mesa durante la ventana.";
         } else {
             $cov = (int)round($at / max($ped, 1) * 100);
-            if ($v >= 100)     $frase = "Atendiste {$at} de {$ped} señales de tu mesa ({$cov}%). Completo.";
+            if ($v >= 100)     $frase = $cast > 0
+                                   ? "Atendiste {$at} de {$ped} señales de tu mesa ({$cov}%). La cobertura está completa — el problema es el retraso, no la cobertura."
+                                   : "Atendiste {$at} de {$ped} señales de tu mesa ({$cov}%). Completo.";
             elseif ($v >= 50)  $frase = "Atendiste {$at} de {$ped} ({$cov}%). A medias: cuenta la mitad. Llegando al 80% cuenta completo.";
             else               $frase = "Atendiste {$at} de {$ped} ({$cov}%). Debajo de la mitad no cuenta nada — y esta dimensión es la segunda que más pesa.";
         }
 
         if ($cast > 0) {
             // Puntos DIRECTOS al score, aparte de la dimensión (ActividadScore:1191).
-            $alerta = trim(($alerta ? $alerta . ' ' : '')
-                   . "Además te está restando {$cast} " . ($cast === 1 ? 'punto' : 'puntos')
-                   . " directos del score por {$venc} " . ($venc === 1 ? 'día vencido' : 'días vencidos')
-                   . " en la mesa. Tocarlas detiene el reloj; los días viejos salen solos en ~2 semanas.");
+            // OJO con el nombre: mesa_vencidos tiene PK (cotizacion_id, fecha),
+            // así que $venc son días-COTIZACIÓN acumulados, no días de calendario
+            // — en una ventana de 15 días puede pasar de 15 sin contradicción.
+            // Decirle "30 días vencidos" al asesor es imposible de creer y le
+            // quita credibilidad a todo el reporte.
+            $arranque = ($alerta ? $alerta . ' ' : ($v >= 100 ? 'Aun así, ' : ''));
+            $alerta = trim($arranque
+                   . ($arranque === '' ? 'Te' : 'te') . " está restando {$cast} " . ($cast === 1 ? 'punto' : 'puntos')
+                   . " directos del score: llevas {$venc} " . ($venc === 1 ? 'día de retraso acumulado' : 'días de retraso acumulados')
+                   . " entre tus cotizaciones vencidas (cuenta cada cotización por cada día que sigue vencida)."
+                   . " Tocarlas detiene el reloj; los días viejos salen solos en ~2 semanas.");
         }
 
         return ['clave'=>'seguimiento','label'=>'Seguimiento','peso'=>self::PESOS['seguimiento'],

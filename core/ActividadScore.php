@@ -1218,10 +1218,18 @@ class ActividadScore
         $score = max($score - $castigo_seguimiento, 0);
 
         // Nivel
-        if ($score >= 86) $nivel = 'top';
-        elseif ($score >= 61) $nivel = 'activo';
-        elseif ($score >= 31) $nivel = 'regular';
-        else $nivel = 'bajo';
+        // Umbrales alineados al estándar del CEO (3 sep 2026): 85 excelencia,
+        // 70 estándar, 60 el piso. Antes eran 86/61/31, heredados de cuando el
+        // score se diseñó asumiendo que ~50 era el centro. Con los viejos, el
+        // dashboard le decía "Activo" a un 62 que en la escala del negocio está
+        // debajo del estándar, y "Regular" a un 35 que es crítico — dos
+        // veredictos distintos para el mismo asesor en dos pantallas.
+        // La fuente única son las constantes de ScoreLectura.
+        if (!class_exists('ScoreLectura')) require_once __DIR__ . '/ScoreLectura.php';
+        if     ($score >= ScoreLectura::EXCELENCIA) $nivel = 'top';      // excelencia
+        elseif ($score >= ScoreLectura::ESTANDAR)   $nivel = 'activo';   // en el estándar
+        elseif ($score >= ScoreLectura::PISO)       $nivel = 'regular';  // debajo del estándar
+        else                                        $nivel = 'bajo';     // crítico
 
         // Total penalizaciones ponderadas (impacto real en score) y bonuses
         $total_pen = ($pen_no_abiertas + $pen_dormidas) * $w_act
