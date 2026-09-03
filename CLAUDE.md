@@ -1232,7 +1232,7 @@ Quitado: `cores` (hardwareConcurrency) — Firefox lo spoofea en modo privado.
 | Cookie cz_dsig con domain .cotiza.cloud | core/layout.php | Viaja a subdominios para detección superadmin |
 | Detección browsers completa | modules/dashboard/index.php | CriOS, FxiOS, SamsungBrowser, OPR, EdgiOS |
 
-### Arquitectura del Escudo (estado final)
+### Arquitectura del Escudo (2 mayo 2026 — DESACTUALIZADA, ver la corrección abajo)
 ```
 Protección de slugs (capas en cotizacion.php):
   Capa 0: cookie cza_session (3 días browser, 30 días app)
@@ -1254,12 +1254,40 @@ Información (dashboard):
   Tarjeta "Escudo Radar — Activo" con lista de dispositivos
 ```
 
-### Cookies del sistema
-| Cookie | Duración | Domain | Propósito |
+### ⚠️ Arquitectura del Escudo — ESTADO REAL (verificado en código, 3 sep 2026)
+El bloque de arriba se quedó viejo y mandó por mal camino un diagnóstico completo
+en septiembre. **Este es el que vale:**
+
+```
+Protección de slugs (capas en cotizacion.php):
+  Capa 0: cookie cza_session (14 días browser, 30 días app)
+  Capa 1: cookie cz_vid (730 días) + radar_visitors_internos
+  Capa 2: ELIMINADA — ver abajo
+  Capa 3: bot por User-Agent (es_bot). El filtro por prefijo de IP existe
+          pero está INERTE: Radar.php:232 tiene `const BOT_IP = []`
+```
+
+**La Capa 2 (IP interna) se eliminó a propósito.** El comentario está en el
+código, en `public/cotizacion.php`:
+
+> *"Las IPs de carrier rotan: una IP que fue del asesor pasa a un cliente real →
+> se descartaba su visita. El asesor se detecta por Capa 0 (sesión) y Capa 1
+> (cz_vid), no por IP."*
+
+Consecuencias que hay que tener presentes:
+- Que un slug se abra desde la IP de la oficina **no** lo hace interno. Es
+  correcto: en una sala de exhibición los clientes usan el WiFi de la tienda.
+- `escudo_log` nunca registra una decisión `capa_2_*` — no existe.
+
+### Cookies del sistema (verificado 3 sep 2026)
+| Cookie | Duración | Dónde está en el código | Propósito |
 |---|---|---|---|
-| `cza_session` | 3d browser / 30d app | `.cotiza.cloud` | Autenticación |
-| `cz_vid` | 730 días | `.cotiza.cloud` + bridge en custom | Identificar interno (Capa 1) |
-| `cz_dsig` | 3 días | `.cotiza.cloud` | device_sig para PHP (superadmin detection, feedback) |
+| `cza_session` | **14 d** browser / 30 d app | `Auth.php:19-20` (`SESSION_BROWSER_SECONDS`) | Autenticación · Capa 0 |
+| `cz_vid` | 730 días | `cotizacion.php:239` | Identificar interno · Capa 1 |
+| `cz_dsig` | **14 días** | `layout.php:750` | device_sig para PHP (superadmin, feedback) |
+
+Dominio: `.cotiza.cloud` para todas. En dominio propio del cliente las pone el
+`safari_bridge`, con el dominio exacto.
 
 ### Limitaciones conocidas y aceptadas
 - Dos Macs/iPhones del mismo modelo con mismo browser → misma entrada en tarjeta (UA no distingue modelos)
@@ -3016,7 +3044,15 @@ apple-review. Cero widgets de tercero (coherente con privacidad).
 3. Expandir a asesores si hay demanda (config por empresa)
 4. Adjuntar imágenes/capturas en el chat
 
-## ⚠️ NOTA — .cpanel.yml es delicado (deploy cPanel)
+## 🗄️ HISTÓRICO — .cpanel.yml (deploy cPanel, YA NO SE USA)
+
+> **Esta sección entera es historia.** El proyecto migró a un VPS de Contabo con
+> nginx. **El despliegue es `/usr/local/bin/deploy-cotizacloud.sh` en el
+> servidor, corriendo sobre `main`.** `.cpanel.yml` ya no interviene en nada.
+>
+> Se conserva porque explica por qué algunos archivos de `data/` viven solo en
+> el servidor y no en el repo. Todo lo demás —las reglas de "no tocar el
+> .cpanel.yml", el `cp -n`, los deploys en rojo— **ya no aplica**.
 
 **Historial:** cada vez que se toca `.cpanel.yml` algo tiende a fallar en
 el deploy. Tocar con cuidado y verificar el deploy después de cada push.
@@ -3593,3 +3629,230 @@ su base a Pro/Business. No es el destino final del cliente.
 4. Vigilar primeros días: salida del cron 3am, primeros registros (es_trial=1 en BD), logs [Asientos]/[Trial]/[Registro].
 5. MercadoPago::sincronizar() es código muerto (sin caller) — limpiar.
 6. Plan de arranque comercial (Fase 1: FB Ads del Radar + guion de demo) y libro de ventas (brief en docs/libro/BRIEF.md) — listos para arrancar ahora que el producto y los planes están vivos.
+
+## Sesión 2-3 septiembre 2026 — Telmex no entraba + envío al cliente
+
+### El incidente: Telmex no podía entrar al sistema
+
+**Síntoma:** las tres sucursales de OnTime (Hermosillo, Obregón, Nogales)
+no podían abrir `cotiza.cloud`. El CEO sí, desde Megacable.
+
+**Diagnóstico, descartando en orden:**
+
+| Hipótesis | Cómo se descartó |
+|---|---|
+| DNS | `nslookup` desde Obregón resolvía correcto a `212.28.186.247` |
+| Firewall del servidor | La IP de la oficina no estaba en iptables, ipset ni fail2ban |
+| Servidor saturado | `load average: 0.00` · conntrack 10 de 262,144 · 12 conexiones TCP |
+| Rate limit de la app | 0 filas en 3 horas |
+| Certificado SSL | Cert SAN de Let's Encrypt válido para los 3 dominios |
+| MTU | Con MTU el TCP conecta y se traba después; aquí **ni conectaba** |
+
+**Causa real: 80% de pérdida de paquetes en el tránsito internacional.**
+
+```
+ping desde Obregón     → 8 de 10 perdidos
+curl :443              → connect ... failed: Timed out (21 s)
+pathping               → saltos 0-6 limpios (21 ms, todavía en México)
+                         del 7 en adelante (Zayo) el destino no contesta
+nginx                  → la MISMA IP sí registró 41 peticiones ese día
+```
+
+Intermitente: unas conexiones entraban y otras no. Por eso "a veces sí".
+
+**La prueba que lo cerró**, desde la computadora de Obregón:
+
+```
+curl --resolve obregon.ontimecocinas.com:443:104.21.21.64 https://obregon.ontimecocinas.com/
+→ HTTP/1.1 302 · Server: cloudflare · CF-RAY: ...-SJC     (instantáneo)
+```
+
+**Telmex → Contabo directo: roto. Telmex → Cloudflare → Contabo: perfecto.**
+
+### La solución: todo el tráfico por Cloudflare
+
+**El bloqueador que estaba documentado** (runbook línea 26): los 3 dominios de
+OnTime son CNAME → `cotiza.cloud`. Con el proxy encendido, esos CNAME resolverían
+a IPs de Cloudflare, que no tiene la zona `ontimecocinas.com` → error de SSL y
+las 3 sucursales caídas. Por eso la zona llevaba desde julio en gris.
+
+**Se resolvió con Cloudflare for SaaS (Custom Hostnames)** — 100 hostnames
+gratis en plan Free. Cloudflare emite y renueva el certificado de los dominios
+de OnTime **sin mover sus nameservers ni tocar su DirectAdmin**.
+
+Estado final de la zona:
+
+```
+cotiza.cloud          A → 212.28.186.247   Proxied
+*.cotiza.cloud        A → 212.28.186.247   Proxied
+www.cotiza.cloud      CNAME → cotiza.cloud Proxied   ← se quedó fuera al inicio
+saas.cotiza.cloud     A → 212.28.186.247   Proxied   ← fallback origin
+```
+
+Y los 3 CNAME de OnTime apuntan a `saas.cotiza.cloud`.
+
+**`Origin SNI value: Host header`** — en plan Free no hay SNI Rewrite, así que
+Cloudflare se conecta al origen con el nombre del cliente. **Los certificados
+Let's Encrypt del VPS siguen siendo obligatorios.** `certbot renew --dry-run`
+pasó con el proxy encendido.
+
+### Lo que se verificó del Radar, con datos
+
+`real_ip` de nginx está activo (`nginx -T` lo confirma) pero **el include vivía
+dentro del bloque `server` de `cotiza.cloud`**, no en el `http` global — por eso
+el bloque de `ontimecocinas.com` registraba la IP de Cloudflare. Se movió al
+`http` y ahora aplica a todos los dominios, presentes y futuros.
+
+Comprobado con 13 sesiones de cliente reales tras el cambio: **cero IPs de
+Cloudflare en `quote_sessions`**. Todas de Telmex, IPv4 e IPv6.
+
+Dato para no confundirse al revisar: **`104.28.x` NO es Cloudflare**. Los rangos
+de Cloudflare son `104.16.0.0/13` (llega a `104.23`) y `104.24.0.0/14` (a
+`104.27`). El `104.28.x` es iCloud Private Relay de Apple.
+
+### Ajustes preventivos de Cloudflare (hechos antes de prender)
+
+- **Under Attack mode**: apagado. Es el único que manda Managed Challenge a todos
+- **Bot Fight Mode**: apagado. Inyecta retos de JS y rompería el WebView de la app y `api/track.php`
+- **Email Obfuscation**: apagado. Reescribiría el correo de la empresa **dentro
+  del `<script>`** del slug (`cotizacion.php:1562`), no solo los enlaces `mailto:`
+- **Rocket Loader**: apagado (viene así de fábrica), verificado con `grep -c rocket-loader`
+
+El "Security Level" con la opción *Essentially Off* **ya no existe** en la
+interfaz de Cloudflare — quedó reducido al interruptor de Under Attack.
+
+### Dominios propios de clientes — DECISIÓN: no se ofrecen más
+
+Cloudflare for SaaS resolvió la mitad de SSL/DNS, pero **la otra mitad sigue
+cara y no tiene arreglo barato**: las cookies de `.cotiza.cloud` no viajan a un
+dominio ajeno, y por eso existe la cadena de `safari_bridge` en el login.
+
+El problema es arquitectónico, en `modules/auth/login_post.php:152-196`:
+
+```php
+if ($es_super) {
+    $dominios_custom = DB::query("SELECT dominio_custom FROM empresas WHERE ...");
+}
+foreach (array_reverse($dominios_custom) as $dc) {
+    $chain_url = 'https://' . $dc['dominio_custom'] . '/api/safari-bridge?...&next=' . urlencode($chain_url);
+}
+```
+
+**Cada login del superadmin rebota por TODOS los dominios propios de toda la
+SaaS.** Dos paredes duras:
+
+1. **Un solo dominio caído o con certificado vencido y el superadmin no entra.**
+   Es `header()+exit`, sin plan B.
+2. **La URL crece exponencialmente** — cada nivel mete el `next` anterior
+   codificado dentro del siguiente. Alrededor de 8-10 dominios rebasa el límite
+   del servidor y el login deja de funcionar.
+
+**Decisión (3 sep 2026): dejar de ofrecer dominios propios.** No se pierde nada
+comercial —no aparecen en la landing, ni en planes, ni en Ayuda, ni en los
+precios; nunca se vendieron—. Los 3 de OnTime se quedan funcionando. El
+subdominio `empresa.cotiza.cloud` es la oferta: se ve profesional, las cookies
+funcionan solas, y conserva el "Powered by CotizaCloud" que el dominio propio
+quitaba.
+
+Si algún día un cliente grande lo exige, el arreglo es rehacer el bridge para
+que no encadene todos los dominios en el login. No construirlo hasta que alguien
+pague por ello.
+
+### Envío de la cotización al cliente (PRs #1016-#1019)
+
+Antes solo se podía copiar la liga. Ahora hay **WhatsApp** y **correo**.
+
+**Dos cosas que estaban rotas y no se veían:**
+
+1. En el editor, `openUrlOverlay()` estaba definida **y nada la llamaba**. Los
+   accesos a WhatsApp y correo llevaban meses escritos e inalcanzables.
+2. **`clientes/crear.php` nunca guardaba el correo** — solo se capturaba al
+   editar. Un cliente recién dado de alta no tenía a dónde recibir nada.
+
+**WhatsApp.** Abre directo la conversación del cliente. Los teléfonos se siguen
+guardando como la gente los escribe; `tel_whatsapp()` (Helpers.php) normaliza
+**solo al armar el enlace** — normalizar en la base rompería la búsqueda por
+tecleo y la detección de duplicados. **Ante la duda devuelve vacío**, y entonces
+WhatsApp abre sin destinatario: un tap extra es mejor que mandarle la cotización
+a un desconocido. El `+` es la salida para el extranjero.
+
+**Correo.** Sale a nombre de la empresa emisora, con su color de marca.
+`Reply-To` = **el asesor asignado a la cotización**, no quien aprieta el botón.
+**No lleva el total**: el correo existe para que el cliente ABRA la cotización,
+que es donde el Radar mide. Nace **apagado**, por empresa.
+
+**Base de datos** (`migrations/add_telefono_empresa_lada.sql`, ya aplicada):
+```sql
+clientes.telefono_empresa  VARCHAR(30) NULL    -- el fijo; `telefono` pasa a ser el móvil/WhatsApp
+empresas.lada_pais         VARCHAR(4) DEFAULT '52'
+```
+
+**Configuración › Envío al cliente**: interruptor de WhatsApp (prendido),
+interruptor de correo (apagado), a quién responde el cliente (asesor / empresa),
+y el código de país.
+
+Se quitó **"Marcar como enviada"**: no hacía nada, porque `crear.php` inserta
+las cotizaciones ya con estado `'enviada'` y nada las deja en borrador.
+
+**Pruebas nuevas:** `tools/test_tel_whatsapp.php` (34) y
+`tools/test_envio_cotizacion.php` (79). Esta última impide que los botones
+vuelvan a quedar sin quien los llame.
+
+### Correo — infraestructura
+
+`envios.cotiza.cloud` autenticado en Brevo (subdominio aparte para que un rebote
+de cotización no contamine la reputación del correo crítico: verificación de
+cuenta y recuperación de contraseña). En `config.php` del servidor:
+
+```php
+define('SMTP_FROM_ENVIOS', 'noreply@envios.cotiza.cloud');
+```
+
+Correo real verificado: **SPF, DKIM y DMARC en PASS**, entregado en 3 segundos,
+a bandeja de entrada, con `Reply-To: "Manuel Estrada" <hmo2@ontimecocinas.com>`.
+
+### ⚠️ Pendiente con Brevo — reescribe los enlaces
+
+Brevo **reescribe el botón de la cotización** a `sendibt3.com`, mete un píxel de
+apertura, y agrega `List-Unsubscribe`. Se intentaron dos cosas y **ninguna
+funcionó**:
+
+- **Cabeceras `X-Mailin-Track: false`** (+ `-Clicks`, `-Opens`): llegan al correo
+  entregado pero Brevo las ignora. Prueba: la firma DKIM lista las cabeceras que
+  Brevo procesa y las `X-Mailin-Track` no están ahí. Se dejaron en `Mailer.php`
+  por si algún día las respeta.
+- **Subdominio con marca** (`mail.envios` + `r.mail.envios` + `img.mail.envios`):
+  los CNAME verifican en verde en Brevo, pero los correos transaccionales siguen
+  usando `sendibt3.com`.
+
+**Lo que queda:** ticket a Brevo pidiendo (a) desactivar rastreo en transaccional,
+(b) que el subdominio con marca aplique, (c) quitar `List-Unsubscribe` — un
+correo que el cliente pidió no debería traer botón de baja; si lo aprieta, Brevo
+lo bloquea y deja de recibir sus cotizaciones.
+
+**Si Brevo dice que no: Amazon SES.** Relay puro, no reescribe nada. Son cuatro
+constantes en `config.php`.
+
+Proporción: el correo **funciona**. El cliente da clic, llega a su cotización, el
+Radar lo cuenta, y el enlace real va escrito en el cuerpo. Es un problema de
+apariencia, no de función.
+
+### Pendientes técnicos de esta sesión
+
+1. **Firewall**: 443 solo a rangos de Cloudflare, **80 abierto**. El 80 es para
+   las renovaciones HTTP-01 de los dominios de OnTime — cerrarlo mata los
+   certificados en ~60 días y nadie lo relacionaría con esto.
+2. **Medir si alguna petición pasa de 100 s** — Cloudflare Free corta ahí con
+   error 524. Subir `max_execution_time` no ayuda: el corte es del proxy. El
+   arreglo de fondo es sacar `Radar::recalcular_empresa()` del camino de la
+   petición.
+3. **`Full` → `Full (strict)`** cuando lo del firewall esté decidido. Se dejó en
+   `Full` a propósito: si un certificado del origen venciera, se ve una
+   advertencia en vez de tumbar las tres sucursales con error 526.
+4. **Una fila rara en `escudo_log`** (14:23 del 2 sep) guardó una IP de
+   Cloudflare cuando `ip_real()` debería haber devuelto la real. Fue una sola
+   vez, en la ventana de transición antes de recargar nginx, y ningún
+   `cliente_real` quedó con IP de Cloudflare. En observación.
+5. **`log_format` de nginx no incluye `$host`** — no se puede distinguir en el
+   log una visita a `cotiza.cloud` de una a `hermosillo.ontimecocinas.com`. Costó
+   tiempo durante el diagnóstico.
