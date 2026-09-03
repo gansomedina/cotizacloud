@@ -39,6 +39,13 @@ echo "\n1) LA HOJA DEL EDITOR TIENE QUIÉN LA ABRA\n";
 // El bug original: la función existía y nadie la llamaba.
 chk('openUrlOverlay() está definida',   str_contains($ver, 'function openUrlOverlay('));
 chk('y ALGO la llama',                  (bool)preg_match('/onclick="openUrlOverlay\(\)"/', $ver));
+// "Marcar como enviada" se quitó: crear.php inserta las cotizaciones ya como
+// 'enviada' y nada las deja en borrador, así que el botón pedía confirmación,
+// recargaba y dejaba todo igual. Se fue con su función — dejar la función
+// huérfana es exactamente el error que produjo lo de openUrlOverlay.
+chk('el botón "Marcar como enviada" ya no existe',
+    (bool)preg_match('/>\s*Marcar como enviada\s*</u', $ver), false);
+chk('y su función tampoco',             str_contains($ver, 'function enviarCotizacion('), false);
 
 echo "\n2) LOS DOS LUGARES OFRECEN WHATSAPP Y CORREO\n";
 chk('editor: enlace de WhatsApp',       str_contains($ver, 'https://wa.me/'));
