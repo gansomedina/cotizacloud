@@ -579,41 +579,50 @@ class RitmoReporte
      * entre columnas — leer media lista arriba a la derecha y la otra media
      * abajo a la izquierda es peor que gastar una hoja.
      *
+     * NO se oculta ni se recorta ninguna frase: el papel dice exactamente lo
+     * mismo que la pantalla. Un intento anterior escondía la nota metodológica
+     * para ganar tres renglones — ganar espacio borrando contenido no es ganar.
+     *
      * Un reporte con muchos casos concretos puede seguir yéndose a 2 hojas. Es
      * a propósito: preferimos eso a encoger la letra hasta que no se lea.
      */
     public static function css_impresion(): string
     {
         return <<<'CSS'
-@page{margin:9mm}
+@page{margin:8mm}
 /* Dos columnas: es la palanca grande. El encabezado y las píldoras cruzan
    ambas para que el nombre y el score sigan mandando la hoja. */
-#rt-body{columns:2;column-gap:8mm}
+#rt-body{columns:2;column-gap:7mm}
 .rr-hd,.rr-dims{column-span:all}
-/* La nota metodológica es para pantalla; en papel se lleva 3 renglones. */
-.rr-note{display:none}
 /* Nada se parte entre columnas ni entre hojas. */
 .rr-sec,.rr-tip,.rr-consejo,.rr-pil,.rr-foco{break-inside:avoid;page-break-inside:avoid}
 .rr-st{break-after:avoid}
-/* Tipografía compacta */
-.rr-name{font-size:15px}
-.rr-sn{font-size:18px}
-.rr-sl{font-size:8px}
-.rr-dim{font-size:9.5px;padding:2px 7px}
-.rr-sec{margin-bottom:7px}
-.rr-st{font-size:9px;margin-bottom:3px;padding-bottom:2px}
-.rr-list{padding-left:13px}
-.rr-list li{font-size:9.5px;line-height:1.32;margin-bottom:1px}
-.rr-sub{font-size:8.5px}
-.rr-casos{padding-left:12px}
-.rr-pil{font-size:10px;margin:2px 0;gap:6px}
-.rr-dot{width:7px;height:7px}
-.rr-tip,.rr-consejo{padding:7px 9px;margin-bottom:7px;border-radius:7px}
-.rr-tip-h{font-size:9px;margin-bottom:2px}
-.rr-tip-b{font-size:10px;line-height:1.35}
-.rr-foco{padding:6px 9px;margin-bottom:6px}
-.rr-ft{font-size:10.5px}
-.rr-foot{font-size:8px;line-height:1.3;margin-top:6px;column-span:all}
+/* Tipografía compacta. NO se oculta ni se recorta NADA: el papel dice
+   exactamente lo mismo que la pantalla, solo más apretado. */
+.rr-hd{margin-bottom:7px;gap:9px}
+.rr-name{font-size:14px}
+.rr-k{font-size:8.5px}
+.rr-sn{font-size:17px}
+.rr-sl{font-size:7.5px}
+.rr-score{padding:3px 9px}
+.rr-dims{gap:4px;margin-bottom:4px}
+.rr-dim{font-size:9px;padding:1px 6px}
+/* La nota metodológica se conserva: se achica, no se esconde. */
+.rr-note{font-size:8px;line-height:1.3;margin-bottom:7px}
+.rr-sec{margin-bottom:5px}
+.rr-st{font-size:8.5px;margin-bottom:2px;padding-bottom:1px}
+.rr-list{padding-left:11px}
+.rr-list li{font-size:9px;line-height:1.25;margin-bottom:0}
+.rr-sub{font-size:8px}
+.rr-casos{padding-left:10px;margin-top:3px}
+.rr-pil{font-size:9.5px;margin:1px 0;gap:5px}
+.rr-dot{width:6px;height:6px}
+.rr-tip,.rr-consejo{padding:6px 8px;margin-bottom:5px;border-radius:6px}
+.rr-tip-h{font-size:8.5px;margin-bottom:1px}
+.rr-tip-b{font-size:9.5px;line-height:1.3}
+.rr-foco{padding:5px 8px;margin-bottom:5px}
+.rr-ft{font-size:10px}
+.rr-foot{font-size:7.5px;line-height:1.25;margin-top:5px;column-span:all}
 CSS;
     }
 

@@ -335,6 +335,23 @@ chk('el encabezado cruza las dos',     str_contains($rr, 'column-span:all'));
 // que gastar una hoja.
 chk('ninguna sección se parte',        str_contains($rr, 'break-inside:avoid'));
 
+// GANAR ESPACIO BORRANDO CONTENIDO NO ES GANAR. Un intento anterior escondía
+// al imprimir la nota metodológica ("los pilares y el veredicto son los mismos
+// de la tarjeta de Ritmo…") para recuperar tres renglones. El papel tiene que
+// decir EXACTAMENTE lo mismo que la pantalla: se achica, no se esconde.
+require __DIR__ . '/../core/RitmoReporte.php';
+$css = RitmoReporte::css_impresion();
+chk('el CSS impreso no esconde nada',  str_contains(str_replace(' ', '', $css), 'display:none'), false);
+chk('conserva la nota metodológica',   (bool)preg_match('/\.rr-note\{[^}]*font-size/', $css));
+chk('y no la deja en cero',            (bool)preg_match('/\.rr-note\{[^}]*font-size:\s*0/', $css), false);
+// Tampoco vale encoger hasta que no se lea. El texto que el asesor LEE —nota,
+// viñetas, pilares, consejo— no baja de 8px (las etiquetas del encabezado y el
+// pie sí son más chicas, y siempre lo fueron).
+foreach (['.rr-note', '.rr-list li', '.rr-pil', '.rr-tip-b'] as $sel) {
+    preg_match('/' . preg_quote($sel, '/') . '\{[^}]*font-size:\s*([\d.]+)px/', $css, $m2);
+    chk("$sel se lee (>= 8px)", isset($m2[1]) && (float)$m2[1] >= 8.0);
+}
+
 // El dashboard y el panel del supervisor arman la MISMA ventana de impresión
 // por separado. Con el CSS duplicado, mejorar el papel en uno dejaba al otro
 // atrás — que es justo como estaban antes.
