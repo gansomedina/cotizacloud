@@ -569,22 +569,37 @@ class RitmoReporte
      * supervisor arman la misma ventana de impresión por su cuenta. Con el CSS
      * duplicado, mejorar el papel en uno dejaba al otro atrás.
      *
-     * Dos palancas, en este orden:
+     * ¡OJO CON EL PREFIJO `#rt-modal`! El CSS de pantalla escribe todo como
+     * `#rt-modal .rr-x` — un selector con ID. Una regla de clase pelona
+     * (`.rr-x`) NUNCA le gana, por más abajo que vaya. La primera versión de
+     * este CSS estaba sin prefijo y quedó casi entera INERTE: de la compactación
+     * solo entraron las dos columnas y `.rr-list li` (la única sin regla con ID),
+     * que se quedó en 9px mientras el resto seguía en 12-13px. Ese desnivel es
+     * lo que se veía como "títulos grandes y letra chiquita". Toda regla nueva
+     * va prefijada.
+     *
+     * Tres palancas, en este orden:
      *  1. DOS COLUMNAS. El reporte son viñetas cortas: a una columna se
      *     desperdicia media hoja de margen derecho. Es lo que de verdad
-     *     recupera espacio (~2×); la tipografía sola no alcanzaba.
-     *  2. Tipografía compacta y menos aire entre secciones (~1.5× más).
+     *     recupera espacio (~2×).
+     *  2. EL AIRE, no la letra. Márgenes de sección 14→5px, relleno de los
+     *     recuadros 11→6px, sangría de listas 18→11px. Esto es lo que ahora
+     *     permite subir el cuerpo de texto en vez de bajarlo.
+     *  3. Jerarquía pareja: encabezados abajo, cuerpo arriba, todo el texto que
+     *     se lee en 10px. Antes convivían un 9px y un 13px en la misma hoja.
      *
      * `break-inside: avoid` en cada bloque evita que una sección quede partida
      * entre columnas — leer media lista arriba a la derecha y la otra media
      * abajo a la izquierda es peor que gastar una hoja.
      *
+     * Los fondos de color (ámbar del tip, verde del consejo) se quitan al
+     * imprimir: en papel un degradado a toda página es tinta gastada y hace la
+     * letra menos legible. Quedan como recuadros con borde, que es lo que el
+     * fondo estaba señalando.
+     *
      * NO se oculta ni se recorta ninguna frase: el papel dice exactamente lo
      * mismo que la pantalla. Un intento anterior escondía la nota metodológica
      * para ganar tres renglones — ganar espacio borrando contenido no es ganar.
-     *
-     * Un reporte con muchos casos concretos puede seguir yéndose a 2 hojas. Es
-     * a propósito: preferimos eso a encoger la letra hasta que no se lea.
      */
     public static function css_impresion(): string
     {
@@ -593,36 +608,57 @@ class RitmoReporte
 /* Dos columnas: es la palanca grande. El encabezado y las píldoras cruzan
    ambas para que el nombre y el score sigan mandando la hoja. */
 #rt-body{columns:2;column-gap:7mm}
-.rr-hd,.rr-dims{column-span:all}
+#rt-modal .rr-hd,#rt-modal .rr-dims{column-span:all}
 /* Nada se parte entre columnas ni entre hojas. */
-.rr-sec,.rr-tip,.rr-consejo,.rr-pil,.rr-foco{break-inside:avoid;page-break-inside:avoid}
-.rr-st{break-after:avoid}
-/* Tipografía compacta. NO se oculta ni se recorta NADA: el papel dice
-   exactamente lo mismo que la pantalla, solo más apretado. */
-.rr-hd{margin-bottom:7px;gap:9px}
-.rr-name{font-size:14px}
-.rr-k{font-size:8.5px}
-.rr-sn{font-size:17px}
-.rr-sl{font-size:7.5px}
-.rr-score{padding:3px 9px}
-.rr-dims{gap:4px;margin-bottom:4px}
-.rr-dim{font-size:9px;padding:1px 6px}
+#rt-modal .rr-sec,#rt-modal .rr-tip,#rt-modal .rr-consejo,
+#rt-modal .rr-pil,#rt-modal .rr-foco{break-inside:avoid;page-break-inside:avoid}
+#rt-modal .rr-st{break-after:avoid}
+
+/* ── ENCABEZADOS: abajo. En papel no compiten con nada, no necesitan gritar. */
+#rt-modal .rr-hd{margin-bottom:6px;gap:9px}
+#rt-modal .rr-name{font-size:13px}
+#rt-modal .rr-k{font-size:7.5px}
+#rt-modal .rr-sn{font-size:16px}
+#rt-modal .rr-sl{font-size:7px}
+#rt-modal .rr-score{padding:3px 9px}
+#rt-modal .rr-st,#rt-modal .rr-tip-h,#rt-modal .rr-consejo .rr-st{font-size:8.5px}
+#rt-modal .rr-st{margin-bottom:2px;padding-bottom:1px}
+#rt-modal .rr-tip-h{margin-bottom:2px}
+
+/* ── CUERPO: arriba y parejo. Todo lo que se LEE va en 10px; antes convivían
+      viñetas de 9px con píldoras de 13px en la misma hoja. */
+#rt-modal .rr-list li,
+#rt-modal .rr-consejo .rr-list li,
+#rt-modal .rr-pil,
+#rt-modal .rr-tip-b{font-size:10px;line-height:1.35}
+#rt-modal .rr-ft{font-size:11px}
+#rt-modal .rr-casos li,#rt-modal .rr-sub{font-size:9.5px;line-height:1.3}
 /* La nota metodológica se conserva: se achica, no se esconde. */
-.rr-note{font-size:8px;line-height:1.3;margin-bottom:7px}
-.rr-sec{margin-bottom:5px}
-.rr-st{font-size:8.5px;margin-bottom:2px;padding-bottom:1px}
-.rr-list{padding-left:11px}
-.rr-list li{font-size:9px;line-height:1.25;margin-bottom:0}
-.rr-sub{font-size:8px}
-.rr-casos{padding-left:10px;margin-top:3px}
-.rr-pil{font-size:9.5px;margin:1px 0;gap:5px}
-.rr-dot{width:6px;height:6px}
-.rr-tip,.rr-consejo{padding:6px 8px;margin-bottom:5px;border-radius:6px}
-.rr-tip-h{font-size:8.5px;margin-bottom:1px}
-.rr-tip-b{font-size:9.5px;line-height:1.3}
-.rr-foco{padding:5px 8px;margin-bottom:5px}
-.rr-ft{font-size:10px}
-.rr-foot{font-size:7.5px;line-height:1.25;margin-top:5px;column-span:all}
+#rt-modal .rr-note{font-size:9px;line-height:1.3;margin-bottom:6px}
+/* El pie NO cruza las columnas. Cuando lo hacía se llevaba él solo una hoja
+   entera: un elemento que atraviesa ambas columnas no puede arrancar a media
+   página, así que si las columnas ya llegaron abajo, se va completo a la
+   siguiente. Una sola línea generaba la segunda hoja. Fluye en la columna. */
+#rt-modal .rr-foot{font-size:8px;line-height:1.3;margin-top:5px;column-span:none}
+#rt-modal .rr-dim{font-size:9px;padding:1px 6px}
+
+/* ── EL AIRE: de aquí sale la hoja que se ahorra, no de la letra. */
+#rt-modal .rr-dims{gap:4px;margin-bottom:5px}
+#rt-modal .rr-sec{margin-bottom:6px}
+#rt-modal .rr-list{padding-left:11px}
+#rt-modal .rr-list li{margin:0}
+#rt-modal .rr-casos{padding-left:12px;margin-top:2px}
+#rt-modal .rr-casos li{margin:0}
+#rt-modal .rr-pil{margin:1px 0;gap:6px}
+#rt-modal .rr-dot{width:7px;height:7px}
+#rt-modal .rr-foco{padding:5px 8px;margin-bottom:6px}
+
+/* ── RECUADROS, NO FONDOS. En papel el degradado a toda página es tinta
+      gastada y le quita contraste a la letra. El borde dice lo mismo. */
+#rt-modal .rr-tip,#rt-modal .rr-consejo{
+  background:none;padding:6px 9px;margin-bottom:6px;border-radius:6px}
+#rt-modal .rr-tip{border:1px solid #c9a227}
+#rt-modal .rr-consejo{border:1px solid #1a5c38}
 CSS;
     }
 

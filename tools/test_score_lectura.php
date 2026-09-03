@@ -342,14 +342,70 @@ chk('ninguna sección se parte',        str_contains($rr, 'break-inside:avoid'))
 require __DIR__ . '/../core/RitmoReporte.php';
 $css = RitmoReporte::css_impresion();
 chk('el CSS impreso no esconde nada',  str_contains(str_replace(' ', '', $css), 'display:none'), false);
-chk('conserva la nota metodológica',   (bool)preg_match('/\.rr-note\{[^}]*font-size/', $css));
-chk('y no la deja en cero',            (bool)preg_match('/\.rr-note\{[^}]*font-size:\s*0/', $css), false);
-// Tampoco vale encoger hasta que no se lea. El texto que el asesor LEE —nota,
-// viñetas, pilares, consejo— no baja de 8px (las etiquetas del encabezado y el
-// pie sí son más chicas, y siempre lo fueron).
-foreach (['.rr-note', '.rr-list li', '.rr-pil', '.rr-tip-b'] as $sel) {
-    preg_match('/' . preg_quote($sel, '/') . '\{[^}]*font-size:\s*([\d.]+)px/', $css, $m2);
-    chk("$sel se lee (>= 8px)", isset($m2[1]) && (float)$m2[1] >= 8.0);
+
+/** Resuelve el font-size final de un selector, como lo haría el navegador. */
+function css_fs(string $css, string $sel): ?float {
+    $out = null;
+    foreach (explode('}', $css) as $blk) {
+        $p = explode('{', $blk, 2);
+        if (count($p) < 2) continue;
+        $hit = false;
+        foreach (explode(',', $p[0]) as $s) {
+            if (preg_match('/(^|\s)' . preg_quote($sel, '/') . '$/', trim($s))) { $hit = true; break; }
+        }
+        if ($hit && preg_match('/font-size:\s*([\d.]+)px/', $p[1], $m)) $out = (float)$m[1];
+    }
+    return $out;
+}
+
+// EL PREFIJO NO ES COSMÉTICO. La pantalla escribe `#rt-modal .rr-x` — con ID.
+// Una regla de clase pelona no le gana NUNCA, y así estuvo: la compactación
+// quedó inerte salvo las columnas, y `.rr-list li` (la única sin regla con ID)
+// se fue sola a 9px mientras el resto seguía en 13px. Ese desnivel era el
+// "títulos grandes, letra chiquita" que se veía en el PDF.
+$pelonas = [];
+foreach (explode('}', $css) as $blk) {
+    $p = explode('{', $blk, 2);
+    if (count($p) < 2) continue;
+    foreach (explode(',', $p[0]) as $s) {
+        $s = trim(preg_replace('#/\*.*?\*/#s', '', $s));
+        if (str_starts_with($s, '.rr-')) $pelonas[] = $s;
+    }
+}
+chk('ninguna regla sin #rt-modal (perdería)', $pelonas, []);
+
+// GANAR ESPACIO BORRANDO CONTENIDO NO ES GANAR: la nota se achica, no se va.
+chk('conserva la nota metodológica',   css_fs($css, '.rr-note') !== null);
+// Jerarquía pareja: el cuerpo por ENCIMA de los encabezados de sección, y todo
+// lo que se lee al mismo tamaño. Antes convivían un 9px y un 13px en la hoja.
+$cuerpo = ['.rr-list li', '.rr-pil', '.rr-tip-b', '.rr-note'];
+foreach ($cuerpo as $sel) chk("$sel se lee (>= 9px)", (float)css_fs($css, $sel) >= 9.0);
+chk('las viñetas superan al título de sección',
+    (float)css_fs($css, '.rr-list li') > (float)css_fs($css, '.rr-st'));
+chk('el nombre ya no grita (<= 14px)', (float)css_fs($css, '.rr-name') <= 14.0);
+chk('viñetas, píldoras y tip miden igual',
+    count(array_unique(array_map(fn($s) => css_fs($css, $s), ['.rr-list li', '.rr-pil', '.rr-tip-b']))), 1);
+
+// EL PIE NO CRUZA LAS COLUMNAS. Cuando lo hacía se llevaba una hoja entera él
+// solo: un elemento que atraviesa ambas columnas no arranca a media página, y
+// si las columnas ya llegaron abajo se va completo a la siguiente. La segunda
+// hoja del reporte de Manuel tenía UNA línea: este pie.
+preg_match('/\.rr-foot\{([^}]*)\}/', $css, $mf);
+chk('el pie no cruza las columnas', str_contains($mf[1] ?? '', 'column-span:all'), false);
+// El encabezado sí debe cruzarlas: va arriba, donde siempre hay hoja.
+chk('el encabezado sí las cruza',   (bool)preg_match('/\.rr-hd[^{]*\{[^}]*column-span:all/', $css));
+
+// RECUADROS, NO FONDOS: en papel el degradado a toda página es tinta gastada y
+// le baja el contraste a la letra. El borde señala lo mismo.
+foreach (['.rr-tip', '.rr-consejo'] as $caja) {
+    preg_match('/' . preg_quote($caja, '/') . '[^{]*\{([^}]*)\}/', $css, $mb);
+    $todo = '';
+    foreach (explode('}', $css) as $blk) {
+        $p = explode('{', $blk, 2);
+        if (count($p) === 2 && preg_match('/(^|\s)' . preg_quote($caja, '/') . '(,|$)/', $p[0] . ',')) $todo .= $p[1] . ';';
+    }
+    chk("$caja imprime sin fondo",  str_contains(str_replace(' ', '', $todo), 'background:none'));
+    chk("$caja queda como recuadro", (bool)preg_match('/border:\s*1px/', $todo));
 }
 
 // El dashboard y el panel del supervisor arman la MISMA ventana de impresión
