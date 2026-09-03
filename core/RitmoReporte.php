@@ -59,6 +59,7 @@ class RitmoReporte
             'nombre' => $nombre, 'win' => $win, 'card' => $card,
             'score'  => self::_score($asesor_id, $empresa_id),
             'bench_ticket' => self::_bench_ticket($empresa_id),
+            'hist'   => self::_historial($empresa_id, $asesor_id),
             'desc'   => self::_descartes($empresa_id, $asesor_id, $win, $rapido_dias),
             'vent'   => self::_ventas($empresa_id, $asesor_id, $win),
             'mesa'   => self::_mesa($empresa_id, $asesor_id),
@@ -117,6 +118,9 @@ class RitmoReporte
         catch (Throwable $e) { $r = null; }
         if (!$r) return null;
         return [
+            // Fila completa: ScoreLectura la necesita para traducir cada
+            // dimensión con su dato crudo (mesa_pedidas, health_up, tips_score…).
+            'row'   => $r,
             'score' => (int)($r['score'] ?? 0), 'nivel' => (string)($r['nivel'] ?? ''),
             'dim' => [
                 'Activación'   => (float)($r['s_activacion'] ?? 0),
@@ -131,6 +135,52 @@ class RitmoReporte
             // vez de felicitar al asesor junto a su propio número en rojo.
             'dormidas' => (int)($r['cot_dormidas'] ?? 0),
         ];
+    }
+
+    /**
+     * Hoy contra su propio historial, desde score_diario.
+     *
+     * Dos cosas que hay que saber para leer esto bien, y que el reporte dice:
+     *  · score_diario guarda el MÁXIMO del día (decisión CEO), no el cierre.
+     *    La serie es optimista por diseño — consistente, pero no es el promedio
+     *    real del asesor.
+     *  · No hay cron: la foto se guarda cuando alguien abre el dashboard o el
+     *    radar. Un día sin foto significa "nadie entró", NO "día malo". Por eso
+     *    se devuelve `dias`: con menos de 10 de 30, no hay tendencia que leer.
+     */
+    private static function _historial(int $eid, int $uid, int $dias = 30): array
+    {
+        $vacio = ['prom'=>null, 'dias'=>0, 'peor'=>null, 'mejor'=>null, 'dim'=>null];
+        try {
+            $r = DB::row(
+                "SELECT ROUND(AVG(score),1) AS prom, COUNT(*) AS dias,
+                        MIN(score) AS peor, MAX(score) AS mejor,
+                        AVG(s_activacion) AS a, AVG(s_engagement) AS e,
+                        AVG(s_seguimiento) AS s, AVG(s_radar_health) AS h,
+                        AVG(s_conversion) AS c,
+                        SUM(s_engagement > 0 OR s_radar_health > 0) AS con_5dim
+                   FROM score_diario
+                  WHERE usuario_id=? AND empresa_id=?
+                    AND fecha >= CURDATE() - INTERVAL ? DAY",
+                [$uid, $eid, $dias]
+            );
+        } catch (Throwable $e) { return $vacio; }
+
+        if (!$r || (int)$r['dias'] === 0) return $vacio;
+
+        // Las dimensiones por historial solo se pueden comparar desde que la
+        // migración add_historial_5_dimensiones.sql existe. Antes de eso,
+        // engagement y radar health se guardaban en 0 — promediar esos ceros
+        // diría "cayó" cuando en realidad no se medía. Se exige al menos la
+        // mitad de las fotos con las 5 dimensiones para mostrar la comparación.
+        $dim = ((int)$r['con_5dim'] >= (int)$r['dias'] / 2) ? [
+            'activacion'   => (float)$r['a'], 'engagement'   => (float)$r['e'],
+            'seguimiento'  => (float)$r['s'], 'radar_health' => (float)$r['h'],
+            'conversion'   => (float)$r['c'],
+        ] : null;
+
+        return ['prom'=>(float)$r['prom'], 'dias'=>(int)$r['dias'],
+                'peor'=>(int)$r['peor'], 'mejor'=>(int)$r['mejor'], 'dim'=>$dim];
     }
 
     // Descartes de la ventana — MISMO UNION que la tarjeta (mesa postura
@@ -298,6 +348,61 @@ class RitmoReporte
     {
         $card = $d['card']; $de = $d['desc']; $ve = $d['vent']; $m = $d['mesa']; $rd = $d['radar'];
 
+        // ── Score: cómo va, qué significan sus 5 números, y qué le falta ──
+        // Las clases de core/ se cargan desde el config.php del servidor; el
+        // guard es el mismo patrón que ya se usa con Radar más arriba.
+        if (!class_exists('ScoreLectura')) require_once __DIR__ . '/ScoreLectura.php';
+
+        $comovas = []; $cinco = []; $brecha = [];
+        $sc = $d['score'] ?? null;
+        $hi = $d['hist']  ?? ['prom'=>null,'dias'=>0,'peor'=>null,'mejor'=>null];
+
+        if ($sc && !empty($sc['row'])) {
+            $row   = $sc['row'];
+            $score = (int)$sc['score'];
+            $banda = ScoreLectura::banda($score);
+            $tend  = ScoreLectura::tendencia($score, $hi['prom'], (int)$hi['dias'], $hi['peor'], $hi['mejor']);
+
+            // ── Cómo vas ──
+            $comovas[] = "Score {$score} de 100 — {$banda['txt']}. El estándar esperado es "
+                       . ScoreLectura::ESTANDAR . ", y abajo de " . ScoreLectura::PISO . " es zona crítica.";
+            $comovas[] = $tend['txt'];
+            $comovas[] = ScoreLectura::veredicto($score, $tend['clave']);
+
+            // ── Tus cinco números, en palabras ──
+            foreach (ScoreLectura::dimensiones($row) as $dim) {
+                $cinco[] = "{$dim['label']} {$dim['pct']}% — {$dim['frase']}";
+                // Activación es la única que se parte: el mismo número puede
+                // significar "no abren tus cotizaciones" o "no lees tu
+                // diagnóstico", que son consejos opuestos.
+                if (!empty($dim['partes'])) {
+                    foreach ($dim['partes'] as $p) {
+                        $cinco[] = "  {$p['label']}: {$p['pct']}%";
+                    }
+                }
+                if (!empty($dim['crudo']))  $cinco[] = "  ({$dim['crudo']})";
+                // La alerta es lo que evita felicitar a alguien por un número
+                // que subió por ausencia de datos.
+                if (!empty($dim['alerta'])) $cinco[] = "  ⚠ {$dim['alerta']}";
+            }
+
+            // ── Qué te falta para el estándar ──
+            $br = ScoreLectura::brecha($row);
+            if ($br['faltan'] > 0) {
+                $brecha[] = "Te faltan {$br['faltan']} puntos para llegar a {$br['meta']}.";
+                $top = array_slice($br['oportunidades'], 0, 3);
+                foreach ($top as $o) {
+                    if ($o['puntos'] < 0.5) continue;
+                    $lbl = ['activacion'=>'Activación','engagement'=>'Engagement','seguimiento'=>'Seguimiento',
+                            'radar_health'=>'Radar Health','conversion'=>'Conversión'][$o['clave']] ?? $o['clave'];
+                    $brecha[] = "  {$lbl}: está en {$o['actual']}%. Llevarla al 100% vale ~{$o['puntos']} puntos.";
+                }
+                $brecha[] = "Los puntos son estimados; el orden de las oportunidades no — de arriba abajo es donde más ganas por el mismo esfuerzo.";
+            } else {
+                $brecha[] = "Ya estás en el estándar de {$br['meta']}. Aquí el trabajo es sostenerlo, no subirlo.";
+            }
+        }
+
         // Embudo = los 5 pilares EXACTOS de la tarjeta (estado + texto).
         $emb = [];
         if ($card) {
@@ -435,7 +540,8 @@ class RitmoReporte
                 : "Recuperar el ritmo de citas de la semana.";
         if (!$meta) $meta[]="Sostener el ritmo: mesa al día y seguir cerrando.";
 
-        return ['resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'precio'=>$prc,'consejo'=>$cons,'meta'=>$meta];
+        return ['comovas'=>$comovas,'cinco'=>$cinco,'brecha'=>$brecha,
+                'resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'precio'=>$prc,'consejo'=>$cons,'meta'=>$meta];
     }
 
     private static function _money(float $n): string { return '$' . number_format($n, 0, '.', ','); }
@@ -448,7 +554,16 @@ class RitmoReporte
         $h  = '<div class="rr">';
         $h .= '<div class="rr-hd"><div><div class="rr-k">Reporte de asesor · ventana ' . (int)$d['win'] . ' días</div>'
             . '<div class="rr-name">' . e($d['nombre']) . '</div></div>';
-        if ($sc) $h .= '<div class="rr-score"><div class="rr-sn">' . (int)$sc['score'] . '</div><div class="rr-sl">' . e(ucfirst($sc['nivel'])) . '</div></div>';
+        // La etiqueta es la BANDA del estándar (85/70/60), no el ENUM `nivel`
+        // del código (86/61/31). Mostrar el ENUM aquí le daría al mismo asesor
+        // dos veredictos distintos: "Activo" en el dashboard y "debajo del
+        // estándar" en su reporte. Ver ScoreLectura::banda().
+        if ($sc) {
+            if (!class_exists('ScoreLectura')) require_once __DIR__ . '/ScoreLectura.php';
+            $bnd = ScoreLectura::banda((int)$sc['score']);
+            $h .= '<div class="rr-score"><div class="rr-sn" style="color:' . $bnd['color'] . '">' . (int)$sc['score'] . '</div>'
+                . '<div class="rr-sl">' . e($bnd['txt']) . '</div></div>';
+        }
         $h .= '</div>';
         if ($sc) {
             $h .= '<div class="rr-dims">';
@@ -484,8 +599,13 @@ class RitmoReporte
             $emb .= '</div>';
         }
 
+        // Orden de lectura para el asesor: primero cómo va y qué significa su
+        // score, luego los pilares, y solo después los casos concretos.
+        $h .= $sec('Cómo vas', $s['comovas'] ?? []);
         $h .= $sec('Resumen', $s['resumen']);
         $h .= $emb;
+        $h .= $sec('Tus cinco números, en palabras', $s['cinco'] ?? []);
+        $h .= $sec('Qué te falta para el estándar', $s['brecha'] ?? []);
         $h .= $sec('Casos para revisar', $s['casos']);
         $h .= $sec('Objeción por precio', $s['precio']);
         $h .= $sec('Calidad de cierre', $s['calidad']);
