@@ -18,8 +18,12 @@
 --  se corren (el código tolera que las columnas no existan).
 -- ============================================================
 
+--  IF NOT EXISTS: se puede correr dos veces sin error. En un deploy es fácil
+--  perder la cuenta de qué migración ya se aplicó, y una que revienta a medias
+--  deja la base en un estado a medias.
+
 ALTER TABLE `clientes`
-    ADD COLUMN `telefono_empresa` VARCHAR(30) NULL AFTER `telefono`;
+    ADD COLUMN IF NOT EXISTS `telefono_empresa` VARCHAR(30) NULL AFTER `telefono`;
 
 ALTER TABLE `empresas`
-    ADD COLUMN `lada_pais` VARCHAR(4) NOT NULL DEFAULT '52';
+    ADD COLUMN IF NOT EXISTS `lada_pais` VARCHAR(4) NOT NULL DEFAULT '52';
