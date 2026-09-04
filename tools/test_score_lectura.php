@@ -337,7 +337,14 @@ chk('y va fuera de los cinco números',
 foreach (['total > 0', 'suspendida = 0', "estado != 'borrador' OR c.visitas > 0", 'HAVING n > 20'] as $filtro) {
     chk("cuenta como el score: $filtro", str_contains($rc, $filtro));
 }
-chk('la vara excluye la semana en curso', str_contains($rc, "c.created_at <  NOW() - INTERVAL 7 DAY"));
+chk('la vara excluye la semana en curso', str_contains($rc, "c.created_at <  CURDATE() - INTERVAL 6 DAY"));
+// La ventana va anclada a DÍAS COMPLETOS. Con NOW() - INTERVAL 7 DAY era una
+// ventana rodante de 7×24 horas que abarcaba OCHO fechas: los dos viernes en
+// la lista, y "Estuviste 8 de 7 días" en la frase.
+// Se mira el SQL, no el archivo entero: el comentario que explica el bug cita
+// la forma vieja a propósito.
+chk('la ventana son 7 fechas, no 7x24h',
+    (bool)preg_match('/created_at\s*[<>]=?\s*NOW\(\)/', $rc), false);
 // Un bajón solo se le reclama a quien estuvo. No hay bandera de vacaciones en
 // el sistema, así que esto es lo más cerca que se puede estar de la verdad.
 chk('la ausencia no se lee como bajón',   str_contains($rc, 'dias_señal < self::DIAS_MIN'));

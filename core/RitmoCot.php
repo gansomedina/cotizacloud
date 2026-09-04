@@ -46,6 +46,15 @@ class RitmoCot
      *  qué días trabaja. Con menos, no hay hábito que leer. */
     private const DOW_MIN     = 3;
 
+    /* LA VENTANA VA ANCLADA A DÍAS COMPLETOS: `CURDATE() - INTERVAL 6 DAY`, o
+     * sea hoy y los seis anteriores. Con `NOW() - INTERVAL 7 DAY` era una
+     * ventana rodante de 7×24 horas que abarcaba OCHO fechas distintas: un
+     * viernes a las 8:08 cortaba en el viernes anterior a las 8:08, y la lista
+     * de días salía con los dos viernes. Peor: `dias_señal` podía llegar a 8 y
+     * la frase decía "Estuviste 8 de 7 días", que se lee como un error porque
+     * lo es. La vara (28 días) se movió igual, para que no se pierdan ni se
+     * dupliquen filas en la frontera. */
+
     /**
      * Los MISMOS filtros que usa el score para contar cotizaciones
      * (ActividadScore::calcular, "cot_asignadas"). Si aquí contáramos distinto,
@@ -102,11 +111,11 @@ class RitmoCot
                 "SELECT COUNT(*) FROM (
                     SELECT DATE(created_at) AS d FROM actividad_log
                      WHERE usuario_id = ? AND tipo IN ('radar_view','quote_view','client_view')
-                       AND created_at >= NOW() - INTERVAL 7 DAY
+                       AND created_at >= CURDATE() - INTERVAL 6 DAY
                     UNION
                     SELECT DATE(created_at) AS d FROM cotizaciones
                      WHERE empresa_id = ? AND COALESCE(vendedor_id, usuario_id) = ?
-                       AND created_at >= NOW() - INTERVAL 7 DAY
+                       AND created_at >= CURDATE() - INTERVAL 6 DAY
                  ) x",
                 [$uid, $eid, $uid]
             );
@@ -218,7 +227,7 @@ class RitmoCot
                    FROM actividad_log a
                   WHERE a.usuario_id = ?
                     AND a.tipo IN ('radar_view','quote_view','client_view')
-                    AND a.created_at >= NOW() - INTERVAL 7 DAY
+                    AND a.created_at >= CURDATE() - INTERVAL 6 DAY
                     AND NOT EXISTS (
                         SELECT 1 FROM cotizaciones c
                          WHERE c.empresa_id = ? AND COALESCE(c.vendedor_id, c.usuario_id) = ?
@@ -291,14 +300,14 @@ class RitmoCot
             // gratis de las filas que ya se están leyendo.
             $r = DB::row(
                 "SELECT
-                    SUM(c.created_at >= NOW() - INTERVAL 7 DAY) AS n7,
-                    SUM(c.created_at >= NOW() - INTERVAL 7 DAY AND c.visitas > 0) AS ab7,
-                    SUM(c.created_at <  NOW() - INTERVAL 7 DAY) AS nbase,
+                    SUM(c.created_at >= CURDATE() - INTERVAL 6 DAY) AS n7,
+                    SUM(c.created_at >= CURDATE() - INTERVAL 6 DAY AND c.visitas > 0) AS ab7,
+                    SUM(c.created_at <  CURDATE() - INTERVAL 6 DAY) AS nbase,
                     MAX(DATE(c.created_at)) AS ultima,
                     GROUP_CONCAT(DISTINCT DAYOFWEEK(c.created_at)) AS dows
                  FROM cotizaciones c
                  WHERE $w $no_imp
-                   AND c.created_at >= NOW() - INTERVAL " . (7 + 7 * self::SEMANAS_BASE) . " DAY",
+                   AND c.created_at >= CURDATE() - INTERVAL " . (6 + 7 * self::SEMANAS_BASE) . " DAY",
                 [$empresa_id, $usuario_id]
             );
         } catch (Throwable $e) { return $vacio; }
@@ -354,7 +363,7 @@ class RitmoCot
                                        AND v.estado <> 'cancelada' AND v.pagado > 0)) AS cerradas
                    FROM cotizaciones c
                   WHERE $w $no_imp
-                    AND c.created_at >= NOW() - INTERVAL " . (7 * $semanas) . " DAY
+                    AND c.created_at >= CURDATE() - INTERVAL " . (7 * $semanas - 1) . " DAY
                   GROUP BY YEARWEEK(c.created_at, 1)
                   ORDER BY semana DESC",
                 [$empresa_id, $usuario_id]
