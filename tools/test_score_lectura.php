@@ -320,6 +320,32 @@ chk('y explica de dónde viene el número',    str_contains($eb['frase'], 'no ha
 $eok = dim(['s_engagement'=>0.89,'ventas_periodo'=>4,'ventas_sin_pago'=>0,'bench_ventas'=>3.5], 'engagement');
 chk('al que sí vende, se le reconoce',       str_contains($eok['frase'], 'Cobras lo que vendes'));
 
+echo "\n14b) EL RITMO DE COTIZACIONES INFORMA, NO CALIFICA\n";
+// Es la única sección del reporte que NO sale del score. Si algún día alguien
+// la mete a una dimensión, el asesor tendría motivo para cotizar cualquier
+// cosa: más cotizaciones sin cerrar ya bajan Conversión, así que premiarlas
+// crearía dos fuerzas opuestas sobre el mismo número.
+$rc   = (string)file_get_contents(__DIR__ . '/../core/RitmoCot.php');
+$rrep = (string)file_get_contents(__DIR__ . '/../core/RitmoReporte.php');
+$act  = (string)file_get_contents(__DIR__ . '/../core/ActividadScore.php');
+chk('el score NO conoce el ritmo',   str_contains($act, 'RitmoCot'), false);
+chk('el reporte sí lo muestra',      str_contains($rrep, "\$sec('Ritmo de cotizaciones'"));
+chk('y va fuera de los cinco números',
+    strpos($rrep, "\$sec('Ritmo de cotizaciones'") < strpos($rrep, "'Tus cinco números, en palabras'"));
+// Cuenta con los MISMOS filtros que cot_asignadas del score: contar distinto
+// daría dos verdades para el mismo asesor en la misma hoja.
+foreach (['total > 0', 'suspendida = 0', "estado != 'borrador' OR c.visitas > 0", 'HAVING n > 20'] as $filtro) {
+    chk("cuenta como el score: $filtro", str_contains($rc, $filtro));
+}
+chk('la vara excluye la semana en curso', str_contains($rc, "c.created_at <  NOW() - INTERVAL 7 DAY"));
+// Un bajón solo se le reclama a quien estuvo. No hay bandera de vacaciones en
+// el sistema, así que esto es lo más cerca que se puede estar de la verdad.
+chk('la ausencia no se lee como bajón',   str_contains($rc, 'dias_señal < self::DIAS_MIN'));
+chk('y cotizar cuenta como día trabajado',
+    str_contains($rc, 'UNION') && str_contains($rc, 'actividad_log'));
+// Volumen alto sin apertura es regar, no prospectar.
+chk('el volumen alto no se aplaude solo', str_contains($rc, 'ninguna la ha abierto'));
+
 echo "\n15) EL REPORTE IMPRESO CABE EN UNA HOJA\n";
 // El reporte creció con las tres secciones nuevas y salía en 3 hojas.
 $rr  = (string)file_get_contents(__DIR__ . '/../core/RitmoReporte.php');

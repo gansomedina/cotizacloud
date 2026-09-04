@@ -64,6 +64,11 @@ class RitmoReporte
             'vent'   => self::_ventas($empresa_id, $asesor_id, $win),
             'mesa'   => self::_mesa($empresa_id, $asesor_id),
             'radar'  => self::_radar($empresa_id, $asesor_id, $win),
+            // Ritmo de cotizaciones: informativo, NO pesa en el score. Su
+            // ventana es de 7 días contra las 4 semanas anteriores — a
+            // propósito distinta de $win, porque mide cadencia de trabajo y no
+            // maduración de la venta.
+            'ritmo'  => self::_ritmo_cot($empresa_id, $asesor_id),
         ];
     }
 
@@ -296,6 +301,19 @@ class RitmoReporte
             $o['con_dto']=(int)($r['con_dto']??0); $o['sin_dto']=(int)($r['sin_dto']??0);
         } catch (Throwable $e) {}
         return $o;
+    }
+
+    /**
+     * Ritmo de cotizaciones de la semana. Delega en RitmoCot para que el
+     * reporte del asesor y la tabla del módulo Reportes cuenten con la MISMA
+     * receta: dos fuentes distintas del mismo número acaban dando dos números.
+     */
+    private static function _ritmo_cot(int $eid, int $uid): array
+    {
+        try {
+            if (!class_exists('RitmoCot')) require_once __DIR__ . '/RitmoCot.php';
+            return RitmoCot::semana($eid, $uid);
+        } catch (Throwable $e) { return []; }
     }
 
     private static function _mesa(int $eid, int $uid): array
@@ -555,7 +573,19 @@ class RitmoReporte
                 : "Recuperar el ritmo de citas de la semana.";
         if (!$meta) $meta[]="Sostener el ritmo: mesa al día y seguir cerrando.";
 
-        return ['comovas'=>$comovas,'cinco'=>$cinco,'brecha'=>$brecha,
+        // ── Ritmo de cotizaciones ────────────────────────────────────
+        // Dos renglones como mucho: el reporte está calibrado para UNA hoja y
+        // cada sección gasta ese presupuesto. Devuelve [] cuando no hay nada
+        // honesto que decir, y entonces la sección ni aparece.
+        $ritmo = [];
+        if (!empty($d['ritmo'])) {
+            try {
+                if (!class_exists('RitmoCot')) require_once __DIR__ . '/RitmoCot.php';
+                $ritmo = RitmoCot::frases($d['ritmo']);
+            } catch (Throwable $e) { $ritmo = []; }
+        }
+
+        return ['ritmo'=>$ritmo,'comovas'=>$comovas,'cinco'=>$cinco,'brecha'=>$brecha,
                 'resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'precio'=>$prc,'consejo'=>$cons,'meta'=>$meta];
     }
 
@@ -596,6 +626,13 @@ class RitmoReporte
      * (~2cm) para un reporte algo más largo que ese. Subirlo otro punto lo
      * parte. Si algún día hace falta más letra, el espacio tiene que salir de
      * otro lado (menos aire), nunca de borrar frases.
+     *
+     * Esa holgura ya se gastó una vez: la sección "Ritmo de cotizaciones"
+     * (2 renglones) empujó el reporte a 2 hojas por UN píxel. Se recuperó
+     * bajando el interlineado de 1.35 a 1.3 —el aire entre renglones, no la
+     * letra— que devolvió ~2 renglones. Queda poco margen: la siguiente
+     * sección que se agregue muy probablemente parta la hoja, y ahí la
+     * decisión honesta es aceptar 2 hojas, no encoger el texto.
      *
      * `break-inside: avoid` en cada bloque evita que una sección quede partida
      * entre columnas — leer media lista arriba a la derecha y la otra media
@@ -639,7 +676,7 @@ class RitmoReporte
 #rt-modal .rr-list li,
 #rt-modal .rr-consejo .rr-list li,
 #rt-modal .rr-pil,
-#rt-modal .rr-tip-b{font-size:11px;line-height:1.35}
+#rt-modal .rr-tip-b{font-size:11px;line-height:1.3}
 #rt-modal .rr-ft{font-size:12px}
 #rt-modal .rr-casos li,#rt-modal .rr-sub{font-size:10.5px;line-height:1.3}
 /* La nota metodológica se conserva: se achica, no se esconde. */
@@ -728,6 +765,10 @@ CSS;
         $h .= $sec('Cómo vas', $s['comovas'] ?? []);
         $h .= $sec('Resumen', $s['resumen']);
         $h .= $emb;
+        // Después del embudo: es un dato de cadencia de trabajo, no un caso
+        // concreto. Va aquí y no en los cinco números porque NO pesa en el
+        // score — ponerlo entre las dimensiones lo haría parecer una de ellas.
+        $h .= $sec('Ritmo de cotizaciones', $s['ritmo'] ?? []);
         $h .= $sec('Tus cinco números, en palabras', $s['cinco'] ?? []);
         $h .= $sec('Qué te falta para el estándar', $s['brecha'] ?? []);
         $h .= $sec('Casos para revisar', $s['casos']);
