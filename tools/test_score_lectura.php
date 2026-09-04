@@ -345,6 +345,18 @@ chk('y cotizar cuenta como día trabajado',
     str_contains($rc, 'UNION') && str_contains($rc, 'actividad_log'));
 // Volumen alto sin apertura es regar, no prospectar.
 chk('el volumen alto no se aplaude solo', str_contains($rc, 'ninguna la ha abierto'));
+// EL HUECO es lo que el promedio semanal no ve: tres días sin cotizar a media
+// semana no mueven el promedio hasta que la semana cierra, y para entonces ya
+// no sirve. Se cuenta en días que ÉL trabaja o el lunes marcaría siempre 3.
+chk('mide el hueco desde la última',  str_contains($rc, 'private static function _hueco('));
+chk('en días que él trabaja',         str_contains($rc, 'DAYOFWEEK(c.created_at)'));
+chk('con umbral sacado de su ritmo',  str_contains($rc, 'self::HUECO_VECES'));
+chk('y manda sobre el promedio',      str_contains($rc, 'EL HUECO MANDA'));
+// Las columnas de la tabla salen del calendario: una semana en la que nadie
+// cotizó tiene que aparecer, porque es justo la que hay que ver.
+$rep = (string)file_get_contents(__DIR__ . '/../modules/reportes/index.php');
+chk('las semanas salen del calendario', str_contains($rep, "monday this week"));
+chk('y el histórico arranca en lunes',  str_contains($rc, 'INTERVAL WEEKDAY(c.created_at) DAY'));
 
 echo "\n15) EL REPORTE IMPRESO CABE EN UNA HOJA\n";
 // El reporte creció con las tres secciones nuevas y salía en 3 hojas.

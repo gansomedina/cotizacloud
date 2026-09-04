@@ -260,10 +260,19 @@ if ($es_admin) {
                 'sem'  => RitmoCot::semana($empresa_id, $uid),
                 'hist' => RitmoCot::historico($empresa_id, $uid, 12),
             ];
-            foreach ($ritmo_asesor[$uid]['hist'] as $h) $ritmo_semanas[$h['semana']] = $h['ini'];
         }
-        krsort($ritmo_semanas);                       // de la más reciente a la más vieja
-        $ritmo_semanas = array_slice($ritmo_semanas, 0, 12, true);
+        // Las 12 columnas salen del CALENDARIO, no de los datos. Armadas con
+        // las semanas que aparecen en las cotizaciones, una semana en la que
+        // NADIE cotizó desaparecía de la tabla — y esa es justo la que hay que
+        // ver. Ahora son 12 lunes seguidos, siempre. La clave 'oW' de PHP es
+        // la misma que YEARWEEK(fecha, 1) de MySQL.
+        if ($ritmo_asesor) {
+            $lun = new DateTimeImmutable('monday this week');
+            for ($i = 0; $i < 12; $i++) {
+                $w = $lun->modify("-$i week");
+                $ritmo_semanas[$w->format('oW')] = $w->format('Y-m-d');
+            }
+        }
     } catch (\Throwable $e) { $ritmo_asesor = []; $ritmo_semanas = []; }
 }
 
@@ -1099,10 +1108,11 @@ ob_start();
         <thead>
           <tr>
             <th>Asesor</th>
+            <th class="r">Sin cotizar</th>
             <th class="r">Esta sem.</th>
             <th class="r">Su ritmo</th>
             <?php foreach ($ritmo_semanas as $sem => $ini): ?>
-              <th class="r" style="font-size:10px" title="Semana del <?= e(date('d/M/Y', strtotime($ini))) ?>"><?= e(date('d/M', strtotime($ini))) ?></th>
+              <th class="r" style="font-size:10px" title="Semana del lunes <?= e(date('d/M/Y', strtotime($ini))) ?>"><?= e(date('d/M', strtotime($ini))) ?></th>
             <?php endforeach; ?>
           </tr>
         </thead>
@@ -1121,6 +1131,16 @@ ob_start();
           ?>
           <tr>
             <td><?= e($a['asesor']) ?></td>
+            <?php
+              // El hueco: días DE TRABAJO desde su última cotización. Es la
+              // alarma que el promedio semanal no da — tres días sin cotizar a
+              // media semana no mueven el promedio hasta que la semana cierra.
+              $ds = $rs['dias_sin'];
+            ?>
+            <td class="tbl-num" style="<?= !empty($rs['hueco_alerta']) ? 'color:var(--danger);font-weight:700' : 'color:var(--t3)' ?>"
+                title="<?= $rs['ultima'] ? 'Última cotización: ' . e(date('d/M/Y', strtotime($rs['ultima']))) : 'Sin cotizaciones en el rango' ?><?= $rs['hueco_normal'] ? ' · normalmente cotiza cada ' . e((string)round((float)$rs['hueco_normal'], 1)) . ' días de trabajo' : '' ?>">
+              <?= $ds === null ? '—' : (int)$ds . ($ds === 1 ? ' día' : ' días') ?><?= !empty($rs['hueco_alerta']) ? ' ⚠' : '' ?>
+            </td>
             <td class="tbl-num" style="color:<?= $c ?>;font-weight:700"
                 title="<?= e($et) ?><?= $rs['estado']==='rojo' ? ' · ' . (int)$rs['dias_señal'] . ' de 7 días en el sistema' : '' ?>">
               <?= (int)$rs['n7'] ?><?= $rs['estado']==='rojo' ? ' ▼' : ($rs['estado']==='alto' ? ' ▲' : '') ?>
@@ -1137,10 +1157,15 @@ ob_start();
         </tbody>
       </table>
     </div>
-    <div style="padding:10px 14px;font:400 11px var(--body);color:var(--t3);border-top:1px solid var(--border)">
-      "Su ritmo" es su promedio de las 4 semanas anteriores — la semana en curso no entra en su propio promedio.
-      Cuenta lo mismo que el termómetro: sin borradores nunca vistos, sin suspendidas, sin importaciones masivas.
-      Un bajón solo se marca si el asesor estuvo en el sistema esos días; si no estuvo, aparece en gris.
+    <div style="padding:10px 14px;font:400 11px var(--body);color:var(--t3);border-top:1px solid var(--border);line-height:1.5">
+      <b>Sin cotizar</b> — días <i>de trabajo</i> desde su última cotización, no días de calendario: se cuentan solo
+      los días de la semana en que a ese asesor se le ha visto cotizar, para que el lunes no marque siempre 3 días.
+      Se enciende (⚠) cuando el hueco pasa el triple de lo normal <i>en él</i>: quien cotiza 8 por semana debe hacerlo
+      casi a diario y 3 días es raro; quien cotiza 2, no.<br>
+      <b>Su ritmo</b> — su promedio de las 4 semanas anteriores. La semana en curso no entra en su propio promedio.
+      Un bajón solo se marca si el asesor estuvo en el sistema esos días; si no estuvo, aparece en gris.<br>
+      Las columnas son 12 lunes seguidos, aunque en alguna semana nadie haya cotizado. Cuenta lo mismo que el
+      termómetro: sin borradores nunca vistos, sin suspendidas, sin importaciones masivas.
       Pasa el cursor sobre un número para ver cuántas abrió el cliente y cuántas cerraron.
     </div>
   </div>
