@@ -357,6 +357,13 @@ chk('y manda sobre el promedio',      str_contains($rc, 'EL HUECO MANDA'));
 $rep = (string)file_get_contents(__DIR__ . '/../modules/reportes/index.php');
 chk('las semanas salen del calendario', str_contains($rep, "monday this week"));
 chk('y el histórico arranca en lunes',  str_contains($rc, 'INTERVAL WEEKDAY(c.created_at) DAY'));
+// El encabezado lleva el RANGO: "31/Ago" a secas no decía si la columna era el
+// inicio, el fin o qué semana traía. Y en español: date('M') da "Aug".
+chk('el encabezado dice el rango',      str_contains($rep, "modify('+6 days')"));
+chk('la semana en curso se marca',      str_contains($rep, 'en curso'));
+chk('los meses van en español',         str_contains($rc, "'Aug'=>'Ago'"));
+chk('y nadie imprime date(M) crudo en la tabla',
+    (bool)preg_match("/date\('d\/M'/", $rep), false);
 
 echo "\n15) EL REPORTE IMPRESO CABE EN UNA HOJA\n";
 // El reporte creció con las tres secciones nuevas y salía en 3 hojas.

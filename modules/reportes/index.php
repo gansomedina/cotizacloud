@@ -1111,8 +1111,22 @@ ob_start();
             <th class="r">Sin cotizar</th>
             <th class="r">Esta sem.</th>
             <th class="r">Su ritmo</th>
-            <?php foreach ($ritmo_semanas as $sem => $ini): ?>
-              <th class="r" style="font-size:10px" title="Semana del lunes <?= e(date('d/M/Y', strtotime($ini))) ?>"><?= e(date('d/M', strtotime($ini))) ?></th>
+            <?php
+              // El encabezado lleva el RANGO, no solo el lunes: "31/Ago" a secas
+              // no decía si esa columna era el inicio, el fin o qué semana traía.
+              // La semana en curso se marca aparte — su número va incompleto y
+              // compararlo con las cerradas es comparar peras con manzanas.
+              $sem_hoy = (new DateTimeImmutable('today'))->format('oW');
+              foreach ($ritmo_semanas as $sem => $ini):
+                $l = new DateTimeImmutable($ini);
+                $d = $l->modify('+6 days');
+                $es_hoy = ((string)$sem === $sem_hoy);
+            ?>
+              <th class="r" style="font-size:10px;line-height:1.3;font-weight:600"
+                  title="<?= $es_hoy ? 'Semana en curso: ' : 'Semana del ' ?>lunes <?= e($l->format('d/m/Y')) ?> al domingo <?= e($d->format('d/m/Y')) ?><?= $es_hoy ? ' — todavía no cierra' : '' ?>">
+                <?= e(RitmoCot::fecha_corta($ini)) ?><br>
+                <span style="font-weight:400;color:var(--t3);text-transform:none;letter-spacing:0"><?= $es_hoy ? 'en curso' : 'al ' . e(RitmoCot::fecha_corta($d->format('Y-m-d'))) ?></span>
+              </th>
             <?php endforeach; ?>
           </tr>
         </thead>
@@ -1138,12 +1152,12 @@ ob_start();
               $ds = $rs['dias_sin'];
             ?>
             <td class="tbl-num" style="<?= !empty($rs['hueco_alerta']) ? 'color:var(--danger);font-weight:700' : 'color:var(--t3)' ?>"
-                title="<?= $rs['ultima'] ? 'Última cotización: ' . e(date('d/M/Y', strtotime($rs['ultima']))) : 'Sin cotizaciones en el rango' ?><?= $rs['hueco_normal'] ? ' · normalmente cotiza cada ' . e((string)round((float)$rs['hueco_normal'], 1)) . ' días de trabajo' : '' ?><?php
+                title="<?= $rs['ultima'] ? 'Última cotización: ' . e(RitmoCot::fecha_corta($rs['ultima']) . '/' . date('Y', strtotime($rs['ultima']))) : 'Sin cotizaciones en el rango' ?><?= $rs['hueco_normal'] ? ' · normalmente cotiza cada ' . e((string)round((float)$rs['hueco_normal'], 1)) . ' días de trabajo' : '' ?><?php
                   // Entró al sistema y no salió ninguna. Se enuncia el hecho:
                   // ese día pudo irse en seguimiento o en cerrar una venta.
                   if (!empty($rs['dias_dentro'])) {
                       echo ' · entró sin cotizar: ' . e(implode(', ', array_map(
-                          fn($f) => date('d/M', strtotime($f)), $rs['dias_dentro'])));
+                          fn($f) => RitmoCot::fecha_corta($f), $rs['dias_dentro'])));
                   } ?>">
               <?= $ds === null ? '—' : (int)$ds . ($ds === 1 ? ' día' : ' días') ?><?= !empty($rs['hueco_alerta']) ? ' ⚠' : '' ?>
             </td>
@@ -1170,8 +1184,9 @@ ob_start();
       casi a diario y 3 días es raro; quien cotiza 2, no.<br>
       <b>Su ritmo</b> — su promedio de las 4 semanas anteriores. La semana en curso no entra en su propio promedio.
       Un bajón solo se marca si el asesor estuvo en el sistema esos días; si no estuvo, aparece en gris.<br>
-      Las columnas son 12 lunes seguidos, aunque en alguna semana nadie haya cotizado. Cuenta lo mismo que el
-      termómetro: sin borradores nunca vistos, sin suspendidas, sin importaciones masivas.
+      <b>Las columnas</b> son 12 semanas seguidas de lunes a domingo, aunque en alguna nadie haya cotizado.
+      La primera va marcada <i>en curso</i>: todavía no cierra, así que su número no es comparable con el de las demás.
+      Cuenta lo mismo que el termómetro: sin borradores nunca vistos, sin suspendidas, sin importaciones masivas.
       Pasa el cursor sobre un número para ver cuántas abrió el cliente y cuántas cerraron.
     </div>
   </div>
