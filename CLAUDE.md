@@ -3944,3 +3944,158 @@ apariencia, no de función.
 5. **`log_format` de nginx no incluye `$host`** — no se puede distinguir en el
    log una visita a `cotiza.cloud` de una a `hermosillo.ontimecocinas.com`. Costó
    tiempo durante el diagnóstico.
+
+## Sesión 3-4 septiembre 2026 — Reporte impreso, alta de cliente y Ritmo de cotizaciones
+
+Todo lo de esta sesión va **sin migración**: ninguna tabla ni columna nueva.
+
+### El reporte del asesor en UNA hoja (PRs #1023-#1026, #1032)
+
+**La trampa que costó tres intentos: el CSS de impresión estaba INERTE.**
+La pantalla escribe `#rt-modal .rr-x` —selector con **ID**—; el CSS de
+impresión usaba `.rr-x` a secas, que **no le gana nunca**. De toda la
+compactación solo entraban las dos columnas y `.rr-list li` (la única
+propiedad sin regla con ID), que se iba sola a 9px mientras el resto seguía
+en 12-13px. Ese desnivel es lo que se veía como "títulos grandes, letra
+chiquita". **Toda regla nueva en `RitmoReporte::css_impresion()` va prefijada
+con `#rt-modal`** — la prueba falla si se cuela una sin prefijo.
+
+**La segunda hoja era el pie de página, solo.** 93 caracteres, una línea. Le
+habían puesto `column-span:all`, y un elemento que cruza ambas columnas no
+puede arrancar a media página: si las columnas ya llegaron abajo, se va
+entero a la siguiente. El encabezado sí las cruza (va arriba, donde siempre
+hay hoja); el pie **no**.
+
+**El techo de tamaño está MEDIDO**, renderizando el reporte real de un asesor
+en Chromium a tamaño Carta:
+
+| Cuerpo | Hojas | Llenado |
+|---|---|---|
+| 10px | 1 | 79% |
+| **11px** | **1** | **92%** ← el que quedó |
+| 11.5px | 1 | 96% |
+| 12px | **2** | — |
+
+Después entró la sección "Ritmo de cotizaciones" y empujó a 2 hojas **por un
+píxel**; se recuperó bajando el interlineado de 1.35 a 1.3 (el aire, no la
+letra). **Hoy el reporte va al 99%.** La siguiente sección que se agregue lo
+parte, y ahí la decisión honesta es aceptar 2 hojas, no encoger el texto.
+
+**Regla permanente: no se oculta ni se recorta NINGUNA frase al imprimir.** Un
+intento escondió la nota metodológica con `display:none` para ganar tres
+renglones. Ganar espacio borrando contenido no es ganar. La prueba falla si
+reaparece un `display:none` en ese CSS.
+
+Otros acuerdos: los fondos ámbar (tip) y verde (consejo) **no se imprimen** —
+quedan como recuadros con borde; en papel un degradado a toda página es tinta
+gastada y le baja contraste a la letra.
+
+### Alta de cliente (PRs #1027-#1028)
+
+Los **tres** formularios que dan de alta o editan un cliente van en el mismo
+orden: **Nombre · WhatsApp · Dirección · Correo · Teléfono empresa**. La
+dirección primero porque es el dato que el asesor casi siempre trae a la mano;
+el correo es el que muchas veces no tiene.
+
+- La hoja de la cotización (`cotizaciones/nueva.php`) **no pedía**
+  `telefono_empresa` aunque `clientes/crear.php` siempre lo aceptó — el asesor
+  tenía que salirse a Clientes para capturarlo.
+- En `clientes/ver.php` el WhatsApp y el fijo iban **en dos columnas**, lo que
+  los presentaba como equivalentes cuando no lo son: uno recibe la cotización
+  y el otro no.
+- **El botón de WhatsApp ya no va pintado** (`#dcf8c6`). Él y el de Correo
+  hacen lo mismo —abrir un canal de envío—; pintar uno lo vuelve el camino
+  "correcto" sin que nadie lo haya decidido. **Se CONSERVA** el verde del
+  botón de correo al confirmar el envío: ahí el color significa "salió".
+
+### Ritmo de cotizaciones — `core/RitmoCot.php` (PRs #1029-#1032)
+
+Responde: **¿está cotizando a su ritmo, o se cayó?**
+
+**NO PESA EN EL SCORE, por decisión.** La Conversión ya divide entre
+cotizaciones abiertas, así que cotizar de más YA baja el score; premiando
+además el volumen habría dos fuerzas opuestas sobre el mismo número, y el
+asesor tendría motivo para cotizar cualquier cosa. La prueba lo blinda: falla
+si `ActividadScore` llega a mencionar `RitmoCot`.
+
+| Decisión | Por qué |
+|---|---|
+| La vara es **él mismo** (sus 4 semanas anteriores) | Una empresa de un vendedor no tiene equipo; dos asesores con territorios distintos no cotizan igual aunque trabajen bien |
+| La semana en curso **no entra** en su propio promedio | Si entrara, la semana mala amortiguaría su propia señal (principio de `close_rate_hist`) |
+| Mismos filtros que `cot_asignadas` del score | Contar distinto daría "hiciste 8" en el reporte y 5 en el score — dos verdades en la misma hoja |
+| Gate `BASE_MIN = 2.0` cot/semana | Comparar 1 contra 0.75 es leer ruido |
+| **Ausencia ≠ bajón** | No hay bandera de vacaciones ni calendario laboral en NINGUNA tabla. Con <2 días de señal en la semana dice "no hubo actividad tuya" en vez de reclamar |
+| Cotizar cuenta como día trabajado | `crear.php` **no** escribe en `actividad_log`, así que quien se pasó la semana cotizando salía con 0 días activos |
+| La presencia solo **excusa** un bajón | Puesta antes de todo, 9 cotizaciones el mismo día daban 1 día de señal y el sistema lo leía como ausente. **Lo encontró la simulación, no el diseño** |
+| Volumen alto **no se aplaude solo** | Puede ser prospección o puede ser regar. La frase siempre va junto a cuántas abrió el cliente |
+
+**El hueco (`dias_sin`) es la alarma que el promedio semanal NO da:** tres días
+sin cotizar a media semana no mueven el promedio hasta que la semana cierra, y
+para entonces ya no sirve.
+- Se cuenta en **días que ÉL trabaja**, no de calendario — si no, el lunes
+  marcaría siempre 3 días para quien descansa el fin de semana.
+- Qué días trabaja sale de **su propia historia** (`GROUP_CONCAT(DISTINCT
+  DAYOFWEEK)`), no de suponerle horario: hay mueblerías que abren sábado.
+- Umbral = su hueco normal × `HUECO_VECES` (3). Quien cotiza 8/semana debe
+  hacerlo casi a diario; quien cotiza 2, no.
+
+**Los días "entró al sistema y no cotizó" se ENUNCIAN, no se califican.** Un día
+en el sistema sin cotizar **no prueba un día perdido**: pudo irse en
+seguimiento, cerrando una venta o atendiendo en piso, y nada de eso crea una
+cotización. Presentarlo como reproche sería acusar con datos que no lo
+sostienen — el camino más corto a que el asesor deje de creerle al reporte.
+Solo aparecen cuando **ya hay una alarma encendida**, y se listan **todos** (7
+como mucho): recortarlos con "(y 1 día más)" dejaba al lector preguntándose
+cuál era ese día, que es el dato por el que la frase existe.
+
+**Dónde se ve**
+- Reporte del asesor: sección de **2 renglones** tras el embudo. El hueco
+  **desplaza** al "bajaste X%" — se arregla hoy, el promedio de la semana ya no.
+- Reportes › Asesores: columna "Sin cotizar" + 12 semanas. Las columnas salen
+  del **calendario**, no de los datos (una semana sin cotizaciones tiene que
+  aparecer), con **rango completo** (`31/Ago` / `al 30/Ago`) y la primera
+  marcada **"en curso"** — su número va incompleto y no es comparable.
+- `RitmoCot::fecha_corta()` traduce los meses: `date('M')` da "Aug". La prueba
+  falla si alguien imprime `date('d/M')` crudo en esa tabla.
+
+**Limitaciones conocidas y aceptadas**
+1. **No hay días festivos.** Un puente suelto queda debajo del umbral, pero
+   Semana Santa o la quincena de diciembre pueden marcar rojo a quien trabajó
+   normal. No hay arreglo sin calendario laboral.
+2. `dias_señal` mide días que **entró al sistema**, no días que trabajó.
+
+**Pruebas**: `tools/sim_ritmo_cot.php` — **73 comprobaciones contra MariaDB
+real** (obligatoria tras cualquier cambio a `RitmoCot`). Verifica las
+*queries*, no el texto: que la vara excluya de verdad la semana en curso, que
+el filtro de imports muerda, que `YEARWEEK` agrupe donde uno cree, que el hueco
+nunca cuente más días de los que pasaron. Más 20 en `test_score_lectura` (167).
+
+### Brevo — sin cambio, y el DNS ya no es la variable
+
+Sigue reescribiendo el botón a `sendibt3.com`, metiendo píxel de apertura y
+`List-Unsubscribe`. **Dos cosas quedaron probadas, no supuestas:**
+1. Las cabeceras `X-Mailin-Track` **llegan al correo entregado y Brevo las
+   ignora** — la firma DKIM enumera las cabeceras que procesa y esas no están.
+2. Los CNAME del subdominio con marca **verificaron en verde**, o sea que la
+   propagación de DNS ya ocurrió. Esperar más no cambia esa parte; lo que
+   podría cambiar es la activación del lado de Brevo o el interruptor de la
+   cuenta (aplica solo a envíos nuevos).
+
+**Cómo comprobarlo** (`php tools/probar_correo.php tu@correo.com`) — en el
+fuente del correo: el `href` del botón, el píxel 1×1 al final del cuerpo, y la
+cabecera `List-Unsubscribe`. **Con que el `href` cambie, ganamos**: es lo único
+que afecta al negocio. Si Brevo no cede → **Amazon SES**, relay puro, cuatro
+constantes en `config.php`.
+
+Proporción: **el correo FUNCIONA**. El cliente da clic, llega a su cotización y
+el Radar lo cuenta. Es apariencia, no función.
+
+### Pendientes que siguen abiertos
+1. Ticket a Brevo (rastreo en transaccional, subdominio con marca,
+   `List-Unsubscribe`).
+2. Firewall: 443 solo a rangos de Cloudflare, **80 ABIERTO** — es para las
+   renovaciones HTTP-01 de los dominios de OnTime; cerrarlo mata los
+   certificados en ~60 días y nadie lo relacionaría.
+3. `Full` → `Full (strict)` cuando lo del firewall esté decidido.
+4. Medir si alguna petición pasa de 100 s (Cloudflare Free corta con 524).
+5. **Rotar las credenciales de MercadoPago** compartidas en chat.
