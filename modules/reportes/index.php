@@ -241,6 +241,32 @@ if ($es_admin) {
     );
 }
 
+// ── Ritmo de cotizaciones por asesor (12 semanas) ──────────────
+// A propósito NO respeta el filtro de período de arriba: la pregunta es "¿este
+// asesor cotiza a su ritmo?", y para eso hace falta una serie larga y fija.
+// Un período de dos semanas no tiene con qué comparar; uno de un año diluiría
+// el bajón de la semana pasada, que es justo lo que hay que ver.
+// Es INFORMATIVO — no entra al score del termómetro (ver core/RitmoCot.php).
+$ritmo_asesor = [];
+$ritmo_semanas = [];
+if ($es_admin) {
+    try {
+        // Ruta relativa a propósito: config.php enumera los archivos de core/
+        // y una clase nueva no se carga sola. RitmoReporte hace lo mismo.
+        require_once __DIR__ . '/../../core/RitmoCot.php';
+        foreach ($por_asesor as $a) {
+            $uid = (int)$a['usr_id'];
+            $ritmo_asesor[$uid] = [
+                'sem'  => RitmoCot::semana($empresa_id, $uid),
+                'hist' => RitmoCot::historico($empresa_id, $uid, 12),
+            ];
+            foreach ($ritmo_asesor[$uid]['hist'] as $h) $ritmo_semanas[$h['semana']] = $h['ini'];
+        }
+        krsort($ritmo_semanas);                       // de la más reciente a la más vieja
+        $ritmo_semanas = array_slice($ritmo_semanas, 0, 12, true);
+    } catch (\Throwable $e) { $ritmo_asesor = []; $ritmo_semanas = []; }
+}
+
 // ── Descuento Inteligente por asesor (historial del período) ──
 // El DI dispara sobre la cotización del asesor pero la venta la cierra "DI"
 // (vendedor virtual). Aquí se ve, por asesor, cuánto negocio muerto recuperó
@@ -1058,6 +1084,67 @@ ob_start();
       </table>
     </div>
   </div>
+
+  <?php if (!empty($ritmo_semanas)): ?>
+  <!-- ══ RITMO DE COTIZACIONES ══════════════════════════════════
+       12 semanas fijas, sin importar el filtro de período de arriba: la
+       pregunta es si el asesor cotiza a SU ritmo, y para eso hace falta serie
+       larga. Cada asesor se compara consigo mismo, nunca contra el equipo —
+       dos asesores con territorios distintos no cotizan igual aunque los dos
+       trabajen bien. NO pesa en el termómetro. -->
+  <div class="sec-lbl">Ritmo de cotizaciones <span style="font-weight:500;color:var(--t3);text-transform:none;letter-spacing:0">— últimas 12 semanas, cada quien contra su propio ritmo (no cuenta al termómetro)</span></div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Asesor</th>
+            <th class="r">Esta sem.</th>
+            <th class="r">Su ritmo</th>
+            <?php foreach ($ritmo_semanas as $sem => $ini): ?>
+              <th class="r" style="font-size:10px" title="Semana del <?= e(date('d/M/Y', strtotime($ini))) ?>"><?= e(date('d/M', strtotime($ini))) ?></th>
+            <?php endforeach; ?>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($por_asesor as $a):
+            $uid = (int)$a['usr_id'];
+            if (empty($ritmo_asesor[$uid])) continue;
+            $rs   = $ritmo_asesor[$uid]['sem'];
+            $rh   = [];
+            foreach ($ritmo_asesor[$uid]['hist'] as $h) $rh[$h['semana']] = $h;
+            // Un color por estado. El "alto" NO va en verde a propósito:
+            // cotizar de más puede ser prospección o puede ser regar, y el
+            // número solo no distingue cuál.
+            $c = ['rojo'=>'var(--danger)','alto'=>'#b45309','verde'=>'var(--g)','gris'=>'var(--t3)'][$rs['estado']] ?? 'var(--t3)';
+            $et = ['rojo'=>'bajó','alto'=>'subió','verde'=>'en ritmo','gris'=>'sin vara'][$rs['estado']] ?? '';
+          ?>
+          <tr>
+            <td><?= e($a['asesor']) ?></td>
+            <td class="tbl-num" style="color:<?= $c ?>;font-weight:700"
+                title="<?= e($et) ?><?= $rs['estado']==='rojo' ? ' · ' . (int)$rs['dias_señal'] . ' de 7 días en el sistema' : '' ?>">
+              <?= (int)$rs['n7'] ?><?= $rs['estado']==='rojo' ? ' ▼' : ($rs['estado']==='alto' ? ' ▲' : '') ?>
+            </td>
+            <td class="tbl-num" style="color:var(--t3)">
+              <?= $rs['base_wk'] > 0 ? e($rs['base_wk'] >= 10 ? (string)round($rs['base_wk']) : (string)round($rs['base_wk'], 1)) : '—' ?>
+            </td>
+            <?php foreach ($ritmo_semanas as $sem => $_): $h = $rh[$sem] ?? null; ?>
+              <td class="tbl-num" style="<?= $h ? '' : 'color:var(--t3)' ?>"
+                  <?= $h ? 'title="' . (int)$h['abiertas'] . ' abiertas · ' . (int)$h['cerradas'] . ' cerradas"' : '' ?>><?= $h ? (int)$h['n'] : '0' ?></td>
+            <?php endforeach; ?>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:10px 14px;font:400 11px var(--body);color:var(--t3);border-top:1px solid var(--border)">
+      "Su ritmo" es su promedio de las 4 semanas anteriores — la semana en curso no entra en su propio promedio.
+      Cuenta lo mismo que el termómetro: sin borradores nunca vistos, sin suspendidas, sin importaciones masivas.
+      Un bajón solo se marca si el asesor estuvo en el sistema esos días; si no estuvo, aparece en gris.
+      Pasa el cursor sobre un número para ver cuántas abrió el cliente y cuántas cerraron.
+    </div>
+  </div>
+  <?php endif; ?>
 
   <?php if (!empty($di_por_asesor)):
     $di_t_of = $di_t_ce = 0; $di_t_rec = $di_t_desc = 0.0;
