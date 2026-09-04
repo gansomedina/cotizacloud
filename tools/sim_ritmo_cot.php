@@ -254,6 +254,16 @@ chk('y ninguno tiene cotización',
                        WHERE empresa_id=? AND COALESCE(vendedor_id,usuario_id)=? AND DATE(created_at)=?",
                      [EMP, 20, $f]) > 0), false);
 chk('la frase los enuncia',   str_contains(implode(' ', RitmoCot::frases($s20)), 'sin cotizar.'));
+// SE LISTAN TODOS. Recortarlos a tres y cerrar con "(y 1 día más)" dejaba al
+// lector preguntándose cuál era ese día — el dato por el que existe la frase.
+$muchos = ['n7'=>0,'abiertas7'=>0,'base_wk'=>8.0,'estado'=>'rojo','dias_señal'=>5,'pct'=>0.0,
+           'dias_sin'=>5,'ultima'=>'2026-08-28','hueco_normal'=>0.75,'hueco_alerta'=>true,
+           'dias_dentro'=>['2026-08-29','2026-08-31','2026-09-01','2026-09-02','2026-09-03']];
+$fm = implode(' ', RitmoCot::frases($muchos));
+chk('no dice "y N días más"',  (bool)preg_match('/y \d+ días? más/', $fm), false);
+foreach (['sáb 29','lun 31','mar 1','mié 2','jue 3'] as $dia) {
+    chk("lista el $dia",       str_contains($fm, $dia));
+}
 // Solo se buscan cuando ya hay alarma: en quien va en su ritmo son ruido, y la
 // consulta se ahorra (en Reportes esto corre una vez por asesor).
 chk('en ritmo normal ni se consultan',
