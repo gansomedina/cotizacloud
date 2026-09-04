@@ -196,9 +196,95 @@ chk('cancelada y sin pago no son cierre', RitmoCot::historico(EMP, 19, 12)[0]['c
 chk('el histórico ordena de reciente a viejo',
     count($h) < 2 || $h[0]['semana'] >= $h[1]['semana']);
 
-echo "\n10) NADA REVIENTA SIN DATOS\n";
+echo "\n10) EL HUECO: LO QUE EL PROMEDIO SEMANAL NO VE\n";
+// Tres días sin cotizar a media semana no mueven el promedio hasta que la
+// semana cierra — y para entonces ya no sirve. Asesor 20: ritmo alto (8/sem),
+// última cotización hace 3 días, cotiza de lunes a sábado.
+for ($d = 8; $d < 36; $d++) { cot(20, $d); cot(20, $d); }
+cot(20, 3);
+for ($d = 1; $d <= 5; $d++) actividad(20, $d);   // sí estuvo: el hueco es real, no ausencia
+$s20 = RitmoCot::semana(EMP, 20);
+chk('sabe cuándo fue la última',  $s20['ultima'], (new DateTimeImmutable('-3 days'))->format('Y-m-d'));
+chk('cuenta el hueco',            $s20['dias_sin'] >= 2);          // 3 de calendario, menos los que no trabaja
+chk('y lo enciende',              $s20['hueco_alerta'], true);
+// El mismo hueco con ritmo bajo NO es alarma: quien cotiza poco, cotiza espaciado.
+chk('con ritmo bajo, 3 días es normal',
+    RitmoCot::semana(EMP, 21)['hueco_alerta'], false);             // asesor sin historia
+
+// SOLO DÍAS QUE ÉL TRABAJA. Sin esto, el lunes marcaría siempre 3 días para
+// quien descansa sábado y domingo, y la alarma se volvería ruido semanal.
+// Asesor 22: cotiza SOLO lunes, martes y miércoles, desde hace 5 semanas.
+for ($d = 1; $d <= 40; $d++) {
+    $dow = (int)(new DateTimeImmutable("-$d days"))->format('N');  // 1=lun … 7=dom
+    if ($dow <= 3 && $d > 7) { cot(22, $d); cot(22, $d); cot(22, $d); }
+}
+$s22 = RitmoCot::semana(EMP, 22);
+$cal = (int)(new DateTimeImmutable($s22['ultima']))->diff(new DateTimeImmutable('today'))->days;
+chk('el hueco NO son días de calendario', $s22['dias_sin'] <= $cal);
+chk('nunca cuenta más días de los que pasaron', $s22['dias_sin'] <= $cal);
+
+// Sin hábito legible (pocos días distintos) se informa, pero no se acusa.
+cot(23, 2);
+$s23 = RitmoCot::semana(EMP, 23);
+chk('sin hábito: informa el hueco',  $s23['dias_sin'], 2);
+chk('pero no alerta',                $s23['hueco_alerta'], false);
+chk('y no inventa un ritmo',         $s23['hueco_normal'], null);
+
+// La frase del reporte: el hueco MANDA sobre el promedio semanal, porque se
+// arregla hoy y el promedio de la semana ya no.
+$f20 = RitmoCot::frases($s20);
+chk('la frase habla del hueco',     str_contains(implode(' ', $f20), 'sin cotizar'));
+chk('y no gasta un tercer renglón', count($f20), 2);
+// El hueco DESPLAZA al "bajaste X%": se arregla hoy, el promedio de la semana
+// ya no. Solo cabe un renglón además del ritmo.
+chk('el hueco desplaza al bajón',   str_contains(implode(' ', $f20), 'Bajaste'), false);
+// A quien NO estuvo no se le reclama el hueco en el reporte: su renglón es la
+// ausencia, y decir las dos cosas es decir lo mismo dos veces. El hueco sí lo
+// ve el jefe en la tabla de Reportes.
+chk('al ausente no se le reclama',
+    str_contains(implode(' ', RitmoCot::frases($s15)), 'sin cotizar'), false);
+
+echo "\n10b) LOS DÍAS QUE ENTRÓ Y NO COTIZÓ\n";
+// El asesor 20 tiene actividad los últimos 5 días y su última cotización fue
+// hace 3 → los días 1 y 2 entró y no salió ninguna.
+chk('los detecta',            count($s20['dias_dentro'] ?? []) >= 2);
+chk('y ninguno tiene cotización',
+    (bool)array_filter($s20['dias_dentro'], fn($f) =>
+        (int)DB::val("SELECT COUNT(*) FROM cotizaciones
+                       WHERE empresa_id=? AND COALESCE(vendedor_id,usuario_id)=? AND DATE(created_at)=?",
+                     [EMP, 20, $f]) > 0), false);
+chk('la frase los enuncia',   str_contains(implode(' ', RitmoCot::frases($s20)), 'sin cotizar.'));
+// Solo se buscan cuando ya hay alarma: en quien va en su ritmo son ruido, y la
+// consulta se ahorra (en Reportes esto corre una vez por asesor).
+chk('en ritmo normal ni se consultan',
+    RitmoCot::semana(EMP, 16)['dias_dentro'], []);
+// Nunca lista un día que sí tuvo cotización.
+cot(24, 1); actividad(24, 1); actividad(24, 3);
+for ($d = 8; $d < 36; $d++) { cot(24, $d); cot(24, $d); }
+$s24 = RitmoCot::semana(EMP, 24);
+chk('el día que sí cotizó no aparece',
+    in_array((new DateTimeImmutable('-1 day'))->format('Y-m-d'), $s24['dias_dentro'] ?? [], true), false);
+chk('el día que solo entró, sí',
+    in_array((new DateTimeImmutable('-3 days'))->format('Y-m-d'), $s24['dias_dentro'] ?? [], true));
+
+echo "\n11) LAS SEMANAS SON SEMANAS, NO 'CUANDO EMPEZÓ'\n";
+// El encabezado de la tabla decía 02/Sep, 24/Aug, 17/Aug — saltos irregulares,
+// porque era la primera cotización de cada semana y no el inicio de la semana.
+$h20 = RitmoCot::historico(EMP, 20, 12);
+$lunes_ok = true;
+foreach ($h20 as $h) if ((int)(new DateTimeImmutable($h['ini']))->format('N') !== 1) $lunes_ok = false;
+chk('cada semana empieza en lunes', $lunes_ok);
+chk('y la clave coincide con el lunes',
+    empty($h20) || $h20[0]['semana'] === (new DateTimeImmutable($h20[0]['ini']))->format('oW'));
+
+echo "\n12) NADA REVIENTA SIN DATOS\n";
 $s99 = RitmoCot::semana(EMP, 99);
 chk('asesor sin cotizaciones → gris', $s99['estado'], 'gris');
+// Todas las claves presentes: quien lea el resultado no debe toparse con un
+// índice inexistente solo porque este asesor no tiene datos.
+foreach (['n7','abiertas7','base_wk','estado','dias_señal','pct','dias_sin','ultima','hueco_normal','hueco_alerta','dias_dentro'] as $k) {
+    chk("sin datos, la clave '$k' existe", array_key_exists($k, $s99));
+}
 chk('sin frases que inventar',        RitmoCot::frases($s99), []);
 chk('histórico vacío es lista vacía', RitmoCot::historico(EMP, 99, 12), []);
 

@@ -37,6 +37,14 @@ class RitmoCot
     /** Días dentro de la semana con señal de trabajo para creerle al bajón.
      *  Con 1 o menos, lo honesto es decir "no estuvo", no "bajó el ritmo". */
     private const DIAS_MIN    = 2;
+    /** Cuántas veces su hueco normal entre cotizaciones tiene que pasar para
+     *  llamarlo hueco. Quien cotiza 8 por semana debe cotizar casi a diario:
+     *  3 días sin hacerlo es raro. Quien cotiza 2, no. El umbral sale de SU
+     *  ritmo, no de un número fijo. */
+    private const HUECO_VECES = 3.0;
+    /** Días distintos de la semana en que se le ha visto cotizar, para saber
+     *  qué días trabaja. Con menos, no hay hábito que leer. */
+    private const DOW_MIN     = 3;
 
     /**
      * Los MISMOS filtros que usa el score para contar cotizaciones
@@ -131,6 +139,116 @@ class RitmoCot
     }
 
     /**
+     * Cuánto lleva sin cotizar — la alarma que el promedio semanal NO da.
+     *
+     * Un hueco de tres días a media semana es invisible para un promedio: la
+     * semana todavía no cierra y el número no se ha movido. Y es justo cuando
+     * sirve verlo, no el lunes siguiente.
+     *
+     * SE CUENTA EN LOS DÍAS QUE ÉL TRABAJA, no en días de calendario. Sin esto
+     * el lunes siempre marcaría "3 días" para quien descansa sábado y domingo,
+     * y la alarma se volvería ruido semanal que nadie mira. Qué días trabaja
+     * sale de su propia historia —los días de la semana en que se le ha visto
+     * cotizar—, no de suponerle un horario: hay mueblerías que abren sábado y
+     * hay quien libra el lunes.
+     *
+     * El umbral también es suyo: su hueco normal entre cotizaciones, por
+     * HUECO_VECES. Quien cotiza ocho por semana debe hacerlo casi a diario y
+     * tres días sin cotizar es raro; quien cotiza dos, no.
+     *
+     * @return array{dias_sin:?int,ultima:?string,hueco_normal:?float,hueco_alerta:bool}
+     */
+    private static function _hueco(string $ultima, string $dows, float $base_wk): array
+    {
+        $nulo = ['dias_sin'=>null,'ultima'=>null,'hueco_normal'=>null,'hueco_alerta'=>false,
+                  'dias_dentro'=>[]];
+        if ($ultima === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $ultima)) return $nulo;
+
+        // DAYOFWEEK de MySQL: 1=domingo … 7=sábado.
+        $labora = array_values(array_unique(array_filter(
+            array_map('intval', explode(',', $dows)), fn($d) => $d >= 1 && $d <= 7)));
+
+        try {
+            $hoy = new DateTimeImmutable('today');
+            $ult = new DateTimeImmutable($ultima);
+        } catch (Throwable $e) { return $nulo; }
+        if ($ult > $hoy) return $nulo;
+
+        // Sin hábito legible, se informa el hueco en días de calendario pero no
+        // se alerta: no hay con qué saber si tres días son muchos para él.
+        if (count($labora) < self::DOW_MIN) {
+            return ['dias_sin' => (int)$ult->diff($hoy)->days, 'ultima' => $ultima,
+                    'hueco_normal' => null, 'hueco_alerta' => false];
+        }
+
+        // Se cuentan los días POSTERIORES a la última cotización, hoy incluido,
+        // y solo los que él trabaja.
+        $dias = 0;
+        for ($d = $ult->modify('+1 day'); $d <= $hoy; $d = $d->modify('+1 day')) {
+            if (in_array((int)$d->format('w') + 1, $labora, true)) $dias++;
+        }
+
+        $normal = $base_wk > 0 ? count($labora) / $base_wk : null;   // días entre cotización
+        $alerta = $base_wk >= self::BASE_MIN && $normal !== null
+               && $dias >= max(2, (int)ceil($normal * self::HUECO_VECES));
+
+        return ['dias_sin'=>$dias, 'ultima'=>$ultima, 'hueco_normal'=>$normal, 'hueco_alerta'=>$alerta];
+    }
+
+    /**
+     * Días de la última semana en que ENTRÓ al sistema y no cotizó ninguna.
+     *
+     * Es el dato más concreto que puede dar esta sección: no "bajaste 40%" sino
+     * "el martes y el miércoles estuviste y no salió ninguna".
+     *
+     * OJO CON LO QUE ESTO **NO** PRUEBA. Un día en el sistema sin cotizar no es
+     * un día perdido: el asesor pudo pasarlo dando seguimiento, cerrando una
+     * venta o atendiendo en piso — nada de eso crea una cotización. Por eso la
+     * frase enuncia el hecho y no lo califica, y por eso solo aparece cuando ya
+     * hay una alarma encendida: como evidencia de algo que ya se detectó, no
+     * como acusación por sí sola.
+     *
+     * @return list<string> fechas 'Y-m-d', de la más vieja a la más reciente
+     */
+    private static function _dias_dentro_sin_cotizar(int $eid, int $uid): array
+    {
+        try {
+            $f = DB::query(
+                "SELECT DISTINCT DATE(a.created_at) AS d
+                   FROM actividad_log a
+                  WHERE a.usuario_id = ?
+                    AND a.tipo IN ('radar_view','quote_view','client_view')
+                    AND a.created_at >= NOW() - INTERVAL 7 DAY
+                    AND NOT EXISTS (
+                        SELECT 1 FROM cotizaciones c
+                         WHERE c.empresa_id = ? AND COALESCE(c.vendedor_id, c.usuario_id) = ?
+                           AND DATE(c.created_at) = DATE(a.created_at))
+                  ORDER BY d",
+                [$uid, $eid, $uid]
+            );
+        } catch (Throwable $e) { return []; }
+        return array_column($f, 'd');
+    }
+
+    /** "mar 2", "mié 3" — date('D') viene en inglés. */
+    private static function _dia_corto(string $ymd): string
+    {
+        $t = strtotime($ymd);
+        $d = ['Sun'=>'dom','Mon'=>'lun','Tue'=>'mar','Wed'=>'mié','Thu'=>'jue','Fri'=>'vie','Sat'=>'sáb'];
+        return ($d[date('D', $t)] ?? '') . ' ' . (int)date('j', $t);
+    }
+
+    /** "el mar 2 y el mié 3" · con más de tres, se recortan. */
+    private static function _lista_dias(array $fechas): string
+    {
+        $n = count($fechas);
+        $m = array_map([self::class, '_dia_corto'], array_slice($fechas, -3));
+        $txt = count($m) === 1 ? "el {$m[0]}"
+             : 'el ' . implode(', el ', array_slice($m, 0, -1)) . ' y el ' . end($m);
+        return $n > 3 ? "$txt (y " . ($n - 3) . " día" . ($n - 3 === 1 ? '' : 's') . " más)" : $txt;
+    }
+
+    /**
      * La semana del asesor contra su propio ritmo.
      *
      * @return array{n7:int,abiertas7:int,base_wk:float,estado:string,dias_señal:int,pct:?float}
@@ -143,7 +261,11 @@ class RitmoCot
      */
     public static function semana(int $empresa_id, int $usuario_id): array
     {
-        $vacio = ['n7'=>0,'abiertas7'=>0,'base_wk'=>0.0,'estado'=>'gris','dias_señal'=>0,'pct'=>null];
+        // El retorno vacío trae TODAS las claves: quien lo lea no puede toparse
+        // con un índice que no existe solo porque la consulta falló.
+        $vacio = ['n7'=>0,'abiertas7'=>0,'base_wk'=>0.0,'estado'=>'gris','dias_señal'=>0,'pct'=>null,
+                  'dias_sin'=>null,'ultima'=>null,'hueco_normal'=>null,'hueco_alerta'=>false,
+                  'dias_dentro'=>[]];
         try {
             $no_imp = self::_sin_import($empresa_id, $usuario_id);
             $w      = self::_where();
@@ -151,11 +273,16 @@ class RitmoCot
             // la semana mala se metería en su propio promedio y amortiguaría la
             // señal — el mismo principio por el que close_rate_hist mira solo lo
             // anterior a la ventana.
+            // `ultima` y `dows` viajan en la MISMA consulta: el hueco desde su
+            // última cotización y los días de la semana en que trabaja salen
+            // gratis de las filas que ya se están leyendo.
             $r = DB::row(
                 "SELECT
                     SUM(c.created_at >= NOW() - INTERVAL 7 DAY) AS n7,
                     SUM(c.created_at >= NOW() - INTERVAL 7 DAY AND c.visitas > 0) AS ab7,
-                    SUM(c.created_at <  NOW() - INTERVAL 7 DAY) AS nbase
+                    SUM(c.created_at <  NOW() - INTERVAL 7 DAY) AS nbase,
+                    MAX(DATE(c.created_at)) AS ultima,
+                    GROUP_CONCAT(DISTINCT DAYOFWEEK(c.created_at)) AS dows
                  FROM cotizaciones c
                  WHERE $w $no_imp
                    AND c.created_at >= NOW() - INTERVAL " . (7 + 7 * self::SEMANAS_BASE) . " DAY",
@@ -167,15 +294,24 @@ class RitmoCot
         $ab7     = (int)($r['ab7']   ?? 0);
         $base_wk = ((int)($r['nbase'] ?? 0)) / self::SEMANAS_BASE;
         $dias    = self::_dias_con_señal($empresa_id, $usuario_id);
+        $hueco   = self::_hueco((string)($r['ultima'] ?? ''), (string)($r['dows'] ?? ''), $base_wk);
+        $estado  = self::semaforo($n7, $base_wk, $dias);
+
+        // Solo se buscan los días "entró y no cotizó" cuando ya hay algo que
+        // explicar. En un asesor que va en su ritmo son ruido, y la consulta
+        // se ahorra: en la tabla de Reportes esto corre una vez por asesor.
+        $dentro = ($estado === 'rojo' || !empty($hueco['hueco_alerta']))
+            ? self::_dias_dentro_sin_cotizar($empresa_id, $usuario_id) : [];
 
         return [
             'n7'         => $n7,
             'abiertas7'  => $ab7,
             'base_wk'    => $base_wk,
-            'estado'     => self::semaforo($n7, $base_wk, $dias),
+            'estado'     => $estado,
             'dias_señal' => $dias,
             'pct'        => $base_wk > 0 ? $n7 / $base_wk : null,
-        ];
+            'dias_dentro'=> $dentro,
+        ] + $hueco;
     }
 
     /**
@@ -192,8 +328,12 @@ class RitmoCot
             $no_imp = self::_sin_import($empresa_id, $usuario_id);
             $w      = self::_where();
             $filas = DB::query(
+                // `ini` es el LUNES de la semana, no la primera cotización de
+                // esa semana. Con MIN(created_at) los encabezados de la tabla
+                // saltaban irregular —02/Sep, 24/Aug, 17/Aug— porque cada uno
+                // era el día en que ese asesor arrancó, no el inicio de semana.
                 "SELECT YEARWEEK(c.created_at, 1)                       AS semana,
-                        MIN(DATE(c.created_at))                          AS ini,
+                        MIN(DATE_SUB(DATE(c.created_at), INTERVAL WEEKDAY(c.created_at) DAY)) AS ini,
                         COUNT(*)                                         AS n,
                         SUM(c.visitas > 0)                               AS abiertas,
                         SUM(EXISTS (SELECT 1 FROM ventas v
@@ -241,9 +381,29 @@ class RitmoCot
 
         $out = [$cot($n) . " esta semana — tu ritmo normal son $b por semana."];
 
+        // EL HUECO MANDA sobre el promedio. Llevar tres días sin cotizar es
+        // información de HOY y se arregla hoy; que la semana vaya 40% abajo ya
+        // no se puede cambiar. Y solo cabe un renglón más: el reporte está
+        // calibrado para una hoja.
+        // Los días en que entró y no salió ninguna: el dato más concreto de la
+        // sección. Se ENUNCIA, no se califica — un día sin cotizar pudo irse en
+        // seguimiento, en cerrar una venta o atendiendo en piso.
+        $dd = $s['dias_dentro'] ?? [];
+        $dentro = $dd ? ' Entraste ' . self::_lista_dias($dd) . ' sin cotizar.' : '';
+
+        if (!empty($s['hueco_alerta'])) {
+            $d = (int)$s['dias_sin'];
+            $out[] = "Llevas $d día" . ($d === 1 ? '' : 's') . " de trabajo sin cotizar — la última fue el "
+                   . date('d/M', strtotime((string)$s['ultima'])) . "."
+                   . ($dentro !== '' ? $dentro : " A tu ritmo cotizas cada "
+                       . (($s['hueco_normal'] ?? 0) < 1.5 ? 'día' : round((float)$s['hueco_normal']) . ' días') . ".");
+            return $out;
+        }
+
         if ($s['estado'] === 'rojo') {
             $caida = $base > 0 ? (int)round((1 - $n / $base) * 100) : 0;
-            $out[] = "Bajaste {$caida}%. Estuviste {$s['dias_señal']} de 7 días en el sistema, así que no fue ausencia: lo que bajó es la prospección.";
+            $out[] = "Bajaste {$caida}%. Estuviste {$s['dias_señal']} de 7 días en el sistema, así que no fue ausencia: lo que bajó es la prospección."
+                   . $dentro;
         } elseif ($s['estado'] === 'alto') {
             // Volumen sin apertura es regar, no prospectar. Nunca se felicita
             // el número solo.
