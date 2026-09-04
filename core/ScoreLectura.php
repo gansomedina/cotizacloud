@@ -385,18 +385,32 @@ class ScoreLectura
         $confiable = $dias >= 10;
         $rango = ($peor !== null && $mejor !== null) ? ($mejor - $peor) : null;
 
+        // "ESTABLE" NO ES UNA PALABRA NEUTRA. Aplicada a un 52 —zona crítica—
+        // suena a visto bueno: le dice "vas bien" a quien lleva un mes atorado
+        // abajo del estándar. La frase describe el movimiento, pero quien la lee
+        // oye una aprobación. Por eso, sin movimiento, el texto depende de DÓNDE
+        // está parado: mantenerse arriba del estándar es mérito; mantenerse
+        // debajo es no haberse movido, y así se dice.
+        //
+        // Tampoco se dice "ruido" ni "fotos": es jerga de quien construyó el
+        // sistema, no del asesor que lo lee. Y el promedio se nombra ("de tu
+        // último mes") porque si no, el segundo número aparece de la nada.
+        $en_estandar = $hoy >= self::ESTANDAR;
         $t = [
-            'sube'    => "Va subiendo: hoy {$hoy} contra {$prom} de promedio (+{$delta}).",
-            'baja'    => "Va bajando: hoy {$hoy} contra {$prom} de promedio ({$delta}).",
-            'estable' => "Estable: hoy {$hoy} contra {$prom} de promedio. La diferencia es ruido.",
+            'sube'    => "Vas subiendo: {$hoy} hoy contra {$prom} de promedio de tu último mes (+{$delta}).",
+            'baja'    => "Vas bajando: {$hoy} hoy contra {$prom} de promedio de tu último mes ({$delta}).",
+            'estable' => $en_estandar
+                ? "Te mantienes: {$hoy} hoy, {$prom} de promedio de tu último mes."
+                : "Llevas un mes en el mismo lugar: {$hoy} hoy, {$prom} de promedio. No te has movido.",
         ][$dir];
 
         if (!$confiable) {
-            $t .= " Ojo: solo hay {$dias} " . ($dias === 1 ? 'foto' : 'fotos') . " del período — es anécdota, no tendencia.";
+            $t .= " Ojo: solo hay {$dias} " . ($dias === 1 ? 'día registrado' : 'días registrados')
+                . " en el mes — con tan pocos, esto es una anécdota y no una tendencia.";
         }
         // Un rango ancho hace que "hoy" sea casi aleatorio.
         if ($rango !== null && $rango >= 30) {
-            $t .= " Su score se movió entre {$peor} y {$mejor} en el período: con ese vaivén, el número de hoy dice poco — lee el promedio.";
+            $t .= " Tu score se movió entre {$peor} y {$mejor} en el mes: con ese vaivén, el número de hoy dice poco — el que manda es el promedio.";
         }
 
         return ['clave'=>$dir, 'delta'=>$delta, 'dias'=>$dias, 'txt'=>$t,

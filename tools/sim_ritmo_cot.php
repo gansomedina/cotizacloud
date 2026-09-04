@@ -110,7 +110,7 @@ echo "\n2) LA VARA EXCLUYE LA SEMANA EN CURSO\n";
 // Si la vara incluyera la semana en curso, sería 35/5=7 y la caída se vería
 // más chica de lo que es. Excluyéndola: 32/4 = 8.
 foreach ([1, 2, 4] as $d) cot(10, $d);   // 3 cotizaciones en 3 días distintos
-for ($d = 8; $d < 36; $d++) { cot(10, $d); cot(10, $d); }   // 2/día × 28 días = 56
+for ($d = 7; $d < 35; $d++) { cot(10, $d); cot(10, $d); }   // 2/día × 28 días = 56
 $s = RitmoCot::semana(EMP, 10);
 chk('cuenta la semana en curso',     $s['n7'], 3);
 chk('la vara son 4 semanas exactas', $s['base_wk'], 56 / 4);
@@ -276,6 +276,20 @@ chk('el día que sí cotizó no aparece',
     in_array((new DateTimeImmutable('-1 day'))->format('Y-m-d'), $s24['dias_dentro'] ?? [], true), false);
 chk('el día que solo entró, sí',
     in_array((new DateTimeImmutable('-3 days'))->format('Y-m-d'), $s24['dias_dentro'] ?? [], true));
+
+echo "\n10c) LA VENTANA SON 7 FECHAS, NO 7×24 HORAS\n";
+// Con NOW() - INTERVAL 7 DAY, un viernes a las 8am cortaba en el viernes
+// anterior a las 8am: OCHO fechas distintas, los dos viernes en la lista, y
+// dias_señal podía llegar a 8 — "Estuviste 8 de 7 días", que se lee como error
+// porque lo es. Asesor 25: actividad y cotización TODOS los días, incluido el
+// límite exacto de hace 7 días.
+for ($d = 0; $d <= 7; $d++) { actividad(25, $d); cot(25, $d); }
+$s25 = RitmoCot::semana(EMP, 25);
+chk('nunca más de 7 días de señal', $s25['dias_señal'] <= 7);
+chk('y son exactamente 7',          $s25['dias_señal'], 7);
+// El día 7 queda FUERA de la semana y DENTRO de la vara: ni se pierde ni se
+// cuenta dos veces.
+chk('el día 7 no entra en la semana', $s25['n7'], 7);
 
 echo "\n11) LAS SEMANAS SON SEMANAS, NO 'CUANDO EMPEZÓ'\n";
 // El encabezado de la tabla decía 02/Sep, 24/Aug, 17/Aug — saltos irregulares,
