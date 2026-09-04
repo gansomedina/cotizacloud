@@ -230,6 +230,15 @@ class RitmoCot
         return array_column($f, 'd');
     }
 
+    /** "31/Ago" — date('M') viene en inglés y en la tabla se leía "31/Aug". */
+    public static function fecha_corta(string $ymd): string
+    {
+        $t = strtotime($ymd);
+        $m = ['Jan'=>'Ene','Feb'=>'Feb','Mar'=>'Mar','Apr'=>'Abr','May'=>'May','Jun'=>'Jun',
+              'Jul'=>'Jul','Aug'=>'Ago','Sep'=>'Sep','Oct'=>'Oct','Nov'=>'Nov','Dec'=>'Dic'];
+        return (int)date('j', $t) . '/' . ($m[date('M', $t)] ?? date('M', $t));
+    }
+
     /** "mar 2", "mié 3" — date('D') viene en inglés. */
     private static function _dia_corto(string $ymd): string
     {
