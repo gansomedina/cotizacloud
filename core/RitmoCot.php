@@ -238,14 +238,18 @@ class RitmoCot
         return ($d[date('D', $t)] ?? '') . ' ' . (int)date('j', $t);
     }
 
-    /** "el mar 2 y el mié 3" · con más de tres, se recortan. */
+    /**
+     * "el mar 2 y mié 3" · "el sáb 29, lun 31, mar 1 y mié 2".
+     *
+     * SE LISTAN TODOS. Recortarlos a tres y cerrar con "(y 1 día más)" dejaba
+     * al lector preguntándose cuál era ese día — que es justo el dato por el
+     * que existe la frase. Son siete como mucho: caben.
+     */
     private static function _lista_dias(array $fechas): string
     {
-        $n = count($fechas);
-        $m = array_map([self::class, '_dia_corto'], array_slice($fechas, -3));
-        $txt = count($m) === 1 ? "el {$m[0]}"
-             : 'el ' . implode(', el ', array_slice($m, 0, -1)) . ' y el ' . end($m);
-        return $n > 3 ? "$txt (y " . ($n - 3) . " día" . ($n - 3 === 1 ? '' : 's') . " más)" : $txt;
+        $m = array_map([self::class, '_dia_corto'], $fechas);
+        if (count($m) === 1) return "el {$m[0]}";
+        return 'el ' . implode(', ', array_slice($m, 0, -1)) . ' y ' . end($m);
     }
 
     /**
