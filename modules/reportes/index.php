@@ -1138,7 +1138,13 @@ ob_start();
               $ds = $rs['dias_sin'];
             ?>
             <td class="tbl-num" style="<?= !empty($rs['hueco_alerta']) ? 'color:var(--danger);font-weight:700' : 'color:var(--t3)' ?>"
-                title="<?= $rs['ultima'] ? 'Última cotización: ' . e(date('d/M/Y', strtotime($rs['ultima']))) : 'Sin cotizaciones en el rango' ?><?= $rs['hueco_normal'] ? ' · normalmente cotiza cada ' . e((string)round((float)$rs['hueco_normal'], 1)) . ' días de trabajo' : '' ?>">
+                title="<?= $rs['ultima'] ? 'Última cotización: ' . e(date('d/M/Y', strtotime($rs['ultima']))) : 'Sin cotizaciones en el rango' ?><?= $rs['hueco_normal'] ? ' · normalmente cotiza cada ' . e((string)round((float)$rs['hueco_normal'], 1)) . ' días de trabajo' : '' ?><?php
+                  // Entró al sistema y no salió ninguna. Se enuncia el hecho:
+                  // ese día pudo irse en seguimiento o en cerrar una venta.
+                  if (!empty($rs['dias_dentro'])) {
+                      echo ' · entró sin cotizar: ' . e(implode(', ', array_map(
+                          fn($f) => date('d/M', strtotime($f)), $rs['dias_dentro'])));
+                  } ?>">
               <?= $ds === null ? '—' : (int)$ds . ($ds === 1 ? ' día' : ' días') ?><?= !empty($rs['hueco_alerta']) ? ' ⚠' : '' ?>
             </td>
             <td class="tbl-num" style="color:<?= $c ?>;font-weight:700"

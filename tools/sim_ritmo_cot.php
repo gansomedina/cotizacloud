@@ -244,6 +244,29 @@ chk('el hueco desplaza al bajón',   str_contains(implode(' ', $f20), 'Bajaste')
 chk('al ausente no se le reclama',
     str_contains(implode(' ', RitmoCot::frases($s15)), 'sin cotizar'), false);
 
+echo "\n10b) LOS DÍAS QUE ENTRÓ Y NO COTIZÓ\n";
+// El asesor 20 tiene actividad los últimos 5 días y su última cotización fue
+// hace 3 → los días 1 y 2 entró y no salió ninguna.
+chk('los detecta',            count($s20['dias_dentro'] ?? []) >= 2);
+chk('y ninguno tiene cotización',
+    (bool)array_filter($s20['dias_dentro'], fn($f) =>
+        (int)DB::val("SELECT COUNT(*) FROM cotizaciones
+                       WHERE empresa_id=? AND COALESCE(vendedor_id,usuario_id)=? AND DATE(created_at)=?",
+                     [EMP, 20, $f]) > 0), false);
+chk('la frase los enuncia',   str_contains(implode(' ', RitmoCot::frases($s20)), 'sin cotizar.'));
+// Solo se buscan cuando ya hay alarma: en quien va en su ritmo son ruido, y la
+// consulta se ahorra (en Reportes esto corre una vez por asesor).
+chk('en ritmo normal ni se consultan',
+    RitmoCot::semana(EMP, 16)['dias_dentro'], []);
+// Nunca lista un día que sí tuvo cotización.
+cot(24, 1); actividad(24, 1); actividad(24, 3);
+for ($d = 8; $d < 36; $d++) { cot(24, $d); cot(24, $d); }
+$s24 = RitmoCot::semana(EMP, 24);
+chk('el día que sí cotizó no aparece',
+    in_array((new DateTimeImmutable('-1 day'))->format('Y-m-d'), $s24['dias_dentro'] ?? [], true), false);
+chk('el día que solo entró, sí',
+    in_array((new DateTimeImmutable('-3 days'))->format('Y-m-d'), $s24['dias_dentro'] ?? [], true));
+
 echo "\n11) LAS SEMANAS SON SEMANAS, NO 'CUANDO EMPEZÓ'\n";
 // El encabezado de la tabla decía 02/Sep, 24/Aug, 17/Aug — saltos irregulares,
 // porque era la primera cotización de cada semana y no el inicio de la semana.
@@ -259,7 +282,7 @@ $s99 = RitmoCot::semana(EMP, 99);
 chk('asesor sin cotizaciones → gris', $s99['estado'], 'gris');
 // Todas las claves presentes: quien lea el resultado no debe toparse con un
 // índice inexistente solo porque este asesor no tiene datos.
-foreach (['n7','abiertas7','base_wk','estado','dias_señal','pct','dias_sin','ultima','hueco_normal','hueco_alerta'] as $k) {
+foreach (['n7','abiertas7','base_wk','estado','dias_señal','pct','dias_sin','ultima','hueco_normal','hueco_alerta','dias_dentro'] as $k) {
     chk("sin datos, la clave '$k' existe", array_key_exists($k, $s99));
 }
 chk('sin frases que inventar',        RitmoCot::frases($s99), []);
