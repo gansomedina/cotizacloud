@@ -202,6 +202,51 @@ elseif ($accion === 'notas') {
 }
 
 // ════════════════════════════════════════════════════════════
+//  RENOMBRAR LA VENTA
+//
+//  El título nace copiado de la cotización al convertirla (convertir.php:130)
+//  y hasta hoy no había forma de corregirlo: una venta que nació con el
+//  nombre equivocado se quedaba así, y había que entrar a la base.
+//
+//  SOLO ADMIN. No es un dato interno —el cliente ve este título en el slug
+//  público, en el estado de cuenta y en los recibos—, así que no es algo que
+//  cada asesor deba poder reescribir sobre ventas de otros.
+//
+//  EL SLUG NO SE TOCA SOLO. El slug también salió del título, pero es la
+//  llave con la que el cliente abre su venta (public/venta.php:32):
+//  cambiarlo rompe la liga que ya tenga en su mano. `ventas` no registra
+//  visitas, así que el sistema NO PUEDE saber si esa liga ya se mandó — el
+//  único que lo sabe es quien la mandó. Por eso se pregunta, con la
+//  consecuencia escrita, en vez de decidir por él.
+// ════════════════════════════════════════════════════════════
+elseif ($accion === 'titulo') {
+    if (!Auth::es_admin()) json_error('Solo el administrador puede renombrar una venta', 403);
+
+    $titulo = trim($body['titulo'] ?? '');
+    if ($titulo === '')            json_error('El título es requerido');
+    if (mb_strlen($titulo) > 255)  json_error('El título es muy largo (máximo 255)');
+
+    $slug_nuevo = null;
+    if (!empty($body['regenerar_slug'])) {
+        // Excluye la propia venta: si no, chocaría consigo misma cuando el
+        // slug resultante fuera el que ya tiene y le colgaría un "-2".
+        $slug_nuevo = slug_unico($titulo, 'ventas', 'slug', $empresa_id, $venta_id);
+        // slug() puede quedar vacío si el título es solo símbolos ("###").
+        if ($slug_nuevo === '' || $slug_nuevo === '-') $slug_nuevo = null;
+    }
+
+    if ($slug_nuevo !== null) {
+        DB::execute("UPDATE ventas SET titulo=?, slug=?, updated_at=NOW() WHERE id=?",
+            [$titulo, $slug_nuevo, $venta_id]);
+    } else {
+        DB::execute("UPDATE ventas SET titulo=?, updated_at=NOW() WHERE id=?",
+            [$titulo, $venta_id]);
+    }
+
+    json_ok(['titulo' => $titulo, 'slug' => $slug_nuevo ?? $venta['slug']]);
+}
+
+// ════════════════════════════════════════════════════════════
 //  DESCUENTO MANUAL
 // ════════════════════════════════════════════════════════════
 elseif ($accion === 'descuento') {
