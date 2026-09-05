@@ -4008,7 +4008,7 @@ el correo es el que muchas veces no tiene.
   "correcto" sin que nadie lo haya decidido. **Se CONSERVA** el verde del
   botón de correo al confirmar el envío: ahí el color significa "salió".
 
-### Ritmo de cotizaciones — `core/RitmoCot.php` (PRs #1029-#1032)
+### Ritmo de cotizaciones — `core/RitmoCot.php` (PRs #1029-#1032, #1034)
 
 Responde: **¿está cotizando a su ritmo, o se cayó?**
 
@@ -4046,7 +4046,8 @@ cotización. Presentarlo como reproche sería acusar con datos que no lo
 sostienen — el camino más corto a que el asesor deje de creerle al reporte.
 Solo aparecen cuando **ya hay una alarma encendida**, y se listan **todos** (7
 como mucho): recortarlos con "(y 1 día más)" dejaba al lector preguntándose
-cuál era ese día, que es el dato por el que la frase existe.
+cuál era ese día, que es el dato por el que la frase existe. Ese tope de 7 solo
+es cierto DESPUÉS de anclar la ventana a días completos — ver abajo.
 
 **Dónde se ve**
 - Reporte del asesor: sección de **2 renglones** tras el embudo. El hueco
@@ -4064,11 +4065,45 @@ cuál era ese día, que es el dato por el que la frase existe.
    normal. No hay arreglo sin calendario laboral.
 2. `dias_señal` mide días que **entró al sistema**, no días que trabajó.
 
-**Pruebas**: `tools/sim_ritmo_cot.php` — **73 comprobaciones contra MariaDB
+**Pruebas**: `tools/sim_ritmo_cot.php` — **76 comprobaciones contra MariaDB
 real** (obligatoria tras cualquier cambio a `RitmoCot`). Verifica las
 *queries*, no el texto: que la vara excluya de verdad la semana en curso, que
 el filtro de imports muerda, que `YEARWEEK` agrupe donde uno cree, que el hueco
-nunca cuente más días de los que pasaron. Más 20 en `test_score_lectura` (167).
+nunca cuente más días de los que pasaron. Más 21 en `test_score_lectura` (168).
+
+### Dos correcciones al leer un reporte real (PR #1034)
+
+**"ESTABLE" NO ES UNA PALABRA NEUTRA.** La frase decía *"Estable: hoy 52 contra
+53.5 de promedio. La diferencia es ruido."* Aplicada a un 52 —zona crítica—
+suena a visto bueno: le dice "vas bien" a quien lleva un mes atorado abajo del
+estándar. Describía el MOVIMIENTO, pero quien la lee oye una APROBACIÓN.
+
+Ahora el texto depende de dónde está parado:
+- En el estándar → "Te mantienes: 78 hoy, 77 de promedio de tu último mes."
+- Debajo → "Llevas un mes en el mismo lugar: 52 hoy, 53.5 de promedio. No te
+  has movido."
+
+De paso se nombra el segundo número —"de promedio de tu último mes"—, que antes
+aparecía de la nada; se fueron "ruido" y "fotos" (jerga de quien construyó el
+sistema, no del asesor que lo lee); y "Su score" pasó a "Tu score".
+
+**LA VENTANA DE 7 DÍAS ABARCABA 8 FECHAS.** `NOW() - INTERVAL 7 DAY` un viernes
+a las 8:08 corta en el viernes anterior a las 8:08. En un reporte real la lista
+salió con LOS DOS VIERNES ("vie 28 … y vie 4"), y `dias_señal` podía llegar a 8
+— la frase habría dicho "Estuviste **8 de 7** días", que se lee como error
+porque lo es.
+
+Ahora va anclada a días completos: `CURDATE() - INTERVAL 6 DAY` (hoy y los seis
+anteriores). **La vara de 28 días se movió igual** (`CURDATE() - INTERVAL 34
+DAY`), para que no se pierdan ni se dupliquen filas en la frontera. La prueba
+lo fija con un asesor que tiene actividad y cotización TODOS los días, incluido
+el límite exacto.
+
+**Y una lección de método, no de código:** al reportarse ese caso mezclé en la
+misma frase un bug verificado (la ventana) con una duda sin datos sobre un dato
+del asesor. El dato era correcto —el asesor sí había entrado temprano, el CEO
+lo verificó en el sistema— y yo no tenía base para insinuar lo contrario.
+Primero el SQL, después la opinión.
 
 ### Brevo — sin cambio, y el DNS ya no es la variable
 
