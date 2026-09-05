@@ -499,7 +499,8 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
     <div class="vhdr-top">
       <div style="flex:1;min-width:0">
         <div class="vhdr-num"><?= e($folio) ?><?php if ($desc_int_act): ?><span style="display:inline-flex;align-items:center;font:700 10px var(--body);color:#b45309;background:#fdf7e9;border:1px solid #f0c869;border-radius:5px;padding:1px 6px;vertical-align:middle;white-space:nowrap;margin-left:8px" title="Venta cerrada con Descuento Inteligente (<?= rtrim(rtrim(number_format((float)$desc_int_act['pct'], 1), '0'), '.') ?>%)">✨ DI</span><?php endif ?></div>
-        <div class="vhdr-title"><?= e($venta['titulo']) ?></div>
+        <div class="vhdr-title" id="vhdr-title"><?= e($venta['titulo']) ?><?php if (Auth::es_admin() && $venta['estado'] !== 'cancelada'): ?><button onclick="openSheet('shTitulo')" title="Renombrar la venta"
+             style="border:none;background:none;cursor:pointer;padding:2px 4px;margin-left:6px;vertical-align:middle;color:var(--t3);line-height:1">✏️</button><?php endif ?></div>
       </div>
       <?php
       $bmap = ['pendiente'=>'s-pendiente','parcial'=>'s-parcial','pagada'=>'s-pagada','entregada'=>'s-entregada','cancelada'=>'s-cancelada'];
@@ -1136,6 +1137,45 @@ $moneda_edc           = $empresa['moneda'] ?? 'MXN';
 </div>
 
 <!-- ══ SHEET: CAMBIAR CLIENTE ══ -->
+<?php if (Auth::es_admin() && $venta['estado'] !== 'cancelada'): ?>
+<!-- ══ RENOMBRAR LA VENTA (solo admin) ═══════════════════════
+     El título nace copiado de la cotización y hasta hoy no se podía corregir.
+     La liga pública NO cambia sola: el slug también salió del título, pero es
+     con lo que el cliente abre su venta, y el sistema no puede saber si esa
+     liga ya se mandó. Se pregunta, con la consecuencia escrita. -->
+<div class="sh-overlay" id="ov-shTitulo" onclick="closeSheet('shTitulo')"></div>
+<div class="bottom-sheet" id="shTitulo">
+  <div class="sh-handle"></div>
+  <div class="sh-header"><div class="sh-title">Renombrar la venta</div><button class="sh-close" onclick="closeSheet('shTitulo')">✕</button></div>
+  <div class="sh-body">
+    <div class="sh-field">
+      <div class="sh-lbl">Nombre de la venta</div>
+      <input class="sh-input" type="text" id="vt-titulo" maxlength="255"
+             value="<?= e($venta['titulo']) ?>" placeholder="Cliente — proyecto">
+      <div style="font:400 11px var(--body);color:var(--t3);margin-top:6px;line-height:1.5">
+        El cliente ve este nombre: sale en la liga pública de la venta, en el estado de cuenta y en los recibos.
+      </div>
+    </div>
+    <div class="sh-field" style="border-bottom:none">
+      <label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer">
+        <input type="checkbox" id="vt-slug" style="margin-top:2px;flex-shrink:0">
+        <span style="font:400 12px var(--body);color:var(--t2);line-height:1.5">
+          Actualizar también la liga pública.<br>
+          <span style="color:var(--danger)">Ojo:</span> la liga anterior deja de funcionar. Si ya se la mandaste al cliente, deja esto sin marcar — la liga vieja sigue abriendo y solo cambia el nombre.
+        </span>
+      </label>
+      <div style="font:400 11px var(--num);color:var(--t3);margin-top:8px;word-break:break-all">
+        Liga actual: /v/<?= e($venta['slug']) ?>
+      </div>
+    </div>
+  </div>
+  <div class="sh-footer">
+    <button class="sh-btn-cancel" onclick="closeSheet('shTitulo')">Cancelar</button>
+    <button class="sh-btn-save" id="btn-guardar-titulo" onclick="doGuardarTitulo()">Guardar</button>
+  </div>
+</div>
+<?php endif ?>
+
 <div class="sh-overlay" id="ov-shCliente" onclick="closeSheet('shCliente')"></div>
 <div class="bottom-sheet" id="shCliente">
   <div class="sh-handle"></div>
@@ -1730,6 +1770,33 @@ function filtrarClientes(v){
   });
 }
 let clienteNombre = '';
+// ── Renombrar la venta (solo admin) ──
+// Recarga al terminar en vez de parchar el DOM: el título vive en cinco lugares
+// de esta página (encabezado, barra superior, recibo, estado de cuenta…) y
+// actualizar unos y otros no es peor que no actualizar ninguno — es peor,
+// porque deja la pantalla diciendo dos cosas distintas.
+async function doGuardarTitulo(){
+  const inp = document.getElementById('vt-titulo');
+  const titulo = (inp.value || '').trim();
+  if(!titulo){ alert('El título es requerido'); inp.focus(); return; }
+
+  const regenerar = document.getElementById('vt-slug').checked;
+  if(regenerar && !confirm('La liga pública va a cambiar y la anterior dejará de funcionar.\n\n¿Seguro que el cliente NO la tiene todavía?')) return;
+
+  const btn = document.getElementById('btn-guardar-titulo');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try{
+    const r = await fetch('/ventas/'+VENTA_ID+'/titulo',{
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+      body: JSON.stringify({ titulo, regenerar_slug: regenerar })
+    });
+    const d = await r.json();
+    if(d.ok){ location.reload(); return; }
+    alert(d.error || 'No se pudo renombrar');
+  }catch(e){ alert('Error de conexión'); }
+  btn.disabled = false; btn.textContent = 'Guardar';
+}
+
 function doGuardarCliente(){
   if(!clienteSelId) return;
   // Actualizar visualmente el meta-val del cliente
