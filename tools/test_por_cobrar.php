@@ -95,6 +95,17 @@ foreach (['Últimas ventas'=>$uv, 'Últimos pagos'=>$up] as $n => $sql) {
 }
 chk('los pagos cancelados no cuentan', str_contains($up, 'r.cancelado = 0'));
 chk('ni las ventas canceladas',        str_contains($uv, "v.estado <> 'cancelada'"));
+// El título se recorta para que la tarjeta no obligue a scrollear, pero con
+// mb_strimwidth: pone el "…" SOLO si de verdad recortó. Un corte a media
+// palabra ("Cocina integral Monarc") se lee como error, no como recorte.
+chk('los títulos se recortan con "…"',
+    substr_count($src, "mb_strimwidth"), 2);
+chk('y ya no se cortan a secas',
+    (bool)preg_match("/mb_substr\(\(string\)\\$uv\['titulo'\]/", $src), false);
+// La forma de pago es un dato que se busca de un vistazo ("¿entró por
+// transferencia o en efectivo?"), no una nota al pie.
+chk('la forma de pago se lee',
+    (bool)preg_match("/font:700 12px 'Inter',sans-serif;color:var\(--text\)\"><\?= e\(ucfirst/", $src));
 
 echo "\n" . ($fail === 0
     ? "✓ POR COBRAR OK — $ok comprobaciones\n"

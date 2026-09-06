@@ -1384,7 +1384,7 @@ $hist_total = array_sum($hist_values);
         <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
         <td class="mono" style="font-size:11px;color:var(--t2);white-space:nowrap"><?= e(date('d/m', strtotime($uv['created_at']))) ?></td>
         <td>
-            <div style="font-weight:600;font-size:12px"><?= e(mb_substr((string)$uv['titulo'], 0, 34)) ?></div>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_strimwidth((string)$uv['titulo'], 0, 26, '…')) ?></div>
             <div style="font-size:10px;color:var(--t3)"><?= e($uv['cliente_nombre'] ?? $uv['numero']) ?></div>
         </td>
         <td style="font-size:11px;color:var(--t2)"><?= e($uv['asesor_nombre'] ?? '—') ?></td>
@@ -1414,11 +1414,11 @@ $hist_total = array_sum($hist_values);
         <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
         <td class="mono" style="font-size:11px;color:var(--t2);white-space:nowrap"><?= e(date('d/m', strtotime($up['fecha']))) ?></td>
         <td>
-            <div style="font-weight:600;font-size:12px"><?= e(mb_substr((string)($up['venta_titulo'] ?? $up['venta_numero']), 0, 30)) ?></div>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_strimwidth((string)($up['venta_titulo'] ?? $up['venta_numero']), 0, 24, '…')) ?></div>
             <!-- La forma de pago va aquí y no en columna propia: con seis
                  columnas la tabla no cabe en media pantalla, el título se parte
                  en dos renglones y se desborda a lo ancho. -->
-            <div style="font-size:10px;color:var(--t3)"><?= e($up['cliente_nombre'] ?? '—') ?> · <span style="color:var(--t2)"><?= e(ucfirst((string)($up['forma_pago'] ?: 'efectivo'))) ?></span></div>
+            <div style="font-size:10px;color:var(--t3)"><?= e($up['cliente_nombre'] ?? '—') ?> · <span style="font:700 12px 'Inter',sans-serif;color:var(--text)"><?= e(ucfirst((string)($up['forma_pago'] ?: 'efectivo'))) ?></span></div>
         </td>
         <td style="font-size:11px;color:var(--t2)"><?= e($up['asesor_nombre'] ?? '—') ?></td>
         <td class="r mono" style="font-weight:700;color:var(--g)"><?= xf((float)$up['monto']) ?></td>
