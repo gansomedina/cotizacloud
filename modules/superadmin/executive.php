@@ -122,9 +122,15 @@ $num_pagos_hoy = (int)DB::val(
      WHERE empresa_id IN ({$emp_ids}) AND tipo='abono' AND cancelado=0 AND fecha = CURDATE()"
 );
 
+// `saldo > 0` NO estaba y las listas de abajo sí lo filtran — dos definiciones
+// de la misma cifra en la misma pantalla. Además es lo correcto: un saldo
+// NEGATIVO es un sobrepago (abono.php lo permite a propósito), y eso no es
+// dinero que te deban — es dinero que TÚ debes. Sumarlo aquí lo netea contra la
+// deuda de otros clientes y hace ver por cobrar menos de lo que hay.
 $por_cobrar = (float)DB::val(
     "SELECT COALESCE(SUM(saldo),0) FROM ventas
-     WHERE empresa_id IN ({$emp_ids}) AND estado IN ('pendiente','parcial')"
+     WHERE empresa_id IN ({$emp_ids}) AND estado IN ('pendiente','parcial')
+       AND saldo > 0 AND total > 0"
 );
 
 $pipeline = DB::row(
@@ -303,8 +309,11 @@ $ventas_por_cobrar = DB::query(
      LEFT JOIN clientes c ON c.id = v.cliente_id
      WHERE v.empresa_id IN ({$emp_ids}) AND v.estado IN ('pendiente','parcial')
        AND v.saldo > 0
-     ORDER BY v.saldo DESC LIMIT 100"
+     ORDER BY v.saldo DESC"
 );
+// Igual que arriba: traía LIMIT 100 y el pie de la pestaña ("Saldo pendiente:")
+// sumaba solo esas 100. Un tope que recorta la lista Y el total la vuelve una
+// cifra que no es de nada.
 $total_por_cobrar_lista = 0;
 foreach ($ventas_por_cobrar as $vpc) $total_por_cobrar_lista += (float)$vpc['saldo'];
 
@@ -417,6 +426,11 @@ $pagos_hoy = DB::query(
 );
 
 // ─── VENTAS SIN PAGOS ───────────────────────────────────────
+// SIN LÍMITE, a propósito. Traía LIMIT 30 y el encabezado sumaba el saldo de
+// SOLO esas 30 filas, presentándolo como si fuera el total: el KPI "Por cobrar"
+// decía 2.3M y esta sección 1.7M, con los dos números en la misma pantalla. La
+// tabla ya tiene scroll propio (max-height), así que traerlas todas no rompe el
+// diseño y hace que las dos cifras por fin coincidan.
 $sin_pagos = DB::query(
     "SELECT v.empresa_id, v.titulo, v.numero, v.total, v.saldo, v.created_at,
             c.nombre AS cliente_nombre,
@@ -426,7 +440,7 @@ $sin_pagos = DB::query(
      WHERE v.empresa_id IN ({$emp_ids})
        AND v.estado IN ('pendiente','parcial')
        AND v.saldo > 0 AND v.total > 0
-     ORDER BY v.created_at ASC LIMIT 30"
+     ORDER BY v.created_at ASC"
 );
 $total_sin_cobrar = 0;
 foreach ($sin_pagos as $sp) $total_sin_cobrar += (float)$sp['saldo'];
