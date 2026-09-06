@@ -411,6 +411,45 @@ foreach ($tendencias as $t) {
 $chart_labels = [];
 foreach ($meses_12 as $m) $chart_labels[] = date('M Y', strtotime($m . '-01'));
 
+// ─── ÚLTIMAS VENTAS / ÚLTIMOS PAGOS ────────────────────────
+// AQUÍ EL LÍMITE SÍ ES CORRECTO, al revés de "Ventas con saldo": "las últimas
+// 10" ES la definición de la tarjeta, no un recorte de un total. Por eso
+// ninguna de las dos imprime una suma en el encabezado — sumar 10 filas de un
+// universo mayor da una cifra que no es de nada, que es justo el error que
+// tenía la otra sección.
+//
+// EL ASESOR es el de la VENTA —COALESCE(vendedor_id, usuario_id), el mismo
+// criterio que usa todo el sistema—, incluso en la lista de pagos. En un pago,
+// `recibos.usuario_id` es quien lo capturó (a veces administración), y lo que
+// se quiere ver aquí es de quién es la venta que está entrando.
+$ultimas_ventas = DB::query(
+    "SELECT v.empresa_id, v.numero, v.titulo, v.total, v.created_at,
+            c.nombre AS cliente_nombre,
+            u.nombre AS asesor_nombre
+     FROM ventas v
+     LEFT JOIN clientes c ON c.id = v.cliente_id
+     LEFT JOIN usuarios u ON u.id = COALESCE(v.vendedor_id, v.usuario_id)
+     WHERE v.empresa_id IN ({$emp_ids})
+       AND v.estado <> 'cancelada'
+     ORDER BY v.created_at DESC
+     LIMIT 10"
+);
+
+$ultimos_pagos = DB::query(
+    "SELECT r.empresa_id, r.monto, r.forma_pago, r.fecha, r.created_at,
+            v.numero AS venta_numero, v.titulo AS venta_titulo,
+            c.nombre AS cliente_nombre,
+            u.nombre AS asesor_nombre
+     FROM recibos r
+     JOIN ventas v ON v.id = r.venta_id
+     LEFT JOIN clientes c ON c.id = v.cliente_id
+     LEFT JOIN usuarios u ON u.id = COALESCE(v.vendedor_id, v.usuario_id)
+     WHERE r.empresa_id IN ({$emp_ids})
+       AND r.tipo = 'abono' AND r.cancelado = 0
+     ORDER BY r.fecha DESC, r.created_at DESC
+     LIMIT 10"
+);
+
 // ─── PAGOS DEL DÍA ─────────────────────────────────────────
 $pagos_hoy = DB::query(
     "SELECT r.empresa_id, r.monto, r.forma_pago, r.created_at, r.concepto,
@@ -1321,6 +1360,78 @@ $hist_total = array_sum($hist_values);
     </div>
 </div>
 <?php endif; /* Ventas con saldo */ ?>
+
+<!-- ══ ÚLTIMAS VENTAS · ÚLTIMOS PAGOS ═════════════════════════
+     Las dos dicen "las últimas 10" en el encabezado y NO imprimen una suma:
+     sumar 10 filas de un universo mayor da una cifra que no es de nada — es
+     el error que tenía "Ventas con saldo" con su LIMIT 30. Aquí el límite es
+     la definición de la tarjeta, no un recorte. -->
+<div class="grid-3" style="margin-top:14px">
+
+<div class="sec" style="margin:0">
+    <div class="sec-hdr">
+        <div class="sec-title">Últimas ventas</div>
+        <div class="sec-count">últimas <?= count($ultimas_ventas) ?></div>
+    </div>
+    <div class="tbl-card" style="max-height:340px;overflow:auto">
+    <table>
+    <thead><tr><th></th><th>Fecha</th><th>Venta</th><th>Asesor</th><th class="r">Monto</th></tr></thead>
+    <tbody>
+    <?php if ($ultimas_ventas): foreach ($ultimas_ventas as $uv):
+        $ec = $empresas_cfg[(int)$uv['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td class="mono" style="font-size:11px;color:var(--t2);white-space:nowrap"><?= e(date('d/m', strtotime($uv['created_at']))) ?></td>
+        <td>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_substr((string)$uv['titulo'], 0, 34)) ?></div>
+            <div style="font-size:10px;color:var(--t3)"><?= e($uv['cliente_nombre'] ?? $uv['numero']) ?></div>
+        </td>
+        <td style="font-size:11px;color:var(--t2)"><?= e($uv['asesor_nombre'] ?? '—') ?></td>
+        <td class="r mono" style="font-weight:700"><?= xf((float)$uv['total']) ?></td>
+    </tr>
+    <?php endforeach; else: ?>
+    <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--t3)">Sin ventas todavía</td></tr>
+    <?php endif; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+
+<div class="sec" style="margin:0">
+    <div class="sec-hdr">
+        <div class="sec-title">Últimos pagos</div>
+        <div class="sec-count">últimos <?= count($ultimos_pagos) ?></div>
+    </div>
+    <div class="tbl-card" style="max-height:340px;overflow:auto">
+    <table>
+    <thead><tr><th></th><th>Fecha</th><th>Venta</th><th>Asesor</th><th class="r">Monto</th></tr></thead>
+    <tbody>
+    <?php if ($ultimos_pagos): foreach ($ultimos_pagos as $up):
+        $ec = $empresas_cfg[(int)$up['empresa_id']] ?? ['short'=>'?','color'=>'#666'];
+    ?>
+    <tr>
+        <td><span class="tag" style="background:<?= $ec['color'] ?>"><?= $ec['short'] ?></span></td>
+        <td class="mono" style="font-size:11px;color:var(--t2);white-space:nowrap"><?= e(date('d/m', strtotime($up['fecha']))) ?></td>
+        <td>
+            <div style="font-weight:600;font-size:12px"><?= e(mb_substr((string)($up['venta_titulo'] ?? $up['venta_numero']), 0, 30)) ?></div>
+            <!-- La forma de pago va aquí y no en columna propia: con seis
+                 columnas la tabla no cabe en media pantalla, el título se parte
+                 en dos renglones y se desborda a lo ancho. -->
+            <div style="font-size:10px;color:var(--t3)"><?= e($up['cliente_nombre'] ?? '—') ?> · <span style="color:var(--t2)"><?= e(ucfirst((string)($up['forma_pago'] ?: 'efectivo'))) ?></span></div>
+        </td>
+        <td style="font-size:11px;color:var(--t2)"><?= e($up['asesor_nombre'] ?? '—') ?></td>
+        <td class="r mono" style="font-weight:700;color:var(--g)"><?= xf((float)$up['monto']) ?></td>
+    </tr>
+    <?php endforeach; else: ?>
+    <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--t3)">Sin pagos todavía</td></tr>
+    <?php endif; ?>
+    </tbody>
+    </table>
+    </div>
+</div>
+
+</div><!-- /grid-3 -->
 
 </div><!-- /col izquierda -->
 
