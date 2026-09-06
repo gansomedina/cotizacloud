@@ -71,6 +71,31 @@ chk('"Ventas con saldo" suma lo que trajo',
 chk('la pestaña suma lo que trajo',
     str_contains($src, 'foreach ($ventas_por_cobrar as $vpc) $total_por_cobrar_lista += (float)$vpc[\'saldo\'];'));
 
+echo "\n5) LAS TARJETAS DE 'ÚLTIMOS' NO IMPRIMEN SUMAS\n";
+// "Las últimas 10" ES la definición de esas tarjetas, así que ahí el LIMIT es
+// correcto — al revés de "Ventas con saldo". Lo que NO pueden hacer es sumar:
+// el total de 10 filas de un universo mayor es la misma cifra que no es de
+// nada que tenía la otra sección.
+$uv = q($src, 'ultimas_ventas');
+$up = q($src, 'ultimos_pagos');
+chk('"Últimas ventas" existe',        $uv !== '');
+chk('"Últimos pagos" existe',         $up !== '');
+chk('y ahí el LIMIT sí es correcto',  (bool)preg_match('/LIMIT 10/', $uv) && (bool)preg_match('/LIMIT 10/', $up));
+// El encabezado dice cuántas trae, no cuánto suman.
+chk('ninguna suma en el encabezado',
+    str_contains($src, '$total_ultimas') || str_contains($src, '$total_pagos_lista'), false);
+chk('"Últimas ventas" dice cuántas',  str_contains($src, 'últimas <?= count($ultimas_ventas) ?>'));
+chk('"Últimos pagos" dice cuántos',   str_contains($src, 'últimos <?= count($ultimos_pagos) ?>'));
+// El asesor es el de la VENTA, el mismo criterio de todo el sistema. En un pago
+// recibos.usuario_id es quien lo capturó (a veces administración), no de quién
+// es la venta que entró.
+foreach (['Últimas ventas'=>$uv, 'Últimos pagos'=>$up] as $n => $sql) {
+    chk("$n: el asesor es el de la venta",
+        str_contains(preg_replace('/\s+/', ' ', $sql), 'u.id = COALESCE(v.vendedor_id, v.usuario_id)'));
+}
+chk('los pagos cancelados no cuentan', str_contains($up, 'r.cancelado = 0'));
+chk('ni las ventas canceladas',        str_contains($uv, "v.estado <> 'cancelada'"));
+
 echo "\n" . ($fail === 0
     ? "✓ POR COBRAR OK — $ok comprobaciones\n"
     : "✗ FALLARON $fail de " . ($ok + $fail) . "\n");
