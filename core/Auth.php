@@ -181,6 +181,29 @@ class Auth
             'samesite' => 'Lax',
         ]);
 
+        // MARCA DE APP NATIVA. El formulario de login manda is_app=1 desde la
+        // app (login.php:353), así que ESTE es el único momento en que el
+        // servidor sabe con certeza que está sirviendo a la app — y lo sabe
+        // ANTES de pintar la primera pantalla.
+        //
+        // Existe porque la detección por User-Agent NUNCA funcionó: el WKWebView
+        // no pone "CotizaCloud" en el UA y `appendUserAgent` jamás se configuró.
+        // Ver es_app_nativa() en Helpers.php.
+        //
+        // No es httponly a propósito: el JS de layout.php la re-pone para las
+        // sesiones que ya estaban abiertas antes de este arreglo.
+        if ($is_app) {
+            setcookie('cz_app', '1', [
+                'expires'  => time() + SESSION_APP_SECONDS,
+                'path'     => '/',
+                'domain'   => '.' . BASE_DOMAIN,
+                'secure'   => !DEBUG,
+                'httponly' => false,
+                'samesite' => 'Lax',
+            ]);
+            $_COOKIE['cz_app'] = '1';   // vale ya, en este mismo request
+        }
+
         self::$usuario = $usuario;
         self::$empresa = $empresa;
 

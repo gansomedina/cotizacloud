@@ -778,7 +778,7 @@ ob_start();
 <?php
 // Banner de plan — NO en app nativa (Apple 3.1.1; auditoría I12: en la app el
 // botón /licencia redirigía a /dashboard = loop muerto)
-$dash_native_app = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+$dash_native_app = es_app_nativa();
 ?>
 <?php if (($trial['agotado'] || $trial['vencido']) && !$dash_native_app): ?>
 <div style="background:<?= $trial['vencido'] ? '#fff5f5' : 'var(--amb-bg)' ?>;border:1px solid <?= $trial['vencido'] ? '#fca5a5' : '#fcd34d' ?>;border-radius:var(--r);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">

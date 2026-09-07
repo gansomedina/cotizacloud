@@ -22,8 +22,13 @@ $emp_nom = $empresa['nombre'] ?? 'tu empresa';
 // Si el usuario eligió un plan en la landing, al terminar (o saltar) el intro
 // lo llevamos directo a Suscripción a activarlo, en vez de al dashboard.
 // No borramos plan_intento: el banner del dashboard sigue como recordatorio.
+// En la APP el intro termina en el dashboard, nunca empujando a comprar: la
+// app es para usar, los planes se contratan en cotiza.cloud (regla Netflix).
+// Este punto nunca tuvo la comprobación — se escribió después del intento por
+// User-Agent y nadie notó que faltaba, porque el efecto es invisible.
 $plan_intento_bv = $_SESSION['plan_intento'] ?? '';
-$va_a_suscripcion = in_array($plan_intento_bv, ['lite', 'pro', 'business'], true);
+$va_a_suscripcion = in_array($plan_intento_bv, ['lite', 'pro', 'business'], true)
+                    && !es_app_nativa();
 $destino_final    = $va_a_suscripcion ? '/config?tab=suscripcion' : '/dashboard';
 $btn_final_lbl    = $va_a_suscripcion ? 'Activar mi plan →' : 'Ir a mi panel';
 ?>

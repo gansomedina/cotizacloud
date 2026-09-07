@@ -1122,6 +1122,44 @@ function notif_config(int $empresa_id): array
     return $result;
 }
 
+// ════════════════════════════════════════════════════════════════
+//  ¿Estamos sirviendo a la APP NATIVA?
+//
+//  POR QUÉ EXISTE ESTA FUNCIÓN. Hasta hoy cada archivo lo resolvía por su
+//  cuenta con `str_contains($_SERVER['HTTP_USER_AGENT'], 'CotizaCloud')`, en
+//  seis lugares distintos — y esa comprobación NUNCA fue verdadera: el
+//  WKWebView de iOS no pone el nombre de la app en el User-Agent, y
+//  `appendUserAgent` jamás se configuró en capacitor.config.ts. Verificado
+//  contra producción: cero sesiones con esa palabra en 30 días.
+//
+//  Como el efecto era OCULTAR, el fallo fue invisible: la app publicada
+//  siguió mostrando precios y botones de compra sin error, sin log y sin que
+//  nadie lo notara. Y los tres puntos escritos DESPUÉS (dashboard, bienvenida,
+//  ticket) ni siquiera intentaron comprobarlo. Una sola puerta evita el
+//  séptimo olvido.
+//
+//  TRES FUENTES, en orden de confianza:
+//   1. Cookie `cz_app` — la pone el servidor en el LOGIN, donde el formulario
+//      de la app manda is_app=1 (login.php:353). Es la única que vale desde la
+//      PRIMERA pantalla, sin parpadeo: el HTML con precios ni se genera.
+//   2. La misma cookie re-puesta por el JS de layout.php, que sabe la verdad
+//      por `window.Capacitor`. Cubre las sesiones ya abiertas antes de este
+//      arreglo, a costa de un render.
+//   3. El User-Agent, para cuando `appendUserAgent` entre en un build futuro.
+//
+//  REGLA DE NEGOCIO (decisión del CEO, estilo Netflix): la app es para USAR.
+//  El asesor SÍ puede ver que existen planes superiores, pero sin precios y
+//  siempre mencionando que se contratan en cotiza.cloud desde el navegador.
+//  Nada de checkout, ni de tarifas, ni de botones de compra dentro de la app.
+// ════════════════════════════════════════════════════════════════
+function es_app_nativa(): bool
+{
+    static $r = null;
+    if ($r !== null) return $r;
+    return $r = (($_COOKIE['cz_app'] ?? '') === '1')
+        || str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+}
+
 // ─── Lada de país de la empresa (para armar enlaces de WhatsApp) ──
 // Columna nueva (migrations/add_telefono_empresa_lada.sql). Si no se corrió la
 // migración, cae a '52' y todo sigue funcionando.
