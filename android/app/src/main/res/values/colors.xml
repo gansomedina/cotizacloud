@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Los tres colores que styles.xml referencia (colorPrimary, colorPrimaryDark,
+  colorAccent) NO estaban definidos en ninguna parte del proyecto: el único
+  archivo de color era ic_launcher_background.xml. Con AppTheme aplicado en el
+  AndroidManifest, aapt falla al no encontrarlos — el proyecto Android, como
+  estaba commiteado, no compilaba.
+
+  El verde es el mismo de la marca que ya usan el splash y la barra de estado
+  en capacitor.config.ts (#1a5c38), para que la app no cambie de color entre
+  la pantalla de arranque y el resto.
+-->
+<resources>
+    <color name="colorPrimary">#1a5c38</color>
+    <color name="colorPrimaryDark">#134529</color>
+    <color name="colorAccent">#1a5c38</color>
+</resources>
