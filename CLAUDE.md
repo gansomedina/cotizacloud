@@ -4134,3 +4134,52 @@ el Radar lo cuenta. Es apariencia, no función.
 3. `Full` → `Full (strict)` cuando lo del firewall esté decidido.
 4. Medir si alguna petición pasa de 100 s (Cloudflare Free corta con 524).
 5. **Rotar las credenciales de MercadoPago** compartidas en chat.
+
+
+## App de Android — runbook (pendiente, ejecutar paso a paso)
+
+Un cliente quiere equipar a sus asesores con equipos **Android** (teléfonos o
+tabletas, sin definir). Un solo APK sirve para los dos.
+
+**▶ La guía completa vive en `docs/android_app_runbook.md`** — cinco pasos, con
+lo que hace el CEO y lo que hace Claude, verificación en cada uno, y la
+auditoría que originó todo.
+
+### Lo que ya quedó
+| Qué | PR |
+|---|---|
+| `colors.xml` — el proyecto Android **no compilaba** | #1041 |
+| `test_android_build.php` — detecta recursos faltantes sin el SDK | #1041 |
+| `es_app_nativa()` + los 9 puntos de compra gateados | #1040 |
+| `test_app_nativa.php` — 34 comprobaciones | #1040 |
+
+### Lo que falta
+1. **Firebase** (CEO, ~15 min) — proyecto, `google-services.json`, cuenta de
+   servicio al servidor en `/var/www/cotizacloud-keys/`, dos constantes en
+   `config.php`.
+2. **`enviar_fcm()`** en `core/PushNotification.php` — donde hoy dice
+   `// Android (FCM) se agregará después`. Es la mitad del trabajo y no
+   depende de que Android compile.
+3. **Proyecto Android** — `npx cap sync android` (hoy `capacitor.settings.gradle`
+   NO incluye el plugin de push), plugin de Gradle de Google Services, permiso
+   `POST_NOTIFICATIONS` (sin él, en Android 13+ no llega nada).
+4. **Compilar y probar en el equipo real** — Claude NO puede: no hay SDK ni
+   dispositivo.
+5. **Entregar** — probablemente **sin Google Play**: distribución interna evita
+   la cuenta, la ficha y las pruebas cerradas de 12 testers × 14 días.
+   ⚠️ El **keystore** se guarda como el `.p8`: si se pierde, esa app no se
+   vuelve a actualizar nunca.
+
+### Hallazgos que salieron de auditar esto (ya arreglados)
+- **La detección de app nativa NUNCA funcionó** — bug vivo en el iOS ya
+  publicado, no de Android. `str_contains(UA, 'CotizaCloud')` en seis archivos,
+  y el WKWebView nunca puso esa palabra en el UA (`appendUserAgent` jamás se
+  configuró). Verificado en producción: cero sesiones en 30 días.
+  **Exposición real: cero** — las 9 sesiones de app que existen son todas
+  `business`, y una cuenta Business no ve banners de trial ni "Mejorar plan".
+  La única persona que iba a probar la app era la única que no podía notarlo.
+- **El Escudo SÍ funciona en Android**, resuelto leyendo `Bridge.launchIntent()`
+  de Capacitor (líneas 413-425): host distinto → `ACTION_VIEW` → navegador
+  externo. ⚠️ **No agregar `allowNavigation` al config** o se rompe.
+- **La app de iOS tiene cero adopción**: fuera del Super Admin, solo Manuel, y
+  la última vez fue el 9 de abril.
