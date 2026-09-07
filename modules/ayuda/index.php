@@ -310,7 +310,7 @@ ob_start();
 <!--  SOLICITAR LICENCIA (oculto en app nativa — Apple 3.1.1) -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <?php $trial = trial_info(EMPRESA_ID);
-$is_native_app_ayuda = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+$is_native_app_ayuda = es_app_nativa();
 if (!$is_native_app_ayuda): ?>
 <div class="ay-section" id="sec-licencia">
   <h2 class="ay-h2">Activar licencia</h2>
@@ -367,6 +367,35 @@ if (!$is_native_app_ayuda): ?>
       <p style="font-size:12px;color:var(--t3);margin-top:12px;text-align:center">Seras contactado a la brevedad con la liga de cobro para activar tu licencia.</p>
     </form>
   </div>
+</div>
+<?php else: /* APP NATIVA ─────────────────────────────────────────
+  El asesor SÍ puede ver que existen planes superiores — lo que no puede es
+  ver precios ni comprar aquí (regla del CEO, estilo Netflix). Antes esta
+  sección desaparecía por completo y el asesor no tenía forma de enterarse de
+  qué se está perdiendo ni de dónde conseguirlo. */ ?>
+<div class="ay-section" id="sec-licencia">
+  <h2 class="ay-h2">Planes</h2>
+  <p class="ay-subtitle">CotizaCloud tiene tres planes. Puedes consultarlos y contratarlos en
+     <strong>cotiza.cloud</strong> desde el navegador de tu celular o computadora.</p>
+  <div style="display:grid;gap:10px;margin-top:14px">
+    <?php foreach ([
+      ['Lite',     'Cotizaciones ilimitadas y radar simplificado. Un usuario.'],
+      ['Pro',      'Todo lo de Lite + usuarios ilimitados para tu equipo, Radar completo, costos y reportes.'],
+      ['Business', 'Todo lo de Pro + Termómetro, Mesa de Trabajo, ranking del equipo, marketing y reportes avanzados. Incluye demo y capacitación.'],
+    ] as [$pl_nom, $pl_desc]):
+      $pl_actual = ($trial['plan_label'] ?? '') === $pl_nom; ?>
+    <div style="border:1px solid <?= $pl_actual ? 'var(--g)' : 'var(--border)' ?>;border-radius:var(--r-sm);padding:12px 14px;background:<?= $pl_actual ? 'var(--g-bg, #f0f7f3)' : 'var(--white)' ?>">
+      <div style="font:700 14px var(--body);color:var(--text)">
+        <?= e($pl_nom) ?><?php if ($pl_actual): ?> <span style="font:600 11px var(--body);color:var(--g)">— tu plan actual</span><?php endif ?>
+      </div>
+      <div style="font:400 12.5px var(--body);color:var(--t2);line-height:1.5;margin-top:3px"><?= e($pl_desc) ?></div>
+    </div>
+    <?php endforeach ?>
+  </div>
+  <p style="font:400 12px var(--body);color:var(--t3);margin-top:14px;line-height:1.6">
+    Para ver precios, cambiar de plan o gestionar tu suscripción, abre
+    <strong>cotiza.cloud</strong> en Safari o Chrome. Tu cuenta es la misma.
+  </p>
 </div>
 <?php endif; // !$is_native_app_ayuda ?>
 

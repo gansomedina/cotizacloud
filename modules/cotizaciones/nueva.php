@@ -45,7 +45,7 @@ if ($trial['agotado']) {
             </div>
         </div>
         <?php endif; ?>
-        <?php if (str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud')): ?>
+        <?php if (es_app_nativa()): ?>
         <p style="font-size:13px;color:var(--t3)">Gestiona tu plan desde <strong>cotiza.cloud</strong> en tu navegador.</p>
         <?php else: ?>
         <a href="/config?tab=suscripcion" class="btn btn-primary" style="padding:12px 28px;font-size:14px">

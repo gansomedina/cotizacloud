@@ -7,9 +7,12 @@
 
 defined('COTIZAAPP') or die;
 
-// Bloquear en app nativa (Apple Guideline 3.1.1 — no mostrar precios)
-if (str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud')) {
-    redirect('/dashboard');
+// En la app no se muestran precios ni se contrata (regla del CEO, estilo
+// Netflix). No se manda al dashboard —eso dejaba al asesor rebotado, sin
+// entender qué pasó— sino a la sección de planes de Ayuda, que en la app
+// explica qué incluye cada uno y que se contratan en cotiza.cloud.
+if (es_app_nativa()) {
+    redirect('/ayuda#sec-licencia');
 }
 
 $empresa = Auth::empresa();

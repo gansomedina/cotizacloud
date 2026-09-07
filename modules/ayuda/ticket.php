@@ -91,7 +91,9 @@ try {
 
 if ($es_licencia) {
     flash('success', 'Solicitud enviada. Te contactaremos a la brevedad con la liga de cobro.');
-    redirect('/licencia');
+    // En la app /licencia es la página de precios y rebota a /dashboard: mandar
+    // ahí dejaba al asesor dando vueltas. Se va directo al panel.
+    redirect(es_app_nativa() ? '/dashboard' : '/licencia');
 } else {
     flash('success', 'Ticket enviado correctamente. Te contactaremos pronto.');
     redirect('/ayuda#soporte');

@@ -7,7 +7,7 @@
 defined('COTIZAAPP') or die;
 
 // Bloquear registro en app nativa (Apple Guideline 3.1.1)
-if (str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud')) {
+if (es_app_nativa()) {
     redirect('/login');
 }
 

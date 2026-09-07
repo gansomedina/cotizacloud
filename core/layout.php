@@ -117,7 +117,7 @@ if (Auth::id() && defined('EMPRESA_ID') && EMPRESA_ID > 0) {
 }
 
 // Detectar app nativa iOS/Android (Capacitor)
-$is_native_app = str_contains($_SERVER['HTTP_USER_AGENT'] ?? '', 'CotizaCloud');
+$is_native_app = es_app_nativa();
 
 $usuario = Auth::usuario();
 $empresa = Auth::empresa();
@@ -618,7 +618,11 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);margin:0;fon
             }
         }
         ?>
-        <div id="escudo-radar-banner" style="display:none;background:#eef7f2;border:1.5px solid #b8ddc8;border-radius:10px;padding:12px 16px;margin-bottom:16px">
+        <?php // Sin cz_vid, $escudo_url queda vacío y el botón era un <a href="">
+              // que solo recargaba la página: el asesor tocaba "Activar", no
+              // pasaba nada, y el Escudo quedaba sin activar sin decir por qué.
+              // Con el id cambiado, el JS no lo encuentra y no muestra nada. ?>
+        <div id="<?= $escudo_url !== '' ? 'escudo-radar-banner' : 'escudo-radar-banner-sin-vid' ?>" style="display:none;background:#eef7f2;border:1.5px solid #b8ddc8;border-radius:10px;padding:12px 16px;margin-bottom:16px">
             <div style="display:flex;align-items:center;gap:12px">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a5c38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 <div style="flex:1;font:500 13px -apple-system,sans-serif;color:#1a1a18">Protege tus metricas del Radar</div>
@@ -757,6 +761,19 @@ if(typeof twemoji!=='undefined'){twemoji.parse(document.body,{folder:'svg',ext:'
 <script>
 (function(){
     if(!window.Capacitor||!window.Capacitor.isNativePlatform||!window.Capacitor.isNativePlatform())return;
+    // ── Marca de app nativa (respaldo) ──
+    // La pone el servidor en el LOGIN (Auth::login), que es donde vale desde la
+    // primera pantalla. Este respaldo cubre a quien YA tenía sesión abierta
+    // antes de este arreglo: sin él seguiría viendo precios hasta re-loguearse.
+    if(document.cookie.indexOf('cz_app=1')===-1){
+        var sec = location.protocol === 'https:' ? ';Secure' : '';
+        document.cookie = 'cz_app=1;path=/;domain=.<?= BASE_DOMAIN ?>;max-age=2592000;SameSite=Lax' + sec;
+        // La página actual ya se pintó con el HTML de navegador. Se recarga UNA
+        // vez para que el servidor la vuelva a generar sin precios ni botones
+        // de compra; el guard de arriba impide que vuelva a entrar.
+        location.reload();
+        return;
+    }
     if(localStorage.getItem('escudo_radar_active'))return;
     var b=document.getElementById('escudo-radar-banner');
     if(!b)return;
