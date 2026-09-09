@@ -77,9 +77,11 @@ $log = DB::query(
 $mesa_toques = [];
 try {
     $mesa_toques = DB::query(
-        "SELECT m.area, m.estado, m.razon, m.razon_texto, m.created_at, u.nombre AS usuario_nombre
+        // Sin el JOIN a usuarios: el nombre ya no se pinta (quien abre esta
+        // pantalla es el dueño de la cotización). El dato sigue en
+        // mesa_estados.usuario_id si algún día hace falta.
+        "SELECT m.area, m.estado, m.razon, m.razon_texto, m.created_at
            FROM mesa_estados m
-           LEFT JOIN usuarios u ON u.id = m.usuario_id
           WHERE m.cotizacion_id = ?
             AND (m.razon IS NULL OR m.razon <> 'auto')  -- el contacto implícito no es un toque real
           ORDER BY m.created_at DESC
@@ -306,6 +308,11 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
     .log-row { display:flex; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font:400 12px var(--body); }
     .log-row:last-child { border-bottom:none; }
     .log-evento { font-weight:600; color:var(--text); flex-shrink:0; }
+    /* Seguimiento: sin la columna del nombre, el estado se queda con el ancho
+       sobrante. Sin esto, flex-shrink:0 lo dejaba pegado a la fecha y el texto
+       largo se salía de la tarjeta. min-width:0 es lo que permite que corte
+       renglón en vez de desbordar. */
+    .log-evento-ancho { flex:1; min-width:0; }
     .log-detalle { color:var(--t3); flex:1; }
     .log-ts { color:var(--t3); font:400 11px var(--num); flex-shrink:0; }
 
@@ -734,10 +741,13 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
                 if (!empty($t['razon_texto']))                     $mot = $t['razon_texto'];
                 elseif (!empty($t['razon']) && isset($MESA_RZ[$t['razon']])) $mot = $MESA_RZ[$t['razon']];
             ?>
+            <?php /* Sin el nombre de quien lo declaró: esta pantalla la abre el
+                 dueño de la cotización, así que la columna repetía su propio
+                 nombre en cada renglón y le robaba el ancho a lo único que sí
+                 se lee — el estado y el motivo. */ ?>
             <div class="log-row">
-                <span class="log-evento"><?= e($et) ?><?= $mot ? ' — ' . e($mot) : '' ?></span>
-                <span class="log-detalle"><?= e($t['usuario_nombre'] ?? '—') ?></span>
-                <span class="log-ts"><?= tiempo_relativo($t['created_at']) ?></span>
+                <span class="log-evento log-evento-ancho"><?= e($et) ?><?= $mot ? ' — ' . e($mot) : '' ?></span>
+                <span class="log-ts"><?= fecha_dm($t['created_at']) ?></span>
             </div>
             <?php endforeach; ?>
         </div>
