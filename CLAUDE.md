@@ -4254,9 +4254,15 @@ salta el bloque entero.
   evitaría el daño.
 - Daño verificado: `estado=vista` + `vista_at` falsos + fila `cliente_real` en
   `escudo_log`. **NO se activó Descuento Inteligente** (verificado).
-- **PENDIENTE, sin autorizar:** `UPDATE cotizaciones SET estado='enviada',
-  vista_at=NULL, ultima_vista_at=NULL WHERE id=4816 AND visitas=0;` +
-  `DELETE FROM escudo_log WHERE cotizacion_id=4816 AND ip LIKE '160.79.106.%';`
+- **DECISIÓN DEL CEO: NO se revierte. La 4816 se queda en `vista`.**
+  Revertirla a `enviada` con `visitas=0` sería peor: `ActividadScore.php:557,565`
+  hace que **UNA sola cotización sin abrir a los 5 días ponga la operativa de
+  Activación en CERO** (`$pen_no_abiertas = $no_abiertas_5d > 0 ? 1.0 : 0.0`) —
+  no es proporcional, es un interruptor. Le mataría la dimensión completa a la
+  asesora por una falla que está probado que no es suya. El costo de dejarlo es
+  un dato inexacto en una cotización; el de corregirlo, el score de una persona.
+  **Se prefiere el dato sucio.** (La fila `cliente_real` en `escudo_log` también
+  se queda: sirve de evidencia de este episodio.)
 
 ### ✅ CONCLUSIÓN — comparación controlada (esto es lo que vale)
 
