@@ -4226,11 +4226,63 @@ diagnósticos al cliente.**
 3. **Las IPs de borde** `104.21.21.64` / `172.67.196.204` (+ AAAA). Otros vantage points reciben otro par (`188.114.96/97.x`) — también Cloudflare, normal.
 **Nuestro servidor NO está en la lista**: el teléfono falla en la resolución, antes de conectarse a nadie. Y como los 3 puntos responden al mundo entero (55 nodos), lo que falla es **la ruta desde su red** hasta ellos.
 
+### 🔒 REGLA DEL CEO — NO SE LE PIDE NADA A LOS CLIENTES
+Ni pruebas, ni capturas, ni "ábrela con Chrome", ni "revisa tu WiFi". **Tampoco
+disfrazado de "solo es usar el producto".** Se dijo tres veces en esta sesión y
+la propuse igual tres veces. Si un diagnóstico depende del cliente, **ese
+diagnóstico no existe** — se cierra sin causa y se dice así.
+
 ### Conclusión (estado al cierre)
-- Causa: **resolución DNS fallida en la red WiFi de la clienta** hacia los puntos compartidos. Mecanismos propuestos por 2 de 6 lentes de investigación (**ningún refutador alcanzó a correr** — 31 de 33 agentes murieron por límite de sesión; no están verificados): filtro DNS con **regla sobre `.cloud` que inspecciona el destino del CNAME** (DNS privado de Android, VPN/app con DNS propio, router, MDM/Knox). **Corrección clave:** el teléfono nunca pregunta un nombre `.cyou` — esa dependencia la sufre el resolvedor recursivo, no el cliente; un filtro de TLD en el teléfono explica ambas capturas solo por `.cloud` + CNAME.
-- Descartado con evidencia: VPN que la saque por otro país (un bloqueo de Cloudflare muestra página de Cloudflare, no error DNS; y **no hay ícono de llave** en la barra de estado de ninguna captura), reloj del teléfono (da error de certificado, no DNS), Telmex "Navegación Segura" (es software de Windows, no aplica a Android), TLS mínimo, reputación, DNSSEC, autoritativos, enlace roto.
-- **Decisiones del CEO**: PDF a mano **solo para ella** (excepción, cuesta el Radar en esa cot). **NO adjuntar PDF al correo** — mataría el Radar para todos (propuesta retirada). **No tocar `Router.php`.** No cambiar nada en Cloudflare (Automatic SSL/TLS en Full está bien; "Automatic key exchange" es hacia el origen, irrelevante para ella). OpenGraph en pausa.
-- **Regla para el futuro**: un solo cliente con este síntoma = su red. Un segundo cliente en otra red = reabrir el caso.
+
+**CAPTURA 1 — explicada y verificada.** El TLD `.cyou` está bloqueado entero en
+la lista pública de TLDs abusados de HaGeZi (`||*.cyou^$denyallow=hammertime.cyou|prometko.cyou`,
+alimentada por Spamhaus/Cloudflare Radar/Netcraft, usada por NextDNS, AdGuard,
+Pi-hole y routers con filtro). Los NS de `ontimecocinas.com` son
+`ns1/ns2.limitless.cyou` **sin glue en `.com`** → un resolvedor con esa lista no
+puede llegar a la zona y **el dominio entero deja de resolver**, aunque el resto
+de internet le funcione. No es teoría: lista pública + cadena ya medida.
+
+**Y le pega a TODAS las ligas del producto, no a una.** `dominio_publico()`
+(`Helpers.php:1304`) devuelve el dominio custom siempre que la empresa lo tenga
+→ Copiar, WhatsApp, correo y "Ver" generan **solo** `<sucursal>.ontimecocinas.com`.
+El ápice redirige ahí (`Router.php:404-437`, verificado en vivo).
+▶ **Plan de arreglo: `docs/dns_ontimecocinas_a_godaddy.md`.**
+
+**CAPTURA 2 — SIN EXPLICACIÓN, Y SE QUEDA ASÍ.** `hermosillo.cotiza.cloud` no
+toca `.cyou` y `.cloud` no está en esa lista. Además **el experimento nunca fue
+controlado**: cambiaron dos variables a la vez —dominio Y navegador— y los
+errores no son del mismo tipo (Chrome *nombra* el fallo de resolución; "Sitio
+web no disponible" es la pantalla genérica de WhatsApp para cualquier fallo de
+red). Nunca se probó Chrome + `cotiza.cloud` ni WhatsApp + `ontimecocinas.com`,
+y **no se va a probar**. Dos candidatas, ninguna verificable sin la clienta:
+el WebView de Android viejo/roto, o su red sin ruta a las IPs de Cloudflare.
+
+**Confirmado con las capturas** (leídas de nuevo, con atención): ícono de
+YouTube en la barra de estado y 4 pestañas abiertas → su internet funciona;
+WiFi **sin** el "!" de "conectado sin internet"; **sin** ícono de llave (sin
+VPN). Eso mata la hipótesis del "WiFi muerto" con evidencia directa.
+
+**Descartado con medición:** DNS público (9 resolvedores + Quad9 binario), 55
+nodos de check-host, 28 sondas de ISPs mexicanos (Globalping), Zonemaster e
+intodns 0 errores, sin DNSSEC, reputación limpia (Spamhaus/SURBL/URIBL/GSB/
+Sucuri), HTTP 200 por 4 caminos, TLS 1.0-1.3, **tamaño de respuesta DNS 62-133
+bytes — MENORES que las de `google.com` (124-256), así que EDNS/truncado queda
+fuera**, dominio de 6 meses (fuera de "dominio nuevo"), Cloudflare sin bloqueos
+ni incidentes, servidor sin bloqueos.
+
+**Decisiones del CEO:** PDF a mano solo para ella. **NO adjuntar PDF al correo**
+(mataría el Radar para todos). **No tocar `Router.php`.** Nada en Cloudflare.
+OpenGraph en pausa. **Regla:** un cliente con este síntoma = su red; un segundo
+en otra red = reabrir.
+
+### ⚠️ La zona de `ontimecocinas.com` tiene 52 registros, no 18
+Consultando el DNS público encontré 18. El export de DirectAdmin tiene **52**.
+Preguntar desde afuera solo encuentra lo que uno sabe preguntar. Lo invisible:
+`app`/`cen`/`hmo`/`nog` (cuentas de hosting aparte, con sus `cpanel.`/`webmail.`/
+`whm.`/`webdisk.`/`www.` — **`hmo` NO es `hermosillo`**), cinco
+`_acme-challenge.<sucursal>` (**validan los certificados de las 3 sucursales y
+ROTAN**) y `_cpanel-dcv-test-record`. **No hay DKIM** (export + barrido de 21
+selectores) — su correo va solo con SPF; tampoco DNSSEC ni CAA.
 
 ### Hallazgos reales nuestros que salieron (ninguno explica el caso)
 1. **`HEAD /c/:slug` → 302 a la landing.** `Router.php:79` registra solo GET; `dispatch()` (`:35`) compara `REQUEST_METHOD`; cae en `not_found_handler` de `:96` → `redirect(BASE_URL)`. **NO TOCAR** (3 agentes coincidieron, verificado): mapear HEAD→GET abriría `/logout` (`Router.php:105`, `modules/auth/logout.php` sin guarda de método → cierra sesión por una sonda), `DescuentoInteligente::activar()` (`cotizacion.php:366` — el comentario de arriba dice "que ningún refactor futuro abra la puerta"), visitas/estado `vista` irreversible/Radar/CAPI, `/api/mp/return`, `/api/safari-bridge`. Los navegadores hacen GET; WhatsApp documenta GET para previews; en el ápice HEAD ya da 404 en todo; `dispatch()` no tiene ni una prueba; único llamador `index.php:99`. Daño real hoy: ninguno.
