@@ -38,10 +38,11 @@ certificados y sin riesgo.
 
 El correo a Limitless:
 
-> *"¿Tienen nameservers en un dominio que no sea `.cyou`? El TLD `.cyou` está en
-> las listas de bloqueo de TLDs abusados (Spamhaus / HaGeZi) y hay clientes
-> nuestros a los que no les resuelve el dominio por eso. Necesitamos apuntar a
-> nameservers en `.com` o `.net` — el hosting se queda con ustedes."*
+> *"¿Tienen nameservers en un dominio que no sea `.cyou`? El TLD `.cyou` aparece
+> en listas públicas de bloqueo de TLDs abusados (Spamhaus / HaGeZi), y como
+> `.com` no entrega glue para sus nameservers, un resolvedor que use esas listas
+> no puede llegar a nuestra zona. Preferimos no depender de eso. Necesitamos
+> apuntar a nameservers en `.com` o `.net` — el hosting se queda con ustedes."*
 
 Si dicen que sí → cambiar los NS en GoDaddy y **terminó**. La Opción B ya no
 hace falta.
