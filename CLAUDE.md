@@ -4234,19 +4234,32 @@ diagnóstico no existe** — se cierra sin causa y se dice así.
 
 ### Conclusión (estado al cierre)
 
-**CAPTURA 1 — explicada y verificada.** El TLD `.cyou` está bloqueado entero en
-la lista pública de TLDs abusados de HaGeZi (`||*.cyou^$denyallow=hammertime.cyou|prometko.cyou`,
-alimentada por Spamhaus/Cloudflare Radar/Netcraft, usada por NextDNS, AdGuard,
-Pi-hole y routers con filtro). Los NS de `ontimecocinas.com` son
-`ns1/ns2.limitless.cyou` **sin glue en `.com`** → un resolvedor con esa lista no
-puede llegar a la zona y **el dominio entero deja de resolver**, aunque el resto
-de internet le funcione. No es teoría: lista pública + cadena ya medida.
+**CAPTURA 1 — NO EXPLICADA. Hay un mecanismo verificado, pero NO está probado
+que sea la causa.** Lo que sí está verificado: el TLD `.cyou` está bloqueado
+entero en la lista pública de TLDs abusados de HaGeZi
+(`||*.cyou^$denyallow=hammertime.cyou|prometko.cyou`, alimentada por Spamhaus /
+Cloudflare Radar / Netcraft, usada por NextDNS, AdGuard, Pi-hole y routers con
+filtro); y los NS de `ontimecocinas.com` son `ns1/ns2.limitless.cyou` **sin glue
+en `.com`**, así que un resolvedor con esa lista no podría llegar a la zona.
 
-**Y le pega a TODAS las ligas del producto, no a una.** `dominio_publico()`
-(`Helpers.php:1304`) devuelve el dominio custom siempre que la empresa lo tenga
-→ Copiar, WhatsApp, correo y "Ver" generan **solo** `<sucursal>.ontimecocinas.com`.
-El ápice redirige ahí (`Router.php:404-437`, verificado en vivo).
-▶ **Plan de arreglo: `docs/dns_ontimecocinas_a_godaddy.md`.**
+**Lo que NO está verificado — y no se puede verificar sin la clienta:** que su
+red use esa lista. El mecanismo es plausible; que sea LO QUE LE PASÓ es una
+hipótesis, no un hallazgo.
+
+⛔ **CORRECCIÓN DE UN ERROR QUE YO METÍ EN ESTE ARCHIVO.** Escribí *"le pega a
+TODAS las ligas del producto"*. **Es falso y los datos lo contradicen:** es el
+ÚNICO cliente con este síntoma en toda la vida del sistema, y en la misma
+ventana el resto de los clientes de OnTime abrió sus cotizaciones con normalidad
+por el dominio custom. Si `.cyou` estuviera tumbando las ligas, habría muchos
+casos, no uno. Verifiqué el MECANISMO (la lista, el glue, `dominio_publico()` en
+`Helpers.php:1304`, el redirect del ápice en `Router.php:404-437`) y de ahí salté
+a afirmar el IMPACTO, que es otra cosa y que nadie midió.
+
+**Qué queda entonces del `.cyou`:** un **riesgo latente real** de infraestructura
+—TLD en listas de bloqueo, sin glue, los dos NS en un solo AS (53667)— que vale
+la pena quitar por higiene, con el plan en
+`docs/dns_ontimecocinas_a_godaddy.md`. **NO es "el arreglo del caso 4816"**, y
+quitarlo no garantiza que a ella le abra.
 
 **CAPTURA 2 — SIN EXPLICACIÓN, Y SE QUEDA ASÍ.** `hermosillo.cotiza.cloud` no
 toca `.cyou` y `.cloud` no está en esa lista. Además **el experimento nunca fue

@@ -14,16 +14,15 @@ esa lista tiene que resolver un nombre `.cyou` para llegar a la zona, ese paso
 muere, y **`ontimecocinas.com` entero deja de resolver** — aunque sea un `.com`
 inocente y aunque al usuario le funcione el resto de internet.
 
-Le pasó a una clienta de OnTime Hermosillo el 8-sep-2026 (cotización 4816):
-navegaba YouTube y MercadoLibre sin problema, y Chrome le decía *"No se encontró
-hermosillo.ontimecocinas.com's DNS address"*.
-
-**Y le pega a TODAS las ligas del producto.** `dominio_publico()`
-(`core/Helpers.php:1304`) devuelve el dominio custom siempre que la empresa lo
-tenga, así que el botón Copiar, el de WhatsApp, el correo y el "Ver" del editor
-generan **solo** `<sucursal>.ontimecocinas.com`. Además el ápice redirige ahí
-(`Router.php:404-437`, verificado en vivo: `cotiza.cloud/c/<slug>` → 302 →
-`hermosillo.ontimecocinas.com/c/<slug>`). Un solo bloqueo tumba todos los caminos.
+⚠️ **Esto es un riesgo LATENTE, no una causa demostrada.** Una clienta de OnTime
+Hermosillo no pudo abrir su cotización el 8-sep-2026 (cot. 4816) y este
+mecanismo encaja, pero **nunca se comprobó que su red use esa lista** — el dato
+vivía en su teléfono y no se le piden pruebas a los clientes. **Es el único caso
+en toda la vida del sistema**, y el resto de los clientes de OnTime abre sus
+cotizaciones con normalidad por el dominio custom. Así que esto **no se hace
+para arreglar ese caso** (no hay garantía de que lo arregle): se hace porque un
+TLD en listas de bloqueo, sin glue y con los dos NS en un solo AS es una bomba
+de tiempo que no cuesta nada desactivar.
 
 **Segundo motivo, independiente:** los dos NS viven en un único AS (53667,
 Limitless). Cuando su red parpadea, caen juntos y las tres sucursales con ellos.
