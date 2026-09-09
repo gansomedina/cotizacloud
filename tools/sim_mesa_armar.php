@@ -583,5 +583,61 @@ $cd3 = Mesa::cobertura_senales(5, 510);
 chk('👎 sin postura tambien cuenta ATENDIDO (pedidas 1, atendidas 1)',
     [$cd3['pedidas'], $cd3['atendidas'], $cd3['fallas']], [1, 1, 0]);
 
+// ══ BONO POR TOQUE (vendedor 511) ══════════════════════════
+// Un toque de la mesa sostiene la cotización p75/2 días DESDE ESE TOQUE, ya
+// pasado el ciclo natural. Antes de este contrato los toques no valían nada:
+// la mesa solo miraba edad y última edición, así que una cotización que el
+// asesor llamaba cada tercer día se le caía igual.
+//
+// Números de esta simulación: p75=20 → ciclo 40d · bono toque 10d ·
+// bono edición 20d · techo = max(max_hist 4, 40+20) = 60d.
+// cotizacion_log va vacío a propósito: sin ediciones, lo único que puede
+// sostener estas filas es el toque. Si el bono se rompe, se caen las cuatro.
+echo "═ BONO POR TOQUE ✋ (vendedor 511) ═\n";
+cot(9920, 511, 11000, 45, ['visitas' => 2, 'vista_d' => 40]); // toque fresco → SE QUEDA
+tap(9920, 'contacto', 'hablamos', 3);
+cot(9921, 511, 12000, 45, ['visitas' => 2, 'vista_d' => 40]); // toque viejo → SE CAE
+tap(9921, 'contacto', 'hablamos', 15);
+cot(9922, 511, 13000, 45, ['visitas' => 2, 'vista_d' => 40]); // solo el implícito → SE CAE
+tap(9922, 'contacto', 'hablamos', 3, 'auto');
+cot(9923, 511, 14000, 70, ['visitas' => 2, 'vista_d' => 65]); // pasó el techo → SE CAE
+tap(9923, 'contacto', 'hablamos', 1);
+
+$mt = Mesa::armar(5, 511);
+$mtb = [];
+foreach ($mt['rows'] as $r) $mtb[(int)$r['id']] = $r;
+
+chk('toque de hace 3d (bono 10) sostiene una de 45d — el caso que antes se caía',
+    isset($mtb[9920]), true);
+chk('toque de hace 15d ya venció el bono → se cae', isset($mtb[9921]), false);
+chk('el "hablamos" implícito (razon=auto) NO cuenta como toque → se cae',
+    isset($mtb[9922]), false);
+chk('techo duro a los 60d: ni un toque de ayer la salva a los 70d',
+    isset($mtb[9923]), false);
+chk('solo sobrevive la del toque fresco', array_keys($mtb), [9920]);
+
+// EFECTO EN EL SCORE — el precio de este cambio, explícito.
+// La que se sostiene por el toque entra al examen de cobertura si NO está
+// calificada: tapeó "hablamos" pero no declaró postura ni puso manita, así
+// que no es "fría" y cuenta como FALLA. Antes se caía de la mesa al día 41 y
+// desaparecía del examen sin costo.
+//
+// Es el efecto buscado y no un daño colateral: llamar al cliente sostiene la
+// cotización, pero sostenerla sin calificarla te la deja en la fila
+// pendiente. La salida es tapear completo (postura + manita) — ahí se vuelve
+// fría y sale del examen, igual que cualquier otra vieja ya trabajada.
+$cov511 = Mesa::cobertura_senales(5, 511);
+chk('sostenida por toque SIN calificar → entra al examen como falla (pedidas 1, atendidas 0)',
+    [$cov511['pedidas'], $cov511['atendidas'], $cov511['fallas']], [1, 0, 1]);
+
+// Y la contraparte: calificada completa se vuelve fría y NO infla el examen.
+cot(9930, 512, 15000, 45, ['visitas' => 2, 'vista_d' => 40]);
+tap(9930, 'contacto', 'hablamos', 3);
+tap(9930, 'postura', 'decidiendo', 3);
+fb(9930, 512, 'con_interes', 3);
+$cov512 = Mesa::cobertura_senales(5, 512);
+chk('sostenida por toque Y calificada → es fría, fuera del examen (pedidas 0)',
+    [$cov512['pedidas'], $cov512['atendidas'], $cov512['fallas']], [0, 0, 0]);
+
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

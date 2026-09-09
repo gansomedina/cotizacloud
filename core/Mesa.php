@@ -128,6 +128,22 @@ class Mesa
         $max_hist = $mh_cache[$empresa_id];
         $linea_limpieza = max($max_hist, 2 * $p75); // nunca sugerir bajo 2×p75
 
+        // TECHO DURO de la mesa: pasado este día NINGÚN toque la sostiene.
+        // Sin esto, tapeando cada 4 días una cotización vive en la mesa todo el
+        // año — y el motivo para hacerlo es de dinero: mientras esté en la mesa
+        // no puede recibir Descuento Inteligente.
+        //
+        // El número sale de su propia historia: el cierre más tardío que ha
+        // tenido la empresa. Después de eso no es un prospecto, es un fósil.
+        // Se ajusta solo — si mañana cierran una a los 70 días, la línea se va
+        // a 70 porque ya demostraron que a esa edad todavía se cierra.
+        //
+        // El piso de (ciclo + bono de edición) es para que el techo nunca
+        // ahogue la extensión: una empresa SIN ventas tiene max_hist = 0 y
+        // linea_limpieza = 2×p75, o sea el mismo día en que arranca el bono —
+        // el techo se dispararía antes de que la extensión pudiera servir.
+        $techo_mesa = max($linea_limpieza, 2 * $p75 + $p75);
+
         // Universo: activas del vendedor (mismos criterios que score/Radar)
         $cots = DB::query(
             "SELECT c.id, c.numero, c.titulo, c.total, c.estado, c.visitas,
@@ -253,6 +269,30 @@ class Mesa
         ) as $r) {
             $acc[(int)$r['cotizacion_id']] = $r['ult'];
         }
+
+        // Último TOQUE real del asesor en la mesa — la otra señal de vida.
+        // Consulta aparte y no derivada de $me a propósito: $me guarda la última
+        // fila POR ÁREA, así que si el último 'contacto' es el implícito, el
+        // 'hablamos' real anterior queda tapado y se perdería. Mismo motivo por
+        // el que $con_real existe.
+        //
+        // Se excluye razon='auto': ése es el "hablamos" que el endpoint se
+        // inserta solo cuando el asesor declara un desenlace sin contacto
+        // reciente (mesa_estado.php:117). Es relleno del sistema, no trabajo
+        // suyo — el sistema no debe darse tiempo a sí mismo.
+        $tap = [];
+        try {
+            foreach (DB::query(
+                "SELECT cotizacion_id, MAX(created_at) AS ult
+                 FROM mesa_estados
+                 WHERE empresa_id = ? AND cotizacion_id IN ($in)
+                   AND (razon IS NULL OR razon <> 'auto')
+                 GROUP BY cotizacion_id",
+                [$empresa_id]
+            ) as $r) {
+                $tap[(int)$r['cotizacion_id']] = $r['ult'];
+            }
+        } catch (\Throwable $e) {} // tabla sin migrar → sin bono de toque
 
         // Estados declarados en la mesa (última declaración por área)
         $me = []; $nc = []; $con_real = [];
@@ -453,14 +493,46 @@ class Mesa
             // vistas del cliente). La edad desde creación NO cambia; sale solo si
             // YA pasó SU ventana de creación (2×p75) Y su ventana de edición
             // (p75 desde la última edición). Abuso frenado por el score.
+            //
+            // BONO POR TOQUE: un toque de la mesa la sostiene $p75/2 días desde
+            // ESE toque. Antes no valía nada — la mesa solo miraba la edad y la
+            // última edición, así que una cotización que el asesor llamaba cada
+            // tercer día se le caía de la fila igual al día 21. El sistema le
+            // enseñaba que para no perderla tenía que editarla y reenviarla.
+            // Con esto, hablarle al cliente por fin cuenta.
+            //
+            // NO ES ACUMULABLE: cuenta desde el ÚLTIMO toque (MAX en la query),
+            // no la suma de todos. Cuatro toques no dan cuatro ventanas.
+            //
+            // Vale la MITAD que una edición a propósito: tapear es un clic,
+            // editar y reenviar es trabajo real que el cliente recibe.
             $bono_edit = $p75;
+            $bono_tap  = max(1, (int)ceil($p75 / 2));
             $dias_edit = !empty($acc[$cid]) ? (int)floor(($now - strtotime($acc[$cid])) / 86400) : PHP_INT_MAX;
-            $fuera      = ($edad > 2 * $p75) && ($dias_edit > $bono_edit);
+            $dias_tap  = !empty($tap[$cid]) ? (int)floor(($now - strtotime($tap[$cid])) / 86400) : PHP_INT_MAX;
+            // Sin señal de vida = vencieron LAS DOS ventanas. Cada una contra su
+            // propio plazo, no contra la fecha más reciente: si editó hace 8
+            // días (le quedan 2) y tapeó hace 6 (ya venció), la más reciente es
+            // el toque — pero la que sigue sosteniéndola es la edición.
+            $sin_senal = ($dias_edit > $bono_edit) && ($dias_tap > $bono_tap);
+            $fuera      = ($edad > 2 * $p75) && $sin_senal;
+            // Techo duro: pasado el cierre más tardío de la empresa, ningún
+            // toque la salva. Se aplica solo a $fuera (permanencia), no a
+            // $fuera_mil (categoría) — un cliente leyéndola AHORA a los 60 días
+            // sigue siendo un milagro, y el !$hot_reciente de abajo lo respeta.
+            if ($edad > $techo_mesa) $fuera = true;
             // Milagro incluye el BORDE exacto (edad == 2×p75): una cotización
             // caliente justo en el filo también es "revivió" (⚡). Se usa SOLO en
             // la categoría milagro, NO en $fuera — $fuera gatea limpieza/descarte
             // y con >= una fría en el filo desaparecería sin avisar. Cerrar el
             // borde aquí es cosmético-correcto; tocar $fuera sería un bug.
+            //
+            // A PROPÓSITO NO usa $sin_senal (o sea, ignora el bono de toque):
+            // "milagro" describe al CLIENTE, no al asesor — es "estaba fuera de
+            // ciclo y el cliente volvió a leerla AHORA" (solo aplica junto con
+            // $hot_reciente). Que ella la haya tapeado ayer no le quita el
+            // mérito al cliente ni cambia lo que el asesor tiene que hacer.
+            // Por eso aquí sigue pesando solo la edición.
             $fuera_mil  = ($edad >= 2 * $p75) && ($dias_edit > $bono_edit);
 
             // Revivida = el cliente ABRIÓ después del descarte, dentro de los
