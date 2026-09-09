@@ -88,6 +88,35 @@ class Mesa
         return "('" . implode("','", array_merge(self::HOT, $extra)) . "')";
     }
 
+    /**
+     * VENTANA DE TRABAJO — fuente única de la fórmula.
+     *
+     * La usan DOS motores y por eso vive aquí y no en ninguno de los dos:
+     *   · armar()             — para decidir qué renglón suelta la mesa
+     *   · DescuentoInteligente — para saber cuándo tiene permiso de entrar
+     * Si el número cambia aquí, cambia en los dos. Es justo lo que se quiere:
+     * el descuento entra cuando la mesa ya soltó, ni antes ni por su cuenta.
+     *
+     * Recibe los días YA calculados en vez de consultarlos: armar() los tiene
+     * en memoria para toda la cartera y volver a pedirlos por fila sería
+     * absurdo. Lo que vive aquí es la REGLA, no la obtención del dato.
+     *
+     * Las tres condiciones son AND. Basta que una siga viva para que la
+     * cotización se quede.
+     */
+    public static function fuera_de_ventana(int $edad, int $dias_edit, int $dias_tap, int $p75): bool
+    {
+        return $edad      >  2 * $p75                    // terminó el ciclo natural
+            && $dias_edit >  self::bono_edicion($p75)    // sin editar ni reenviar
+            && $dias_tap  >  self::bono_toque($p75);     // sin tocar en la mesa
+    }
+
+    /** Días que sostiene una edición o reenvío: trabajo real que el cliente recibe. */
+    public static function bono_edicion(int $p75): int { return $p75; }
+
+    /** Días que sostiene un toque de la mesa: la mitad — tapear es un clic. */
+    public static function bono_toque(int $p75): int { return max(1, (int)ceil($p75 / 2)); }
+
     // Sin tope de lista (decisión CEO): se muestra la mesa completa. El único
     // cap vivo es el de milagros/revividas, para que no inunden la cabecera.
     private const CAP_MILAGROS = 6;
@@ -506,16 +535,14 @@ class Mesa
             //
             // Vale la MITAD que una edición a propósito: tapear es un clic,
             // editar y reenviar es trabajo real que el cliente recibe.
-            $bono_edit = $p75;
-            $bono_tap  = max(1, (int)ceil($p75 / 2));
+            $bono_edit = self::bono_edicion($p75);
             $dias_edit = !empty($acc[$cid]) ? (int)floor(($now - strtotime($acc[$cid])) / 86400) : PHP_INT_MAX;
             $dias_tap  = !empty($tap[$cid]) ? (int)floor(($now - strtotime($tap[$cid])) / 86400) : PHP_INT_MAX;
-            // Sin señal de vida = vencieron LAS DOS ventanas. Cada una contra su
-            // propio plazo, no contra la fecha más reciente: si editó hace 8
-            // días (le quedan 2) y tapeó hace 6 (ya venció), la más reciente es
-            // el toque — pero la que sigue sosteniéndola es la edición.
-            $sin_senal = ($dias_edit > $bono_edit) && ($dias_tap > $bono_tap);
-            $fuera      = ($edad > 2 * $p75) && $sin_senal;
+            // Cada bono se compara contra SU PROPIO plazo, no contra la fecha
+            // más reciente: si editó hace 8 días (le quedan 2) y tapeó hace 6
+            // (ya venció), la fecha más nueva es el toque — pero la que sigue
+            // sosteniéndola es la edición. Eso lo resuelve fuera_de_ventana().
+            $fuera      = self::fuera_de_ventana($edad, $dias_edit, $dias_tap, $p75);
             // Techo duro: pasado el cierre más tardío de la empresa, ningún
             // toque la salva. Se aplica solo a $fuera (permanencia), no a
             // $fuera_mil (categoría) — un cliente leyéndola AHORA a los 60 días

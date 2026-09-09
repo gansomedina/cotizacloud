@@ -7,16 +7,22 @@
 //  descuento automático, SOLO cuando el Radar confirma que ya no están
 //  vivas (bucket frío + sin actividad reciente de cliente/asesor).
 //
+//  QUIÉN ABRE LA PUERTA: la MESA, no el calendario. El descuento entra
+//  cuando la mesa ya soltó la cotización (Mesa::fuera_de_ventana — fuente
+//  única de esa fórmula) y llevaba 2 días fuera. Antes la puerta era la edad
+//  y era letra muerta: ese umbral es el mismo número que el candado de
+//  dormancia, y como el cliente no puede llevar callado más días de los que
+//  la cotización existe, quien pasaba la dormancia ya había pasado la edad.
+//
 //  Dos reglas configurables e independientes por empresa:
 //    R1 (recuperación): cotización pasó su vida comercial pero aún no muere.
 //    R2 (muerto):       cotización en la zona donde históricamente ya no se
 //                       cierra. Descuento mayor (último intento).
 //
-//  Zonas (multiplicadores sobre p75 = ventana de la empresa):
-//    R1_inicio = 1.5×p75      · dead = max(p90, 2.5×p75)      · techo = dead + 3×p75
-//    R1 = [R1_inicio, dead)   · R2 = [dead, techo]            · >techo = fósil, no dispara
-//    (R1 arranca antes porque las exclusiones B —trabajo del asesor + apertura
-//     del cliente— protegen la canibalización; validado con datos históricos)
+//  Zonas por edad — YA NO son puerta de entrada: solo eligen QUÉ regla
+//  aplica (el porcentaje) y dónde queda el techo del fósil. Los
+//  multiplicadores viven en las constantes de abajo; con p75=10 dan
+//  mesa 0-20 · R1 21-30 · R2 31-55 · fósil 56+.
 //
 //  Rendimiento: las anclas (p75/p90) escanean ventas → se cachean por
 //  empresa (TTL 24h) en desc_int_config. El slug solo hace lecturas
@@ -33,6 +39,14 @@ class DescuentoInteligente
     const MULT_R1_INICIO = 2.0;  // R1 empieza JUSTO después de la mesa (2×p75), con > estricto → día 21
     const MULT_DEAD      = 3.0;  // R2 empieza en 3×p75 (piso, además de p90) → día 31
     const MULT_TECHO     = 2.5;  // ancho de R2 sobre dead: dead + 2.5×p75 → día 55
+
+    // Días que la cotización debe llevar FUERA de la mesa antes de que el
+    // descuento pueda entrar. No es adorno: la mesa y el descuento calculan
+    // "ya salió" por separado y en momentos distintos (la mesa cuando el
+    // asesor la abre, el descuento cuando el cliente entra al slug), con
+    // DATEDIFF de MySQL una y floor() de PHP el otro. El margen garantiza que
+    // nunca se descuente algo que el asesor todavía tiene en su fila.
+    const MARGEN_MESA     = 2;
 
     const MIN_VENTAS      = 5;    // sin muestra suficiente, la feature no corre
     const GENERICO_COTS   = 10;   // cliente con >N cotizaciones vivas = cajón genérico
@@ -180,16 +194,65 @@ class DescuentoInteligente
                 || strtotime($cot['descuento_auto_expira']) >= time());
         if ($manual_vivo || !empty($cot['cupon_id'])) return null;
 
-        // Zona por edad
         $edad = (int)floor((time() - strtotime($cot['created_at'])) / 86400);
-        // R1 = (dia_fin_vida, dia_dead]  ·  R2 = (dia_dead, dia_techo]. El > estricto
-        // en el borde inferior hace que R1 empiece el día DESPUÉS de la mesa (día 21).
+
+        // ── PUERTA DE ENTRADA: que la MESA ya la haya soltado ──────────────
+        // Antes la puerta era la edad (> dia_fin_vida) y era letra muerta: ese
+        // umbral es el MISMO número que el candado de dormancia de abajo
+        // (2×p75), y como el cliente no puede llevar callado más días de los
+        // que la cotización existe, quien pasaba la dormancia ya había pasado
+        // la edad. El borde inferior nunca bloqueó nada.
+        //
+        // Lo que sí importa es si el asesor todavía la está trabajando, y eso
+        // lo sabe la mesa — no la edad. Se pregunta con la fórmula de la mesa
+        // (fuente única) para que no puedan desincronizarse: el descuento
+        // entra donde la mesa suelta, ni antes ni por su cuenta.
+        //
+        // MARGEN: se exige que llevara fuera 2 días, no que acabe de salir.
+        // Los dos motores calculan "ya salió" por separado y en momentos
+        // distintos — la mesa cuando el asesor la abre, el descuento cuando el
+        // cliente entra al slug, con DATEDIFF uno y floor() el otro. Dos días
+        // garantizan que el descuento nunca dispare sobre algo que la mesa
+        // todavía le está mostrando al asesor.
+        //
+        // Se evalúa con los tres relojes atrasados 2 días, que es literalmente
+        // preguntar "¿ya estaba fuera hace 2 días?".
+        if (!class_exists('Mesa')) {
+            $mp = __DIR__ . '/Mesa.php';
+            if (is_file($mp)) require_once $mp;
+        }
+        if (!class_exists('Mesa')) {
+            error_log('[DI] Mesa no disponible — no se activa descuento (fail-closed)');
+            return null; // sin la mesa no hay forma de saberlo: mejor no descontar
+        }
+        $ult_edicion = DB::val(
+            "SELECT MAX(created_at) FROM cotizacion_log
+              WHERE cotizacion_id = ? AND usuario_id IS NOT NULL
+                AND COALESCE(accion, evento) IN ('editada','enviada')", [(int)$cot['id']]);
+        $ult_toque = null;
+        try {
+            // Mismo criterio que la mesa: el 'hablamos' implícito (razon='auto')
+            // no cuenta — es relleno del sistema, no trabajo del asesor.
+            $ult_toque = DB::val(
+                "SELECT MAX(created_at) FROM mesa_estados
+                  WHERE cotizacion_id = ? AND (razon IS NULL OR razon <> 'auto')", [(int)$cot['id']]);
+        } catch (\Throwable $e) {} // tabla sin migrar → esa empresa no usa mesa
+        $dias_edit = $ult_edicion ? (int)floor((time() - strtotime($ult_edicion)) / 86400) : PHP_INT_MAX;
+        $dias_tap  = $ult_toque   ? (int)floor((time() - strtotime($ult_toque))   / 86400) : PHP_INT_MAX;
+        $m = self::MARGEN_MESA;
+        if (!Mesa::fuera_de_ventana($edad - $m, $dias_edit - $m, $dias_tap - $m, (int)$anc['p75'])) {
+            return null; // la mesa todavía la tiene (o acaba de soltarla)
+        }
+
+        // Zona por edad — ya NO es puerta de entrada: solo decide QUÉ regla
+        // aplica (el porcentaje) y dónde está el techo del fósil.
+        // R1 = (dia_fin_vida, dia_dead]  ·  R2 = (dia_dead, dia_techo].
         if ($edad > $anc['dia_fin_vida'] && $edad <= $anc['dia_dead'] && (int)$cfg['r1_activa']) {
             $regla = 1; $pct = (float)$cfg['r1_pct']; $window = max(1, (int)ceil($anc['p75'] / 2));
         } elseif ($edad > $anc['dia_dead'] && $edad <= $anc['dia_techo'] && (int)$cfg['r2_activa']) {
             $regla = 2; $pct = (float)$cfg['r2_pct']; $window = max(1, (int)$anc['p75']);
         } else {
-            return null; // aún viva, fósil, o regla apagada
+            return null; // fósil (pasó el techo) o regla apagada
         }
         if ($pct <= 0) return null;
 
@@ -212,16 +275,27 @@ class DescuentoInteligente
         // desde su última vista. Cada vista real resetea el reloj sola: evaluar()
         // corre ANTES de sellar la visita actual (public/cotizacion.php:370), así
         // que ultima_vista_at = la vista PREVIA. Sin esto, el DI se rendía (regalaba
-        // %) mientras la mesa aún la tenía en juego (R1 arranca en 1.5×p75).
+        // %) mientras la mesa aún la tenía en juego. Hoy la puerta de la mesa
+        // ya cubre ese caso, pero este candado se queda: mira al CLIENTE, no
+        // al asesor, y son cosas distintas.
         $uv   = $cot['ultima_vista_at'] ?? null;
         $dorm = $uv ? (int)floor((time() - strtotime($uv)) / 86400) : 0;
         if ($dorm <= 2 * (int)$anc['p75']) return null; // te vio dentro de tu ventana → milagro, no DI
 
         // Exclusión B: actividad reciente en el window (cliente O asesor) → viva.
-        // El asesor cuenta por: ediciones/reenvíos (cotizacion_log), feedback 👍👎
-        // (radar_feedback) Y CUALQUIER tap de la mesa (mesa_estados — hablamos,
-        // no_contesta, compromisos, posturas): declarar trabajo ES gestión activa;
-        // sin esto el DI disparaba dos días después de una llamada declarada.
+        //
+        // La rama de mesa_estados SE QUITÓ: la puerta de entrada de arriba ya
+        // exige que la mesa haya soltado la cotización, y la mesa suelta solo
+        // si el último toque tiene más de p75/2 días — el mismo plazo que
+        // pedía esta rama, más los 2 días de margen. Quedó absorbida; dejarla
+        // era pedir dos veces lo mismo y esconder dónde vive la regla.
+        //
+        // Las otras tres se quedan y no son redundantes:
+        //   · quote_sessions — la cubre la dormancia, pero cuesta nada
+        //   · cotizacion_log — la mesa da 10 días y esto 5; el más estricto manda
+        //   · radar_feedback — la mesa NO la mira. Un 👍 puesto desde el RADAR
+        //     (api/radar_feedback.php) escribe radar_feedback y no mesa_estados,
+        //     así que sin esta rama ese juicio no protegería nada.
         $reciente = (int)DB::val(
             "SELECT
                EXISTS(SELECT 1 FROM quote_sessions qs
@@ -233,10 +307,8 @@ class DescuentoInteligente
                    AND COALESCE(a.accion, a.evento) IN ('editada','enviada')
                    AND a.created_at >= NOW() - INTERVAL ? DAY)
                OR EXISTS(SELECT 1 FROM radar_feedback rf
-                 WHERE rf.cotizacion_id = ? AND rf.updated_at >= NOW() - INTERVAL ? DAY)
-               OR EXISTS(SELECT 1 FROM mesa_estados me
-                 WHERE me.cotizacion_id = ? AND me.created_at >= NOW() - INTERVAL ? DAY)",
-            [(int)$cot['id'], $window, (int)$cot['id'], $window, (int)$cot['id'], $window, (int)$cot['id'], $window]);
+                 WHERE rf.cotizacion_id = ? AND rf.updated_at >= NOW() - INTERVAL ? DAY)",
+            [(int)$cot['id'], $window, (int)$cot['id'], $window, (int)$cot['id'], $window]);
         if ($reciente) return null;
 
         return [
