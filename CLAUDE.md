@@ -4183,3 +4183,62 @@ auditoría que originó todo.
   externo. ⚠️ **No agregar `allowNavigation` al config** o se rompe.
 - **La app de iOS tiene cero adopción**: fuera del Super Admin, solo Manuel, y
   la última vez fue el 9 de abril.
+
+## Sesión 8-9 septiembre 2026 — Cliente que no puede abrir su cotización (cot 4816)
+
+### El caso
+Kitzya Arriaga (cliente nuevo del 5-sep, empresa Hermosillo id 12), cotización
+4816, slug `ricardo-valenzuela-60-col-revolucion-1`. Samsung Android, **conectada
+a WiFi en las dos capturas**. Chrome: *"No se encontró
+hermosillo.ontimecocinas.com's DNS address · DNS_PROBE_STARTED"*. Navegador
+embebido de WhatsApp: pantalla negra, *"Sitio web no disponible"* en
+`hermosillo.cotiza.cloud`. **Todos los demás abren los dos enlaces** (oficina en
+Telmex, CEO en Megacable, otros clientes finales en Telmex ese mismo día).
+**Ni una sola petición suya llegó al servidor.** Nunca ha abierto ninguna
+cotización. Los enlaces NO se mandaron por WhatsApp (el host en su captura es
+correcto y completo — no es liga cortada). Regla del CEO: **no pedirle
+diagnósticos al cliente.**
+
+### Verificado con herramientas EXTERNAS (no desde el contenedor)
+| Capa | Herramienta | Resultado |
+|---|---|---|
+| DNS público | Google, Cloudflare ×3 (normal/seguridad/familia), OpenDNS, CleanBrowsing ×2, NextDNS, AdGuard, hackertarget | los 2 nombres resuelven en todos |
+| Resolución mundial | check-host.net, **55 nodos** (8 en Irán, Rusia, Turquía, Vietnam, São Paulo…) | 55/55 resuelven los 2 nombres; 0 fallan lo nuestro pasando controles |
+| Autoritativo `ontimecocinas.com` (Limitless) | Zonemaster + intodns | 0 errores; ambos NS responden, TCP OK, no lame, serial `2026090220` |
+| Autoritativo `cotiza.cloud` (Cloudflare `albert`/`imani`) | Zonemaster | 0 errores |
+| DNSSEC | consulta DS | no existe en ninguno → no puede fallar validación |
+| Reputación | Spamhaus DBL, SURBL, URIBL, Google Safe Browsing | limpios los 2 dominios |
+| HTTP | 4 caminos (2 IPv4 CF, IPv6 CF, origen directo) | 200, mismos 70,433 bytes |
+| TLS | SSL Labs, 8 endpoints | acepta TLS 1.0–1.3 (grado B *por* aceptar 1.0/1.1 — no apagar mientras se persigue "equipo viejo") |
+| Cloudflare | status oficial (22 incidentes desde 2-sep), Security Events | ninguno relevante; 12 bloqueos = **Managed rules por firma de ataque** a datacenters NL/SA/SG/US, no por país (no hay regla de país) |
+| Servidor | fail2ban, ufw, nginx | sin bloqueos; otros Telmex abrieron ese día |
+| Enlace | reproducido byte a byte (`wa_texto_cotizacion`, `rawurlencode`) | limpio (y además no fue el canal) |
+
+### ⚠️ Pruebas que NO valen desde el contenedor de Claude (ya costaron 3 errores)
+- **UDP/53 está interceptado**: hasta una IP TEST-NET "contesta". `nslookup`/`dig` mienten.
+- **TCP/53 está en agujero negro**: ni 1.1.1.1 ni 8.8.8.8 conectan. Los "timed out" son del sandbox.
+- **TLS está interceptado** por `Anthropic Egress Gateway`: `openssl s_client`, certificados, `--resolve` por IP → todo es del proxy.
+- **Lo que SÍ vale**: DoH (`dns.google/resolve`, `cloudflare-dns.com/dns-query`), SSL Labs API, Zonemaster JSON-RPC (`zonemaster.net/api`), intodns, check-host.net, RDAP (`rdap.org`), cloudflarestatus API.
+
+### Lo que comparten los dos enlaces (medido) — ahí está la falla
+1. **La zona `cotiza.cloud` en Cloudflare** (`albert`/`imani`): el `.com` es CNAME → `saas.cotiza.cloud`; `hermosillo.cotiza.cloud` lo sirve el comodín `*.cotiza.cloud`.
+2. **El TLD `.cloud`** (Tucows Registry Services).
+3. **Las IPs de borde** `104.21.21.64` / `172.67.196.204` (+ AAAA). Otros vantage points reciben otro par (`188.114.96/97.x`) — también Cloudflare, normal.
+**Nuestro servidor NO está en la lista**: el teléfono falla en la resolución, antes de conectarse a nadie. Y como los 3 puntos responden al mundo entero (55 nodos), lo que falla es **la ruta desde su red** hasta ellos.
+
+### Conclusión (estado al cierre)
+- Causa: **resolución DNS fallida en la red WiFi de la clienta** hacia los puntos compartidos. Mecanismos que sobrevivieron a refutación (agentes, parcial): filtro DNS con **regla sobre `.cloud` que inspecciona el destino del CNAME** (DNS privado de Android, VPN/app con DNS propio, router, MDM/Knox). **Corrección clave:** el teléfono nunca pregunta un nombre `.cyou` — esa dependencia la sufre el resolvedor recursivo, no el cliente; un filtro de TLD en el teléfono explica ambas capturas solo por `.cloud` + CNAME.
+- Descartado con evidencia: VPN que la saque por otro país (un bloqueo de Cloudflare muestra página de Cloudflare, no error DNS; y **no hay ícono de llave** en la barra de estado de ninguna captura), reloj del teléfono (da error de certificado, no DNS), Telmex "Navegación Segura" (es software de Windows, no aplica a Android), TLS mínimo, reputación, DNSSEC, autoritativos, enlace roto.
+- **Decisiones del CEO**: PDF a mano **solo para ella** (excepción, cuesta el Radar en esa cot). **NO adjuntar PDF al correo** — mataría el Radar para todos (propuesta retirada). **No tocar `Router.php`.** No cambiar nada en Cloudflare (Automatic SSL/TLS en Full está bien; "Automatic key exchange" es hacia el origen, irrelevante para ella). OpenGraph en pausa.
+- **Regla para el futuro**: un solo cliente con este síntoma = su red. Un segundo cliente en otra red = reabrir el caso.
+
+### Hallazgos reales nuestros que salieron (ninguno explica el caso)
+1. **`HEAD /c/:slug` → 302 a la landing.** `Router.php:79` registra solo GET; `dispatch()` (`:35`) compara `REQUEST_METHOD`; cae en `not_found_handler` de `:96` → `redirect(BASE_URL)`. **NO TOCAR** (3 agentes coincidieron, verificado): mapear HEAD→GET abriría `/logout` (`Router.php:105`, `modules/auth/logout.php` sin guarda de método → cierra sesión por una sonda), `DescuentoInteligente::activar()` (`cotizacion.php:366` — el comentario de arriba dice "que ningún refactor futuro abra la puerta"), visitas/estado `vista` irreversible/Radar/CAPI, `/api/mp/return`, `/api/safari-bridge`. Los navegadores hacen GET; WhatsApp documenta GET para previews; en el ápice HEAD ya da 404 en todo; `dispatch()` no tiene ni una prueba; único llamador `index.php:99`. Daño real hoy: ninguno.
+2. **`ontimecocinas.com` depende de `.cyou`**: NS `ns1/ns2.limitless.cyou`, **sin glue en `.com`**, ambos en un solo AS (53667 = Limitless) → cuando su red parpadea caen los dos NS juntos ("se cae mucho"). Registrador: **GoDaddy** (vence ago-2027). **Plan de endurecimiento (no urgente, no resuelve el caso)**: mover la zona completa a DNS de GoDaddy. Inventario actual: apex A `162.244.93.4`; `www`,`mail` CNAME→apex; `webmail`,`ftp`,`cpanel` A `162.244.93.4`; MX `0 ontimecocinas.com`; SPF `v=spf1 a mx ip4:162.244.93.4 include:spf.mxyeet.net ~all`; `_dmarc` `p=none`; **3 sucursales CNAME → `saas.cotiza.cloud` sin cambiar**. **DKIM no encontrado desde afuera** — copiar TODO del panel de Limitless. NS TTL 172800 → no borrar nada en Limitless por 48 h. Preguntar a Limitless si su AutoSSL valida por HTTP (ok) o DNS (se rompería). **Nunca apuntar las sucursales a la IP del VPS**: regresa la pérdida de paquetes Telmex→Contabo del 2-sep. Web y correo siguen en Limitless (hosting ≠ DNS).
+3. **Cero etiquetas OpenGraph** en `public/cotizacion.php` y `cotizacion_inmueble.php` (la landing sí tiene 4) → la tarjeta del enlace en WhatsApp sale sin imagen ni descripción. ~1 h, no toca Radar. **Pausado por el CEO.**
+
+### Pendientes
+- Leer el resto del workflow `wf_bce76538-4e2` (journal en `subagents/workflows/`) si no terminó: lentes whatsapp-webview, cloudflare-ns, mexico-isp, lo-que-nadie-mira + crítico.
+- Historial en `ver.php`: decir "1 visita demasiado breve" en vez de "Sin visitas aún" (NO gatear el encabezado → falsos negativos). `$visitas_reales` es código muerto.
+- Columna `host` en `escudo_log`; botón "esta visita fue mía" con limpieza atómica de 5 columnas.
+- Los de siempre: Brevo, firewall 443→Cloudflare con **80 abierto**, `Full`→`Full (strict)`, medir >100 s, **rotar credenciales MP**, runbook Android.
