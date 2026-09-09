@@ -109,8 +109,8 @@ function fecha_humana(?string $datetime, bool $con_hora = false): string
  * no hace cuánto. "hace 2 sem" obliga a hacer la resta mental para ubicarlo
  * en el calendario; la fecha se compara directo contra la agenda.
  *
- * Agrega el año ("02/sep/25") cuando NO es el año en curso: sin eso, un toque
- * de diciembre pasado se lee igual que uno de este diciembre.
+ * Sin año, a propósito: los toques de seguimiento se leen en semanas, no en
+ * años, y el año de más ensucia la columna.
  */
 function fecha_dm(?string $datetime): string
 {
@@ -122,10 +122,7 @@ function fecha_dm(?string $datetime): string
     $meses = ['','ene','feb','mar','abr','may','jun',
               'jul','ago','sep','oct','nov','dic'];
 
-    $out = date('d', $ts) . '/' . $meses[(int) date('n', $ts)];
-    if (date('Y', $ts) !== date('Y')) $out .= '/' . date('y', $ts);
-
-    return $out;
+    return date('d', $ts) . '/' . $meses[(int) date('n', $ts)];
 }
 
 function tiempo_relativo(?string $datetime): string
