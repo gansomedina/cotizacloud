@@ -513,7 +513,13 @@ foreach ($mesa_all as $mesa_vid => $mesa):
     <?php endif; ?>
 
     <?php if ($mesa_frias): ?>
-    <div class="msect" style="color:#0369a1">❄️ Frías (<?= count($mesa_frias) ?>) — ya trabajadas y fuera de tu ventana; descansan aquí sin quitarte el foco hasta el día <?= 2 * $mp75 ?> (2× tu ventana) y luego salen solas</div>
+    <?php /* La salida ya NO es un día fijo: desde el bono por toque, la fila se
+             queda mientras el asesor la siga tocando (y sale sola cuando deja de
+             hacerlo). El texto decía "hasta el día 2×ventana y luego salen
+             solas" con filas de 110 días a la vista — mentía sobre lo único que
+             el asesor quería saber. Lo que SÍ es verdad y le importa: aquí no
+             cuentan para su score. */ ?>
+    <div class="msect" style="color:#0369a1">❄️ Frías (<?= count($mesa_frias) ?>) — ya trabajadas y fuera de tu ventana; descansan aquí sin quitarte el foco y <strong>no cuentan para tu score</strong>. Salen solas cuando dejas de tocarlas.</div>
     <div class="mlist mfrias-zone"><?php foreach ($mesa_frias as $r) $mesa_row($r); ?></div>
     <?php endif; ?>
 
@@ -553,8 +559,11 @@ foreach ($mesa_all as $mesa_vid => $mesa):
       Ciclo real de la empresa: la mitad de tus ventas cierra en <b><?= (int)$mc['mediana'] ?>d</b>,
       el 75% antes del día <b><?= (int)$mc['p75'] ?></b>.
       <?php endif; ?>
-      Cada cotización vive en la mesa hasta el día <b><?= 2 * $mp75 ?></b> (2× tu ventana) — pasada tu ventana
-      el consejo pide definición, no seguimiento eterno.<?php if ($mesa_es_admin): ?> El aviso de limpieza corre en el día
+      <?php /* Mismo arreglo que el encabezado de Frías: el día 2×ventana ya no
+               es la salida, es donde EMPIEZA a depender del toque. */ ?>
+      Cada cotización vive en la mesa hasta el día <b><?= 2 * $mp75 ?></b> (2× tu ventana). De ahí en adelante
+      la sostienes tú: cada toque le da <b><?= max(1, (int)ceil($mp75 / 2)) ?>d</b> más, y sale sola cuando dejas
+      de tocarla. Pasada tu ventana el consejo pide definición, no seguimiento eterno.<?php if ($mesa_es_admin): ?> El aviso de limpieza corre en el día
       <b><?= (int)$mesa_first['limpieza']['linea_dias'] ?></b> (tu cierre más tardío registrado o 2× tu ventana, lo que sea mayor).<?php endif; ?> Tapea una fila para trabajarla y actualízala en cada toque.
       <span style="white-space:nowrap;margin-left:6px">
         <span class="mleg" style="background:#dc2626"></span>caliente
