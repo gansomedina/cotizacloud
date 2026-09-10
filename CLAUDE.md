@@ -3578,6 +3578,37 @@ $score = max($score - $castigo_seguimiento, 0);
 una razón que hasta hoy no estaba documentada. Es la primera explicación que hay
 que revisar cuando alguien reporte "vendí y mi score bajó".
 
+#### ⛔ CERRADO POR EL CEO (10 sep 2026) — no reabrir sin datos nuevos
+
+El castigo **se queda exactamente como está**: cortes 3/7/14, conteo crudo, días
+de calendario. Se propusieron tres cambios y **los tres se rechazaron**. Van
+escritos con su razón para que no vuelvan a salir como "hallazgo".
+
+| Propuesta | Por qué se rechazó |
+|---|---|
+| Normalizar el castigo por el tamaño de la mesa (`vencidos / (pedidas × 15)`) | Era bajarle la vara al comportamiento. El dato lo desmiente: 56 pares con 21 cotizaciones son **3.7 vencidas al día sostenidas dos semanas**, no un artefacto de tener cartera grande |
+| Que el reloj cuente días hábiles | *"Por eso tienen 5 días."* La cadencia es una **fecha límite, no una fecha de entrega**: si vence el domingo, se atiende el viernes |
+| Que `mesa_vencidos` no escriba en sábado/domingo | *"Es obligación del asesor atenderlas previamente a su vencimiento."* Mismo principio |
+
+**La saturación es conocida y aceptada.** Con 21 cotizaciones, cuatro vencidas
+durante cuatro días ya son 16 y el castigo topa en −8; de ahí en adelante no
+distingue entre traer 4 vencidas y traer 20. Es un **piso de alarma, no una
+calificación** — la discriminación fina vive en la cobertura (`s_mesa`).
+
+Dos cosas que sí quedaron medidas y conviene tener a la mano:
+- **1.9 días de vencida en promedio por cotización** (Abigail 29 cots/56 pares,
+  Manuel 15/29). Se vencen y a los dos días las atienden: es rotación, no
+  abandono.
+- **Una cotización que nunca se tocó NO puede estar vencida** — el reloj solo
+  arranca cuando hay una declaración (sin ancla no hay `$seg`). Esas cuentan
+  como falla en la cobertura, no como vencidas.
+
+**Error de método que produjo esto** (para no repetirlo): presenté "el 70% de
+las vencidas caen en dom/lun/mar" como si fuera la causa. Era una
+**correlación**, no un mecanismo — el lunes también es cuando se abre la mesa
+tras dos días y se encuentra el acumulado. Correlación por día de la semana no
+prueba causalidad por fin de semana.
+
 ### (histórico) PENDIENTE APROBADO — Mesa al Termómetro (implementar al salir de beta)
 **Diseño completo en docs/mesa_score_integracion.md** — leerlo ANTES de
 implementar. Resumen: la mesa vale 25% del Seguimiento, BINARIO: cobertura
