@@ -4317,6 +4317,20 @@ en nuestros registros y no se le piden pruebas al cliente. Se cierra ahí.
 = caso nuevo**, porque hoy tres clientes simultáneos prueban que la cadena
 completa funciona.
 
+> ## ⛔ ESTA CONCLUSIÓN QUEDÓ SUPERADA — 10 sep 2026
+>
+> **"Lo que falló es su equipo o su red" era una conclusión mal fundada**, y el
+> razonamiento que la sostiene ("su petición nunca generó un byte en nuestros
+> registros") es exactamente el error: **hay fallas que por definición no pueden
+> dejar registro**. Ausencia de rastro no es prueba de inocencia.
+>
+> El 10-sep un segundo cliente (Arturo Pacheco, cot 4812) reportó lo mismo — y la
+> regla de arriba, que yo mismo escribí, decía "reabrir". Seguí cerrando el caso
+> tres rondas más antes de hacerlo, hasta que el CEO me paró.
+>
+> **Lo que sí cambió el 2-sep y nadie midió: la migración a Cloudflare estrenó
+> IPv6 y HTTP/3.** Ver la sesión del 10 de septiembre, más abajo.
+
 ### ❌ Callejones cerrados (no reabrir sin datos nuevos)
 - **`.cyou`**: mecanismo real (TLD en la lista de HaGeZi + NS sin glue) pero **tres
   clientes resolvieron `ontimecocinas.com` esa misma mañana**. No fue esto.
@@ -4375,3 +4389,168 @@ selectores) — su correo va solo con SPF; tampoco DNSSEC ni CAA.
 - Historial en `ver.php`: decir "1 visita demasiado breve" en vez de "Sin visitas aún" (NO gatear el encabezado → falsos negativos). `$visitas_reales` es código muerto.
 - Columna `host` en `escudo_log`; botón "esta visita fue mía" con limpieza atómica de 5 columnas.
 - Los de siempre: Brevo, firewall 443→Cloudflare con **80 abierto**, `Full`→`Full (strict)`, medir >100 s, **rotar credenciales MP**, runbook Android.
+
+## Sesión 10 septiembre 2026 — Clientes que no pueden abrir: la migración estrenó IPv6 y HTTP/3
+
+### El caso que lo destrabó (cot 4812, Arturo Pacheco, empresa 12)
+
+Segundo cliente con el mismo síntoma. A diferencia del primero, **éste sí nos
+había alcanzado antes**, y eso es lo que hizo la diferencia:
+
+```
+07/sep 17:47 y 19:03   ABRE la cotización. 45 y 73 seg, 80% de scroll.
+                       IP 200.68.156.65 (Telmex, IPv4)
+                       UA: ...[FBAN/FBIOS; FBDV/iPhone17,3]  ← app de FACEBOOK
+08/sep 11:01-11:08     el asesor la edita 4 veces
+09/sep 10:00           le reenvían la liga (chat: doble palomita azul = la leyó)
+09/sep 11:46           "Hola qué raro no carga"
+```
+
+**Entre las 10:00 y las 11:46 no hay UNA SOLA petición suya en nginx.** Ni un
+404, ni un 403, ni un 5xx, ni un 499.
+
+### Lo que se descartó, con datos
+
+| Hipótesis | Cómo murió |
+|---|---|
+| Cotización suspendida / vencida / slug duplicado | `suspendida=0`, vigente, un solo slug |
+| Editar rompe el enlace | `guardar.php` **no toca `slug`** |
+| El pixel de Meta traba la página | inline + `async` (`MarketingPixels.php:49`), toda llamada va tras `if(typeof fbq!=='undefined')`, y el CAPI tiene timeout 3s/5s |
+| Cloudflare lo bloqueó | 21 bloqueos ese día, **todos de nube rentada** (Google Cloud, DigitalOcean — verificado en ARIN). Cero de México. El más cercano fue 4 min ANTES de que mandaran la liga |
+| Es sistémico / nuevo | El "sin abrir" mensual: abr 17.9% · may 19.0% · jun 4.8% · jul 10% · ago 4.7%. **No hay salto** |
+| Las 7 "sin abrir" del mes tienen fallas nuestras | Se revisaron TODAS en nginx: solo tráfico interno. **Cero peticiones de cliente, cero errores** |
+
+### LA MEDICIÓN QUE LO CAMBIÓ TODO
+
+Peticiones por versión de IP, del log de nginx:
+
+```
+26/Ago   IPv4 29,977   IPv6      0
+28/Ago   IPv4 48,321   IPv6      0
+31/Ago   IPv4 21,569   IPv6      5
+01/Sep   IPv4 26,255   IPv6      2
+──────────────────────────────────  ← 2-sep: se prende el proxy de Cloudflare
+02/Sep   IPv4 13,314   IPv6  1,643
+03/Sep   IPv4 12,367   IPv6  6,570     (35% del tráfico)
+08/Sep   IPv4  6,612   IPv6  4,897     (43% del tráfico)
+```
+
+**Antes: 0.01%. Después: hasta 43%.** El salto cae el día exacto de la migración.
+
+**Antes del 2-sep la zona estaba en gris (DNS only) y solo publicaba el `A` al
+VPS. No existía IPv6 como camino.** Al prender el proxy, Cloudflare empezó a
+publicar sus propias AAAA para el ápice, el comodín y los custom hostnames.
+
+Los dos dominios que fallaron resuelven a **las MISMAS IPv6 de Cloudflare**:
+`hermosillo.ontimecocinas.com` y `hermosillo.cotiza.cloud` → `2606:4700:3035::ac43:c4cc`
+y `2606:4700:3036::6815:1540`. Es lo único que comparten.
+
+### Los tres caminos NUEVOS que trajo el proxy
+
+Todos con la misma firma: **el navegador no conecta y nosotros no vemos nada.**
+
+| | Estado | ¿Se puede apagar? |
+|---|---|---|
+| **IPv6** | ON, forzado | **NO en Free/Pro/Business.** Solo Enterprise (docs de Cloudflare). El interruptor se dibuja pero está bloqueado. Su alternativa —Pseudo IPv4— **no sirve**: cambia qué cabecera recibe el origen, no si el cliente conecta |
+| **HTTP/3 (QUIC)** | **APAGADO el 10-sep** | Sí, gratis, en `Speed → Settings → Protocol Optimization` |
+| **0-RTT** | ya venía apagado | — |
+
+### ⚠️ MAPA CAUSA → ARREGLO (para no diagnosticar sin cura)
+
+| Lo que reporte el navegador | ¿Se arregla? |
+|---|---|
+| `h3.protocol_error` — QUIC sobre UDP/443 | **Sí, un interruptor** |
+| `dns.name_not_resolved` | **Sí** — sacar OnTime de `.cyou` (`docs/dns_ontimecocinas_a_godaddy.md`) o mandar por el subdominio |
+| `tls.failed` | **Sí** — ajustes del edge |
+| `tcp.timed_out` por IPv6 | **NO en este plan.** Habría que pagar Enterprise o sacar los slugs de Cloudflare |
+
+**IPv6 estaba sobrevalorado por mí.** Happy Eyeballs (RFC 8305) corre IPv4 e IPv6
+en paralelo y cae al otro en ~250 ms: un IPv6 roto normalmente da lentitud, no
+falla. **QUIC sobre UDP es mejor sospechoso** —módems y redes móviles mexicanas
+rompen UDP más seguido, y cuando se atora no siempre hay caída limpia a TCP— y
+además es el que SÍ se puede apagar. Por eso se empezó por ahí.
+
+### Acción tomada el 10-sep
+
+**HTTP/3 apagado.** Costo honesto: QUIC es más rápido que TCP en redes móviles
+con pérdida (justo Telmex), así que algunos clientes cargarán un poco más lento.
+Reversible en un clic.
+
+**Cómo se valida:** los asesores anotan **fecha y hora exacta** cada vez que un
+cliente diga "no carga". Dos semanas sin un solo reporte = era esto.
+
+### PENDIENTE — colector NEL propio
+
+Network Error Logging está ON en Cloudflare, apuntando a SU colector. Es el
+estándar donde **el navegador reporta las conexiones que le fallaron** — y las
+manda después, cuando recupera conexión. Es exactamente el dato que faltó todas
+estas rondas.
+
+Plan: apagar el NEL de Cloudflare, poner cabeceras `NEL` y `Report-To` propias
+hacia un endpoint nuestro, y guardar los reportes (cuándo · qué URL · tipo de
+error). **Limitación real: NEL solo existe en Chromium. iOS no lo soporta** — a
+Kitzya (Chrome/Android) sí la habría capturado; a Arturo (iPhone) no.
+
+### Hallazgo aparte: Meta ensucia el Radar
+
+31 sesiones en 90 días desde IPs de Meta (verificadas: `2a03:2880::/32` =
+`facebook-neteng` en RIPE · `173.252.64.0/18` = `FACEBOOK-INC` en ARIN), **una
+por cotización**. Cada una mueve `visitas` y `ultima_vista_at` — el asesor ve
+"el cliente la vio" cuando no la vio.
+
+Meta pega **dos veces**: una con UA de Chrome/Windows (**la contamos**) y otra
+con `facebookexternalhit` 34 seg después (**esa sí la filtramos**).
+
+Siete de las 31 son imposibles de un humano: `visible_ms = 0` con `scroll_max = 100`.
+
+**Por qué filtrar por IP es seguro AQUÍ y no lo fue en mayo:** el filtro de mayo
+era `104.28.x` = iCloud Private Relay, por donde navega gente real. **El
+navegador embebido de Facebook usa la IP del CLIENTE, no la de Meta** — probado
+en este mismo caso: el cliente abrió desde la app de Facebook y llegó desde
+Telmex. Tráfico de cliente desde un datacenter de Meta no existe.
+
+Propuesta (sin implementar): lista corta **solo de Meta**, tratada como bot por
+UA — queda en `escudo_log` para auditar, no entra a `quote_sessions` ni al Radar.
+
+También: `marketing_config` de la empresa 12 tiene `pixel_meta`, `capi_token`
+vivo y **`advanced_matching_optin = 1`** — cada vista del slug le manda a Meta
+**nombre y teléfono del cliente** (`MarketingPixels.php:298-305`). Decisión de
+privacidad, no bug. Pendiente de revisar con el CEO.
+
+### Hallazgo aparte: cotizaciones "enviadas" que nunca se enviaron
+
+De las 7 sin abrir del mes, **`retorno-ekanita-37-...` no tiene NI el bot de
+vista previa de WhatsApp**. Esa liga nunca se compartió con nadie.
+
+`crear.php` inserta con estado `'enviada'` aunque nadie mande nada, así que hay
+cotizaciones envejeciendo en el tablero como si el cliente las ignorara.
+Detectable (sin huella de bot de preview ni visita alguna) y avisable al asesor.
+
+### 🔬 MIS ERRORES DE MÉTODO (leer antes del próximo caso así)
+
+1. **Busqué el registro de una falla que no puede dejar registro.** Cuatro
+   rondas revisando nginx, `escudo_log`, `quote_sessions` y Cloudflare, y
+   concluyendo "no llegó nada → no es nuestro". Una conexión que muere en el
+   transporte no aparece en ningún lado. **La ausencia de rastro era la pista,
+   no la exoneración.**
+2. **Refuté una caída permanente cuando la sospecha era intermitente.** Descarté
+   `.cyou` con "tres clientes resolvieron ese día". Eso refuta un bloqueo total,
+   no uno que parpadea. El CEO ya había dicho que Limitless "se cae mucho".
+3. **Puse un criterio y no lo cumplí.** Yo escribí "un segundo cliente en otra
+   red = caso nuevo". Llegó el segundo y seguí cerrando el caso tres rondas más.
+4. **Consulta rota presentada como evidencia.** Uní `quote_events.session_id`
+   (texto del JS) con `quote_sessions.id` (entero). MySQL convierte, da 0, nunca
+   empata: **la columna daba 0 para todos**, cliente real incluido. La detecté
+   antes de concluir, pero ya había dado instrucciones basadas en ella.
+5. **Usé la sección de DISEÑO de este archivo como si fuera el esquema.**
+   `marketing_config.pixel_meta_activo` no existe. Segunda vez en la semana.
+6. **Sobrevaloré la hipótesis que no tenía cura.** Empujé IPv6 sin preguntarme
+   si se podía apagar. El CEO tuvo que preguntar "¿y cómo lo vamos a corregir?"
+   para que revisara — y resultó que no se puede en este plan.
+
+### ⛔ Y una regla nueva, cara
+
+**Una liga de producción NO se abre desde el contenedor** (ya estaba escrito) —
+pero además: **no se falsifica un User-Agent para reproducir la falla de un
+cliente**. Eso desactiva `es_bot()`, que es justo la protección que evitaría el
+daño. Ya contaminé la cot 4816 así el 8-sep.

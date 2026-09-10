@@ -583,5 +583,90 @@ $cd3 = Mesa::cobertura_senales(5, 510);
 chk('👎 sin postura tambien cuenta ATENDIDO (pedidas 1, atendidas 1)',
     [$cd3['pedidas'], $cd3['atendidas'], $cd3['fallas']], [1, 1, 0]);
 
+// ══ BONO POR TOQUE (vendedor 511) ══════════════════════════
+// Un toque de la mesa sostiene la cotización p75/2 días DESDE ESE TOQUE, ya
+// pasado el ciclo natural. Antes de este contrato los toques no valían nada:
+// la mesa solo miraba edad y última edición, así que una cotización que el
+// asesor llamaba cada tercer día se le caía igual.
+//
+// Números de esta simulación: p75=20 → ciclo 40d · bono toque 10d ·
+// bono edición 20d · techo = max(max_hist 4, 40+20) = 60d.
+// cotizacion_log va vacío a propósito: sin ediciones, lo único que puede
+// sostener estas filas es el toque. Si el bono se rompe, se caen las cuatro.
+echo "═ BONO POR TOQUE ✋ (vendedor 511) ═\n";
+cot(9920, 511, 11000, 45, ['visitas' => 2, 'vista_d' => 40]); // toque fresco → SE QUEDA
+tap(9920, 'contacto', 'hablamos', 3);
+cot(9921, 511, 12000, 45, ['visitas' => 2, 'vista_d' => 40]); // toque viejo → SE CAE
+tap(9921, 'contacto', 'hablamos', 15);
+cot(9922, 511, 13000, 45, ['visitas' => 2, 'vista_d' => 40]); // solo el implícito → SE CAE
+tap(9922, 'contacto', 'hablamos', 3, 'auto');
+cot(9923, 511, 14000, 70, ['visitas' => 2, 'vista_d' => 65]); // 70d con toque → SE QUEDA
+tap(9923, 'contacto', 'hablamos', 1);
+
+$mt = Mesa::armar(5, 511);
+$mtb = [];
+foreach ($mt['rows'] as $r) $mtb[(int)$r['id']] = $r;
+
+chk('toque de hace 3d (bono 10) sostiene una de 45d — el caso que antes se caía',
+    isset($mtb[9920]), true);
+chk('toque de hace 15d ya venció el bono → se cae', isset($mtb[9921]), false);
+chk('el "hablamos" implícito (razon=auto) NO cuenta como toque → se cae',
+    isset($mtb[9922]), false);
+// NO hay techo duro: la fila no la sostiene el calendario, la sostiene el
+// trabajo. A los 70 días con un toque de ayer sigue en la mesa — y sigue
+// costando, porque sin calificar cuenta como falla en la cobertura.
+chk('sin techo: a los 70d un toque de ayer la sostiene igual',
+    isset($mtb[9923]), true);
+chk('sobreviven las dos del toque fresco', array_keys($mtb), [9923, 9920]);
+
+// EFECTO EN EL SCORE — el precio de este cambio, explícito.
+// La que se sostiene por el toque entra al examen de cobertura si NO está
+// calificada: tapeó "hablamos" pero no declaró postura ni puso manita, así
+// que no es "fría" y cuenta como FALLA. Antes se caía de la mesa al día 41 y
+// desaparecía del examen sin costo.
+//
+// Es el efecto buscado y no un daño colateral: llamar al cliente sostiene la
+// cotización, pero sostenerla sin calificarla te la deja en la fila
+// pendiente. La salida es tapear completo (postura + manita) — ahí se vuelve
+// fría y sale del examen, igual que cualquier otra vieja ya trabajada.
+$cov511 = Mesa::cobertura_senales(5, 511);
+chk('las 2 sostenidas por toque SIN calificar entran al examen como fallas',
+    [$cov511['pedidas'], $cov511['atendidas'], $cov511['fallas']], [2, 0, 2]);
+
+// Y la contraparte: calificada completa se vuelve fría y NO infla el examen.
+cot(9930, 512, 15000, 45, ['visitas' => 2, 'vista_d' => 40]);
+tap(9930, 'contacto', 'hablamos', 3);
+tap(9930, 'postura', 'decidiendo', 3);
+fb(9930, 512, 'con_interes', 3);
+$cov512 = Mesa::cobertura_senales(5, 512);
+chk('sostenida por toque Y calificada → es fría, fuera del examen (pedidas 0)',
+    [$cov512['pedidas'], $cov512['atendidas'], $cov512['fallas']], [0, 0, 0]);
+
+// ══ LA SOSTENIDA POR EL TOQUE NO SALE EN ROJO (vendedor 513) ═
+// La fila que pasó su ciclo natural (45d > 40) y sigue en la mesa SOLO por el
+// bono de toque no puede volver marcada VENCIDA dentro de esos mismos días:
+// el toque se los compró. Está POR vencer, al final del bono.
+//
+// 9940 y 9941 tienen el MISMO contacto viejo ('hablamos' hace 25d, cadencia
+// mediana 10 → el reloj venció hace 15). La diferencia es el toque de ayer.
+//
+// El contrato NO alcanza a las filas dentro de su ciclo: eso lo fija el
+// vendedor 507 (A3), donde una postura fresca sigue SIN apagar el rojo de un
+// "no contestó" pendiente. La escalera de intentos queda intacta.
+echo "═ SOSTENIDA POR EL TOQUE: NO EN ROJO (vendedor 513) ═\n";
+cot(9940, 513, 16000, 45, ['visitas' => 2, 'vista_d' => 40]);
+tap(9940, 'contacto', 'hablamos', 25);
+tap(9940, 'postura', 'decidiendo', 1);   // el toque que la sostiene
+cot(9941, 513, 17000, 45, ['visitas' => 2, 'vista_d' => 40]);
+tap(9941, 'contacto', 'hablamos', 25);
+tap(9941, 'postura', 'decidiendo', 10);  // último día del bono de 10
+
+$m513 = []; foreach (Mesa::armar(5, 513)['rows'] as $r) $m513[(int)$r['id']] = $r;
+chk('toque de ayer la sostiene → NO en rojo, vence al final del bono (en 9d)',
+    [$m513[9940]['seguimiento']['estado'] ?? 'AUSENTE', $m513[9940]['seguimiento']['dias'] ?? -1],
+    ['ok', 0]);
+chk('toque de hace 10d (último día del bono) → vence HOY, todavía no en rojo',
+    $m513[9941]['seguimiento']['estado'] ?? 'AUSENTE', 'hoy');
+
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

@@ -346,6 +346,7 @@ if ($es_admin) {
                            THEN dc.r1_pct ELSE dc.r2_pct END AS pct,
                       CASE WHEN TIMESTAMPDIFF(DAY,c.created_at,NOW()) <= dc.dia_dead
                            THEN GREATEST(1, CEIL(dc.p75/2)) ELSE GREATEST(1, dc.p75) END AS win_days,
+                      GREATEST(1, dc.p75) AS bono_edit,
                       -- Fecha en que ENTRÓ a zona DI (se hizo candidata): creación +
                       -- dia_fin_vida (inicio de R1) — o dia_dead si R1 está apagada
                       -- y la puerta de entrada real es R2
@@ -408,6 +409,18 @@ if ($es_admin) {
                AND NOT EXISTS (SELECT 1 FROM mesa_estados me
                      WHERE me.cotizacion_id=t.id
                        AND me.created_at >= NOW() - INTERVAL t.win_days DAY)
+               -- PUERTA DE LA MESA (Mesa::fuera_de_ventana, sep-2026): aparte
+               -- del window de la zona, el motor exige que la última edición o
+               -- reenvío tenga MÁS de p75 días — editar le regala otra ventana
+               -- completa. En R1 el window son 5 días y el bono de edición 10,
+               -- así que sin esto el reporte listaba candidatas que el motor
+               -- bloquea. Los otros dos relojes de la puerta ya están cubiertos:
+               -- edad > 2×p75 lo exige regla>0, y el bono de toque (p75/2) nunca
+               -- pasa del window de la zona.
+               AND NOT EXISTS (SELECT 1 FROM cotizacion_log a2
+                     WHERE a2.cotizacion_id=t.id AND a2.usuario_id IS NOT NULL
+                       AND COALESCE(a2.accion,a2.evento) IN ('editada','enviada')
+                       AND a2.created_at >= NOW() - INTERVAL t.bono_edit DAY)
              -- Más NUEVA candidata arriba (para distinguir a cuáles ya se les mandó
              -- campaña). Los chips R1/R2 solo ocultan filas: el orden se mantiene.
              ORDER BY t.candidata_desde DESC, t.id DESC",

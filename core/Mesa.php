@@ -88,6 +88,35 @@ class Mesa
         return "('" . implode("','", array_merge(self::HOT, $extra)) . "')";
     }
 
+    /**
+     * VENTANA DE TRABAJO — fuente única de la fórmula.
+     *
+     * La usan DOS motores y por eso vive aquí y no en ninguno de los dos:
+     *   · armar()             — para decidir qué renglón suelta la mesa
+     *   · DescuentoInteligente — para saber cuándo tiene permiso de entrar
+     * Si el número cambia aquí, cambia en los dos. Es justo lo que se quiere:
+     * el descuento entra cuando la mesa ya soltó, ni antes ni por su cuenta.
+     *
+     * Recibe los días YA calculados en vez de consultarlos: armar() los tiene
+     * en memoria para toda la cartera y volver a pedirlos por fila sería
+     * absurdo. Lo que vive aquí es la REGLA, no la obtención del dato.
+     *
+     * Las tres condiciones son AND. Basta que una siga viva para que la
+     * cotización se quede.
+     */
+    public static function fuera_de_ventana(int $edad, int $dias_edit, int $dias_tap, int $p75): bool
+    {
+        return $edad      >  2 * $p75                    // terminó el ciclo natural
+            && $dias_edit >  self::bono_edicion($p75)    // sin editar ni reenviar
+            && $dias_tap  >  self::bono_toque($p75);     // sin tocar en la mesa
+    }
+
+    /** Días que sostiene una edición o reenvío: trabajo real que el cliente recibe. */
+    public static function bono_edicion(int $p75): int { return $p75; }
+
+    /** Días que sostiene un toque de la mesa: la mitad — tapear es un clic. */
+    public static function bono_toque(int $p75): int { return max(1, (int)ceil($p75 / 2)); }
+
     // Sin tope de lista (decisión CEO): se muestra la mesa completa. El único
     // cap vivo es el de milagros/revividas, para que no inunden la cabecera.
     private const CAP_MILAGROS = 6;
@@ -253,6 +282,30 @@ class Mesa
         ) as $r) {
             $acc[(int)$r['cotizacion_id']] = $r['ult'];
         }
+
+        // Último TOQUE real del asesor en la mesa — la otra señal de vida.
+        // Consulta aparte y no derivada de $me a propósito: $me guarda la última
+        // fila POR ÁREA, así que si el último 'contacto' es el implícito, el
+        // 'hablamos' real anterior queda tapado y se perdería. Mismo motivo por
+        // el que $con_real existe.
+        //
+        // Se excluye razon='auto': ése es el "hablamos" que el endpoint se
+        // inserta solo cuando el asesor declara un desenlace sin contacto
+        // reciente (mesa_estado.php:117). Es relleno del sistema, no trabajo
+        // suyo — el sistema no debe darse tiempo a sí mismo.
+        $tap = [];
+        try {
+            foreach (DB::query(
+                "SELECT cotizacion_id, MAX(created_at) AS ult
+                 FROM mesa_estados
+                 WHERE empresa_id = ? AND cotizacion_id IN ($in)
+                   AND (razon IS NULL OR razon <> 'auto')
+                 GROUP BY cotizacion_id",
+                [$empresa_id]
+            ) as $r) {
+                $tap[(int)$r['cotizacion_id']] = $r['ult'];
+            }
+        } catch (\Throwable $e) {} // tabla sin migrar → sin bono de toque
 
         // Estados declarados en la mesa (última declaración por área)
         $me = []; $nc = []; $con_real = [];
@@ -453,14 +506,45 @@ class Mesa
             // vistas del cliente). La edad desde creación NO cambia; sale solo si
             // YA pasó SU ventana de creación (2×p75) Y su ventana de edición
             // (p75 desde la última edición). Abuso frenado por el score.
-            $bono_edit = $p75;
+            //
+            // BONO POR TOQUE: un toque de la mesa la sostiene $p75/2 días desde
+            // ESE toque. Antes no valía nada — la mesa solo miraba la edad y la
+            // última edición, así que una cotización que el asesor llamaba cada
+            // tercer día se le caía de la fila igual al día 21. El sistema le
+            // enseñaba que para no perderla tenía que editarla y reenviarla.
+            // Con esto, hablarle al cliente por fin cuenta.
+            //
+            // NO ES ACUMULABLE: cuenta desde el ÚLTIMO toque (MAX en la query),
+            // no la suma de todos. Cuatro toques no dan cuatro ventanas.
+            //
+            // Vale la MITAD que una edición a propósito: tapear es un clic,
+            // editar y reenviar es trabajo real que el cliente recibe.
+            $bono_edit = self::bono_edicion($p75);
             $dias_edit = !empty($acc[$cid]) ? (int)floor(($now - strtotime($acc[$cid])) / 86400) : PHP_INT_MAX;
-            $fuera      = ($edad > 2 * $p75) && ($dias_edit > $bono_edit);
+            $dias_tap  = !empty($tap[$cid]) ? (int)floor(($now - strtotime($tap[$cid])) / 86400) : PHP_INT_MAX;
+            // Cada bono se compara contra SU PROPIO plazo, no contra la fecha
+            // más reciente: si editó hace 8 días (le quedan 2) y tapeó hace 6
+            // (ya venció), la fecha más nueva es el toque — pero la que sigue
+            // sosteniéndola es la edición. Eso lo resuelve fuera_de_ventana().
+            // SIN TECHO DURO, a propósito. Mientras el asesor la siga tocando
+            // la cotización se queda: la fila no la sostiene el calendario, la
+            // sostiene el trabajo. Y no sale gratis — sostenerla sin calificarla
+            // la deja contando como falla en la cobertura de señales, que es lo
+            // que cobra el score. Un tope por edad sería una segunda regla que
+            // dice lo mismo peor.
+            $fuera      = self::fuera_de_ventana($edad, $dias_edit, $dias_tap, $p75);
             // Milagro incluye el BORDE exacto (edad == 2×p75): una cotización
             // caliente justo en el filo también es "revivió" (⚡). Se usa SOLO en
             // la categoría milagro, NO en $fuera — $fuera gatea limpieza/descarte
             // y con >= una fría en el filo desaparecería sin avisar. Cerrar el
             // borde aquí es cosmético-correcto; tocar $fuera sería un bug.
+            //
+            // A PROPÓSITO NO usa $sin_senal (o sea, ignora el bono de toque):
+            // "milagro" describe al CLIENTE, no al asesor — es "estaba fuera de
+            // ciclo y el cliente volvió a leerla AHORA" (solo aplica junto con
+            // $hot_reciente). Que ella la haya tapeado ayer no le quita el
+            // mérito al cliente ni cambia lo que el asesor tiene que hacer.
+            // Por eso aquí sigue pesando solo la edición.
             $fuera_mil  = ($edad >= 2 * $p75) && ($dias_edit > $bono_edit);
 
             // Revivida = el cliente ABRIÓ después del descarte, dentro de los
@@ -582,6 +666,25 @@ class Mesa
                     $cad = (!$es_cita && ($con_d['estado'] ?? '') === 'no_contesta') ? 2 : $med;
                     $vence_ymd  = date('Y-m-d', strtotime(date('Y-m-d', $ancla)) + $cad * 86400);
                     $dias_venc  = (int)round((strtotime($hoy_db) - strtotime($vence_ymd)) / 86400);
+                    // MIENTRAS EL TOQUE LA ESTÉ SOSTENIENDO NO ESTÁ VENCIDA:
+                    // está POR vencer, dentro de ese periodo. Aplica SOLO a la
+                    // fila que ya pasó su ciclo natural y sigue en la mesa
+                    // gracias al bono de toque — el toque le compró esos días, y
+                    // devolvérsela en rojo el mismo día que la tocó es cobrarle
+                    // dos veces el mismo trabajo. El reloj se recorre al fin del
+                    // bono para que la fecha que ve el asesor sea la de verdad.
+                    //
+                    // NO toca la fila que está DENTRO de su ciclo: ahí manda el
+                    // cronómetro tal cual, y una postura fresca no apaga un "no
+                    // contestó" pendiente (candado del reloj rojo, vendedor 507
+                    // de sim_mesa_armar). La escalera de intentos queda intacta.
+                    if ($dias_venc > 0 && $edad > 2 * $p75
+                        && $dias_tap <= self::bono_toque($p75) && !empty($tap[$cid])) {
+                        $vence_ymd = date('Y-m-d',
+                            strtotime(date('Y-m-d', strtotime($tap[$cid])))
+                            + self::bono_toque($p75) * 86400);
+                        $dias_venc = (int)round((strtotime($hoy_db) - strtotime($vence_ymd)) / 86400);
+                    }
                     $seg = ['estado' => $dias_venc > 0 ? 'vencida' : ($dias_venc === 0 ? 'hoy' : 'ok'),
                             'dias'   => max(0, $dias_venc), 'vence' => $vence_ymd];
                     // El registro en mesa_vencidos es SOLO DEL DÍA DE HOY y se
