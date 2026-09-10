@@ -3941,9 +3941,9 @@ apariencia, no de función.
    Cloudflare cuando `ip_real()` debería haber devuelto la real. Fue una sola
    vez, en la ventana de transición antes de recargar nginx, y ningún
    `cliente_real` quedó con IP de Cloudflare. En observación.
-5. **`log_format` de nginx no incluye `$host`** — no se puede distinguir en el
-   log una visita a `cotiza.cloud` de una a `hermosillo.ontimecocinas.com`. Costó
-   tiempo durante el diagnóstico.
+5. ~~**`log_format` de nginx no incluye `$host`**~~ ✅ **RESUELTO el 10 sep 2026**
+   — el log ahora guarda `$host`, `$http_cf_ray` (con el PoP) y `$request_time`.
+   Ver "Sesión 10 septiembre 2026" al final del archivo.
 
 ## Sesión 3-4 septiembre 2026 — Reporte impreso, alta de cliente y Ritmo de cotizaciones
 
@@ -4374,4 +4374,245 @@ selectores) — su correo va solo con SPF; tampoco DNSSEC ni CAA.
 - Leer el resto del workflow `wf_bce76538-4e2` (journal en `subagents/workflows/`) si no terminó: lentes whatsapp-webview, cloudflare-ns, mexico-isp, lo-que-nadie-mira + crítico.
 - Historial en `ver.php`: decir "1 visita demasiado breve" en vez de "Sin visitas aún" (NO gatear el encabezado → falsos negativos). `$visitas_reales` es código muerto.
 - Columna `host` en `escudo_log`; botón "esta visita fue mía" con limpieza atómica de 5 columnas.
-- Los de siempre: Brevo, firewall 443→Cloudflare con **80 abierto**, `Full`→`Full (strict)`, medir >100 s, **rotar credenciales MP**, runbook Android.
+- Los de siempre: Brevo, firewall 443→Cloudflare con **80 abierto**, `Full`→`Full (strict)`, ~~medir >100 s~~ (ya medible con `$request_time`, ver 10-sep), **rotar credenciales MP**, runbook Android.
+
+## Sesión 10 septiembre 2026 — Instrumentar el log, y tres hipótesis enterradas
+
+Esta sesión NO encontró por qué Kitzya no pudo abrir su cotización. Lo que hizo
+fue **construir el instrumento que faltaba** y **matar con datos tres teorías**,
+dos de ellas mías.
+
+### ✅ El log de nginx ahora guarda el PoP, el dominio y el tiempo
+
+Llevábamos una semana peleando a ciegas: Cloudflare sabe por qué centro de datos
+entró cada petición pero su plan Free bloquea el ASN; nginx sabe la IP pero no
+guardaba el PoP. Cada lado tenía media respuesta.
+
+**Cloudflare manda `CF-Ray` al origen con el sufijo del centro de datos**
+(`230b030023ae2822-SJC` — verificado en su documentación de cabeceras). Estaba
+llegando al servidor y se tiraba.
+
+Cambio aplicado en `/etc/nginx/nginx.conf` (**el servidor, no el repo**):
+
+```nginx
+    log_format cz '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" "$host" "$http_cf_ray" $request_time';
+    access_log /var/log/nginx/access.log cz;
+```
+
+| Campo | Cierra el pendiente |
+|---|---|
+| `$host` | Distinguir en el log `cotiza.cloud` de `hermosillo.ontimecocinas.com` |
+| `$http_cf_ray` | Por qué PoP entró cada petición — el instrumento que faltaba |
+| `$request_time` | Medir si alguna pasa de 100 s antes de que Cloudflare corte con 524 |
+
+**Por qué fue seguro** (verificado antes, no supuesto): `fail2ban` tiene **una
+sola jaula, `sshd`** — no lee el log de nginx, así que ningún filtro se rompió.
+Y no había NINGÚN `log_format` definido: nginx usaba el `combined` de fábrica.
+
+**Trampa que costó un intento:** poner el `log_format` en
+`/etc/nginx/conf.d/00-logformat.conf` **falla** con `unknown log format "cz"` —
+el `include conf.d` va DESPUÉS del `access_log` (línea 41) dentro del bloque
+`http`. La definición tiene que vivir en `nginx.conf`, arriba de esa línea.
+
+**Nunca aplicar sin `nginx -t` primero.** Ahí se cayó el primer intento sin que
+el sitio se enterara. Y usar `reload`, no `restart`: si el reload falla, nginx
+sigue sirviendo con la configuración vieja.
+
+**Respaldo:** `/root/nginx.conf.bak-2026-09-10-*`. Revertir = restaurar ese
+archivo + `nginx -t && systemctl reload nginx`.
+
+⚠️ **El archivo tiene dos formatos mezclados.** Las líneas anteriores al 10-sep
+13:19 no traen los campos nuevos. Cualquier script que lo lea debe tolerarlo —
+los `grep` de abajo lo hacen solos porque anclan al final de línea.
+
+```bash
+# Censo de PoPs
+grep -oE '\-[A-Z]{3}" [0-9.]+$' /var/log/nginx/access.log | cut -c2-4 | sort | uniq -c | sort -rn
+
+# Quién entra por Europa o Asia, con su IP
+grep -E '\-(CDG|NRT|KIX|VIE|MAN|LHR|WAW|DUS|SYD|MXP)" [0-9.]+$' /var/log/nginx/access.log \
+  | awk '{print $1, $(NF-2)}' | sort | uniq -c | sort -rn
+
+# Peticiones de más de 5 segundos (pendiente del 524)
+awk '$NF+0 > 5 {print $NF, $1, $7}' /var/log/nginx/access.log | sort -rn | head
+```
+
+De paso quedó verificado que **`real_ip` funciona también en IPv6** (una petición
+desde `2605:a140:...` se registró con su dirección real, no la de Cloudflare).
+Antes solo se había comprobado en IPv4.
+
+### ❌ Hipótesis 1: "el 28% del tráfico mexicano se va a Europa" — ERA 13.6%
+
+**El error fue mío y casi lo mando por escrito a Cloudflare.**
+
+`httpRequestsAdaptiveGroups` devuelve `count` (filas **muestreadas**), no
+peticiones. Hay que multiplicar por `sampleInterval`. Y **el muestreo NO es
+parejo entre PoPs**: en la ventana del 9-sep 17:00–19:00 UTC, Atlanta traía
+`sampleInterval` **1,2,3,4,6,8** (hasta 1 de cada 8) mientras Boston, Manchester,
+Tokio y Varsovia traían **1** (sin muestrear).
+
+Contar filas crudas encoge los PoPs de alto volumen —que son los de
+Norteamérica— y deja completos los chicos. El sesgo iba justo en la dirección
+que hacía ver un problema donde había la mitad.
+
+| | Est. real |
+|---|---|
+| Américas (ATL 1372, DFW 408, EWR 59, MIA 33, BOS 24, MCI 18) | **1,914** |
+| Europa + Asia (CDG 198, VIE 39, MAN 28, LHR 16, DUS 13, NRT 4, WAW 3) | **301** |
+| **Total** | **2,215** → EU/Asia = **13.6%** |
+
+**Regla: `count` NUNCA es tráfico. Siempre `count × sampleInterval`, y siempre
+pedir la columna `sampleInterval` para ver si el sesgo es parejo.**
+
+### ❌ Hipótesis 2: iCloud Private Relay — CERO
+
+Encajaba perfecto con la forma de los datos (ráfagas por continente desde la red
+de Cloudflare) y con que ya sabíamos que existen: **22 de 894 sesiones en 30
+días = 2.5%**, desde los 6 prefijos oficiales de Apple
+(`104.28.`, `172.226.`, `172.225.`, `146.75.`, `140.248.`, `172.224.` — lista
+sacada de `https://mask-api.icloud.com/egress-ip-ranges.csv`).
+
+**Cero peticiones de esos rangos en el log del 9-sep.** Cloudflare no cachea HTML
+por defecto, así que un usuario navegando de verdad TIENE que tocar el origen.
+Cero en el origen = nadie con Private Relay abrió una página ese día. Muerta.
+
+(Y de paso: mis propias pruebas ese día fueron **9 peticiones** desde
+`160.79.106.131`. No explican 507.)
+
+### ❌ Hipótesis 3: apagar IPv6 — NO SE PUEDE, y tampoco arreglaría nada
+
+Verificado en la documentación de Cloudflare: **IPv6 Compatibility solo se puede
+desactivar en Enterprise.** La tabla marca Free, Pro y Business igual — *no se
+puede personalizar*. **Subir a Pro NO compra apagar IPv6.**
+
+Y aunque se pudiera: **Google, YouTube, Facebook y WhatsApp tienen registros
+AAAA.** Si la red o el resolutor de Kitzya se atragantara con IPv6, esos sitios
+le fallarían igual. No le fallaron — ella sí abría otras páginas. La hipótesis se
+cae sin necesidad de pedirle nada a la clienta.
+
+Esto NO es el argumento de supervivencia que usamos antes (el de "la cuota IPv6
+subió a 46%, luego funciona", que sí era sesgado porque los que fallan son
+invisibles). Este es distinto: **la población que a ella sí le funciona también
+usa IPv6.**
+
+La única forma gratis de quitar el AAAA sería quitarle el proxy al dominio (nube
+gris), y eso **regresa la pérdida de paquetes Telmex→Contabo del 2-sep**. Cambiar
+una falla por otra peor.
+
+### Lo que sí queda: el evento del 9 de septiembre
+
+Real, no artefacto — los totales diarios están sanos toda la semana:
+
+| Día (UTC) | Total MX (borde) | EU/Asia | % |
+|---|---|---|---|
+| 3-sep | 40,902 | 28 | 0.07% |
+| 4-sep | 4,137 | 0 | 0% |
+| 5-sep | 5,002 | 0 | 0% |
+| 6-sep (dom) | 385 | 0 | 0% |
+| 7-sep | 3,304 | 0 | 0% |
+| **8-sep** | **34,323** | **0** | **0%** |
+| **9-sep** | 6,309 | **507** | **8.0%** |
+
+Desglose del 9: CDG 199 · **NRT 151** · VIE 39 · DUS 36 · KIX 34 · MAN 28 ·
+LHR 17 · WAW 3.
+
+**No fue un evento, fueron dos.** Cruzando el día contra la ventana de
+17:00–19:00 UTC:
+
+| | Todo el 9 | En 17:00–19:00 | Fuera |
+|---|---|---|---|
+| Europa | 322 | **297 (92%)** | 25 |
+| Asia | 185 | 4 | **181 (98%)** |
+
+Esas dos horas son el 8% del día y concentran el 92% de Europa (París: 199 en el
+día, **198 dentro de la ventana**). Asia hizo lo contrario. **Un cambio estable de
+peering daría una proporción pareja todo el día, no dos ráfagas disjuntas.** La
+explicación del bot de Cloudflare —Telmex empujó tráfico a Cogent, AS174 pasó de
+24% a 31% entre el 8 y el 9— no predice esa forma.
+
+**Y lo decisivo: el enrutamiento europeo empezó el 9. Kitzya falló el 8**, cuando
+era exactamente cero de 34,323 peticiones. Además las 507 devolvieron
+**200 / 204 / 302 / 304 / 404 — ni un 5xx, ni un 52x.** Funcionaron; solo fueron
+por un camino largo. Nadie salió lastimado.
+
+**Son dos fenómenos distintos.** El del 9 es una curiosidad de red sin víctima.
+
+Cabo suelto: **SYD y MXP, que el CEO midió con `/cdn-cgi/trace` desde su Mac, no
+aparecen en NINGUNA tabla de Cloudflare.** O esas pruebas fueron contra otro
+dominio, o los analytics no ven todo. Sin resolver.
+
+### Límites del plan Free (verificados, para no volver a chocar)
+
+| Límite | Valor |
+|---|---|
+| Tickets técnicos de soporte | **No existen.** Free solo abre casos de facturación, cuenta y registrador |
+| Retención de `httpRequestsAdaptiveGroups` | 7 días (la API cortó en ~1w1d) |
+| Ventana máxima por consulta | **24 horas** — un rango de 7 días hay que partirlo en trozos diarios |
+| `clientAsn` | **Bloqueado** como dimensión Y como filtro |
+| IPv6 Compatibility | Enterprise |
+| Security Events | 24 h |
+
+Pro **sí** desbloquearía `clientAsn` (permitiría cruzar ASN × PoP). Es una compra
+de instrumentos, NO un arreglo. Con el `log_format` nuevo ya no hace falta.
+
+### NEL (Network Error Logging) — evaluado, no implementado
+
+Es el único mecanismo que ve fallas **que nunca llegan al servidor**: el navegador
+reporta su propio fracaso (DNS, timeout de TCP, TLS roto).
+
+- **El NEL de Cloudflare NO sirve**: los reportes van a `a.nel.cloudflare.com`,
+  no a nosotros, y su documentación no dice cómo verlos.
+- Sí se puede montar colector propio con las cabeceras `NEL` + `Report-To`.
+- **Solo Chromium.** Safari y Firefox no lo implementan.
+- **Requiere una carga exitosa previa** — la política viaja en una respuesta.
+
+**Ninguno de los dos casos que investigamos habría sido capturado**: Arturo iba en
+iPhone (Safari), Kitzya nunca cargó nada. Donde sí serviría es en la re-visita —
+que es la premisa del Radar. Decisión: evaluarlo cuando sepamos cuántas fallas son
+de primer contacto y cuántas de re-visita.
+
+### El hueco que no tiene arreglo
+
+Un cliente que **nunca** logró conectarse, la primera vez, desde su red, no deja
+rastro en ningún lado del mundo salvo en su propio teléfono. No hay API, cabecera
+ni registro que lo capture: todo lo disponible exige que la conexión haya
+funcionado al menos una vez. Y por la regla del CEO, su teléfono no es una fuente
+que vayamos a consultar.
+
+Ese hueco va a seguir. Lo que cambió hoy es que **deja de ser el hueco por
+defecto**: antes CUALQUIER falla era invisible; ahora solo lo es la falla de
+primer contacto en Safari.
+
+### 🔬 Errores de método de esta sesión
+
+1. **Comparar el borde contra el origen como si midieran lo mismo.** Anuncié un
+   "pico de 7×" el 8-sep comparando peticiones MX en Cloudflare (34,323) contra
+   nginx (11,509, todos los países). Son poblaciones distintas: el borde sirve de
+   caché lo que nunca toca el origen. El domingo lo desnuda — nginx 10,696, MX en
+   Cloudflare 385. **En nginx el 8 es 1.5× la mediana, no 7×.**
+2. **Reportar `count` como tráfico** (ver hipótesis 1). 28% vs 13.6%.
+3. **Leer mal la etiqueta de una gráfica.** El último punto decía "9/8 17:00" y lo
+   tomé como el día 8; era el inicio de un intervalo que cae casi todo en el 9.
+   Con eso construí una correlación con Kitzya que no existe.
+4. **Perseguir lo medible en vez de lo que se rompió.** Dos días con el
+   enrutamiento europeo porque es lo único que arroja números, cuando la falla
+   ocurrió un día antes de que ese enrutamiento existiera. Buscar las llaves
+   donde hay luz.
+
+### Dato bueno que salió sin buscarlo
+
+Carga del origen antes y después de prender el proxy de Cloudflare:
+
+| | Peticiones/día en nginx |
+|---|---|
+| 27–31 ago (sin proxy) | 19,488 – 48,321 |
+| 4–10 sep (con proxy) | 5,535 – 11,509 |
+
+**Cloudflare te quitó ~70% de la carga del servidor.** Y `$request_time` de las
+primeras peticiones con el formato nuevo: **0.002 s**. El origen responde
+instantáneo — no es candidato a los 524.
+
+### Pendiente inmediato
+Dejar correr el log 24 h y correr el censo de PoPs y la cacería de Europa/Asia.
+Si sale poblada con IPs mexicanas reales, hay caso. Si sale vacía o solo con
+escáneres, el episodio del 9 se cierra con datos y no por cansancio.
