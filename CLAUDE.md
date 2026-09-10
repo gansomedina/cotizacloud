@@ -3603,6 +3603,33 @@ Dos cosas que sí quedaron medidas y conviene tener a la mano:
   arranca cuando hay una declaración (sin ancla no hay `$seg`). Esas cuentan
   como falla en la cobertura, no como vencidas.
 
+#### La prórroga por toque — qué toque vale (CEO, 10 sep 2026)
+
+La fila que pasó el día 2×p75 y sigue viva **solo porque el asesor la tocó** no
+se marca vencida mientras corre el bono (`Mesa.php`, bloque `$seg`). Instrucción
+textual del CEO: *"la fila de toque, mientras tengas el margen de los 5 días no
+es vencido, es que se va a vencer en un futuro"*.
+
+**¿Qué toque la salva? CUALQUIERA.** Se preguntó explícitamente si debía valer
+solo un toque de `contacto` —para que la prórroga se ganara hablándole al
+cliente y no con un juicio— y el CEO respondió **cualquiera**. Entonces cuentan
+contacto, postura, compromiso y feedback; **incluido el 👍👎 del Radar**, que
+escribe una fila de área `feedback` (`api/radar_feedback.php`). Lo único que NO
+cuenta es el `razon='auto'`.
+
+Consecuencia exacta, para que nadie la reporte como bug: **una cotización pasada
+del ciclo sostenida solo con toques NUNCA escribe en `mesa_vencidos`.** Si la
+toca cada 5 días no se marca; si deja pasar el sexto, se cae de la mesa. No
+existe el día en que esté en rojo. Lo que sí cobra es la **cobertura**: si la
+sostiene sin calificarla (postura + manita) cuenta como falla, y eso vale 25%
+del score. Ahí se paga, no en el castigo.
+
+Dos cosas que la prórroga NO alcanza, y las dos las cazó la simulación:
+- **La cita** (`!$es_cita`) — es un compromiso con fecha, no una cadencia.
+- **La fila dentro de su ciclo** — ahí el cronómetro manda sin excepción.
+- Y el toque tiene que ser **suyo** (`$tap_own`): el de otro sostiene la fila en
+  la mesa, pero no le apaga el rojo.
+
 **Error de método que produjo esto** (para no repetirlo): presenté "el 70% de
 las vencidas caen en dom/lun/mar" como si fuera la causa. Era una
 **correlación**, no un mecanismo — el lunes también es cuando se abre la mesa
