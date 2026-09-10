@@ -293,17 +293,32 @@ class Mesa
         // inserta solo cuando el asesor declara un desenlace sin contacto
         // reciente (mesa_estado.php:117). Es relleno del sistema, no trabajo
         // suyo — el sistema no debe darse tiempo a sí mismo.
-        $tap = [];
+        //
+        // Salen DOS fechas del mismo query, y la diferencia importa:
+        //   $tap      — el último toque de CUALQUIERA (dueño, admin, dueño
+        //               anterior). Decide si la cotización SIGUE en la mesa. Es
+        //               un hecho sobre la cotización: si alguien la trabajó
+        //               antier, se está trabajando, y punto.
+        //   $tap_own  — el último toque DE ESTE ASESOR. Decide si se le perdona
+        //               el reloj rojo, y eso es un JUICIO SOBRE ÉL.
+        //
+        // Mismo principio que $venc_hist, que filtra por usuario_id: el hecho no
+        // se filtra, el juicio sí. Sin la segunda, una cotización reasignada
+        // llegaba al nuevo dueño con el rojo ya apagado por los toques del
+        // anterior — le escondía trabajo que nunca hizo.
+        $tap = []; $tap_own = [];
         try {
             foreach (DB::query(
-                "SELECT cotizacion_id, MAX(created_at) AS ult
+                "SELECT cotizacion_id, MAX(created_at) AS ult,
+                        MAX(CASE WHEN usuario_id = ? THEN created_at END) AS ult_own
                  FROM mesa_estados
                  WHERE empresa_id = ? AND cotizacion_id IN ($in)
                    AND (razon IS NULL OR razon <> 'auto')
                  GROUP BY cotizacion_id",
-                [$empresa_id]
+                [$vendedor_id, $empresa_id]
             ) as $r) {
                 $tap[(int)$r['cotizacion_id']] = $r['ult'];
+                if (!empty($r['ult_own'])) $tap_own[(int)$r['cotizacion_id']] = $r['ult_own'];
             }
         } catch (\Throwable $e) {} // tabla sin migrar → sin bono de toque
 
@@ -689,10 +704,19 @@ class Mesa
                     //    re-tapear "nos citamos" sin haber hablado apagaba el 🔴
                     //    y ponía cita_vencida en false. Silenciar una cita
                     //    incumplida es justo lo contrario de para lo que existe.
+                    //
+                    // 3) El toque de OTRO. Perdonar el rojo es un juicio sobre
+                    //    ESTE asesor, así que se mide con SU propio toque
+                    //    ($tap_own, no $tap): una cotización reasignada llegaba
+                    //    al nuevo dueño con el rojo apagado por los toques del
+                    //    anterior. La permanencia sí sigue usando $tap — que se
+                    //    esté trabajando es un hecho de la cotización.
+                    $dias_tap_own = !empty($tap_own[$cid])
+                        ? (int)floor(($now - strtotime($tap_own[$cid])) / 86400) : PHP_INT_MAX;
                     if ($dias_venc > 0 && !$es_cita && $edad > 2 * $p75
-                        && $dias_tap <= self::bono_toque($p75) && !empty($tap[$cid])) {
+                        && $dias_tap_own <= self::bono_toque($p75)) {
                         $vence_ymd = date('Y-m-d',
-                            strtotime(date('Y-m-d', strtotime($tap[$cid])))
+                            strtotime(date('Y-m-d', strtotime($tap_own[$cid])))
                             + self::bono_toque($p75) * 86400);
                         $dias_venc = (int)round((strtotime($hoy_db) - strtotime($vence_ymd)) / 86400);
                     }

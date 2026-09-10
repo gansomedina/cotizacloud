@@ -147,6 +147,11 @@ function tap(int $cot, string $area, string $estado, float $hace_d, ?string $raz
     DB::execute("INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, razon_texto, created_at)
                  VALUES (?,900,5,?,?,?,?,?)", [$cot, $area, $estado, $razon, $razon_texto, $d($hace_d)]);
 }
+function tap_de(int $cot, string $area, string $estado, float $hace_d, int $uid): void {
+    global $d;
+    DB::execute("INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, razon_texto, created_at)
+                 VALUES (?,?,5,?,?,NULL,NULL,?)", [$cot, $uid, $area, $estado, $d($hace_d)]);
+}
 function fb(int $cot, int $uid, string $tipo, float $upd_d): void {
     global $d;
     DB::execute("INSERT INTO radar_feedback (cotizacion_id, usuario_id, empresa_id, tipo, created_at, updated_at)
@@ -655,11 +660,11 @@ chk('sostenida por toque Y calificada → es fría, fuera del examen (pedidas 0)
 // "no contestó" pendiente. La escalera de intentos queda intacta.
 echo "═ SOSTENIDA POR EL TOQUE: NO EN ROJO (vendedor 513) ═\n";
 cot(9940, 513, 16000, 45, ['visitas' => 2, 'vista_d' => 40]);
-tap(9940, 'contacto', 'hablamos', 25);
-tap(9940, 'postura', 'decidiendo', 1);   // el toque que la sostiene
+tap_de(9940, 'contacto', 'hablamos', 25, 513);
+tap_de(9940, 'postura', 'decidiendo', 1, 513);   // el toque que la sostiene
 cot(9941, 513, 17000, 45, ['visitas' => 2, 'vista_d' => 40]);
-tap(9941, 'contacto', 'hablamos', 25);
-tap(9941, 'postura', 'decidiendo', 10);  // último día del bono de 10
+tap_de(9941, 'contacto', 'hablamos', 25, 513);
+tap_de(9941, 'postura', 'decidiendo', 10, 513);  // último día del bono de 10
 
 // LA CITA NO SE SILENCIA CON TOQUES. El contrato C1 (vendedor 506) dice que
 // re-tapear "nos citamos" sin haber hablado NO re-ancla: sigue CITA VENCIDA.
@@ -667,10 +672,21 @@ tap(9941, 'postura', 'decidiendo', 10);  // último día del bono de 10
 // es donde la regla del toque sí alcanza. Sin el !$es_cita, el re-tap pelón
 // apagaba el 🔴 de una cita incumplida.
 cot(9942, 513, 18000, 50, ['visitas' => 2, 'vista_d' => 45]);
-tap(9942, 'compromiso', 'nos_citamos', 25);  // cita, cad 10 -> vencida hace 15
-tap(9942, 'compromiso', 'nos_citamos', 1);   // re-tap pelón: NO debe re-anclar
+tap_de(9942, 'compromiso', 'nos_citamos', 25, 513);  // cita, cad 10 -> vencida hace 15
+tap_de(9942, 'compromiso', 'nos_citamos', 1, 513);   // re-tap pelón: NO debe re-anclar
+
+// EL TOQUE DE OTRO NO LE APAGA EL ROJO. 9943 es idéntica a 9940 salvo que el
+// toque de ayer lo dio OTRO usuario (900 vs 513) — como pasa al reasignar una
+// cotización. La permanencia sí la respeta (sigue en la mesa: es un hecho que
+// se está trabajando), pero el perdón del reloj es un juicio sobre ESTE asesor
+// y se mide con SU propio toque.
+cot(9943, 513, 19000, 45, ['visitas' => 2, 'vista_d' => 40]);
+tap_de(9943, 'contacto', 'hablamos', 25, 513);
+tap_de(9943, 'postura', 'decidiendo', 1, 777);   // toque de otro usuario
 
 $m513 = []; foreach (Mesa::armar(5, 513)['rows'] as $r) $m513[(int)$r['id']] = $r;
+chk('toque de OTRO usuario la sostiene en la mesa pero NO le apaga el rojo',
+    [isset($m513[9943]), $m513[9943]['seguimiento']['estado'] ?? 'AUSENTE'], [true, 'vencida']);
 chk('cita vencida en fila VIEJA con re-tap pelón → sigue VENCIDA (el toque no la salva)',
     [$m513[9942]['seguimiento']['estado'] ?? 'AUSENTE',
      $m513[9942]['cita_vencida'] ?? 'AUSENTE'], ['vencida', true]);
