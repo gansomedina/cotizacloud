@@ -661,7 +661,19 @@ cot(9941, 513, 17000, 45, ['visitas' => 2, 'vista_d' => 40]);
 tap(9941, 'contacto', 'hablamos', 25);
 tap(9941, 'postura', 'decidiendo', 10);  // último día del bono de 10
 
+// LA CITA NO SE SILENCIA CON TOQUES. El contrato C1 (vendedor 506) dice que
+// re-tapear "nos citamos" sin haber hablado NO re-ancla: sigue CITA VENCIDA.
+// C1 vive dentro del ciclo (14d); esta es LA MISMA trampa pero VIEJA (50d), que
+// es donde la regla del toque sí alcanza. Sin el !$es_cita, el re-tap pelón
+// apagaba el 🔴 de una cita incumplida.
+cot(9942, 513, 18000, 50, ['visitas' => 2, 'vista_d' => 45]);
+tap(9942, 'compromiso', 'nos_citamos', 25);  // cita, cad 10 -> vencida hace 15
+tap(9942, 'compromiso', 'nos_citamos', 1);   // re-tap pelón: NO debe re-anclar
+
 $m513 = []; foreach (Mesa::armar(5, 513)['rows'] as $r) $m513[(int)$r['id']] = $r;
+chk('cita vencida en fila VIEJA con re-tap pelón → sigue VENCIDA (el toque no la salva)',
+    [$m513[9942]['seguimiento']['estado'] ?? 'AUSENTE',
+     $m513[9942]['cita_vencida'] ?? 'AUSENTE'], ['vencida', true]);
 chk('toque de ayer la sostiene → NO en rojo, vence al final del bono (en 9d)',
     [$m513[9940]['seguimiento']['estado'] ?? 'AUSENTE', $m513[9940]['seguimiento']['dias'] ?? -1],
     ['ok', 0]);

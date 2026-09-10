@@ -674,11 +674,22 @@ class Mesa
                     // dos veces el mismo trabajo. El reloj se recorre al fin del
                     // bono para que la fecha que ve el asesor sea la de verdad.
                     //
-                    // NO toca la fila que está DENTRO de su ciclo: ahí manda el
-                    // cronómetro tal cual, y una postura fresca no apaga un "no
-                    // contestó" pendiente (candado del reloj rojo, vendedor 507
-                    // de sim_mesa_armar). La escalera de intentos queda intacta.
-                    if ($dias_venc > 0 && $edad > 2 * $p75
+                    // DOS COSAS QUE NO TOCA, y las dos las cazó la simulación:
+                    //
+                    // 1) La fila DENTRO de su ciclo. Ahí manda el cronómetro tal
+                    //    cual y una postura fresca no apaga un "no contestó"
+                    //    pendiente (candado del reloj rojo, vendedor 507). La
+                    //    escalera de intentos queda intacta.
+                    //
+                    // 2) LA CITA (!$es_cita). Una cita es un compromiso con
+                    //    fecha, no una cadencia: si la dejó pasar, la dejó pasar,
+                    //    y ningún toque le compra días contra eso. Sin este
+                    //    filtro la regla tumbaba el contrato anti-gaming de la
+                    //    cita (vendedor 506, C1) en cuanto la fila era vieja:
+                    //    re-tapear "nos citamos" sin haber hablado apagaba el 🔴
+                    //    y ponía cita_vencida en false. Silenciar una cita
+                    //    incumplida es justo lo contrario de para lo que existe.
+                    if ($dias_venc > 0 && !$es_cita && $edad > 2 * $p75
                         && $dias_tap <= self::bono_toque($p75) && !empty($tap[$cid])) {
                         $vence_ymd = date('Y-m-d',
                             strtotime(date('Y-m-d', strtotime($tap[$cid])))
