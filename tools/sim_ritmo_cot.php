@@ -11,6 +11,11 @@
 // REQUISITOS (desarrollo, NUNCA producción):
 //   - MariaDB/MySQL local con BD 'simtest' y usuario sim/sim
 //   - DESTRUYE y recrea sus tablas en cada corrida
+// Los fixtures se anclan en CURDATE(), no en NOW(): con NOW() el "+2 HOUR"
+// empujaba la fila al DÍA SIGUIENTE cuando la prueba corría después de las
+// 22:00, y 9 de 76 comprobaciones fallaban solas por la hora del reloj. Las
+// semanas ISO dejaban de caer donde la prueba las espera. Anclado a
+// medianoche + 2h, la fila cae en su día a cualquier hora.
 // Correr: php tools/sim_ritmo_cot.php   → debe terminar en OK
 // Obligatorio tras CUALQUIER cambio a RitmoCot.
 // ============================================================
@@ -75,14 +80,14 @@ const EMP = 1;
 function cot(int $uid, int $dias, array $o = []): int {
     DB::execute(
         "INSERT INTO cotizaciones (empresa_id, usuario_id, vendedor_id, total, estado, visitas, suspendida, created_at)
-         VALUES (?,?,?,?,?,?,?, NOW() - INTERVAL ? DAY + INTERVAL 2 HOUR)",
+         VALUES (?,?,?,?,?,?,?, CURDATE() - INTERVAL ? DAY + INTERVAL 2 HOUR)",
         [EMP, $o['usuario_id'] ?? $uid, $o['vendedor_id'] ?? null, $o['total'] ?? 1000,
          $o['estado'] ?? 'enviada', $o['visitas'] ?? 0, $o['suspendida'] ?? 0, $dias]
     );
     return (int)DB::pdo()->lastInsertId();
 }
 function actividad(int $uid, int $dias, string $tipo = 'radar_view'): void {
-    DB::execute("INSERT INTO actividad_log (usuario_id, tipo, created_at) VALUES (?,?, NOW() - INTERVAL ? DAY + INTERVAL 2 HOUR)",
+    DB::execute("INSERT INTO actividad_log (usuario_id, tipo, created_at) VALUES (?,?, CURDATE() - INTERVAL ? DAY + INTERVAL 2 HOUR)",
         [$uid, $tipo, $dias]);
 }
 

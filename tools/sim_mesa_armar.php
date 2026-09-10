@@ -720,5 +720,39 @@ chk('110 días con edición de hace 20d (borde del bono) → SIGUE en la mesa', 
 chk('110 días con edición de hace 21d y sin toques → fuera', isset($m514[9961]), false);
 chk('edición vencida pero toque de hace 3d → sigue: la sostiene el toque', isset($m514[9962]), true);
 
+// ══ EDITAR TAMBIÉN CORRE EL RELOJ (vendedor 515) ═══════════
+// La mesa le da a editar el DOBLE que a tapear (p75 vs p75/2) porque es
+// trabajo que el cliente recibe. No puede valer el doble para sostener la fila
+// y CERO para el reloj: editaba para trabajarla y el chip le contestaba en
+// rojo que no le había dado seguimiento. Ahora vence en max(edición + p75,
+// toque + p75/2) — la MISMA fórmula de fuera_de_ventana().
+//
+// Y el trabajo tiene que ser SUYO: el de otro sostiene la fila (es un hecho de
+// la cotización) pero no le apaga el rojo (eso es un juicio sobre él).
+echo "═ EDITAR CORRE EL RELOJ (vendedor 515) ═\n";
+$hoy_ts = strtotime(date('Y-m-d'));
+$fmt = fn(int $d) => date('Y-m-d', $hoy_ts + $d * 86400);
+
+cot(9970, 515, 30000, 45, ['visitas' => 2, 'vista_d' => 40]);
+tap_de(9970, 'contacto', 'hablamos', 30, 515);  // ancla vieja: vencidísima
+edito(9970, 3, 515);                            // ÉL la editó hace 3d
+cot(9971, 515, 31000, 45, ['visitas' => 2, 'vista_d' => 40]);
+tap_de(9971, 'contacto', 'hablamos', 30, 515);
+edito(9971, 3, 900);                            // la editó OTRO usuario
+cot(9972, 515, 32000, 45, ['visitas' => 2, 'vista_d' => 40]);
+tap_de(9972, 'contacto', 'hablamos', 30, 515);
+edito(9972, 8, 515);                            // edición de hace 8d (bono 20)
+tap_de(9972, 'postura', 'decidiendo', 2, 515);  // y un toque de hace 2d (bono 10)
+
+$m515 = []; foreach (Mesa::armar(5, 515)['rows'] as $r) $m515[(int)$r['id']] = $r;
+chk('su edición de hace 3d corre el reloj a edición+20, NO sale en rojo',
+    [$m515[9970]['seguimiento']['estado'] ?? 'AUSENTE',
+     $m515[9970]['seguimiento']['vence']  ?? 'AUSENTE'], ['ok', $fmt(17)]);
+chk('la edición de OTRO sostiene la fila pero NO le apaga el rojo',
+    [isset($m515[9971]), $m515[9971]['seguimiento']['estado'] ?? 'AUSENTE'], [true, 'vencida']);
+// NO SE ACUMULAN: edición(-8)+20 = +12 · toque(-2)+10 = +8 -> manda el +12
+chk('edición y toque NO se suman: manda la fecha más lejana de las dos',
+    $m515[9972]['seguimiento']['vence'] ?? 'AUSENTE', $fmt(12));
+
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

@@ -272,15 +272,20 @@ class Mesa
         } catch (\Throwable $e) {} // tabla sin migrar → sin huella
 
         // Última acción del asesor sobre la cotización (editada/reenviada)
-        $acc = [];
+        // Igual que $tap/$tap_own: la de CUALQUIERA decide si la fila se queda
+        // (hecho de la cotización); la DE ÉL decide si se le perdona el reloj
+        // (juicio sobre él). Ver el comentario largo abajo, en $tap.
+        $acc = []; $acc_own = [];
         foreach (DB::query(
-            "SELECT cotizacion_id, MAX(created_at) AS ult
+            "SELECT cotizacion_id, MAX(created_at) AS ult,
+                    MAX(CASE WHEN usuario_id = ? THEN created_at END) AS ult_own
              FROM cotizacion_log
              WHERE cotizacion_id IN ($in) AND usuario_id IS NOT NULL
                AND COALESCE(accion, evento) IN ('editada','enviada')
-             GROUP BY cotizacion_id", []
+             GROUP BY cotizacion_id", [$vendedor_id]
         ) as $r) {
             $acc[(int)$r['cotizacion_id']] = $r['ult'];
+            if (!empty($r['ult_own'])) $acc_own[(int)$r['cotizacion_id']] = $r['ult_own'];
         }
 
         // Último TOQUE real del asesor en la mesa — la otra señal de vida.
@@ -711,13 +716,32 @@ class Mesa
                     //    al nuevo dueño con el rojo apagado por los toques del
                     //    anterior. La permanencia sí sigue usando $tap — que se
                     //    esté trabajando es un hecho de la cotización.
-                    $dias_tap_own = !empty($tap_own[$cid])
-                        ? (int)floor(($now - strtotime($tap_own[$cid])) / 86400) : PHP_INT_MAX;
+                    //
+                    // LA EDICIÓN CUENTA IGUAL QUE EL TOQUE, y vale su bono
+                    // completo. La mesa ya le da a editar el DOBLE que a tapear
+                    // (p75 contra p75/2) porque "es trabajo real que el cliente
+                    // recibe" — no puede valer el doble para sostener la fila y
+                    // CERO para el reloj. Antes pasaba justo eso: editaba para
+                    // trabajarla y el sistema le contestaba en rojo que no le
+                    // había dado seguimiento.
+                    //
+                    // Se toma la fecha MÁS LEJANA de las dos, que es la misma
+                    // fórmula con la que fuera_de_ventana() decide si la fila se
+                    // queda: max(edición + p75, toque + p75/2). Así los dos
+                    // relojes dicen lo mismo y la fecha del chip se vuelve el
+                    // aviso de cuándo va a salir, en vez de desaparecer sin más.
+                    $compro = 0;
+                    if (!empty($tap_own[$cid])) {
+                        $compro = max($compro, strtotime(date('Y-m-d', strtotime($tap_own[$cid])))
+                                             + self::bono_toque($p75) * 86400);
+                    }
+                    if (!empty($acc_own[$cid])) {
+                        $compro = max($compro, strtotime(date('Y-m-d', strtotime($acc_own[$cid])))
+                                             + self::bono_edicion($p75) * 86400);
+                    }
                     if ($dias_venc > 0 && !$es_cita && $edad > 2 * $p75
-                        && $dias_tap_own <= self::bono_toque($p75)) {
-                        $vence_ymd = date('Y-m-d',
-                            strtotime(date('Y-m-d', strtotime($tap_own[$cid])))
-                            + self::bono_toque($p75) * 86400);
+                        && $compro >= strtotime($hoy_db)) {
+                        $vence_ymd = date('Y-m-d', $compro);
                         $dias_venc = (int)round((strtotime($hoy_db) - strtotime($vence_ymd)) / 86400);
                     }
                     $seg = ['estado' => $dias_venc > 0 ? 'vencida' : ($dias_venc === 0 ? 'hoy' : 'ok'),
