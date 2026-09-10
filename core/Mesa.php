@@ -307,10 +307,15 @@ class Mesa
         //   $tap_own  — el último toque DE ESTE ASESOR. Decide si se le perdona
         //               el reloj rojo, y eso es un JUICIO SOBRE ÉL.
         //
+        // POR QUÉ (decisión CEO, 10 sep 2026, textual): "el trabajo de otro no
+        // apaga porque es trabajo del asesor, la cotización es del asesor". La
+        // cotización tiene dueño, y con ella la obligación de darle seguimiento.
+        // Que la trabaje el admin o el dueño anterior no descarga la de él.
+        //
         // Mismo principio que $venc_hist, que filtra por usuario_id: el hecho no
-        // se filtra, el juicio sí. Sin la segunda, una cotización reasignada
-        // llegaba al nuevo dueño con el rojo ya apagado por los toques del
-        // anterior — le escondía trabajo que nunca hizo.
+        // se filtra, el juicio sí. El caso que lo hizo visible: una cotización
+        // reasignada llegaba al nuevo dueño con el rojo ya apagado por los
+        // toques del anterior — le escondía trabajo que nunca hizo.
         $tap = []; $tap_own = [];
         try {
             foreach (DB::query(

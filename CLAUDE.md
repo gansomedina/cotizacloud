@@ -3624,11 +3624,31 @@ existe el día en que esté en rojo. Lo que sí cobra es la **cobertura**: si la
 sostiene sin calificarla (postura + manita) cuenta como falla, y eso vale 25%
 del score. Ahí se paga, no en el castigo.
 
-Dos cosas que la prórroga NO alcanza, y las dos las cazó la simulación:
+Tres cosas que la prórroga NO alcanza, y las dos primeras las cazó la simulación:
 - **La cita** (`!$es_cita`) — es un compromiso con fecha, no una cadencia.
 - **La fila dentro de su ciclo** — ahí el cronómetro manda sin excepción.
-- Y el toque tiene que ser **suyo** (`$tap_own`): el de otro sostiene la fila en
-  la mesa, pero no le apaga el rojo.
+- **El trabajo de OTRO** (`$tap_own` / `$acc_own`): sostiene la fila en la mesa,
+  pero no le apaga el rojo. Razón del CEO, textual: *"el trabajo de otro no apaga
+  porque es trabajo del asesor, la cotización es del asesor"*. La cotización
+  tiene dueño, y con ella la obligación de darle seguimiento; que la trabaje el
+  admin o el dueño anterior no descarga la de él. **Cerrado — no reabrir.**
+
+#### Editar también corre el reloj (CEO, 10 sep 2026)
+
+La mesa le da a **editar** el doble que a tapear (`p75` contra `p75/2`) porque
+"es trabajo real que el cliente recibe". Durante un día valió el doble para
+sostener la fila y **cero** para el reloj: el asesor editaba la cotización para
+trabajarla y el chip de Actividad le contestaba `🔴 sin seguimiento 20d`. El CEO
+lo cazó: *"está mal, debe dar la nueva fecha, porque como la marcas vencida si
+se editó para trabajarla"*.
+
+El límite es **`max(edición + p75, toque + p75/2)`** — la MISMA fórmula de
+`fuera_de_ventana()`. Consecuencias:
+- Los dos relojes dicen lo mismo, así que **la fecha del chip se volvió el aviso
+  de cuándo la fila va a salir de la mesa**. Antes las viejas desaparecían sin
+  avisar y no había dónde verlo.
+- **NO se suman**: editó hace 8 (le quedan 12) y tocó hace 2 (le quedan 8) →
+  manda el 12. Contrato en `sim_mesa_armar` (vendedor 515).
 
 **Error de método que produjo esto** (para no repetirlo): presenté "el 70% de
 las vencidas caen en dom/lun/mar" como si fuera la causa. Era una
