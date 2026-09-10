@@ -639,5 +639,31 @@ $cov512 = Mesa::cobertura_senales(5, 512);
 chk('sostenida por toque Y calificada → es fría, fuera del examen (pedidas 0)',
     [$cov512['pedidas'], $cov512['atendidas'], $cov512['fallas']], [0, 0, 0]);
 
+// ══ LA SOSTENIDA POR EL TOQUE NO SALE EN ROJO (vendedor 513) ═
+// La fila que pasó su ciclo natural (45d > 40) y sigue en la mesa SOLO por el
+// bono de toque no puede volver marcada VENCIDA dentro de esos mismos días:
+// el toque se los compró. Está POR vencer, al final del bono.
+//
+// 9940 y 9941 tienen el MISMO contacto viejo ('hablamos' hace 25d, cadencia
+// mediana 10 → el reloj venció hace 15). La diferencia es el toque de ayer.
+//
+// El contrato NO alcanza a las filas dentro de su ciclo: eso lo fija el
+// vendedor 507 (A3), donde una postura fresca sigue SIN apagar el rojo de un
+// "no contestó" pendiente. La escalera de intentos queda intacta.
+echo "═ SOSTENIDA POR EL TOQUE: NO EN ROJO (vendedor 513) ═\n";
+cot(9940, 513, 16000, 45, ['visitas' => 2, 'vista_d' => 40]);
+tap(9940, 'contacto', 'hablamos', 25);
+tap(9940, 'postura', 'decidiendo', 1);   // el toque que la sostiene
+cot(9941, 513, 17000, 45, ['visitas' => 2, 'vista_d' => 40]);
+tap(9941, 'contacto', 'hablamos', 25);
+tap(9941, 'postura', 'decidiendo', 10);  // último día del bono de 10
+
+$m513 = []; foreach (Mesa::armar(5, 513)['rows'] as $r) $m513[(int)$r['id']] = $r;
+chk('toque de ayer la sostiene → NO en rojo, vence al final del bono (en 9d)',
+    [$m513[9940]['seguimiento']['estado'] ?? 'AUSENTE', $m513[9940]['seguimiento']['dias'] ?? -1],
+    ['ok', 0]);
+chk('toque de hace 10d (último día del bono) → vence HOY, todavía no en rojo',
+    $m513[9941]['seguimiento']['estado'] ?? 'AUSENTE', 'hoy');
+
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);

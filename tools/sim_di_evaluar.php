@@ -12,7 +12,10 @@
 // o a Mesa::fuera_de_ventana().
 //
 // Anclas fijas: p75=10, p90=25 → mesa 0-20 · R1 21-30 · R2 31-55 ·
-// fósil 56+. Bono de edición 10d · bono de toque 5d · margen 2d.
+// fósil 56+. Bono de edición 10d · bono de toque 5d.
+//
+// LA REGLA COMPLETA son dos condiciones: salió de la mesa Y el cliente
+// lleva más de 2×p75 días sin abrirla. Sin margen ni plazos de gracia.
 // ============================================================
 define('COTIZAAPP', 1);
 
@@ -138,12 +141,15 @@ chk('sin toques ni ediciones y fuera de la mesa → aplica R1', regla(cot(1, 25,
 chk('toque de hace 3d (la mesa la tiene) → NO aplica', regla((function () {
     $c = cot(2, 25, 25); toque(2, 3); return $c; })()), null);
 
-// La mesa la suelta al 6º día sin toque (bono 5). Con margen 2, el descuento
-// no puede entrar hasta el 8º. Este es el caso que el margen existe para tapar.
-chk('toque de hace 6d (salió AYER de la mesa, margen 2d) → NO aplica', regla((function () {
-    $c = cot(3, 25, 25); toque(3, 6); return $c; })()), null);
+chk('toque de hace 5d (último día que la mesa la tiene) → NO aplica', regla((function () {
+    $c = cot(19, 25, 25); toque(19, 5); return $c; })()), null);
 
-chk('toque de hace 8d (lleva 3d fuera) → aplica R1', regla((function () {
+// El bono de toque son 5 días y la puerta pide MÁS de 5: al 6º sale, y ahí
+// mismo puede entrar el descuento. Sin margen — la mesa suelta, el DI entra.
+chk('toque de hace 6d (la mesa la soltó hoy) → aplica R1', regla((function () {
+    $c = cot(3, 25, 25); toque(3, 6); return $c; })()), 1);
+
+chk('toque de hace 8d → aplica R1', regla((function () {
     $c = cot(4, 25, 25); toque(4, 8); return $c; })()), 1);
 
 echo "═ EL BONO DE EDICIÓN ES MÁS LARGO QUE LA VENTANA VIEJA ═\n";
@@ -151,18 +157,28 @@ echo "═ EL BONO DE EDICIÓN ES MÁS LARGO QUE LA VENTANA VIEJA ═\n";
 // hace 7 días ya no protegía. La mesa da 10, y ahora manda la mesa.
 chk('edición de hace 7d → NO aplica (la ventana vieja de 5d ya la habría dejado pasar)',
     regla((function () { $c = cot(5, 25, 25); edito(5, 7); return $c; })()), null);
-chk('edición de hace 13d (lleva 3d fuera) → aplica R1',
-    regla((function () { $c = cot(6, 25, 25); edito(6, 13); return $c; })()), 1);
+chk('edición de hace 11d (la mesa la soltó) → aplica R1',
+    regla((function () { $c = cot(6, 25, 25); edito(6, 11); return $c; })()), 1);
+
+// R2 es donde la rama de mesa_estados NO es redundante: la puerta pide 5 días
+// sin toque, pero el window de R2 son 10. Manda la más estricta.
+echo "═ EN R2 EL WINDOW DE LA ZONA ES MÁS ESTRICTO QUE LA PUERTA ═\n";
+chk('R2 con toque de hace 7d → NO aplica (pasó la puerta, lo frena el window de 10d)',
+    regla((function () { $c = cot(20, 35, 35); toque(20, 7); return $c; })()), null);
+chk('R2 con toque de hace 11d → aplica R2',
+    regla((function () { $c = cot(21, 35, 35); toque(21, 11); return $c; })()), 2);
 
 echo "═ EL IMPLÍCITO NO PROTEGE ═\n";
 chk('toque razon=auto de hace 3d → aplica igual (no es trabajo del asesor)',
     regla((function () { $c = cot(7, 25, 25); toque(7, 3, 'auto'); return $c; })()), 1);
 
 echo "═ LO QUE SE CONSERVÓ ═\n";
-// La manita del RADAR escribe radar_feedback y NO mesa_estados: la mesa no la
-// ve. Si esta rama se hubiera quitado con la de mesa_estados, un 👍 reciente
-// dejaría de proteger.
-chk('manita 👍 de hace 2d → NO aplica (la mesa no la ve; la rama de radar_feedback sí)',
+// La manita del RADAR normalmente escribe LAS DOS tablas en una transacción
+// (api/radar_feedback.php), así que casi siempre la ataja mesa_estados. Esta
+// rama es la red: si mesa_estados no está migrada, el endpoint tiene un
+// fallback que guarda SOLO radar_feedback — y ese 👍 debe proteger igual.
+// El fixture reproduce justo ese estado: manita sin fila de mesa.
+chk('manita 👍 de hace 2d, sin fila de mesa → NO aplica (la ataja radar_feedback)',
     regla((function () { $c = cot(8, 25, 25); manita(8, 2); return $c; })()), null);
 chk('manita 👍 de hace 9d (fuera de la ventana) → aplica R1',
     regla((function () { $c = cot(9, 25, 25); manita(9, 9); return $c; })()), 1);

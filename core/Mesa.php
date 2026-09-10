@@ -681,6 +681,25 @@ class Mesa
                     $cad = (!$es_cita && ($con_d['estado'] ?? '') === 'no_contesta') ? 2 : $med;
                     $vence_ymd  = date('Y-m-d', strtotime(date('Y-m-d', $ancla)) + $cad * 86400);
                     $dias_venc  = (int)round((strtotime($hoy_db) - strtotime($vence_ymd)) / 86400);
+                    // MIENTRAS EL TOQUE LA ESTÉ SOSTENIENDO NO ESTÁ VENCIDA:
+                    // está POR vencer, dentro de ese periodo. Aplica SOLO a la
+                    // fila que ya pasó su ciclo natural y sigue en la mesa
+                    // gracias al bono de toque — el toque le compró esos días, y
+                    // devolvérsela en rojo el mismo día que la tocó es cobrarle
+                    // dos veces el mismo trabajo. El reloj se recorre al fin del
+                    // bono para que la fecha que ve el asesor sea la de verdad.
+                    //
+                    // NO toca la fila que está DENTRO de su ciclo: ahí manda el
+                    // cronómetro tal cual, y una postura fresca no apaga un "no
+                    // contestó" pendiente (candado del reloj rojo, vendedor 507
+                    // de sim_mesa_armar). La escalera de intentos queda intacta.
+                    if ($dias_venc > 0 && $edad > 2 * $p75
+                        && $dias_tap <= self::bono_toque($p75) && !empty($tap[$cid])) {
+                        $vence_ymd = date('Y-m-d',
+                            strtotime(date('Y-m-d', strtotime($tap[$cid])))
+                            + self::bono_toque($p75) * 86400);
+                        $dias_venc = (int)round((strtotime($hoy_db) - strtotime($vence_ymd)) / 86400);
+                    }
                     $seg = ['estado' => $dias_venc > 0 ? 'vencida' : ($dias_venc === 0 ? 'hoy' : 'ok'),
                             'dias'   => max(0, $dias_venc), 'vence' => $vence_ymd];
                     // El registro en mesa_vencidos es SOLO DEL DÍA DE HOY y se

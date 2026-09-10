@@ -40,14 +40,6 @@ class DescuentoInteligente
     const MULT_DEAD      = 3.0;  // R2 empieza en 3×p75 (piso, además de p90) → día 31
     const MULT_TECHO     = 2.5;  // ancho de R2 sobre dead: dead + 2.5×p75 → día 55
 
-    // Días que la cotización debe llevar FUERA de la mesa antes de que el
-    // descuento pueda entrar. No es adorno: la mesa y el descuento calculan
-    // "ya salió" por separado y en momentos distintos (la mesa cuando el
-    // asesor la abre, el descuento cuando el cliente entra al slug), con
-    // DATEDIFF de MySQL una y floor() de PHP el otro. El margen garantiza que
-    // nunca se descuente algo que el asesor todavía tiene en su fila.
-    const MARGEN_MESA     = 2;
-
     const MIN_VENTAS      = 5;    // sin muestra suficiente, la feature no corre
     const GENERICO_COTS   = 10;   // cliente con >N cotizaciones vivas = cajón genérico
     const VIGENCIA_HORAS  = 24;
@@ -208,15 +200,9 @@ class DescuentoInteligente
         // (fuente única) para que no puedan desincronizarse: el descuento
         // entra donde la mesa suelta, ni antes ni por su cuenta.
         //
-        // MARGEN: se exige que llevara fuera 2 días, no que acabe de salir.
-        // Los dos motores calculan "ya salió" por separado y en momentos
-        // distintos — la mesa cuando el asesor la abre, el descuento cuando el
-        // cliente entra al slug, con DATEDIFF uno y floor() el otro. Dos días
-        // garantizan que el descuento nunca dispare sobre algo que la mesa
-        // todavía le está mostrando al asesor.
-        //
-        // Se evalúa con los tres relojes atrasados 2 días, que es literalmente
-        // preguntar "¿ya estaba fuera hace 2 días?".
+        // La regla completa son estas dos condiciones, y nada más: salió de la
+        // mesa (esta puerta) y el cliente lleva más de 2×p75 días sin abrirla
+        // (el candado de dormancia de más abajo).
         if (!class_exists('Mesa')) {
             $mp = __DIR__ . '/Mesa.php';
             if (is_file($mp)) require_once $mp;
@@ -239,9 +225,8 @@ class DescuentoInteligente
         } catch (\Throwable $e) {} // tabla sin migrar → esa empresa no usa mesa
         $dias_edit = $ult_edicion ? (int)floor((time() - strtotime($ult_edicion)) / 86400) : PHP_INT_MAX;
         $dias_tap  = $ult_toque   ? (int)floor((time() - strtotime($ult_toque))   / 86400) : PHP_INT_MAX;
-        $m = self::MARGEN_MESA;
-        if (!Mesa::fuera_de_ventana($edad - $m, $dias_edit - $m, $dias_tap - $m, (int)$anc['p75'])) {
-            return null; // la mesa todavía la tiene (o acaba de soltarla)
+        if (!Mesa::fuera_de_ventana($edad, $dias_edit, $dias_tap, (int)$anc['p75'])) {
+            return null; // la mesa todavía la tiene
         }
 
         // Zona por edad — ya NO es puerta de entrada: solo decide QUÉ regla
@@ -284,18 +269,21 @@ class DescuentoInteligente
 
         // Exclusión B: actividad reciente en el window (cliente O asesor) → viva.
         //
-        // La rama de mesa_estados SE QUITÓ: la puerta de entrada de arriba ya
-        // exige que la mesa haya soltado la cotización, y la mesa suelta solo
-        // si el último toque tiene más de p75/2 días — el mismo plazo que
-        // pedía esta rama, más los 2 días de margen. Quedó absorbida; dejarla
-        // era pedir dos veces lo mismo y esconder dónde vive la regla.
+        // Se queda COMPLETA aunque la puerta de arriba ya pregunte por la mesa.
+        // No es lo mismo dos veces: la puerta usa el plazo de la MESA (p75/2 =
+        // 5 días, igual para todos), y esto usa el plazo de la ZONA ($window:
+        // 5 días en R1, 10 en R2). En R2 esta rama es la estricta — es la que
+        // impide descontar una cotización que el asesor tocó hace 7 días.
+        // Manda siempre la más estricta de las dos.
         //
-        // Las otras tres se quedan y no son redundantes:
-        //   · quote_sessions — la cubre la dormancia, pero cuesta nada
-        //   · cotizacion_log — la mesa da 10 días y esto 5; el más estricto manda
-        //   · radar_feedback — la mesa NO la mira. Un 👍 puesto desde el RADAR
-        //     (api/radar_feedback.php) escribe radar_feedback y no mesa_estados,
-        //     así que sin esta rama ese juicio no protegería nada.
+        // Intenté quitar la rama de mesa_estados dándola por absorbida por la
+        // puerta. Era falso: aflojaba R2 cinco días. Aquí queda anotado para
+        // que no se vuelva a intentar con el mismo argumento.
+        //
+        // Lo único que se le agregó es el filtro razon<>'auto', para que diga
+        // lo mismo que la puerta. Es inocuo: ese 'hablamos' implícito lo
+        // escribe api/mesa_estado.php SOLO junto a un compromiso real, en la
+        // misma transacción — nunca vive solo, y el compromiso sí cuenta.
         $reciente = (int)DB::val(
             "SELECT
                EXISTS(SELECT 1 FROM quote_sessions qs
@@ -307,8 +295,12 @@ class DescuentoInteligente
                    AND COALESCE(a.accion, a.evento) IN ('editada','enviada')
                    AND a.created_at >= NOW() - INTERVAL ? DAY)
                OR EXISTS(SELECT 1 FROM radar_feedback rf
-                 WHERE rf.cotizacion_id = ? AND rf.updated_at >= NOW() - INTERVAL ? DAY)",
-            [(int)$cot['id'], $window, (int)$cot['id'], $window, (int)$cot['id'], $window]);
+                 WHERE rf.cotizacion_id = ? AND rf.updated_at >= NOW() - INTERVAL ? DAY)
+               OR EXISTS(SELECT 1 FROM mesa_estados me
+                 WHERE me.cotizacion_id = ? AND (me.razon IS NULL OR me.razon <> 'auto')
+                   AND me.created_at >= NOW() - INTERVAL ? DAY)",
+            [(int)$cot['id'], $window, (int)$cot['id'], $window,
+             (int)$cot['id'], $window, (int)$cot['id'], $window]);
         if ($reciente) return null;
 
         return [
