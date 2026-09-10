@@ -147,6 +147,11 @@ function tap(int $cot, string $area, string $estado, float $hace_d, ?string $raz
     DB::execute("INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, razon_texto, created_at)
                  VALUES (?,900,5,?,?,?,?,?)", [$cot, $area, $estado, $razon, $razon_texto, $d($hace_d)]);
 }
+function edito(int $cot, float $hace_d, int $uid = 900): void {
+    global $d;
+    DB::execute("INSERT INTO cotizacion_log (cotizacion_id, usuario_id, accion, created_at)
+                 VALUES (?,?,'editada',?)", [$cot, $uid, $d($hace_d)]);
+}
 function tap_de(int $cot, string $area, string $estado, float $hace_d, int $uid): void {
     global $d;
     DB::execute("INSERT INTO mesa_estados (cotizacion_id, usuario_id, empresa_id, area, estado, razon, razon_texto, created_at)
@@ -695,6 +700,25 @@ chk('toque de ayer la sostiene → NO en rojo, vence al final del bono (en 9d)',
     ['ok', 0]);
 chk('toque de hace 10d (último día del bono) → vence HOY, todavía no en rojo',
     $m513[9941]['seguimiento']['estado'] ?? 'AUSENTE', 'hoy');
+
+// ══ EDITAR UNA VIEJA LA REGRESA A LA MESA (vendedor 514) ═══
+// Pregunta del CEO: una cotización de 110 días ya salió de la mesa; la edito
+// al día 100 — ¿qué pasa? Editar abre otra ventana COMPLETA (bono de edición
+// = p75 = 20d en esta sim) contada desde la edición, sin importar la edad. Al
+// vencerse esa ventana, la sostiene el toque, 10d desde CADA toque.
+echo "═ EDITAR UNA VIEJA LA REGRESA (vendedor 514) ═\n";
+cot(9960, 514, 20000, 110, ['visitas' => 2, 'vista_d' => 100]);
+edito(9960, 20);                       // borde exacto del bono: NO ha vencido
+cot(9961, 514, 21000, 110, ['visitas' => 2, 'vista_d' => 100]);
+edito(9961, 21);                       // un día después: se cae
+cot(9962, 514, 22000, 110, ['visitas' => 2, 'vista_d' => 100]);
+edito(9962, 21);                       // edición vencida...
+tap_de(9962, 'contacto', 'hablamos', 3, 514); // ...pero tocada hace 3d → se queda
+
+$m514 = []; foreach (Mesa::armar(5, 514)['rows'] as $r) $m514[(int)$r['id']] = $r;
+chk('110 días con edición de hace 20d (borde del bono) → SIGUE en la mesa', isset($m514[9960]), true);
+chk('110 días con edición de hace 21d y sin toques → fuera', isset($m514[9961]), false);
+chk('edición vencida pero toque de hace 3d → sigue: la sostiene el toque', isset($m514[9962]), true);
 
 echo "\n" . ($fail ? "✗ $fail FALLAS — HAY ERRORES EN ARMAR()" : "✓ SIMULACIÓN ARMAR OK") . "\n";
 exit($fail ? 1 : 0);
