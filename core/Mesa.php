@@ -157,22 +157,6 @@ class Mesa
         $max_hist = $mh_cache[$empresa_id];
         $linea_limpieza = max($max_hist, 2 * $p75); // nunca sugerir bajo 2×p75
 
-        // TECHO DURO de la mesa: pasado este día NINGÚN toque la sostiene.
-        // Sin esto, tapeando cada 4 días una cotización vive en la mesa todo el
-        // año — y el motivo para hacerlo es de dinero: mientras esté en la mesa
-        // no puede recibir Descuento Inteligente.
-        //
-        // El número sale de su propia historia: el cierre más tardío que ha
-        // tenido la empresa. Después de eso no es un prospecto, es un fósil.
-        // Se ajusta solo — si mañana cierran una a los 70 días, la línea se va
-        // a 70 porque ya demostraron que a esa edad todavía se cierra.
-        //
-        // El piso de (ciclo + bono de edición) es para que el techo nunca
-        // ahogue la extensión: una empresa SIN ventas tiene max_hist = 0 y
-        // linea_limpieza = 2×p75, o sea el mismo día en que arranca el bono —
-        // el techo se dispararía antes de que la extensión pudiera servir.
-        $techo_mesa = max($linea_limpieza, 2 * $p75 + $p75);
-
         // Universo: activas del vendedor (mismos criterios que score/Radar)
         $cots = DB::query(
             "SELECT c.id, c.numero, c.titulo, c.total, c.estado, c.visitas,
@@ -542,12 +526,13 @@ class Mesa
             // más reciente: si editó hace 8 días (le quedan 2) y tapeó hace 6
             // (ya venció), la fecha más nueva es el toque — pero la que sigue
             // sosteniéndola es la edición. Eso lo resuelve fuera_de_ventana().
+            // SIN TECHO DURO, a propósito. Mientras el asesor la siga tocando
+            // la cotización se queda: la fila no la sostiene el calendario, la
+            // sostiene el trabajo. Y no sale gratis — sostenerla sin calificarla
+            // la deja contando como falla en la cobertura de señales, que es lo
+            // que cobra el score. Un tope por edad sería una segunda regla que
+            // dice lo mismo peor.
             $fuera      = self::fuera_de_ventana($edad, $dias_edit, $dias_tap, $p75);
-            // Techo duro: pasado el cierre más tardío de la empresa, ningún
-            // toque la salva. Se aplica solo a $fuera (permanencia), no a
-            // $fuera_mil (categoría) — un cliente leyéndola AHORA a los 60 días
-            // sigue siendo un milagro, y el !$hot_reciente de abajo lo respeta.
-            if ($edad > $techo_mesa) $fuera = true;
             // Milagro incluye el BORDE exacto (edad == 2×p75): una cotización
             // caliente justo en el filo también es "revivió" (⚡). Se usa SOLO en
             // la categoría milagro, NO en $fuera — $fuera gatea limpieza/descarte

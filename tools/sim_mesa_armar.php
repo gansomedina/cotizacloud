@@ -600,7 +600,7 @@ cot(9921, 511, 12000, 45, ['visitas' => 2, 'vista_d' => 40]); // toque viejo →
 tap(9921, 'contacto', 'hablamos', 15);
 cot(9922, 511, 13000, 45, ['visitas' => 2, 'vista_d' => 40]); // solo el implícito → SE CAE
 tap(9922, 'contacto', 'hablamos', 3, 'auto');
-cot(9923, 511, 14000, 70, ['visitas' => 2, 'vista_d' => 65]); // pasó el techo → SE CAE
+cot(9923, 511, 14000, 70, ['visitas' => 2, 'vista_d' => 65]); // 70d con toque → SE QUEDA
 tap(9923, 'contacto', 'hablamos', 1);
 
 $mt = Mesa::armar(5, 511);
@@ -612,9 +612,12 @@ chk('toque de hace 3d (bono 10) sostiene una de 45d — el caso que antes se ca�
 chk('toque de hace 15d ya venció el bono → se cae', isset($mtb[9921]), false);
 chk('el "hablamos" implícito (razon=auto) NO cuenta como toque → se cae',
     isset($mtb[9922]), false);
-chk('techo duro a los 60d: ni un toque de ayer la salva a los 70d',
-    isset($mtb[9923]), false);
-chk('solo sobrevive la del toque fresco', array_keys($mtb), [9920]);
+// NO hay techo duro: la fila no la sostiene el calendario, la sostiene el
+// trabajo. A los 70 días con un toque de ayer sigue en la mesa — y sigue
+// costando, porque sin calificar cuenta como falla en la cobertura.
+chk('sin techo: a los 70d un toque de ayer la sostiene igual',
+    isset($mtb[9923]), true);
+chk('sobreviven las dos del toque fresco', array_keys($mtb), [9923, 9920]);
 
 // EFECTO EN EL SCORE — el precio de este cambio, explícito.
 // La que se sostiene por el toque entra al examen de cobertura si NO está
@@ -627,8 +630,8 @@ chk('solo sobrevive la del toque fresco', array_keys($mtb), [9920]);
 // pendiente. La salida es tapear completo (postura + manita) — ahí se vuelve
 // fría y sale del examen, igual que cualquier otra vieja ya trabajada.
 $cov511 = Mesa::cobertura_senales(5, 511);
-chk('sostenida por toque SIN calificar → entra al examen como falla (pedidas 1, atendidas 0)',
-    [$cov511['pedidas'], $cov511['atendidas'], $cov511['fallas']], [1, 0, 1]);
+chk('las 2 sostenidas por toque SIN calificar entran al examen como fallas',
+    [$cov511['pedidas'], $cov511['atendidas'], $cov511['fallas']], [2, 0, 2]);
 
 // Y la contraparte: calificada completa se vuelve fría y NO infla el examen.
 cot(9930, 512, 15000, 45, ['visitas' => 2, 'vista_d' => 40]);
