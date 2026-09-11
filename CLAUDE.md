@@ -3927,16 +3927,19 @@ apariencia, no de función.
 
 ### Pendientes técnicos de esta sesión
 
-1. **Firewall**: 443 solo a rangos de Cloudflare, **80 abierto**. El 80 es para
-   las renovaciones HTTP-01 de los dominios de OnTime — cerrarlo mata los
-   certificados en ~60 días y nadie lo relacionaría con esto.
-2. **Medir si alguna petición pasa de 100 s** — Cloudflare Free corta ahí con
-   error 524. Subir `max_execution_time` no ayuda: el corte es del proxy. El
-   arreglo de fondo es sacar `Radar::recalcular_empresa()` del camino de la
-   petición.
-3. **`Full` → `Full (strict)`** cuando lo del firewall esté decidido. Se dejó en
-   `Full` a propósito: si un certificado del origen venciera, se ve una
-   advertencia en vez de tumbar las tres sucursales con error 526.
+1. ~~**Firewall**: 443 solo a rangos de Cloudflare, **80 abierto**~~
+   ✅ **HECHO el 11 sep 2026** — 63% del tráfico directo eliminado, `certbot
+   renew --dry-run` verde con el 443 cerrado. El 80 sigue abierto. Ver "Sesión
+   11 septiembre 2026" al final.
+2. ~~**Medir si alguna petición pasa de 100 s**~~ ✅ **MEDIDO el 11 sep 2026** —
+   de 10,304 peticiones solo 3 pasaron de 5 s y las tres son basura de escáneres
+   (status 400). El origen responde en 0.002 s. **No hay riesgo de 524.** (Sacar
+   `Radar::recalcular_empresa()` del camino de la petición sigue siendo buena
+   idea por otras razones, pero ya no es urgente.)
+3. **`Full` → `Full (strict)`** — **desbloqueado el 11 sep**, el firewall ya se
+   decidió. Pendiente de decisión del CEO: con `strict` un certificado vencido
+   tumba las tres sucursales con 526 en vez de mostrar una advertencia; a favor,
+   las renovaciones ya se comprobaron automáticas y verdes.
 4. **Una fila rara en `escudo_log`** (14:23 del 2 sep) guardó una IP de
    Cloudflare cuando `ip_real()` debería haber devuelto la real. Fue una sola
    vez, en la ventana de transición antes de recargar nginx, y ningún
@@ -4128,11 +4131,10 @@ el Radar lo cuenta. Es apariencia, no función.
 ### Pendientes que siguen abiertos
 1. Ticket a Brevo (rastreo en transaccional, subdominio con marca,
    `List-Unsubscribe`).
-2. Firewall: 443 solo a rangos de Cloudflare, **80 ABIERTO** — es para las
-   renovaciones HTTP-01 de los dominios de OnTime; cerrarlo mata los
-   certificados en ~60 días y nadie lo relacionaría.
-3. `Full` → `Full (strict)` cuando lo del firewall esté decidido.
-4. Medir si alguna petición pasa de 100 s (Cloudflare Free corta con 524).
+2. ~~Firewall: 443 solo a rangos de Cloudflare~~ ✅ **HECHO 11 sep 2026** (el 80
+   sigue ABIERTO — es para las renovaciones HTTP-01 de OnTime).
+3. `Full` → `Full (strict)` — desbloqueado, pendiente decisión del CEO.
+4. ~~Medir si alguna petición pasa de 100 s~~ ✅ **MEDIDO 11 sep: no hay riesgo.**
 5. **Rotar las credenciales de MercadoPago** compartidas en chat.
 
 
@@ -4374,7 +4376,7 @@ selectores) — su correo va solo con SPF; tampoco DNSSEC ni CAA.
 - Leer el resto del workflow `wf_bce76538-4e2` (journal en `subagents/workflows/`) si no terminó: lentes whatsapp-webview, cloudflare-ns, mexico-isp, lo-que-nadie-mira + crítico.
 - Historial en `ver.php`: decir "1 visita demasiado breve" en vez de "Sin visitas aún" (NO gatear el encabezado → falsos negativos). `$visitas_reales` es código muerto.
 - Columna `host` en `escudo_log`; botón "esta visita fue mía" con limpieza atómica de 5 columnas.
-- Los de siempre: Brevo, firewall 443→Cloudflare con **80 abierto**, `Full`→`Full (strict)`, ~~medir >100 s~~ (ya medible con `$request_time`, ver 10-sep), **rotar credenciales MP**, runbook Android.
+- Los de siempre: Brevo, ~~firewall 443→Cloudflare~~ ✅ (11-sep), `Full`→`Full (strict)` (desbloqueado, falta decidir), ~~medir >100 s~~ ✅ (11-sep, sin riesgo), **rotar credenciales MP**, runbook Android.
 
 ## Sesión 10 septiembre 2026 — Instrumentar el log, y tres hipótesis enterradas
 
@@ -4616,3 +4618,180 @@ instantáneo — no es candidato a los 524.
 Dejar correr el log 24 h y correr el censo de PoPs y la cacería de Europa/Asia.
 Si sale poblada con IPs mexicanas reales, hay caso. Si sale vacía o solo con
 escáneres, el episodio del 9 se cierra con datos y no por cansancio.
+
+## Sesión 11 septiembre 2026 — Veredicto del enrutamiento y firewall cerrado
+
+**El problema original NO se resolvió.** Sigue sin saberse por qué Kitzya no
+pudo abrir su cotización, y con los datos que existen no se puede saber. Lo que
+esta sesión hizo fue **cerrar tres pendientes viejos con datos** y quitar del
+camino la teoría que yo venía persiguiendo.
+
+### ✅ VEREDICTO: el enrutamiento europeo NO toca a los clientes
+
+24 h de log con el formato nuevo (10-sep 13:21 → 11-sep 08:47), 10,304
+peticiones:
+
+**69 visitas de clientes a cotizaciones (`/c/`). Las 69 por Norteamérica.**
+
+```
+DFW 32 · LAX 12 · SJC 7 · ATL 6 · SEA 5 · PHX 3 · PDX 3 · IAD 1
+```
+
+**Cero por Europa. Cero por Asia.**
+
+Todo lo que entró por PoPs lejanos —NRT 694, ICN 392, HKG 382, CDG 300, MRS 275,
+TLV 274— es escaneo puro: `52.141.45.117` buscando shells de WordPress en
+`smtp.cotiza.cloud`, `34.104.221.77` probando `/graphql`, `/admin`, `/api/exec`.
+Van a Tokio y Seúl porque **ahí están ellos**, y Cloudflare los enruta bien.
+
+**El hilo se cierra.** El evento del 9-sep fue real pero sin víctima.
+
+⚠️ **La consulta que sirve NO es una lista fija de PoPs.** Armé una con los PoPs
+del 9 (`CDG|NRT|KIX|VIE|MAN|LHR|WAW|DUS|SYD|MXP`) y **escondió Ámsterdam y
+Singapur**, que era justo donde estaba el tráfico ese día. La buena saca el PoP
+del propio dato:
+
+```bash
+# Por dónde entran los CLIENTES (lo único que importa)
+grep -E '"(GET|POST) /c/' /var/log/nginx/access.log | grep -E '" [0-9]+\.[0-9]{3}$' \
+ | awk '{r=$(NF-1); gsub(/"/,"",r); if(r=="-"){print "DIRECTO"}else{sub(/.*-/,"",r); print r}}' \
+ | sort | uniq -c | sort -rn
+```
+
+### ✅ El error 524 no es un riesgo
+
+De 10,304 peticiones, **3 pasaron de 5 segundos y las tres son basura de
+escáneres** con status 400 (una manda bytes binarios crudos). Cero peticiones
+legítimas lentas; el origen responde en **0.002 s**.
+
+⚠️ **Trampa del comando:** `awk '$NF+0 > 5'` sobre el log completo da falsos
+positivos — una línea del formato VIEJO termina en el User-Agent, y
+`...MSIE 6.0)"` se convierte en 6. Hay que filtrar primero al formato nuevo.
+El ancla correcta es `" [0-9]+\.[0-9]{3}$` (nginx siempre imprime el tiempo con
+tres decimales) y además atrapa las que llegan sin Cloudflare (`"-" 0.002`):
+
+```bash
+grep -E '" [0-9]+\.[0-9]{3}$' /var/log/nginx/access.log \
+  | awk '$NF+0 > 5 {print $NF, $1, $(NF-2), $7}' | sort -rn | head
+```
+
+### ✅ Firewall: el 443 ya solo acepta Cloudflare
+
+**El hallazgo que lo detonó:** de 10,304 peticiones, **6,515 (63%) llegaban sin
+pasar por Cloudflare**, directo a `212.28.186.247`. Para dos tercios del tráfico
+que tocaba el servidor, Cloudflare no existía.
+
+Qué pedían — con el `Host` puesto en la IP pelona, o sea sin conocer ningún
+dominio:
+
+```
+/.env · /config/.env · /server/.env · /src/.env · /laravel/.env · /html/.env
+/.git/config · /docker-compose.yml · /phpinfo.php · /info.php · /test.php
+```
+
+Caza de credenciales. Dos IPs concentraban 4,864: `87.120.104.29` (2,842) y
+`34.77.20.113` (2,022). `195.178.110.28` (548) es el mismo /24 que ya aparecía
+el 8-sep desde Ámsterdam — llevan días.
+
+**La prueba que autorizó el cambio:** ¿cuántas de esas 6,515 abrieron una
+cotización? **Cero.**
+
+```bash
+awk '{r=$(NF-1); gsub(/"/,"",r); if(r=="-") print}' /tmp/cz_new.log | grep -cE '"(GET|POST) /c/'
+```
+
+#### Cómo se aplicó — DOS pasos, nunca uno
+
+Primero se agregan los permisos, se verifica, y **solo después** se quita el
+permiso abierto. Así no existe ni un instante con el 443 cerrado para todos.
+
+```bash
+# PASO A — agregar (el sitio no se entera, el permiso abierto sigue ahí)
+ufw status numbered > /root/ufw-antes-$(date +%F-%H%M).txt
+for r in $(curl -sS https://www.cloudflare.com/ips-v4) $(curl -sS https://www.cloudflare.com/ips-v6); do
+  ufw allow from "$r" to any port 443 proto tcp comment 'cloudflare' >/dev/null
+done
+ufw status | grep -c cloudflare      # deben ser 22 (15 IPv4 + 7 IPv6)
+
+# PASO B — quitar el permiso abierto
+ufw delete allow 443/tcp
+```
+
+Los rangos se bajan **en vivo de Cloudflare**, no de una lista pegada que
+envejece. Respaldo en `/root/ufw-antes-2026-09-11-0959.txt`.
+
+**Revertir es una línea:** `ufw allow 443/tcp`. El puerto 22 no se toca nunca,
+así que no hay forma de quedarse fuera.
+
+#### La verificación que de verdad importaba
+
+El riesgo real no era tumbar el sitio (eso se ve al instante) sino **matar las
+renovaciones de los certificados**, que se notaría en ~60 días con las tres
+sucursales caídas y nadie lo relacionaría.
+
+```bash
+certbot renew --dry-run
+```
+
+Pasó con los dos, **con el 443 ya cerrado**:
+
+```
+/etc/letsencrypt/live/cotiza.cloud/fullchain.pem                  (success)
+/etc/letsencrypt/live/hermosillo.ontimecocinas.com/fullchain.pem  (success)
+```
+
+Por qué funciona, verificado en `/etc/letsencrypt/renewal/`:
+
+| Certificado | Autenticador | Por qué no le afecta |
+|---|---|---|
+| `cotiza.cloud` (+ wildcard) | `dns-cloudflare` | DNS-01: pone un TXT por API. No usa 80 ni 443 |
+| OnTime (SAN de los 3) | `webroot` | HTTP-01, pero esos hostnames **resuelven a Cloudflare** (custom hostnames), así que la petición de Let's Encrypt entra por Cloudflare como cualquier otra |
+
+#### Resultado medido
+
+| | Sin pasar por Cloudflare |
+|---|---|
+| Antes (24 h) | **6,515 de 10,304 — 63%** |
+| Después de las 10:05 | **29 de 453 — 6.4%** |
+
+Ese 6.4% es **puerto 80, que se queda abierto a propósito**. Se confirmó por
+protocolo: de las 1,189 directas de la ventana de transición, **1,176 eran
+HTTP/1.x** (puerto 80) y solo 3 HTTP/2 —que solo existe sobre TLS— con
+timestamps 08:45, 08:45 y 09:52, **todas anteriores al cambio de las 09:59**.
+
+Las del 80 reciben un 301 hacia HTTPS… donde el firewall ya las rechaza. Quedan
+rebotando contra una puerta cerrada.
+
+⚠️ **El puerto 80 NO se cierra.** Por ahí validan las renovaciones. Cerrarlo
+mata los certificados de OnTime en ~60 días.
+
+⚠️ **Ya no se puede probar el origen desde fuera.** `curl https://212.28.186.247`
+falla — que es el punto. Para probarlo, por SSH desde adentro:
+```bash
+curl -k -H 'Host: cotiza.cloud' https://127.0.0.1/login
+```
+
+### Observación aparte — MySQL abierto a internet
+
+El `ufw status` dejó ver que **3306 está abierto a tres IPs externas**
+(`185.94.29.124`, `185.94.29.27` de m1713 contabilidad, `154.12.247.230` de n8n)
+y el 995 a dos más. Está restringido por IP, que es lo correcto, pero es la base
+de datos completa expuesta al exterior. No es de esta sesión y no se tocó. Queda
+anotado.
+
+### 🔓 Desbloqueado: `Full` → `Full (strict)`
+
+Estaba esperando justamente a que se decidiera lo del firewall. Con `strict`,
+Cloudflare valida el certificado del origen. El costo: si un certificado
+venciera, las tres sucursales caen con **526** en vez de mostrar una
+advertencia. Las renovaciones ya se comprobaron automáticas y verdes. **Decisión
+del CEO, pendiente.**
+
+### Lo que sigue sin resolverse
+
+Un cliente —Kitzya, 8-sep— que nunca logró conectarse. Su petición no existe en
+ningún registro nuestro ni de Cloudflare. Ninguna herramienta disponible la
+habría capturado: todas exigen que la conexión haya funcionado al menos una vez.
+
+Lo que cambió es que **el hueco dejó de ser el hueco por defecto**. Si vuelve a
+pasar, hay IP, dominio, PoP y tiempo de respuesta de cada petición que sí llegue.
