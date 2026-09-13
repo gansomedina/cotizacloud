@@ -3809,7 +3809,16 @@ de Cloudflare son `104.16.0.0/13` (llega a `104.23`) y `104.24.0.0/14` (a
 El "Security Level" con la opción *Essentially Off* **ya no existe** en la
 interfaz de Cloudflare — quedó reducido al interruptor de Under Attack.
 
-### Dominios propios de clientes — DECISIÓN: no se ofrecen más
+### Dominios propios de clientes — ~~DECISIÓN: no se ofrecen más~~ ⚠️ REVERTIDA
+
+> **⛔ ESTA DECISIÓN YA NO APLICA — el CEO la revirtió el 13 sep 2026.**
+> *"No puedo dejar de mandar esos enlaces, es la empresa, y tiene que tener
+> dominio custom."* Los dominios propios **se quedan** y los enlaces que se
+> mandan al cliente siguen siendo `hermosillo/obregon/nogales.ontimecocinas.com`.
+> **No volver a proponer que se dejen de usar.** Lo que sigue vigente de esta
+> sección es el análisis técnico del `safari_bridge` (abajo) — el costo es real,
+> pero la decisión de negocio ya se tomó en contra. Ver "Sesión 12-13 septiembre
+> 2026" al final.
 
 Cloudflare for SaaS resolvió la mitad de SSL/DNS, pero **la otra mitad sigue
 cara y no tiene arreglo barato**: las cookies de `.cotiza.cloud` no viajan a un
@@ -4795,3 +4804,151 @@ habría capturado: todas exigen que la conexión haya funcionado al menos una ve
 
 Lo que cambió es que **el hueco dejó de ser el hueco por defecto**. Si vuelve a
 pasar, hay IP, dominio, PoP y tiempo de respuesta de cada petición que sí llegue.
+
+## Sesión 12-13 septiembre 2026 — Seis puertas cerradas, y una decisión del CEO
+
+### 🔒 DECISIÓN DEL CEO: los dominios propios SE QUEDAN
+
+**Esto revierte la nota del 3 de septiembre** ("dejar de ofrecer dominios
+propios"). Palabras del CEO: *"no puedo dejar de mandar esos enlaces, es la
+empresa, y tiene que tener dominio custom"*.
+
+`hermosillo/obregon/nogales.ontimecocinas.com` siguen siendo el enlace que se
+manda al cliente. **No volver a proponer que se dejen de usar** — es la marca del
+cliente, no un detalle técnico negociable. Lo que se puede arreglar es la cadena
+por debajo, no el nombre de arriba.
+
+### El caso Kitzya — NO se resolvió, y aquí está todo lo que se descartó
+
+El CEO insistió en que la causa estaba en Cloudflare o en algo que configuramos.
+Se revisaron seis cosas. **Las seis salieron negativas.** Se dejan escritas para
+que nadie —incluido yo— vuelva a recorrerlas.
+
+| Sospecha | Cómo se midió | Resultado |
+|---|---|---|
+| Respuesta DNS demasiado grande | DoH, conteo de registros | 2 A + 2 AAAA. **Google manda 6 A + 4 AAAA** y a ella le abría |
+| Caché negativo alto (SOA) | DoH tipo SOA | **1800 s** en ambas zonas. Normal |
+| Comodín proxeado no soportado en Free | Documentación de Cloudflare | *"Customers on all plans can create and proxy wildcard DNS records"* |
+| `.cyou` bloqueado en resolutores | DoH contra 8 resolutores | Resuelve en Cloudflare (3 variantes) y Google |
+| Browser Integrity Check bloqueando clientes | Panel, filtro `Service = BIC`, 24 h | **1 bloqueo**: escáner rumano (`193.32.162.155`) con **Googlebot falsificado** desde AS47890, pidiendo `/.git/config`. Bloqueo correcto |
+| El AAAA nuevo frena a los clientes | Tiempo de apertura por semana, 11 semanas | **Sin quiebre el 2-sep** — ver abajo |
+
+### ❌ La hipótesis del AAAA — la construí, la creí, y los datos la mataron
+
+**La idea era buena y encajaba con TODO**, incluido lo único que nada más
+explicaba: que le fallaran **los dos** dominios.
+
+Antes del 2-sep, `hermosillo.cotiza.cloud` y `hermosillo.ontimecocinas.com` **no
+tenían registro AAAA** (apuntaban a la IP de Contabo). Al prender el proxy,
+Cloudflare les agregó AAAA a los dos. Muchos routers baratos tienen un proxy DNS
+que **no contesta las consultas AAAA** — no responde "no hay", se queda callado.
+Chrome pregunta A y AAAA en paralelo; si AAAA se cuelga, muestra error de DNS.
+
+Y encajaba con que Google/WhatsApp sí le abrieran: **esos nombres están cacheados
+en cualquier resolutor**. Un resolutor roto no falla en lo que ya tiene guardado,
+falla en lo que tiene que ir a preguntar. `hermosillo.ontimecocinas.com` no lo
+había resuelto nunca nadie en su red.
+
+**El test:** si una parte de los clientes dejó de poder resolver, el tiempo hasta
+la primera apertura tuvo que subir. (La tasa de "sin abrir" NO sirve —el CEO lo
+señaló— porque **los asesores la persiguen**: es un número administrado por gente,
+no una medición natural. El tiempo no se puede administrar.)
+
+Primer corte, agregado:
+
+| | abiertas | ≤1 h | ≤4 h | prom. |
+|---|---|---|---|---|
+| antes (5-ago → 1-sep) | 179 | 43.6% | **77.1%** | 369 min |
+| después (2-sep → 12-sep) | 42 | 40.5% | **54.8%** | **810 min** |
+
+`z = 2.69, p ≈ 0.007`. **Parecía la prueba.** Casi se manda a Cloudflare.
+
+**Semana por semana se cae completo:**
+
+| semana | ≤4 h | prom. |
+|---|---|---|
+| 13-jul | 55.3% | 855 |
+| **20-jul** | **35.5%** | **1,621** ← peor que CUALQUIER semana posterior |
+| 03-ago | 86.3% | 368 |
+| 10-ago | 90.5% | 213 |
+| 24-ago | 85.7% | 148 |
+| **31-ago** (corte) | 55.6% | 885 |
+| 07-sep | 61.5% | 577 |
+
+Media de 11 semanas: **69.6%, desviación estándar 17.5**. Las dos semanas
+post-proxy caen a 0.8 y 0.5 desviaciones. **Ruido normal.** Y el 20 de julio fue
+mucho peor sin que tocáramos nada.
+
+**El error fue elegir una línea base no representativa**: la ventana del 5-ago al
+1-sep resultó ser una racha de las MEJORES semanas del año (86%, 90%, 86%).
+Comparar contra eso hacía ver un desplome donde solo había regreso al promedio.
+
+⚠️ **Es el mismo error del "28% del tráfico a Europa" que era 13.6%**: un número
+que se cae en cuanto alguien mira el contexto. Dos veces en tres días, y las dos
+a punto de mandarse por escrito a Cloudflare. **Antes de comparar dos períodos,
+graficar la serie completa.**
+
+Dato colateral que cambia la escala del problema: **la métrica tuvo semanas
+peores que las actuales y nadie lo notó.** Lo que le pasó a Kitzya no le está
+pasando a suficiente gente como para mover un número del negocio.
+
+### ✅ Lo único que SÍ quedó probado: son DOS fallas, no una
+
+El CEO corrigió un punto clave: **el enlace de `cotiza.cloud` tampoco le abrió.**
+Eso descarta `.cyou` como causa única. Y al separarlas, se ve que nunca fueron el
+mismo síntoma:
+
+| | Error | Naturaleza |
+|---|---|---|
+| Chrome · `ontimecocinas.com` | *"No se encontró … DNS address"* | **no resolvió el nombre** |
+| WhatsApp · `cotiza.cloud`, 5 h después | *"Sitio web no disponible"* | **no se pudo conectar** |
+
+**Para la primera hay una cadena verificada de punta a punta:**
+
+1. **`.cyou` SÍ está en la lista de TLDs spam de HaGeZi** — línea 75 de 460.
+   Medido hoy, con control: `.cloud` **NO** aparece en esa lista.
+2. Resolver `hermosillo.ontimecocinas.com` **obliga** a resolver
+   `ns1.limitless.cyou` primero. Son TLDs distintos → **no puede haber glue**.
+3. Resolutor que bloquee `.cyou` → ese nombre es irresoluble → exactamente su
+   error de Chrome.
+
+**Para la segunda no hay explicación, y así se queda.**
+
+### La cadena, medida
+
+```
+hermosillo.cotiza.cloud
+  └─ .cloud → cotiza.cloud → albert/imani.ns.cloudflare.com → A/AAAA      (2 pasos)
+
+hermosillo.ontimecocinas.com
+  └─ .com  → ontimecocinas.com → ns1/ns2.limitless.cyou
+       └─ .cyou → limitless.cyou → IP del NS
+            └─ Limitless: CNAME → saas.cotiza.cloud
+                 └─ .cloud → cotiza.cloud → Cloudflare → A/AAAA           (6 pasos)
+```
+
+**El camino del dominio propio contiene al otro completo, más `.cyou` y Limitless
+encima.** Superconjunto estricto: quien pueda abrir el de OnTime puede abrir el
+de `cotiza.cloud`; al revés no. **Y el dominio propio NO escapa de `.cloud`** —
+su CNAME apunta a un nombre `.cloud`.
+
+### ▶ RECOMENDACIÓN VIVA: sacar `ontimecocinas.com` de los nameservers `.cyou`
+
+**Conserva el dominio propio** (que es la restricción del CEO) y le quita de la
+cadena un TLD que está en listas de bloqueo reales.
+
+Hoy: `ns1/ns2.limitless.cyou`. **El registrador ya es GoDaddy** — mover la zona a
+su DNS es gratis y no cambia de proveedor. `hermosillo.ontimecocinas.com` sigue
+existiendo igual. De paso mata el otro problema ya anotado: los dos NS están en
+un solo AS (53667), por eso *"se cae mucho"*.
+
+El inventario completo de la zona y las advertencias están en la sesión del 8-9
+sep — resumen: copiar los **52 registros** del export de DirectAdmin (no los 18
+que se ven desde afuera), sacar el **DKIM del panel de Limitless** (desde fuera
+no aparece), **no borrar nada en Limitless por 48 h** (TTL de NS = 172800),
+preguntar a Limitless si su AutoSSL valida por HTTP (ok) o DNS (se rompería), y
+**NUNCA apuntar las sucursales a la IP del VPS** (regresa la pérdida de paquetes
+Telmex→Contabo del 2-sep).
+
+**No resuelve el caso de Kitzya** —su segunda falla sigue sin explicación— pero
+es la única reducción de riesgo real que salió de toda la investigación.
