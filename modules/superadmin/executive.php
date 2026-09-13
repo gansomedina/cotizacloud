@@ -1204,67 +1204,6 @@ $hist_total = array_sum($hist_values);
     </div>
 </div>
 
-<!-- ─── BONO: AVANCE CONTRA META MENSUAL ─────────────────── -->
-<?php if ($bono_filas): ?>
-<div class="sec">
-    <div class="sec-hdr">
-        <div class="sec-title">Bono — avance del mes</div>
-        <?php /* El periodo de arriba NO aplica aquí y hay que decirlo: es un
-                 número con el que se paga dinero. */ ?>
-        <div class="sec-count"><?= e(strtoupper(date('M Y'))) ?> · día <?= $bono_dia_hoy ?> de <?= $bono_dias_mes ?> (<?= round($bono_mes_pct) ?>% del mes)</div>
-    </div>
-    <div class="tbl-card">
-    <table>
-    <thead>
-        <tr>
-            <th>Sucursal</th>
-            <th class="r">Vendido</th>
-            <th class="r">Meta 1</th>
-            <th class="r">%</th>
-            <th class="r">Meta 2</th>
-            <th class="r">%</th>
-        </tr>
-    </thead>
-    <tbody>
-    <?php foreach ($bono_filas as $bf):
-        // Verde = ya llegó. Ámbar = va abajo del ritmo que pide el calendario.
-        // Sin color = va a tiempo. El ritmo importa: 40% el día 5 y 40% el día
-        // 28 son cosas distintas.
-        // use(), NO global: el router hace el require DENTRO de un método
-        // estático (Router.php:357), así que estas variables viven en ámbito de
-        // función. Con global el closure habría leído NULL y el ámbar no habría
-        // salido nunca, sin error visible.
-        $col = function (float $p) use ($bono_mes_pct): string {
-            if ($p >= 100)            return 'color:#16a34a;font-weight:700';
-            if ($p <  $bono_mes_pct)  return 'color:#d97706';
-            return '';
-        };
-    ?>
-        <tr>
-            <td>
-                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<?= e($bf['color']) ?>;margin-right:6px"></span>
-                <b><?= e($bf['short']) ?></b>
-                <small style="opacity:.6"><?= (int)$bf['num'] ?> vta<?= $bf['num'] === 1 ? '' : 's' ?></small>
-            </td>
-            <td class="r"><b><?= xf($bf['monto']) ?></b></td>
-            <td class="r" style="opacity:.7"><?= xm($bf['m1']) ?></td>
-            <td class="r" style="<?= $col($bf['p1']) ?>"><?= number_format($bf['p1'], 1) ?>%</td>
-            <td class="r" style="opacity:.7"><?= xm($bf['m2']) ?></td>
-            <td class="r" style="<?= $col($bf['p2']) ?>"><?= number_format($bf['p2'], 1) ?>%</td>
-        </tr>
-    <?php endforeach; ?>
-    </tbody>
-    </table>
-    </div>
-    <div style="font-size:11px;color:#6a6a64;margin-top:6px">
-        Cuenta la venta no cancelada que ya tiene abono; suma su <b>total</b>, no lo cobrado.
-        Solo el mes en curso — el selector de periodo de arriba no aplica aquí.
-        <span style="color:#d97706">Ámbar</span> = va abajo del ritmo del mes ·
-        <span style="color:#16a34a">verde</span> = meta cumplida.
-    </div>
-</div>
-<?php endif; ?>
-
 <!-- TABLA + PAGOS -->
 <div class="grid-2">
 
@@ -2220,6 +2159,71 @@ $total_comi_rows = $total_comi_abiertas; // solo abiertas (ya excluidas las paga
     <?php endif; ?>
 </div>
 <?php endif; /* Comisiones por pagar */ ?>
+
+<!-- ─── BONO: AVANCE CONTRA META MENSUAL ─────────────────── -->
+<?php if ($bono_filas): ?>
+<div class="sec">
+    <div class="sec-hdr">
+        <div class="sec-title">Bono — avance del mes</div>
+        <?php /* El periodo de arriba NO aplica aquí y hay que decirlo: es un
+                 número con el que se paga dinero. */ ?>
+        <div class="sec-count"><?= e(strtoupper(date('M Y'))) ?> · día <?= $bono_dia_hoy ?> de <?= $bono_dias_mes ?> (<?= round($bono_mes_pct) ?>% del mes)</div>
+    </div>
+    <div class="tbl-card">
+    <table>
+    <thead>
+        <?php /* Una columna = un dato. El conteo de ventas venía metido en la
+                 celda de Sucursal y los encabezados dejaban de corresponder con
+                 lo que había debajo. */ ?>
+        <tr>
+            <th>Sucursal</th>
+            <th class="r">Ventas</th>
+            <th class="r">Vendido</th>
+            <th class="r">Meta 1</th>
+            <th class="r">%</th>
+            <th class="r">Meta 2</th>
+            <th class="r">%</th>
+        </tr>
+    </thead>
+    <tbody>
+    <?php foreach ($bono_filas as $bf):
+        // Verde = ya llegó. Ámbar = va abajo del ritmo que pide el calendario.
+        // Sin color = va a tiempo. El ritmo importa: 40% el día 5 y 40% el día
+        // 28 son cosas distintas.
+        // use(), NO global: el router hace el require DENTRO de un método
+        // estático (Router.php:357), así que estas variables viven en ámbito de
+        // función. Con global el closure habría leído NULL y el ámbar no habría
+        // salido nunca, sin error visible.
+        $col = function (float $p) use ($bono_mes_pct): string {
+            if ($p >= 100)            return 'color:#16a34a;font-weight:700';
+            if ($p <  $bono_mes_pct)  return 'color:#d97706';
+            return '';
+        };
+    ?>
+        <tr>
+            <td>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<?= e($bf['color']) ?>;margin-right:6px"></span>
+                <b><?= e($bf['short']) ?></b>
+            </td>
+            <td class="r"><?= (int)$bf['num'] ?></td>
+            <td class="r"><b><?= xf($bf['monto']) ?></b></td>
+            <td class="r" style="opacity:.7"><?= xm($bf['m1']) ?></td>
+            <td class="r" style="<?= $col($bf['p1']) ?>"><?= number_format($bf['p1'], 1) ?>%</td>
+            <td class="r" style="opacity:.7"><?= xm($bf['m2']) ?></td>
+            <td class="r" style="<?= $col($bf['p2']) ?>"><?= number_format($bf['p2'], 1) ?>%</td>
+        </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    <div style="font-size:11px;color:#6a6a64;margin-top:6px">
+        Cuenta la venta no cancelada que ya tiene abono; suma su <b>total</b>, no lo cobrado.
+        Solo el mes en curso — el selector de periodo de arriba no aplica aquí.
+        <span style="color:#d97706">Ámbar</span> = va abajo del ritmo del mes ·
+        <span style="color:#16a34a">verde</span> = meta cumplida.
+    </div>
+</div>
+<?php endif; ?>
 
 <?php if (!$modo_supervisor): /* oculto al supervisor: Monitor de bots */ ?>
 <!-- Monitor de bots (datacenter) — tras desactivar BOT_IP el 29-may-2026 -->
