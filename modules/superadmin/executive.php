@@ -14,10 +14,15 @@ if ($modo_supervisor) { supervisor_requerir(); }
 else                  { Auth::requerir_superadmin(); }
 
 // ─── Empresas monitoreadas ──────────────────────────────────
+// meta1 / meta2 = metas MENSUALES de venta para el bono. Viven aquí, junto al
+// nombre y el color, porque data/ NO se despliega (el deploy copia api, core,
+// modules, tools, vendor, migrations, cron, .well-known y assets — data no).
+// Un JSON habría que subirlo a mano cada vez; aquí viaja con el código.
+// Sin metas = la sucursal no sale en la tabla del bono.
 $empresas_cfg = [
-    12 => ['nombre' => 'OnTime HMO',    'color' => '#22c55e', 'short' => 'HMO'],
-    13 => ['nombre' => 'OnTime CEN',    'color' => '#3b82f6', 'short' => 'CEN'],
-    14 => ['nombre' => 'OnTime NOG',    'color' => '#a855f7', 'short' => 'NOG'],
+    12 => ['nombre' => 'OnTime HMO',    'color' => '#22c55e', 'short' => 'HMO', 'meta1' => 550000, 'meta2' => 650000],
+    13 => ['nombre' => 'OnTime CEN',    'color' => '#3b82f6', 'short' => 'CEN', 'meta1' => 450000, 'meta2' => 550000],
+    14 => ['nombre' => 'OnTime NOG',    'color' => '#a855f7', 'short' => 'NOG', 'meta1' => 350000, 'meta2' => 450000],
     2  => ['nombre' => 'Closet Factory','color' => '#f97316', 'short' => 'CF'],
     7  => ['nombre' => 'Granito Depot', 'color' => '#64748b', 'short' => 'GD'],
 ];
@@ -377,6 +382,52 @@ foreach ($empresas_cfg as $eid => $ec) {
     }
 }
 // $ce ya poblado arriba con total + aceptadas por empresa
+
+// ─── BONO: AVANCE CONTRA META MENSUAL ───────────────────────
+// A PROPÓSITO ignora el selector de periodo: la meta es MENSUAL, así que
+// siempre mide el MES EN CURSO. Con el periodo en "últimos 7 días" el
+// porcentaje no querría decir nada, y es un número con el que se paga dinero.
+//
+// Qué cuenta: venta NO cancelada CON ABONO (pagado > 0) — "venta = venta y
+// abono>0". El abono decide SI la venta entra; lo que suma es el TOTAL de la
+// venta, no lo cobrado (decisión del CEO, 13 sep 2026).
+//
+// NO usa historial_mensual: esa tabla es de datos importados de meses
+// anteriores y no distingue si la venta tenía abono. El mes en curso siempre
+// sale de ventas reales.
+$bono_mes_ini = date('Y-m-01 00:00:00');
+$bono_avance  = [];
+foreach (DB::query(
+    "SELECT empresa_id, COALESCE(SUM(total),0) AS monto, COUNT(*) AS num
+     FROM ventas
+     WHERE empresa_id IN ({$emp_ids}) AND estado != 'cancelada'
+       AND pagado > 0 AND created_at >= ?
+     GROUP BY empresa_id",
+    [$bono_mes_ini]
+) as $r) {
+    $bono_avance[(int)$r['empresa_id']] = $r;
+}
+// Solo las sucursales que tienen meta definida, en el orden de $empresas_cfg.
+// El supervisor ya vio filtrado $empresas_cfg arriba, así que hereda su alcance.
+$bono_filas = [];
+foreach ($empresas_cfg as $eid => $ec) {
+    if (empty($ec['meta1'])) continue;
+    $monto = (float)($bono_avance[$eid]['monto'] ?? 0);
+    $bono_filas[] = [
+        'short' => $ec['short'], 'nombre' => $ec['nombre'], 'color' => $ec['color'],
+        'monto' => $monto,
+        'num'   => (int)($bono_avance[$eid]['num'] ?? 0),
+        'm1'    => (float)$ec['meta1'],
+        'm2'    => (float)$ec['meta2'],
+        'p1'    => $ec['meta1'] > 0 ? $monto / $ec['meta1'] * 100 : 0,
+        'p2'    => $ec['meta2'] > 0 ? $monto / $ec['meta2'] * 100 : 0,
+    ];
+}
+// Cuánto del mes ya pasó — sin esto, un 40% el día 5 y un 40% el día 28 se
+// leen igual, y no lo son.
+$bono_dias_mes  = (int)date('t');
+$bono_dia_hoy   = (int)date('j');
+$bono_mes_pct   = $bono_dias_mes > 0 ? $bono_dia_hoy / $bono_dias_mes * 100 : 0;
 
 // ─── TENDENCIAS 12 MESES ────────────────────────────────────
 $tendencias = DB::query(
@@ -1152,6 +1203,67 @@ $hist_total = array_sum($hist_values);
         <canvas id="histChart"></canvas>
     </div>
 </div>
+
+<!-- ─── BONO: AVANCE CONTRA META MENSUAL ─────────────────── -->
+<?php if ($bono_filas): ?>
+<div class="sec">
+    <div class="sec-hdr">
+        <div class="sec-title">Bono — avance del mes</div>
+        <?php /* El periodo de arriba NO aplica aquí y hay que decirlo: es un
+                 número con el que se paga dinero. */ ?>
+        <div class="sec-count"><?= e(strtoupper(date('M Y'))) ?> · día <?= $bono_dia_hoy ?> de <?= $bono_dias_mes ?> (<?= round($bono_mes_pct) ?>% del mes)</div>
+    </div>
+    <div class="tbl-card">
+    <table>
+    <thead>
+        <tr>
+            <th>Sucursal</th>
+            <th class="r">Vendido</th>
+            <th class="r">Meta 1</th>
+            <th class="r">%</th>
+            <th class="r">Meta 2</th>
+            <th class="r">%</th>
+        </tr>
+    </thead>
+    <tbody>
+    <?php foreach ($bono_filas as $bf):
+        // Verde = ya llegó. Ámbar = va abajo del ritmo que pide el calendario.
+        // Sin color = va a tiempo. El ritmo importa: 40% el día 5 y 40% el día
+        // 28 son cosas distintas.
+        // use(), NO global: el router hace el require DENTRO de un método
+        // estático (Router.php:357), así que estas variables viven en ámbito de
+        // función. Con global el closure habría leído NULL y el ámbar no habría
+        // salido nunca, sin error visible.
+        $col = function (float $p) use ($bono_mes_pct): string {
+            if ($p >= 100)            return 'color:#16a34a;font-weight:700';
+            if ($p <  $bono_mes_pct)  return 'color:#d97706';
+            return '';
+        };
+    ?>
+        <tr>
+            <td>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<?= e($bf['color']) ?>;margin-right:6px"></span>
+                <b><?= e($bf['short']) ?></b>
+                <small style="opacity:.6"><?= (int)$bf['num'] ?> vta<?= $bf['num'] === 1 ? '' : 's' ?></small>
+            </td>
+            <td class="r"><b><?= xf($bf['monto']) ?></b></td>
+            <td class="r" style="opacity:.7"><?= xm($bf['m1']) ?></td>
+            <td class="r" style="<?= $col($bf['p1']) ?>"><?= number_format($bf['p1'], 1) ?>%</td>
+            <td class="r" style="opacity:.7"><?= xm($bf['m2']) ?></td>
+            <td class="r" style="<?= $col($bf['p2']) ?>"><?= number_format($bf['p2'], 1) ?>%</td>
+        </tr>
+    <?php endforeach; ?>
+    </tbody>
+    </table>
+    </div>
+    <div style="font-size:11px;color:#6a6a64;margin-top:6px">
+        Cuenta la venta no cancelada que ya tiene abono; suma su <b>total</b>, no lo cobrado.
+        Solo el mes en curso — el selector de periodo de arriba no aplica aquí.
+        <span style="color:#d97706">Ámbar</span> = va abajo del ritmo del mes ·
+        <span style="color:#16a34a">verde</span> = meta cumplida.
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- TABLA + PAGOS -->
 <div class="grid-2">
