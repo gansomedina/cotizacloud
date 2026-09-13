@@ -784,6 +784,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 table{width:100%;border-collapse:collapse}
 thead th{font:600 11px 'Inter',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--t3);padding:12px 16px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
 thead th.r{text-align:right}
+/* Faltaba la mitad de la regla: había `thead th.r` pero NUNCA `tbody td.r`, así
+   que el class="r" de las celdas no hacía nada — el encabezado se iba a la
+   derecha y el número se quedaba a la izquierda. Con columnas anchas (tabla del
+   bono) el desfase es de ~170px. Son 13 celdas en todo el ejecutivo, escritas
+   para ir a la derecha desde siempre; esto solo hace que el CSS las obedezca. */
+tbody td.r{text-align:right}
 tbody td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover td{background:var(--card-hover)}
