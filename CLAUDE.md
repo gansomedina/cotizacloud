@@ -4805,7 +4805,7 @@ habría capturado: todas exigen que la conexión haya funcionado al menos una ve
 Lo que cambió es que **el hueco dejó de ser el hueco por defecto**. Si vuelve a
 pasar, hay IP, dominio, PoP y tiempo de respuesta de cada petición que sí llegue.
 
-## Sesión 12-13 septiembre 2026 — Seis puertas cerradas, y una decisión del CEO
+## Sesión 12-13 septiembre 2026 — Siete puertas cerradas, y una decisión del CEO
 
 ### 🔒 DECISIÓN DEL CEO: los dominios propios SE QUEDAN
 
@@ -4821,8 +4821,8 @@ por debajo, no el nombre de arriba.
 ### El caso Kitzya — NO se resolvió, y aquí está todo lo que se descartó
 
 El CEO insistió en que la causa estaba en Cloudflare o en algo que configuramos.
-Se revisaron seis cosas. **Las seis salieron negativas.** Se dejan escritas para
-que nadie —incluido yo— vuelva a recorrerlas.
+Se revisaron siete cosas. **Las siete salieron negativas.** Se dejan escritas
+para que nadie —incluido yo— vuelva a recorrerlas.
 
 | Sospecha | Cómo se midió | Resultado |
 |---|---|---|
@@ -4832,6 +4832,7 @@ que nadie —incluido yo— vuelva a recorrerlas.
 | `.cyou` bloqueado en resolutores | DoH contra 8 resolutores | Resuelve en Cloudflare (3 variantes) y Google |
 | Browser Integrity Check bloqueando clientes | Panel, filtro `Service = BIC`, 24 h | **1 bloqueo**: escáner rumano (`193.32.162.155`) con **Googlebot falsificado** desde AS47890, pidiendo `/.git/config`. Bloqueo correcto |
 | El AAAA nuevo frena a los clientes | Tiempo de apertura por semana, 11 semanas | **Sin quiebre el 2-sep** — ver abajo |
+| El IPv6 lastima a los que sí entran | `quote_sessions` 45 d, IPv4 vs IPv6 | **Lee MÁS por IPv6** (69.8 s vs 67.7). `z = 1.39, p ≈ 0.17` — ver abajo |
 
 ### ❌ La hipótesis del AAAA — la construí, la creí, y los datos la mataron
 
@@ -4891,6 +4892,36 @@ graficar la serie completa.**
 Dato colateral que cambia la escala del problema: **la métrica tuvo semanas
 peores que las actuales y nadie lo notó.** Lo que le pasó a Kitzya no le está
 pasando a suficiente gente como para mover un número del negocio.
+
+### ❌ IPv6 — cerrado con datos, y NO hay plan que lo apague
+
+**Ningún plan comprable desactiva IPv6.** *IPv6 Compatibility* es **Enterprise**;
+la documentación marca Free, Pro y Business igual — *no se puede personalizar*.
+Pagar Pro o Business para eso es tirar el dinero. **No volver a proponerlo.**
+
+Y tampoco haría falta. La pregunta que nuestros propios datos SÍ pueden
+contestar —¿a quienes llegan por IPv6 les va peor?— se corrió sobre
+`quote_sessions`, 45 días, `es_interno = 0`:
+
+| proto | sesiones | segundos | scroll | cortadas |
+|---|---|---|---|---|
+| IPv4 | 1,100 | 67.7 | 65.6 | 7.5% |
+| IPv6 | 127 | **69.8** | 64.4 | 11.0% |
+
+**El IPv6 lee MÁS tiempo, no menos**, y el scroll está a un punto. Un IPv6 roto
+—MTU en agujero negro, pérdida de paquetes, Happy Eyeballs peleándose— tumbaría
+la lectura. Pasa lo contrario.
+
+Lo único que baila son las cortadas, 11.0% vs 7.5%: **`z = 1.39, p ≈ 0.17`, no
+significativo**, y en crudo son **14 sesiones contra ~10**. Con n=127 **una sola
+sesión vale 0.8 puntos** — tres clientes que cierran la pestaña mueven ese número
+entero. Se reporta como ruido, no como hallazgo, precisamente por los dos errores
+de esta misma investigación (28%→13.6% y el `p = 0.007` que murió semana a
+semana): un 3.5% sin respaldo en las métricas de lectura tiene la misma forma.
+
+⚠️ **Límite honesto:** esto mide a los **1,227 que SÍ se conectaron**. No puede
+ver a quien nunca lo logró — que es exactamente el caso de Kitzya, y sigue sin
+instrumento posible mientras no se le pida nada al cliente.
 
 ### ✅ Lo único que SÍ quedó probado: son DOS fallas, no una
 
