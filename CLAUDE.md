@@ -24,6 +24,15 @@
 11. **NO FINGIR QUE LO HACES.** No decir que algo se creó/analizó/hizo sin haberlo
     hecho de verdad. Si solo se describió, decirlo; no simular trabajo.
 12. **NO ALTERAR.** No cambiar lo que el usuario ya definió o aprobó.
+13. **PARA CONSULTAR DATOS: SQL PARA COPIAR Y PEGAR EN LA TERMINAL DEL SERVIDOR.**
+    Siempre. No crear una herramienta en `tools/`, no un script de PHP, no un
+    agente — un bloque de bash con su `mysql` y su heredoc, listo para pegar.
+    Las constantes de conexión viven en `config.php` del servidor:
+    `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` (`core/DB.php:22,33`),
+    y se extraen en el mismo bloque para que no haya nada que rellenar a mano.
+    Las herramientas de `tools/` son para lo que se corre MUCHAS veces (las
+    simulaciones, el fact-lint); un diagnóstico de una vez es una consulta,
+    no código en el repo.
 
 ## Resumen del Proyecto
 - **Tipo**: SaaS de cotizaciones (PHP backend + Capacitor para apps nativas)
