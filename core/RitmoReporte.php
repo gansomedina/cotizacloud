@@ -563,7 +563,13 @@ class RitmoReporte
         $meta = [];
         if ($m['vencidas'] > 0) $meta[]="Poner al día las {$m['vencidas']} vencidas antes del viernes.";
         if ($card && $card['desc_estado'] === 'rojo') $meta[]="No descartar ninguna sin al menos 1 intento de cita.";
-        if ($card && $card['conv_estado'] === 'rojo') $meta[]="Cerrar al menos 1 venta esta semana.";
+        // El rojo de Conversión no es "no cerró nada" — es cerrar por debajo de
+        // la mitad de la vara de la empresa. Pedir "al menos 1 venta" a quien ya
+        // trae cierres en la misma hoja es pedirle lo que ya hizo.
+        if ($card && $card['conv_estado'] === 'rojo')
+            $meta[] = ((int)($card['n_cierres'] ?? 0) > 0)
+                ? "Subir el cierre: la vara de la empresa es {$card['n_hist_pct']}% y va en {$card['n_conv_pct']}%."
+                : "Cerrar al menos 1 venta esta semana.";
         if ($de['precio'] > 0) $meta[]="Trabajar una respuesta a la objeción de precio para la próxima cotización cara.";
         if ($rd['sin_feedback'] >= 1) $meta[]="Marcar (👍/👎) las calientes del Radar sin revisar.";
         if ($ve['cierres'] > 0 && $ve['con_dto'] > $ve['sin_dto']) $meta[]="Cerrar la próxima venta sin descuento.";

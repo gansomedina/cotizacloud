@@ -22,7 +22,6 @@ class RitmoAsesor
     private const CONTACTO_MIN  = 4;   // mínimo de contactados para juzgar
     private const CERO_MIN      = 8;   // trabajó esto y cerró 0 → alarma
     private const DUMP_VOLUMEN  = 0.25; // tirar >= 1/4 de la cartera para el ROJO
-    private const HIST_VENTANAS = 8;   // cuántas ventanas de historia forman la vara
     private const HIST_MIN       = 8;   // cohorte histórica mínima para juzgar
     private const CITAS_BASE_MIN = 2.0; // citas/sem que prueban ritmo (gate SOLO del ámbar; el rojo del cero no tiene gate)
 
@@ -64,7 +63,7 @@ class RitmoAsesor
 
         $filas = [];
         foreach ($asesores as $a) {
-            $f = self::_asesor($empresa_id, (int)$a['id'], (string)$a['nombre'], $win, $rapido_dias, $mediana);
+            $f = self::_asesor($empresa_id, (int)$a['id'], (string)$a['nombre'], $win, $rapido_dias);
             if ($f !== null) $filas[] = $f;
         }
 
@@ -91,24 +90,30 @@ class RitmoAsesor
         return $out;
     }
 
-    private static function _asesor(int $empresa_id, int $uid, string $nombre, int $win, int $rapido_dias, int $mediana = 5): ?array
+    private static function _asesor(int $empresa_id, int $uid, string $nombre, int $win, int $rapido_dias): ?array
     {
         $cierres = 0; $trabajo = 0; $desc = 0; $sincita = 0; $rapido = 0; $contactados = 0; $no_conecta = 0;
         try { $cierres = self::_cierres($empresa_id, $uid, $win); } catch (Throwable $e) {}
         try { $trabajo = self::_trabajo($empresa_id, $uid, $win); } catch (Throwable $e) {}
         try { [$desc, $sincita, $rapido] = self::_descartes($empresa_id, $uid, $win, $win, $rapido_dias); } catch (Throwable $e) {}
         try { [$contactados, $no_conecta] = self::_contacto($empresa_id, $uid, $win); } catch (Throwable $e) {}
-        // Cohorte del asesor: nacidas en la ventana, ya maduras.
-        $vistas = 0; $cerradas_coh = 0;
-        try { [$vistas, $cerradas_coh] = self::_cohorte($empresa_id, $uid, $win, 0, $mediana); } catch (Throwable $e) {}
-        // VARA: la MISMA función sobre la historia ANTERIOR a la ventana (para
-        // que el desempeño actual no contamine su propio benchmark) y sobre
-        // TODA la empresa. Misma definición, mismo reloj, misma madurez — sin
-        // esto se comparaban dos tasas calculadas con recetas distintas.
-        $h_ab = 0; $h_ce = 0;
-        try { [$h_ab, $h_ce] = self::_cohorte($empresa_id, null, $win * self::HIST_VENTANAS, $win, $mediana); } catch (Throwable $e) {}
-        $hist_r  = $h_ab > 0 ? ($h_ce / $h_ab) : 0.0;
-        $hist_ok = $h_ab >= self::HIST_MIN && $hist_r > 0;
+        // Denominador: cotizaciones del período que el cliente abrió.
+        $vistas = 0;
+        try { $vistas = self::_abiertas($empresa_id, $uid, $win); } catch (Throwable $e) {}
+        // VARA: la tasa histórica de la empresa que YA calcula el termómetro
+        // (ActividadScore::close_rate_historico). Estaba escrita, documentada
+        // como "para que la tarjeta use EXACTAMENTE la misma y no invente la
+        // suya"... y sin un solo llamador. Así el asesor se mide contra la misma
+        // vara en las dos pantallas. Se midió contra la cohorte que se usaba
+        // antes: 19% vs 18% en Hermosillo y 22% vs 22% en Nogales — el cambio de
+        // vara no mueve nada, es el numerador el que estaba mal.
+        $hist_r = 0.0; $hist_n = 0;
+        try {
+            $cr = ActividadScore::close_rate_historico($empresa_id);
+            $hist_r = (float)($cr['rate'] ?? 0);
+            $hist_n = (int)($cr['muestra'] ?? 0);
+        } catch (Throwable $e) {}
+        $hist_ok = $hist_n >= self::HIST_MIN && $hist_r > 0;
         [$venc_cnt, $venc_hoy] = self::_reloj($empresa_id, $uid);
         [$citas7, $citas_base, $citas_baja, $citas_base_wk] = self::_citas($empresa_id, $uid);
 
@@ -118,27 +123,36 @@ class RitmoAsesor
 
         $pct = fn(int $n, int $d): int => $d > 0 ? (int)round($n / $d * 100) : 0;
 
-        // ── PILAR 1: Conversión — COHORTE, no mezcla de universos ──
-        //   "De las cotizaciones que nacieron en la ventana y el cliente abrió,
-        //    ¿cuántas terminaron en venta pagada?". El numerador SALE del
-        //    denominador, así que la tasa no puede pasar de 100% (antes el
-        //    numerador eran las ventas del período —naciera cuando naciera la
-        //    cotización— contra cotizaciones del período: daba "cerró 3 de 0").
-        //   Se excluyen las que aún no cumplen la mediana del ciclo: no se
-        //    juzga como "no cerrada" una cotización de anteayer.
-        //   El color lo decide la comparación contra la MISMA cohorte de toda la
-        //    empresa sobre historia anterior — misma receta en ambos lados.
-        $conv_rate_r = $vistas > 0 ? ($cerradas_coh / $vistas) : 0.0;
+        // ── PILAR 1: Conversión — la definición de la CASA ──
+        //   Cierres del período ÷ cotizaciones del período. Es la misma cuenta
+        //   que hacen los otros cinco lugares que miden lo mismo (el termómetro
+        //   en ActividadScore:578, el dashboard, reportes y el ejecutivo);
+        //   la tarjeta era la única que se había salido.
+        //
+        //   QUÉ ESTABA ROTO (21-sep): imprimía el numerador de un lado y el
+        //   porcentaje del otro. Con datos reales — Abigail "cerró 7 ... (11%)"
+        //   donde el 11% lo producía un 2; Kevin "cerró 2 ... (7%)" donde el 7%
+        //   lo producía un 1. El número impreso YA era el correcto; lo que salía
+        //   de otra cuenta, más chica, era el porcentaje. Subcalificaba a los
+        //   tres asesores y a uno le ponía un rojo que no le tocaba.
+        //
+        //   TOPE 100%: el numerador cuenta por accion_at y el denominador por
+        //   created_at, así que cerrar backlog puede dar más cierres que
+        //   cotizaciones nuevas. El motor ya vive con eso y lo topa igual
+        //   (ActividadScore:578). Por eso el texto NO dice "X de Y": "cerró 3 de
+        //   2" es imposible de escribir, "cerró 3 · abrió 2" no.
+        $conv_rate_r = $vistas > 0 ? min($cierres / $vistas, 1.0) : 0.0;
         $conv_rate   = (int)round($conv_rate_r * 100);
         $hist_pct    = (int)round($hist_r * 100);
-        $vs          = $hist_ok ? " · la empresa cierra {$hist_pct}%" : "";
+        $vs          = $hist_ok ? " · la empresa {$hist_pct}%" : "";
+        $cuenta      = "cerró {$cierres} · abrió {$vistas}";
 
         if ($vistas < self::CERO_MIN) {
             // Muestra chica: no se juzga a nadie con 3 cotizaciones.
             $conv_estado = 'gris';
-            $conv_txt    = $vistas > 0
-                ? "cerró {$cerradas_coh} de {$vistas} abiertas — muestra chica"
-                : "sin actividad";
+            if ($vistas > 0)        $conv_txt = "{$cuenta} — muestra chica";
+            elseif ($cierres > 0)   $conv_txt = "cerró {$cierres} · sin cotizaciones nuevas";
+            else                    $conv_txt = "sin actividad";
         } elseif ($hist_ok) {
             // REGLA CEO (11-ago): el color lo decide la comparación contra la
             // tasa HISTÓRICA de su propia empresa, no "cerró algo = verde".
@@ -149,12 +163,12 @@ class RitmoAsesor
             if     ($conv_rate_r >= $hist_r)       $conv_estado = 'verde';
             elseif ($conv_rate_r >= $hist_r * 0.5) $conv_estado = 'amarillo';
             else                                   $conv_estado = 'rojo';
-            $conv_txt = "cerró {$cierres} de {$vistas} abiertas ({$conv_rate}%){$vs}";
+            $conv_txt = "{$cuenta} · {$conv_rate}%{$vs}";
         } else {
             // Empresa sin historial suficiente: se conserva la regla vieja
             // (binaria) para no inventar un veredicto sin vara.
-            $conv_estado = $cerradas_coh > 0 ? 'verde' : 'rojo';
-            $conv_txt    = "cerró {$cerradas_coh} de {$vistas} abiertas ({$conv_rate}%)";
+            $conv_estado = $cierres > 0 ? 'verde' : 'rojo';
+            $conv_txt    = "{$cuenta} · {$conv_rate}%";
         }
 
         // ── PILAR 2: Descartadas (% de lo trabajado · sin cita · muy rápido) ──
@@ -251,7 +265,7 @@ class RitmoAsesor
             // reporte) usa ESTOS y no puede contradecir al pilar. Sin queries
             // extra — ya están calculados arriba.
             'n_trabajo' => $trabajo, 'n_cierres' => $cierres, 'n_vistas' => $vistas,
-            'n_cerradas_cohorte' => $cerradas_coh, 'n_hist_pct' => $hist_pct,
+            'n_conv_pct' => $conv_rate, 'n_hist_pct' => $hist_pct,
             'n_desc' => $desc, 'n_sincita' => $sincita, 'n_rapido' => $rapido,
             'n_contactados' => $contactados, 'n_noc' => $no_conecta,
             'n_venc' => $venc_cnt, 'n_venc_hoy' => $venc_hoy,
@@ -306,52 +320,56 @@ class RitmoAsesor
         return "Va bien — cierra, descarta sano y da seguimiento.";
     }
 
+    /**
+     * CIERRES del período — la receta de la CASA, copiada de ActividadScore:347.
+     * Cotizaciones que el cliente ACEPTÓ dentro de la ventana (accion_at), con
+     * anticipo cobrado, descontando las que cerró el Descuento Inteligente (esas
+     * son de la empresa, no del asesor).
+     *
+     * "Venta del período es venta del período, sin importar cuándo nació la
+     * cotización" (CEO, 21-sep). Antes contaba filas de `ventas` por
+     * `ventas.created_at`: en los datos reales daba el MISMO número (7, 3 y 2
+     * para los tres asesores de OnTime), pero eran dos relojes distintos para el
+     * mismo hecho, y solo uno de los dos coincidía con el score que califica al
+     * mismo asesor. Los filtros van idénticos al motor a propósito — el punto de
+     * todo esto es que no haya dos definiciones de "cierre".
+     */
     private static function _cierres(int $empresa_id, ?int $uid, int $dias): int
     {
-        $w = $uid !== null ? "AND COALESCE(v.vendedor_id, v.usuario_id, c.vendedor_id, c.usuario_id) = ?" : "";
+        $w = $uid !== null ? "AND COALESCE(c.vendedor_id, c.usuario_id) = ?" : "";
         $p = [$empresa_id]; if ($uid !== null) $p[] = $uid;
         return (int) DB::val(
-            "SELECT COUNT(*) FROM ventas v
-               LEFT JOIN cotizaciones c ON c.id = v.cotizacion_id
-              WHERE v.empresa_id = ? AND v.estado <> 'cancelada' AND v.pagado > 0 AND v.total > 0
-                AND v.created_at >= NOW() - INTERVAL $dias DAY $w", $p
+            "SELECT COUNT(*) FROM cotizaciones c
+              WHERE c.empresa_id = ?
+                AND c.estado IN ('aceptada','convertida','aceptada_cliente')
+                AND c.accion_at >= NOW() - INTERVAL $dias DAY
+                AND EXISTS (SELECT 1 FROM ventas v WHERE v.cotizacion_id = c.id
+                            AND v.pagado > 0 AND v.estado <> 'cancelada')
+                AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones di
+                                WHERE di.cotizacion_id = c.id AND di.estado = 'utilizado')
+                $w", $p
         );
     }
 
     /**
-     * COHORTE de conversión — la MISMA receta para el asesor y para la empresa.
-     * Devuelve [abiertas, cerradas] de las cotizaciones NACIDAS en el rango.
+     * ABIERTAS del período — el denominador de la CASA (ActividadScore:304, lo
+     * que el motor llama `cot_vistas`): cotizaciones nacidas en la ventana que
+     * el cliente abrió o que ya tienen acción.
      *
-     * Tres decisiones que hacen honesto el número:
-     *  1. El numerador SALE del denominador: "cerradas" son las cotizaciones de
-     *     ESTA cohorte que terminaron en venta pagada. Antes el numerador eran
-     *     las ventas del período (naciera cuando naciera la cotización) contra
-     *     un denominador de cotizaciones del período: dos universos distintos,
-     *     y la tasa podía pasar de 100%.
-     *  2. MADUREZ: se excluyen las que aún no cumplen la mediana del ciclo — no
-     *     se juzga como "no cerrada" una cotización de anteayer.
-     *  3. Con $uid=null da la cohorte de TODA la empresa. La vara sale de esta
-     *     misma función sobre historia anterior, así que asesor y empresa se
-     *     miden con idéntica definición, idéntico reloj e idéntica madurez.
+     * NO lleva filtro de madurez. Se midió: excluir las de menos de la mediana
+     * del ciclo mueve la tasa entre 0 y 4 puntos y NO cambia el color de ningún
+     * asesor — no vale mantener una segunda receta por eso.
      */
-    private static function _cohorte(int $empresa_id, ?int $uid, int $desde_dias, int $hasta_dias, int $madurez): array
+    private static function _abiertas(int $empresa_id, ?int $uid, int $dias): int
     {
         $w = $uid !== null ? "AND COALESCE(c.vendedor_id, c.usuario_id) = ?" : "";
         $p = [$empresa_id]; if ($uid !== null) $p[] = $uid;
-        $r = DB::row(
-            "SELECT COUNT(*) AS abiertas,
-                    SUM(EXISTS (SELECT 1 FROM ventas v
-                                 WHERE v.cotizacion_id = c.id
-                                   AND v.estado <> 'cancelada' AND v.pagado > 0 AND v.total > 0)) AS cerradas
-               FROM cotizaciones c
+        return (int) DB::val(
+            "SELECT COUNT(*) FROM cotizaciones c
               WHERE c.empresa_id = ? AND c.total > 0 AND c.suspendida = 0
-                AND c.estado != 'borrador'
-                AND (c.visitas > 0 OR c.estado IN ('aceptada','convertida','aceptada_cliente'))
-                AND c.created_at >= NOW() - INTERVAL $desde_dias DAY
-                AND c.created_at <= NOW() - INTERVAL $hasta_dias DAY
-                AND c.created_at <= NOW() - INTERVAL $madurez DAY $w", $p
+                AND (c.estado IN ('vista','aceptada','convertida','aceptada_cliente') OR c.visitas > 0)
+                AND c.created_at >= NOW() - INTERVAL $dias DAY $w", $p
         );
-        return [(int)($r['abiertas'] ?? 0), (int)($r['cerradas'] ?? 0)];
     }
 
     private static function _trabajo(int $empresa_id, ?int $uid, int $dias): int

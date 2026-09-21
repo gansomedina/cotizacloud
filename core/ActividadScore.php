@@ -116,6 +116,13 @@ class ActividadScore
      * expone para que la tarjeta de Ritmo use EXACTAMENTE la misma y no invente
      * la suya. Devuelve ['rate'=>float, 'muestra'=>int]; muestra<5 = sin
      * historial suficiente para juzgar a nadie.
+     *
+     * VA POR periodo_efectivo, no por PERIODO: calcular() arranca en PERIODO y,
+     * si el ciclo de venta pasa de 20 días, lo extiende y RECALCULA los
+     * benchmarks con la ventana nueva (:213). Clavado en PERIODO, esta función
+     * devolvía para una empresa de ciclo largo una vara que el motor NO usa —
+     * el mismo defecto que bench_publico ya documenta y corrige. Se arregla sin
+     * riesgo porque hasta hoy no tenía un solo llamador.
      */
     public static function close_rate_historico(int $empresa_id): array
     {
@@ -123,7 +130,7 @@ class ActividadScore
         if (isset($c[$empresa_id])) return $c[$empresa_id];
         $o = ['rate' => 0.0, 'muestra' => 0];
         try {
-            $b = self::_benchmarks($empresa_id, self::PERIODO);
+            $b = self::_benchmarks($empresa_id, self::periodo_efectivo($empresa_id));
             $o = ['rate' => (float)($b['close_rate_hist'] ?? 0), 'muestra' => (int)($b['emp_vistas_hist'] ?? 0)];
         } catch (\Throwable $e) {}
         return $c[$empresa_id] = $o;

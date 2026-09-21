@@ -286,6 +286,21 @@ class RitmoTip
             // Mismo número que el pilar: cotizaciones que el CLIENTE ABRIÓ
             // (n_vistas). Si el marco dijera otra cosa, contradiría a la tarjeta.
             $nt = (int)($card['n_vistas'] ?? $card['n_trabajo'] ?? 0);
+            // El rojo de Conversión NO significa "no cerró nada": significa que
+            // cierra por debajo de la mitad de la vara de su empresa. Con
+            // cierres > 0 las frases de abajo le dirían "cero cerradas" con su
+            // propio número impreso dos renglones arriba, en la misma tarjeta.
+            $nc = (int)($card['n_cierres'] ?? 0);
+            if ($nc > 0) {
+                $pc = (int)($card['n_conv_pct'] ?? 0);
+                $pv = (int)($card['n_hist_pct'] ?? 0);
+                $ref = $pv > 0 ? " y tu empresa cierra {$pv}%" : "";
+                return ['cierre', [
+                    "Cerraste {$nc} de {$nt}: {$pc}%{$ref}. No es que no cierres — es que se te están quedando en el camino más de las que deberían. ",
+                    "{$nc} cerradas de {$nt} ({$pc}%){$ref}. Lo de conseguir cotizaciones lo tienes; donde se te va la venta es en el último paso. ",
+                    "Vas en {$pc}% de cierre{$ref}. Cerraste {$nc} de {$nt} — el trabajo de antes está hecho, lo que falta es pedir la firma más seguido. ",
+                ]];
+            }
             return ['cierre', $nt > 0 ? [
                 "Abrir no es cerrar, y ahí es donde se gana o se pierde. Trabajaste {$nt} y no cerraste ninguna: el cliente llega hasta la puerta y no lo estás haciendo pasar. ",
                 "{$nt} cotizaciones abiertas por el cliente y cero cerradas. El problema no está en que te lean — está en el último paso, que es el único que se paga. ",
