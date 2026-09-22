@@ -4641,3 +4641,151 @@ Detectable (sin huella de bot de preview ni visita alguna) y avisable al asesor.
 pero además: **no se falsifica un User-Agent para reproducir la falla de un
 cliente**. Eso desactiva `es_bot()`, que es justo la protección que evitaría el
 daño. Ya contaminé la cot 4816 así el 8-sep.
+
+## Sesión 21-22 septiembre 2026 — Conversión de la tarjeta de Ritmo + el correo que no llegó
+
+### A) El pilar Conversión imprimía un numerador y otro hacía el porcentaje
+
+`RitmoAsesor.php:152` decía *"cerró 7 de 18 abiertas (11%)"* — **tres números de
+tres cuentas distintas en el mismo renglón**. Medido en producción, los tres
+asesores de OnTime lo traían:
+
+| Asesor | La tarjeta decía | El % lo hacía | Debía decir |
+|---|---|---|---|
+| Abigail | cerró **7** … (**11%**) | un **2** | **35%** |
+| Manuel | cerró **3** … (**22%**) | un **2** | **33%** |
+| Kevin | cerró **2** … (**7%**) | un **1** | **12%** |
+
+**El número impreso YA era el correcto** — coincidía exacto con el numerador de
+la casa en los tres casos. Lo que salía de otra cuenta, más chica, era el
+porcentaje. Subcalificaba a los tres y **a Kevin le ponía un rojo que no le
+tocaba** (12% contra una vara de 22% es amarillo, no rojo).
+
+Origen: el commit `b22274b` migró el numerador a cohorte en **tres** sitios con
+el mismo texto, cambió dos y **se saltó el del medio** — justo el que corre
+cuando la empresa tiene historial, o sea siempre. Nunca fue una decisión.
+
+**Cómo quedó** (regla CEO: *"venta del período es venta del período, sin importar
+cuándo nació la cotización"*):
+- Numerador y denominador, los dos con la receta de la casa. `_cierres()` pasó a
+  contar cotizaciones por `accion_at` con anticipo y sin DI (copia literal de
+  `ActividadScore:347`); `_abiertas()` es `cot_vistas` (`:304`).
+- Vara: **`ActividadScore::close_rate_historico()`**, que llevaba meses escrita
+  *"para que la tarjeta use EXACTAMENTE la misma y no invente la suya"* y
+  **no tenía un solo llamador**. Medido, cambia 1 punto (19→18 HMO, 22→22 NOG):
+  **la vara nunca fue el problema**.
+- **Sin filtro de madurez.** Medido: mueve entre 0 y 4 puntos y **no cambia el
+  color de ningún asesor**. No vale una segunda receta por eso.
+- El texto deja de decir *"X de Y"* → **"cerró 3 · abrió 12 · 25%"**. Con el
+  numerador por `accion_at` y el denominador por `created_at`, cerrar backlog
+  puede dar más cierres que cotizaciones nuevas; el motor ya vive con eso y lo
+  topa igual (`:578`). *"cerró 3 de 2"* es imposible de escribir, *"cerró 3 ·
+  abrió 2"* no.
+- `_cohorte()` quedó sin llamadores → eliminado, junto con `HIST_VENTANAS`.
+
+**Dos textos que se iban a contradecir con el pilar** (el rojo de Conversión
+NUNCA significó "no cerró nada" — significa cerrar bajo la mitad de la vara):
+`RitmoTip` decía *"cero cerradas"* y `RitmoReporte` ponía de meta *"cerrar al
+menos 1 venta"*, a gente con cierres impresos dos renglones arriba. Los dos usan
+ahora su número real.
+
+**Y `close_rate_historico()` iba clavada en `PERIODO`**: para una empresa de
+ciclo largo devolvía una vara que el motor no usa — el mismo defecto que
+`bench_publico` ya documenta y corrige. Se arregló sin riesgo porque no tenía
+llamadores. Verificado con datos: HMO cierra en 11.7 días y NOG en 3.0, así que
+`periodo_efectivo` = 15 en ambas y la vara medida (18% / 22%) es la que aplica.
+
+**La ventana sigue siendo distinta y es a propósito:** la tarjeta mide 2×p75
+(20 d) y el termómetro 15. Misma receta, distinto reloj — los números se parecen
+pero no son el mismo. Cambiar la ventana movería los otros 4 pilares.
+
+### B) El correo del respaldo que no llegó — y el respaldo estaba bien
+
+**El respaldo nunca falló.** Lo prueba el propio correo que no llegó, leído
+después en el panel de Brevo:
+
+```
+Respaldo OK 2026-09-22_0200 — bd: 2.7M · total en disco: 72M
+Copia remota OK y verificada — total en R2: 67.120 MiB
+```
+
+#### La cadena que sirvió (para repetirla en 5 minutos, no en dos horas)
+
+1. **Primero el respaldo, no el correo.** Archivos del día, tamaño del `bd_*`
+   contra los 7 anteriores, `gzip -t`, contar `CREATE TABLE`, y el
+   `-- Dump completed on` del final.
+2. **Después la cadena de envío**, en orden: ¿cron vivo? → ¿disparó? (`syslog`)
+   → ¿msmtp entregó? (`/var/log/msmtp.log`) → ¿disco? → ¿cola?
+3. **La prueba que separa: mandar a Gmail y a Hotmail por el mismo camino.**
+   Gmail llegó, Hotmail no → el problema es del destinatario, no de la cuenta.
+4. **La segunda prueba: cambiar el dominio firmante** (`-f noreply@envios...`).
+   También falló → no es reputación de `cotiza.cloud`.
+5. **El panel de Brevo** da la palabra literal. Ahí terminó.
+
+#### Lo que hay que saber leer
+
+| Señal | Qué significa DE VERDAD |
+|---|---|
+| `250 OK: queued` en msmtp.log | Brevo lo **aceptó**. NO es entrega. Aquí se acaba lo que vemos |
+| Brevo: `Sent` sin `Delivered` y **sin rebote** | **Diferimiento**. El receptor contestó `4xx`; Brevo reintenta en silencio ~72 h y luego lo marca rebote suave. **Puede llegar tarde** |
+| Brevo: `Blocked` | Es un estado propio de Brevo. Si la dirección estuviera suprimida, **lo diría** |
+| Brevo: `Loaded by proxy` | El destinatario lo abrió (proxy de imágenes de Outlook) |
+
+#### La causa
+
+**Microsoft dejó de aceptar correo de la IP compartida de Brevo `77.32.148.23`**,
+entre el 21 a las 03:00 (último `Delivered`, abierto a las 07:04) y el 22 a las
+02:00. La IP es de Brevo — `FR-MAILINBLUE` en RIPE, Francia, **compartida con
+miles de remitentes**. No la controlamos.
+
+Descartado con datos: nuestra configuración (SPF/DKIM/DMARC correctos en los dos
+dominios), la dirección suprimida en Brevo (el panel no dice `Blocked`), la
+reputación de `cotiza.cloud` (`envios.` falló igual) y la cuenta de Brevo (a
+Gmail entrega en el mismo minuto).
+
+#### Lo que se cambió
+
+```
+MAILTO=josealfonsomedina@gmail.com,josealfonsomedina@hotmail.com
+config.php:38  SUPERADMIN_EMAIL → josealfonsomedina@gmail.com
+```
+
+Gmail primero para que llegue; Hotmail de segundo **para seguir viendo cuándo
+Microsoft se vuelve a abrir**.
+
+- **`MAILTO` acepta varias direcciones con coma — PROBADO en vivo**, no supuesto:
+  una sola línea en msmtp.log con `recipients=...gmail.com,...hotmail.com`.
+- **`SUPERADMIN_EMAIL` NO admite lista.** `Mailer::enviar()` usa `addAddress()`
+  de PHPMailer, que toma una dirección. Ahí va una sola.
+- Esa constante alimenta **cinco** avisos: empresa nueva
+  (`verificar_email_post.php:200`), solicitud de licencia y ticket
+  (`ayuda/ticket.php:75,85`), mensaje de soporte y **lead del landing**
+  (`api/soporte.php:81,137`).
+- Dato del log: entre el **27-jul y el 22-sep no salió NI UN correo al
+  superadmin** fuera de los dos crones. No se perdieron avisos — no hubo qué
+  avisar.
+
+Ticket enviado a Brevo (22-sep) con la IP y los 4 Message IDs, pidiendo que
+revisen el estado de `77.32.148.23` con Microsoft. **Pendiente de respuesta.**
+
+#### Mis errores de método
+
+1. **Corté la evidencia con `tail`, dos veces.** `ls -lh | tail -20` en un
+   directorio que ordena alfabético (`archivos_`, `bd_`, `config_`, `llaves_`)
+   **escondió justo los `bd_*.sql.gz`**, que eran el dato que importaba. Lo
+   repetí con `rclone ls | tail -8`. Para verificar una cosa concreta se filtra
+   por ella (`grep "$(date +%F)"`), no se recorta la cola.
+2. **Apunté a una causa que el panel desmintió.** Dije que apuntaba a que Brevo
+   tenía la dirección en su lista de bloqueo. Brevo tiene el estado `Blocked` y
+   **no aparecía**. Era inferencia presentada con más peso del que tenía.
+3. Un bloque con bucle y `printf` **se rompió al pegarlo** en la terminal.
+   Para que el CEO ejecute, los comandos van en una sola pieza y sin
+   construcciones que el pegado pueda mutilar.
+
+#### Propuesta abierta (no implementada)
+
+**Que el respaldo deje huella DENTRO del sistema.** Hoy el único testigo de que
+corrió es un correo que viaja por el tubo que acaba de demostrar que se cae. El
+script escribe una línea en `data/`, y el panel de superadmin muestra *"último
+respaldo: hace N horas"*, en rojo pasando de 26. Se ve al entrar, sin depender de
+Brevo ni de Microsoft.
