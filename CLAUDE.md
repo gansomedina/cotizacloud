@@ -4733,10 +4733,17 @@ Copia remota OK y verificada — total en R2: 67.120 MiB
 
 #### La causa
 
-**Microsoft dejó de aceptar correo de la IP compartida de Brevo `77.32.148.23`**,
-entre el 21 a las 03:00 (último `Delivered`, abierto a las 07:04) y el 22 a las
-02:00. La IP es de Brevo — `FR-MAILINBLUE` en RIPE, Francia, **compartida con
-miles de remitentes**. No la controlamos.
+**Microsoft empezó a diferir correo de la infraestructura compartida de Brevo**
+hacia buzones de consumo (Hotmail/Outlook), entre el 21 a las 03:00 (último
+`Delivered`, abierto a las 07:04) y el 22 a las 02:00. La IP que nos tocó fue
+`77.32.148.23` — `FR-MAILINBLUE` en RIPE, Francia, **compartida con miles de
+remitentes**. No la controlamos.
+
+⚠️ **Precisión que dio Brevo y que corrige lo que yo había dicho:** el problema
+**NO es la reputación de esa IP**. Es un fallo del lado de Microsoft contra la
+infraestructura compartida de Brevo en general (respuestas *"Service not active,
+try again later"* y *"Temporary server error"*). Por eso cambiar de IP —o pagar
+una dedicada— no lo habría evitado.
 
 Descartado con datos: nuestra configuración (SPF/DKIM/DMARC correctos en los dos
 dominios), la dirección suprimida en Brevo (el panel no dice `Blocked`), la
@@ -4765,8 +4772,32 @@ Microsoft se vuelve a abrir**.
   superadmin** fuera de los dos crones. No se perdieron avisos — no hubo qué
   avisar.
 
-Ticket enviado a Brevo (22-sep) con la IP y los 4 Message IDs, pidiendo que
-revisen el estado de `77.32.148.23` con Microsoft. **Pendiente de respuesta.**
+#### Respuesta de Brevo (23-sep) — confirma el diagnóstico
+
+Ticket enviado el 22-sep con la IP y los 4 Message IDs. Contestó George, de
+soporte, y confirmó punto por punto lo que se había medido:
+
+- **Es un problema conocido y activo** que afecta correo hacia buzones de consumo
+  de Microsoft (Hotmail/Outlook). Gmail y los demás proveedores entregan normal.
+- Microsoft devuelve *"Service not active, try again later"* y *"Temporary server
+  error"* — **diferimiento temporal, no rechazo permanente**. Por eso los mensajes
+  se quedan en `Sent` sin `Delivered` y sin rebote.
+- **Los mensajes NO se tiraron**: Brevo los sigue reintentando. Cuando Microsoft
+  acepte uno, pasa a `Delivered`; si se agotan los reintentos, queda un evento
+  final de no-entrega.
+- Su equipo de entregabilidad está **redirigiendo** el tráfico hacia Microsoft
+  donde se pueda, y en contacto con Microsoft.
+- **No hay que cambiar nada** en dominios ni autenticación.
+- **Una IP dedicada NO es la solución**: el problema no es la reputación de esa
+  IP, una dedicada necesita calentamiento y mantenimiento, y tampoco evitaría una
+  falla del lado de Microsoft.
+
+**Ticket en espera** mientras monitorean. Piden avisar si: (a) mensajes nuevos se
+quedan en `Sent` hacia proveedores **que no son Microsoft**, o (b) los envíos a
+Microsoft empiezan a devolver **otro estado o error**.
+
+**El testigo para (a) ya existe:** la copia a Gmail del `MAILTO`. Mientras esa
+llegue, Brevo está sano y el problema sigue acotado a Microsoft.
 
 #### Mis errores de método
 
