@@ -366,3 +366,25 @@ Si el asesor las recibe o no se decide en §10.7.
 ## Pregunta agregada
 
 11. **Plan.** Este diseño lo deja solo en Business, porque todo el motor de CotizaCloud AI es Business. Antes se había planteado dar a Pro la captura y la tarjeta del admin. ¿Pro las recibe?
+
+## Decisiones del CEO — segunda ronda (25 sep 2026). MANDAN sobre lo anterior
+
+1. **Mínimo de historia:** se lee en cuanto la empresa tenga **30 días desde su primera venta con pago**. **Sustituye** `MUESTRA_MIN` y el cálculo de ventas esperadas de la §2. Sin esa historia: *"Todavía no hay suficiente historia para leer cómo va la empresa."*
+2. **Escalones de 10%** (propuesta, pendiente de visto bueno de la redacción). Primero se revisa el equilibrio. Si se alcanza, el avance se mide contra la pesimista, y ya pasada la pesimista, contra la optimista. En el mes calendario, contra la meta prorrateada a los días transcurridos.
+
+   | Avance | Frase |
+   |---|---|
+   | < equilibrio | La empresa ni siquiera llega al punto de equilibrio en estos N días. |
+   | < 60% pesimista | La empresa va muy baja en estos N días. |
+   | 60–69% | La empresa va baja en estos N días. |
+   | 70–79% | La empresa va por debajo de su meta en estos N días. |
+   | 80–89% | La empresa va cerca de su meta. |
+   | 90–99% | La empresa casi llega a su meta. |
+   | pesimista alcanzada, < 90% optimista | La empresa ya llegó a su meta. |
+   | 90–99% optimista | La empresa casi llega a su meta optimista. |
+   | ≥ optimista | La empresa ya sobrepasó su meta optimista. |
+
+3. **Validación al capturar:** equilibrio ≤ pesimista ≤ optimista. Si no se cumple, se rechaza.
+4. **Meses vivos:** la venta cuenta en su mes de **aceptación** aunque el anticipo llegue después, para bien o para mal. No se congela.
+5. **El asesor también recibe los niveles y la conversión en los TIPS** (RitmoTip y DiagnosticoTips), no solo en el reporte del Director, con contextos distintos por tip. **Cambia la §4**: RitmoTip ya no queda en "nada". Los contextos se diseñan en su fase, sin pasar por encima de "citas en cero primero".
+6. **Plan Pro:** abierto.
