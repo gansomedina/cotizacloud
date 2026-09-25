@@ -388,3 +388,7 @@ Si el asesor las recibe o no se decide en §10.7.
 4. **Meses vivos:** la venta cuenta en su mes de **aceptación** aunque el anticipo llegue después, para bien o para mal. No se congela.
 5. **El asesor también recibe los niveles y la conversión en los TIPS** (RitmoTip y DiagnosticoTips), no solo en el reporte del Director, con contextos distintos por tip. **Cambia la §4**: RitmoTip ya no queda en "nada". Los contextos se diseñan en su fase, sin pasar por encima de "citas en cero primero".
 6. **Plan Pro:** abierto.
+
+## Decisión del CEO — tercera ronda (25 sep 2026)
+
+**El mes calendario NO se prorratea.** El avance se mide contra la meta **completa** del mes, y la frase dice *"en este mes"* (por ejemplo, *"La empresa va muy baja en este mes"*). Anula el prorrateo de la §2 (tabla "Las dos ventanas") y la nota "en el mes calendario, contra la meta prorrateada" de la segunda ronda. Razón del CEO: consistencia. Al inicio del mes la frase va a decir "muy baja"; eso es aceptado.
