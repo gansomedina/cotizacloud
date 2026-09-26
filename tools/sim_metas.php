@@ -17,7 +17,10 @@
 //
 // REQUISITOS (desarrollo, NUNCA producción):
 //   - MariaDB/MySQL local con BD 'simtest' y usuario sim/sim
-//   - DESTRUYE y recrea sus tablas en cada corrida
+//   - DESTRUYE y recrea sus tablas en cada corrida — incluidas empresas,
+//     cotizaciones y ventas de la BD compartida 'simtest'. Correr las
+//     simulaciones UNA POR UNA y nunca entre sim_mesa_armar y
+//     sim_mesa_render (render reutiliza los fixtures de armar).
 // El reloj se inyecta (MetasEmpresa::$ahora): no depende de la hora real.
 // Correr: php tools/sim_metas.php   → debe terminar en OK
 // Obligatorio tras CUALQUIER cambio a MetasEmpresa.
@@ -54,7 +57,10 @@ class DB {
 /** Stub de Helpers::trial_info: solo el plan, leído de la tabla. */
 function trial_info(int $e): array {
     $p = (string)DB::val("SELECT plan FROM empresas WHERE id = ?", [$e]);
-    return ['plan' => $p, 'es_business' => $p === 'business'];
+    // 'business_vencido' simula una licencia Business vencida (no trial):
+    // trial_info conserva plan='business' y marca vencido=true.
+    if ($p === 'business_vencido') return ['plan' => 'business', 'es_business' => true, 'vencido' => true];
+    return ['plan' => $p, 'es_business' => $p === 'business', 'vencido' => false];
 }
 
 require __DIR__ . '/../core/RitmoCot.php';
@@ -79,7 +85,7 @@ DROP TABLE IF EXISTS empresa_metas_estado, empresa_metas_mes, ventas, cotizacion
 SET FOREIGN_KEY_CHECKS=1;
 CREATE TABLE empresas (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, moneda VARCHAR(3) NOT NULL DEFAULT 'MXN',
-  plan VARCHAR(10) NOT NULL DEFAULT 'business'
+  plan VARCHAR(20) NOT NULL DEFAULT 'business'
 ) ENGINE=InnoDB;
 CREATE TABLE cotizaciones (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
@@ -335,7 +341,7 @@ chk('pero se sostiene cerca', [$s1['nivel'], $s1['cambio']], ['cerca', false]);
 
 echo "\n── Conversión ──\n";
 reloj('2026-09-25 10:00:00');
-$ek = empresa('business', 'MXN', 30.00);
+$ek = empresa('business', 'MXN', 30.00); metas($ek, 2026, 9, 1, 2, 3);
 for ($i = 0; $i < 7; $i++) cot($ek, '2026-09-10 10:00:00');
 cot($ek, '2026-09-10 10:00:00', 'borrador');
 cot($ek, '2026-09-10 10:00:00', 'enviada', 1);
@@ -345,16 +351,16 @@ chk('borrador y suspendida no son enviadas (7 + 1 aceptada)', $c['enviadas'], 8)
 chk('8 enviadas ya se lee (CONV_MIN)', $c['nivel'] !== 'gris');
 near('tasa 1/8', $c['tasa'], 0.125, 0.0001);
 chk('12.5% contra 30% → debajo', $c['nivel'], 'debajo');
-$ek2 = empresa('business', 'MXN', 30.00);
+$ek2 = empresa('business', 'MXN', 30.00); metas($ek2, 2026, 9, 1, 2, 3);
 for ($i = 0; $i < 6; $i++) cot($ek2, '2026-09-10 10:00:00');
 chk('7 enviadas → gris', E($ek2)['conv']['mes']['nivel'], 'gris');
-$ek3 = empresa('business', 'MXN', 30.00);
+$ek3 = empresa('business', 'MXN', 30.00); metas($ek3, 2026, 9, 1, 2, 3);
 for ($i = 0; $i < 8; $i++) venta($ek3, '2026-09-10 10:00:00', 1000);
 for ($i = 0; $i < 4; $i++) venta($ek3, '2026-08-10 10:00:00', 1000);   // ventas de agosto... cotizaciones también de agosto
 $c = E($ek3)['conv']['mes'];
 chk('8/8 → topada en 90%', $c['tasa'], 0.9);
 chk('arriba', $c['nivel'], 'arriba');
-$ek4 = empresa('business', 'MXN', 30.00);
+$ek4 = empresa('business', 'MXN', 30.00); metas($ek4, 2026, 9, 1, 2, 3);
 for ($i = 0; $i < 7; $i++) cot($ek4, '2026-09-10 10:00:00');
 for ($i = 0; $i < 3; $i++) venta($ek4, '2026-09-10 10:00:00', 1000);   // 3/10 = 30%
 chk('30% contra 30% → en', E($ek4)['conv']['mes']['nivel'], 'en');
@@ -372,14 +378,133 @@ chk('faltante hacia la pesimista', [$s['ventanas']['mes']['faltante'], $s['venta
 // 20000 / 4200 = 4.76 ventas → /0.3333 = 14.28 → 15 ; /0.25 = 19.05 → 20
 chk('N con la tasa real', $s['faltan_cot']['real'], 15);
 chk('M con la deseada', $s['faltan_cot']['deseada'], 20);
-$eth = empresa(); historia($eth);
+$eth = empresa(); historia($eth); metas($eth, 2026, 9, 1, 2, 3);
 DB::execute("INSERT INTO historial_mensual (empresa_id, anio, mes, ventas_cantidad, ventas_monto) VALUES (?,2026,3,10,50000),(?,2026,2,0,0),(?,2025,1,1,999999)", [$eth, $eth, $eth]);
 $s = E($eth);
 // "últimos 6 meses CAPTURADOS" (diseño §2) = las 6 filas más recientes con ventas,
 // sin importar su antigüedad: la de ene-2025 entra. (1,049,999 / 11)
 chk('respaldo historial_mensual (6 filas capturadas)', [$s['ticket'], $s['ticket_origen']], [95454.45, 'historial']);
-$etn = empresa();
+$etn = empresa(); metas($etn, 2026, 9, 1, 2, 3);
 chk('empresa nueva sin nada → sin ticket', E($etn)['ticket'], null);
+
+echo "\n── Auditoría: alerta, conversión apagada, huecos, edición, frontera ──\n";
+reloj('2026-09-25 10:00:00');
+// A — la alerta NO la consume quien lee primero.
+$ea = empresa(); historia($ea); metas($ea, 2026, 8, 50000, 100000, 150000); metas($ea, 2026, 9, 50000, 100000, 150000);
+$va = venta($ea, '2026-09-10 10:00:00', 85000);
+E($ea);                                                     // primera lectura: cerca
+DB::execute("UPDATE ventas SET total = 60000 WHERE id = ?", [$va]);
+MetasEmpresa::reset(); MetasEmpresa::nivel($ea);           // el ASESOR lee primero y escribe la transición
+$s = E($ea);                                                // luego el admin
+chk('A: el admin ve la alerta aunque el asesor leyó antes', [$s['ventanas']['mes']['alerta'], $s['ventanas']['mes']['nivel_anterior']], [true, 'cerca']);
+chk('A: cambio=false para el admin (no se usa para alertar)', $s['ventanas']['mes']['cambio'], false);
+reloj('2026-09-27 11:00:00');                               // pasadas 48 h
+chk('A: la alerta caduca a las ' . MetasEmpresa::ALERTA_HORAS . ' h', E($ea)['ventanas']['mes']['alerta'], false);
+reloj('2026-09-25 10:00:00');
+chk('A: primera lectura nunca es alerta', E($ep)['ventanas']['mes']['alerta'], false);
+
+// B — sin metas o sin historia NO sale texto de conversión para el asesor.
+$eb = empresa('business', 'MXN', 30.00);
+for ($i = 0; $i < 10; $i++) cot($eb, '2026-09-10 10:00:00');
+$nb = MetasEmpresa::nivel($eb);
+chk('B: tasa declarada sin metas → sin texto', array_filter(MetasEmpresa::frases($nb)), []);
+$eb2 = empresa('business', 'MXN', 30.00); metas($eb2, 2026, 9, 1, 2, 3);
+for ($i = 0; $i < 10; $i++) cot($eb2, '2026-09-10 10:00:00');
+venta($eb2, '2026-09-01 10:00:00', 100);                  // historia de 24 días
+$fb = MetasEmpresa::frases(MetasEmpresa::nivel($eb2));
+chk('B: sin historia → solo la frase de historia, sin conversión', array_values(array_filter($fb)), ['Todavía no hay suficiente historia para leer cómo va la empresa.']);
+chk('B: el admin sí conserva el dato de conversión', E($eb2)['conv']['mes']['enviadas'], 11);
+
+// C — la ventana de 30 días no compara contra un nivel viejo después de un hueco.
+$eg = empresa(); historia($eg); metas($eg, 2026, 8, 1, 2, 3); metas($eg, 2026, 9, 1, 2, 3);
+venta($eg, '2026-09-10 10:00:00', 50);
+chk('C: arranca en sobrepasada', E($eg)['ventanas']['d30']['nivel'], 'sobrepasada');
+DB::execute("DELETE FROM empresa_metas_mes WHERE empresa_id = ?", [$eg]);
+E($eg);                                                     // hueco: sin metas
+chk('C: el hueco borra la memoria', (int)DB::val("SELECT COUNT(*) FROM empresa_metas_estado WHERE empresa_id=?", [$eg]), 0);
+metas($eg, 2026, 8, 1000, 2000, 3000); metas($eg, 2026, 9, 1000, 2000, 3000);
+$s = E($eg)['ventanas']['d30'];
+chk('C: al volver es primera lectura (sin alerta vieja)', [$s['nivel'], $s['alerta'], $s['nivel_anterior']], ['sin_equilibrio', false, null]);
+
+// Mes heredado: misma fila (misma firma) pero OTRO periodo → primera lectura.
+$eo = empresa(); historia($eo); metas($eo, 2026, 8, 1, 2, 3); metas($eo, 2026, 9, 100, 200, 300);
+venta($eo, '2026-09-10 10:00:00', 500);
+chk('heredado: septiembre sobrepasada', E($eo)['ventanas']['mes']['nivel'], 'sobrepasada');
+reloj('2026-10-02 10:00:00');                          // octubre hereda la fila de septiembre
+$s = E($eo)['ventanas']['mes'];
+chk('heredado: octubre es primera lectura, sin arrastre ni alerta', [$s['nivel'], $s['alerta'], $s['nivel_anterior'], $s['provisional']], ['sin_equilibrio', false, null, true]);
+reloj('2026-09-25 10:00:00');
+
+// C bis — hueco solo en la ventana de 30 días (el mes sigue leyéndose).
+$eg2 = empresa(); historia($eg2); metas($eg2, 2026, 8, 1, 2, 3); metas($eg2, 2026, 9, 1, 2, 3);
+venta($eg2, '2026-09-10 10:00:00', 50);
+E($eg2);
+DB::execute("DELETE FROM empresa_metas_mes WHERE empresa_id = ? AND mes = 8", [$eg2]);
+$s = E($eg2);
+chk('C bis: d30 sin cobertura, mes sí', [$s['ventanas']['d30']['estado'], $s['ventanas']['mes']['estado']], ['sin_metas', 'ok']);
+chk('C bis: se olvida SOLO la memoria de d30', DB::query("SELECT ventana FROM empresa_metas_estado WHERE empresa_id=? ORDER BY ventana", [$eg2]), [['ventana' => 'mes']]);
+
+// D — editar las metas no dispara alerta.
+$ed2 = empresa(); historia($ed2); metas($ed2, 2026, 8, 50000, 100000, 150000); metas($ed2, 2026, 9, 50000, 100000, 150000);
+venta($ed2, '2026-09-10 10:00:00', 60000);
+chk('D: antes de editar: baja', E($ed2)['ventanas']['mes']['nivel'], 'baja');
+metas($ed2, 2026, 9, 20000, 40000, 60000);
+$s = E($ed2)['ventanas']['mes'];
+chk('D: tras editar: sobrepasada sin alerta', [$s['nivel'], $s['alerta'], $s['nivel_anterior']], ['sobrepasada', false, null]);
+
+// E — la frontera ±10% no depende del binario.
+$rc = new ReflectionMethod('MetasEmpresa', '_conv');
+chk('E: 27/100 vs 30% → en',  $rc->invoke(null, 100, 27, 0.30)['nivel'], 'en');
+chk('E: 18/100 vs 20% → en',  $rc->invoke(null, 100, 18, 0.20)['nivel'], 'en');
+chk('E: 36/100 vs 40% → en',  $rc->invoke(null, 100, 36, 0.40)['nivel'], 'en');
+chk('E: 44/100 vs 40% → en (frontera de arriba)', $rc->invoke(null, 100, 44, 0.40)['nivel'], 'en');
+chk('E: 26/100 vs 30% → debajo', $rc->invoke(null, 100, 26, 0.30)['nivel'], 'debajo');
+chk('E: 34/100 vs 30% → arriba', $rc->invoke(null, 100, 34, 0.30)['nivel'], 'arriba');
+
+// Datos inconsistentes (la captura de la fase 2 los rechazará, pero hoy nada lo impide).
+chk('E>P: alcanzar el equilibrio ya es llegó', $rf->invoke(null, 120000.0, 120000.0, 100000.0, 150000.0), 'llego');
+chk('E>P: debajo del equilibrio sigue sin_equilibrio', $rf->invoke(null, 110000.0, 120000.0, 100000.0, 150000.0), 'sin_equilibrio');
+chk('O<P: la pesimista ya es sobrepasada', $rf->invoke(null, 100000.0, 50000.0, 100000.0, 80000.0), 'sobrepasada');
+
+// Cada nivel de conversión lleva SU frase (mutación M26: frases cruzadas).
+$fc = fn($k) => MetasEmpresa::frases(['conv_mes' => $k])['conv_mes'];
+chk('conv debajo → "por debajo"', $fc('debajo'), 'La empresa cierra por debajo de lo que busca en este mes.');
+chk('conv en → "en lo que busca"', $fc('en'), 'La empresa cierra en lo que busca en este mes.');
+chk('conv arriba → "por encima"', $fc('arriba'), 'La empresa cierra por encima de lo que busca en este mes.');
+$fl = fn($k) => MetasEmpresa::frases(['mes' => $k])['mes'];
+$esperadas = [
+    'sin_equilibrio' => 'La empresa ni siquiera llega al punto de equilibrio en este mes.',
+    'muy_baja' => 'La empresa va muy baja en este mes.',
+    'baja' => 'La empresa va baja en este mes.',
+    'debajo' => 'La empresa va por debajo de su meta en este mes.',
+    'cerca' => 'La empresa va cerca de su meta en este mes.',
+    'casi' => 'La empresa casi llega a su meta en este mes.',
+    'llego' => 'La empresa ya llegó a su meta en este mes.',
+    'casi_optima' => 'La empresa casi llega a su meta optimista en este mes.',
+    'sobrepasada' => 'La empresa ya sobrepasó su meta optimista en este mes.',
+];
+foreach ($esperadas as $k => $txt) chk("frase $k", $fl($k), $txt);
+chk('frases() no truena si le pasan estado() por error', is_array(MetasEmpresa::frases(E($ep))));
+
+// Ticket: la receta muerde (DI, sin pago) y el corte de 5 es exacto.
+$et2 = empresa(); historia($et2, '2026-09-01 10:00:00'); metas($et2, 2026, 9, 1, 2, 3);
+for ($i = 0; $i < 3; $i++) venta($et2, '2026-09-05 10:00:00', 1000);
+venta($et2, '2026-09-05 10:00:00', 90000, 0);                         // sin pago
+venta($et2, '2026-09-05 10:00:00', 90000, 5, 'pendiente', 'utilizado'); // DI
+DB::execute("INSERT INTO historial_mensual (empresa_id, anio, mes, ventas_cantidad, ventas_monto) VALUES (?,2026,3,2,7000)", [$et2]);
+chk('ticket: 4 ventas válidas (DI y sin pago fuera) → respaldo historial', [E($et2)['ticket'], E($et2)['ticket_origen']], [3500.0, 'historial']);
+
+// Cotizaciones que faltan: con < CONV_MIN enviadas no se usa la tasa real.
+$ef2 = empresa('business', 'MXN', 25.00); historia($ef2, '2026-06-01 10:00:00');
+metas($ef2, 2026, 8, 20000, 40000, 60000); metas($ef2, 2026, 9, 20000, 40000, 60000);
+for ($i = 0; $i < 4; $i++) venta($ef2, '2026-09-05 10:00:00', 5000);   // 4 enviadas
+$s = E($ef2);
+chk('faltan: tasa real ignorada con 4 enviadas', $s['faltan_cot']['real'], null);
+chk('faltan: la deseada sí', $s['faltan_cot']['deseada'] !== null);
+
+// Licencia Business vencida (no trial): sin metas.
+$evx = empresa('business_vencido'); historia($evx); metas($evx, 2026, 9, 1, 2, 3);
+chk('Business vencida → sin_metas', E($evx)['estado'], 'sin_metas');
 
 echo "\n── Tabla ausente → sin_metas, sin excepción ──\n";
 DB::pdo()->exec("RENAME TABLE empresa_metas_mes TO empresa_metas_mes_x");

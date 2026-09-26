@@ -392,3 +392,30 @@ Si el asesor las recibe o no se decide en §10.7.
 ## Decisión del CEO — tercera ronda (25 sep 2026)
 
 **El mes calendario NO se prorratea.** El avance se mide contra la meta **completa** del mes, y la frase dice *"en este mes"* (por ejemplo, *"La empresa va muy baja en este mes"*). Anula el prorrateo de la §2 (tabla "Las dos ventanas") y la nota "en el mes calendario, contra la meta prorrateada" de la segunda ronda. Razón del CEO: consistencia. Al inicio del mes la frase va a decir "muy baja"; eso es aceptado.
+
+## Fase 1 — construida (26 sep 2026)
+
+`migrations/add_empresa_metas.sql` · `core/MetasEmpresa.php` · `tools/sim_metas.php` (162 comprobaciones contra MariaDB, con `EMULATE_PREPARES=false` como producción; corre la migración real). **La clase no tiene llamadores todavía**: no cambia nada de lo que se ve hoy.
+
+Auditada por un agente independiente con 35 mutaciones, más 9 escritas a mano. Todas las detecta la simulación. Lo que encontró y quedó corregido:
+
+| # | Defecto | Arreglo |
+|---|---|---|
+| A | La alerta de cambio de nivel la "consumía" quien leyera primero, casi siempre un asesor; el admin nunca la veía | `alerta` sale de `nivel_anterior` + `cambiado_at` (vigente `ALERTA_HORAS` = 48 h), no del request que escribió |
+| B | Con tasa deseada pero sin metas, o sin historia, salían frases de conversión | `nivel()` apaga la conversión salvo que `estado = ok` |
+| C | La ventana de 30 días comparaba contra un nivel de meses atrás tras un hueco | Una ventana que no se lee borra su memoria de histéresis |
+| D | Editar las metas a medio mes disparaba una alerta falsa | Columna `firma` en `empresa_metas_estado`: otras metas = primera lectura |
+| E | La frontera ±10% de la conversión dependía del binario (27/100 vs 30% daba "en", 18/100 vs 20% daba "debajo") | Redondeo antes de comparar |
+| F | Una licencia Business **vencida** (no trial) conservaba metas | `_plan_ok` exige `!vencido` |
+| G | En cada carga del dashboard de un Business sin metas corrían todas las consultas | Sale antes si no hay filas; `MIN()` → `ORDER BY … LIMIT 1` |
+| H | En husos con cambio de horario a medianoche, "30 días" sumaba 29 | Se itera a mediodía |
+| I | La migración no se podía volver a correr | `ADD COLUMN IF NOT EXISTS` |
+
+### Decisiones que tomé y necesitan visto bueno del CEO
+1. **`HISTERESIS = 0.05`, no 0.10.** Con escalones de 10 puntos, 0.10 sostenía un nivel casi un escalón entero (el 80% "cerca" se sostenía hasta 72%). Con 0.05 se sostiene hasta 76%.
+2. **La conversión deseada solo le habla al asesor cuando hay metas del mes y 30 días de historia.** El admin sí ve la tasa real siempre que haya metas.
+3. **El ticket de respaldo** toma las 6 filas de `historial_mensual` más recientes **aunque tengan años** (así dice §2: "últimos 6 meses capturados"). Una empresa que importó 2024 y nada más usaría ese ticket. ¿Se acota a 12 meses?
+4. **La escala de 10% ayuda a deducir la meta:** un asesor con `ver_todas_ventas` que ve el total del mes y lee "va cerca" acota la meta a ±5%. Con los 4 niveles originales el margen era mucho mayor. Se suma a §10.9.
+
+### Pendiente antes de migrar (fase 0, en el servidor)
+El índice de `ventas` por `(empresa_id, created_at)`: la clase lo usa en cada lectura.

@@ -34,6 +34,8 @@ class MetasEmpresa
      * casi un escalón entero — pendiente de visto bueno del CEO.)
      */
     public const HISTERESIS = 0.05;
+    /** Horas que la alerta de cambio de nivel sigue visible para el admin. */
+    public const ALERTA_HORAS = 48;
     /** Planes que tienen metas. Pro sigue abierto (§11 del diseño). */
     public const PLANES = ['business'];
 
@@ -102,6 +104,12 @@ class MetasEmpresa
             $filas = DB::query(
                 "SELECT anio, mes, equilibrio, meta_pesimista, meta_optimista, moneda
                    FROM empresa_metas_mes WHERE empresa_id = ? ORDER BY anio, mes", [$e]);
+            // Sin metas no se enciende nada: se sale ANTES de las consultas
+            // pesadas (esto corre en cada carga del dashboard de un Business).
+            if (!$filas) {
+                self::_olvidar($e, ['mes', 'd30']);
+                return self::$memo[$e] = $base;
+            }
 
             // ── Límites (en PHP; NUNCA NOW() en SQL: el reloj es uno solo) ──
             $ini_mes = date('Y-m-01 00:00:00', $t);
@@ -151,14 +159,13 @@ class MetasEmpresa
             // ── Ticket (para "cotizaciones que faltan", admin) ──
             [$base['ticket'], $base['ticket_origen']] = self::_ticket($e, $t);
 
-            if (!$filas) return self::$memo[$e] = $base;   // sin metas: nada se enciende
-
             // ── Historia mínima: 30 días desde la primera venta con pago ──
             $primera = DB::val(
-                "SELECT MIN(v.created_at) FROM ventas v
+                "SELECT v.created_at FROM ventas v
                   WHERE v.empresa_id = ? AND v.estado <> 'cancelada' AND v.pagado > 0 AND v.total > 0
                     AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones di
-                                     WHERE di.cotizacion_id = v.cotizacion_id AND di.estado = 'utilizado')",
+                                     WHERE di.cotizacion_id = v.cotizacion_id AND di.estado = 'utilizado')
+                  ORDER BY v.created_at LIMIT 1",
                 [$e]);
             $con_historia = $primera
                 && strtotime(date('Y-m-d', strtotime((string)$primera))) <= strtotime('-' . self::HISTORIA_DIAS . ' days', strtotime($hoy));
@@ -174,6 +181,7 @@ class MetasEmpresa
                 $m = $metas[$w];
                 if ($m['estado'] !== 'ok') {
                     $base['ventanas'][$w] = self::_ventana_vacia($m['estado']) + ['motivo' => $m['motivo'] ?? null];
+                    self::_olvidar($e, [$w]);   // al volver, es primera lectura: sin alerta contra un nivel viejo
                     continue;
                 }
                 $alguna = true;
@@ -191,17 +199,25 @@ class MetasEmpresa
                     'nivel_crudo' => $crudo,
                     'nivel'       => null,
                     'cambio'      => false,
+                    'alerta'      => false,
                     'nivel_anterior' => null,
                     'cambiado_at' => null,
                 ] + self::_faltante($vw, $m['E'], $m['P'], $m['O']);
 
                 if ($con_historia) {
                     $periodo = $w === 'mes' ? date('Y-m', $t) : 'rolling';
-                    $h = self::_histeresis($e, $w, $periodo, $crudo, $vw, $m['E'], $m['P'], $m['O'], $t);
+                    $h = self::_histeresis($e, $w, $periodo, $m['firma'], $crudo, $vw, $m['E'], $m['P'], $m['O'], $t);
                     $vent['nivel']          = $h['nivel'];
                     $vent['cambio']         = $h['cambio'];
                     $vent['nivel_anterior'] = $h['nivel_anterior'];
                     $vent['cambiado_at']    = $h['cambiado_at'];
+                    // La ALERTA del admin sale de lo guardado, no de 'cambio':
+                    // 'cambio' solo es true para el request que escribió la
+                    // transición, y ése casi siempre es un asesor.
+                    $vent['alerta'] = $h['nivel_anterior'] !== null && $h['cambiado_at'] !== null
+                        && strtotime($h['cambiado_at']) >= $t - self::ALERTA_HORAS * 3600;
+                } else {
+                    self::_olvidar($e, [$w]);
                 }
                 $base['ventanas'][$w] = $vent;
             }
@@ -242,8 +258,10 @@ class MetasEmpresa
         $out = [
             'mes'        => self::_etiqueta($s['ventanas']['mes']),
             'd30'        => self::_etiqueta($s['ventanas']['d30']),
-            'conv_mes'   => $s['conv']['mes']['nivel'],
-            'conv_d30'   => $s['conv']['d30']['nivel'],
+            // La conversión deseada solo se enciende junto con las metas: sin
+            // metas o sin historia NO sale ningún texto de metas (§1).
+            'conv_mes'   => $s['estado'] === 'ok' ? $s['conv']['mes']['nivel'] : 'sin_meta',
+            'conv_d30'   => $s['estado'] === 'ok' ? $s['conv']['d30']['nivel'] : 'sin_meta',
             'dias'       => $s['dia'],
             'mes_nombre' => $s['mes_nombre'],
             'corte'      => $s['hoy'],
@@ -285,7 +303,7 @@ class MetasEmpresa
         }
         foreach (['mes', 'd30'] as $w) {
             $k = $nivel[$w] ?? null;
-            if (isset($txt[$k])) $out[$w] = sprintf($txt[$k], $ventana[$w]);
+            if (is_string($k) && isset($txt[$k])) $out[$w] = sprintf($txt[$k], $ventana[$w]);
         }
 
         $conv = [
@@ -295,7 +313,7 @@ class MetasEmpresa
         ];
         foreach (['mes', 'd30'] as $w) {
             $k = $nivel['conv_' . $w] ?? null;
-            if (isset($conv[$k])) $out['conv_' . $w] = sprintf($conv[$k], $ventana[$w]);
+            if (is_string($k) && isset($conv[$k])) $out['conv_' . $w] = sprintf($conv[$k], $ventana[$w]);
         }
         return $out;
     }
@@ -306,8 +324,14 @@ class MetasEmpresa
 
     private static function _plan_ok(int $e): bool
     {
-        if (!function_exists('trial_info')) return false;
-        return in_array(trial_info($e)['plan'] ?? '', self::PLANES, true);
+        if (!function_exists('trial_info')) {
+            if (!self::$logged) { error_log('[Metas] trial_info() no está cargada'); self::$logged = true; }
+            return false;
+        }
+        $ti = trial_info($e);
+        // Una licencia Business vencida (no trial) conserva plan='business'
+        // con vencido=true: esa NO tiene metas.
+        return in_array($ti['plan'] ?? '', self::PLANES, true) && empty($ti['vencido']);
     }
 
     private static function _ventana_vacia(string $estado): array
@@ -349,6 +373,7 @@ class MetasEmpresa
             'E' => (float)$f['equilibrio'], 'P' => (float)$f['meta_pesimista'], 'O' => (float)$f['meta_optimista'],
             'provisional' => !((int)$f['anio'] === $anio && (int)$f['mes'] === $mes),
             'origen' => sprintf('%04d-%02d', $f['anio'], $f['mes']),
+            'firma'  => self::_firma([$f]),
         ];
     }
 
@@ -359,8 +384,10 @@ class MetasEmpresa
      */
     private static function _metas_d30(array $filas, string $ini, string $hoy, string $moneda): array
     {
-        $E = $P = $O = 0.0; $prov = false; $origenes = [];
-        $d = strtotime(substr($ini, 0, 10)); $fin = strtotime($hoy);
+        $E = $P = $O = 0.0; $prov = false; $origenes = []; $usadas = [];
+        // Se itera a mediodía: con strtotime('+1 day') desde medianoche, un
+        // huso con cambio de horario A LAS 00:00 se salta un día.
+        $d = strtotime(substr($ini, 0, 10) . ' 12:00:00'); $fin = strtotime($hoy . ' 12:00:00');
         for (; $d <= $fin; $d = strtotime('+1 day', $d)) {
             $a = (int)date('Y', $d); $m = (int)date('n', $d); $dm = (int)date('t', $d);
             $f = self::_fila($filas, $a, $m);
@@ -371,9 +398,11 @@ class MetasEmpresa
             $O += (float)$f['meta_optimista'] / $dm;
             if (!((int)$f['anio'] === $a && (int)$f['mes'] === $m)) $prov = true;
             $origenes[sprintf('%04d-%02d', $f['anio'], $f['mes'])] = true;
+            $usadas[$f['anio'] . '-' . $f['mes']] = $f;
         }
         return ['estado' => 'ok', 'E' => $E, 'P' => $P, 'O' => $O,
-                'provisional' => $prov, 'origen' => implode(',', array_keys($origenes))];
+                'provisional' => $prov, 'origen' => implode(',', array_keys($origenes)),
+                'firma' => self::_firma(array_values($usadas))];
     }
 
     /**
@@ -428,24 +457,26 @@ class MetasEmpresa
      * Escribe durante una lectura, como Mesa::armar → mesa_vencidos. Si la
      * tabla no está, devuelve el nivel crudo sin histéresis.
      */
-    private static function _histeresis(int $e, string $w, string $periodo, string $crudo,
+    private static function _histeresis(int $e, string $w, string $periodo, string $firma, string $crudo,
                                         float $V, float $E, float $P, float $O, int $t): array
     {
         $r = ['nivel' => $crudo, 'cambio' => false, 'nivel_anterior' => null, 'cambiado_at' => null];
         try {
-            $prev = DB::row("SELECT periodo, nivel, nivel_anterior, cambiado_at FROM empresa_metas_estado
+            $prev = DB::row("SELECT periodo, firma, nivel, nivel_anterior, cambiado_at FROM empresa_metas_estado
                               WHERE empresa_id = ? AND ventana = ?", [$e, $w]);
             $ahora = date('Y-m-d H:i:s', $t);
             $idx_c = array_search($crudo, self::NIVELES, true);
 
-            if (!$prev || $prev['periodo'] !== $periodo
+            // Otro periodo u otras metas (el admin las editó) = primera lectura:
+            // el nivel nuevo no se compara contra uno calculado con otra vara.
+            if (!$prev || $prev['periodo'] !== $periodo || $prev['firma'] !== $firma
                 || ($idx_p = array_search($prev['nivel'], self::NIVELES, true)) === false) {
                 DB::execute(
-                    "INSERT INTO empresa_metas_estado (empresa_id, ventana, periodo, nivel, nivel_anterior, cambiado_at)
-                     VALUES (?,?,?,?,NULL,?)
-                     ON DUPLICATE KEY UPDATE periodo = VALUES(periodo), nivel = VALUES(nivel),
+                    "INSERT INTO empresa_metas_estado (empresa_id, ventana, periodo, firma, nivel, nivel_anterior, cambiado_at)
+                     VALUES (?,?,?,?,?,NULL,?)
+                     ON DUPLICATE KEY UPDATE periodo = VALUES(periodo), firma = VALUES(firma), nivel = VALUES(nivel),
                                              nivel_anterior = NULL, cambiado_at = VALUES(cambiado_at)",
-                    [$e, $w, $periodo, $crudo, $ahora]);
+                    [$e, $w, $periodo, $firma, $crudo, $ahora]);
                 $r['cambiado_at'] = $ahora;
                 return $r;
             }
@@ -474,6 +505,28 @@ class MetasEmpresa
         }
     }
 
+    /** Huella de las filas de meta que rigen la ventana. */
+    private static function _firma(array $filas): string
+    {
+        $p = [];
+        foreach ($filas as $f) {
+            $p[] = implode('|', [$f['anio'], $f['mes'], $f['equilibrio'], $f['meta_pesimista'], $f['meta_optimista'], $f['moneda']]);
+        }
+        return md5(implode(';', $p));
+    }
+
+    /** Borra la memoria de histéresis de ventanas que hoy no se leen. */
+    private static function _olvidar(int $e, array $ventanas): void
+    {
+        try {
+            foreach ($ventanas as $w) {
+                DB::execute("DELETE FROM empresa_metas_estado WHERE empresa_id = ? AND ventana = ?", [$e, $w]);
+            }
+        } catch (\Throwable $ex) {
+            // Tabla no migrada: no hay memoria que borrar.
+        }
+    }
+
     /** Tasa real (topada) contra la deseada. */
     private static function _conv(int $enviadas, int $ventas, ?float $deseada): array
     {
@@ -483,8 +536,11 @@ class MetasEmpresa
               'deseada' => $deseada, 'nivel' => 'sin_meta'];
         if ($deseada === null || $deseada <= 0) return $c;
         if ($enviadas < self::CONV_MIN)            { $c['nivel'] = 'gris'; return $c; }
-        if ($tasa < $deseada * (1 - self::CONV_BANDA))     $c['nivel'] = 'debajo';
-        elseif ($tasa > $deseada * (1 + self::CONV_BANDA)) $c['nivel'] = 'arriba';
+        // Redondeo antes de comparar: sin él, 27/100 contra 30% daba 'en' y
+        // 18/100 contra 20% daba 'debajo' (misma frontera, distinto binario).
+        $t4 = round($tasa, 6);
+        if ($t4 < round($deseada * (1 - self::CONV_BANDA), 6))     $c['nivel'] = 'debajo';
+        elseif ($t4 > round($deseada * (1 + self::CONV_BANDA), 6)) $c['nivel'] = 'arriba';
         else                                               $c['nivel'] = 'en';
         return $c;
     }

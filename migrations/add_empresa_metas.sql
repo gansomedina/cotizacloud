@@ -24,17 +24,21 @@ CREATE TABLE IF NOT EXISTS empresa_metas_mes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tasa de conversión deseada (fija, no por mes). NULL = no declarada ≠ 0.
+-- IF NOT EXISTS (MariaDB): la migración se puede volver a correr sin tronar.
 ALTER TABLE empresas
-  ADD COLUMN tasa_conv_meta DECIMAL(5,2) NULL,
-  ADD COLUMN tasa_conv_meta_desde DATETIME NULL;
+  ADD COLUMN IF NOT EXISTS tasa_conv_meta DECIMAL(5,2) NULL,
+  ADD COLUMN IF NOT EXISTS tasa_conv_meta_desde DATETIME NULL;
 
 -- Memoria de la histéresis: el último nivel mostrado por ventana.
 -- periodo: 'YYYY-MM' en la ventana 'mes' (otro mes = sin estado previo, así
 -- el cierre de septiembre no se arrastra al 1 de octubre); 'rolling' en 'd30'.
+-- firma: huella de las metas con que se calculó; si el admin las edita, la
+-- siguiente lectura es "primera" y no dispara una alerta falsa.
 CREATE TABLE IF NOT EXISTS empresa_metas_estado (
   empresa_id     INT UNSIGNED NOT NULL,
   ventana        ENUM('mes','d30') NOT NULL,
   periodo        CHAR(7) NOT NULL,
+  firma          CHAR(32) NOT NULL DEFAULT '',
   nivel          VARCHAR(20) NOT NULL,
   nivel_anterior VARCHAR(20) NULL,
   cambiado_at    DATETIME NOT NULL,
