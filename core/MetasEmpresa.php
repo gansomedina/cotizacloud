@@ -364,13 +364,32 @@ class MetasEmpresa
         return false;
     }
 
-    /** "$120,000.50" / "120000" → 120000.5. Vacío o basura → null. */
+    /**
+     * "$120,000.50" / "120000" → 120000.5. Vacío, basura, hex, binario,
+     * notación científica o arreglos → null. Solo dígitos, comas de miles y
+     * un punto decimal: lo que escribe una persona, nada que PHP o JS
+     * "interpreten" distinto (0x10, 1e3, INF).
+     */
     public static function parse_monto(mixed $x): ?float
     {
-        if (is_int($x) || is_float($x)) return (float)$x;
-        $x = trim(str_replace([',', '$', ' '], '', (string)$x));
-        if ($x === '' || !is_numeric($x)) return null;
+        if (is_int($x)) return (float)$x;
+        if (is_float($x)) return is_finite($x) ? $x : null;
+        if (!is_string($x)) return null;
+        $x = trim(str_replace([',', '$', ' '], '', $x));
+        if (!preg_match('/^\d+(\.\d+)?$/', $x)) return null;
         return (float)$x;
+    }
+
+    /** ¿Más de 2 decimales? "180.000" es casi seguro 180 mil con punto de miles. */
+    public static function decimales_de_mas(mixed $x): bool
+    {
+        return is_string($x) && (bool)preg_match('/\.\d{3,}\s*$/', trim($x));
+    }
+
+    /** "septiembre 2026" para cualquier mes (también fuera de la rejilla). */
+    public static function nombre_mes(int $anio, int $mes): string
+    {
+        return (self::MESES[$mes] ?? (string)$mes) . ' ' . $anio;
     }
 
     /**
@@ -380,7 +399,8 @@ class MetasEmpresa
     public static function validar_metas(?float $E, ?float $P, ?float $O): ?string
     {
         if ($E === null || $P === null || $O === null) return 'Captura los tres montos: punto de equilibrio, meta pesimista y meta optimista.';
-        if ($E <= 0 || $P <= 0 || $O <= 0)             return 'Los tres montos deben ser mayores a cero.';
+        // Contra el valor YA redondeado: 0.004 pasaba "> 0" y se guardaba 0.00.
+        if (round($E, 2) <= 0 || round($P, 2) <= 0 || round($O, 2) <= 0) return 'Los tres montos deben ser mayores a cero.';
         if (max($E, $P, $O) > self::MONTO_MAX)         return 'El monto es demasiado grande.';
         if (round($E, 2) > round($P, 2))               return 'La meta pesimista no puede quedar debajo del punto de equilibrio.';
         if (round($P, 2) > round($O, 2))               return 'La meta optimista no puede quedar debajo de la meta pesimista.';

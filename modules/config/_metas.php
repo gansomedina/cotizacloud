@@ -19,10 +19,14 @@ try {
 $mt_moneda = strtoupper((string)($empresa['moneda'] ?? 'MXN'));
 $mt_tasa   = $empresa['tasa_conv_meta'] ?? null;
 $mt_meses  = MetasEmpresa::meses_captura();
-$mt_nombre = [];
-foreach ($mt_meses as $m) $mt_nombre[$m['anio'] * 100 + $m['mes']] = $m['nombre'];
-$mt_otra_moneda = array_values(array_unique(array_filter(
-    array_map(fn($f) => strtoupper($f['moneda']), $mt_filas), fn($m) => $m !== $mt_moneda)));
+// Solo las filas que RIGEN algún mes de la rejilla: una fila vieja en otra
+// moneda que ya nada usa no debe dejar un aviso que el admin no puede quitar.
+$mt_otra_moneda = [];
+foreach ($mt_meses as $m) {
+    $v = MetasEmpresa::fila_vigente($mt_filas, $m['anio'], $m['mes']);
+    if ($v && strtoupper($v['moneda']) !== $mt_moneda) $mt_otra_moneda[strtoupper($v['moneda'])] = true;
+}
+$mt_otra_moneda = array_keys($mt_otra_moneda);
 // Con separador de miles: 1,800,000 y 180,000 no se confunden. El servidor
 // acepta comas (MetasEmpresa::parse_monto).
 $mt_fmt = fn($x) => number_format((float)$x, fmod((float)$x, 1.0) == 0.0 ? 0 : 2, '.', ',');
@@ -41,7 +45,7 @@ $mt_fmt = fn($x) => number_format((float)$x, fmod((float)$x, 1.0) == 0.0 ? 0 : 2
 .mt-err{grid-column:1/-1;font:600 12px var(--body);color:#b91c1c;display:none}
 .mt-ok{font:600 12px var(--body);color:var(--g);display:none}
 .mt-aviso{padding:12px 16px;border-radius:var(--r-sm);background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font:500 13px var(--body);margin-bottom:14px;line-height:1.5}
-@media (max-width:720px){
+@media (max-width:900px){
   .mt-row{grid-template-columns:repeat(3,minmax(0,1fr))}
   .mt-row .mt-mes-c{grid-column:1/-1}
   .mt-row .mt-acc{grid-column:1/-1}
@@ -69,7 +73,7 @@ $mt_fmt = fn($x) => number_format((float)$x, fmod((float)$x, 1.0) == 0.0 ? 0 : 2
     <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">
       <div>
         <label class="field-lbl" for="mt_tasa">Tasa deseada (%)</label>
-        <input class="num-in" id="mt_tasa" type="number" min="<?= MetasEmpresa::TASA_MIN ?>" max="<?= MetasEmpresa::TASA_MAX ?>" step="0.1"
+        <input class="num-in" id="mt_tasa" type="text" inputmode="decimal" autocomplete="off"
                value="<?= $mt_tasa !== null ? e(rtrim(rtrim(number_format((float)$mt_tasa, 2, '.', ''), '0'), '.')) : '' ?>" placeholder="—" style="width:110px">
       </div>
       <button class="mt-btn" type="button" onclick="mtGuardarTasa()">Guardar</button>
@@ -89,8 +93,7 @@ $mt_fmt = fn($x) => number_format((float)$x, fmod((float)$x, 1.0) == 0.0 ? 0 : 2
         $k    = $m['anio'] . '-' . $m['mes'];
         $vig  = MetasEmpresa::fila_vigente($mt_filas, $m['anio'], $m['mes']);
         $prop = $vig && (int)$vig['anio'] === $m['anio'] && (int)$vig['mes'] === $m['mes'];
-        $ori  = $vig && !$prop ? ($mt_nombre[(int)$vig['anio'] * 100 + (int)$vig['mes']]
-                  ?? sprintf('%02d/%04d', $vig['mes'], $vig['anio'])) : null;
+        $ori  = $vig && !$prop ? MetasEmpresa::nombre_mes((int)$vig['anio'], (int)$vig['mes']) : null;
     ?>
     <div class="mt-row<?= $m['actual'] ? ' actual' : '' ?>" data-anio="<?= $m['anio'] ?>" data-mes="<?= $m['mes'] ?>">
       <div class="mt-mes-c">
@@ -107,7 +110,7 @@ $mt_fmt = fn($x) => number_format((float)$x, fmod((float)$x, 1.0) == 0.0 ? 0 : 2
       <div>
         <label class="field-lbl"><?= $lbl ?></label>
         <input class="num-in mt-<?= $campo ?>" type="text" inputmode="decimal" autocomplete="off" onblur="mtFormato(this)"
-               value="<?= $prop ? e($mt_fmt($vig[$col])) : '' ?>"
+               value="<?= $prop ? e($mt_fmt($vig[$col])) : '' ?>" data-orig="<?= $prop ? e($mt_fmt($vig[$col])) : '' ?>"
                placeholder="<?= $vig && !$prop ? e($mt_fmt($vig[$col])) : '' ?>">
       </div>
       <?php endforeach; ?>
@@ -133,14 +136,28 @@ async function mtPost(body) {
     });
     let d = null;
     try { d = await r.json(); } catch (e) {}
+    // Sin JSON: sesión vencida (redirige al login) o permiso retirado.
+    if (!d && (r.redirected || r.status === 401 || r.status === 403)) {
+        return {ok: false, error: 'Tu sesión expiró o ya no tienes permiso. Recarga la página.'};
+    }
     return d || {ok: false, error: 'No se pudo guardar. Revisa tu conexión.'};
 }
 // 180000 → 180,000 al salir del campo. Si no es número, se deja como está
 // y el servidor responde con el error.
+// Solo se formatea lo que es claramente un monto (dígitos, comas, hasta 2
+// decimales). "180.000", "0x10" o "1e3" se dejan tal cual: el servidor los
+// rechaza con su mensaje en vez de que el formato los cambie a otro número.
 function mtFormato(el) {
-    const n = Number(String(el.value).replace(/[,$\s]/g, ''));
-    if (el.value.trim() === '' || !isFinite(n)) return;
+    const t = String(el.value).trim().replace(/^\$/, '');
+    if (!/^[\d,]+(\.\d{1,2})?$/.test(t)) return;
+    const n = Number(t.replace(/,/g, ''));
+    if (!isFinite(n)) return;
     el.value = n.toLocaleString('en-US', {maximumFractionDigits: 2});
+}
+// ¿Algún OTRO mes tiene cambios sin guardar?
+function mtOtrosSucios(row) {
+    return [...document.querySelectorAll('#panel-metas .mt-row')].some(r => r !== row &&
+        [...r.querySelectorAll('input[data-orig]')].some(i => i.value.trim() !== i.dataset.orig));
 }
 function mtRecargar() { location.href = '/config?tab=metas'; }
 function mtErr(el, msg) { el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
@@ -165,12 +182,19 @@ async function mtGuardarMes(btn) {
                             equilibrio: v('equilibrio'), pesimista: v('pesimista'), optimista: v('optimista')});
     btn.disabled = false;
     if (!d.ok) { mtErr(err, d.error); return; }
+    // Recargar borraría lo que el admin lleva escrito en otros meses.
+    if (mtOtrosSucios(row)) {
+        row.querySelectorAll('input[data-orig]').forEach(i => i.dataset.orig = i.value.trim());
+        row.querySelector('.mt-origen').textContent = '✓ Guardado — recarga al terminar para ver cómo heredan los demás meses';
+        return;
+    }
     mtRecargar();
 }
 
 async function mtBorrarMes(btn) {
     if (!confirm('¿Quitar las metas de este mes? Usará las del último mes capturado antes que él.')) return;
     const row = btn.closest('.mt-row'), err = row.querySelector('.mt-err');
+    if (mtOtrosSucios(row) && !confirm('Tienes cambios sin guardar en otros meses y se van a perder. ¿Continuar?')) return;
     const d = await mtPost({accion: 'borrar', anio: +row.dataset.anio, mes: +row.dataset.mes});
     if (!d.ok) { mtErr(err, d.error); return; }
     mtRecargar();

@@ -430,3 +430,20 @@ El índice de `ventas` por `(empresa_id, created_at)`: la clase lo usa en cada l
 - `ventas` tiene `idx_vta_empresa (empresa_id, estado, created_at)`: la consulta entra por `empresa_id`. Con ~341 ventas en total **no hace falta índice nuevo**; revisar si pasa de decenas de miles.
 - Las 9 empresas operan en MXN.
 - `empresa_metas%` no existe todavía: la migración no se ha corrido.
+
+## Fase 2 — captura (27 sep 2026)
+
+Pestaña **Configuración › Metas** (Business, solo admin) en `modules/config/_metas.php` y endpoint `POST /config/metas` en `modules/config/guardar_metas.php`. La validación vive en `MetasEmpresa` (`validar_metas`, `validar_tasa`, `parse_monto`, `meses_captura`), la misma que prueba `sim_metas` (240 comprobaciones: corre el endpoint real contra MariaDB y renderiza la pestaña).
+
+- Rejilla de 12 meses (actual −5 … +6). Un mes sin capturar muestra en gris lo que hereda y de qué mes.
+- Guardar exige los tres montos y equilibrio ≤ pesimista ≤ optimista. "Quitar" devuelve el mes a heredar.
+- Tasa deseada 3–90 %; vacía = no declarada. `tasa_conv_meta_desde` solo se mueve cuando el valor cambia.
+- Ticket de respaldo: `historial_mensual` solo del último año (CEO, 27 sep).
+
+Auditoría independiente: sin huecos de seguridad. Corregido:
+1. El campo de tasa era `type="number"`: con "25,5" o "25%" el navegador mandaba vacío, y eso **borraba** la tasa diciendo "✓ Guardado". Ahora es texto; la coma es decimal.
+2. 0.004 pasaba "> 0" y se guardaba 0.00 → el asesor habría leído "sobrepasó su meta optimista" sin vender. Se valida el valor redondeado.
+3. Guardar un mes recargaba la página y tiraba lo escrito en otros meses. Ya no recarga si hay otros meses sin guardar.
+4. El aviso "recaptúralas" se encendía por una fila vieja que nada usa y que el admin no podía quitar. Ahora solo cuenta filas vigentes.
+5. El formato de miles convertía "180.000" en 180 y "0x10" en 16. Ahora solo formatea montos claros; el servidor rechaza hex, notación científica y más de 2 decimales ("para miles usa coma").
+6. Errores sin JSON (sesión vencida) decían "revisa tu conexión"; ahora dicen que se recargue.

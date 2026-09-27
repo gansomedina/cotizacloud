@@ -24,7 +24,7 @@ if ($tab_activo === 'costos') {
     if (!$plan_check['es_pro_o_superior']) $tab_activo = 'empresa';
 }
 
-// Termómetro, Historial y Metas son Business — por URL directa quedaban en blanco
+// Termómetro e Historial son Business — por URL directa quedaban en blanco
 if (in_array($tab_activo, ['termometro', 'historial', 'metas'], true)) {
     $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
     if (!$plan_check['es_business']) $tab_activo = 'empresa';

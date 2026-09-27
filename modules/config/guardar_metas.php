@@ -21,12 +21,14 @@ $empresa_id = EMPRESA_ID;
 if (!MetasEmpresa::plan_ok($empresa_id)) json_error('Las metas son exclusivas del plan Business', 403);
 
 $body   = json_decode(file_get_contents('php://input'), true) ?? [];
-$accion = (string)($body['accion'] ?? '');
+if (!is_array($body)) $body = [];
+$accion = is_string($body['accion'] ?? null) ? $body['accion'] : '';
 
 try {
     if ($accion === 'tasa') {
-        $raw  = trim((string)($body['tasa'] ?? ''));
-        $tasa = $raw === '' ? null : MetasEmpresa::parse_monto(str_replace('%', '', $raw));
+        $raw  = is_scalar($body['tasa'] ?? null) ? trim((string)$body['tasa']) : 'x';
+        // En la tasa la coma es DECIMAL ("12,5" = 12.5): nadie escribe miles en un porcentaje.
+        $tasa = $raw === '' ? null : MetasEmpresa::parse_monto(str_replace(['%', ','], ['', '.'], $raw));
         if ($raw !== '' && $tasa === null) json_error('Escribe la tasa como número, por ejemplo 25.');
         if ($tasa !== null) $tasa = round($tasa, 2);
         if ($err = MetasEmpresa::validar_tasa($tasa)) json_error($err);
@@ -56,6 +58,11 @@ try {
 
     if ($accion !== 'mes') json_error('Acción inválida');
 
+    foreach (['equilibrio', 'pesimista', 'optimista'] as $k) {
+        if (MetasEmpresa::decimales_de_mas($body[$k] ?? null)) {
+            json_error('Los montos llevan máximo 2 decimales. Para miles usa coma: 180,000.');
+        }
+    }
     $E = MetasEmpresa::parse_monto($body['equilibrio'] ?? null);
     $P = MetasEmpresa::parse_monto($body['pesimista'] ?? null);
     $O = MetasEmpresa::parse_monto($body['optimista'] ?? null);
