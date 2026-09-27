@@ -852,10 +852,45 @@ MetasEmpresa::reset();
 chk('tip, niveles distintos: dos frases seguidas', MetasEmpresa::texto_tip($eT5), 'La empresa va por debajo de su meta en este mes. La empresa ya sobrepasó su meta optimista en los últimos 30 días.');
 MetasEmpresa::reset();
 chk('tip sin historia: nada', MetasEmpresa::texto_tip($eT2), '');
+chk('tip sin historia: nada aunque traiga debilidad', MetasEmpresa::texto_tip($eT2, 'seguimiento'), '');
+
+echo "\n── Tip: puente según la empresa y la debilidad del tip ──\n";
+MetasEmpresa::reset();
+chk('arriba + seguimiento (Abigail hoy)', MetasEmpresa::texto_tip($eR, 'seguimiento'),
+    'La empresa ya sobrepasó su meta optimista en este mes y en los últimos 30 días. Para sumarte a ese resultado, empieza por ponerte al día con tus seguimientos.');
+chk('arriba + bien', MetasEmpresa::texto_tip($eR, 'bien'),
+    'La empresa ya sobrepasó su meta optimista en este mes y en los últimos 30 días. Tu trabajo es parte de ese resultado.');
+chk('debilidad desconocida (legacy): sin puente', MetasEmpresa::texto_tip($eR, null), 'La empresa ya sobrepasó su meta optimista en este mes y en los últimos 30 días.');
+chk('debilidad que no existe: sin puente', MetasEmpresa::texto_tip($eR, 'xyz'), 'La empresa ya sobrepasó su meta optimista en este mes y en los últimos 30 días.');
+$eB = empresa(); historia($eB); metas($eB, 420000, 590000, 690000); venta($eB, '2026-09-10 10:00:00', 100000);
+MetasEmpresa::reset();
+chk('abajo + citas', MetasEmpresa::texto_tip($eB, 'citas'),
+    'La empresa ni siquiera llega al punto de equilibrio en este mes y en los últimos 30 días. Cada venta cuenta: agendar citas es lo que más ayuda ahora.');
+chk('abajo + bien', str_ends_with(MetasEmpresa::texto_tip($eB, 'bien'), 'Tu trabajo está empujando; sigue así.'));
+$eCm = empresa(); historia($eCm); metas($eCm, 420000, 590000, 690000); venta($eCm, '2026-09-10 10:00:00', 540000);
+MetasEmpresa::reset();
+chk('camino + cierre', str_ends_with(MetasEmpresa::texto_tip($eCm, 'cierre'), 'Está cerca: cerrar lo que ya abriste puede ser lo que falte.'));
+chk('camino + bien', str_ends_with(MetasEmpresa::texto_tip($eCm, 'bien'), 'Tu ritmo ayuda a que llegue.'));
+MetasEmpresa::reset();
+chk('la banda la manda el MES (mes camino, 30 días arriba)', str_ends_with(MetasEmpresa::texto_tip($eT5, 'ticket'), 'Está cerca: subir tu ticket puede ser lo que falte.'));
+// Las 12 debilidades con acción producen puente, y ninguno lleva cifras ni "vas".
+$rt_src = file_get_contents(__DIR__ . '/../core/RitmoTip.php');
+preg_match_all("/return \\['([a-z_]+)'/", $rt_src, $mm);
+$debs = array_values(array_diff(array_unique($mm[1]), ['handle']));   // 'handle' es la clave del arreglo de salida, no una debilidad
+$sin = [];
+foreach ($debs as $dk) {
+    MetasEmpresa::reset();
+    $tx = MetasEmpresa::texto_tip($eB, $dk);
+    if ($tx === 'La empresa ni siquiera llega al punto de equilibrio en este mes y en los últimos 30 días.') $sin[] = $dk;
+    if (preg_match('/\d|\bvas\b|te faltan|tu meta/iu', str_replace('30 días', '', $tx))) $sin[] = "CIFRA:$dk";
+}
+chk('toda debilidad que devuelve RitmoTip tiene puente (' . count($debs) . ' debilidades)', $sin, []);
+chk('el dashboard pasa la debilidad del tip SOLO si el tip mostrado es el del motor nuevo',
+    str_contains($dsh, "(\$ts_rt && trim(\$ts_rt['texto']) !== '') ? (\$ts_rt['debilidad'] ?? null) : null"));
 chk('se anexa AL TIP, en la parte de "ver más" ($diag_b2), no como bloque aparte',
     str_contains($dsh, "if (\$ts_meta_txt !== '') \$diag_b2 = trim(\$diag_b2 . ' ' . \$ts_meta_txt);") && !str_contains($dsh, 'thermo-metas'));
 chk('la primera parte del tip ($diag_b1) se corta ANTES de anexar: queda idéntica',
-    strpos($dsh, "\$diag_b1 = trim(mb_substr(\$perfil, 0, \$pcut));") < strpos($dsh, 'MetasEmpresa::texto_tip(EMPRESA_ID)')
+    strpos($dsh, "\$diag_b1 = trim(mb_substr(\$perfil, 0, \$pcut));") < strpos($dsh, 'MetasEmpresa::texto_tip(EMPRESA_ID,')
     && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
 chk('el texto del tip NO se toca ($ts_diag no menciona metas)', !preg_match('/\$ts_diag\s*=.*Metas/', $dsh) && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
 chk('la tarjeta del admin se incluye antes de Ritmo', strpos($dsh, "include __DIR__ . '/_metas.php'") < strpos($dsh, "include __DIR__ . '/_ritmo.php'"));

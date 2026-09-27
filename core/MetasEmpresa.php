@@ -325,19 +325,71 @@ class MetasEmpresa
         return $out;
     }
 
+    /** La acción que corresponde a cada debilidad del tip (RitmoTip::_debilidad). */
+    private const ACCION_TIP = [
+        'seguimiento'  => 'ponerte al día con tus seguimientos',
+        'citas'        => 'agendar citas',
+        'cierre'       => 'cerrar lo que ya abriste',
+        'contacto'     => 'lograr que te contesten',
+        'calientes'    => 'atender a los que ya mostraron interés',
+        'enfriamiento' => 'retomar a los que se enfriaron',
+        'radar'        => 'responder a las señales del Radar',
+        'precio'       => 'defender el precio en vez de soltar al cliente',
+        'objeciones'   => 'resolver las objeciones que quedaron en el aire',
+        'califica'     => 'calificar antes de descartar',
+        'descuento'    => 'cerrar sin descuento',
+        'ticket'       => 'subir tu ticket',
+    ];
+
+    /** Banda de la empresa para el puente del tip. */
+    private static function _banda(string $nivel): string
+    {
+        return match ($nivel) {
+            'sin_equilibrio', 'muy_baja', 'baja' => 'abajo',
+            'debajo', 'cerca', 'casi'            => 'camino',
+            default                              => 'arriba',   // llego, casi_optima, sobrepasada
+        };
+    }
+
     /**
      * El texto que se ANEXA al tip del asesor (CEO, 27 sep: dentro del tip,
-     * no como bloque aparte). Mes y 30 días; si van en el mismo nivel, una
-     * sola frase: "…en este mes y en los últimos 30 días." '' = nada.
+     * no como bloque aparte, y CONECTADO con lo que dice el tip).
+     *   1) Cómo va la empresa: mes y 30 días; si van en el mismo nivel, una
+     *      sola frase ("…en este mes y en los últimos 30 días.").
+     *   2) Un puente según la banda de la empresa en el mes y la debilidad que
+     *      ya eligió el tip. Sin debilidad conocida (diagnóstico legacy), sin
+     *      puente. Nunca cifras.
+     * '' = nada que anexar.
      */
-    public static function texto_tip(int $e): string
+    public static function texto_tip(int $e, ?string $debilidad = null): string
     {
         $l = self::lineas_tip($e);
+        if (!$l) return '';
         $n = self::nivel($e);
-        if (count($l) === 2 && $n['mes'] === $n['d30']) {
-            return mb_substr($l[0], 0, -1) . ' y en los últimos 30 días.';
+        $base = (count($l) === 2 && $n['mes'] === $n['d30'])
+            ? mb_substr($l[0], 0, -1) . ' y en los últimos 30 días.'
+            : implode(' ', $l);
+
+        // La banda la manda el mes (lo accionable); si el mes no se lee, 30 días.
+        $ref = in_array($n['mes'], self::NIVELES, true) ? $n['mes'] : $n['d30'];
+        $banda = self::_banda($ref);
+
+        $puente = '';
+        if ($debilidad === 'bien') {
+            $puente = [
+                'abajo'  => 'Tu trabajo está empujando; sigue así.',
+                'camino' => 'Tu ritmo ayuda a que llegue.',
+                'arriba' => 'Tu trabajo es parte de ese resultado.',
+            ][$banda];
+        } elseif ($debilidad !== null && isset(self::ACCION_TIP[$debilidad])) {
+            $acc = self::ACCION_TIP[$debilidad];
+            $puente = [
+                'abajo'  => "Cada venta cuenta: {$acc} es lo que más ayuda ahora.",
+                'camino' => "Está cerca: {$acc} puede ser lo que falte.",
+                'arriba' => "Para sumarte a ese resultado, empieza por {$acc}.",
+            ][$banda];
         }
-        return implode(' ', $l);
+        return trim($base . ' ' . $puente);
     }
 
     /**

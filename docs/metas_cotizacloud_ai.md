@@ -503,3 +503,14 @@ Sin fugas de cifras al asesor ni rutas a un error 500. Corregido:
 1. **El reporte deja acotar la tasa deseada.** El pilar Conversión ya imprime *"la empresa 18%"* (existía antes). Junto a *"La empresa cierra en lo que busca"* (±10%), el asesor deduce que la tasa buscada está entre 16.4% y 20%. ¿Se quita la frase de conversión del reporte del asesor, o se acepta?
 2. **Día 1 del mes:** todos los termómetros dicen *"La empresa ni siquiera llega al punto de equilibrio en este mes"*. Es consecuencia directa de no prorratear (decisión de la 3ª ronda).
 3. El reporte impreso probablemente pasa a 2 hojas (aceptado por el CEO).
+
+### El tip conecta la empresa con lo que dice el tip (CEO, 27 sep 2026)
+`MetasEmpresa::texto_tip($e, $debilidad)`: frase de la empresa + un **puente** según la banda del mes (abajo / en camino / arriba) y la debilidad que ya eligió `RitmoTip`:
+
+| Empresa en el mes | Con debilidad | Asesor "bien" |
+|---|---|---|
+| Abajo | Cada venta cuenta: {acción} es lo que más ayuda ahora. | Tu trabajo está empujando; sigue así. |
+| En camino | Está cerca: {acción} puede ser lo que falte. | Tu ritmo ayuda a que llegue. |
+| Arriba | Para sumarte a ese resultado, empieza por {acción}. | Tu trabajo es parte de ese resultado. |
+
+La acción sale de `ACCION_TIP` (12 debilidades + "bien"). Sin tip del motor nuevo (diagnóstico legacy), sin puente. `RitmoTip` no cambia: qué tip se elige, su texto y "citas en cero primero" quedan igual. `sim_metas` falla si `RitmoTip` agrega una debilidad sin acción.
