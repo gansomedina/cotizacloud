@@ -90,6 +90,15 @@ class RitmoReporte
         } catch (Throwable $e) {}
         try { $d['tip'] = RitmoTip::elegir($d, $vistos); } catch (Throwable $e) { $d['tip'] = null; }
 
+        // Metas de la empresa (CotizaCloud AI): SOLO niveles, sin cifras — el
+        // cuerpo lo lee el asesor y se imprime. Va aquí y no en expediente()
+        // porque expediente() también lo usa el tip del dashboard.
+        $d['metas'] = null;
+        try {
+            if (!class_exists('MetasEmpresa')) require_once __DIR__ . '/MetasEmpresa.php';
+            $d['metas'] = MetasEmpresa::nivel($empresa_id);
+        } catch (Throwable $e) { $d['metas'] = null; }
+
         $d['secciones'] = self::_componer($d);
         $d['html'] = self::render($d);
         return $d;
@@ -591,7 +600,16 @@ class RitmoReporte
             } catch (Throwable $e) { $ritmo = []; }
         }
 
-        return ['ritmo'=>$ritmo,'comovas'=>$comovas,'cinco'=>$cinco,'brecha'=>$brecha,
+        // ── La empresa (metas): frases FECHADAS ("en septiembre", "al 27/Sep"),
+        // nunca "este mes": el reporte se guarda hasta 7 días y se imprime.
+        $empresa = [];
+        if (!empty($d['metas'])) {
+            try {
+                $empresa = array_values(array_filter(MetasEmpresa::frases($d['metas'], true)));
+            } catch (Throwable $e) { $empresa = []; }
+        }
+
+        return ['empresa'=>$empresa,'ritmo'=>$ritmo,'comovas'=>$comovas,'cinco'=>$cinco,'brecha'=>$brecha,
                 'resumen'=>$res,'embudo'=>$emb,'calidad'=>$cal,'radar'=>$rad,'casos'=>$casos,'precio'=>$prc,'consejo'=>$cons,'meta'=>$meta];
     }
 
@@ -769,6 +787,12 @@ CSS;
         // Orden de lectura para el asesor: primero cómo va y qué significa su
         // score, luego los pilares, y solo después los casos concretos.
         $h .= $sec('Cómo vas', $s['comovas'] ?? []);
+        // Metas de la empresa: sin cifras, fechada. No dice "este mes" ni
+        // "Meta" en el título (choca con "Meta de la semana").
+        if (!empty($s['empresa']) && !empty($d['metas'])) {
+            if (!class_exists('RitmoCot')) require_once __DIR__ . '/RitmoCot.php';
+            $h .= $sec('La empresa en ' . ($d['metas']['mes_nombre'] ?? '') . ' (al ' . RitmoCot::fecha_corta($d['metas']['corte'] ?? date('Y-m-d')) . ')', $s['empresa']);
+        }
         $h .= $sec('Resumen', $s['resumen']);
         $h .= $emb;
         // Después del embudo: es un dato de cadencia de trabajo, no un caso

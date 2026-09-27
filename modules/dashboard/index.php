@@ -889,6 +889,9 @@ if ($plan_intento && in_array($plan_intento, ['lite','pro','business']) && $tria
      cada asesor). Si el ranking no se renderiza, hay fallback abajo. -->
 <?php include __DIR__ . '/_mesa.php'; ?>
 
+<!-- ══ METAS DE LA EMPRESA (CotizaCloud AI — solo admin, con cifras) ══ -->
+<?php include __DIR__ . '/_metas.php'; ?>
+
 <!-- ══ RITMO DEL EQUIPO (Alarma de Ritmo Semanal — solo admin) ══ -->
 <?php include __DIR__ . '/_ritmo.php'; ?>
 
@@ -1031,6 +1034,20 @@ $ts_diag = ($ts_rt && trim($ts_rt['texto']) !== '') ? $ts_rt['texto'] : Activida
         <?php /* Segundo tip (números) OCULTO — demasiada info. Cálculo intacto en
                  $diag_b3/$diag_b4 por si se reactiva. */ ?>
       </div>
+      <?php
+      // Metas de la empresa (CotizaCloud AI): un renglón APARTE dentro del
+      // recuadro del tip, siempre visible. No se mezcla con el texto del tip
+      // para no mover su corte a media frase ni el crédito de "ver más".
+      // Sin cifras: frase en tercera persona, la empresa de sujeto.
+      $ts_meta = null;
+      try {
+          if (!class_exists('MetasEmpresa')) require_once __DIR__ . '/../../core/MetasEmpresa.php';
+          $ts_mn = MetasEmpresa::nivel(EMPRESA_ID);
+          if (in_array($ts_mn['mes'], MetasEmpresa::NIVELES, true)) $ts_meta = MetasEmpresa::frases($ts_mn)['mes'];
+      } catch (Throwable $e) { $ts_meta = null; }
+      if ($ts_meta): ?>
+      <div class="thermo-metas" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font:600 13px var(--body);color:var(--t2)">🏢 <?= e($ts_meta) ?></div>
+      <?php endif; ?>
     </div>
     <?php // Mesa del asesor DENTRO de la tarjeta del score, abajo del tip —
     // como hija de ancho COMPLETO de .thermo (flex-wrap), no dentro de la

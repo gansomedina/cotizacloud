@@ -746,5 +746,69 @@ chk('sin NOW() en SQL (el reloj es uno solo)', stripos(preg_replace('#//[^\n]*#'
 chk('ActividadScore no menciona MetasEmpresa (decisión 6)', strpos(file_get_contents(__DIR__ . '/../core/ActividadScore.php'), 'MetasEmpresa'), false);
 chk('la exclusión del DI va comentada', str_contains($src, 'POR DECISIÓN') && str_contains($src, 'DEL CEO'));
 
+// ═════════════════════════════════════════════════════════════
+//  FASE 3/4 — Dónde se ve: reporte del asesor, tarjeta del admin, tip
+// ═════════════════════════════════════════════════════════════
+echo "\n── Reporte del asesor: sección de la empresa ──\n";
+reloj('2026-09-27 10:00:00');
+$eR = empresa('business', 'MXN', 15.00); historia($eR, '2026-04-13 08:48:16');
+metas($eR, 420000, 590000, 690000); tasa($eR, 0.18, 40);
+venta($eR, '2026-09-10 10:00:00', 806336.30);
+if (!function_exists('e')) { function e($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); } }
+require_once __DIR__ . '/../core/RitmoReporte.php';
+$nR = MetasEmpresa::nivel($eR);
+$dR = ['nombre' => 'Asesor', 'win' => 20, 'score' => null, 'tip' => null, 'metas' => $nR,
+       'secciones' => ['empresa' => array_values(array_filter(MetasEmpresa::frases($nR, true))),
+                       'comovas' => ['COMOVAS'], 'resumen' => ['RESUMEN'], 'embudo' => [], 'ritmo' => [], 'cinco' => [],
+                       'brecha' => [], 'casos' => [], 'precio' => [], 'calidad' => [], 'radar' => [], 'consejo' => [], 'meta' => []]];
+$hR = RitmoReporte::render($dR);
+chk('título fechado, sin "este mes" ni "Meta"', str_contains($hR, 'La empresa en septiembre (al 27/Sep)'));
+chk('frase del mes fechada', str_contains($hR, 'La empresa ya sobrepasó su meta optimista en septiembre.'));
+chk('frase de 30 días fechada', str_contains($hR, 'La empresa ya sobrepasó su meta optimista en los 30 días al 27/Sep.'));
+chk('frase de conversión', str_contains($hR, 'La empresa cierra por encima de lo que busca.'));
+chk('va entre "Cómo vas" y "Resumen"', strpos($hR, 'COMOVAS') < strpos($hR, 'La empresa en septiembre') && strpos($hR, 'La empresa en septiembre') < strpos($hR, 'RESUMEN'));
+$secR = substr($hR, strpos($hR, 'La empresa en septiembre'), strpos($hR, 'RESUMEN') - strpos($hR, 'La empresa en septiembre'));
+chk('la sección no trae cifras de la meta ni de lo vendido', !preg_match('/\$|%|806|590|690|420|18|15/', preg_replace('/27\/Sep|30 días/', '', $secR)));
+chk('en este mes NUNCA en el reporte (se guarda 7 días)', str_contains($hR, 'en este mes'), false);
+$dR['metas'] = null; $dR['secciones']['empresa'] = [];
+chk('sin metas: sin sección', str_contains(RitmoReporte::render($dR), 'La empresa en'), false);
+$rrs = file_get_contents(__DIR__ . '/../core/RitmoReporte.php');
+chk('generar() llena metas con nivel() (sin cifras) y _componer usa frases fechadas',
+    str_contains($rrs, "\$d['metas'] = MetasEmpresa::nivel(\$empresa_id)") && str_contains($rrs, 'MetasEmpresa::frases($d[\'metas\'], true)'));
+chk('expediente() NO cambia (lo usa el tip del dashboard)', !preg_match('/function expediente.*?MetasEmpresa.*?function generar/s', $rrs));
+
+echo "\n── Tarjeta del admin en el dashboard ──\n";
+if (!class_exists('Auth')) { class Auth { public static bool $admin = true; public static function es_admin(): bool { return self::$admin; } } }
+if (!function_exists('format_money')) { function format_money($m, $mon = 'MXN') { return '$' . number_format((float)$m, 2); } }
+define('EMPRESA_ID', $eR);
+$card = function () { MetasEmpresa::reset(); ob_start(); include __DIR__ . '/../modules/dashboard/_metas.php'; return ob_get_clean(); };
+Auth::$admin = true;
+$hC = $card();
+chk('admin ve la tarjeta', str_contains($hC, 'Metas de la empresa'));
+chk('con lo vendido y las tres metas', str_contains($hC, '$806,336.30') && str_contains($hC, '$420,000.00') && str_contains($hC, '$590,000.00') && str_contains($hC, '$690,000.00'));
+chk('con su frase de nivel', str_contains($hC, 'La empresa ya sobrepasó su meta optimista en este mes.'));
+chk('cierre real contra el buscado', str_contains($hC, '18%') && str_contains($hC, 'buscas 15%'));
+chk('liga a editar', str_contains($hC, 'href="/config?tab=metas"'));
+Auth::$admin = false;
+chk('el ASESOR no ve nada de la tarjeta', $card(), '');
+Auth::$admin = true;
+sin_meta($eR);
+chk('sin meta capturada: no hay tarjeta', $card(), '');
+metas($eR, 420000, 590000, 690000);
+
+echo "\n── Tip del termómetro ──\n";
+$dsh = file_get_contents(__DIR__ . '/../modules/dashboard/index.php');
+chk('el renglón usa frases() (sin cifras) y solo niveles reales', str_contains($dsh, "MetasEmpresa::frases(\$ts_mn)['mes']") && str_contains($dsh, 'MetasEmpresa::NIVELES'));
+chk('el texto del tip NO se toca ($ts_diag no menciona metas)', !preg_match('/\$ts_diag\s*=.*Metas/', $dsh) && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
+chk('la tarjeta del admin se incluye antes de Ritmo', strpos($dsh, "include __DIR__ . '/_metas.php'") < strpos($dsh, "include __DIR__ . '/_ritmo.php'"));
+
+// Limpieza: otras pruebas crean sus tablas con CREATE TABLE IF NOT EXISTS
+// (p. ej. test_plan_log con `empresas`). Si esta simulación dejara su esquema
+// mínimo, esas pruebas tronarían por columnas faltantes.
+DB::pdo()->exec("SET FOREIGN_KEY_CHECKS=0;
+DROP TABLE IF EXISTS empresa_metas_estado, empresa_metas_mes, ventas, cotizaciones,
+                     desc_int_activaciones, historial_mensual, empresas;
+SET FOREIGN_KEY_CHECKS=1;");
+
 echo "\n" . ($fail === 0 ? "✓ SIMULACIÓN METAS OK — $ok comprobaciones contra MariaDB real\n" : "✗ $fail FALLAS de " . ($ok + $fail) . "\n");
 exit($fail === 0 ? 0 : 1);

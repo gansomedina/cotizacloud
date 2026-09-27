@@ -475,3 +475,14 @@ Con las metas hay dos datos de cierre: el **autoajustable** (lo que la empresa c
 - Candado igual al de la tarjeta de Ritmo: muestra ≥ 8 y tasa > 0; si no, gris.
 - Para el asesor, sin cifras y sin ventana (la tasa es histórica): *"La empresa cierra por encima / en / por debajo de lo que busca."*
 - `nivel()` expone una sola clave `conv`.
+
+## Dónde se ve (CEO, 27 sep 2026: opciones 1, 2 y 4)
+
+| # | Dónde | Quién | Archivo |
+|---|---|---|---|
+| 1 | Renglón aparte dentro del recuadro del tip del termómetro: *"🏢 La empresa va baja en este mes."* Solo niveles reales (no "sin historia"). **El texto del tip no se toca**: su corte a media frase y el crédito de "ver más" quedan igual | asesor y admin (su propio termómetro) | `modules/dashboard/index.php` |
+| 2 | Sección **"La empresa en {mes} (al {fecha})"** entre "Cómo vas" y "Resumen": mes, 30 días y conversión, **fechadas** (el reporte se guarda 7 días) y sin cifras | quien lee el reporte | `core/RitmoReporte.php` (`generar` → `$d['metas']`, `_componer` → `empresa`, `render`) |
+| 4 | Tarjeta **"Metas de la empresa"** con cifras: vendido del mes y de 30 días con barra y marcas de las tres metas, lo que falta, cierre real contra el buscado, cotizaciones que faltan | **solo admin** | `modules/dashboard/_metas.php`, antes de `_ritmo.php` |
+
+Sin cambios: `RitmoTip`, `DiagnosticoTips`, `ActividadScore`, `RitmoAsesor`, `expediente()`.
+El reporte guardado (7 días) no trae la sección hasta que se genere uno nuevo.
