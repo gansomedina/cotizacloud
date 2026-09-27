@@ -419,3 +419,14 @@ Auditada por un agente independiente con 35 mutaciones, más 9 escritas a mano. 
 
 ### Pendiente antes de migrar (fase 0, en el servidor)
 El índice de `ventas` por `(empresa_id, created_at)`: la clase lo usa en cada lectura.
+
+### Respuestas del CEO (27 sep 2026)
+1. `HISTERESIS = 0.05` — aprobado.
+2. La conversión deseada le habla al asesor **solo** con metas del mes y 30 días de historia; si no, todo sigue como hoy — aprobado.
+3. Ticket de respaldo — pendiente (se le explicó qué es).
+4. La escala de 10% se queda; el 5% de histéresis cubre la preocupación.
+
+### Fase 0 verificada en el servidor (27 sep 2026)
+- `ventas` tiene `idx_vta_empresa (empresa_id, estado, created_at)`: la consulta entra por `empresa_id`. Con ~341 ventas en total **no hace falta índice nuevo**; revisar si pasa de decenas de miles.
+- Las 9 empresas operan en MXN.
+- `empresa_metas%` no existe todavía: la migración no se ha corrido.
