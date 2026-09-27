@@ -20,12 +20,13 @@ class MetasEmpresa
 {
     /** Días desde la primera venta con pago para que se lea algo (CEO, 2ª ronda). */
     public const HISTORIA_DIAS = 30;
-    /** Enviadas mínimas en la ventana para opinar de la conversión. */
+    /**
+     * Muestra histórica mínima para opinar de la conversión: la MISMA que usa
+     * la tarjeta de Ritmo (RitmoAsesor::HIST_MIN = 8) con la misma tasa.
+     */
     public const CONV_MIN = 8;
     /** ±10% alrededor de la tasa deseada = "en lo que busca". */
     public const CONV_BANDA = 0.10;
-    /** Tope de la tasa real, igual que el motor (ActividadScore: min(..., 0.90)). */
-    public const CONV_TOPE = 0.90;
     /**
      * Histéresis para BAJAR de nivel: se sostiene el nivel previo mientras el
      * vendido no caiga más de este % debajo del umbral de ese nivel.
@@ -85,7 +86,7 @@ class MetasEmpresa
             'mes_nombre' => self::MESES[$mes],
             'moneda'     => null,
             'ventanas'   => ['mes' => self::_ventana_vacia('sin_metas'), 'd30' => self::_ventana_vacia('sin_metas')],
-            'conv'       => ['mes' => self::_conv_vacia(), 'd30' => self::_conv_vacia()],
+            'conv'       => self::_conv_vacia(),
             'ticket'     => null,
             'ticket_origen' => null,
             'faltan_cot' => ['real' => null, 'deseada' => null],
@@ -152,18 +153,15 @@ class MetasEmpresa
             $vend = ['mes' => (float)($v['mes'] ?? 0), 'd30' => (float)($v['d30'] ?? 0)];
             $n    = ['mes' => (int)($v['n_mes'] ?? 0), 'd30' => (int)($v['n_30'] ?? 0)];
 
-            // ── Conversión real: ventas (misma receta) ÷ enviadas (embudo del dashboard) ──
-            $env = DB::row(
-                "SELECT COALESCE(SUM(c.created_at >= ?),0) AS mes,
-                        COALESCE(SUM(c.created_at >= ?),0) AS d30
-                   FROM cotizaciones c
-                  WHERE c.empresa_id = ? AND c.estado <> 'borrador' AND c.suspendida = 0
-                    AND c.created_at >= ? AND c.created_at < ?",
-                [$ini_mes, $ini_30, $e, $lo, $manana]
-            ) ?? [];
-            foreach (['mes', 'd30'] as $w) {
-                $base['conv'][$w] = self::_conv((int)($env[$w] ?? 0), $n[$w], $deseada);
-            }
+            // ── Conversión: la tasa AUTOAJUSTABLE de la empresa contra la deseada ──
+            // Es la misma tasa que ya ven el asesor ("la empresa 18%") y los tips
+            // (ActividadScore::close_rate_historico). Decisión del CEO (27 sep):
+            // se AGREGA la comparación contra la deseada, SIN alterar esa tasa ni
+            // dónde se usa. Así hay un solo número de cierre de la empresa: la
+            // deseada nunca se compara contra una cuenta distinta (p. ej. ventas
+            // del mes ÷ enviadas del mes, que brinca con el arrastre de meses
+            // anteriores).
+            $base['conv'] = self::_conv(self::_tasa_empresa($e), $deseada);
 
             // ── Ticket (para "cotizaciones que faltan", admin) ──
             [$base['ticket'], $base['ticket_origen']] = self::_ticket($e, $t);
@@ -224,10 +222,10 @@ class MetasEmpresa
             $vm = $base['ventanas']['mes'];
             if ($vm['estado'] === 'ok' && $vm['faltante'] > 0 && $base['ticket'] > 0) {
                 $necesarias = $vm['faltante'] / $base['ticket'];
-                $cm = $base['conv']['mes'];
+                $cm = $base['conv'];
                 // La tasa real vale aunque no haya deseada declarada; lo que
-                // decide si se usa es la muestra de enviadas, no el nivel.
-                if ($cm['enviadas'] >= self::CONV_MIN && $cm['tasa'] > 0) {
+                // decide si se usa es la muestra, no el nivel.
+                if ($cm['muestra'] >= self::CONV_MIN && $cm['tasa'] > 0) {
                     $base['faltan_cot']['real'] = (int)ceil($necesarias / $cm['tasa']);
                 }
                 if ($deseada) {
@@ -256,8 +254,7 @@ class MetasEmpresa
             'd30'        => self::_etiqueta($s['ventanas']['d30']),
             // La conversión deseada solo se enciende junto con las metas: sin
             // metas o sin historia NO sale ningún texto de metas (§1).
-            'conv_mes'   => $s['estado'] === 'ok' ? $s['conv']['mes']['nivel'] : 'sin_meta',
-            'conv_d30'   => $s['estado'] === 'ok' ? $s['conv']['d30']['nivel'] : 'sin_meta',
+            'conv'       => $s['estado'] === 'ok' ? $s['conv']['nivel'] : 'sin_meta',
             'dias'       => $s['dia'],
             'mes_nombre' => $s['mes_nombre'],
             'corte'      => $s['hoy'],
@@ -273,7 +270,7 @@ class MetasEmpresa
     // ─────────────────────────────────────────────────────────
     public static function frases(array $nivel, bool $fechado = false): array
     {
-        $out = ['mes' => null, 'd30' => null, 'conv_mes' => null, 'conv_d30' => null];
+        $out = ['mes' => null, 'd30' => null, 'conv' => null];
 
         $ventana = [
             'mes' => $fechado ? 'en ' . ($nivel['mes_nombre'] ?? 'este mes') : 'en este mes',
@@ -302,15 +299,14 @@ class MetasEmpresa
             if (is_string($k) && isset($txt[$k])) $out[$w] = sprintf($txt[$k], $ventana[$w]);
         }
 
+        // Sin ventana: la tasa autoajustable es histórica, no del mes.
         $conv = [
-            'debajo' => 'La empresa cierra por debajo de lo que busca %s.',
-            'en'     => 'La empresa cierra en lo que busca %s.',
-            'arriba' => 'La empresa cierra por encima de lo que busca %s.',
+            'debajo' => 'La empresa cierra por debajo de lo que busca.',
+            'en'     => 'La empresa cierra en lo que busca.',
+            'arriba' => 'La empresa cierra por encima de lo que busca.',
         ];
-        foreach (['mes', 'd30'] as $w) {
-            $k = $nivel['conv_' . $w] ?? null;
-            if (is_string($k) && isset($conv[$k])) $out['conv_' . $w] = sprintf($conv[$k], $ventana[$w]);
-        }
+        $k = $nivel['conv'] ?? null;
+        if (is_string($k) && isset($conv[$k])) $out['conv'] = $conv[$k];
         return $out;
     }
 
@@ -406,7 +402,7 @@ class MetasEmpresa
 
     private static function _conv_vacia(): array
     {
-        return ['enviadas' => 0, 'ventas' => 0, 'tasa' => null, 'deseada' => null, 'nivel' => 'sin_meta'];
+        return ['tasa' => null, 'muestra' => 0, 'deseada' => null, 'nivel' => 'sin_meta'];
     }
 
     /** Etiqueta pública de una ventana: el nivel, o su estado si no hay nivel. */
@@ -534,15 +530,27 @@ class MetasEmpresa
         }
     }
 
-    /** Tasa real (topada) contra la deseada. */
-    private static function _conv(int $enviadas, int $ventas, ?float $deseada): array
+    /** Pruebas: sustituye la lectura de la tasa autoajustable. fn(int $e): ['rate'=>, 'muestra'=>] */
+    public static $tasa_fn = null;
+
+    /** La tasa autoajustable de la empresa, tal cual la calcula el motor. Solo lectura. */
+    private static function _tasa_empresa(int $e): array
     {
-        $tasa = $enviadas > 0 ? min($ventas / $enviadas, self::CONV_TOPE) : null;
-        $c = ['enviadas' => $enviadas, 'ventas' => $ventas,
-              'tasa' => $tasa !== null ? round($tasa, 4) : null,
+        if (is_callable(self::$tasa_fn)) return (self::$tasa_fn)($e);
+        if (!class_exists('ActividadScore')) require_once __DIR__ . '/ActividadScore.php';
+        return ActividadScore::close_rate_historico($e);
+    }
+
+    /** Tasa autoajustable contra la deseada. */
+    private static function _conv(array $cr, ?float $deseada): array
+    {
+        $tasa    = (float)($cr['rate'] ?? 0);
+        $muestra = (int)($cr['muestra'] ?? 0);
+        $c = ['tasa' => $tasa > 0 ? round($tasa, 4) : null, 'muestra' => $muestra,
               'deseada' => $deseada, 'nivel' => 'sin_meta'];
         if ($deseada === null || $deseada <= 0) return $c;
-        if ($enviadas < self::CONV_MIN)            { $c['nivel'] = 'gris'; return $c; }
+        // Mismo candado que la tarjeta de Ritmo: sin muestra o sin tasa, no se opina.
+        if ($muestra < self::CONV_MIN || $tasa <= 0) { $c['nivel'] = 'gris'; return $c; }
         // Redondeo antes de comparar: sin él, 27/100 contra 30% daba 'en' y
         // 18/100 contra 20% daba 'debajo' (misma frontera, distinto binario).
         $t4 = round($tasa, 6);

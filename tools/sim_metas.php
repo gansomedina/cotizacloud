@@ -65,6 +65,11 @@ function trial_info(int $e): array {
 
 require __DIR__ . '/../core/RitmoCot.php';
 require __DIR__ . '/../core/MetasEmpresa.php';
+// La tasa AUTOAJUSTABLE la calcula el motor (ActividadScore, con sus propias
+// pruebas). Aquí se inyecta por empresa; default: sin muestra.
+$TASAS = [];
+MetasEmpresa::$tasa_fn = function (int $e) { global $TASAS; return $TASAS[$e] ?? ['rate' => 0.0, 'muestra' => 0]; };
+function tasa(int $e, float $rate, int $muestra): void { global $TASAS; $TASAS[$e] = ['rate' => $rate, 'muestra' => $muestra]; }
 
 $ok = 0; $fail = 0;
 function chk(string $t, $got, $want = true): void {
@@ -346,39 +351,40 @@ $s1 = EST($ed)['ventanas']['d30'];
 chk('crudo bajó a debajo', $s1['nivel_crudo'], 'debajo');
 chk('pero se sostiene cerca', [$s1['nivel'], $s1['cambio']], ['cerca', false]);
 
-echo "\n── Conversión ──\n";
+echo "\n── Conversión: la tasa AUTOAJUSTABLE contra la deseada ──\n";
 reloj('2026-09-25 10:00:00');
-$ek = empresa('business', 'MXN', 30.00); metas($ek, 1, 2, 3);
-for ($i = 0; $i < 7; $i++) cot($ek, '2026-09-10 10:00:00');
-cot($ek, '2026-09-10 10:00:00', 'borrador');
-cot($ek, '2026-09-10 10:00:00', 'enviada', 1);
-venta($ek, '2026-09-12 10:00:00', 1000);                     // su cotización cuenta como enviada (aceptada)
-$c = EST($ek)['conv']['mes'];
-chk('borrador y suspendida no son enviadas (7 + 1 aceptada)', $c['enviadas'], 8);
-chk('8 enviadas ya se lee (CONV_MIN)', $c['nivel'] !== 'gris');
-near('tasa 1/8', $c['tasa'], 0.125, 0.0001);
-chk('12.5% contra 30% → debajo', $c['nivel'], 'debajo');
-$ek2 = empresa('business', 'MXN', 30.00); metas($ek2, 1, 2, 3);
-for ($i = 0; $i < 6; $i++) cot($ek2, '2026-09-10 10:00:00');
-chk('7 enviadas → gris', EST($ek2)['conv']['mes']['nivel'], 'gris');
-$ek3 = empresa('business', 'MXN', 30.00); metas($ek3, 1, 2, 3);
-for ($i = 0; $i < 8; $i++) venta($ek3, '2026-09-10 10:00:00', 1000);
-for ($i = 0; $i < 4; $i++) venta($ek3, '2026-08-10 10:00:00', 1000);   // ventas de agosto... cotizaciones también de agosto
-$c = EST($ek3)['conv']['mes'];
-chk('8/8 → topada en 90%', $c['tasa'], 0.9);
-chk('arriba', $c['nivel'], 'arriba');
-$ek4 = empresa('business', 'MXN', 30.00); metas($ek4, 1, 2, 3);
-for ($i = 0; $i < 7; $i++) cot($ek4, '2026-09-10 10:00:00');
-for ($i = 0; $i < 3; $i++) venta($ek4, '2026-09-10 10:00:00', 1000);   // 3/10 = 30%
-chk('30% contra 30% → en', EST($ek4)['conv']['mes']['nivel'], 'en');
-chk('sin tasa deseada → sin_meta', EST($ek)['conv']['mes']['deseada'] !== null && EST($e)['conv']['mes']['nivel'] === 'sin_meta');
+$ek = empresa('business', 'MXN', 15.00); historia($ek); metas($ek, 1, 2, 3);
+tasa($ek, 0.18, 40);                                          // "la empresa 18%" del reporte
+for ($i = 0; $i < 30; $i++) cot($ek, '2026-09-10 10:00:00');  // muchas enviadas del mes: NO cuentan
+venta($ek, '2026-09-12 10:00:00', 1000);
+$c = EST($ek)['conv'];
+chk('usa la tasa autoajustable tal cual (18%)', [$c['tasa'], $c['muestra']], [0.18, 40]);
+chk('18% contra 15% → arriba (16.5% es la banda)', $c['nivel'], 'arriba');
+chk('ya no existen cuentas por ventana (mes/d30) ni enviadas', array_key_exists('mes', $c) || array_key_exists('enviadas', $c), false);
+$ek2 = empresa('business', 'MXN', 15.00); historia($ek2); metas($ek2, 1, 2, 3);
+tasa($ek2, 0.18, 7);
+chk('muestra 7 (< 8, como la tarjeta de Ritmo) → gris', EST($ek2)['conv']['nivel'], 'gris');
+$ek3 = empresa('business', 'MXN', 15.00); historia($ek3); metas($ek3, 1, 2, 3);
+tasa($ek3, 0.0, 50);
+chk('tasa 0 → gris (no se opina, igual que la tarjeta)', EST($ek3)['conv']['nivel'], 'gris');
+$ek4 = empresa('business', 'MXN', 30.00); historia($ek4); metas($ek4, 1, 2, 3);
+tasa($ek4, 0.30, 20);
+chk('30% contra 30% → en', EST($ek4)['conv']['nivel'], 'en');
+$ek5 = empresa('business', 'MXN', 30.00); historia($ek5); metas($ek5, 1, 2, 3);
+tasa($ek5, 0.20, 20);
+chk('20% contra 30% → debajo', EST($ek5)['conv']['nivel'], 'debajo');
+$ek6 = empresa(); historia($ek6); metas($ek6, 1, 2, 3); tasa($ek6, 0.2, 20);
+chk('sin tasa deseada → sin_meta', EST($ek6)['conv']['nivel'], 'sin_meta');
+chk('nivel() del asesor: conv = arriba', MetasEmpresa::nivel($ek)['conv'], 'arriba');
+chk('frase de conversión, sin ventana (la tasa es histórica)', MetasEmpresa::frases(MetasEmpresa::nivel($ek))['conv'], 'La empresa cierra por encima de lo que busca.');
+chk('en producción lee ActividadScore::close_rate_historico', str_contains(file_get_contents(__DIR__ . '/../core/MetasEmpresa.php'), 'ActividadScore::close_rate_historico($e)'));
 
 echo "\n── Ticket y cotizaciones que faltan ──\n";
 reloj('2026-09-25 10:00:00');
 $et = empresa('business', 'MXN', 25.00); historia($et, '2026-06-01 10:00:00');
 metas($et, 20000, 40000, 60000); metas($et, 20000, 40000, 60000);
 for ($i = 0; $i < 4; $i++) venta($et, '2026-09-05 10:00:00', 5000);    // 20k en el mes
-for ($i = 0; $i < 8; $i++) cot($et, '2026-09-06 10:00:00');            // 12 enviadas, 4 ventas → 33%
+tasa($et, 1/3, 12);                                                     // tasa autoajustable 33%
 $s = EST($et);
 chk('ticket de ventas (5 en 180 días)', [$s['ticket'], $s['ticket_origen']], [4200.0, 'ventas']);
 chk('faltante hacia la pesimista', [$s['ventanas']['mes']['faltante'], $s['ventanas']['mes']['faltante_hacia']], [20000.0, 'pesimista']);
@@ -416,16 +422,17 @@ reloj('2026-09-25 10:00:00');
 chk('A: primera lectura nunca es alerta', EST($ep)['ventanas']['mes']['alerta'], false);
 
 // B — sin metas o sin historia NO sale texto de conversión para el asesor.
-$eb = empresa('business', 'MXN', 30.00);
+$eb = empresa('business', 'MXN', 30.00); tasa($eb, 0.25, 20);
 for ($i = 0; $i < 10; $i++) cot($eb, '2026-09-10 10:00:00');
 $nb = MetasEmpresa::nivel($eb);
 chk('B: tasa declarada sin metas → sin texto', array_filter(MetasEmpresa::frases($nb)), []);
-$eb2 = empresa('business', 'MXN', 30.00); metas($eb2, 1, 2, 3);
+$eb2 = empresa('business', 'MXN', 30.00); metas($eb2, 1, 2, 3); tasa($eb2, 0.25, 20);
 for ($i = 0; $i < 10; $i++) cot($eb2, '2026-09-10 10:00:00');
 venta($eb2, '2026-09-01 10:00:00', 100);                  // historia de 24 días
 $fb = MetasEmpresa::frases(MetasEmpresa::nivel($eb2));
 chk('B: sin historia → solo la frase de historia, sin conversión', array_values(array_filter($fb)), ['Todavía no hay suficiente historia para leer cómo va la empresa.']);
-chk('B: el admin sí conserva el dato de conversión', EST($eb2)['conv']['mes']['enviadas'], 11);
+tasa($eb2, 0.25, 20);
+chk('B: el admin sí conserva el dato de conversión', EST($eb2)['conv']['tasa'], 0.25);
 
 // C — la ventana de 30 días no compara contra un nivel viejo después de un hueco.
 $eg = empresa(); historia($eg); metas($eg, 1, 2, 3); metas($eg, 1, 2, 3);
@@ -457,12 +464,13 @@ chk('D: tras editar: sobrepasada sin alerta', [$s['nivel'], $s['alerta'], $s['ni
 
 // E — la frontera ±10% no depende del binario.
 $rc = new ReflectionMethod('MetasEmpresa', '_conv');
-chk('E: 27/100 vs 30% → en',  $rc->invoke(null, 100, 27, 0.30)['nivel'], 'en');
-chk('E: 18/100 vs 20% → en',  $rc->invoke(null, 100, 18, 0.20)['nivel'], 'en');
-chk('E: 36/100 vs 40% → en',  $rc->invoke(null, 100, 36, 0.40)['nivel'], 'en');
-chk('E: 44/100 vs 40% → en (frontera de arriba)', $rc->invoke(null, 100, 44, 0.40)['nivel'], 'en');
-chk('E: 26/100 vs 30% → debajo', $rc->invoke(null, 100, 26, 0.30)['nivel'], 'debajo');
-chk('E: 34/100 vs 30% → arriba', $rc->invoke(null, 100, 34, 0.30)['nivel'], 'arriba');
+$cv = fn($num, $den, $d) => $rc->invoke(null, ['rate' => $num / $den, 'muestra' => $den], $d)['nivel'];
+chk('E: 27/100 vs 30% → en',  $cv(27, 100, 0.30), 'en');
+chk('E: 18/100 vs 20% → en',  $cv(18, 100, 0.20), 'en');
+chk('E: 36/100 vs 40% → en',  $cv(36, 100, 0.40), 'en');
+chk('E: 44/100 vs 40% → en (frontera de arriba)', $cv(44, 100, 0.40), 'en');
+chk('E: 26/100 vs 30% → debajo', $cv(26, 100, 0.30), 'debajo');
+chk('E: 34/100 vs 30% → arriba', $cv(34, 100, 0.30), 'arriba');
 
 // Datos inconsistentes (la captura de la fase 2 los rechazará, pero hoy nada lo impide).
 chk('E>P: alcanzar el equilibrio ya es llegó', $rf->invoke(null, 120000.0, 120000.0, 100000.0, 150000.0), 'llego');
@@ -470,10 +478,10 @@ chk('E>P: debajo del equilibrio sigue sin_equilibrio', $rf->invoke(null, 110000.
 chk('O<P: la pesimista ya es sobrepasada', $rf->invoke(null, 100000.0, 50000.0, 100000.0, 80000.0), 'sobrepasada');
 
 // Cada nivel de conversión lleva SU frase (mutación M26: frases cruzadas).
-$fc = fn($k) => MetasEmpresa::frases(['conv_mes' => $k])['conv_mes'];
-chk('conv debajo → "por debajo"', $fc('debajo'), 'La empresa cierra por debajo de lo que busca en este mes.');
-chk('conv en → "en lo que busca"', $fc('en'), 'La empresa cierra en lo que busca en este mes.');
-chk('conv arriba → "por encima"', $fc('arriba'), 'La empresa cierra por encima de lo que busca en este mes.');
+$fc = fn($k) => MetasEmpresa::frases(['conv' => $k])['conv'];
+chk('conv debajo → "por debajo"', $fc('debajo'), 'La empresa cierra por debajo de lo que busca.');
+chk('conv en → "en lo que busca"', $fc('en'), 'La empresa cierra en lo que busca.');
+chk('conv arriba → "por encima"', $fc('arriba'), 'La empresa cierra por encima de lo que busca.');
 $fl = fn($k) => MetasEmpresa::frases(['mes' => $k])['mes'];
 $esperadas = [
     'sin_equilibrio' => 'La empresa ni siquiera llega al punto de equilibrio en este mes.',
@@ -497,12 +505,13 @@ venta($et2, '2026-09-05 10:00:00', 90000, 5, 'pendiente', 'utilizado'); // DI
 DB::execute("INSERT INTO historial_mensual (empresa_id, anio, mes, ventas_cantidad, ventas_monto) VALUES (?,2026,3,2,7000)", [$et2]);
 chk('ticket: 4 ventas válidas (DI y sin pago fuera) → respaldo historial', [EST($et2)['ticket'], EST($et2)['ticket_origen']], [3500.0, 'historial']);
 
-// Cotizaciones que faltan: con < CONV_MIN enviadas no se usa la tasa real.
+// Cotizaciones que faltan: con muestra < CONV_MIN no se usa la tasa real.
 $ef2 = empresa('business', 'MXN', 25.00); historia($ef2, '2026-06-01 10:00:00');
 metas($ef2, 20000, 40000, 60000); metas($ef2, 20000, 40000, 60000);
-for ($i = 0; $i < 4; $i++) venta($ef2, '2026-09-05 10:00:00', 5000);   // 4 enviadas
+for ($i = 0; $i < 4; $i++) venta($ef2, '2026-09-05 10:00:00', 5000);
+tasa($ef2, 0.3, 4);
 $s = EST($ef2);
-chk('faltan: tasa real ignorada con 4 enviadas', $s['faltan_cot']['real'], null);
+chk('faltan: tasa real ignorada con muestra de 4', $s['faltan_cot']['real'], null);
 chk('faltan: la deseada sí', $s['faltan_cot']['deseada'] !== null);
 
 // Licencia Business vencida (no trial): sin metas.
@@ -693,7 +702,7 @@ DB::pdo()->exec("RENAME TABLE empresa_metas_estado_x TO empresa_metas_estado");
 echo "\n── Frases y fugas (lo que puede leer un asesor) ──\n";
 reloj('2026-09-25 10:00:00');
 $n = MetasEmpresa::nivel($ep);
-$claves_ok = ['mes', 'd30', 'conv_mes', 'conv_d30', 'dias', 'mes_nombre', 'corte'];
+$claves_ok = ['mes', 'd30', 'conv', 'dias', 'mes_nombre', 'corte'];
 chk('nivel() solo trae etiquetas y calendario', array_keys($n), $claves_ok);
 $vals = json_encode($n);
 chk('nivel() sin los montos del fixture', !preg_match('/85000|100000|50000|150000/', $vals));
@@ -707,7 +716,7 @@ foreach (array_merge(MetasEmpresa::NIVELES, ['sin_historia', 'sin_metas', 'gris'
     foreach (['debajo', 'en', 'arriba', 'gris', 'sin_meta'] as $cv) {
         foreach ([false, true] as $fe) {
             $todas = array_merge($todas, array_values(array_filter(MetasEmpresa::frases(
-                ['mes' => $nv, 'd30' => $nv, 'conv_mes' => $cv, 'conv_d30' => $cv,
+                ['mes' => $nv, 'd30' => $nv, 'conv' => $cv,
                  'dias' => 25, 'mes_nombre' => 'septiembre', 'corte' => '2026-09-25'], $fe))));
         }
     }
@@ -720,7 +729,7 @@ $dig = array_filter($todas, fn($x) => preg_match('/\d/', preg_replace('/(30 día
 chk('los únicos dígitos son calendario (30 días, 25/Sep)', array_values($dig), []);
 $sin3 = array_filter($todas, fn($x) => !str_starts_with($x, 'La empresa') && !str_starts_with($x, 'Todavía'));
 chk('todas en tercera persona, la empresa de sujeto', array_values($sin3), []);
-chk('sin_metas no produce texto', array_filter(MetasEmpresa::frases(['mes' => 'sin_metas', 'd30' => 'sin_metas', 'conv_mes' => 'sin_meta', 'conv_d30' => 'sin_meta'])), []);
+chk('sin_metas no produce texto', array_filter(MetasEmpresa::frases(['mes' => 'sin_metas', 'd30' => 'sin_metas', 'conv' => 'sin_meta'])), []);
 chk('d30 fechado', MetasEmpresa::frases(['d30' => 'baja', 'corte' => '2026-09-25'], true)['d30'], 'La empresa va baja en los 30 días al 25/Sep.');
 
 echo "\n── Memo ──\n";

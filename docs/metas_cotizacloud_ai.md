@@ -463,3 +463,15 @@ La primera versión de la fase 2 capturaba una rejilla de 12 meses con herencia 
 - Queda sin efecto todo lo de herencia, `provisional`, `origen`, cobertura de 30 días, rejilla y "Quitar" por mes. La histéresis conserva `periodo` (mes calendario) y `firma` (ahora de la meta general: editarla = primera lectura, sin alerta).
 
 `sim_metas`: 221 comprobaciones; las mutaciones "d30 repartido por días", "meta incompleta aceptada", "quitar sin empresa", "moneda fija" y "firma fija" quedan atrapadas.
+
+## Conversión deseada: contra la tasa AUTOAJUSTABLE (CEO, 27 sep 2026)
+
+> *"Tenemos que adicionar más bien, sin alterar."*
+
+Con las metas hay dos datos de cierre: el **autoajustable** (lo que la empresa cierra de verdad, `ActividadScore::close_rate_historico`, el "la empresa 18%" del reporte) y el **declarado** (`tasa_conv_meta`, lo que quiere cerrar).
+
+- La autoajustable **sigue siendo la vara del asesor**: tips, tarjeta de Ritmo, reporte y score **no cambian**.
+- La declarada se compara **contra esa misma autoajustable** (no contra ventas del mes ÷ enviadas del mes, que brinca con el arrastre: en sept-26, 6 de las 11 ventas de Hermosillo venían de cotizaciones de julio y agosto). Un solo número de cierre de la empresa en todo el sistema.
+- Candado igual al de la tarjeta de Ritmo: muestra ≥ 8 y tasa > 0; si no, gris.
+- Para el asesor, sin cifras y sin ventana (la tasa es histórica): *"La empresa cierra por encima / en / por debajo de lo que busca."*
+- `nivel()` expone una sola clave `conv`.
