@@ -4820,3 +4820,88 @@ corrió es un correo que viaja por el tubo que acaba de demostrar que se cae. El
 script escribe una línea en `data/`, y el panel de superadmin muestra *"último
 respaldo: hace N horas"*, en rojo pasando de 26. Se ve al entrar, sin depender de
 Brevo ni de Microsoft.
+
+## Sesión 26-27 septiembre 2026 — Metas de la empresa en CotizaCloud AI
+
+Diseño y todas las rondas de decisiones: **`docs/metas_cotizacloud_ai.md`**
+(las secciones del final MANDAN sobre las de arriba).
+
+### Qué es
+La empresa declara **una meta general, igual para todos los meses** (CEO:
+*"no vamos a entrar a qué mes es cuál"*): punto de equilibrio, meta pesimista
+y meta optimista, más una **tasa de conversión deseada**. CotizaCloud AI la
+compara contra lo vendido y lo traduce en frases.
+
+- **Solo Business** (`MetasEmpresa::PLANES`; licencia vencida = sin metas).
+  Pro: decisión abierta.
+- **Captura:** Configuración › Metas (`modules/config/_metas.php`,
+  `POST /config/metas` → `guardar_metas.php`). Valida
+  equilibrio ≤ pesimista ≤ optimista, tasa 3–90%.
+- **Datos:** columnas en `empresas` (`meta_equilibrio/pesimista/optimista`,
+  `meta_moneda`, `meta_capturada_at/por`, `tasa_conv_meta`,
+  `tasa_conv_meta_desde`) + `empresa_metas_estado` (memoria de histéresis).
+  Migración `migrations/add_empresa_metas.sql` — **ya corrida en producción**.
+  La tabla `empresa_metas_mes` de la primera versión se eliminó.
+
+### Reglas (todas del CEO)
+- **Venta** = `ventas.created_at` (fecha de aceptación), con `pagado > 0`, no
+  cancelada, `total > 0`, **sin Descuento Inteligente**. Meses vivos: un
+  anticipo que llega después sube el mes de la aceptación.
+- **Dos ventanas, dos frases:** mes calendario y últimos 30 días, las dos
+  contra la **meta completa** (sin prorrateo). El día 1 se lee "ni siquiera
+  llega al punto de equilibrio en este mes" — aceptado.
+- **Escala de 9 niveles** de 10 en 10% (equilibrio → pesimista → optimista).
+  Histéresis 5%.
+- **Historia mínima:** 30 días desde la primera venta con pago.
+- **Conversión deseada** se compara contra la **tasa autoajustable**
+  (`ActividadScore::close_rate_historico`, el mismo "la empresa X%" del
+  reporte), no contra ventas÷enviadas del mes (brinca con el arrastre: en
+  sept-26, 6 de las 11 ventas de Hermosillo venían de cotizaciones de julio y
+  agosto). Muestra ≥ 8, igual que la tarjeta de Ritmo.
+- **Al asesor nunca cifras.** Tercera persona, "la empresa" de sujeto, nunca
+  "vas". Se acepta que "la empresa 18%" + "cierra en lo que busca" deja acotar
+  la tasa buscada.
+- **Agregar sin alterar:** `RitmoTip`, `DiagnosticoTips`, `ActividadScore`,
+  `RitmoAsesor` y los reportes existentes NO se tocaron.
+
+### Dónde se ve
+| Dónde | Quién | Qué |
+|---|---|---|
+| Tarjeta "Metas de la empresa" (`modules/dashboard/_metas.php`, antes de `_ritmo.php`) | solo admin | vendido mes y 30 días con barra y 3 marcas; cierre y tasa buscada junto al título; cotizaciones que faltan |
+| Tip del termómetro (`dashboard/index.php`) | asesor | **anexado dentro del tip**, al final de la parte de "ver más" (la primera parte no cambia). Frase de la empresa + puente según la banda del mes y la debilidad que eligió `RitmoTip` (`MetasEmpresa::texto_tip`) |
+| Reporte del asesor (`RitmoReporte`) | quien lo lee | sección "La empresa en {mes} (al {fecha})" entre "Cómo vas" y "Resumen", **fechada** (el reporte se guarda 7 días) |
+
+### Pruebas
+`tools/sim_metas.php` — **278 comprobaciones contra MariaDB real**, corre la
+migración real y el endpoint real, con `EMULATE_PREPARES=false` como
+producción. Obligatoria tras cualquier cambio a metas. **Borra sus tablas al
+terminar** (si no, `test_plan_log` truena: usa `CREATE TABLE IF NOT EXISTS
+empresas`). Falla si `RitmoTip` agrega una debilidad sin acción en el puente.
+
+Tres auditorías independientes con mutaciones. Lo que destaparon (corregido):
+la alerta de cambio la "consumía" el asesor; frases de conversión sin metas;
+la tasa `type=number` borraba la tasa con "25,5"; 0.004 se guardaba 0.00;
+leer el dashboard escribía en la base; "bastan" contradictorio; una regresión
+que metiera cifras al tip no la detectaba ninguna prueba.
+
+### Errores míos de esta sesión
+1. **Construí una rejilla de 12 meses que el CEO nunca validó.** Salió de mi
+   diseño; la meta era general. Se rehízo el mismo día.
+2. **Di un `MIGRACION_OK` falso**: supuse que `/var/www/cotizacloud` era un
+   repo git; `git show` falló, `mysql` recibió entrada vacía y "terminó bien".
+   Para el servidor, el SQL va **dentro del heredoc**, nunca por `git show`.
+3. **Dije "vende 29 de cada 100"** con ventas del mes ÷ enviadas del mes. Más
+   de la mitad de esas ventas eran de cotizaciones de meses anteriores.
+4. **Propuse cambiar la receta de conversión del reporte** cuando la orden era
+   agregar sin alterar. El CEO me paró: *"estás revolviendo todo"*.
+5. **Culpé al reporte guardado** de que no se viera la sección; la consulta
+   mostró que no había ninguno guardado esa semana.
+
+### Pendiente
+- ⚠️ **On Time Hermosillo (empresa 12) tiene `plan_vence = 2026-09-28`.** Si no
+  se renueva, `trial_info()` la desactiva y sus metas se apagan.
+- Pro: ¿recibe metas? (agregar `'pro'` a `MetasEmpresa::PLANES` y al gate de la
+  pestaña).
+- El reporte impreso probablemente pasa a 2 hojas (aceptado).
+- Opcionales no hechos: renglón bajo el termómetro, barra en el modal del
+  reporte, pestaña Metas en Reportes.
