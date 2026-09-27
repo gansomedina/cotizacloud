@@ -844,7 +844,19 @@ chk('sin meta: el tip no muestra nada', MetasEmpresa::lineas_tip($eT3), []);
 $eT4 = empresa('business', 'USD'); historia($eT4); metas($eT4, 1, 2, 3, 'MXN');
 MetasEmpresa::reset();
 chk('moneda distinta: el tip no muestra nada', MetasEmpresa::lineas_tip($eT4), []);
-chk('el dashboard imprime SOLO lineas_tip() en ese renglón', str_contains($dsh, '$ts_meta = MetasEmpresa::lineas_tip(EMPRESA_ID);') && preg_match_all('/\$ts_meta\s*=/', $dsh) === 3);   // [] · lineas_tip · [] en el catch
+MetasEmpresa::reset();
+chk('tip, mismo nivel: UNA frase con las dos ventanas', MetasEmpresa::texto_tip($eR), 'La empresa ya sobrepasó su meta optimista en este mes y en los últimos 30 días.');
+$eT5 = empresa(); historia($eT5); metas($eT5, 420000, 590000, 690000);
+venta($eT5, '2026-08-30 10:00:00', 300000); venta($eT5, '2026-09-10 10:00:00', 450000);   // mes 450k (cerca) · 30 días 750k (sobrepasada)
+MetasEmpresa::reset();
+chk('tip, niveles distintos: dos frases seguidas', MetasEmpresa::texto_tip($eT5), 'La empresa va por debajo de su meta en este mes. La empresa ya sobrepasó su meta optimista en los últimos 30 días.');
+MetasEmpresa::reset();
+chk('tip sin historia: nada', MetasEmpresa::texto_tip($eT2), '');
+chk('se anexa AL TIP, en la parte de "ver más" ($diag_b2), no como bloque aparte',
+    str_contains($dsh, "if (\$ts_meta_txt !== '') \$diag_b2 = trim(\$diag_b2 . ' ' . \$ts_meta_txt);") && !str_contains($dsh, 'thermo-metas'));
+chk('la primera parte del tip ($diag_b1) se corta ANTES de anexar: queda idéntica',
+    strpos($dsh, "\$diag_b1 = trim(mb_substr(\$perfil, 0, \$pcut));") < strpos($dsh, 'MetasEmpresa::texto_tip(EMPRESA_ID)')
+    && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
 chk('el texto del tip NO se toca ($ts_diag no menciona metas)', !preg_match('/\$ts_diag\s*=.*Metas/', $dsh) && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
 chk('la tarjeta del admin se incluye antes de Ritmo', strpos($dsh, "include __DIR__ . '/_metas.php'") < strpos($dsh, "include __DIR__ . '/_ritmo.php'"));
 

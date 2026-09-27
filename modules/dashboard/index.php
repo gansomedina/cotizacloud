@@ -1020,6 +1020,14 @@ $ts_diag = ($ts_rt && trim($ts_rt['texto']) !== '') ? $ts_rt['texto'] : Activida
       $pcut    = $cut_w($perfil, (int)(mb_strlen($perfil) * 0.45)); // un poco antes de la mitad
       $diag_b1 = trim(mb_substr($perfil, 0, $pcut));
       $diag_b2 = trim(mb_substr($perfil, $pcut));
+      // Metas de la empresa (CotizaCloud AI): se ANEXAN al tip, al final de la
+      // parte que se abre con "ver más" (CEO, 27 sep: dentro del tip, no por
+      // fuera). La primera parte del tip queda idéntica. Sin cifras.
+      try {
+          if (!class_exists('MetasEmpresa')) require_once __DIR__ . '/../../core/MetasEmpresa.php';
+          $ts_meta_txt = MetasEmpresa::texto_tip(EMPRESA_ID);
+          if ($ts_meta_txt !== '') $diag_b2 = trim($diag_b2 . ' ' . $ts_meta_txt);
+      } catch (Throwable $e) {}
       $ts_num  = trim(ActividadScore::diagnostico_numeros($ts, $diag_ctx ?? null));
       $ncut    = $cut_w($ts_num, (int)(mb_strlen($ts_num) * 0.5));
       $diag_b3 = trim(mb_substr($ts_num, 0, $ncut));
@@ -1034,21 +1042,7 @@ $ts_diag = ($ts_rt && trim($ts_rt['texto']) !== '') ? $ts_rt['texto'] : Activida
         <?php /* Segundo tip (números) OCULTO — demasiada info. Cálculo intacto en
                  $diag_b3/$diag_b4 por si se reactiva. */ ?>
       </div>
-      <?php
-      // Metas de la empresa (CotizaCloud AI): un renglón APARTE dentro del
-      // recuadro del tip, siempre visible. No se mezcla con el texto del tip
-      // para no mover su corte a media frase ni el crédito de "ver más".
-      // Sin cifras: frase en tercera persona, la empresa de sujeto.
-      $ts_meta = [];
-      try {
-          if (!class_exists('MetasEmpresa')) require_once __DIR__ . '/../../core/MetasEmpresa.php';
-          $ts_meta = MetasEmpresa::lineas_tip(EMPRESA_ID);
-      } catch (Throwable $e) { $ts_meta = []; }
-      if ($ts_meta): ?>
-      <div class="thermo-metas" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font:600 13px var(--body);color:var(--t2);line-height:1.5">
-        <?php foreach ($ts_meta as $ts_mf): ?><div>🏢 <?= e($ts_mf) ?></div><?php endforeach; ?>
-      </div>
-      <?php endif; ?>
+
     </div>
     <?php // Mesa del asesor DENTRO de la tarjeta del score, abajo del tip —
     // como hija de ancho COMPLETO de .thermo (flex-wrap), no dentro de la

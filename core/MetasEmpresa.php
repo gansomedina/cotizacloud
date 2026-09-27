@@ -326,6 +326,21 @@ class MetasEmpresa
     }
 
     /**
+     * El texto que se ANEXA al tip del asesor (CEO, 27 sep: dentro del tip,
+     * no como bloque aparte). Mes y 30 días; si van en el mismo nivel, una
+     * sola frase: "…en este mes y en los últimos 30 días." '' = nada.
+     */
+    public static function texto_tip(int $e): string
+    {
+        $l = self::lineas_tip($e);
+        $n = self::nivel($e);
+        if (count($l) === 2 && $n['mes'] === $n['d30']) {
+            return mb_substr($l[0], 0, -1) . ' y en los últimos 30 días.';
+        }
+        return implode(' ', $l);
+    }
+
+    /**
      * Los renglones de la sección del REPORTE del asesor: frases FECHADAS
      * (el reporte se guarda 7 días y se imprime), sin cifras, sin vacíos.
      */

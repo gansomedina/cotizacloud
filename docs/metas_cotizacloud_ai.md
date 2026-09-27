@@ -497,7 +497,7 @@ Sin fugas de cifras al asesor ni rutas a un error 500. Corregido:
 ### Decisiones del CEO sobre la auditoría (27 sep 2026)
 - **Se deja** la frase de conversión en el reporte aunque, junto con *"la empresa 18%"*, permita acotar la tasa buscada.
 - **Está bien** que el día 1 todos lean *"ni siquiera llega al punto de equilibrio en este mes"*.
-- El tip del termómetro lleva **dos frases**: mes calendario y últimos 30 días (`MetasEmpresa::lineas_tip`).
+- El tip del termómetro lleva **dos frases**: mes calendario y últimos 30 días, **anexadas dentro del tip** al final de la parte de "ver más" (no como bloque aparte, no tan obvio). Si ambas ventanas van en el mismo nivel, una sola frase: *"…en este mes y en los últimos 30 días."* La primera parte del tip queda idéntica (`MetasEmpresa::texto_tip`).
 
 ### (histórico) Pendientes que se le plantearon
 1. **El reporte deja acotar la tasa deseada.** El pilar Conversión ya imprime *"la empresa 18%"* (existía antes). Junto a *"La empresa cierra en lo que busca"* (±10%), el asesor deduce que la tasa buscada está entre 16.4% y 20%. ¿Se quita la frase de conversión del reporte del asesor, o se acepta?
