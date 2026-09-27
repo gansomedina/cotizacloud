@@ -108,15 +108,23 @@ CREATE TABLE historial_mensual (
   ventas_cantidad INT UNSIGNED NOT NULL DEFAULT 0, ventas_monto DECIMAL(14,2) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB;
 ");
+// Producción ya tiene la tabla por mes de la primera versión: se crea aquí
+// para que la migración demuestre que la quita.
+DB::pdo()->exec("CREATE TABLE empresa_metas_mes (empresa_id INT UNSIGNED NOT NULL PRIMARY KEY) ENGINE=InnoDB");
 // La migración real, sentencia por sentencia (sin comentarios).
 $mig = file_get_contents(__DIR__ . '/../migrations/add_empresa_metas.sql');
 $mig = preg_replace('/--[^\n]*/', '', $mig);
 foreach (array_filter(array_map('trim', explode(';', $mig))) as $sql) DB::pdo()->exec($sql);
+// Re-ejecutable: correrla dos veces no truena.
+$reej = true;
+try { foreach (array_filter(array_map('trim', explode(';', $mig))) as $sql) DB::pdo()->exec($sql); } catch (\Throwable $x) { $reej = false; }
 
 echo "\n── Migración ──\n";
-chk('empresa_metas_mes existe',    (int)DB::val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='simtest' AND table_name='empresa_metas_mes'"), 1);
+chk('la tabla por mes ya NO existe (la meta es general)', (int)DB::val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='simtest' AND table_name='empresa_metas_mes'"), 0);
+chk('empresas trae las 6 columnas de la meta', (int)DB::val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='simtest' AND table_name='empresas' AND column_name IN ('meta_equilibrio','meta_pesimista','meta_optimista','meta_moneda','meta_capturada_at','meta_capturada_por')"), 6);
 chk('empresa_metas_estado existe', (int)DB::val("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='simtest' AND table_name='empresa_metas_estado'"), 1);
 chk('empresas.tasa_conv_meta',     (int)DB::val("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='simtest' AND table_name='empresas' AND column_name IN ('tasa_conv_meta','tasa_conv_meta_desde')"), 2);
+chk('la migración se puede volver a correr', $reej);
 chk('nivel cabe el más largo (sin_equilibrio)', (int)DB::val("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns WHERE table_schema='simtest' AND table_name='empresa_metas_estado' AND column_name='nivel'") >= max(array_map('strlen', MetasEmpresa::NIVELES)));
 
 // ── Fixtures ──
@@ -124,9 +132,18 @@ function empresa(string $plan = 'business', string $moneda = 'MXN', ?float $tasa
     DB::execute("INSERT INTO empresas (plan, moneda, tasa_conv_meta) VALUES (?,?,?)", [$plan, $moneda, $tasa]);
     return (int)DB::pdo()->lastInsertId();
 }
-function metas(int $e, int $a, int $m, float $E, float $P, float $O, string $mon = 'MXN'): void {
-    DB::execute("REPLACE INTO empresa_metas_mes (empresa_id, anio, mes, equilibrio, meta_pesimista, meta_optimista, moneda)
-                 VALUES (?,?,?,?,?,?,?)", [$e, $a, $m, $E, $P, $O, $mon]);
+/** La meta GENERAL de la empresa (una sola, igual para todos los meses). */
+function metas(int $e, float $E, float $P, float $O, string $mon = 'MXN'): void {
+    DB::execute("UPDATE empresas SET meta_equilibrio=?, meta_pesimista=?, meta_optimista=?, meta_moneda=? WHERE id=?",
+        [$E, $P, $O, $mon, $e]);
+}
+function sin_meta(int $e): void {
+    DB::execute("UPDATE empresas SET meta_equilibrio=NULL, meta_pesimista=NULL, meta_optimista=NULL, meta_moneda=NULL WHERE id=?", [$e]);
+}
+/** Simula producción sin migrar: la columna de la meta no existe. */
+function sin_columnas(bool $quitar): void {
+    DB::pdo()->exec($quitar ? "ALTER TABLE empresas RENAME COLUMN meta_equilibrio TO meta_equilibrio_x"
+                            : "ALTER TABLE empresas RENAME COLUMN meta_equilibrio_x TO meta_equilibrio");
 }
 function cot(int $e, string $fecha, string $estado = 'enviada', int $susp = 0): int {
     DB::execute("INSERT INTO cotizaciones (empresa_id, estado, suspendida, created_at) VALUES (?,?,?,?)", [$e, $estado, $susp, $fecha]);
@@ -149,8 +166,8 @@ echo "\n── Receta de vendido y límites (hoy = 25/Sep/2026 10:00) ──\n";
 reloj('2026-09-25 10:00:00');
 $e = empresa();
 historia($e);
-metas($e, 2026, 8, 50000, 100000, 150000);
-metas($e, 2026, 9, 50000, 100000, 150000);
+metas($e, 50000, 100000, 150000);
+metas($e, 50000, 100000, 150000);
 venta($e, '2026-09-01 00:00:00', 1000);                 // primer segundo del mes: entra
 venta($e, '2026-08-31 23:59:59', 2000);                 // último del anterior: fuera de mes, dentro de 30d? no (ini_30 = 27/Ago) → sí
 venta($e, '2026-08-27 00:00:00', 4000);                 // ini_30 exacto (30 fechas contando hoy): entra en d30
@@ -170,7 +187,7 @@ chk('n_30 = 5', $s['ventanas']['d30']['n'], 5);
 chk('n es entero', is_int($s['ventanas']['mes']['n']));
 
 echo "\n── Cero ventas en la ventana ──\n";
-$e0 = empresa(); historia($e0); metas($e0, 2026, 8, 1, 2, 3); metas($e0, 2026, 9, 1, 2, 3);
+$e0 = empresa(); historia($e0); metas($e0, 1, 2, 3); metas($e0, 1, 2, 3);
 $s = EST($e0);
 chk('vendido 0.0 (no null)', $s['ventanas']['mes']['vendido'], 0.0);
 chk('n 0 (no null)', $s['ventanas']['mes']['n'], 0);
@@ -195,67 +212,57 @@ chk('E=P=O: todo o nada', $rf->invoke(null, 100000.0, 100000.0, 100000.0, 100000
 
 echo "\n── Mes calendario SIN prorrateo (CEO, 3ª ronda) ──\n";
 reloj('2026-09-25 10:00:00');
-$ep = empresa(); historia($ep); metas($ep, 2026, 8, 50000, 100000, 150000); metas($ep, 2026, 9, 50000, 100000, 150000);
+$ep = empresa(); historia($ep); metas($ep, 50000, 100000, 150000); metas($ep, 50000, 100000, 150000);
 venta($ep, '2026-09-05 10:00:00', 85000);
 $s = EST($ep);
 chk('meta del mes = completa', $s['ventanas']['mes']['pesimista'], 100000.0);
 chk('85k de 100k → cerca', $s['ventanas']['mes']['nivel'], 'cerca');
 reloj('2026-09-01 08:00:00');
-$e1 = empresa(); historia($e1); metas($e1, 2026, 8, 50000, 100000, 150000); metas($e1, 2026, 9, 50000, 100000, 150000);
+$e1 = empresa(); historia($e1); metas($e1, 50000, 100000, 150000); metas($e1, 50000, 100000, 150000);
 venta($e1, '2026-09-01 07:00:00', 20000);
 $s = EST($e1);
 chk('día 1 a las 8 am: muy baja contra la meta completa (aceptado)', $s['ventanas']['mes']['nivel'], 'sin_equilibrio');
 
-echo "\n── Últimos 30 días: suma día por día, cruzando febrero ──\n";
-reloj('2026-03-01 10:00:00');          // ventana = 31/Ene … 1/Mar: TRES meses
-$ef = empresa(); historia($ef, '2025-10-01 12:00:00');
-metas($ef, 2026, 1, 3100, 6200, 9300);   // 100/200/300 por día
-metas($ef, 2026, 2, 2800, 5600, 8400);   // 100/200/300 por día
-metas($ef, 2026, 3, 6200, 12400, 18600); // 200/400/600 por día
+echo "\n── Últimos 30 días contra la MISMA meta completa ──\n";
+reloj('2026-03-01 10:00:00');          // ventana 31/Ene … 1/Mar: cruza febrero y no importa
+$ef = empresa(); historia($ef, '2025-10-01 12:00:00'); metas($ef, 3100, 6200, 9300);
+venta($ef, '2026-02-10 10:00:00', 5000);
 $s = EST($ef);
-near('E30 = 1·100 + 28·100 + 1·200', $s['ventanas']['d30']['equilibrio'], 3100);
-near('P30 = 1·200 + 28·200 + 1·400', $s['ventanas']['d30']['pesimista'], 6200);
-chk('d30 no provisional', $s['ventanas']['d30']['provisional'], false);
-chk('origen enumera los 3 meses', $s['ventanas']['d30']['origen'], '2026-01,2026-02,2026-03');
+chk('d30: la meta es la del mes, entera (sin repartir por días)', [$s['ventanas']['d30']['equilibrio'], $s['ventanas']['d30']['pesimista'], $s['ventanas']['d30']['optimista']], [3100.0, 6200.0, 9300.0]);
+chk('mes y d30 comparan contra la misma meta', $s['ventanas']['mes']['pesimista'], $s['ventanas']['d30']['pesimista']);
+chk('d30: 5,000 de 6,200 → cerca (80.6%)', $s['ventanas']['d30']['nivel'], 'cerca');
+chk('mes (marzo, 1 día): sin ventas → sin_equilibrio', $s['ventanas']['mes']['nivel'], 'sin_equilibrio');
+reloj('2026-02-28 10:00:00');          // febrero: 28 días. Repartir por días daría 30/28 de la meta
+$eF = empresa(); historia($eF, '2025-10-01 12:00:00'); metas($eF, 3000, 6200, 9300);
+venta($eF, '2026-02-10 10:00:00', 6200);
+chk('d30 en febrero: 6,200 contra la meta ENTERA de 6,200 → llegó', EST($eF)['ventanas']['d30']['nivel'], 'llego');
+reloj('2026-03-01 10:00:00');
+chk('sin claves del modelo por mes', array_key_exists('provisional', $s['ventanas']['mes']) || array_key_exists('origen', $s['ventanas']['mes']), false);
 
-echo "\n── d30 sin cobertura → sin_metas ──\n";
+echo "\n── Sin meta → nada se enciende ──\n";
 reloj('2026-09-25 10:00:00');
-$ec = empresa(); historia($ec); metas($ec, 2026, 9, 1, 2, 3);   // agosto sin meta
-$s = EST($ec);
-chk('d30 sin_metas', $s['ventanas']['d30']['estado'], 'sin_metas');
-chk('motivo cobertura', $s['ventanas']['d30']['motivo'], 'cobertura');
-chk('mes sí se lee', $s['ventanas']['mes']['estado'], 'ok');
-
-echo "\n── Herencia (solo hacia atrás) y provisional ──\n";
-$eh = empresa(); historia($eh);
-metas($eh, 2026, 7, 10, 20, 30);
-metas($eh, 2026, 11, 999, 9999, 99999);                         // futura: no aplica a septiembre
-$s = EST($eh);
-chk('septiembre hereda de julio', $s['ventanas']['mes']['origen'], '2026-07');
-chk('provisional', $s['ventanas']['mes']['provisional'], true);
-chk('la fila futura no se usa', $s['ventanas']['mes']['pesimista'], 20.0);
-chk('d30 heredado también es provisional', $s['ventanas']['d30']['provisional'], true);
-chk('d30 heredado: origen julio', $s['ventanas']['d30']['origen'], '2026-07');
-$en = empresa(); historia($en); metas($en, 2026, 10, 1, 2, 3);  // solo una meta futura
-chk('solo meta futura → sin_metas', EST($en)['estado'], 'sin_metas');
+$ex0 = empresa(); historia($ex0);
+chk('sin capturar: sin_metas', EST($ex0)['estado'], 'sin_metas');
+DB::execute("UPDATE empresas SET meta_equilibrio=1, meta_pesimista=2, meta_moneda='MXN' WHERE id=?", [$ex0]);   // incompleta (a mano), moneda correcta
+chk('meta incompleta: sin_metas', EST($ex0)['estado'], 'sin_metas');
 
 echo "\n── Moneda distinta → sin_metas ──\n";
 $em = empresa('business', 'USD'); historia($em);
-metas($em, 2026, 8, 1, 2, 3, 'MXN'); metas($em, 2026, 9, 1, 2, 3, 'MXN');
+metas($em, 1, 2, 3, 'MXN'); metas($em, 1, 2, 3, 'MXN');
 $s = EST($em);
 chk('mes sin_metas por moneda', [$s['ventanas']['mes']['estado'], $s['ventanas']['mes']['motivo']], ['sin_metas', 'moneda']);
 chk('d30 sin_metas por moneda', $s['ventanas']['d30']['motivo'], 'moneda');
 
 echo "\n── Plan ──\n";
-$epr = empresa('pro'); historia($epr); metas($epr, 2026, 9, 1, 2, 3);
+$epr = empresa('pro'); historia($epr); metas($epr, 1, 2, 3);
 chk('Pro → sin_metas', EST($epr)['estado'], 'sin_metas');
-$ebn = empresa(); metas($ebn, 2026, 9, 1, 2, 3);
+$ebn = empresa(); metas($ebn, 1, 2, 3);
 DB::execute("UPDATE empresas SET plan='pro' WHERE id=?", [$ebn]);
-chk('baja de plan: no se borra la fila', (int)DB::val("SELECT COUNT(*) FROM empresa_metas_mes WHERE empresa_id=?", [$ebn]), 1);
+chk('baja de plan: no se borra la meta', DB::val("SELECT meta_pesimista FROM empresas WHERE id=?", [$ebn]), '2.00');
 chk('baja de plan: estado sin_metas', EST($ebn)['estado'], 'sin_metas');
 
 echo "\n── Historia mínima: 30 días desde la primera venta con pago ──\n";
-$es = empresa(); metas($es, 2026, 8, 1, 2, 3); metas($es, 2026, 9, 1, 2, 3);
+$es = empresa(); metas($es, 1, 2, 3); metas($es, 1, 2, 3);
 venta($es, '2026-08-27 09:00:00', 500);            // hace 29 días
 $s = EST($es);
 chk('29 días → sin_historia', $s['estado'], 'sin_historia');
@@ -264,17 +271,17 @@ chk('nivel() dice sin_historia', MetasEmpresa::nivel($es)['mes'], 'sin_historia'
 $f = MetasEmpresa::frases(MetasEmpresa::nivel($es));
 chk('frase de historia, una sola', [$f['mes'], $f['d30']], ['Todavía no hay suficiente historia para leer cómo va la empresa.', null]);
 chk('sin_historia no escribe histéresis', (int)DB::val("SELECT COUNT(*) FROM empresa_metas_estado WHERE empresa_id=?", [$es]), 0);
-$es2 = empresa(); metas($es2, 2026, 9, 1, 2, 3);
+$es2 = empresa(); metas($es2, 1, 2, 3);
 venta($es2, '2026-08-26 09:00:00', 500);           // hace 30 días
 chk('30 días → ya se lee', EST($es2)['estado'], 'ok');
-$es3 = empresa(); metas($es3, 2026, 9, 1, 2, 3);
+$es3 = empresa(); metas($es3, 1, 2, 3);
 venta($es3, '2026-07-01 09:00:00', 500, 0);        // vieja pero SIN pago
 venta($es3, '2026-07-02 09:00:00', 500, 5, 'pendiente', 'utilizado'); // vieja pero DI
 chk('venta vieja sin pago o con DI no cuenta como historia', EST($es3)['estado'], 'sin_historia');
 
 echo "\n── Venta viva: primer pago después, DI quitado, extra, recibo cancelado ──\n";
 reloj('2026-09-25 10:00:00');
-$ev = empresa(); historia($ev); metas($ev, 2026, 8, 1, 2, 3); metas($ev, 2026, 9, 50000, 100000, 150000);
+$ev = empresa(); historia($ev); metas($ev, 1, 2, 3); metas($ev, 50000, 100000, 150000);
 $vid = venta($ev, '2026-09-20 10:00:00', 10000, 0);
 chk('sin anticipo: fuera', EST($ev)['ventanas']['mes']['vendido'], 0.0);
 DB::execute("UPDATE ventas SET pagado = 3000 WHERE id = ?", [$vid]);
@@ -296,7 +303,7 @@ chk('DI quitado: entra con el total nuevo', EST($ev)['ventanas']['mes']['vendido
 
 echo "\n── Histéresis ──\n";
 reloj('2026-09-25 10:00:00');
-$eh2 = empresa(); historia($eh2); metas($eh2, 2026, 8, 50000, 100000, 150000); metas($eh2, 2026, 9, 50000, 100000, 150000);
+$eh2 = empresa(); historia($eh2); metas($eh2, 50000, 100000, 150000); metas($eh2, 50000, 100000, 150000);
 $vh = venta($eh2, '2026-09-10 10:00:00', 85000);
 $s = EST($eh2);
 chk('primera evaluación: cerca', $s['ventanas']['mes']['nivel'], 'cerca');
@@ -320,7 +327,7 @@ chk('subir es inmediato al cruzar', [$s['ventanas']['mes']['nivel'], $s['ventana
 
 echo "\n── Cambio de mes: no arrastra nivel ni dispara alerta ──\n";
 reloj('2026-10-01 09:00:00');
-metas($eh2, 2026, 10, 50000, 100000, 150000);
+metas($eh2, 50000, 100000, 150000);
 $s = EST($eh2);
 chk('1/Oct: mes nuevo, nivel propio', $s['ventanas']['mes']['nivel'], 'sin_equilibrio');
 chk('1/Oct: no es cambio', $s['ventanas']['mes']['cambio'], false);
@@ -328,7 +335,7 @@ chk('periodo guardado = 2026-10', DB::val("SELECT periodo FROM empresa_metas_est
 
 echo "\n── d30: una venta que sale de la ventana no hace parpadear ──\n";
 reloj('2026-09-25 10:00:00');
-$ed = empresa(); historia($ed); metas($ed, 2026, 8, 30000, 60000, 90000); metas($ed, 2026, 9, 30000, 60000, 90000);
+$ed = empresa(); historia($ed); metas($ed, 30000, 60000, 90000); metas($ed, 30000, 60000, 90000);
 // P30 ≈ 5 días de ago (60000/31) + 25 de sep (60000/30) ≈ 59,677
 venta($ed, '2026-08-28 10:00:00', 3000);
 venta($ed, '2026-09-15 10:00:00', 46000);
@@ -341,7 +348,7 @@ chk('pero se sostiene cerca', [$s1['nivel'], $s1['cambio']], ['cerca', false]);
 
 echo "\n── Conversión ──\n";
 reloj('2026-09-25 10:00:00');
-$ek = empresa('business', 'MXN', 30.00); metas($ek, 2026, 9, 1, 2, 3);
+$ek = empresa('business', 'MXN', 30.00); metas($ek, 1, 2, 3);
 for ($i = 0; $i < 7; $i++) cot($ek, '2026-09-10 10:00:00');
 cot($ek, '2026-09-10 10:00:00', 'borrador');
 cot($ek, '2026-09-10 10:00:00', 'enviada', 1);
@@ -351,16 +358,16 @@ chk('borrador y suspendida no son enviadas (7 + 1 aceptada)', $c['enviadas'], 8)
 chk('8 enviadas ya se lee (CONV_MIN)', $c['nivel'] !== 'gris');
 near('tasa 1/8', $c['tasa'], 0.125, 0.0001);
 chk('12.5% contra 30% → debajo', $c['nivel'], 'debajo');
-$ek2 = empresa('business', 'MXN', 30.00); metas($ek2, 2026, 9, 1, 2, 3);
+$ek2 = empresa('business', 'MXN', 30.00); metas($ek2, 1, 2, 3);
 for ($i = 0; $i < 6; $i++) cot($ek2, '2026-09-10 10:00:00');
 chk('7 enviadas → gris', EST($ek2)['conv']['mes']['nivel'], 'gris');
-$ek3 = empresa('business', 'MXN', 30.00); metas($ek3, 2026, 9, 1, 2, 3);
+$ek3 = empresa('business', 'MXN', 30.00); metas($ek3, 1, 2, 3);
 for ($i = 0; $i < 8; $i++) venta($ek3, '2026-09-10 10:00:00', 1000);
 for ($i = 0; $i < 4; $i++) venta($ek3, '2026-08-10 10:00:00', 1000);   // ventas de agosto... cotizaciones también de agosto
 $c = EST($ek3)['conv']['mes'];
 chk('8/8 → topada en 90%', $c['tasa'], 0.9);
 chk('arriba', $c['nivel'], 'arriba');
-$ek4 = empresa('business', 'MXN', 30.00); metas($ek4, 2026, 9, 1, 2, 3);
+$ek4 = empresa('business', 'MXN', 30.00); metas($ek4, 1, 2, 3);
 for ($i = 0; $i < 7; $i++) cot($ek4, '2026-09-10 10:00:00');
 for ($i = 0; $i < 3; $i++) venta($ek4, '2026-09-10 10:00:00', 1000);   // 3/10 = 30%
 chk('30% contra 30% → en', EST($ek4)['conv']['mes']['nivel'], 'en');
@@ -369,7 +376,7 @@ chk('sin tasa deseada → sin_meta', EST($ek)['conv']['mes']['deseada'] !== null
 echo "\n── Ticket y cotizaciones que faltan ──\n";
 reloj('2026-09-25 10:00:00');
 $et = empresa('business', 'MXN', 25.00); historia($et, '2026-06-01 10:00:00');
-metas($et, 2026, 8, 20000, 40000, 60000); metas($et, 2026, 9, 20000, 40000, 60000);
+metas($et, 20000, 40000, 60000); metas($et, 20000, 40000, 60000);
 for ($i = 0; $i < 4; $i++) venta($et, '2026-09-05 10:00:00', 5000);    // 20k en el mes
 for ($i = 0; $i < 8; $i++) cot($et, '2026-09-06 10:00:00');            // 12 enviadas, 4 ventas → 33%
 $s = EST($et);
@@ -378,24 +385,24 @@ chk('faltante hacia la pesimista', [$s['ventanas']['mes']['faltante'], $s['venta
 // 20000 / 4200 = 4.76 ventas → /0.3333 = 14.28 → 15 ; /0.25 = 19.05 → 20
 chk('N con la tasa real', $s['faltan_cot']['real'], 15);
 chk('M con la deseada', $s['faltan_cot']['deseada'], 20);
-$eth = empresa(); historia($eth); metas($eth, 2026, 9, 1, 2, 3);
+$eth = empresa(); historia($eth); metas($eth, 1, 2, 3);
 DB::execute("INSERT INTO historial_mensual (empresa_id, anio, mes, ventas_cantidad, ventas_monto) VALUES (?,2026,3,10,50000),(?,2026,2,0,0),(?,2025,1,1,999999)", [$eth, $eth, $eth]);
 $s = EST($eth);
 // Solo el último año (CEO, 27 sep): la fila de ene-2025 NO entra. (50,000 / 10)
 chk('respaldo historial_mensual (último año)', [$s['ticket'], $s['ticket_origen']], [5000.0, 'historial']);
-$ey = empresa(); historia($ey); metas($ey, 2026, 9, 1, 2, 3);
+$ey = empresa(); historia($ey); metas($ey, 1, 2, 3);
 DB::execute("INSERT INTO historial_mensual (empresa_id, anio, mes, ventas_cantidad, ventas_monto) VALUES (?,2025,10,4,40000),(?,2025,9,1,999999)", [$ey, $ey]);
 chk('historial: oct-2025 entra (12 meses contando sep-2026)', EST($ey)['ticket'], 10000.0);
-$ey2 = empresa(); historia($ey2); metas($ey2, 2026, 9, 1, 2, 3);
+$ey2 = empresa(); historia($ey2); metas($ey2, 1, 2, 3);
 DB::execute("INSERT INTO historial_mensual (empresa_id, anio, mes, ventas_cantidad, ventas_monto) VALUES (?,2024,3,10,50000)", [$ey2]);
 chk('historial solo de hace años → sin ticket', [EST($ey2)['ticket'], EST($ey2)['faltan_cot']], [null, ['real' => null, 'deseada' => null]]);
-$etn = empresa(); metas($etn, 2026, 9, 1, 2, 3);
+$etn = empresa(); metas($etn, 1, 2, 3);
 chk('empresa nueva sin nada → sin ticket', EST($etn)['ticket'], null);
 
 echo "\n── Auditoría: alerta, conversión apagada, huecos, edición, frontera ──\n";
 reloj('2026-09-25 10:00:00');
 // A — la alerta NO la consume quien lee primero.
-$ea = empresa(); historia($ea); metas($ea, 2026, 8, 50000, 100000, 150000); metas($ea, 2026, 9, 50000, 100000, 150000);
+$ea = empresa(); historia($ea); metas($ea, 50000, 100000, 150000); metas($ea, 50000, 100000, 150000);
 $va = venta($ea, '2026-09-10 10:00:00', 85000);
 EST($ea);                                                     // primera lectura: cerca
 DB::execute("UPDATE ventas SET total = 60000 WHERE id = ?", [$va]);
@@ -413,7 +420,7 @@ $eb = empresa('business', 'MXN', 30.00);
 for ($i = 0; $i < 10; $i++) cot($eb, '2026-09-10 10:00:00');
 $nb = MetasEmpresa::nivel($eb);
 chk('B: tasa declarada sin metas → sin texto', array_filter(MetasEmpresa::frases($nb)), []);
-$eb2 = empresa('business', 'MXN', 30.00); metas($eb2, 2026, 9, 1, 2, 3);
+$eb2 = empresa('business', 'MXN', 30.00); metas($eb2, 1, 2, 3);
 for ($i = 0; $i < 10; $i++) cot($eb2, '2026-09-10 10:00:00');
 venta($eb2, '2026-09-01 10:00:00', 100);                  // historia de 24 días
 $fb = MetasEmpresa::frases(MetasEmpresa::nivel($eb2));
@@ -421,39 +428,30 @@ chk('B: sin historia → solo la frase de historia, sin conversión', array_valu
 chk('B: el admin sí conserva el dato de conversión', EST($eb2)['conv']['mes']['enviadas'], 11);
 
 // C — la ventana de 30 días no compara contra un nivel viejo después de un hueco.
-$eg = empresa(); historia($eg); metas($eg, 2026, 8, 1, 2, 3); metas($eg, 2026, 9, 1, 2, 3);
+$eg = empresa(); historia($eg); metas($eg, 1, 2, 3); metas($eg, 1, 2, 3);
 venta($eg, '2026-09-10 10:00:00', 50);
 chk('C: arranca en sobrepasada', EST($eg)['ventanas']['d30']['nivel'], 'sobrepasada');
-DB::execute("DELETE FROM empresa_metas_mes WHERE empresa_id = ?", [$eg]);
-EST($eg);                                                     // hueco: sin metas
+sin_meta($eg);
+EST($eg);                                                     // hueco: sin meta
 chk('C: el hueco borra la memoria', (int)DB::val("SELECT COUNT(*) FROM empresa_metas_estado WHERE empresa_id=?", [$eg]), 0);
-metas($eg, 2026, 8, 1000, 2000, 3000); metas($eg, 2026, 9, 1000, 2000, 3000);
+metas($eg, 1000, 2000, 3000); metas($eg, 1000, 2000, 3000);
 $s = EST($eg)['ventanas']['d30'];
 chk('C: al volver es primera lectura (sin alerta vieja)', [$s['nivel'], $s['alerta'], $s['nivel_anterior']], ['sin_equilibrio', false, null]);
 
-// Mes heredado: misma fila (misma firma) pero OTRO periodo → primera lectura.
-$eo = empresa(); historia($eo); metas($eo, 2026, 8, 1, 2, 3); metas($eo, 2026, 9, 100, 200, 300);
+// Mes nuevo con la MISMA meta (misma firma), OTRO periodo → primera lectura.
+$eo = empresa(); historia($eo); metas($eo, 1, 2, 3); metas($eo, 100, 200, 300);
 venta($eo, '2026-09-10 10:00:00', 500);
-chk('heredado: septiembre sobrepasada', EST($eo)['ventanas']['mes']['nivel'], 'sobrepasada');
-reloj('2026-10-02 10:00:00');                          // octubre hereda la fila de septiembre
+chk('septiembre sobrepasada', EST($eo)['ventanas']['mes']['nivel'], 'sobrepasada');
+reloj('2026-10-02 10:00:00');                          // octubre: la misma meta general
 $s = EST($eo)['ventanas']['mes'];
-chk('heredado: octubre es primera lectura, sin arrastre ni alerta', [$s['nivel'], $s['alerta'], $s['nivel_anterior'], $s['provisional']], ['sin_equilibrio', false, null, true]);
+chk('octubre es primera lectura, sin arrastre ni alerta', [$s['nivel'], $s['alerta'], $s['nivel_anterior']], ['sin_equilibrio', false, null]);
 reloj('2026-09-25 10:00:00');
 
-// C bis — hueco solo en la ventana de 30 días (el mes sigue leyéndose).
-$eg2 = empresa(); historia($eg2); metas($eg2, 2026, 8, 1, 2, 3); metas($eg2, 2026, 9, 1, 2, 3);
-venta($eg2, '2026-09-10 10:00:00', 50);
-EST($eg2);
-DB::execute("DELETE FROM empresa_metas_mes WHERE empresa_id = ? AND mes = 8", [$eg2]);
-$s = EST($eg2);
-chk('C bis: d30 sin cobertura, mes sí', [$s['ventanas']['d30']['estado'], $s['ventanas']['mes']['estado']], ['sin_metas', 'ok']);
-chk('C bis: se olvida SOLO la memoria de d30', DB::query("SELECT ventana FROM empresa_metas_estado WHERE empresa_id=? ORDER BY ventana", [$eg2]), [['ventana' => 'mes']]);
-
 // D — editar las metas no dispara alerta.
-$ed2 = empresa(); historia($ed2); metas($ed2, 2026, 8, 50000, 100000, 150000); metas($ed2, 2026, 9, 50000, 100000, 150000);
+$ed2 = empresa(); historia($ed2); metas($ed2, 50000, 100000, 150000); metas($ed2, 50000, 100000, 150000);
 venta($ed2, '2026-09-10 10:00:00', 60000);
 chk('D: antes de editar: baja', EST($ed2)['ventanas']['mes']['nivel'], 'baja');
-metas($ed2, 2026, 9, 20000, 40000, 60000);
+metas($ed2, 20000, 40000, 60000);
 $s = EST($ed2)['ventanas']['mes'];
 chk('D: tras editar: sobrepasada sin alerta', [$s['nivel'], $s['alerta'], $s['nivel_anterior']], ['sobrepasada', false, null]);
 
@@ -492,7 +490,7 @@ foreach ($esperadas as $k => $txt) chk("frase $k", $fl($k), $txt);
 chk('frases() no truena si le pasan estado() por error', is_array(MetasEmpresa::frases(EST($ep))));
 
 // Ticket: la receta muerde (DI, sin pago) y el corte de 5 es exacto.
-$et2 = empresa(); historia($et2, '2026-09-01 10:00:00'); metas($et2, 2026, 9, 1, 2, 3);
+$et2 = empresa(); historia($et2, '2026-09-01 10:00:00'); metas($et2, 1, 2, 3);
 for ($i = 0; $i < 3; $i++) venta($et2, '2026-09-05 10:00:00', 1000);
 venta($et2, '2026-09-05 10:00:00', 90000, 0);                         // sin pago
 venta($et2, '2026-09-05 10:00:00', 90000, 5, 'pendiente', 'utilizado'); // DI
@@ -501,14 +499,14 @@ chk('ticket: 4 ventas válidas (DI y sin pago fuera) → respaldo historial', [E
 
 // Cotizaciones que faltan: con < CONV_MIN enviadas no se usa la tasa real.
 $ef2 = empresa('business', 'MXN', 25.00); historia($ef2, '2026-06-01 10:00:00');
-metas($ef2, 2026, 8, 20000, 40000, 60000); metas($ef2, 2026, 9, 20000, 40000, 60000);
+metas($ef2, 20000, 40000, 60000); metas($ef2, 20000, 40000, 60000);
 for ($i = 0; $i < 4; $i++) venta($ef2, '2026-09-05 10:00:00', 5000);   // 4 enviadas
 $s = EST($ef2);
 chk('faltan: tasa real ignorada con 4 enviadas', $s['faltan_cot']['real'], null);
 chk('faltan: la deseada sí', $s['faltan_cot']['deseada'] !== null);
 
 // Licencia Business vencida (no trial): sin metas.
-$evx = empresa('business_vencido'); historia($evx); metas($evx, 2026, 9, 1, 2, 3);
+$evx = empresa('business_vencido'); historia($evx); metas($evx, 1, 2, 3);
 chk('Business vencida → sin_metas', EST($evx)['estado'], 'sin_metas');
 
 // ═════════════════════════════════════════════════════════════
@@ -529,20 +527,9 @@ chk('parse basura → null', MetasEmpresa::parse_monto('abc'), null);
 chk('parse "1e3", "0x10", "INF" → null (solo lo que escribe una persona)', [MetasEmpresa::parse_monto('1e3'), MetasEmpresa::parse_monto('0x10'), MetasEmpresa::parse_monto(INF), MetasEmpresa::parse_monto(['1'])], [null, null, null, null]);
 chk('0.004 redondea a cero → rechazado', is_string(MetasEmpresa::validar_metas(0.001, 0.001, 0.004)));
 chk('"180.000" tiene decimales de más', [MetasEmpresa::decimales_de_mas('180.000'), MetasEmpresa::decimales_de_mas('180,000.50'), MetasEmpresa::decimales_de_mas('180000')], [true, false, false]);
-chk('nombre_mes fuera de rejilla', MetasEmpresa::nombre_mes(2025, 1), 'enero 2025');
 chk('tasa vacía = válida (no declarada)', MetasEmpresa::validar_tasa(null), null);
 chk('tasa 3 y 90 válidas', [MetasEmpresa::validar_tasa(3.0), MetasEmpresa::validar_tasa(90.0)], [null, null]);
 chk('tasa 2.9 y 90.1 rechazadas', is_string(MetasEmpresa::validar_tasa(2.9)) && is_string(MetasEmpresa::validar_tasa(90.1)));
-$mc = MetasEmpresa::meses_captura(strtotime('2026-09-25 10:00:00'));
-chk('rejilla de 12 meses', count($mc), 12);
-chk('empieza 5 atrás (abr-2026)', [$mc[0]['anio'], $mc[0]['mes']], [2026, 4]);
-chk('termina 6 adelante (mar-2027, cruza año)', [$mc[11]['anio'], $mc[11]['mes']], [2027, 3]);
-chk('marca el actual', array_values(array_filter(array_map(fn($m) => $m['actual'] ? $m['mes'] : null, $mc))), [9]);
-$mc31 = MetasEmpresa::meses_captura(strtotime('2026-08-31 10:00:00'));   // día 31: '+1 month' desde el 31 brincaría
-chk('día 31 no brinca meses (sep..feb consecutivos)', array_map(fn($m) => $m['mes'], $mc31), [3,4,5,6,7,8,9,10,11,12,1,2]);
-chk('mes fuera de rejilla no editable', MetasEmpresa::mes_editable(2026, 3, strtotime('2026-09-25')), false);
-chk('mes en rejilla editable', MetasEmpresa::mes_editable(2027, 3, strtotime('2026-09-25')), true);
-
 echo "\n── Captura: el endpoint real contra MariaDB ──\n";
 $runner = tempnam(sys_get_temp_dir(), 'gm') . '.php';
 file_put_contents($runner, '<?php
@@ -577,41 +564,39 @@ function post(int $e, array $body, int $uid = 77): array {
     $out = shell_exec('php ' . escapeshellarg($runner) . ' ' . $e . ' ' . $uid . ' ' . escapeshellarg(json_encode($body)) . ' 2>/dev/null');   // error_log va a stderr
     return json_decode((string)$out, true) ?? ['raw' => $out];
 }
-$hoy = date('Y-m'); [$ya, $ym] = [(int)date('Y'), (int)date('n')];   // el endpoint usa el reloj real
+$M = fn(int $e) => DB::row("SELECT meta_equilibrio, meta_pesimista, meta_optimista, meta_moneda, meta_capturada_por, meta_capturada_at IS NOT NULL AS con_fecha FROM empresas WHERE id=?", [$e]);
 $ec2 = empresa();
-$r = post($ec2, ['accion' => 'mes', 'anio' => $ya, 'mes' => $ym, 'equilibrio' => '50,000', 'pesimista' => '$100,000', 'optimista' => 150000]);
-chk('guardar mes: ok', $r['ok'] ?? $r, true);
-$f = DB::row("SELECT equilibrio, meta_pesimista, meta_optimista, moneda, capturado_por FROM empresa_metas_mes WHERE empresa_id=? AND anio=? AND mes=?", [$ec2, $ya, $ym]);
-chk('guardado con moneda y capturado_por', $f, ['equilibrio' => '50000.00', 'meta_pesimista' => '100000.00', 'meta_optimista' => '150000.00', 'moneda' => 'MXN', 'capturado_por' => 77]);
-$r = post($ec2, ['accion' => 'mes', 'anio' => $ya, 'mes' => $ym, 'equilibrio' => 60000, 'pesimista' => 100000, 'optimista' => 150000]);
-chk('re-guardar actualiza (no duplica)', [(int)DB::val("SELECT COUNT(*) FROM empresa_metas_mes WHERE empresa_id=?", [$ec2]), DB::val("SELECT equilibrio FROM empresa_metas_mes WHERE empresa_id=?", [$ec2])], [1, '60000.00']);
-$r = post($ec2, ['accion' => 'mes', 'anio' => $ya, 'mes' => $ym, 'equilibrio' => 200000, 'pesimista' => 100000, 'optimista' => 150000]);
+$r = post($ec2, ['accion' => 'meta', 'equilibrio' => '50,000', 'pesimista' => '$100,000', 'optimista' => 150000]);
+chk('guardar meta: ok', $r['ok'] ?? $r, true);
+chk('guardada con moneda, quién y cuándo', $M($ec2), ['meta_equilibrio' => '50000.00', 'meta_pesimista' => '100000.00', 'meta_optimista' => '150000.00', 'meta_moneda' => 'MXN', 'meta_capturada_por' => 77, 'con_fecha' => 1]);
+$r = post($ec2, ['accion' => 'meta', 'equilibrio' => 60000, 'pesimista' => 100000, 'optimista' => 150000]);
+chk('re-guardar reemplaza', DB::val("SELECT meta_equilibrio FROM empresas WHERE id=?", [$ec2]), '60000.00');
+$r = post($ec2, ['accion' => 'meta', 'equilibrio' => 200000, 'pesimista' => 100000, 'optimista' => 150000]);
 chk('E > P rechazado con su mensaje', [$r['ok'], $r['error']], [false, 'La meta pesimista no puede quedar debajo del punto de equilibrio.']);
-chk('el rechazo no tocó la fila', DB::val("SELECT equilibrio FROM empresa_metas_mes WHERE empresa_id=?", [$ec2]), '60000.00');
-$r = post($ec2, ['accion' => 'mes', 'anio' => $ya, 'mes' => $ym, 'equilibrio' => 1, 'pesimista' => '', 'optimista' => 3]);
+chk('el rechazo no tocó la meta', DB::val("SELECT meta_equilibrio FROM empresas WHERE id=?", [$ec2]), '60000.00');
+$r = post($ec2, ['accion' => 'meta', 'equilibrio' => 1, 'pesimista' => '', 'optimista' => 3]);
 chk('monto vacío rechazado', $r['ok'], false);
-$r = post($ec2, ['accion' => 'mes', 'anio' => $ya - 2, 'mes' => $ym, 'equilibrio' => 1, 'pesimista' => 2, 'optimista' => 3]);
-chk('mes fuera de rejilla rechazado', $r['ok'], false);
-$r = post($ec2, ['accion' => 'borrar', 'anio' => $ya, 'mes' => $ym]);
-chk('borrar: la fila sale', [$r['ok'], (int)DB::val("SELECT COUNT(*) FROM empresa_metas_mes WHERE empresa_id=?", [$ec2])], [true, 0]);
-$ecx = empresa();
-metas($ecx, $ya, $ym, 1, 2, 3);
-post($ec2, ['accion' => 'borrar', 'anio' => $ya, 'mes' => $ym]);
-chk('borrar solo toca SU empresa', (int)DB::val("SELECT COUNT(*) FROM empresa_metas_mes WHERE empresa_id=?", [$ecx]), 1);
-$r = post($ec2, ['accion' => 'mes', 'anio' => $ya, 'mes' => $ym, 'equilibrio' => '180.000', 'pesimista' => '250.000', 'optimista' => '320.000']);
+$r = post($ec2, ['accion' => 'meta', 'equilibrio' => '180.000', 'pesimista' => '250.000', 'optimista' => '320.000']);
 chk('"180.000" rechazado con mensaje de miles', [$r['ok'], $r['error']], [false, 'Los montos llevan máximo 2 decimales. Para miles usa coma: 180,000.']);
-$r = post($ec2, ['accion' => 'mes', 'anio' => $ya, 'mes' => $ym, 'equilibrio' => 0.001, 'pesimista' => 0.001, 'optimista' => 0.004]);
-chk('montos que redondean a 0 rechazados (sin fila)', [$r['ok'], (int)DB::val("SELECT COUNT(*) FROM empresa_metas_mes WHERE empresa_id=?", [$ec2])], [false, 0]);
+$r = post($ec2, ['accion' => 'meta', 'equilibrio' => 0.001, 'pesimista' => 0.001, 'optimista' => 0.004]);
+chk('montos que redondean a 0 rechazados', [$r['ok'], DB::val("SELECT meta_equilibrio FROM empresas WHERE id=?", [$ec2])], [false, '60000.00']);
+$ecx = empresa(); metas($ecx, 1, 2, 3);
+$r = post($ec2, ['accion' => 'quitar']);
+chk('quitar: la meta queda en NULL', [$r['ok'], $M($ec2)['meta_equilibrio'], $M($ec2)['meta_moneda'], $M($ec2)['con_fecha']], [true, null, null, 0]);
+chk('quitar solo toca SU empresa', DB::val("SELECT meta_equilibrio FROM empresas WHERE id=?", [$ecx]), '1.00');
 $r = post($ec2, ['accion' => ['x'], 'tasa' => ['25']]);
 chk('arreglos en el JSON → 400 limpio', [$r['ok'] ?? null, $r['code'] ?? null], [false, 400]);
-$r = post($ec2, ['accion' => 'otra']);
-chk('acción inválida', $r['ok'], false);
+$r = post($ec2, ['accion' => 'mes']);
+chk('acción del modelo viejo ("mes") ya no existe', $r['ok'], false);
 $epro = empresa('pro');
-$r = post($epro, ['accion' => 'mes', 'anio' => $ya, 'mes' => $ym, 'equilibrio' => 1, 'pesimista' => 2, 'optimista' => 3]);
-chk('Pro rechazado (403) y sin escribir', [$r['ok'], $r['code'], (int)DB::val("SELECT COUNT(*) FROM empresa_metas_mes WHERE empresa_id=?", [$epro])], [false, 403, 0]);
+$r = post($epro, ['accion' => 'meta', 'equilibrio' => 1, 'pesimista' => 2, 'optimista' => 3]);
+chk('Pro rechazado (403) y sin escribir', [$r['ok'], $r['code'], DB::val("SELECT meta_equilibrio FROM empresas WHERE id=?", [$epro])], [false, 403, null]);
 $eusd = empresa('business', 'USD');
-post($eusd, ['accion' => 'mes', 'anio' => $ya, 'mes' => $ym, 'equilibrio' => 1, 'pesimista' => 2, 'optimista' => 3]);
-chk('moneda copiada de la empresa', DB::val("SELECT moneda FROM empresa_metas_mes WHERE empresa_id=?", [$eusd]), 'USD');
+post($eusd, ['accion' => 'meta', 'equilibrio' => 1, 'pesimista' => 2, 'optimista' => 3]);
+chk('moneda copiada de la empresa', DB::val("SELECT meta_moneda FROM empresas WHERE id=?", [$eusd]), 'USD');
+$ex1 = empresa(); historia($ex1);
+post($ex1, ['accion' => 'meta', 'equilibrio' => 1, 'pesimista' => 2, 'optimista' => 3]);
+chk('lo que guarda el endpoint lo lee estado()', EST($ex1)['ventanas']['mes']['pesimista'], 2.0);
 
 // Tasa: _desde se mueve SOLO cuando el valor cambia.
 $r = post($ec2, ['accion' => 'tasa', 'tasa' => '25']);
@@ -640,10 +625,10 @@ $r = post($ec2, ['accion' => 'tasa', 'tasa' => '25%']);
 chk('tasa "25%" se entiende (no borra)', [$r['ok'], DB::val("SELECT tasa_conv_meta FROM empresas WHERE id=?", [$ec2])], [true, '25.00']);
 post($ec2, ['accion' => 'tasa', 'tasa' => '']);
 chk('tasa vacía = no declarada (NULL, sin fecha)', DB::row("SELECT tasa_conv_meta, tasa_conv_meta_desde FROM empresas WHERE id=?", [$ec2]), ['tasa_conv_meta' => null, 'tasa_conv_meta_desde' => null]);
-DB::pdo()->exec("RENAME TABLE empresa_metas_mes TO empresa_metas_mes_x");
-$r = post($ec2, ['accion' => 'mes', 'anio' => $ya, 'mes' => $ym, 'equilibrio' => 1, 'pesimista' => 2, 'optimista' => 3]);
+sin_columnas(true);
+$r = post($ec2, ['accion' => 'meta', 'equilibrio' => 1, 'pesimista' => 2, 'optimista' => 3]);
 chk('sin migrar: error limpio, no 500 crudo', [$r['ok'] ?? null, $r['code'] ?? null], [false, 500]);
-DB::pdo()->exec("RENAME TABLE empresa_metas_mes_x TO empresa_metas_mes");
+sin_columnas(false);
 @unlink($runner);
 
 echo "\n── Captura: render de la pestaña ──\n";
@@ -655,40 +640,30 @@ function render_metas(int $empresa_id): string {
 }
 reloj('2026-09-25 10:00:00');
 $er = empresa('business', 'MXN', 27.5);
-metas($er, 2026, 7, 10000, 20000, 30000);
-metas($er, 2026, 9, 50000, 100000, 150000);
+metas($er, 180000, 250000, 320000);
 $html = render_metas($er);
-chk('12 renglones', substr_count($html, 'class="mt-row'), 12);
-chk('marca este mes', substr_count($html, '<b>Este mes</b>'), 1);
-chk('septiembre capturado con sus valores (con comas)', str_contains($html, 'value="100,000"'));
-chk('mes con mayúscula inicial', str_contains($html, '>Septiembre 2026</div>'));
-chk('agosto usa las de julio (placeholder, no value)', str_contains($html, 'Usa las de julio 2026') && str_contains($html, 'placeholder="20,000"'));
-chk('abril y mayo sin metas', substr_count($html, 'Sin metas'), 3);   // abr, may, jun
-chk('octubre en adelante heredan de septiembre', substr_count($html, 'Usa las de septiembre 2026'), 6);
+chk('UN solo bloque de meta, sin meses', substr_count($html, 'id="mt_meta"') === 1 && !preg_match('/septiembre|octubre|enero 20|mt-row/i', $html));
+chk('los tres campos con la meta (con comas)', str_contains($html, 'value="180,000"') && str_contains($html, 'value="250,000"') && str_contains($html, 'value="320,000"'));
+chk('"Quitar meta" cuando hay meta', str_contains($html, 'onclick="mtQuitarMeta()"'));
 chk('tasa precargada', str_contains($html, 'value="27.5"'));
 chk('texto literal de la tasa', str_contains($html, 'De cada 100 cotizaciones que envías, cuántas quieres vender.'));
-chk('"Quitar" solo en meses capturados', substr_count($html, 'mtBorrarMes(this)" title'), 2);
-chk('sin aviso de moneda', str_contains($html, 'recaptúralas'), false);
+chk('dice que aplica a todos los meses', str_contains($html, 'Aplica a todos los meses'));
+chk('sin aviso de moneda', str_contains($html, 'recaptúrala'), false);
 chk('tasa como texto (no type=number: el navegador mandaría "" y borraría)', (bool)preg_match('/id="mt_tasa" type="text"/', $html));
-$exs = empresa(); DB::execute("UPDATE empresas SET moneda='<x>' WHERE id=?", [$exs]); metas($exs, 2026, 9, 1, 2, 3, 'MXN');
+$ev0 = empresa();
+$h0 = render_metas($ev0);
+chk('sin meta: campos vacíos y sin "Quitar meta"', !str_contains($h0, 'onclick="mtQuitarMeta()"') && substr_count($h0, 'onblur="mtFormato(this)" value=""') === 3);
+$exs = empresa(); DB::execute("UPDATE empresas SET moneda='<x>' WHERE id=?", [$exs]); metas($exs, 1, 2, 3, 'MXN');
 $hx = render_metas($exs);
 chk('XSS: la moneda se escapa en la pestaña', str_contains($hx, '&lt;X&gt;') && !str_contains($hx, '<X>'));
 $pj = file_get_contents(__DIR__ . '/../modules/config/_metas.php');
-chk('guardar un mes NO recarga si hay otros meses sin guardar', str_contains($pj, 'if (mtOtrosSucios(row))'));
 chk('el formato no toca "180.000" ni "0x10"', str_contains($pj, "/^[\\d,]+(\\.\\d{1,2})?$/"));
-// Aviso de moneda: una fila vieja fuera de uso NO lo enciende.
-$eom = empresa();
-metas($eom, 2025, 1, 1, 2, 3, 'USD'); metas($eom, 2026, 4, 1, 2, 3);
-$hom = render_metas($eom);
-chk('fila vieja en otra moneda que ya nada usa: sin aviso', str_contains($hom, 'recaptúralas'), false);
-$eom2 = empresa(); metas($eom2, 2025, 1, 1, 2, 3);
-chk('mes que hereda de fuera de la rejilla dice su nombre', str_contains(render_metas($eom2), 'Usa las de enero 2025'));
 DB::execute("UPDATE empresas SET moneda='USD' WHERE id=?", [$er]);
-chk('aviso de moneda distinta', str_contains(render_metas($er), 'Tus metas están capturadas en MXN y la empresa ahora opera en USD: recaptúralas.'));
-DB::pdo()->exec("RENAME TABLE empresa_metas_mes TO empresa_metas_mes_x");
+chk('aviso de moneda distinta', str_contains(render_metas($er), 'Tu meta está capturada en MXN y la empresa ahora opera en USD: recaptúrala.'));
+sin_columnas(true);
 $h2 = render_metas($er);
-chk('sin migrar: aviso, sin rejilla, sin error', str_contains($h2, 'todavía no están disponibles') && !str_contains($h2, 'mt-row"'));
-DB::pdo()->exec("RENAME TABLE empresa_metas_mes_x TO empresa_metas_mes");
+chk('sin migrar: aviso, sin campos, sin error', str_contains($h2, 'todavía no están disponibles') && !str_contains($h2, 'id="mt_meta"'));
+sin_columnas(false);
 
 echo "\n── Captura: cableado ──\n";
 $cfg = file_get_contents(__DIR__ . '/../modules/config/index.php');
@@ -703,13 +678,13 @@ chk('endpoint: admin + csrf + plan ANTES de leer el cuerpo',
     ($a = strpos($gm, 'Auth::requerir_admin()')) !== false && ($b = strpos($gm, 'csrf_check()')) > $a
     && ($c = strpos($gm, 'plan_ok(')) > $b && strpos($gm, "php://input") > $c);
 
-echo "\n── Tabla ausente → sin_metas, sin excepción ──\n";
-DB::pdo()->exec("RENAME TABLE empresa_metas_mes TO empresa_metas_mes_x");
+echo "\n── Sin migrar → sin_metas, sin excepción ──\n";
+sin_columnas(true);
 $r = null; $exc = false;
 try { $r = EST($e); } catch (\Throwable $x) { $exc = true; }
 chk('no lanza', $exc, false);
 chk('sin_metas', $r['estado'] ?? null, 'sin_metas');
-DB::pdo()->exec("RENAME TABLE empresa_metas_mes_x TO empresa_metas_mes");
+sin_columnas(false);
 DB::pdo()->exec("RENAME TABLE empresa_metas_estado TO empresa_metas_estado_x");
 $r = EST($ep);
 chk('sin tabla de histéresis: nivel crudo igual', $r['ventanas']['mes']['nivel'], $r['ventanas']['mes']['nivel_crudo']);
@@ -750,7 +725,7 @@ chk('d30 fechado', MetasEmpresa::frases(['d30' => 'baja', 'corte' => '2026-09-25
 
 echo "\n── Memo ──\n";
 $a = MetasEmpresa::estado($ep);
-DB::execute("UPDATE empresa_metas_mes SET meta_pesimista = 1 WHERE empresa_id = ?", [$ep]);
+DB::execute("UPDATE empresas SET meta_pesimista = 1 WHERE id = ?", [$ep]);
 chk('memo: mismo request, mismo resultado', MetasEmpresa::estado($ep) === $a);
 MetasEmpresa::reset();
 chk('reset: relee', MetasEmpresa::estado($ep)['ventanas']['mes']['pesimista'], 1.0);

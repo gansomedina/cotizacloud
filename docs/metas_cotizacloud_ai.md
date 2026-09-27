@@ -447,3 +447,19 @@ Auditoría independiente: sin huecos de seguridad. Corregido:
 4. El aviso "recaptúralas" se encendía por una fila vieja que nada usa y que el admin no podía quitar. Ahora solo cuenta filas vigentes.
 5. El formato de miles convertía "180.000" en 180 y "0x10" en 16. Ahora solo formatea montos claros; el servidor rechaza hex, notación científica y más de 2 decimales ("para miles usa coma").
 6. Errores sin JSON (sesión vencida) decían "revisa tu conexión"; ahora dicen que se recargue.
+
+## ⚠️ Cambio del CEO (27 sep 2026) — la meta es GENERAL, no por mes. MANDA sobre todo lo anterior
+
+> *"La meta es general de la empresa, y aplica a todos los meses, no vamos a entrar a qué mes es cuál."*
+
+La primera versión de la fase 2 capturaba una rejilla de 12 meses con herencia (§1, §2 "Herencia", "Las dos ventanas"). **Se descartó el mismo día.** Lo que queda:
+
+- **Una sola meta**: `empresas.meta_equilibrio`, `meta_pesimista`, `meta_optimista`, más `meta_moneda`, `meta_capturada_at` y `meta_capturada_por`. Igual para todos los meses, pasados y futuros. Cambiarla cambia la lectura de todo.
+- **Mes calendario**: lo vendido en el mes contra la meta completa (sin prorrateo, 3ª ronda).
+- **Últimos 30 días**: lo vendido en los últimos 30 días contra **la misma meta completa**. No se reparte por días.
+- La tabla `empresa_metas_mes` **se elimina** (la migración hace `DROP TABLE IF EXISTS`). Se creó el 27 sep y no llevaba uso real.
+- Endpoint: `{accion:'meta'}`, `{accion:'quitar'}`, `{accion:'tasa'}`.
+- Pantalla: un bloque con los tres campos y la tasa deseada. Sin meses.
+- Queda sin efecto todo lo de herencia, `provisional`, `origen`, cobertura de 30 días, rejilla y "Quitar" por mes. La histéresis conserva `periodo` (mes calendario) y `firma` (ahora de la meta general: editarla = primera lectura, sin alerta).
+
+`sim_metas`: 221 comprobaciones; las mutaciones "d30 repartido por días", "meta incompleta aceptada", "quitar sin empresa", "moneda fija" y "firma fija" quedan atrapadas.

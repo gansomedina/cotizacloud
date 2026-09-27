@@ -2,9 +2,11 @@
 // ============================================================
 //  cotiza.cloud — modules/config/guardar_metas.php
 //  POST /config/metas   (JSON)
-//    {accion:'mes',    anio, mes, equilibrio, pesimista, optimista}
-//    {accion:'borrar', anio, mes}      → el mes vuelve a heredar
-//    {accion:'tasa',   tasa}           → '' = no declarada
+//    {accion:'meta',   equilibrio, pesimista, optimista}   → la meta general
+//    {accion:'quitar'}                                     → sin meta
+//    {accion:'tasa',   tasa}                               → '' = no declarada
+//
+//  La meta es UNA, general de la empresa, igual para todos los meses.
 //
 //  Solo admin, solo Business vigente. La regla de validación vive en
 //  MetasEmpresa (la misma que prueba tools/sim_metas.php).
@@ -44,19 +46,14 @@ try {
         json_ok(['tasa' => $tasa]);
     }
 
-    $anio = (int)($body['anio'] ?? 0);
-    $mes  = (int)($body['mes'] ?? 0);
-    if (!MetasEmpresa::mes_editable($anio, $mes)) {
-        json_error('Ese mes ya no se puede editar (se capturan del mes actual −5 al +6).');
+    if ($accion === 'quitar') {
+        DB::execute("UPDATE empresas SET meta_equilibrio = NULL, meta_pesimista = NULL, meta_optimista = NULL,
+                            meta_moneda = NULL, meta_capturada_at = NULL, meta_capturada_por = NULL
+                      WHERE id = ?", [$empresa_id]);
+        json_ok(['quitada' => true]);
     }
 
-    if ($accion === 'borrar') {
-        DB::execute("DELETE FROM empresa_metas_mes WHERE empresa_id = ? AND anio = ? AND mes = ?",
-            [$empresa_id, $anio, $mes]);
-        json_ok(['borrado' => true]);
-    }
-
-    if ($accion !== 'mes') json_error('Acción inválida');
+    if ($accion !== 'meta') json_error('Acción inválida');
 
     foreach (['equilibrio', 'pesimista', 'optimista'] as $k) {
         if (MetasEmpresa::decimales_de_mas($body[$k] ?? null)) {
@@ -69,17 +66,14 @@ try {
     if ($err = MetasEmpresa::validar_metas($E, $P, $O)) json_error($err);
 
     // La moneda se copia de la empresa al guardar: si la empresa cambia de
-    // moneda, las metas viejas quedan en sin_metas en vez de compararse mal.
+    // moneda, la meta queda en sin_metas en vez de compararse mal.
     $moneda = strtoupper((string)(DB::val("SELECT moneda FROM empresas WHERE id = ?", [$empresa_id]) ?: 'MXN'));
 
     DB::execute(
-        "INSERT INTO empresa_metas_mes
-            (empresa_id, anio, mes, equilibrio, meta_pesimista, meta_optimista, moneda, capturado_por)
-         VALUES (?,?,?,?,?,?,?,?)
-         ON DUPLICATE KEY UPDATE equilibrio = VALUES(equilibrio), meta_pesimista = VALUES(meta_pesimista),
-                                 meta_optimista = VALUES(meta_optimista), moneda = VALUES(moneda),
-                                 capturado_por = VALUES(capturado_por)",
-        [$empresa_id, $anio, $mes, round($E, 2), round($P, 2), round($O, 2), $moneda, Auth::id()]);
+        "UPDATE empresas SET meta_equilibrio = ?, meta_pesimista = ?, meta_optimista = ?,
+                             meta_moneda = ?, meta_capturada_at = NOW(), meta_capturada_por = ?
+          WHERE id = ?",
+        [round($E, 2), round($P, 2), round($O, 2), $moneda, Auth::id(), $empresa_id]);
     json_ok(['guardado' => true]);
 
 } catch (\PDOException $ex) {

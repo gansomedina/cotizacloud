@@ -76,7 +76,6 @@ class MetasEmpresa
 
         $t      = self::$ahora ?? time();
         $hoy    = date('Y-m-d', $t);
-        $anio   = (int)date('Y', $t);
         $mes    = (int)date('n', $t);
         $base = [
             'estado'     => 'sin_metas',
@@ -95,21 +94,31 @@ class MetasEmpresa
         try {
             if (!self::plan_ok($e)) return self::$memo[$e] = $base;
 
-            $emp = DB::row("SELECT moneda, tasa_conv_meta FROM empresas WHERE id = ?", [$e]);
+            $emp = DB::row("SELECT moneda, tasa_conv_meta, meta_equilibrio, meta_pesimista, meta_optimista, meta_moneda
+                              FROM empresas WHERE id = ?", [$e]);
             if (!$emp) return self::$memo[$e] = $base;
             $moneda  = strtoupper((string)($emp['moneda'] ?: 'MXN'));
             $deseada = $emp['tasa_conv_meta'] !== null ? (float)$emp['tasa_conv_meta'] / 100 : null;
             $base['moneda'] = $moneda;
 
-            $filas = DB::query(
-                "SELECT anio, mes, equilibrio, meta_pesimista, meta_optimista, moneda
-                   FROM empresa_metas_mes WHERE empresa_id = ? ORDER BY anio, mes", [$e]);
-            // Sin metas no se enciende nada: se sale ANTES de las consultas
+            // UNA meta general de la empresa, igual para todos los meses (CEO,
+            // 27 sep: "no vamos a entrar a qué mes es cuál").
+            // Sin meta no se enciende nada: se sale ANTES de las consultas
             // pesadas (esto corre en cada carga del dashboard de un Business).
-            if (!$filas) {
+            if ($emp['meta_equilibrio'] === null || $emp['meta_pesimista'] === null || $emp['meta_optimista'] === null) {
                 self::_olvidar($e, ['mes', 'd30']);
                 return self::$memo[$e] = $base;
             }
+            $E = (float)$emp['meta_equilibrio'];
+            $P = (float)$emp['meta_pesimista'];
+            $O = (float)$emp['meta_optimista'];
+            // Capturada en otra moneda: no se compara pesos contra dólares.
+            if (strtoupper((string)$emp['meta_moneda']) !== $moneda) {
+                self::_olvidar($e, ['mes', 'd30']);
+                foreach (['mes', 'd30'] as $w) $base['ventanas'][$w] = self::_ventana_vacia('sin_metas') + ['motivo' => 'moneda'];
+                return self::$memo[$e] = $base;
+            }
+            $firma = self::_firma($E, $P, $O, $moneda);
 
             // ── Límites (en PHP; NUNCA NOW() en SQL: el reloj es uno solo) ──
             $ini_mes = date('Y-m-01 00:00:00', $t);
@@ -170,43 +179,31 @@ class MetasEmpresa
             $con_historia = $primera
                 && strtotime(date('Y-m-d', strtotime((string)$primera))) <= strtotime('-' . self::HISTORIA_DIAS . ' days', strtotime($hoy));
 
-            // ── Metas de cada ventana ──
-            $metas = [
-                'mes' => self::_metas_mes($filas, $anio, $mes, $moneda),
-                'd30' => self::_metas_d30($filas, $ini_30, $hoy, $moneda),
-            ];
-
-            $alguna = false;
+            // ── Las dos ventanas contra la MISMA meta completa ──
+            // Mes calendario: sin prorrateo (CEO, 3ª ronda). Últimos 30 días:
+            // la ventana siempre abarca un mes completo, así que la meta
+            // entera es justa. Sin repartir por días.
             foreach (['mes', 'd30'] as $w) {
-                $m = $metas[$w];
-                if ($m['estado'] !== 'ok') {
-                    $base['ventanas'][$w] = self::_ventana_vacia($m['estado']) + ['motivo' => $m['motivo'] ?? null];
-                    self::_olvidar($e, [$w]);   // al volver, es primera lectura: sin alerta contra un nivel viejo
-                    continue;
-                }
-                $alguna = true;
                 $vw = $vend[$w];
-                $crudo = self::_nivel_crudo($vw, $m['E'], $m['P'], $m['O']);
+                $crudo = self::_nivel_crudo($vw, $E, $P, $O);
                 $vent = [
                     'estado'      => $con_historia ? 'ok' : 'sin_historia',
-                    'equilibrio'  => round($m['E'], 2),
-                    'pesimista'   => round($m['P'], 2),
-                    'optimista'   => round($m['O'], 2),
+                    'equilibrio'  => round($E, 2),
+                    'pesimista'   => round($P, 2),
+                    'optimista'   => round($O, 2),
                     'vendido'     => round($vw, 2),
                     'n'           => $n[$w],
-                    'provisional' => $m['provisional'],
-                    'origen'      => $m['origen'],
                     'nivel_crudo' => $crudo,
                     'nivel'       => null,
                     'cambio'      => false,
                     'alerta'      => false,
                     'nivel_anterior' => null,
                     'cambiado_at' => null,
-                ] + self::_faltante($vw, $m['E'], $m['P'], $m['O']);
+                ] + self::_faltante($vw, $E, $P, $O);
 
                 if ($con_historia) {
                     $periodo = $w === 'mes' ? date('Y-m', $t) : 'rolling';
-                    $h = self::_histeresis($e, $w, $periodo, $m['firma'], $crudo, $vw, $m['E'], $m['P'], $m['O'], $t);
+                    $h = self::_histeresis($e, $w, $periodo, $firma, $crudo, $vw, $E, $P, $O, $t);
                     $vent['nivel']          = $h['nivel'];
                     $vent['cambio']         = $h['cambio'];
                     $vent['nivel_anterior'] = $h['nivel_anterior'];
@@ -221,7 +218,6 @@ class MetasEmpresa
                 }
                 $base['ventanas'][$w] = $vent;
             }
-            if (!$alguna) return self::$memo[$e] = $base;
             $base['estado'] = $con_historia ? 'ok' : 'sin_historia';
 
             // ── Cotizaciones que faltan (mes calendario, admin) ──
@@ -329,41 +325,6 @@ class MetasEmpresa
     public const TASA_MIN = 3;
     public const TASA_MAX = 90;
 
-    /** Todas las filas capturadas, ascendentes (lo que espera fila_vigente). */
-    public static function filas(int $e): array
-    {
-        return DB::query(
-            "SELECT anio, mes, equilibrio, meta_pesimista, meta_optimista, moneda
-               FROM empresa_metas_mes WHERE empresa_id = ? ORDER BY anio, mes", [$e]);
-    }
-
-    /**
-     * Los 12 meses que se pueden capturar: el actual, los 5 anteriores y los
-     * 6 siguientes (§1). Devuelve [['anio'=>..,'mes'=>..,'nombre'=>..], ...].
-     */
-    public static function meses_captura(?int $t = null): array
-    {
-        $t   = $t ?? self::$ahora ?? time();
-        $ini = strtotime(date('Y-m-01', $t));
-        $out = [];
-        for ($i = -5; $i <= 6; $i++) {
-            $m = strtotime(($i >= 0 ? '+' : '') . $i . ' months', $ini);
-            $out[] = ['anio' => (int)date('Y', $m), 'mes' => (int)date('n', $m),
-                      'nombre' => self::MESES[(int)date('n', $m)] . ' ' . date('Y', $m),
-                      'actual' => $i === 0];
-        }
-        return $out;
-    }
-
-    /** ¿Ese mes está en la rejilla editable? */
-    public static function mes_editable(int $anio, int $mes, ?int $t = null): bool
-    {
-        foreach (self::meses_captura($t) as $m) {
-            if ($m['anio'] === $anio && $m['mes'] === $mes) return true;
-        }
-        return false;
-    }
-
     /**
      * "$120,000.50" / "120000" → 120000.5. Vacío, basura, hex, binario,
      * notación científica o arreglos → null. Solo dígitos, comas de miles y
@@ -386,12 +347,6 @@ class MetasEmpresa
         return is_string($x) && (bool)preg_match('/\.\d{3,}\s*$/', trim($x));
     }
 
-    /** "septiembre 2026" para cualquier mes (también fuera de la rejilla). */
-    public static function nombre_mes(int $anio, int $mes): string
-    {
-        return (self::MESES[$mes] ?? (string)$mes) . ' ' . $anio;
-    }
-
     /**
      * Los tres montos juntos o ninguno; todos > 0; equilibrio ≤ pesimista ≤
      * optimista (CEO, 2ª ronda: si no se cumple, se rechaza). null = válido.
@@ -405,6 +360,17 @@ class MetasEmpresa
         if (round($E, 2) > round($P, 2))               return 'La meta pesimista no puede quedar debajo del punto de equilibrio.';
         if (round($P, 2) > round($O, 2))               return 'La meta optimista no puede quedar debajo de la meta pesimista.';
         return null;
+    }
+
+    /** La meta vigente para la pantalla de captura (admin). null = sin capturar. */
+    public static function meta(int $e): ?array
+    {
+        $r = DB::row("SELECT meta_equilibrio, meta_pesimista, meta_optimista, meta_moneda, meta_capturada_at
+                        FROM empresas WHERE id = ?", [$e]);
+        if (!$r || $r['meta_equilibrio'] === null) return null;
+        return ['equilibrio' => (float)$r['meta_equilibrio'], 'pesimista' => (float)$r['meta_pesimista'],
+                'optimista' => (float)$r['meta_optimista'], 'moneda' => strtoupper((string)$r['meta_moneda']),
+                'capturada_at' => $r['meta_capturada_at']];
     }
 
     /** Tasa deseada en %, entre 3 y 90. Vacío = no declarada (válido). */
@@ -448,60 +414,6 @@ class MetasEmpresa
     {
         if (($v['estado'] ?? '') === 'ok' && !empty($v['nivel'])) return $v['nivel'];
         return $v['estado'] ?? 'sin_metas';
-    }
-
-    /** La fila que rige (anio, mes): la propia o la última capturada antes. */
-    public static function fila_vigente(array $filas, int $anio, int $mes): ?array
-    {
-        $k = $anio * 100 + $mes;
-        $hit = null;
-        foreach ($filas as $f) {                 // vienen ordenadas ascendente
-            if ((int)$f['anio'] * 100 + (int)$f['mes'] <= $k) $hit = $f; else break;
-        }
-        return $hit;
-    }
-
-    /** Mes calendario: meta COMPLETA del mes, sin prorrateo (CEO, 3ª ronda). */
-    private static function _metas_mes(array $filas, int $anio, int $mes, string $moneda): array
-    {
-        $f = self::fila_vigente($filas, $anio, $mes);
-        if (!$f) return ['estado' => 'sin_metas'];
-        if (strtoupper($f['moneda']) !== $moneda) return ['estado' => 'sin_metas', 'motivo' => 'moneda'];
-        return [
-            'estado' => 'ok',
-            'E' => (float)$f['equilibrio'], 'P' => (float)$f['meta_pesimista'], 'O' => (float)$f['meta_optimista'],
-            'provisional' => !((int)$f['anio'] === $anio && (int)$f['mes'] === $mes),
-            'origen' => sprintf('%04d-%02d', $f['anio'], $f['mes']),
-            'firma'  => self::_firma([$f]),
-        ];
-    }
-
-    /**
-     * Últimos 30 días: suma día por día de meta_del_mes(d) / días_de_ese_mes(d).
-     * Si UN solo día no tiene meta (ni propia ni heredada), la ventana entera
-     * queda sin_metas: prorratear a medias la haría artificialmente fácil.
-     */
-    private static function _metas_d30(array $filas, string $ini, string $hoy, string $moneda): array
-    {
-        $E = $P = $O = 0.0; $prov = false; $origenes = []; $usadas = [];
-        // Se itera a mediodía: con strtotime('+1 day') desde medianoche, un
-        // huso con cambio de horario A LAS 00:00 se salta un día.
-        $d = strtotime(substr($ini, 0, 10) . ' 12:00:00'); $fin = strtotime($hoy . ' 12:00:00');
-        for (; $d <= $fin; $d = strtotime('+1 day', $d)) {
-            $a = (int)date('Y', $d); $m = (int)date('n', $d); $dm = (int)date('t', $d);
-            $f = self::fila_vigente($filas, $a, $m);
-            if (!$f) return ['estado' => 'sin_metas', 'motivo' => 'cobertura'];
-            if (strtoupper($f['moneda']) !== $moneda) return ['estado' => 'sin_metas', 'motivo' => 'moneda'];
-            $E += (float)$f['equilibrio'] / $dm;
-            $P += (float)$f['meta_pesimista'] / $dm;
-            $O += (float)$f['meta_optimista'] / $dm;
-            if (!((int)$f['anio'] === $a && (int)$f['mes'] === $m)) $prov = true;
-            $origenes[sprintf('%04d-%02d', $f['anio'], $f['mes'])] = true;
-            $usadas[$f['anio'] . '-' . $f['mes']] = $f;
-        }
-        return ['estado' => 'ok', 'E' => $E, 'P' => $P, 'O' => $O,
-                'provisional' => $prov, 'origen' => implode(',', array_keys($origenes)),
-                'firma' => self::_firma(array_values($usadas))];
     }
 
     /**
@@ -604,14 +516,10 @@ class MetasEmpresa
         }
     }
 
-    /** Huella de las filas de meta que rigen la ventana. */
-    private static function _firma(array $filas): string
+    /** Huella de la meta con que se calculó un nivel: si el admin la edita, cambia. */
+    private static function _firma(float $E, float $P, float $O, string $moneda): string
     {
-        $p = [];
-        foreach ($filas as $f) {
-            $p[] = implode('|', [$f['anio'], $f['mes'], $f['equilibrio'], $f['meta_pesimista'], $f['meta_optimista'], $f['moneda']]);
-        }
-        return md5(implode(';', $p));
+        return md5(implode('|', [round($E, 2), round($P, 2), round($O, 2), $moneda]));
     }
 
     /** Borra la memoria de histéresis de ventanas que hoy no se leen. */
