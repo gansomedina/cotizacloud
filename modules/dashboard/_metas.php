@@ -27,9 +27,12 @@ $mt_ventanas = ['mes' => 'Este mes (' . $mt_s['mes_nombre'] . ')', 'd30' => 'Úl
 ?>
 <style>
 .mt-card{padding:16px 18px;margin-bottom:16px}
-.mt-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.mt-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.mt-tl{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;min-width:0}
 .mt-tt{font:800 15px var(--body);color:var(--text)}
-.mt-ed{font:600 12px var(--body);color:var(--g);text-decoration:none}
+.mt-cv{font:500 12px var(--body);color:var(--t2)}
+.mt-cv b{font:800 13px var(--num);color:var(--text)}
+.mt-ed{font:600 12px var(--body);color:var(--g);text-decoration:none;white-space:nowrap}
 .mt-w{padding:10px 0;border-top:1px solid var(--border)}
 .mt-hd + .mt-w{border-top:none}
 .mt-wl{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font:700 13px var(--body);color:var(--text)}
@@ -43,11 +46,21 @@ $mt_ventanas = ['mes' => 'Este mes (' . $mt_s['mes_nombre'] . ')', 'd30' => 'Úl
 .mt-fr{font:500 13px var(--body);line-height:1.5}
 .mt-sub{font:400 12px var(--body);color:var(--t3);line-height:1.5;margin-top:4px}
 .mt-al{margin:6px 0 2px;padding:6px 10px;border-radius:var(--r-sm);background:#fff7ed;color:#9a3412;font:600 12px var(--body)}
-.mt-nota{font:400 11px var(--body);color:var(--t3);margin-top:10px;line-height:1.5}
 </style>
 <div class="card mt-card">
+  <?php $mt_cv = $mt_s['conv']; ?>
   <div class="mt-hd">
-    <div class="mt-tt">Metas de la empresa</div>
+    <div class="mt-tl">
+      <span class="mt-tt">Metas de la empresa</span>
+      <?php if ($mt_cv['deseada'] !== null):   // el cierre va junto al título (CEO) ?>
+      <span class="mt-cv">
+        · Cierre <b><?= ($mt_cv['tasa'] !== null && $mt_cv['nivel'] !== 'gris') ? round($mt_cv['tasa'] * 100) . '%' : '—' ?></b>
+        · buscas <?= rtrim(rtrim(number_format($mt_cv['deseada'] * 100, 2, '.', ''), '0'), '.') ?>%
+        <?php if (!empty($mt_f['conv']) && $mt_s['estado'] === 'ok'): ?>· <?= e($mt_f['conv']) ?>
+        <?php elseif ($mt_cv['nivel'] === 'gris'): ?>· todavía no hay suficientes cotizaciones para comparar<?php endif; ?>
+      </span>
+      <?php endif; ?>
+    </div>
     <a class="mt-ed" href="/config?tab=metas">Editar metas</a>
   </div>
 
@@ -91,20 +104,6 @@ $mt_ventanas = ['mes' => 'Este mes (' . $mt_s['mes_nombre'] . ')', 'd30' => 'Úl
   </div>
   <?php endforeach; ?>
 
-  <?php $mt_cv = $mt_s['conv']; if ($mt_cv['deseada'] !== null): ?>
-  <div class="mt-w">
-    <div class="mt-wl"><span>Cierre de la empresa</span>
-      <span class="mt-v"><?= ($mt_cv['tasa'] !== null && $mt_cv['nivel'] !== 'gris') ? round($mt_cv['tasa'] * 100) . '%' : '—' ?> <span style="font:600 12px var(--body);color:var(--t3)">· buscas <?= rtrim(rtrim(number_format($mt_cv['deseada'] * 100, 2, '.', ''), '0'), '.') ?>%</span></span>
-    </div>
-    <?php if (!empty($mt_f['conv']) && $mt_s['estado'] === 'ok'): ?>
-    <div class="mt-fr"><?= e($mt_f['conv']) ?></div>
-    <?php elseif ($mt_cv['nivel'] === 'gris'): ?>
-    <div class="mt-sub">Todavía no hay suficientes cotizaciones para comparar el cierre.</div>
-    <?php endif; ?>
-    <div class="mt-sub">Es la misma tasa de cierre que ven tus asesores en su reporte ("la empresa X%").</div>
-  </div>
-  <?php endif; ?>
-
   <?php $mt_fc = $mt_s['faltan_cot']; $mt_vm = $mt_s['ventanas']['mes'];
   if (($mt_fc['real'] || $mt_fc['deseada']) && !empty($mt_vm['faltante_hacia'])):
       $mt_obj = $mt_vm['faltante_hacia'] === 'equilibrio' ? 'el punto de equilibrio' : 'la meta ' . $mt_vm['faltante_hacia'];
@@ -115,5 +114,4 @@ $mt_ventanas = ['mes' => 'Este mes (' . $mt_s['mes_nombre'] . ')', 'd30' => 'Úl
   <div class="mt-sub" style="margin-top:8px">Para llegar a <?= e($mt_obj) ?> este mes, <?= implode('; ', $mt_partes) ?>.</div>
   <?php endif; ?>
 
-  <div class="mt-nota">Solo cuentan ventas con anticipo, en la fecha en que el cliente aceptó, sin Descuento Inteligente. Los montos se recalculan con los pagos que lleguen después. Tus asesores no ven esta tarjeta: solo leen cómo va la empresa, sin cifras.</div>
 </div>
