@@ -310,14 +310,19 @@ class MetasEmpresa
     }
 
     /**
-     * El renglón del TIP del termómetro (asesor): la frase del mes, solo si hay
-     * un nivel real. null = no se muestra nada. Sin cifras.
+     * Los renglones del TIP del termómetro (asesor): DOS frases, mes calendario
+     * y últimos 30 días (CEO, 27 sep), cada una solo si hay un nivel real.
+     * [] = no se muestra nada. Sin cifras.
      */
-    public static function linea_tip(int $e): ?string
+    public static function lineas_tip(int $e): array
     {
         $n = self::nivel($e);
-        if (!in_array($n['mes'], self::NIVELES, true)) return null;
-        return self::frases($n)['mes'];
+        $f = self::frases($n);
+        $out = [];
+        foreach (['mes', 'd30'] as $w) {
+            if (in_array($n[$w], self::NIVELES, true) && !empty($f[$w])) $out[] = $f[$w];
+        }
+        return $out;
     }
 
     /**

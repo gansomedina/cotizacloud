@@ -830,18 +830,21 @@ metas($eR, 420000, 590000, 690000);
 echo "\n── Tip del termómetro ──\n";
 $dsh = file_get_contents(__DIR__ . '/../modules/dashboard/index.php');
 MetasEmpresa::reset();
-chk('renglón del tip: la frase del mes', MetasEmpresa::linea_tip($eR), 'La empresa ya sobrepasó su meta optimista en este mes.');
+chk('tip: DOS frases, mes y 30 días', MetasEmpresa::lineas_tip($eR), ['La empresa ya sobrepasó su meta optimista en este mes.', 'La empresa ya sobrepasó su meta optimista en los últimos 30 días.']);
 $eT = empresa(); historia($eT); metas($eT, 420000, 590000, 690000); venta($eT, '2026-09-10 10:00:00', 450000);
 MetasEmpresa::reset();
-$lt = MetasEmpresa::linea_tip($eT);
-chk('renglón del tip SIN cifras (ni meta ni vendido)', is_string($lt) && !preg_match('/\d/', $lt));
+$lt = MetasEmpresa::lineas_tip($eT);
+chk('tip SIN cifras (ni meta ni vendido); el único número es "30 días"', count($lt) === 2 && !preg_match('/\d/', str_replace('30 días', '', implode(' ', $lt))));
 $eT2 = empresa(); metas($eT2, 1, 2, 3); venta($eT2, '2026-09-20 10:00:00', 5);   // sin historia
 MetasEmpresa::reset();
-chk('sin historia: el tip no muestra nada', MetasEmpresa::linea_tip($eT2), null);
+chk('sin historia: el tip no muestra nada', MetasEmpresa::lineas_tip($eT2), []);
 $eT3 = empresa(); historia($eT3);
 MetasEmpresa::reset();
-chk('sin meta: el tip no muestra nada', MetasEmpresa::linea_tip($eT3), null);
-chk('el dashboard imprime SOLO linea_tip() en ese renglón', str_contains($dsh, '$ts_meta = MetasEmpresa::linea_tip(EMPRESA_ID);') && preg_match_all('/\$ts_meta\s*=/', $dsh) === 3);   // null · linea_tip · null en el catch
+chk('sin meta: el tip no muestra nada', MetasEmpresa::lineas_tip($eT3), []);
+$eT4 = empresa('business', 'USD'); historia($eT4); metas($eT4, 1, 2, 3, 'MXN');
+MetasEmpresa::reset();
+chk('moneda distinta: el tip no muestra nada', MetasEmpresa::lineas_tip($eT4), []);
+chk('el dashboard imprime SOLO lineas_tip() en ese renglón', str_contains($dsh, '$ts_meta = MetasEmpresa::lineas_tip(EMPRESA_ID);') && preg_match_all('/\$ts_meta\s*=/', $dsh) === 3);   // [] · lineas_tip · [] en el catch
 chk('el texto del tip NO se toca ($ts_diag no menciona metas)', !preg_match('/\$ts_diag\s*=.*Metas/', $dsh) && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
 chk('la tarjeta del admin se incluye antes de Ritmo', strpos($dsh, "include __DIR__ . '/_metas.php'") < strpos($dsh, "include __DIR__ . '/_ritmo.php'"));
 

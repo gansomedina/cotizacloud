@@ -494,7 +494,12 @@ Sin fugas de cifras al asesor ni rutas a un error 500. Corregido:
 - La tarjeta desaparecía sin aviso con la moneda distinta; ahora avisa. En gris ya no muestra la tasa.
 - `MetasEmpresa::linea_tip()` y `lineas_reporte()`: la lógica del tip y del reporte vive en la clase y se prueba (antes una regresión que metiera cifras al tip no la detectaba ninguna prueba).
 
-### Pendientes de decisión del CEO
+### Decisiones del CEO sobre la auditoría (27 sep 2026)
+- **Se deja** la frase de conversión en el reporte aunque, junto con *"la empresa 18%"*, permita acotar la tasa buscada.
+- **Está bien** que el día 1 todos lean *"ni siquiera llega al punto de equilibrio en este mes"*.
+- El tip del termómetro lleva **dos frases**: mes calendario y últimos 30 días (`MetasEmpresa::lineas_tip`).
+
+### (histórico) Pendientes que se le plantearon
 1. **El reporte deja acotar la tasa deseada.** El pilar Conversión ya imprime *"la empresa 18%"* (existía antes). Junto a *"La empresa cierra en lo que busca"* (±10%), el asesor deduce que la tasa buscada está entre 16.4% y 20%. ¿Se quita la frase de conversión del reporte del asesor, o se acepta?
 2. **Día 1 del mes:** todos los termómetros dicen *"La empresa ni siquiera llega al punto de equilibrio en este mes"*. Es consecuencia directa de no prorratear (decisión de la 3ª ronda).
 3. El reporte impreso probablemente pasa a 2 hojas (aceptado por el CEO).

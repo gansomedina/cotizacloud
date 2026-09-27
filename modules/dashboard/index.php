@@ -1039,13 +1039,15 @@ $ts_diag = ($ts_rt && trim($ts_rt['texto']) !== '') ? $ts_rt['texto'] : Activida
       // recuadro del tip, siempre visible. No se mezcla con el texto del tip
       // para no mover su corte a media frase ni el crédito de "ver más".
       // Sin cifras: frase en tercera persona, la empresa de sujeto.
-      $ts_meta = null;
+      $ts_meta = [];
       try {
           if (!class_exists('MetasEmpresa')) require_once __DIR__ . '/../../core/MetasEmpresa.php';
-          $ts_meta = MetasEmpresa::linea_tip(EMPRESA_ID);
-      } catch (Throwable $e) { $ts_meta = null; }
+          $ts_meta = MetasEmpresa::lineas_tip(EMPRESA_ID);
+      } catch (Throwable $e) { $ts_meta = []; }
       if ($ts_meta): ?>
-      <div class="thermo-metas" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font:600 13px var(--body);color:var(--t2)">🏢 <?= e($ts_meta) ?></div>
+      <div class="thermo-metas" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font:600 13px var(--body);color:var(--t2);line-height:1.5">
+        <?php foreach ($ts_meta as $ts_mf): ?><div>🏢 <?= e($ts_mf) ?></div><?php endforeach; ?>
+      </div>
       <?php endif; ?>
     </div>
     <?php // Mesa del asesor DENTRO de la tarjeta del score, abajo del tip —
