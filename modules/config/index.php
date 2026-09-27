@@ -9,7 +9,7 @@ defined('COTIZAAPP') or die;
 Auth::requerir_admin();
 
 $empresa_id = EMPRESA_ID;
-$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing','historial','termometro','feedback','suscripcion'])
+$tab_activo = in_array($_GET['tab'] ?? '', ['empresa','catalogo','clientes','cupones','usuarios','radar','costos','marketing','historial','termometro','metas','feedback','suscripcion'])
     ? $_GET['tab'] : 'empresa';
 
 // Usuarios disponible en Pro y Business (paquetes 23-jul: Pro = "tu equipo")
@@ -24,8 +24,8 @@ if ($tab_activo === 'costos') {
     if (!$plan_check['es_pro_o_superior']) $tab_activo = 'empresa';
 }
 
-// Termómetro e Historial son Business — por URL directa quedaban en blanco
-if (in_array($tab_activo, ['termometro', 'historial'], true)) {
+// Termómetro, Historial y Metas son Business — por URL directa quedaban en blanco
+if (in_array($tab_activo, ['termometro', 'historial', 'metas'], true)) {
     $plan_check = $plan_check ?? trial_info(EMPRESA_ID);
     if (!$plan_check['es_business']) $tab_activo = 'empresa';
 }
@@ -374,6 +374,7 @@ textarea.field-in{resize:none;overflow:hidden;line-height:1.6;min-height:80px}
     <a class="cfg-tab <?= $tab_activo==='marketing' ?'on':'' ?>" href="/config?tab=marketing">Marketing</a>
     <a class="cfg-tab <?= $tab_activo==='historial' ?'on':'' ?>" href="/config?tab=historial">Historial</a>
     <a class="cfg-tab <?= $tab_activo==='termometro' ?'on':'' ?>" href="/config?tab=termometro">Termómetro</a>
+    <a class="cfg-tab <?= $tab_activo==='metas' ?'on':'' ?>" href="/config?tab=metas">Metas</a>
     <?php endif; ?>
     <?php // Feedback para TODOS (decisión CEO 24-jul): configurar aquí; el
           // usuario ve sus calificaciones en el Dashboard; el reporte por
@@ -2408,6 +2409,9 @@ async function guardarTermometro(on) {
 }
 </script>
 <?php endif; ?>
+
+<!-- ══ TAB: METAS (Business) — dato fijo de CotizaCloud AI ═══ -->
+<?php if ($plan_info['es_business']) include __DIR__ . '/_metas.php'; ?>
 
 <!-- ══ TAB: FEEDBACK (Free + Business, NO Pro) ════════════════ -->
 <?php if ($plan_info['es_free'] || $plan_info['es_business']): ?>

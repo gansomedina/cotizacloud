@@ -93,7 +93,7 @@ class MetasEmpresa
         ];
 
         try {
-            if (!self::_plan_ok($e)) return self::$memo[$e] = $base;
+            if (!self::plan_ok($e)) return self::$memo[$e] = $base;
 
             $emp = DB::row("SELECT moneda, tasa_conv_meta FROM empresas WHERE id = ?", [$e]);
             if (!$emp) return self::$memo[$e] = $base;
@@ -319,10 +319,89 @@ class MetasEmpresa
     }
 
     // ═════════════════════════════════════════════════════════
+    //  Captura (Configuración › Metas). La validación vive AQUÍ para que
+    //  la pestaña, el endpoint y la simulación usen la misma regla.
+    // ═════════════════════════════════════════════════════════
+
+    /** Tope de DECIMAL(14,2). */
+    public const MONTO_MAX = 999999999999.99;
+    /** Rango real del motor: piso 3% (ActividadScore max(...,0.03)), techo 90%. */
+    public const TASA_MIN = 3;
+    public const TASA_MAX = 90;
+
+    /** Todas las filas capturadas, ascendentes (lo que espera fila_vigente). */
+    public static function filas(int $e): array
+    {
+        return DB::query(
+            "SELECT anio, mes, equilibrio, meta_pesimista, meta_optimista, moneda
+               FROM empresa_metas_mes WHERE empresa_id = ? ORDER BY anio, mes", [$e]);
+    }
+
+    /**
+     * Los 12 meses que se pueden capturar: el actual, los 5 anteriores y los
+     * 6 siguientes (§1). Devuelve [['anio'=>..,'mes'=>..,'nombre'=>..], ...].
+     */
+    public static function meses_captura(?int $t = null): array
+    {
+        $t   = $t ?? self::$ahora ?? time();
+        $ini = strtotime(date('Y-m-01', $t));
+        $out = [];
+        for ($i = -5; $i <= 6; $i++) {
+            $m = strtotime(($i >= 0 ? '+' : '') . $i . ' months', $ini);
+            $out[] = ['anio' => (int)date('Y', $m), 'mes' => (int)date('n', $m),
+                      'nombre' => self::MESES[(int)date('n', $m)] . ' ' . date('Y', $m),
+                      'actual' => $i === 0];
+        }
+        return $out;
+    }
+
+    /** ¿Ese mes está en la rejilla editable? */
+    public static function mes_editable(int $anio, int $mes, ?int $t = null): bool
+    {
+        foreach (self::meses_captura($t) as $m) {
+            if ($m['anio'] === $anio && $m['mes'] === $mes) return true;
+        }
+        return false;
+    }
+
+    /** "$120,000.50" / "120000" → 120000.5. Vacío o basura → null. */
+    public static function parse_monto(mixed $x): ?float
+    {
+        if (is_int($x) || is_float($x)) return (float)$x;
+        $x = trim(str_replace([',', '$', ' '], '', (string)$x));
+        if ($x === '' || !is_numeric($x)) return null;
+        return (float)$x;
+    }
+
+    /**
+     * Los tres montos juntos o ninguno; todos > 0; equilibrio ≤ pesimista ≤
+     * optimista (CEO, 2ª ronda: si no se cumple, se rechaza). null = válido.
+     */
+    public static function validar_metas(?float $E, ?float $P, ?float $O): ?string
+    {
+        if ($E === null || $P === null || $O === null) return 'Captura los tres montos: punto de equilibrio, meta pesimista y meta optimista.';
+        if ($E <= 0 || $P <= 0 || $O <= 0)             return 'Los tres montos deben ser mayores a cero.';
+        if (max($E, $P, $O) > self::MONTO_MAX)         return 'El monto es demasiado grande.';
+        if (round($E, 2) > round($P, 2))               return 'La meta pesimista no puede quedar debajo del punto de equilibrio.';
+        if (round($P, 2) > round($O, 2))               return 'La meta optimista no puede quedar debajo de la meta pesimista.';
+        return null;
+    }
+
+    /** Tasa deseada en %, entre 3 y 90. Vacío = no declarada (válido). */
+    public static function validar_tasa(?float $tasa): ?string
+    {
+        if ($tasa === null) return null;
+        if ($tasa < self::TASA_MIN || $tasa > self::TASA_MAX) {
+            return 'La tasa deseada va entre ' . self::TASA_MIN . '% y ' . self::TASA_MAX . '%.';
+        }
+        return null;
+    }
+
+    // ═════════════════════════════════════════════════════════
     //  Internos
     // ═════════════════════════════════════════════════════════
 
-    private static function _plan_ok(int $e): bool
+    public static function plan_ok(int $e): bool
     {
         if (!function_exists('trial_info')) {
             if (!self::$logged) { error_log('[Metas] trial_info() no está cargada'); self::$logged = true; }
@@ -352,7 +431,7 @@ class MetasEmpresa
     }
 
     /** La fila que rige (anio, mes): la propia o la última capturada antes. */
-    private static function _fila(array $filas, int $anio, int $mes): ?array
+    public static function fila_vigente(array $filas, int $anio, int $mes): ?array
     {
         $k = $anio * 100 + $mes;
         $hit = null;
@@ -365,7 +444,7 @@ class MetasEmpresa
     /** Mes calendario: meta COMPLETA del mes, sin prorrateo (CEO, 3ª ronda). */
     private static function _metas_mes(array $filas, int $anio, int $mes, string $moneda): array
     {
-        $f = self::_fila($filas, $anio, $mes);
+        $f = self::fila_vigente($filas, $anio, $mes);
         if (!$f) return ['estado' => 'sin_metas'];
         if (strtoupper($f['moneda']) !== $moneda) return ['estado' => 'sin_metas', 'motivo' => 'moneda'];
         return [
@@ -390,7 +469,7 @@ class MetasEmpresa
         $d = strtotime(substr($ini, 0, 10) . ' 12:00:00'); $fin = strtotime($hoy . ' 12:00:00');
         for (; $d <= $fin; $d = strtotime('+1 day', $d)) {
             $a = (int)date('Y', $d); $m = (int)date('n', $d); $dm = (int)date('t', $d);
-            $f = self::_fila($filas, $a, $m);
+            $f = self::fila_vigente($filas, $a, $m);
             if (!$f) return ['estado' => 'sin_metas', 'motivo' => 'cobertura'];
             if (strtoupper($f['moneda']) !== $moneda) return ['estado' => 'sin_metas', 'motivo' => 'moneda'];
             $E += (float)$f['equilibrio'] / $dm;
@@ -547,7 +626,7 @@ class MetasEmpresa
 
     /**
      * Ticket PROPIO de Metas (misma receta de vendido, 180 días, n ≥ 5).
-     * Respaldo: historial_mensual de los últimos 6 meses capturados.
+     * Respaldo: historial_mensual, las 6 filas más recientes DEL ÚLTIMO AÑO.
      * La Mesa conserva el suyo (Mesa.php): no se comparten, porque cambiaría
      * el umbral de monto de la Mesa y con él su orden.
      */
@@ -571,9 +650,14 @@ class MetasEmpresa
                 "SELECT COALESCE(SUM(ventas_monto),0) AS s, COALESCE(SUM(ventas_cantidad),0) AS n
                    FROM (SELECT ventas_monto, ventas_cantidad FROM historial_mensual
                           WHERE empresa_id = ? AND ventas_cantidad > 0
-                            AND (anio * 100 + mes) <= ?
+                            AND (anio * 100 + mes) BETWEEN ? AND ?
                           ORDER BY anio DESC, mes DESC LIMIT 6) x",
-                [$e, (int)date('Y', $t) * 100 + (int)date('n', $t)]);
+                // Solo el último año (CEO, 27 sep): un historial de hace años
+                // daría una venta promedio con precios viejos. Sin nada
+                // reciente, no hay ticket y la tarjeta calla ese renglón.
+                [$e, (int)date('Y', strtotime('-11 months', strtotime(date('Y-m-01', $t)))) * 100
+                        + (int)date('n', strtotime('-11 months', strtotime(date('Y-m-01', $t)))),
+                     (int)date('Y', $t) * 100 + (int)date('n', $t)]);
             if ($h && (int)$h['n'] > 0 && (float)$h['s'] > 0) {
                 return [round((float)$h['s'] / (int)$h['n'], 2), 'historial'];
             }
