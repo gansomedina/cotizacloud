@@ -605,7 +605,7 @@ class RitmoReporte
         $empresa = [];
         if (!empty($d['metas'])) {
             try {
-                $empresa = array_values(array_filter(MetasEmpresa::frases($d['metas'], true)));
+                $empresa = MetasEmpresa::lineas_reporte($d['metas']);
             } catch (Throwable $e) { $empresa = []; }
         }
 

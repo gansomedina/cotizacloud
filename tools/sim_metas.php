@@ -438,9 +438,12 @@ chk('B: el admin sí conserva el dato de conversión', EST($eb2)['conv']['tasa']
 $eg = empresa(); historia($eg); metas($eg, 1, 2, 3); metas($eg, 1, 2, 3);
 venta($eg, '2026-09-10 10:00:00', 50);
 chk('C: arranca en sobrepasada', EST($eg)['ventanas']['d30']['nivel'], 'sobrepasada');
+$antes = (int)DB::val("SELECT COUNT(*) FROM empresa_metas_estado WHERE empresa_id=?", [$eg]);
 sin_meta($eg);
-EST($eg);                                                     // hueco: sin meta
-chk('C: el hueco borra la memoria', (int)DB::val("SELECT COUNT(*) FROM empresa_metas_estado WHERE empresa_id=?", [$eg]), 0);
+EST($eg);                                                     // leer sin meta
+chk('C: LEER sin meta no escribe (corre en cada carga del dashboard)', (int)DB::val("SELECT COUNT(*) FROM empresa_metas_estado WHERE empresa_id=?", [$eg]), $antes);
+MetasEmpresa::olvidar($eg);                                   // lo que hace "Quitar meta"
+chk('C: quitar la meta borra la memoria', (int)DB::val("SELECT COUNT(*) FROM empresa_metas_estado WHERE empresa_id=?", [$eg]), 0);
 metas($eg, 1000, 2000, 3000); metas($eg, 1000, 2000, 3000);
 $s = EST($eg)['ventanas']['d30'];
 chk('C: al volver es primera lectura (sin alerta vieja)', [$s['nivel'], $s['alerta'], $s['nivel_anterior']], ['sin_equilibrio', false, null]);
@@ -593,6 +596,12 @@ $ecx = empresa(); metas($ecx, 1, 2, 3);
 $r = post($ec2, ['accion' => 'quitar']);
 chk('quitar: la meta queda en NULL', [$r['ok'], $M($ec2)['meta_equilibrio'], $M($ec2)['meta_moneda'], $M($ec2)['con_fecha']], [true, null, null, 0]);
 chk('quitar solo toca SU empresa', DB::val("SELECT meta_equilibrio FROM empresas WHERE id=?", [$ecx]), '1.00');
+$eqh = empresa(); historia($eqh);
+post($eqh, ['accion' => 'meta', 'equilibrio' => 1, 'pesimista' => 2, 'optimista' => 3]);
+EST($eqh);                                                    // deja memoria de histéresis
+chk('hay memoria antes de quitar', (int)DB::val("SELECT COUNT(*) FROM empresa_metas_estado WHERE empresa_id=?", [$eqh]), 2);
+post($eqh, ['accion' => 'quitar']);
+chk('el endpoint "quitar" borra la memoria de histéresis', (int)DB::val("SELECT COUNT(*) FROM empresa_metas_estado WHERE empresa_id=?", [$eqh]), 0);
 $r = post($ec2, ['accion' => ['x'], 'tasa' => ['25']]);
 chk('arreglos en el JSON → 400 limpio', [$r['ok'] ?? null, $r['code'] ?? null], [false, 400]);
 $r = post($ec2, ['accion' => 'mes']);
@@ -758,7 +767,7 @@ if (!function_exists('e')) { function e($v) { return htmlspecialchars((string)$v
 require_once __DIR__ . '/../core/RitmoReporte.php';
 $nR = MetasEmpresa::nivel($eR);
 $dR = ['nombre' => 'Asesor', 'win' => 20, 'score' => null, 'tip' => null, 'metas' => $nR,
-       'secciones' => ['empresa' => array_values(array_filter(MetasEmpresa::frases($nR, true))),
+       'secciones' => ['empresa' => MetasEmpresa::lineas_reporte($nR),
                        'comovas' => ['COMOVAS'], 'resumen' => ['RESUMEN'], 'embudo' => [], 'ritmo' => [], 'cinco' => [],
                        'brecha' => [], 'casos' => [], 'precio' => [], 'calidad' => [], 'radar' => [], 'consejo' => [], 'meta' => []]];
 $hR = RitmoReporte::render($dR);
@@ -773,8 +782,12 @@ chk('en este mes NUNCA en el reporte (se guarda 7 días)', str_contains($hR, 'en
 $dR['metas'] = null; $dR['secciones']['empresa'] = [];
 chk('sin metas: sin sección', str_contains(RitmoReporte::render($dR), 'La empresa en'), false);
 $rrs = file_get_contents(__DIR__ . '/../core/RitmoReporte.php');
-chk('generar() llena metas con nivel() (sin cifras) y _componer usa frases fechadas',
-    str_contains($rrs, "\$d['metas'] = MetasEmpresa::nivel(\$empresa_id)") && str_contains($rrs, 'MetasEmpresa::frases($d[\'metas\'], true)'));
+chk('generar() llena metas con nivel() (sin cifras) y _componer usa lineas_reporte()',
+    str_contains($rrs, "\$d['metas'] = MetasEmpresa::nivel(\$empresa_id)") && str_contains($rrs, "\$empresa = MetasEmpresa::lineas_reporte(\$d['metas']);"));
+$lr = MetasEmpresa::lineas_reporte($nR);
+chk('lineas_reporte: 3 renglones, fechados, sin vacíos', [count($lr), str_contains(implode(' ', $lr), 'este mes'), in_array('', $lr, true)], [3, false, false]);
+$lh = MetasEmpresa::lineas_reporte(['mes' => 'sin_historia', 'd30' => 'sin_historia', 'conv' => 'sin_meta', 'mes_nombre' => 'septiembre', 'corte' => '2026-09-27']);
+chk('lineas_reporte sin historia: un solo renglón', $lh, ['Todavía no hay suficiente historia para leer cómo va la empresa.']);
 chk('expediente() NO cambia (lo usa el tip del dashboard)', !preg_match('/function expediente.*?MetasEmpresa.*?function generar/s', $rrs));
 
 echo "\n── Tarjeta del admin en el dashboard ──\n";
@@ -794,11 +807,41 @@ chk('el ASESOR no ve nada de la tarjeta', $card(), '');
 Auth::$admin = true;
 sin_meta($eR);
 chk('sin meta capturada: no hay tarjeta', $card(), '');
+metas($eR, 420000, 590000, 690000, 'USD');
+chk('moneda distinta: la tarjeta avisa en vez de desaparecer', str_contains($card(), 'la empresa ahora opera en MXN'));
+metas($eR, 900000, 1200000, 1500000);                           // aún falta
+tasa($eR, 0.18, 40);
+DB::execute("INSERT INTO historial_mensual (empresa_id, anio, mes, ventas_cantidad, ventas_monto) VALUES (?,2026,8,10,800000)", [$eR]);   // ticket 80,000
+$hF = $card();
+chk('faltante hacia el equilibrio', str_contains($hF, 'faltan <b>$93,663.70</b> para la meta del punto de equilibrio'));
+chk('frase de cotizaciones que faltan, sin contradicción', (bool)preg_match('/Para llegar a el punto de equilibrio este mes, a como cierra hoy la empresa, hacen falta unas <b>\d+<\/b> cotizaciones más; si cerrara a lo que buscas, harían falta <b>\d+<\/b>\./', $hF));
+$frF = preg_replace('/\s+/', ' ', substr($hF, (int)strpos($hF, 'Para llegar'), 260));
+chk('sin "bastan" ni espacio antes del punto', !str_contains($frF, 'bastan') && !str_contains($frF, ' .'));
+// 93,663.70 / 80,000 = 1.17 ventas → /0.18 = 6.5 → 7 ; /0.15 = 7.8 → 8
+chk('N=7 a como cierra hoy, M=8 con lo que buscas', str_contains($frF, 'unas <b>7</b> cotizaciones más') && str_contains($frF, 'harían falta <b>8</b>'));
+tasa($eR, 0.18, 3);
+$hG = $card();
+chk('en gris no se muestra la tasa', str_contains($hG, '>—') && str_contains($hG, 'Todavía no hay suficientes cotizaciones'));
+tasa($eR, 0.18, 40);
+$eC = empresa('business', 'MXN', 15.0); metas($eC, 1, 2, 3); venta($eC, '2026-09-20 10:00:00', 5);
+DB::execute("UPDATE empresas SET id=id WHERE id=?", [$eC]);
 metas($eR, 420000, 590000, 690000);
 
 echo "\n── Tip del termómetro ──\n";
 $dsh = file_get_contents(__DIR__ . '/../modules/dashboard/index.php');
-chk('el renglón usa frases() (sin cifras) y solo niveles reales', str_contains($dsh, "MetasEmpresa::frases(\$ts_mn)['mes']") && str_contains($dsh, 'MetasEmpresa::NIVELES'));
+MetasEmpresa::reset();
+chk('renglón del tip: la frase del mes', MetasEmpresa::linea_tip($eR), 'La empresa ya sobrepasó su meta optimista en este mes.');
+$eT = empresa(); historia($eT); metas($eT, 420000, 590000, 690000); venta($eT, '2026-09-10 10:00:00', 450000);
+MetasEmpresa::reset();
+$lt = MetasEmpresa::linea_tip($eT);
+chk('renglón del tip SIN cifras (ni meta ni vendido)', is_string($lt) && !preg_match('/\d/', $lt));
+$eT2 = empresa(); metas($eT2, 1, 2, 3); venta($eT2, '2026-09-20 10:00:00', 5);   // sin historia
+MetasEmpresa::reset();
+chk('sin historia: el tip no muestra nada', MetasEmpresa::linea_tip($eT2), null);
+$eT3 = empresa(); historia($eT3);
+MetasEmpresa::reset();
+chk('sin meta: el tip no muestra nada', MetasEmpresa::linea_tip($eT3), null);
+chk('el dashboard imprime SOLO linea_tip() en ese renglón', str_contains($dsh, '$ts_meta = MetasEmpresa::linea_tip(EMPRESA_ID);') && preg_match_all('/\$ts_meta\s*=/', $dsh) === 3);   // null · linea_tip · null en el catch
 chk('el texto del tip NO se toca ($ts_diag no menciona metas)', !preg_match('/\$ts_diag\s*=.*Metas/', $dsh) && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
 chk('la tarjeta del admin se incluye antes de Ritmo', strpos($dsh, "include __DIR__ . '/_metas.php'") < strpos($dsh, "include __DIR__ . '/_ritmo.php'"));
 

@@ -50,6 +50,9 @@ try {
         DB::execute("UPDATE empresas SET meta_equilibrio = NULL, meta_pesimista = NULL, meta_optimista = NULL,
                             meta_moneda = NULL, meta_capturada_at = NULL, meta_capturada_por = NULL
                       WHERE id = ?", [$empresa_id]);
+        // Al volver a capturar, la primera lectura no debe compararse contra
+        // un nivel de antes (ni disparar una alerta vieja).
+        MetasEmpresa::olvidar($empresa_id);
         json_ok(['quitada' => true]);
     }
 

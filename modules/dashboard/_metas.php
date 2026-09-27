@@ -11,7 +11,8 @@ if (!Auth::es_admin()) return;
 if (!class_exists('MetasEmpresa')) require_once __DIR__ . '/../../core/MetasEmpresa.php';
 
 $mt_s = MetasEmpresa::estado(EMPRESA_ID);
-if ($mt_s['estado'] === 'sin_metas') return;          // sin meta capturada (o sin plan): no hay tarjeta
+$mt_moneda_mal = ($mt_s['ventanas']['mes']['motivo'] ?? null) === 'moneda';
+if ($mt_s['estado'] === 'sin_metas' && !$mt_moneda_mal) return;   // sin meta capturada (o sin plan): no hay tarjeta
 
 $mt_mon = $mt_s['moneda'] ?? 'MXN';
 $mt_m   = fn($mt_x) => format_money((float)$mt_x, $mt_mon);
@@ -30,7 +31,7 @@ $mt_ventanas = ['mes' => 'Este mes (' . $mt_s['mes_nombre'] . ')', 'd30' => 'Úl
 .mt-tt{font:800 15px var(--body);color:var(--text)}
 .mt-ed{font:600 12px var(--body);color:var(--g);text-decoration:none}
 .mt-w{padding:10px 0;border-top:1px solid var(--border)}
-.mt-w:first-of-type{border-top:none}
+.mt-hd + .mt-w{border-top:none}
 .mt-wl{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font:700 13px var(--body);color:var(--text)}
 .mt-v{font:800 15px var(--num)}
 .mt-bar{position:relative;height:10px;border-radius:5px;background:var(--bg);margin:8px 0 18px}
@@ -49,6 +50,10 @@ $mt_ventanas = ['mes' => 'Este mes (' . $mt_s['mes_nombre'] . ')', 'd30' => 'Úl
     <div class="mt-tt">Metas de la empresa</div>
     <a class="mt-ed" href="/config?tab=metas">Editar metas</a>
   </div>
+
+  <?php if ($mt_moneda_mal): ?>
+  <div class="mt-sub">Tu meta está capturada en otra moneda y la empresa ahora opera en <?= e($mt_mon) ?>: <a class="mt-ed" href="/config?tab=metas">recaptúrala</a>.</div>
+  <?php endif; ?>
 
   <?php if ($mt_s['estado'] === 'sin_historia'): ?>
   <div class="mt-sub">Todavía no hay suficiente historia para leer cómo va la empresa: hacen falta 30 días desde la primera venta con anticipo.</div>
@@ -89,7 +94,7 @@ $mt_ventanas = ['mes' => 'Este mes (' . $mt_s['mes_nombre'] . ')', 'd30' => 'Úl
   <?php $mt_cv = $mt_s['conv']; if ($mt_cv['deseada'] !== null): ?>
   <div class="mt-w">
     <div class="mt-wl"><span>Cierre de la empresa</span>
-      <span class="mt-v"><?= $mt_cv['tasa'] !== null ? round($mt_cv['tasa'] * 100) . '%' : '—' ?> <span style="font:600 12px var(--body);color:var(--t3)">· buscas <?= rtrim(rtrim(number_format($mt_cv['deseada'] * 100, 2, '.', ''), '0'), '.') ?>%</span></span>
+      <span class="mt-v"><?= ($mt_cv['tasa'] !== null && $mt_cv['nivel'] !== 'gris') ? round($mt_cv['tasa'] * 100) . '%' : '—' ?> <span style="font:600 12px var(--body);color:var(--t3)">· buscas <?= rtrim(rtrim(number_format($mt_cv['deseada'] * 100, 2, '.', ''), '0'), '.') ?>%</span></span>
     </div>
     <?php if (!empty($mt_f['conv']) && $mt_s['estado'] === 'ok'): ?>
     <div class="mt-fr"><?= e($mt_f['conv']) ?></div>
@@ -101,12 +106,13 @@ $mt_ventanas = ['mes' => 'Este mes (' . $mt_s['mes_nombre'] . ')', 'd30' => 'Úl
   <?php endif; ?>
 
   <?php $mt_fc = $mt_s['faltan_cot']; $mt_vm = $mt_s['ventanas']['mes'];
-  if (($mt_fc['real'] || $mt_fc['deseada']) && !empty($mt_vm['faltante_hacia'])): ?>
-  <div class="mt-sub" style="margin-top:8px">
-    Para la meta <?= $mt_vm['faltante_hacia'] === 'equilibrio' ? 'del punto de equilibrio' : e($mt_vm['faltante_hacia']) ?> de este mes
-    <?php if ($mt_fc['real']): ?>hacen falta unas <b><?= (int)$mt_fc['real'] ?></b> cotizaciones más a como cierra hoy la empresa<?php endif; ?><?php if ($mt_fc['real'] && $mt_fc['deseada']): ?>; <?php endif; ?>
-    <?php if ($mt_fc['deseada']): ?>si cierra a lo que buscas, bastan <b><?= (int)$mt_fc['deseada'] ?></b><?php endif; ?>.
-  </div>
+  if (($mt_fc['real'] || $mt_fc['deseada']) && !empty($mt_vm['faltante_hacia'])):
+      $mt_obj = $mt_vm['faltante_hacia'] === 'equilibrio' ? 'el punto de equilibrio' : 'la meta ' . $mt_vm['faltante_hacia'];
+      $mt_partes = [];
+      if ($mt_fc['real'])    $mt_partes[] = 'a como cierra hoy la empresa, hacen falta unas <b>' . (int)$mt_fc['real'] . '</b> cotizaciones más';
+      if ($mt_fc['deseada']) $mt_partes[] = 'si cerrara a lo que buscas, harían falta <b>' . (int)$mt_fc['deseada'] . '</b>';
+  ?>
+  <div class="mt-sub" style="margin-top:8px">Para llegar a <?= e($mt_obj) ?> este mes, <?= implode('; ', $mt_partes) ?>.</div>
   <?php endif; ?>
 
   <div class="mt-nota">Solo cuentan ventas con anticipo, en la fecha en que el cliente aceptó, sin Descuento Inteligente. Los montos se recalculan con los pagos que lleguen después. Tus asesores no ven esta tarjeta: solo leen cómo va la empresa, sin cifras.</div>

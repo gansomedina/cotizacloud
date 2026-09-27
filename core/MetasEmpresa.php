@@ -106,8 +106,10 @@ class MetasEmpresa
             // 27 sep: "no vamos a entrar a qué mes es cuál").
             // Sin meta no se enciende nada: se sale ANTES de las consultas
             // pesadas (esto corre en cada carga del dashboard de un Business).
+            // Sin escrituras en este camino: corre en CADA carga del dashboard.
+            // La memoria de histéresis se borra al "Quitar meta" (endpoint);
+            // un cambio de meta o de moneda lo detecta la firma.
             if ($emp['meta_equilibrio'] === null || $emp['meta_pesimista'] === null || $emp['meta_optimista'] === null) {
-                self::_olvidar($e, ['mes', 'd30']);
                 return self::$memo[$e] = $base;
             }
             $E = (float)$emp['meta_equilibrio'];
@@ -115,7 +117,6 @@ class MetasEmpresa
             $O = (float)$emp['meta_optimista'];
             // Capturada en otra moneda: no se compara pesos contra dólares.
             if (strtoupper((string)$emp['meta_moneda']) !== $moneda) {
-                self::_olvidar($e, ['mes', 'd30']);
                 foreach (['mes', 'd30'] as $w) $base['ventanas'][$w] = self::_ventana_vacia('sin_metas') + ['motivo' => 'moneda'];
                 return self::$memo[$e] = $base;
             }
@@ -211,8 +212,6 @@ class MetasEmpresa
                     // transición, y ése casi siempre es un asesor.
                     $vent['alerta'] = $h['nivel_anterior'] !== null && $h['cambiado_at'] !== null
                         && strtotime($h['cambiado_at']) >= $t - self::ALERTA_HORAS * 3600;
-                } else {
-                    self::_olvidar($e, [$w]);
                 }
                 $base['ventanas'][$w] = $vent;
             }
@@ -308,6 +307,26 @@ class MetasEmpresa
         $k = $nivel['conv'] ?? null;
         if (is_string($k) && isset($conv[$k])) $out['conv'] = $conv[$k];
         return $out;
+    }
+
+    /**
+     * El renglón del TIP del termómetro (asesor): la frase del mes, solo si hay
+     * un nivel real. null = no se muestra nada. Sin cifras.
+     */
+    public static function linea_tip(int $e): ?string
+    {
+        $n = self::nivel($e);
+        if (!in_array($n['mes'], self::NIVELES, true)) return null;
+        return self::frases($n)['mes'];
+    }
+
+    /**
+     * Los renglones de la sección del REPORTE del asesor: frases FECHADAS
+     * (el reporte se guarda 7 días y se imprime), sin cifras, sin vacíos.
+     */
+    public static function lineas_reporte(array $nivel): array
+    {
+        return array_values(array_filter(self::frases($nivel, true), fn($x) => is_string($x) && $x !== ''));
     }
 
     // ═════════════════════════════════════════════════════════
@@ -518,8 +537,8 @@ class MetasEmpresa
         return md5(implode('|', [round($E, 2), round($P, 2), round($O, 2), $moneda]));
     }
 
-    /** Borra la memoria de histéresis de ventanas que hoy no se leen. */
-    private static function _olvidar(int $e, array $ventanas): void
+    /** Borra la memoria de histéresis (al quitar la meta). */
+    public static function olvidar(int $e, array $ventanas = ['mes', 'd30']): void
     {
         try {
             foreach ($ventanas as $w) {

@@ -486,3 +486,15 @@ Con las metas hay dos datos de cierre: el **autoajustable** (lo que la empresa c
 
 Sin cambios: `RitmoTip`, `DiagnosticoTips`, `ActividadScore`, `RitmoAsesor`, `expediente()`.
 El reporte guardado (7 días) no trae la sección hasta que se genere uno nuevo.
+
+### Auditoría de las superficies (27 sep 2026)
+Sin fugas de cifras al asesor ni rutas a un error 500. Corregido:
+- "hacen falta 34… si cierra a lo que buscas, **bastan** 40": contradicción. Ahora "harían falta".
+- Leer el dashboard escribía en la base (borraba memoria de histéresis en cada carga sin meta). Ahora solo "Quitar meta" la borra; un cambio de meta o de moneda lo detecta la firma.
+- La tarjeta desaparecía sin aviso con la moneda distinta; ahora avisa. En gris ya no muestra la tasa.
+- `MetasEmpresa::linea_tip()` y `lineas_reporte()`: la lógica del tip y del reporte vive en la clase y se prueba (antes una regresión que metiera cifras al tip no la detectaba ninguna prueba).
+
+### Pendientes de decisión del CEO
+1. **El reporte deja acotar la tasa deseada.** El pilar Conversión ya imprime *"la empresa 18%"* (existía antes). Junto a *"La empresa cierra en lo que busca"* (±10%), el asesor deduce que la tasa buscada está entre 16.4% y 20%. ¿Se quita la frase de conversión del reporte del asesor, o se acepta?
+2. **Día 1 del mes:** todos los termómetros dicen *"La empresa ni siquiera llega al punto de equilibrio en este mes"*. Es consecuencia directa de no prorratear (decisión de la 3ª ronda).
+3. El reporte impreso probablemente pasa a 2 hojas (aceptado por el CEO).
