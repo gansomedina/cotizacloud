@@ -928,6 +928,10 @@ chk('la primera parte del tip ($diag_b1) se corta ANTES de anexar: queda idénti
     strpos($dsh, "\$diag_b1 = trim(mb_substr(\$perfil, 0, \$pcut));") < strpos($dsh, 'MetasEmpresa::texto_tip(EMPRESA_ID,')
     && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
 chk('el texto del tip NO se toca ($ts_diag no menciona metas)', !preg_match('/\$ts_diag\s*=.*Metas/', $dsh) && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
+chk('ranking del equipo: cada fila lleva el remate de la empresa con SU debilidad (CEO, 28 sep)',
+    str_contains($dsh, "(\$es_rt && trim(\$es_rt['texto']) !== '') ? (\$es_rt['debilidad'] ?? null) : null")
+    && str_contains($dsh, "if (\$es_meta_txt !== '') \$es_diag = trim(\$es_diag . ' ' . \$es_meta_txt);")
+    && strpos($dsh, '$es_meta_txt') < strpos($dsh, '<div class="lb-diag"><?= e($es_diag) ?></div>'));
 chk('la tarjeta del admin se incluye antes de Ritmo', strpos($dsh, "include __DIR__ . '/_metas.php'") < strpos($dsh, "include __DIR__ . '/_ritmo.php'"));
 
 // ═════════════════════════════════════════════════════════════

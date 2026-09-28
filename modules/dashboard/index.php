@@ -1143,6 +1143,14 @@ if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
       try { $es_rt = RitmoTip::paraTermometro(RitmoReporte::expediente(EMPRESA_ID, (int)($es['usuario_id'] ?? 0))); } catch (Throwable $e) {}
       if (!$es_rt) $es_rt = RitmoTip::desdeScore($es);
       $es_diag = ($es_rt && trim($es_rt['texto']) !== '') ? $es_rt['texto'] : ActividadScore::diagnostico($es, $diag_ctx ?? null);
+      // El mismo remate de la empresa que lee el asesor en su termómetro
+      // (CEO, 28 sep): el admin ve en el ranking lo mismo que lee cada quien.
+      try {
+          if (!class_exists('MetasEmpresa')) require_once __DIR__ . '/../../core/MetasEmpresa.php';
+          $es_meta_txt = MetasEmpresa::texto_tip(EMPRESA_ID,
+              ($es_rt && trim($es_rt['texto']) !== '') ? ($es_rt['debilidad'] ?? null) : null);
+          if ($es_meta_txt !== '') $es_diag = trim($es_diag . ' ' . $es_meta_txt);
+      } catch (Throwable $e) {}
     ?>
     <div class="lb-row">
       <div class="lb-rank <?= $rank_cls ?>"><?= $rank ?></div>
