@@ -4887,7 +4887,7 @@ barras (no canceladas, con o sin pago). Por eso septiembre da $823,506 ahí y
 $806,336 en metas (anticipo y sin DI) — la tabla de metas lo aclara.
 
 ### Pruebas
-`tools/sim_metas.php` — **308 comprobaciones contra MariaDB real**, corre la
+`tools/sim_metas.php` — **310 comprobaciones contra MariaDB real**, corre la
 migración real y el endpoint real, con `EMULATE_PREPARES=false` como
 producción. Obligatoria tras cualquier cambio a metas. **Borra sus tablas al
 terminar** (si no, `test_plan_log` truena: usa `CREATE TABLE IF NOT EXISTS

@@ -497,7 +497,7 @@ $esperadas = [
     'debajo' => 'La empresa va por debajo de su meta en este mes.',
     'cerca' => 'La empresa va cerca de su meta en este mes.',
     'casi' => 'La empresa casi llega a su meta en este mes.',
-    'llego' => 'La empresa ya llegó a su meta en este mes.',
+    'llego' => 'La empresa ya llegó a su meta pesimista en este mes; va por la optimista.',
     'casi_optima' => 'La empresa casi llega a su meta optimista en este mes.',
     'sobrepasada' => 'La empresa ya sobrepasó su meta optimista en este mes.',
 ];
@@ -857,6 +857,16 @@ $eT5 = empresa(); historia($eT5); metas($eT5, 420000, 590000, 690000);
 venta($eT5, '2026-08-30 10:00:00', 300000); venta($eT5, '2026-09-10 10:00:00', 450000);   // mes 450k (cerca) · 30 días 750k (sobrepasada)
 MetasEmpresa::reset();
 chk('tip, niveles distintos: dos frases seguidas', MetasEmpresa::texto_tip($eT5), 'La empresa va por debajo de su meta en este mes. La empresa ya sobrepasó su meta optimista en los últimos 30 días.');
+// "llegó" con apellido (CEO, 28 sep): pasó la pesimista, no la optimista.
+// La frase sigue DESPUÉS de la ventana, así que la unión de las dos ventanas
+// va junto a "en este mes", no al final.
+$eT6 = empresa(); historia($eT6); metas($eT6, 420000, 590000, 690000); venta($eT6, '2026-09-10 10:00:00', 600000);
+MetasEmpresa::reset();
+chk('llegó, mismo nivel: la unión va junto a la ventana', MetasEmpresa::texto_tip($eT6),
+    'La empresa ya llegó a su meta pesimista en este mes y en los últimos 30 días; va por la optimista.');
+chk('llegó en el reporte: fechado, dice pesimista y que va por la optimista',
+    MetasEmpresa::lineas_reporte(MetasEmpresa::nivel($eT6))[0] ?? '',
+    'La empresa ya llegó a su meta pesimista en septiembre; va por la optimista.');
 MetasEmpresa::reset();
 chk('tip sin historia: nada', MetasEmpresa::texto_tip($eT2), '');
 chk('tip sin historia: nada aunque traiga debilidad', MetasEmpresa::texto_tip($eT2, 'seguimiento'), '');

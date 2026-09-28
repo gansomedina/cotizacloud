@@ -284,7 +284,9 @@ class MetasEmpresa
             'debajo'         => 'La empresa va por debajo de su meta %s.',
             'cerca'          => 'La empresa va cerca de su meta %s.',
             'casi'           => 'La empresa casi llega a su meta %s.',
-            'llego'          => 'La empresa ya llegó a su meta %s.',
+            // Con apellido: "ya llegó a su meta" a secas se leía como la meta
+            // completa cuando solo pasó la pesimista (CEO, 28 sep 2026).
+            'llego'          => 'La empresa ya llegó a su meta pesimista %s; va por la optimista.',
             'casi_optima'    => 'La empresa casi llega a su meta optimista %s.',
             'sobrepasada'    => 'La empresa ya sobrepasó su meta optimista %s.',
         ];
@@ -366,8 +368,11 @@ class MetasEmpresa
         $l = self::lineas_tip($e);
         if (!$l) return '';
         $n = self::nivel($e);
+        // Mismo nivel en las dos ventanas: una sola frase con las dos. Se
+        // inserta junto a la ventana (no al final): hay frases que siguen
+        // después de ella ("…pesimista en este mes; va por la optimista.").
         $base = (count($l) === 2 && $n['mes'] === $n['d30'])
-            ? mb_substr($l[0], 0, -1) . ' y en los últimos 30 días.'
+            ? preg_replace('/en este mes/u', 'en este mes y en los últimos 30 días', $l[0], 1)
             : implode(' ', $l);
 
         // La banda la manda el mes (lo accionable); si el mes no se lee, 30 días.
