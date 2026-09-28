@@ -21,7 +21,7 @@ $mt_f   = MetasEmpresa::frases($mt_n);
 $mt_col = [
     'sin_equilibrio' => '#dc2626', 'muy_baja' => '#dc2626', 'baja' => '#ea580c',
     'debajo' => '#d97706', 'cerca' => '#d97706', 'casi' => '#65a30d',
-    'llego' => '#16a34a', 'casi_optima' => '#16a34a', 'sobrepasada' => '#2563eb',
+    'llego' => '#16a34a', 'medio_optima' => '#16a34a', 'casi_optima' => '#16a34a', 'sobrepasada' => '#2563eb',
 ];
 $mt_ventanas = ['mes' => 'Este mes (' . $mt_s['mes_nombre'] . ')', 'd30' => 'Últimos 30 días'];
 ?>

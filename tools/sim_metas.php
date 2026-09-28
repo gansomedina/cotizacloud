@@ -208,15 +208,19 @@ $casos = [
     [49999.99, 'sin_equilibrio'], [50000, 'muy_baja'], [59999.99, 'muy_baja'],
     [60000, 'baja'], [69999.99, 'baja'], [70000, 'debajo'], [79999.99, 'debajo'],
     [80000, 'cerca'], [89999.99, 'cerca'], [90000, 'casi'], [99999.99, 'casi'],
-    [100000, 'llego'], [134999.99, 'llego'], [135000, 'casi_optima'],
+    // Pesimista → optimista en tercios del tramo (100k → 150k): 116,666.67 y 133,333.33.
+    [100000, 'llego'], [116666.66, 'llego'], [116666.67, 'medio_optima'],
+    [133333.32, 'medio_optima'], [133333.33, 'casi_optima'], [135000, 'casi_optima'],
     [149999.99, 'casi_optima'], [150000, 'sobrepasada'], [900000, 'sobrepasada'],
 ];
 foreach ($casos as [$v, $want]) chk("V=$v → $want", $rf->invoke(null, (float)$v, 50000.0, 100000.0, 150000.0), $want);
 // Equilibrio arriba del 60/70%: esos escalones quedan vacíos y la lectura sigue coherente.
 chk('E=75k: 74,999 → sin_equilibrio', $rf->invoke(null, 74999.0, 75000.0, 100000.0, 150000.0), 'sin_equilibrio');
 chk('E=75k: 75,000 → debajo (75% de la pesimista)', $rf->invoke(null, 75000.0, 75000.0, 100000.0, 150000.0), 'debajo');
-// Optimista pegada a la pesimista: "llegó" queda vacío.
-chk('O=1.05P: P → casi_optima', $rf->invoke(null, 100000.0, 50000.0, 100000.0, 105000.0), 'casi_optima');
+// Optimista pegada a la pesimista: los tercios son chicos, pero siguen en orden.
+chk('O=1.05P: P → llego', $rf->invoke(null, 100000.0, 50000.0, 100000.0, 105000.0), 'llego');
+chk('O=1.05P: 102,000 → medio_optima', $rf->invoke(null, 102000.0, 50000.0, 100000.0, 105000.0), 'medio_optima');
+chk('O=1.05P: 104,000 → casi_optima', $rf->invoke(null, 104000.0, 50000.0, 100000.0, 105000.0), 'casi_optima');
 chk('E=P=O: todo o nada', $rf->invoke(null, 100000.0, 100000.0, 100000.0, 100000.0), 'sobrepasada');
 
 echo "\n── Mes calendario SIN prorrateo (CEO, 3ª ronda) ──\n";
@@ -480,7 +484,7 @@ chk('E: 26/100 vs 30% → debajo', $cv(26, 100, 0.30), 'debajo');
 chk('E: 34/100 vs 30% → arriba', $cv(34, 100, 0.30), 'arriba');
 
 // Datos inconsistentes (la captura de la fase 2 los rechazará, pero hoy nada lo impide).
-chk('E>P: alcanzar el equilibrio ya es llegó', $rf->invoke(null, 120000.0, 120000.0, 100000.0, 150000.0), 'llego');
+chk('E>P: alcanzar el equilibrio (40% del tramo) ya es medio camino', $rf->invoke(null, 120000.0, 120000.0, 100000.0, 150000.0), 'medio_optima');
 chk('E>P: debajo del equilibrio sigue sin_equilibrio', $rf->invoke(null, 110000.0, 120000.0, 100000.0, 150000.0), 'sin_equilibrio');
 chk('O<P: la pesimista ya es sobrepasada', $rf->invoke(null, 100000.0, 50000.0, 100000.0, 80000.0), 'sobrepasada');
 
@@ -497,7 +501,8 @@ $esperadas = [
     'debajo' => 'La empresa va por debajo de su meta en este mes.',
     'cerca' => 'La empresa va cerca de su meta en este mes.',
     'casi' => 'La empresa casi llega a su meta en este mes.',
-    'llego' => 'La empresa ya llegó a su meta pesimista en este mes; va por la optimista.',
+    'llego' => 'La empresa ya llegó a su meta pesimista en este mes; todavía le falta mucho para la optimista.',
+    'medio_optima' => 'La empresa ya pasó su meta pesimista en este mes y va a medio camino de la optimista.',
     'casi_optima' => 'La empresa casi llega a su meta optimista en este mes.',
     'sobrepasada' => 'La empresa ya sobrepasó su meta optimista en este mes.',
 ];
@@ -735,7 +740,7 @@ foreach (array_merge(MetasEmpresa::NIVELES, ['sin_historia', 'sin_metas', 'gris'
     }
 }
 $todas = array_unique($todas);
-chk('hay frase para los 9 niveles × 2 ventanas + conv', count($todas) >= 9 * 2 + 3);
+chk('hay frase para los 10 niveles × 2 ventanas + conv', count($todas) >= 10 * 2 + 3);
 $mal = array_filter($todas, fn($x) => preg_match('/[$%]|\d{2,}[.,]\d|\bvas\b|te faltan|tu meta/iu', $x));
 chk('ninguna con $, %, montos, "vas", "te faltan", "tu meta"', array_values($mal), []);
 $dig = array_filter($todas, fn($x) => preg_match('/\d/', preg_replace('/(30 días|\d{1,2}\/[A-Z][a-z]{2})/u', '', $x)));
@@ -863,10 +868,23 @@ chk('tip, niveles distintos: dos frases seguidas', MetasEmpresa::texto_tip($eT5)
 $eT6 = empresa(); historia($eT6); metas($eT6, 420000, 590000, 690000); venta($eT6, '2026-09-10 10:00:00', 600000);
 MetasEmpresa::reset();
 chk('llegó, mismo nivel: la unión va junto a la ventana', MetasEmpresa::texto_tip($eT6),
-    'La empresa ya llegó a su meta pesimista en este mes y en los últimos 30 días; va por la optimista.');
+    'La empresa ya llegó a su meta pesimista en este mes y en los últimos 30 días; todavía le falta mucho para la optimista.');
 chk('llegó en el reporte: fechado, dice pesimista y que va por la optimista',
     MetasEmpresa::lineas_reporte(MetasEmpresa::nivel($eT6))[0] ?? '',
-    'La empresa ya llegó a su meta pesimista en septiembre; va por la optimista.');
+    'La empresa ya llegó a su meta pesimista en septiembre; todavía le falta mucho para la optimista.');
+// Consejo del Director: una línea de la empresa, fechada, sin cifras.
+$lc = fn($k) => MetasEmpresa::linea_consejo(['mes' => $k, 'mes_nombre' => 'septiembre']);
+chk('consejo abajo', $lc('baja'), 'La empresa va baja en septiembre: cada cierre de esta semana pesa.');
+chk('consejo camino', $lc('cerca'), 'La empresa está cerca de su meta de septiembre: las ventas de esta semana pueden completarla.');
+chk('consejo arriba (llegó, medio, casi)', [$lc('llego'), $lc('medio_optima'), $lc('casi_optima')],
+    array_fill(0, 3, 'La empresa ya pasó su meta pesimista de septiembre y va por la optimista: cada cierre ahora es la diferencia.'));
+chk('consejo sobrepasada', $lc('sobrepasada'), 'La empresa ya superó su meta optimista de septiembre: toca sostener el ritmo.');
+chk('consejo sin nivel real: nada', [$lc('sin_historia'), $lc('sin_metas'), MetasEmpresa::linea_consejo([])], ['', '', '']);
+$todas_lc = array_map($lc, MetasEmpresa::NIVELES);
+chk('consejo SIN cifras en ningún nivel', !preg_match('/\d/', implode(' ', $todas_lc)));
+$rr = file_get_contents(__DIR__ . '/../core/RitmoReporte.php');
+chk('consejo: la línea de la empresa va DESPUÉS de "Va sólido" (al final)',
+    strpos($rr, 'linea_consejo') > strpos($rr, 'Va sólido. Para subir'));
 MetasEmpresa::reset();
 chk('tip sin historia: nada', MetasEmpresa::texto_tip($eT2), '');
 chk('tip sin historia: nada aunque traiga debilidad', MetasEmpresa::texto_tip($eT2, 'seguimiento'), '');

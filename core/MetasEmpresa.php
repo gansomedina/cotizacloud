@@ -48,8 +48,11 @@ class MetasEmpresa
         'debajo',         // 70–79%
         'cerca',          // 80–89%
         'casi',           // 90–99%
-        'llego',          // pesimista alcanzada, < 90% de la optimista
-        'casi_optima',    // 90–99% de la optimista
+        // Entre la pesimista y la optimista, en TERCIOS del tramo (CEO, 28 sep):
+        // con metas muy separadas un solo "llegó" no decía cuánto faltaba.
+        'llego',          // pesimista alcanzada, primer tercio del tramo
+        'medio_optima',   // segundo tercio
+        'casi_optima',    // último tercio, sin llegar a la optimista
         'sobrepasada',    // ≥ optimista
     ];
 
@@ -286,7 +289,8 @@ class MetasEmpresa
             'casi'           => 'La empresa casi llega a su meta %s.',
             // Con apellido: "ya llegó a su meta" a secas se leía como la meta
             // completa cuando solo pasó la pesimista (CEO, 28 sep 2026).
-            'llego'          => 'La empresa ya llegó a su meta pesimista %s; va por la optimista.',
+            'llego'          => 'La empresa ya llegó a su meta pesimista %s; todavía le falta mucho para la optimista.',
+            'medio_optima'   => 'La empresa ya pasó su meta pesimista %s y va a medio camino de la optimista.',
             'casi_optima'    => 'La empresa casi llega a su meta optimista %s.',
             'sobrepasada'    => 'La empresa ya sobrepasó su meta optimista %s.',
         ];
@@ -349,7 +353,7 @@ class MetasEmpresa
         return match ($nivel) {
             'sin_equilibrio', 'muy_baja', 'baja' => 'abajo',
             'debajo', 'cerca', 'casi'            => 'camino',
-            default                              => 'arriba',   // llego, casi_optima, sobrepasada
+            default                              => 'arriba',   // llego, medio_optima, casi_optima, sobrepasada
         };
     }
 
@@ -395,6 +399,24 @@ class MetasEmpresa
             ][$banda];
         }
         return trim($base . ' ' . $puente);
+    }
+
+    /**
+     * Una línea para el Consejo del Director (CEO, 28 sep: va AL FINAL del
+     * consejo). Conecta cómo va la empresa en el mes con lo que toca hacer.
+     * Fechada (el reporte se guarda 7 días), sin cifras. '' = nada que decir.
+     */
+    public static function linea_consejo(array $nivel): string
+    {
+        $k = $nivel['mes'] ?? null;
+        if (!is_string($k) || !in_array($k, self::NIVELES, true)) return '';
+        $mes = $nivel['mes_nombre'] ?? 'este mes';
+        if ($k === 'sobrepasada') return "La empresa ya superó su meta optimista de {$mes}: toca sostener el ritmo.";
+        return [
+            'abajo'  => "La empresa va baja en {$mes}: cada cierre de esta semana pesa.",
+            'camino' => "La empresa está cerca de su meta de {$mes}: las ventas de esta semana pueden completarla.",
+            'arriba' => "La empresa ya pasó su meta pesimista de {$mes} y va por la optimista: cada cierre ahora es la diferencia.",
+        ][self::_banda($k)];
     }
 
     /**
@@ -591,7 +613,8 @@ class MetasEmpresa
             max($E, 0.8 * $P),
             max($E, 0.9 * $P),
             max($E, $P),
-            max($E, $P, 0.9 * $O),
+            max($E, $P, $P + ($O - $P) / 3),
+            max($E, $P, $P + 2 * ($O - $P) / 3),
             max($E, $P, $O),
         ];
     }

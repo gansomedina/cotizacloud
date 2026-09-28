@@ -567,6 +567,13 @@ class RitmoReporte
         if ($card && $card['citas_estado'] === 'rojo') $cons[] = "Ni una cita en 7 días: {$card['citas_txt']}. Con el embudo parado, lo que se deja de sembrar hoy falta en el cierre del mes.";
         elseif ($card && $card['citas_estado'] === 'amarillo') $cons[] = "Bajó el ritmo de citas: {$card['citas_txt']} — conviene recuperarlo.";
         if (!$cons) $cons[] = "Va sólido. Para subir: más volumen o mejor ticket, sin bajar el ritmo de citas.";
+        // La empresa, al final del consejo (CEO, 28 sep). Sin cifras.
+        if (!empty($d['metas'])) {
+            try {
+                $mc = MetasEmpresa::linea_consejo($d['metas']);
+                if ($mc !== '') $cons[] = $mc;
+            } catch (Throwable $e) {}
+        }
 
         // ── Meta de la semana (acciones, impersonales) ──
         $meta = [];
