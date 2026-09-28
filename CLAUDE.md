@@ -4877,9 +4877,17 @@ compara contra lo vendido y lo traduce en frases.
 | Tarjeta "Metas de la empresa" (`modules/dashboard/_metas.php`, antes de `_ritmo.php`) | solo admin | vendido mes y 30 días con barra y 3 marcas; cierre y tasa buscada junto al título; cotizaciones que faltan |
 | Tip del termómetro (`dashboard/index.php`) | asesor | **anexado dentro del tip**, al final de la parte de "ver más" (la primera parte no cambia). Frase de la empresa + puente según la banda del mes y la debilidad que eligió `RitmoTip` (`MetasEmpresa::texto_tip`) |
 | Reporte del asesor (`RitmoReporte`) | quien lo lee | sección "La empresa en {mes} (al {fecha})" entre "Cómo vas" y "Resumen", **fechada** (el reporte se guarda 7 días) |
+| Reportes › Financiero › "Metas — últimos 12 meses" (`modules/reportes/_metas_12m.php`, `MetasEmpresa::historial_meses`) | solo admin | ✓/✗ por mes en equilibrio, pesimista y optimista; **solo meses del sistema** (los importados no entran, CEO 28-sep); el mes en curso dice "en curso" en lo que aún no alcanza; resumen de meses cerrados; todos contra la meta actual |
+
+Además, en Reportes › Financiero la tabla "Historial importado" pasó a
+**"Historial mensual"** (`modules/reportes/_historial_mensual.php`): primero
+los meses del sistema (del mes siguiente al último importado hasta hoy) y
+debajo los importados, sin columna de origen; misma cuenta que la gráfica de
+barras (no canceladas, con o sin pago). Por eso septiembre da $823,506 ahí y
+$806,336 en metas (anticipo y sin DI) — la tabla de metas lo aclara.
 
 ### Pruebas
-`tools/sim_metas.php` — **278 comprobaciones contra MariaDB real**, corre la
+`tools/sim_metas.php` — **308 comprobaciones contra MariaDB real**, corre la
 migración real y el endpoint real, con `EMULATE_PREPARES=false` como
 producción. Obligatoria tras cualquier cambio a metas. **Borra sus tablas al
 terminar** (si no, `test_plan_log` truena: usa `CREATE TABLE IF NOT EXISTS
@@ -4905,10 +4913,11 @@ que metiera cifras al tip no la detectaba ninguna prueba.
    mostró que no había ninguno guardado esa semana.
 
 ### Pendiente
-- ⚠️ **On Time Hermosillo (empresa 12) tiene `plan_vence = 2026-09-28`.** Si no
-  se renueva, `trial_info()` la desactiva y sus metas se apagan.
+- ⚠️ **On Time Hermosillo (empresa 12) vencía el 28-sep-2026.** Se renovó por
+  SQL por error y se revirtió (regla 14); la renovación va por el panel.
+  Confirmar en la ficha que quedó con la fecha nueva.
 - Pro: ¿recibe metas? (agregar `'pro'` a `MetasEmpresa::PLANES` y al gate de la
   pestaña).
 - El reporte impreso probablemente pasa a 2 hojas (aceptado).
 - Opcionales no hechos: renglón bajo el termómetro, barra en el modal del
-  reporte, pestaña Metas en Reportes.
+  reporte.
