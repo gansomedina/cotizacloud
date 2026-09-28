@@ -362,44 +362,110 @@ class MetasEmpresa
      * no como bloque aparte, y CONECTADO con lo que dice el tip).
      *   1) Cómo va la empresa: mes y 30 días; si van en el mismo nivel, una
      *      sola frase ("…en este mes y en los últimos 30 días.").
-     *   2) Un puente según la banda de la empresa en el mes y la debilidad que
-     *      ya eligió el tip. Sin debilidad conocida (diagnóstico legacy), sin
-     *      puente. Nunca cifras.
+     *   2) Un remate que le habla al asesor (puente()): según el tramo de la
+     *      empresa en el mes y la debilidad que ya eligió el tip, rotando por
+     *      día y por asesor ($uid). Sin debilidad conocida (legacy), sin
+     *      remate. Nunca cifras.
      * '' = nada que anexar.
      */
-    public static function texto_tip(int $e, ?string $debilidad = null): string
+    public static function texto_tip(int $e, ?string $debilidad = null, int $uid = 0): string
     {
         $l = self::lineas_tip($e);
         if (!$l) return '';
         $n = self::nivel($e);
         // Mismo nivel en las dos ventanas: una sola frase con las dos. Se
         // inserta junto a la ventana (no al final): hay frases que siguen
-        // después de ella ("…pesimista en este mes; va por la optimista.").
+        // después de ella ("…pesimista en este mes; todavía le falta…").
         $base = (count($l) === 2 && $n['mes'] === $n['d30'])
             ? preg_replace('/en este mes/u', 'en este mes y en los últimos 30 días', $l[0], 1)
             : implode(' ', $l);
 
-        // La banda la manda el mes (lo accionable); si el mes no se lee, 30 días.
+        // El tramo lo manda el mes (lo accionable); si el mes no se lee, 30 días.
         $ref = in_array($n['mes'], self::NIVELES, true) ? $n['mes'] : $n['d30'];
-        $banda = self::_banda($ref);
+        return trim($base . ' ' . self::puente($ref, $debilidad, $uid));
+    }
 
-        $puente = '';
+    /**
+     * El remate del tip, hablándole al asesor (CEO, 28 sep): varias frases por
+     * tramo y ROTAN cada día y por asesor, igual que el resto del tip — el
+     * asesor lo abre diario y el admin ve a todos juntos en el ranking.
+     * '' si no hay debilidad conocida (tip legacy).
+     */
+    public static function puente(string $nivel, ?string $debilidad, int $uid = 0): string
+    {
+        if (!in_array($nivel, self::NIVELES, true)) return '';
+        $tramo = self::_tramo($nivel);
         if ($debilidad === 'bien') {
-            $puente = [
-                'abajo'  => 'Tu trabajo está empujando; sigue así.',
-                'camino' => 'Tu ritmo ayuda a que llegue.',
-                'arriba' => 'Tu trabajo es parte de ese resultado.',
-            ][$banda];
+            $v = self::PUENTE_BIEN[$tramo];
         } elseif ($debilidad !== null && isset(self::ACCION_TIP[$debilidad])) {
             $acc = self::ACCION_TIP[$debilidad];
-            $puente = [
-                'abajo'  => "Cada venta cuenta: {$acc} es lo que más ayuda ahora.",
-                'camino' => "Está cerca: {$acc} puede ser lo que falte.",
-                'arriba' => "Para sumarte a ese resultado, empieza por {$acc}.",
-            ][$banda];
+            $v = array_map(fn($f) => str_replace('{acc}', $acc, $f), self::PUENTE[$tramo]);
+        } else {
+            return '';
         }
-        return trim($base . ' ' . $puente);
+        $dia = (int)date('z', self::$ahora ?? time());
+        return $v[abs(crc32($uid . ':' . $dia)) % count($v)];
     }
+
+    /** Cinco tramos del remate: más fino que la banda (arriba se parte en tres). */
+    private static function _tramo(string $nivel): string
+    {
+        return match ($nivel) {
+            'sin_equilibrio', 'muy_baja', 'baja' => 'abajo',
+            'debajo', 'cerca', 'casi'            => 'camino',
+            'llego'                              => 'lejos',
+            'medio_optima', 'casi_optima'        => 'cerca',
+            default                              => 'sobre',   // sobrepasada
+        };
+    }
+
+    /** {acc} = la acción de la debilidad del tip (ACCION_TIP). Segunda persona, sin cifras. */
+    private const PUENTE = [
+        'abajo' => [
+            'Aquí es donde más se nota lo que hagas: {acc} es lo que más mueve el mes.',
+            'Cuando la empresa va así, cada venta cuenta doble; tu parte hoy es {acc}.',
+            'No hace falta un milagro, hace falta constancia: empieza por {acc}.',
+            'Si hoy te enfocas en {acc}, ayudas a darle la vuelta al mes.',
+        ],
+        'camino' => [
+            'Está a la vuelta: {acc} puede ser justo lo que falte.',
+            'Falta poco y una venta tuya puede cerrarla; empieza por {acc}.',
+            'Es buen momento para empujar: {acc} y la meta queda.',
+            'Lo que hagas esta semana decide si se llega; tu parte es {acc}.',
+        ],
+        'lejos' => [
+            'Lo mínimo ya está; lo que sigue depende de quién empuje más. Empieza por {acc}.',
+            'La optimista se gana con ventas como las tuyas: empieza por {acc}.',
+            'Ahora toca ir por más: {acc} es tu mejor aporte.',
+            'La base ya está; para crecer de ahí, empieza por {acc}.',
+        ],
+        'cerca' => [
+            'Ya se ve la optimista; {acc} puede acercarla.',
+            'Faltan pocas ventas para la optimista y una puede ser tuya: empieza por {acc}.',
+            'Es el tramo donde cada cierre se nota: enfócate en {acc}.',
+        ],
+        'sobre' => [
+            'El mes ya salió bien; es buen momento para dejar al día lo tuyo: {acc}.',
+            'Con la meta rebasada, lo que hagas hoy siembra el próximo mes: empieza por {acc}.',
+            'La empresa va muy bien; que lo tuyo vaya igual: {acc}.',
+            'Aprovecha el buen mes para ordenar tu casa: {acc}.',
+        ],
+    ];
+
+    /** Sin debilidad (el tip dice que va bien): reconocimiento, 2–3 por tramo. */
+    private const PUENTE_BIEN = [
+        'abajo'  => ['Tu trabajo está empujando; sigue así, que el mes lo necesita.',
+                     'Estás haciendo tu parte; cada venta tuya ayuda a darle la vuelta.'],
+        'camino' => ['Tu ritmo ayuda a que llegue; no lo sueltes.',
+                     'Buen ritmo; una venta más tuya puede completarla.'],
+        'lejos'  => ['Tu ritmo es parte de este mes; sigue así.',
+                     'Lo que estás haciendo se nota; con eso se va por la optimista.'],
+        'cerca'  => ['Tu ritmo la está acercando; sostenlo.',
+                     'Lo que estás haciendo se nota en el resultado.'],
+        'sobre'  => ['Tu trabajo es parte de este resultado; sigue así.',
+                     'Lo que estás haciendo se nota en el resultado.',
+                     'Buen mes, y tu parte cuenta; sostén el ritmo.'],
+    ];
 
     /**
      * Una línea para el Consejo del Director (CEO, 28 sep: va AL FINAL del

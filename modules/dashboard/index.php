@@ -1028,7 +1028,8 @@ $ts_diag = ($ts_rt && trim($ts_rt['texto']) !== '') ? $ts_rt['texto'] : Activida
           // La debilidad que ya eligió el tip: el remate de la empresa se
           // conecta con ella. Sin tip del motor nuevo (legacy), sin puente.
           $ts_meta_txt = MetasEmpresa::texto_tip(EMPRESA_ID,
-              ($ts_rt && trim($ts_rt['texto']) !== '') ? ($ts_rt['debilidad'] ?? null) : null);
+              ($ts_rt && trim($ts_rt['texto']) !== '') ? ($ts_rt['debilidad'] ?? null) : null,
+              (int)($ts['usuario_id'] ?? 0));
           if ($ts_meta_txt !== '') $diag_b2 = trim($diag_b2 . ' ' . $ts_meta_txt);
       } catch (Throwable $e) {}
       $ts_num  = trim(ActividadScore::diagnostico_numeros($ts, $diag_ctx ?? null));
@@ -1148,7 +1149,8 @@ if (empty($MESA_EMITIDO) && !empty($MESA_ASESOR)) {
       try {
           if (!class_exists('MetasEmpresa')) require_once __DIR__ . '/../../core/MetasEmpresa.php';
           $es_meta_txt = MetasEmpresa::texto_tip(EMPRESA_ID,
-              ($es_rt && trim($es_rt['texto']) !== '') ? ($es_rt['debilidad'] ?? null) : null);
+              ($es_rt && trim($es_rt['texto']) !== '') ? ($es_rt['debilidad'] ?? null) : null,
+              (int)($es['usuario_id'] ?? 0));
           if ($es_meta_txt !== '') $es_diag = trim($es_diag . ' ' . $es_meta_txt);
       } catch (Throwable $e) {}
     ?>

@@ -4882,6 +4882,13 @@ compara contra lo vendido y lo traduce en frases.
 | Reporte del asesor (`RitmoReporte`) | quien lo lee | sección "La empresa en {mes} (al {fecha})" entre "Cómo vas" y "Resumen", **fechada** (el reporte se guarda 7 días) |
 | Consejo del Director (`RitmoReporte`, `MetasEmpresa::linea_consejo`) | quien lo lee | **una línea al final** del consejo, según cómo va el mes (baja / cerca / pasó la pesimista / superó la optimista), sin cifras |
 | Ranking del equipo (admin) | admin | el tip de cada asesor **lleva el mismo remate de la empresa** que lee él en su termómetro, con el puente de SU debilidad (`texto_tip`, CEO 28-sep) |
+
+**El remate del tip le habla al asesor y ROTA** (CEO 28-sep: "sumarte a ese
+resultado" no decía nada y, leído diario, se repetía). `MetasEmpresa::puente()`:
+5 tramos (baja · cerca de la pesimista · pasó la pesimista lejos de la
+optimista · a medio camino/casi · sobrepasó), 3-4 frases con la acción de su
+debilidad y 2-3 de reconocimiento si va bien. Cambia **cada día y por asesor**
+(`crc32(uid:día)`, como `RitmoTip::_marco`), así el ranking no repite.
 | Reportes › Financiero › "Metas — últimos 12 meses" (`modules/reportes/_metas_12m.php`, `MetasEmpresa::historial_meses`) | solo admin | ✓/✗ por mes en equilibrio, pesimista y optimista; **solo meses del sistema** (los importados no entran, CEO 28-sep); el mes en curso dice "en curso" en lo que aún no alcanza; resumen de meses cerrados; todos contra la meta actual |
 
 Además, en Reportes › Financiero la tabla "Historial importado" pasó a
@@ -4892,7 +4899,7 @@ barras (no canceladas, con o sin pago). Por eso septiembre da $823,506 ahí y
 $806,336 en metas (anticipo y sin DI) — la tabla de metas lo aclara.
 
 ### Pruebas
-`tools/sim_metas.php` — **324 comprobaciones contra MariaDB real**, corre la
+`tools/sim_metas.php` — **336 comprobaciones contra MariaDB real**, corre la
 migración real y el endpoint real, con `EMULATE_PREPARES=false` como
 producción. Obligatoria tras cualquier cambio a metas. **Borra sus tablas al
 terminar** (si no, `test_plan_log` truena: usa `CREATE TABLE IF NOT EXISTS

@@ -889,25 +889,54 @@ MetasEmpresa::reset();
 chk('tip sin historia: nada', MetasEmpresa::texto_tip($eT2), '');
 chk('tip sin historia: nada aunque traiga debilidad', MetasEmpresa::texto_tip($eT2, 'seguimiento'), '');
 
-echo "\n── Tip: puente según la empresa y la debilidad del tip ──\n";
+echo "\n── Tip: remate que le habla al asesor, rota por día y por asesor (CEO, 28 sep) ──\n";
+$base_R = 'La empresa ya sobrepasó su meta optimista en este mes y en los últimos 30 días.';
+$acc_seg = 'ponerte al día con tus seguimientos';
+// Todas las variantes de un tramo: se recorren uids hasta juntarlas.
+$variantes = function (string $nivel, ?string $deb) {
+    $v = [];
+    for ($u = 0; $u < 400; $u++) $v[MetasEmpresa::puente($nivel, $deb, $u)] = true;
+    return array_keys($v);
+};
+$tramos = ['baja' => 4, 'cerca' => 4, 'llego' => 4, 'medio_optima' => 3, 'casi_optima' => 3, 'sobrepasada' => 4];
+foreach ($tramos as $nv => $cuantas) chk("$nv: $cuantas frases distintas con acción", count($variantes($nv, 'seguimiento')), $cuantas);
+chk('medio y casi comparten tramo', $variantes('medio_optima', 'citas'), $variantes('casi_optima', 'citas'));
+$todas_p = [];
+foreach (MetasEmpresa::NIVELES as $nv) foreach (['seguimiento', 'citas', 'bien'] as $dk) $todas_p = array_merge($todas_p, $variantes($nv, $dk));
+chk('ningún remate dice "sumarte a ese resultado"', !preg_grep('/sumarte a ese resultado/u', $todas_p));
+chk('ningún remate lleva cifras ni "vas"', !preg_grep('/\d|\bvas\b|te faltan|tu meta/iu', $todas_p));
+chk('toda frase con acción la lleva completa', !preg_grep('/\{acc\}/', $todas_p)
+    && count(preg_grep('/' . preg_quote($acc_seg, '/') . '/u', $variantes('sobrepasada', 'seguimiento'))) === 4);
 MetasEmpresa::reset();
-chk('arriba + seguimiento (Abigail hoy)', MetasEmpresa::texto_tip($eR, 'seguimiento'),
-    'La empresa ya sobrepasó su meta optimista en este mes y en los últimos 30 días. Para sumarte a ese resultado, empieza por ponerte al día con tus seguimientos.');
-chk('arriba + bien', MetasEmpresa::texto_tip($eR, 'bien'),
-    'La empresa ya sobrepasó su meta optimista en este mes y en los últimos 30 días. Tu trabajo es parte de ese resultado.');
-chk('debilidad desconocida (legacy): sin puente', MetasEmpresa::texto_tip($eR, null), 'La empresa ya sobrepasó su meta optimista en este mes y en los últimos 30 días.');
-chk('debilidad que no existe: sin puente', MetasEmpresa::texto_tip($eR, 'xyz'), 'La empresa ya sobrepasó su meta optimista en este mes y en los últimos 30 días.');
+$tR = MetasEmpresa::texto_tip($eR, 'seguimiento', 18);
+chk('Abigail hoy: frase de la empresa + un remate del tramo "sobrepasó"',
+    str_starts_with($tR, $base_R . ' ') && in_array(substr($tR, strlen($base_R) + 1), $variantes('sobrepasada', 'seguimiento'), true));
+chk('mismo asesor, mismo día: mismo remate', MetasEmpresa::texto_tip($eR, 'seguimiento', 18), $tR);
+$por_dia = [];
+for ($d = 0; $d < 14; $d++) { MetasEmpresa::$ahora = strtotime("2026-09-01 +$d day 12:00"); $por_dia[MetasEmpresa::puente('sobrepasada', 'seguimiento', 18)] = 1; }
+reloj('2026-09-27 10:00:00');   // el reloj que traía la sección
+chk('rota por día: en dos semanas el mismo asesor lee ≥3 remates distintos', count($por_dia) >= 3);
+$por_uid = [];
+for ($u = 1; $u <= 10; $u++) $por_uid[MetasEmpresa::puente('sobrepasada', 'seguimiento', $u)] = 1;
+chk('rota por asesor: el mismo día, 10 asesores no leen todos lo mismo', count($por_uid) >= 3);
+chk('sin debilidad (legacy): sin remate', MetasEmpresa::texto_tip($eR, null, 18), $base_R);
+chk('debilidad que no existe: sin remate', MetasEmpresa::texto_tip($eR, 'xyz', 18), $base_R);
+chk('bien: reconocimiento, sin acción', in_array(MetasEmpresa::puente('sobrepasada', 'bien', 18), $variantes('sobrepasada', 'bien'), true)
+    && count($variantes('sobrepasada', 'bien')) === 3 && count($variantes('baja', 'bien')) === 2);
 $eB = empresa(); historia($eB); metas($eB, 420000, 590000, 690000); venta($eB, '2026-09-10 10:00:00', 100000);
 MetasEmpresa::reset();
-chk('abajo + citas', MetasEmpresa::texto_tip($eB, 'citas'),
-    'La empresa ni siquiera llega al punto de equilibrio en este mes y en los últimos 30 días. Cada venta cuenta: agendar citas es lo que más ayuda ahora.');
-chk('abajo + bien', str_ends_with(MetasEmpresa::texto_tip($eB, 'bien'), 'Tu trabajo está empujando; sigue así.'));
-$eCm = empresa(); historia($eCm); metas($eCm, 420000, 590000, 690000); venta($eCm, '2026-09-10 10:00:00', 540000);
+chk('abajo: el remate es del tramo "abajo"', in_array(substr(MetasEmpresa::texto_tip($eB, 'citas', 7),
+    strlen('La empresa ni siquiera llega al punto de equilibrio en este mes y en los últimos 30 días. ')), $variantes('baja', 'citas'), true));
 MetasEmpresa::reset();
-chk('camino + cierre', str_ends_with(MetasEmpresa::texto_tip($eCm, 'cierre'), 'Está cerca: cerrar lo que ya abriste puede ser lo que falte.'));
-chk('camino + bien', str_ends_with(MetasEmpresa::texto_tip($eCm, 'bien'), 'Tu ritmo ayuda a que llegue.'));
+chk('Kevin (llegó a la pesimista): remate del tramo "lejos", no el de "sobrepasó"',
+    in_array(substr(MetasEmpresa::texto_tip($eT6, 'seguimiento', 21), strlen('La empresa ya llegó a su meta pesimista en este mes y en los últimos 30 días; todavía le falta mucho para la optimista. ')),
+        $variantes('llego', 'seguimiento'), true));
 MetasEmpresa::reset();
-chk('la banda la manda el MES (mes camino, 30 días arriba)', str_ends_with(MetasEmpresa::texto_tip($eT5, 'ticket'), 'Está cerca: subir tu ticket puede ser lo que falte.'));
+chk('el tramo lo manda el MES (mes camino, 30 días arriba)',
+    in_array(substr(MetasEmpresa::texto_tip($eT5, 'ticket', 3), strlen('La empresa va por debajo de su meta en este mes. La empresa ya sobrepasó su meta optimista en los últimos 30 días. ')),
+        $variantes('debajo', 'ticket'), true));
+chk('el dashboard pasa el usuario de cada tip (termómetro y ranking) para rotar',
+    str_contains($dsh, "(int)(\$ts['usuario_id'] ?? 0));") && str_contains($dsh, "(int)(\$es['usuario_id'] ?? 0));"));
 // Las 12 debilidades con acción producen puente, y ninguno lleva cifras ni "vas".
 $rt_src = file_get_contents(__DIR__ . '/../core/RitmoTip.php');
 preg_match_all("/return \\['([a-z_]+)'/", $rt_src, $mm);
