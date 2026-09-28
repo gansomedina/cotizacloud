@@ -33,6 +33,13 @@
     Las herramientas de `tools/` son para lo que se corre MUCHAS veces (las
     simulaciones, el fact-lint); un diagnóstico de una vez es una consulta,
     no código en el repo.
+14. **PLANES Y LICENCIAS SE MUEVEN SOLO DESDE EL PANEL DE SUPERADMIN, NUNCA
+    POR SQL.** Renovar, activar, cambiar de plan o mover `plan_vence`/`activa`/
+    `es_trial`/`trial_usado` va por `toggle_plan.php` (deja bitácora en
+    `planes_log` y ajusta asientos). El 28-sep-2026 di un SQL de renovación sin
+    preguntar, se corrió, y hubo que revertirlo — y no se había guardado el
+    estado previo de `es_trial`/`trial_usado`. **Antes de cualquier UPDATE que
+    el CEO vaya a correr: guardar primero TODAS las columnas que toca.**
 
 ## Resumen del Proyecto
 - **Tipo**: SaaS de cotizaciones (PHP backend + Capacitor para apps nativas)
