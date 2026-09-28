@@ -401,6 +401,73 @@ class MetasEmpresa
         return array_values(array_filter(self::frases($nivel, true), fn($x) => is_string($x) && $x !== ''));
     }
 
+    /**
+     * Últimos $n meses DEL SISTEMA contra la meta (Reportes › Financiero,
+     * solo admin). Solo tabla `ventas`: los meses importados NO entran (CEO,
+     * 28 sep). Desde el mes de la primera venta con pago, sin pasar de $n.
+     * Misma regla de vendido que estado() (anticipo, no cancelada, sin DI) y
+     * la misma meta general para todos los meses.
+     * Cada mes: equilibrio/pesimista/optimista = true (logrado), false (no),
+     * null (mes en curso que aún no llega: todavía no falló).
+     * [] = sin plan, sin meta, meta en otra moneda o sin ventas.
+     */
+    public static function historial_meses(int $e, int $n = 12): array
+    {
+        try {
+            if (!self::plan_ok($e)) return [];
+            $emp = DB::row("SELECT moneda, meta_equilibrio, meta_pesimista, meta_optimista, meta_moneda
+                              FROM empresas WHERE id = ?", [$e]);
+            if (!$emp || $emp['meta_equilibrio'] === null || $emp['meta_pesimista'] === null
+                || $emp['meta_optimista'] === null) return [];
+            if (strtoupper((string)$emp['meta_moneda']) !== strtoupper((string)($emp['moneda'] ?: 'MXN'))) return [];
+            $meta = ['equilibrio' => (float)$emp['meta_equilibrio'], 'pesimista' => (float)$emp['meta_pesimista'],
+                     'optimista' => (float)$emp['meta_optimista']];
+
+            $t      = self::$ahora ?? time();
+            $mes0   = strtotime(date('Y-m-01', $t));
+            $inicio = strtotime('-' . ($n - 1) . ' months', $mes0);
+            $primera = DB::val(
+                "SELECT v.created_at FROM ventas v
+                  WHERE v.empresa_id = ? AND v.estado <> 'cancelada' AND v.pagado > 0 AND v.total > 0
+                    AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones di
+                                     WHERE di.cotizacion_id = v.cotizacion_id AND di.estado = 'utilizado')
+                  ORDER BY v.created_at LIMIT 1", [$e]);
+            if (!$primera) return [];
+            $inicio = max($inicio, strtotime(date('Y-m-01', strtotime((string)$primera))));
+
+            $vend = [];
+            foreach (DB::query(
+                "SELECT DATE_FORMAT(v.created_at, '%Y-%m') AS ym, COALESCE(SUM(v.total),0) AS s, COUNT(*) AS n
+                   FROM ventas v
+                  WHERE v.empresa_id = ? AND v.estado <> 'cancelada' AND v.pagado > 0 AND v.total > 0
+                    AND v.created_at >= ? AND v.created_at < ?
+                    AND NOT EXISTS (SELECT 1 FROM desc_int_activaciones di
+                                     WHERE di.cotizacion_id = v.cotizacion_id AND di.estado = 'utilizado')
+                  GROUP BY ym",
+                [$e, date('Y-m-d 00:00:00', $inicio), date('Y-m-d 00:00:00', strtotime('+1 day', strtotime(date('Y-m-d', $t))))]) as $r) {
+                $vend[$r['ym']] = $r;
+            }
+
+            $meses = [];
+            for ($m = $mes0; $m >= $inicio; $m = strtotime('-1 month', $m)) {
+                $ym = date('Y-m', $m);
+                $v  = round((float)($vend[$ym]['s'] ?? 0), 2);
+                $en_curso = $m === $mes0;
+                $fila = ['anio' => (int)date('Y', $m), 'mes' => (int)date('n', $m),
+                         'nombre' => self::MESES[(int)date('n', $m)] . ' ' . date('Y', $m),
+                         'vendido' => $v, 'ventas' => (int)($vend[$ym]['n'] ?? 0), 'en_curso' => $en_curso];
+                foreach ($meta as $k => $x) {
+                    $fila[$k] = $v >= round($x, 2) ? true : ($en_curso ? null : false);
+                }
+                $meses[] = $fila;
+            }
+            return ['meta' => $meta, 'meses' => $meses];
+        } catch (\Throwable $ex) {
+            if (!self::$logged) { error_log('[Metas] historial empresa ' . $e . ': ' . $ex->getMessage()); self::$logged = true; }
+            return [];
+        }
+    }
+
     // ═════════════════════════════════════════════════════════
     //  Captura (Configuración › Metas). La validación vive AQUÍ para que
     //  la pestaña, el endpoint y la simulación usen la misma regla.

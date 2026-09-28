@@ -94,12 +94,14 @@ CREATE TABLE empresas (
 ) ENGINE=InnoDB;
 CREATE TABLE cotizaciones (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
+  usuario_id INT UNSIGNED NULL, vendedor_id INT UNSIGNED NULL,
   estado VARCHAR(20) NOT NULL DEFAULT 'enviada', suspendida TINYINT NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL
 ) ENGINE=InnoDB;
 CREATE TABLE ventas (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
-  cotizacion_id INT UNSIGNED NULL, total DECIMAL(14,2) NOT NULL DEFAULT 0,
+  cotizacion_id INT UNSIGNED NULL, usuario_id INT UNSIGNED NULL, vendedor_id INT UNSIGNED NULL,
+  total DECIMAL(14,2) NOT NULL DEFAULT 0,
   pagado DECIMAL(14,2) NOT NULL DEFAULT 0, estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
   created_at DATETIME NOT NULL
 ) ENGINE=InnoDB;
@@ -110,7 +112,9 @@ CREATE TABLE desc_int_activaciones (
 CREATE TABLE historial_mensual (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, empresa_id INT UNSIGNED NOT NULL,
   anio SMALLINT UNSIGNED NOT NULL, mes TINYINT UNSIGNED NOT NULL,
-  ventas_cantidad INT UNSIGNED NOT NULL DEFAULT 0, ventas_monto DECIMAL(14,2) NOT NULL DEFAULT 0
+  cotizaciones_cantidad INT UNSIGNED NOT NULL DEFAULT 0,
+  ventas_cantidad INT UNSIGNED NOT NULL DEFAULT 0, ventas_monto DECIMAL(14,2) NOT NULL DEFAULT 0,
+  tasa_cierre DECIMAL(5,2) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB;
 ");
 // Producción ya tiene la tabla por mes de la primera versión: se crea aquí
@@ -897,6 +901,89 @@ chk('la primera parte del tip ($diag_b1) se corta ANTES de anexar: queda idénti
     && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
 chk('el texto del tip NO se toca ($ts_diag no menciona metas)', !preg_match('/\$ts_diag\s*=.*Metas/', $dsh) && !preg_match('/\$perfil\s*=.*meta/i', $dsh));
 chk('la tarjeta del admin se incluye antes de Ritmo', strpos($dsh, "include __DIR__ . '/_metas.php'") < strpos($dsh, "include __DIR__ . '/_ritmo.php'"));
+
+// ═════════════════════════════════════════════════════════════
+//  Reportes › Financiero: historial mensual + metas de 12 meses
+// ═════════════════════════════════════════════════════════════
+echo "\n── Metas: últimos 12 meses (solo sistema) ──\n";
+reloj('2026-09-27 10:00:00');
+$eH = empresa(); metas($eH, 420000, 590000, 690000);
+venta($eH, '2026-04-13 08:48:16', 381246.92);               // abril: sobre equilibrio? no (381k < 420k)
+venta($eH, '2026-05-10 10:00:00', 700000);                   // mayo: las tres
+venta($eH, '2026-06-10 10:00:00', 600000);                   // junio: equilibrio y pesimista
+venta($eH, '2026-06-11 10:00:00', 500000, 0);                // sin anticipo: no cuenta
+venta($eH, '2026-06-12 10:00:00', 500000, 5, 'pendiente', 'utilizado');   // DI: no cuenta
+// julio: nada
+venta($eH, '2026-08-10 10:00:00', 450000);                   // agosto: solo equilibrio
+venta($eH, '2026-09-10 10:00:00', 500000);                   // septiembre (en curso): equilibrio sí, lo demás en curso
+DB::execute("INSERT INTO historial_mensual (empresa_id, anio, mes, ventas_cantidad, ventas_monto) VALUES (?,2026,3,8,999999)", [$eH]);
+$hm = MetasEmpresa::historial_meses($eH);
+$ym = array_map(fn($r) => sprintf('%04d-%02d', $r['anio'], $r['mes']), $hm['meses']);
+chk('meses del sistema, del más reciente al primero con venta (los importados NO entran)', $ym, ['2026-09','2026-08','2026-07','2026-06','2026-05','2026-04']);
+$porym = array_combine($ym, $hm['meses']);
+$tri = fn($r) => [$r['equilibrio'], $r['pesimista'], $r['optimista']];
+chk('mayo: las tres ✓', $tri($porym['2026-05']), [true, true, true]);
+chk('junio: sin anticipo ni DI → 600k: ✓ ✓ ✗', [$porym['2026-06']['vendido'], $tri($porym['2026-06'])], [600000.0, [true, true, false]]);
+chk('julio sin ventas: aparece con ✗ ✗ ✗', [$porym['2026-07']['vendido'], $tri($porym['2026-07'])], [0.0, [false, false, false]]);
+chk('abril: ✗ ✗ ✗', $tri($porym['2026-04']), [false, false, false]);
+chk('septiembre en curso: ✓ lo logrado, "en curso" (null) lo que falta', [$porym['2026-09']['en_curso'], $tri($porym['2026-09'])], [true, [true, null, null]]);
+chk('solo el mes actual va en curso', count(array_filter($hm['meses'], fn($r) => $r['en_curso'])), 1);
+reloj('2027-09-27 10:00:00');
+$hm2 = MetasEmpresa::historial_meses($eH);
+chk('nunca más de 12 meses', [count($hm2['meses']), $hm2['meses'][11]['nombre']], [12, 'octubre 2026']);
+reloj('2026-09-27 10:00:00');
+$eHn = empresa();
+chk('sin meta: nada', MetasEmpresa::historial_meses($eHn), []);
+$eHp = empresa('pro'); metas($eHp, 1, 2, 3); venta($eHp, '2026-09-10 10:00:00', 5);
+chk('Pro: nada', MetasEmpresa::historial_meses($eHp), []);
+$eHu = empresa('business', 'USD'); metas($eHu, 1, 2, 3, 'MXN'); venta($eHu, '2026-09-10 10:00:00', 5);
+chk('meta en otra moneda: nada', MetasEmpresa::historial_meses($eHu), []);
+$eHv = empresa(); metas($eHv, 1, 2, 3);
+chk('sin ventas con anticipo: nada', MetasEmpresa::historial_meses($eHv), []);
+
+echo "\n── Metas 12 meses: render (solo admin) ──\n";
+$m12 = function (int $eid, bool $admin) { $empresa_id = $eid; $es_admin = $admin; ob_start(); include __DIR__ . '/../modules/reportes/_metas_12m.php'; return ob_get_clean(); };
+$h12 = $m12($eH, true);
+chk('admin ve la tabla con sus 6 meses', substr_count($h12, '<tr>') - 1, 6);
+chk('encabezados con la meta', str_contains($h12, 'Punto de equilibrio<small>$420,000</small>') && str_contains($h12, 'Meta optimista<small>$690,000</small>'));
+// sep ✓·· · ago ✓✗✗ · jul ✗✗✗ · jun ✓✓✗ · may ✓✓✓ · abr ✗✗✗
+chk('palomitas y tachas (7 ✓, 9 ✗, 2 en curso)', [substr_count($h12, 'class="m12-ok"'), substr_count($h12, 'class="m12-no"'), substr_count($h12, '<span class="m12-cur">en curso</span>')], [7, 9, 2]);
+chk('resumen de meses cerrados', str_contains($h12, 'De 5 meses cerrados:') && str_contains($h12, 'equilibrio 3/5 · pesimista 2/5 · optimista 1/5'));
+chk('el asesor NO ve nada', $m12($eH, false), '');
+chk('sin meta: no hay tabla', $m12($eHn, true), '');
+
+echo "\n── Historial mensual: sistema primero, importados abajo ──\n";
+if (!function_exists('rep_historial_mensual')) require __DIR__ . '/../modules/reportes/_historial_mensual.php';
+$eF = empresa();
+DB::execute("INSERT INTO historial_mensual (empresa_id, anio, mes, cotizaciones_cantidad, ventas_cantidad, ventas_monto, tasa_cierre) VALUES
+  (?,2026,3,40,8,579010.24,20.0),(?,2026,2,30,8,506749.33,26.7),(?,2025,12,20,9,373484.5,45.0)", [$eF, $eF, $eF]);
+foreach ([['2026-04-10',3],['2026-05-10',5],['2026-09-01',2]] as [$d, $k]) for ($i = 0; $i < $k; $i++) cot($eF, "$d 10:00:00");
+cot($eF, '2026-05-10 10:00:00', 'borrador'); cot($eF, '2026-05-10 10:00:00', 'enviada', 1);
+cot($eF, '2021-01-01 10:00:00');                              // cotización vieja (import): antes del sistema → no inventa meses
+venta($eF, '2026-04-20 10:00:00', 1000); venta($eF, '2026-05-20 10:00:00', 2000, 0);   // sin pago TAMBIÉN cuenta (misma cuenta que la gráfica)
+venta($eF, '2026-05-21 10:00:00', 3000, 5, 'cancelada');
+$hf = rep_historial_mensual($eF, '', '', 24, '2026-09-27');
+$yf = array_map(fn($r) => sprintf('%04d-%02d', $r['anio'], $r['mes']), $hf);
+chk('orden: sistema (sep→abr) y luego importados (mar→dic 2025), sin encimarse', $yf, ['2026-09','2026-08','2026-07','2026-06','2026-05','2026-04','2026-03','2026-02','2025-12']);
+$pf = array_combine($yf, $hf);
+chk('mayo del sistema: cotizaciones sin borrador ni suspendida (5 + las 2 de las ventas; la cancelada también se cotizó)', $pf['2026-05']['cotizaciones'], 7);
+chk('mayo: ventas no canceladas, con o sin pago (= gráfica)', [$pf['2026-05']['ventas'], $pf['2026-05']['monto']], [1, 2000.0]);
+chk('abril: 3 + 1 cotizaciones, 1 venta, tasa 25%', [$pf['2026-04']['cotizaciones'], $pf['2026-04']['ventas'], $pf['2026-04']['tasa']], [4, 1, 25.0]);
+chk('mes del sistema sin movimiento aparece en cero', [$pf['2026-07']['cotizaciones'], $pf['2026-07']['ventas']], [0, 0]);
+chk('importado conserva sus números', [$pf['2026-03']['ventas'], $pf['2026-03']['monto'], $pf['2026-03']['tasa']], [8, 579010.24, 20.0]);
+chk('tope de filas', count(rep_historial_mensual($eF, '', '', 7, '2026-09-27')), 7);
+DB::execute("UPDATE ventas SET vendedor_id = 55 WHERE empresa_id = ? AND total = 1000", [$eF]);
+$ha = rep_historial_mensual($eF, 'AND (v.usuario_id = 55 OR v.vendedor_id = 55)', 'AND (c.usuario_id = 55 OR c.vendedor_id = 55)', 24, '2026-09-27');
+$pa = array_combine(array_map(fn($r) => sprintf('%04d-%02d', $r['anio'], $r['mes']), $ha), $ha);
+chk('asesor: los meses del sistema se filtran a lo suyo', [$pa['2026-04']['ventas'], $pa['2026-05']['ventas']], [1, 0]);
+$eF2 = empresa();                                             // sin importados: desde su primera cotización o venta
+cot($eF2, '2026-07-15 10:00:00'); venta($eF2, '2026-08-02 10:00:00', 500);
+$yf2 = array_map(fn($r) => sprintf('%04d-%02d', $r['anio'], $r['mes']), rep_historial_mensual($eF2, '', '', 24, '2026-09-27'));
+chk('sin importados: desde el primer movimiento', $yf2, ['2026-09','2026-08','2026-07']);
+chk('empresa sin nada: tabla vacía', rep_historial_mensual(empresa(), '', '', 24, '2026-09-27'), []);
+$rix = file_get_contents(__DIR__ . '/../modules/reportes/index.php');
+chk('Financiero usa la tabla nueva e incluye metas de 12 meses después', ($p1 = strpos($rix, 'rep_historial_mensual((int)$empresa_id')) !== false && strpos($rix, "include __DIR__ . '/_metas_12m.php'") > $p1);
+chk('la tabla ya no dice "importado" ni tiene columna de origen', !str_contains($rix, 'Historial importado') && !str_contains($rix, '>Origen<'));
 
 // Limpieza: otras pruebas crean sus tablas con CREATE TABLE IF NOT EXISTS
 // (p. ej. test_plan_log con `empresas`). Si esta simulación dejara su esquema

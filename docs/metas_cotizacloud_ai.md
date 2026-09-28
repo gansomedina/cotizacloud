@@ -514,3 +514,7 @@ Sin fugas de cifras al asesor ni rutas a un error 500. Corregido:
 | Arriba | Para sumarte a ese resultado, empieza por {acción}. | Tu trabajo es parte de ese resultado. |
 
 La acción sale de `ACCION_TIP` (12 debilidades + "bien"). Sin tip del motor nuevo (diagnóstico legacy), sin puente. `RitmoTip` no cambia: qué tip se elige, su texto y "citas en cero primero" quedan igual. `sim_metas` falla si `RitmoTip` agrega una debilidad sin acción.
+
+## Reportes › Financiero (CEO, 28 sep 2026)
+1. **"Historial mensual"** (antes "Historial importado"): primero los meses **del sistema** (del mes siguiente al último importado hasta hoy; sin importados, desde el primer movimiento) y debajo los **importados**, sin columna de origen. Cuenta de ventas = la de la gráfica de barras de esa pestaña (no canceladas, con o sin pago). Para el asesor, los meses del sistema se filtran a lo suyo (igual que la gráfica); los importados son de la empresa, como antes. `modules/reportes/_historial_mensual.php`.
+2. **"Metas — últimos 12 meses"** (solo admin): solo meses del sistema, desde la primera venta con anticipo; ✓/✗ contra equilibrio, pesimista y optimista; el mes en curso dice "en curso" en lo que aún no alcanza; resumen de meses cerrados. Regla de metas (anticipo, sin DI) y la meta actual para todos los meses. `MetasEmpresa::historial_meses`, `modules/reportes/_metas_12m.php`.

@@ -964,35 +964,39 @@ ob_start();
   </div>
 
   <?php
-  // Historial importado
-  $hist_rep = DB::query(
-      "SELECT * FROM historial_mensual WHERE empresa_id = ? ORDER BY anio DESC, mes DESC LIMIT 24",
-      [$empresa_id]
-  );
+  // Historial mensual: primero los meses del SISTEMA, debajo los importados
+  // (CEO, 28 sep 2026 — sin columna de origen). Ver _historial_mensual.php.
+  if (!function_exists('rep_historial_mensual')) require __DIR__ . '/_historial_mensual.php';
+  $hist_rep = rep_historial_mensual((int)$empresa_id, $usr_filter, $usr_filter_c, 24);
   if ($hist_rep):
     $mn = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-    $hist_total_ventas_monto = array_sum(array_column($hist_rep, 'ventas_monto'));
-    $hist_total_ventas_cant  = array_sum(array_column($hist_rep, 'ventas_cantidad'));
-    $hist_total_cots_cant    = array_sum(array_column($hist_rep, 'cotizaciones_cantidad'));
+    $hist_total_ventas_monto = array_sum(array_column($hist_rep, 'monto'));
+    $hist_total_ventas_cant  = array_sum(array_column($hist_rep, 'ventas'));
+    $hist_total_cots_cant    = array_sum(array_column($hist_rep, 'cotizaciones'));
     $hist_tasa = $hist_total_cots_cant > 0 ? round($hist_total_ventas_cant / $hist_total_cots_cant * 100, 1) : 0;
+    $hist_ult  = end($hist_rep);
+    $hist_rango = $mn[$hist_ult['mes']] . ' ' . $hist_ult['anio'] . ' – ' . $mn[$hist_rep[0]['mes']] . ' ' . $hist_rep[0]['anio'];
   ?>
-  <div class="sec-lbl" style="margin:28px 0 12px">Historial importado</div>
+  <div class="sec-lbl" style="margin:28px 0 12px">Historial mensual</div>
   <div class="kpi-grid" style="margin-bottom:16px">
     <div class="kpi-card">
-      <div class="kpi-label">Ventas históricas</div>
+      <div class="kpi-label">Ventas</div>
       <div class="kpi-val green"><?= rp($hist_total_ventas_monto) ?></div>
-      <div class="kpi-sub"><?= number_format($hist_total_ventas_cant) ?> ventas</div>
+      <div class="kpi-sub"><?= number_format($hist_total_ventas_cant) ?> ventas · <?= e($hist_rango) ?></div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Cotizaciones históricas</div>
+      <div class="kpi-label">Cotizaciones</div>
       <div class="kpi-val"><?= number_format($hist_total_cots_cant) ?></div>
+      <div class="kpi-sub"><?= e($hist_rango) ?></div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Tasa cierre histórica</div>
+      <div class="kpi-label">Tasa de cierre</div>
       <div class="kpi-val <?= $hist_tasa>=15?'green':($hist_tasa>=8?'amber':'danger') ?>"><?= rpp($hist_tasa) ?></div>
+      <div class="kpi-sub"><?= e($hist_rango) ?></div>
     </div>
   </div>
   <div class="stat-card">
+    <div class="tbl-wrap">
     <table class="tbl" style="font-size:12px">
       <thead>
         <tr>
@@ -1007,16 +1011,20 @@ ob_start();
         <?php foreach ($hist_rep as $hr): ?>
         <tr>
           <td style="font:600 12px var(--body)"><?= $mn[(int)$hr['mes']] ?> <?= $hr['anio'] ?></td>
-          <td style="text-align:right;font:500 12px var(--num)"><?= number_format($hr['cotizaciones_cantidad']) ?></td>
-          <td style="text-align:right;font:600 12px var(--num)"><?= number_format($hr['ventas_cantidad']) ?></td>
-          <td style="text-align:right;font:600 12px var(--num);color:var(--g)"><?= rp((float)$hr['ventas_monto']) ?></td>
-          <td style="text-align:right;font:700 12px var(--num);color:<?= $hr['tasa_cierre']>=15?'var(--g)':($hr['tasa_cierre']>=8?'#b45309':'var(--danger)') ?>"><?= number_format($hr['tasa_cierre'],1) ?>%</td>
+          <td style="text-align:right;font:500 12px var(--num)"><?= number_format($hr['cotizaciones']) ?></td>
+          <td style="text-align:right;font:600 12px var(--num)"><?= number_format($hr['ventas']) ?></td>
+          <td style="text-align:right;font:600 12px var(--num);color:var(--g)"><?= rp((float)$hr['monto']) ?></td>
+          <td style="text-align:right;font:700 12px var(--num);color:<?= $hr['tasa']>=15?'var(--g)':($hr['tasa']>=8?'#b45309':'var(--danger)') ?>"><?= number_format($hr['tasa'],1) ?>%</td>
         </tr>
         <?php endforeach; ?>
       </tbody>
     </table>
+    </div>
   </div>
   <?php endif; ?>
+
+  <?php // Metas de los últimos 12 meses — solo admin, solo meses del sistema
+  include __DIR__ . '/_metas_12m.php'; ?>
 
 </div><!-- /panel-financiero -->
 
