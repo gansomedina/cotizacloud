@@ -4660,291 +4660,6 @@ pero además: **no se falsifica un User-Agent para reproducir la falla de un
 cliente**. Eso desactiva `es_bot()`, que es justo la protección que evitaría el
 daño. Ya contaminé la cot 4816 así el 8-sep.
 
-## Sesión 21-22 septiembre 2026 — Conversión de la tarjeta de Ritmo + el correo que no llegó
-
-### A) El pilar Conversión imprimía un numerador y otro hacía el porcentaje
-
-`RitmoAsesor.php:152` decía *"cerró 7 de 18 abiertas (11%)"* — **tres números de
-tres cuentas distintas en el mismo renglón**. Medido en producción, los tres
-asesores de OnTime lo traían:
-
-| Asesor | La tarjeta decía | El % lo hacía | Debía decir |
-|---|---|---|---|
-| Abigail | cerró **7** … (**11%**) | un **2** | **35%** |
-| Manuel | cerró **3** … (**22%**) | un **2** | **33%** |
-| Kevin | cerró **2** … (**7%**) | un **1** | **12%** |
-
-**El número impreso YA era el correcto** — coincidía exacto con el numerador de
-la casa en los tres casos. Lo que salía de otra cuenta, más chica, era el
-porcentaje. Subcalificaba a los tres y **a Kevin le ponía un rojo que no le
-tocaba** (12% contra una vara de 22% es amarillo, no rojo).
-
-Origen: el commit `b22274b` migró el numerador a cohorte en **tres** sitios con
-el mismo texto, cambió dos y **se saltó el del medio** — justo el que corre
-cuando la empresa tiene historial, o sea siempre. Nunca fue una decisión.
-
-**Cómo quedó** (regla CEO: *"venta del período es venta del período, sin importar
-cuándo nació la cotización"*):
-- Numerador y denominador, los dos con la receta de la casa. `_cierres()` pasó a
-  contar cotizaciones por `accion_at` con anticipo y sin DI (copia literal de
-  `ActividadScore:347`); `_abiertas()` es `cot_vistas` (`:304`).
-- Vara: **`ActividadScore::close_rate_historico()`**, que llevaba meses escrita
-  *"para que la tarjeta use EXACTAMENTE la misma y no invente la suya"* y
-  **no tenía un solo llamador**. Medido, cambia 1 punto (19→18 HMO, 22→22 NOG):
-  **la vara nunca fue el problema**.
-- **Sin filtro de madurez.** Medido: mueve entre 0 y 4 puntos y **no cambia el
-  color de ningún asesor**. No vale una segunda receta por eso.
-- El texto deja de decir *"X de Y"* → **"cerró 3 · abrió 12 · 25%"**. Con el
-  numerador por `accion_at` y el denominador por `created_at`, cerrar backlog
-  puede dar más cierres que cotizaciones nuevas; el motor ya vive con eso y lo
-  topa igual (`:578`). *"cerró 3 de 2"* es imposible de escribir, *"cerró 3 ·
-  abrió 2"* no.
-- `_cohorte()` quedó sin llamadores → eliminado, junto con `HIST_VENTANAS`.
-
-**Dos textos que se iban a contradecir con el pilar** (el rojo de Conversión
-NUNCA significó "no cerró nada" — significa cerrar bajo la mitad de la vara):
-`RitmoTip` decía *"cero cerradas"* y `RitmoReporte` ponía de meta *"cerrar al
-menos 1 venta"*, a gente con cierres impresos dos renglones arriba. Los dos usan
-ahora su número real.
-
-**Y `close_rate_historico()` iba clavada en `PERIODO`**: para una empresa de
-ciclo largo devolvía una vara que el motor no usa — el mismo defecto que
-`bench_publico` ya documenta y corrige. Se arregló sin riesgo porque no tenía
-llamadores. Verificado con datos: HMO cierra en 11.7 días y NOG en 3.0, así que
-`periodo_efectivo` = 15 en ambas y la vara medida (18% / 22%) es la que aplica.
-
-**La ventana sigue siendo distinta y es a propósito:** la tarjeta mide 2×p75
-(20 d) y el termómetro 15. Misma receta, distinto reloj — los números se parecen
-pero no son el mismo. Cambiar la ventana movería los otros 4 pilares.
-
-### B) El correo del respaldo que no llegó — y el respaldo estaba bien
-
-**El respaldo nunca falló.** Lo prueba el propio correo que no llegó, leído
-después en el panel de Brevo:
-
-```
-Respaldo OK 2026-09-22_0200 — bd: 2.7M · total en disco: 72M
-Copia remota OK y verificada — total en R2: 67.120 MiB
-```
-
-#### La cadena que sirvió (para repetirla en 5 minutos, no en dos horas)
-
-1. **Primero el respaldo, no el correo.** Archivos del día, tamaño del `bd_*`
-   contra los 7 anteriores, `gzip -t`, contar `CREATE TABLE`, y el
-   `-- Dump completed on` del final.
-2. **Después la cadena de envío**, en orden: ¿cron vivo? → ¿disparó? (`syslog`)
-   → ¿msmtp entregó? (`/var/log/msmtp.log`) → ¿disco? → ¿cola?
-3. **La prueba que separa: mandar a Gmail y a Hotmail por el mismo camino.**
-   Gmail llegó, Hotmail no → el problema es del destinatario, no de la cuenta.
-4. **La segunda prueba: cambiar el dominio firmante** (`-f noreply@envios...`).
-   También falló → no es reputación de `cotiza.cloud`.
-5. **El panel de Brevo** da la palabra literal. Ahí terminó.
-
-#### Lo que hay que saber leer
-
-| Señal | Qué significa DE VERDAD |
-|---|---|
-| `250 OK: queued` en msmtp.log | Brevo lo **aceptó**. NO es entrega. Aquí se acaba lo que vemos |
-| Brevo: `Sent` sin `Delivered` y **sin rebote** | **Diferimiento**. El receptor contestó `4xx`; Brevo reintenta en silencio ~72 h y luego lo marca rebote suave. **Puede llegar tarde** |
-| Brevo: `Blocked` | Es un estado propio de Brevo. Si la dirección estuviera suprimida, **lo diría** |
-| Brevo: `Loaded by proxy` | El destinatario lo abrió (proxy de imágenes de Outlook) |
-
-#### La causa
-
-**Microsoft empezó a diferir correo de la infraestructura compartida de Brevo**
-hacia buzones de consumo (Hotmail/Outlook), entre el 21 a las 03:00 (último
-`Delivered`, abierto a las 07:04) y el 22 a las 02:00. La IP que nos tocó fue
-`77.32.148.23` — `FR-MAILINBLUE` en RIPE, Francia, **compartida con miles de
-remitentes**. No la controlamos.
-
-⚠️ **Precisión que dio Brevo y que corrige lo que yo había dicho:** el problema
-**NO es la reputación de esa IP**. Es un fallo del lado de Microsoft contra la
-infraestructura compartida de Brevo en general (respuestas *"Service not active,
-try again later"* y *"Temporary server error"*). Por eso cambiar de IP —o pagar
-una dedicada— no lo habría evitado.
-
-Descartado con datos: nuestra configuración (SPF/DKIM/DMARC correctos en los dos
-dominios), la dirección suprimida en Brevo (el panel no dice `Blocked`), la
-reputación de `cotiza.cloud` (`envios.` falló igual) y la cuenta de Brevo (a
-Gmail entrega en el mismo minuto).
-
-#### Lo que se cambió
-
-```
-MAILTO=josealfonsomedina@gmail.com,josealfonsomedina@hotmail.com
-config.php:38  SUPERADMIN_EMAIL → josealfonsomedina@gmail.com
-```
-
-Gmail primero para que llegue; Hotmail de segundo **para seguir viendo cuándo
-Microsoft se vuelve a abrir**.
-
-- **`MAILTO` acepta varias direcciones con coma — PROBADO en vivo**, no supuesto:
-  una sola línea en msmtp.log con `recipients=...gmail.com,...hotmail.com`.
-- **`SUPERADMIN_EMAIL` NO admite lista.** `Mailer::enviar()` usa `addAddress()`
-  de PHPMailer, que toma una dirección. Ahí va una sola.
-- Esa constante alimenta **cinco** avisos: empresa nueva
-  (`verificar_email_post.php:200`), solicitud de licencia y ticket
-  (`ayuda/ticket.php:75,85`), mensaje de soporte y **lead del landing**
-  (`api/soporte.php:81,137`).
-- Dato del log: entre el **27-jul y el 22-sep no salió NI UN correo al
-  superadmin** fuera de los dos crones. No se perdieron avisos — no hubo qué
-  avisar.
-
-#### Respuesta de Brevo (23-sep) — confirma el diagnóstico
-
-Ticket enviado el 22-sep con la IP y los 4 Message IDs. Contestó George, de
-soporte, y confirmó punto por punto lo que se había medido:
-
-- **Es un problema conocido y activo** que afecta correo hacia buzones de consumo
-  de Microsoft (Hotmail/Outlook). Gmail y los demás proveedores entregan normal.
-- Microsoft devuelve *"Service not active, try again later"* y *"Temporary server
-  error"* — **diferimiento temporal, no rechazo permanente**. Por eso los mensajes
-  se quedan en `Sent` sin `Delivered` y sin rebote.
-- **Los mensajes NO se tiraron**: Brevo los sigue reintentando. Cuando Microsoft
-  acepte uno, pasa a `Delivered`; si se agotan los reintentos, queda un evento
-  final de no-entrega.
-- Su equipo de entregabilidad está **redirigiendo** el tráfico hacia Microsoft
-  donde se pueda, y en contacto con Microsoft.
-- **No hay que cambiar nada** en dominios ni autenticación.
-- **Una IP dedicada NO es la solución**: el problema no es la reputación de esa
-  IP, una dedicada necesita calentamiento y mantenimiento, y tampoco evitaría una
-  falla del lado de Microsoft.
-
-**Ticket en espera** mientras monitorean. Piden avisar si: (a) mensajes nuevos se
-quedan en `Sent` hacia proveedores **que no son Microsoft**, o (b) los envíos a
-Microsoft empiezan a devolver **otro estado o error**.
-
-**El testigo para (a) ya existe:** la copia a Gmail del `MAILTO`. Mientras esa
-llegue, Brevo está sano y el problema sigue acotado a Microsoft.
-
-#### Mis errores de método
-
-1. **Corté la evidencia con `tail`, dos veces.** `ls -lh | tail -20` en un
-   directorio que ordena alfabético (`archivos_`, `bd_`, `config_`, `llaves_`)
-   **escondió justo los `bd_*.sql.gz`**, que eran el dato que importaba. Lo
-   repetí con `rclone ls | tail -8`. Para verificar una cosa concreta se filtra
-   por ella (`grep "$(date +%F)"`), no se recorta la cola.
-2. **Apunté a una causa que el panel desmintió.** Dije que apuntaba a que Brevo
-   tenía la dirección en su lista de bloqueo. Brevo tiene el estado `Blocked` y
-   **no aparecía**. Era inferencia presentada con más peso del que tenía.
-3. Un bloque con bucle y `printf` **se rompió al pegarlo** en la terminal.
-   Para que el CEO ejecute, los comandos van en una sola pieza y sin
-   construcciones que el pegado pueda mutilar.
-
-#### Propuesta abierta (no implementada)
-
-**Que el respaldo deje huella DENTRO del sistema.** Hoy el único testigo de que
-corrió es un correo que viaja por el tubo que acaba de demostrar que se cae. El
-script escribe una línea en `data/`, y el panel de superadmin muestra *"último
-respaldo: hace N horas"*, en rojo pasando de 26. Se ve al entrar, sin depender de
-Brevo ni de Microsoft.
-
-## Sesión 26-27 septiembre 2026 — Metas de la empresa en CotizaCloud AI
-
-Diseño y todas las rondas de decisiones: **`docs/metas_cotizacloud_ai.md`**
-(las secciones del final MANDAN sobre las de arriba).
-
-### Qué es
-La empresa declara **una meta general, igual para todos los meses** (CEO:
-*"no vamos a entrar a qué mes es cuál"*): punto de equilibrio, meta pesimista
-y meta optimista, más una **tasa de conversión deseada**. CotizaCloud AI la
-compara contra lo vendido y lo traduce en frases.
-
-- **Solo Business** (`MetasEmpresa::PLANES`; licencia vencida = sin metas).
-  Pro: decisión abierta.
-- **Captura:** Configuración › Metas (`modules/config/_metas.php`,
-  `POST /config/metas` → `guardar_metas.php`). Valida
-  equilibrio ≤ pesimista ≤ optimista, tasa 3–90%.
-- **Datos:** columnas en `empresas` (`meta_equilibrio/pesimista/optimista`,
-  `meta_moneda`, `meta_capturada_at/por`, `tasa_conv_meta`,
-  `tasa_conv_meta_desde`) + `empresa_metas_estado` (memoria de histéresis).
-  Migración `migrations/add_empresa_metas.sql` — **ya corrida en producción**.
-  La tabla `empresa_metas_mes` de la primera versión se eliminó.
-
-### Reglas (todas del CEO)
-- **Venta** = `ventas.created_at` (fecha de aceptación), con `pagado > 0`, no
-  cancelada, `total > 0`, **sin Descuento Inteligente**. Meses vivos: un
-  anticipo que llega después sube el mes de la aceptación.
-- **Dos ventanas, dos frases:** mes calendario y últimos 30 días, las dos
-  contra la **meta completa** (sin prorrateo). El día 1 se lee "ni siquiera
-  llega al punto de equilibrio en este mes" — aceptado.
-- **Escala de 10 niveles**: de 10 en 10% hasta la pesimista; entre la
-  pesimista y la optimista, **tercios del tramo** (CEO 28-sep: "llegó" a secas
-  no decía cuánto faltaba): *ya llegó a su meta pesimista; todavía le falta
-  mucho para la optimista* → *va a medio camino de la optimista* → *casi llega
-  a su meta optimista*. Histéresis 5%.
-- **Historia mínima:** 30 días desde la primera venta con pago.
-- **Conversión deseada** se compara contra la **tasa autoajustable**
-  (`ActividadScore::close_rate_historico`, el mismo "la empresa X%" del
-  reporte), no contra ventas÷enviadas del mes (brinca con el arrastre: en
-  sept-26, 6 de las 11 ventas de Hermosillo venían de cotizaciones de julio y
-  agosto). Muestra ≥ 8, igual que la tarjeta de Ritmo.
-- **Al asesor nunca cifras.** Tercera persona, "la empresa" de sujeto, nunca
-  "vas". Se acepta que "la empresa 18%" + "cierra en lo que busca" deja acotar
-  la tasa buscada.
-- **Agregar sin alterar:** `RitmoTip`, `DiagnosticoTips`, `ActividadScore`,
-  `RitmoAsesor` y los reportes existentes NO se tocaron.
-
-### Dónde se ve
-| Dónde | Quién | Qué |
-|---|---|---|
-| Tarjeta "Metas de la empresa" (`modules/dashboard/_metas.php`, antes de `_ritmo.php`) | solo admin | vendido mes y 30 días con barra y 3 marcas; cierre y tasa buscada junto al título; cotizaciones que faltan |
-| Tip del termómetro (`dashboard/index.php`) | asesor | **anexado dentro del tip**, al final de la parte de "ver más" (la primera parte no cambia). Frase de la empresa + puente según la banda del mes y la debilidad que eligió `RitmoTip` (`MetasEmpresa::texto_tip`) |
-| Reporte del asesor (`RitmoReporte`) | quien lo lee | sección "La empresa en {mes} (al {fecha})" entre "Cómo vas" y "Resumen", **fechada** (el reporte se guarda 7 días) |
-| Consejo del Director (`RitmoReporte`, `MetasEmpresa::linea_consejo`) | quien lo lee | **una línea al final** del consejo, según cómo va el mes (baja / cerca / pasó la pesimista / superó la optimista), sin cifras |
-| Ranking del equipo (admin) | admin | el tip de cada asesor **lleva el mismo remate de la empresa** que lee él en su termómetro, con el puente de SU debilidad (`texto_tip`, CEO 28-sep) |
-
-**El remate del tip le habla al asesor y ROTA** (CEO 28-sep: "sumarte a ese
-resultado" no decía nada y, leído diario, se repetía). `MetasEmpresa::puente()`:
-5 tramos (baja · cerca de la pesimista · pasó la pesimista lejos de la
-optimista · a medio camino/casi · sobrepasó), 3-4 frases con la acción de su
-debilidad y 2-3 de reconocimiento si va bien. Cambia **cada día y por asesor**
-(`crc32(uid:día)`, como `RitmoTip::_marco`), así el ranking no repite.
-| Reportes › Financiero › "Metas — últimos 12 meses" (`modules/reportes/_metas_12m.php`, `MetasEmpresa::historial_meses`) | solo admin | ✓/✗ por mes en equilibrio, pesimista y optimista; **solo meses del sistema** (los importados no entran, CEO 28-sep); el mes en curso dice "en curso" en lo que aún no alcanza; resumen de meses cerrados; todos contra la meta actual |
-
-Además, en Reportes › Financiero la tabla "Historial importado" pasó a
-**"Historial mensual"** (`modules/reportes/_historial_mensual.php`): primero
-los meses del sistema (del mes siguiente al último importado hasta hoy) y
-debajo los importados, sin columna de origen; misma cuenta que la gráfica de
-barras (no canceladas, con o sin pago). Por eso septiembre da $823,506 ahí y
-$806,336 en metas (anticipo y sin DI) — la tabla de metas lo aclara.
-
-### Pruebas
-`tools/sim_metas.php` — **336 comprobaciones contra MariaDB real**, corre la
-migración real y el endpoint real, con `EMULATE_PREPARES=false` como
-producción. Obligatoria tras cualquier cambio a metas. **Borra sus tablas al
-terminar** (si no, `test_plan_log` truena: usa `CREATE TABLE IF NOT EXISTS
-empresas`). Falla si `RitmoTip` agrega una debilidad sin acción en el puente.
-
-Tres auditorías independientes con mutaciones. Lo que destaparon (corregido):
-la alerta de cambio la "consumía" el asesor; frases de conversión sin metas;
-la tasa `type=number` borraba la tasa con "25,5"; 0.004 se guardaba 0.00;
-leer el dashboard escribía en la base; "bastan" contradictorio; una regresión
-que metiera cifras al tip no la detectaba ninguna prueba.
-
-### Errores míos de esta sesión
-1. **Construí una rejilla de 12 meses que el CEO nunca validó.** Salió de mi
-   diseño; la meta era general. Se rehízo el mismo día.
-2. **Di un `MIGRACION_OK` falso**: supuse que `/var/www/cotizacloud` era un
-   repo git; `git show` falló, `mysql` recibió entrada vacía y "terminó bien".
-   Para el servidor, el SQL va **dentro del heredoc**, nunca por `git show`.
-3. **Dije "vende 29 de cada 100"** con ventas del mes ÷ enviadas del mes. Más
-   de la mitad de esas ventas eran de cotizaciones de meses anteriores.
-4. **Propuse cambiar la receta de conversión del reporte** cuando la orden era
-   agregar sin alterar. El CEO me paró: *"estás revolviendo todo"*.
-5. **Culpé al reporte guardado** de que no se viera la sección; la consulta
-   mostró que no había ninguno guardado esa semana.
-
-### Pendiente
-- ⚠️ **On Time Hermosillo (empresa 12) vencía el 28-sep-2026.** Se renovó por
-  SQL por error y se revirtió (regla 14); la renovación va por el panel.
-  Confirmar en la ficha que quedó con la fecha nueva.
-- Pro: ¿recibe metas? (agregar `'pro'` a `MetasEmpresa::PLANES` y al gate de la
-  pestaña).
-- El reporte impreso probablemente pasa a 2 hojas (aceptado).
-- Opcionales no hechos: renglón bajo el termómetro, barra en el modal del
-  reporte.
-
 ## Sesión 10 septiembre 2026 — Instrumentar el log, y tres hipótesis enterradas
 
 Esta sesión NO encontró por qué Kitzya no pudo abrir su cotización. Lo que hizo
@@ -5541,3 +5256,288 @@ Telmex→Contabo del 2-sep).
 
 **No resuelve el caso de Kitzya** —su segunda falla sigue sin explicación— pero
 es la única reducción de riesgo real que salió de toda la investigación.
+
+## Sesión 21-22 septiembre 2026 — Conversión de la tarjeta de Ritmo + el correo que no llegó
+
+### A) El pilar Conversión imprimía un numerador y otro hacía el porcentaje
+
+`RitmoAsesor.php:152` decía *"cerró 7 de 18 abiertas (11%)"* — **tres números de
+tres cuentas distintas en el mismo renglón**. Medido en producción, los tres
+asesores de OnTime lo traían:
+
+| Asesor | La tarjeta decía | El % lo hacía | Debía decir |
+|---|---|---|---|
+| Abigail | cerró **7** … (**11%**) | un **2** | **35%** |
+| Manuel | cerró **3** … (**22%**) | un **2** | **33%** |
+| Kevin | cerró **2** … (**7%**) | un **1** | **12%** |
+
+**El número impreso YA era el correcto** — coincidía exacto con el numerador de
+la casa en los tres casos. Lo que salía de otra cuenta, más chica, era el
+porcentaje. Subcalificaba a los tres y **a Kevin le ponía un rojo que no le
+tocaba** (12% contra una vara de 22% es amarillo, no rojo).
+
+Origen: el commit `b22274b` migró el numerador a cohorte en **tres** sitios con
+el mismo texto, cambió dos y **se saltó el del medio** — justo el que corre
+cuando la empresa tiene historial, o sea siempre. Nunca fue una decisión.
+
+**Cómo quedó** (regla CEO: *"venta del período es venta del período, sin importar
+cuándo nació la cotización"*):
+- Numerador y denominador, los dos con la receta de la casa. `_cierres()` pasó a
+  contar cotizaciones por `accion_at` con anticipo y sin DI (copia literal de
+  `ActividadScore:347`); `_abiertas()` es `cot_vistas` (`:304`).
+- Vara: **`ActividadScore::close_rate_historico()`**, que llevaba meses escrita
+  *"para que la tarjeta use EXACTAMENTE la misma y no invente la suya"* y
+  **no tenía un solo llamador**. Medido, cambia 1 punto (19→18 HMO, 22→22 NOG):
+  **la vara nunca fue el problema**.
+- **Sin filtro de madurez.** Medido: mueve entre 0 y 4 puntos y **no cambia el
+  color de ningún asesor**. No vale una segunda receta por eso.
+- El texto deja de decir *"X de Y"* → **"cerró 3 · abrió 12 · 25%"**. Con el
+  numerador por `accion_at` y el denominador por `created_at`, cerrar backlog
+  puede dar más cierres que cotizaciones nuevas; el motor ya vive con eso y lo
+  topa igual (`:578`). *"cerró 3 de 2"* es imposible de escribir, *"cerró 3 ·
+  abrió 2"* no.
+- `_cohorte()` quedó sin llamadores → eliminado, junto con `HIST_VENTANAS`.
+
+**Dos textos que se iban a contradecir con el pilar** (el rojo de Conversión
+NUNCA significó "no cerró nada" — significa cerrar bajo la mitad de la vara):
+`RitmoTip` decía *"cero cerradas"* y `RitmoReporte` ponía de meta *"cerrar al
+menos 1 venta"*, a gente con cierres impresos dos renglones arriba. Los dos usan
+ahora su número real.
+
+**Y `close_rate_historico()` iba clavada en `PERIODO`**: para una empresa de
+ciclo largo devolvía una vara que el motor no usa — el mismo defecto que
+`bench_publico` ya documenta y corrige. Se arregló sin riesgo porque no tenía
+llamadores. Verificado con datos: HMO cierra en 11.7 días y NOG en 3.0, así que
+`periodo_efectivo` = 15 en ambas y la vara medida (18% / 22%) es la que aplica.
+
+**La ventana sigue siendo distinta y es a propósito:** la tarjeta mide 2×p75
+(20 d) y el termómetro 15. Misma receta, distinto reloj — los números se parecen
+pero no son el mismo. Cambiar la ventana movería los otros 4 pilares.
+
+### B) El correo del respaldo que no llegó — y el respaldo estaba bien
+
+**El respaldo nunca falló.** Lo prueba el propio correo que no llegó, leído
+después en el panel de Brevo:
+
+```
+Respaldo OK 2026-09-22_0200 — bd: 2.7M · total en disco: 72M
+Copia remota OK y verificada — total en R2: 67.120 MiB
+```
+
+#### La cadena que sirvió (para repetirla en 5 minutos, no en dos horas)
+
+1. **Primero el respaldo, no el correo.** Archivos del día, tamaño del `bd_*`
+   contra los 7 anteriores, `gzip -t`, contar `CREATE TABLE`, y el
+   `-- Dump completed on` del final.
+2. **Después la cadena de envío**, en orden: ¿cron vivo? → ¿disparó? (`syslog`)
+   → ¿msmtp entregó? (`/var/log/msmtp.log`) → ¿disco? → ¿cola?
+3. **La prueba que separa: mandar a Gmail y a Hotmail por el mismo camino.**
+   Gmail llegó, Hotmail no → el problema es del destinatario, no de la cuenta.
+4. **La segunda prueba: cambiar el dominio firmante** (`-f noreply@envios...`).
+   También falló → no es reputación de `cotiza.cloud`.
+5. **El panel de Brevo** da la palabra literal. Ahí terminó.
+
+#### Lo que hay que saber leer
+
+| Señal | Qué significa DE VERDAD |
+|---|---|
+| `250 OK: queued` en msmtp.log | Brevo lo **aceptó**. NO es entrega. Aquí se acaba lo que vemos |
+| Brevo: `Sent` sin `Delivered` y **sin rebote** | **Diferimiento**. El receptor contestó `4xx`; Brevo reintenta en silencio ~72 h y luego lo marca rebote suave. **Puede llegar tarde** |
+| Brevo: `Blocked` | Es un estado propio de Brevo. Si la dirección estuviera suprimida, **lo diría** |
+| Brevo: `Loaded by proxy` | El destinatario lo abrió (proxy de imágenes de Outlook) |
+
+#### La causa
+
+**Microsoft empezó a diferir correo de la infraestructura compartida de Brevo**
+hacia buzones de consumo (Hotmail/Outlook), entre el 21 a las 03:00 (último
+`Delivered`, abierto a las 07:04) y el 22 a las 02:00. La IP que nos tocó fue
+`77.32.148.23` — `FR-MAILINBLUE` en RIPE, Francia, **compartida con miles de
+remitentes**. No la controlamos.
+
+⚠️ **Precisión que dio Brevo y que corrige lo que yo había dicho:** el problema
+**NO es la reputación de esa IP**. Es un fallo del lado de Microsoft contra la
+infraestructura compartida de Brevo en general (respuestas *"Service not active,
+try again later"* y *"Temporary server error"*). Por eso cambiar de IP —o pagar
+una dedicada— no lo habría evitado.
+
+Descartado con datos: nuestra configuración (SPF/DKIM/DMARC correctos en los dos
+dominios), la dirección suprimida en Brevo (el panel no dice `Blocked`), la
+reputación de `cotiza.cloud` (`envios.` falló igual) y la cuenta de Brevo (a
+Gmail entrega en el mismo minuto).
+
+#### Lo que se cambió
+
+```
+MAILTO=josealfonsomedina@gmail.com,josealfonsomedina@hotmail.com
+config.php:38  SUPERADMIN_EMAIL → josealfonsomedina@gmail.com
+```
+
+Gmail primero para que llegue; Hotmail de segundo **para seguir viendo cuándo
+Microsoft se vuelve a abrir**.
+
+- **`MAILTO` acepta varias direcciones con coma — PROBADO en vivo**, no supuesto:
+  una sola línea en msmtp.log con `recipients=...gmail.com,...hotmail.com`.
+- **`SUPERADMIN_EMAIL` NO admite lista.** `Mailer::enviar()` usa `addAddress()`
+  de PHPMailer, que toma una dirección. Ahí va una sola.
+- Esa constante alimenta **cinco** avisos: empresa nueva
+  (`verificar_email_post.php:200`), solicitud de licencia y ticket
+  (`ayuda/ticket.php:75,85`), mensaje de soporte y **lead del landing**
+  (`api/soporte.php:81,137`).
+- Dato del log: entre el **27-jul y el 22-sep no salió NI UN correo al
+  superadmin** fuera de los dos crones. No se perdieron avisos — no hubo qué
+  avisar.
+
+#### Respuesta de Brevo (23-sep) — confirma el diagnóstico
+
+Ticket enviado el 22-sep con la IP y los 4 Message IDs. Contestó George, de
+soporte, y confirmó punto por punto lo que se había medido:
+
+- **Es un problema conocido y activo** que afecta correo hacia buzones de consumo
+  de Microsoft (Hotmail/Outlook). Gmail y los demás proveedores entregan normal.
+- Microsoft devuelve *"Service not active, try again later"* y *"Temporary server
+  error"* — **diferimiento temporal, no rechazo permanente**. Por eso los mensajes
+  se quedan en `Sent` sin `Delivered` y sin rebote.
+- **Los mensajes NO se tiraron**: Brevo los sigue reintentando. Cuando Microsoft
+  acepte uno, pasa a `Delivered`; si se agotan los reintentos, queda un evento
+  final de no-entrega.
+- Su equipo de entregabilidad está **redirigiendo** el tráfico hacia Microsoft
+  donde se pueda, y en contacto con Microsoft.
+- **No hay que cambiar nada** en dominios ni autenticación.
+- **Una IP dedicada NO es la solución**: el problema no es la reputación de esa
+  IP, una dedicada necesita calentamiento y mantenimiento, y tampoco evitaría una
+  falla del lado de Microsoft.
+
+**Ticket en espera** mientras monitorean. Piden avisar si: (a) mensajes nuevos se
+quedan en `Sent` hacia proveedores **que no son Microsoft**, o (b) los envíos a
+Microsoft empiezan a devolver **otro estado o error**.
+
+**El testigo para (a) ya existe:** la copia a Gmail del `MAILTO`. Mientras esa
+llegue, Brevo está sano y el problema sigue acotado a Microsoft.
+
+#### Mis errores de método
+
+1. **Corté la evidencia con `tail`, dos veces.** `ls -lh | tail -20` en un
+   directorio que ordena alfabético (`archivos_`, `bd_`, `config_`, `llaves_`)
+   **escondió justo los `bd_*.sql.gz`**, que eran el dato que importaba. Lo
+   repetí con `rclone ls | tail -8`. Para verificar una cosa concreta se filtra
+   por ella (`grep "$(date +%F)"`), no se recorta la cola.
+2. **Apunté a una causa que el panel desmintió.** Dije que apuntaba a que Brevo
+   tenía la dirección en su lista de bloqueo. Brevo tiene el estado `Blocked` y
+   **no aparecía**. Era inferencia presentada con más peso del que tenía.
+3. Un bloque con bucle y `printf` **se rompió al pegarlo** en la terminal.
+   Para que el CEO ejecute, los comandos van en una sola pieza y sin
+   construcciones que el pegado pueda mutilar.
+
+#### Propuesta abierta (no implementada)
+
+**Que el respaldo deje huella DENTRO del sistema.** Hoy el único testigo de que
+corrió es un correo que viaja por el tubo que acaba de demostrar que se cae. El
+script escribe una línea en `data/`, y el panel de superadmin muestra *"último
+respaldo: hace N horas"*, en rojo pasando de 26. Se ve al entrar, sin depender de
+Brevo ni de Microsoft.
+
+## Sesión 26-27 septiembre 2026 — Metas de la empresa en CotizaCloud AI
+
+Diseño y todas las rondas de decisiones: **`docs/metas_cotizacloud_ai.md`**
+(las secciones del final MANDAN sobre las de arriba).
+
+### Qué es
+La empresa declara **una meta general, igual para todos los meses** (CEO:
+*"no vamos a entrar a qué mes es cuál"*): punto de equilibrio, meta pesimista
+y meta optimista, más una **tasa de conversión deseada**. CotizaCloud AI la
+compara contra lo vendido y lo traduce en frases.
+
+- **Solo Business** (`MetasEmpresa::PLANES`; licencia vencida = sin metas).
+  Pro: decisión abierta.
+- **Captura:** Configuración › Metas (`modules/config/_metas.php`,
+  `POST /config/metas` → `guardar_metas.php`). Valida
+  equilibrio ≤ pesimista ≤ optimista, tasa 3–90%.
+- **Datos:** columnas en `empresas` (`meta_equilibrio/pesimista/optimista`,
+  `meta_moneda`, `meta_capturada_at/por`, `tasa_conv_meta`,
+  `tasa_conv_meta_desde`) + `empresa_metas_estado` (memoria de histéresis).
+  Migración `migrations/add_empresa_metas.sql` — **ya corrida en producción**.
+  La tabla `empresa_metas_mes` de la primera versión se eliminó.
+
+### Reglas (todas del CEO)
+- **Venta** = `ventas.created_at` (fecha de aceptación), con `pagado > 0`, no
+  cancelada, `total > 0`, **sin Descuento Inteligente**. Meses vivos: un
+  anticipo que llega después sube el mes de la aceptación.
+- **Dos ventanas, dos frases:** mes calendario y últimos 30 días, las dos
+  contra la **meta completa** (sin prorrateo). El día 1 se lee "ni siquiera
+  llega al punto de equilibrio en este mes" — aceptado.
+- **Escala de 10 niveles**: de 10 en 10% hasta la pesimista; entre la
+  pesimista y la optimista, **tercios del tramo** (CEO 28-sep: "llegó" a secas
+  no decía cuánto faltaba): *ya llegó a su meta pesimista; todavía le falta
+  mucho para la optimista* → *va a medio camino de la optimista* → *casi llega
+  a su meta optimista*. Histéresis 5%.
+- **Historia mínima:** 30 días desde la primera venta con pago.
+- **Conversión deseada** se compara contra la **tasa autoajustable**
+  (`ActividadScore::close_rate_historico`, el mismo "la empresa X%" del
+  reporte), no contra ventas÷enviadas del mes (brinca con el arrastre: en
+  sept-26, 6 de las 11 ventas de Hermosillo venían de cotizaciones de julio y
+  agosto). Muestra ≥ 8, igual que la tarjeta de Ritmo.
+- **Al asesor nunca cifras.** Tercera persona, "la empresa" de sujeto, nunca
+  "vas". Se acepta que "la empresa 18%" + "cierra en lo que busca" deja acotar
+  la tasa buscada.
+- **Agregar sin alterar:** `RitmoTip`, `DiagnosticoTips`, `ActividadScore`,
+  `RitmoAsesor` y los reportes existentes NO se tocaron.
+
+### Dónde se ve
+| Dónde | Quién | Qué |
+|---|---|---|
+| Tarjeta "Metas de la empresa" (`modules/dashboard/_metas.php`, antes de `_ritmo.php`) | solo admin | vendido mes y 30 días con barra y 3 marcas; cierre y tasa buscada junto al título; cotizaciones que faltan |
+| Tip del termómetro (`dashboard/index.php`) | asesor | **anexado dentro del tip**, al final de la parte de "ver más" (la primera parte no cambia). Frase de la empresa + puente según la banda del mes y la debilidad que eligió `RitmoTip` (`MetasEmpresa::texto_tip`) |
+| Reporte del asesor (`RitmoReporte`) | quien lo lee | sección "La empresa en {mes} (al {fecha})" entre "Cómo vas" y "Resumen", **fechada** (el reporte se guarda 7 días) |
+| Consejo del Director (`RitmoReporte`, `MetasEmpresa::linea_consejo`) | quien lo lee | **una línea al final** del consejo, según cómo va el mes (baja / cerca / pasó la pesimista / superó la optimista), sin cifras |
+| Ranking del equipo (admin) | admin | el tip de cada asesor **lleva el mismo remate de la empresa** que lee él en su termómetro, con el puente de SU debilidad (`texto_tip`, CEO 28-sep) |
+
+**El remate del tip le habla al asesor y ROTA** (CEO 28-sep: "sumarte a ese
+resultado" no decía nada y, leído diario, se repetía). `MetasEmpresa::puente()`:
+5 tramos (baja · cerca de la pesimista · pasó la pesimista lejos de la
+optimista · a medio camino/casi · sobrepasó), 3-4 frases con la acción de su
+debilidad y 2-3 de reconocimiento si va bien. Cambia **cada día y por asesor**
+(`crc32(uid:día)`, como `RitmoTip::_marco`), así el ranking no repite.
+| Reportes › Financiero › "Metas — últimos 12 meses" (`modules/reportes/_metas_12m.php`, `MetasEmpresa::historial_meses`) | solo admin | ✓/✗ por mes en equilibrio, pesimista y optimista; **solo meses del sistema** (los importados no entran, CEO 28-sep); el mes en curso dice "en curso" en lo que aún no alcanza; resumen de meses cerrados; todos contra la meta actual |
+
+Además, en Reportes › Financiero la tabla "Historial importado" pasó a
+**"Historial mensual"** (`modules/reportes/_historial_mensual.php`): primero
+los meses del sistema (del mes siguiente al último importado hasta hoy) y
+debajo los importados, sin columna de origen; misma cuenta que la gráfica de
+barras (no canceladas, con o sin pago). Por eso septiembre da $823,506 ahí y
+$806,336 en metas (anticipo y sin DI) — la tabla de metas lo aclara.
+
+### Pruebas
+`tools/sim_metas.php` — **336 comprobaciones contra MariaDB real**, corre la
+migración real y el endpoint real, con `EMULATE_PREPARES=false` como
+producción. Obligatoria tras cualquier cambio a metas. **Borra sus tablas al
+terminar** (si no, `test_plan_log` truena: usa `CREATE TABLE IF NOT EXISTS
+empresas`). Falla si `RitmoTip` agrega una debilidad sin acción en el puente.
+
+Tres auditorías independientes con mutaciones. Lo que destaparon (corregido):
+la alerta de cambio la "consumía" el asesor; frases de conversión sin metas;
+la tasa `type=number` borraba la tasa con "25,5"; 0.004 se guardaba 0.00;
+leer el dashboard escribía en la base; "bastan" contradictorio; una regresión
+que metiera cifras al tip no la detectaba ninguna prueba.
+
+### Errores míos de esta sesión
+1. **Construí una rejilla de 12 meses que el CEO nunca validó.** Salió de mi
+   diseño; la meta era general. Se rehízo el mismo día.
+2. **Di un `MIGRACION_OK` falso**: supuse que `/var/www/cotizacloud` era un
+   repo git; `git show` falló, `mysql` recibió entrada vacía y "terminó bien".
+   Para el servidor, el SQL va **dentro del heredoc**, nunca por `git show`.
+3. **Dije "vende 29 de cada 100"** con ventas del mes ÷ enviadas del mes. Más
+   de la mitad de esas ventas eran de cotizaciones de meses anteriores.
+4. **Propuse cambiar la receta de conversión del reporte** cuando la orden era
+   agregar sin alterar. El CEO me paró: *"estás revolviendo todo"*.
+5. **Culpé al reporte guardado** de que no se viera la sección; la consulta
+   mostró que no había ninguno guardado esa semana.
+
+### Pendiente
+- ⚠️ **On Time Hermosillo (empresa 12) vencía el 28-sep-2026.** Se renovó por
+  SQL por error y se revirtió (regla 14); la renovación va por el panel.
+  Confirmar en la ficha que quedó con la fecha nueva.
+- Pro: ¿recibe metas? (agregar `'pro'` a `MetasEmpresa::PLANES` y al gate de la
+  pestaña).
+- El reporte impreso probablemente pasa a 2 hojas (aceptado).
+- Opcionales no hechos: renglón bajo el termómetro, barra en el modal del
+  reporte.
