@@ -5541,3 +5541,174 @@ que metiera cifras al tip no la detectaba ninguna prueba.
 - El reporte impreso probablemente pasa a 2 hojas (aceptado).
 - Opcionales no hechos: renglón bajo el termómetro, barra en el modal del
   reporte.
+
+## Sesión 19-21 octubre 2026 — OnTime sin DNS (Limitless dejó vencer su dominio) + parche crítico de PHP
+
+### 19-oct — Los tres dominios de OnTime dejaron de existir
+
+**Síntoma:** el CEO no podía abrir las cotizaciones por dominio propio
+(`hermosillo/obregon/nogales.ontimecocinas.com`) ni el sistema propio de OnTime
+(`cen.ontimecocinas.com`).
+
+**Causa (verificada):** Limitless —hosting y DNS de OnTime— dejó vencer **su
+propio dominio, `limitless.cyou`**. Vencía el 19-oct; registrador NameSilo. Los
+nameservers de `ontimecocinas.com` se llaman `ns1/ns2.limitless.cyou`, así que al
+quedar ese dominio **estacionado en ParkLogic** (empresa de estacionamiento de
+dominios), `ns1.limitless.cyou` empezó a resolver a `172.237.129.108/.236/.242`
+(Linode): servidores web de estacionamiento que **no contestan DNS**. Todo
+`ontimecocinas.com` quedó en `SERVFAIL`. **No fue CotizaCloud, ni Cloudflare, ni
+GoDaddy**: `hermosillo.cotiza.cloud` resolvió normal todo el tiempo.
+
+| Fuente | Dato |
+|---|---|
+| RDAP `limitless.cyou` (CentralNic) | vencía 2026-10-19 · **renovado 2026-10-19 16:22:37 UTC (9:22 Hermosillo)**, status `renew period` · ahora vence **2027-10-19** |
+| Glue en el registro `.cyou` | ns1 → `205.185.112.60`, ns2 → `199.195.255.60` (FranTech/PONYNET, AS 53667), sin cambios desde 2021 |
+| RDAP `ontimecocinas.com` | sano: GoDaddy, vence 2027-08-20, NS `ns1/ns2.limitless.cyou` |
+| DoH Google, Cloudflare, AdGuard, NextDNS (9:27) | `SERVFAIL` — *"Name servers did not respond [172.237.129.x]"* |
+| Caché de Google | `limitless.cyou NS → ns1/ns2.ns306.parklogic.com` |
+| Zonemaster desde cero (9:29) | zona sana; solo los avisos de siempre (un solo AS 53667, sin PTR, sin DNSSEC) |
+| check-host 25 nodos (9:29) · Globalping 20 sondas en MX (9:34) | 23/25 y 18/20 ya resolvían, **incluidos los DNS de Telmex (Uninet) y Totalplay**. Los 2 que fallaban en MX usaban **8.8.8.8 / 8.8.4.4** |
+| Ruta completa (9:32) | `GET /` en los 3 dominios → `302` a `cotiza.cloud/login` vía Cloudflare |
+| `cen.ontimecocinas.com` | Google: `SERVFAIL`; Cloudflare: `162.244.93.4` → es el dominio, no nosotros |
+
+**No verificado:** a qué hora empezó (comando abajo) y quién cambió la delegación
+a ParkLogic (lo normal es que el registrador estacione el dominio al vencer).
+
+**Recuperación:** caché de 1 h (TTL 3600). Estimado ~10:30, peor caso ~11:30
+Hermosillo. Para acelerar a Google: su página de *Flush Cache*, primero
+`limitless.cyou`, `ns1.limitless.cyou`, `ns2.limitless.cyou`, luego
+`ontimecocinas.com` y las sucursales.
+
+### Qué se rompe en CotizaCloud cuando muere el DNS de un dominio propio (verificado en código)
+
+- **Las ligas de cotización, venta y recibo** de esa empresa: se arman con el
+  dominio propio (`dominio_publico()`, `core/Helpers.php:1325`). Las mismas ligas
+  vuelven a servir solas — no hay nada que regenerar.
+- **`cotiza.cloud/c/<slug>`** tampoco sirve: redirige al dominio propio
+  (`Router::redirect_to_subdomain()`, `core/Router.php:404-418`).
+- **El login** de los asesores y supervisores de esa empresa, **y el del
+  superadmin** (pasa por TODOS los dominios propios): la cadena del bridge
+  (`modules/auth/login_post.php:150-198`) termina en error de DNS. **La sesión ya
+  existe** (`Auth::login`, `:39`): escribiendo `cotiza.cloud/dashboard` entran.
+  Cuando vuelve el DNS, cerrar sesión y entrar una vez para que el Escudo re-ponga
+  las cookies en el dominio de la sucursal.
+- El botón **"Activar Escudo"** (`core/layout.php:607-618`) también encadena por
+  los dominios propios.
+
+### El riesgo de fondo — no se materializó, pero existe
+
+Mientras `limitless.cyou` estuvo estacionado, **ParkLogic decidía a qué servidores
+le preguntaba internet por `ontimecocinas.com`**. No contestaron DNS — por eso
+falló en vez de mandar a otro lado. Si hubieran contestado, podían quedarse con las
+tres sucursales. Y `api/safari_bridge.php:128-144` deja **el token de sesión real**
+del usuario (`cza_session`, el más reciente vigente) como cookie en cada dominio
+propio: el navegador del asesor —y el del superadmin, que pasa por todos— se lo
+habría entregado a quien tuviera el dominio.
+
+### Cloudflare for SaaS — regla a recordar
+
+Un custom hostname que deja de apuntar pasa a **Moved**; **tras 7 días en Moved,
+Cloudflare lo borra**. **Refresh** lo regresa a *Pending* → *Active* (docs de
+Cloudflare: *Validation status*). La prueba de las 9:32 demostró que los tres
+siguen existiendo, **no** que estén en Active. Se revisa en SSL/TLS → Custom
+Hostnames.
+
+### ⚠️ El plan del DNS de OnTime cambia
+
+`docs/dns_ontimecocinas_a_godaddy.md` dice "empezar por la **Opción A**" (pedirle a
+Limitless nameservers que no sean `.cyou`). **Ya no basta:** el 19-oct no falló el
+`.cyou`, falló que **Limitless no renovó su dominio**, y unos nameservers suyos en
+otro dominio dependen igual de que lo renueve. Recomendación: **Opción B** — zona
+completa al DNS de GoDaddy, que ya es el registrador. **Conserva el dominio propio**
+(decisión del CEO del 13-sep); la página y el correo de OnTime se quedan en
+Limitless. Próximo vencimiento de `limitless.cyou`: **19-oct-2027**. El doc no se
+editó todavía.
+
+### Cómo se diagnosticó en 5 minutos (receta para la próxima)
+
+Desde el contenedor de Claude, sin abrir ninguna liga de cotización:
+
+```bash
+# 1) Google dice en "Comment" a qué IPs le preguntó y si contestaron
+curl -s "https://dns.google/resolve?name=hermosillo.ontimecocinas.com&type=A"
+# 2) ¿Sigue vivo el dominio de los NAMESERVERS? (status, expiration, last changed)
+curl -sL https://rdap.org/domain/limitless.cyou
+# 3) La zona vista desde cero, sin caché
+curl -s -H 'Content-Type: application/json' https://zonemaster.net/api \
+  -d '{"jsonrpc":"2.0","id":1,"method":"start_domain_test","params":{"domain":"ontimecocinas.com"}}'
+# 4) Resolvedores reales de México (DNS de cada ISP)
+curl -s -X POST https://api.globalping.io/v1/measurements -H 'Content-Type: application/json' \
+  -d '{"type":"dns","target":"nogales.ontimecocinas.com","locations":[{"country":"MX","limit":20}]}'
+```
+
+Para medir en el servidor cuándo empezó y terminó (horas con `OnTime=0` y `total`
+normal):
+
+```bash
+for f in $(ls -tr /var/log/nginx/access.log*); do zcat -f "$f"; done | grep -E '" [0-9]+\.[0-9]{3}$' \
+ | awk '{h=substr($4,2,14); if(!(h in t)) o2[++n]=h; t[h]++; if($(NF-2) ~ /ontimecocinas\.com"$/) o[h]++; tz=$5}
+   END{for(i=1;i<=n;i++){h=o2[i]; printf "%s  OnTime=%4d  total=%5d\n",h,o[h]+0,t[h]}; print "zona horaria:",tz}' \
+ | grep -E '^(18|19)/Oct|zona'
+```
+
+### 21-oct — Parche crítico de PHP (CVE-2026-109618 y CVE-2026-109619)
+
+PHP publicó el 21-oct a las 14:00 UTC dos ejecuciones remotas de código **sin
+autenticación**, CVSS v4 9.2. Contabo avisó por correo; el aviso es legítimo
+(coincide con php.net).
+
+| CVE | Qué es | ¿Afecta a PHP-FPM? |
+|---|---|---|
+| CVE-2026-109618 (GHSA-w8hw-w9fx-j79w) | corrupción por falta de memoria al procesar `multipart/form-data` | susceptible por análisis; exploit completo solo en mod_php |
+| CVE-2026-109619 (GHSA-6wmf-4rv5-p3rp) | estado global viejo entre peticiones (use-after-free) | **RCE validada contra FPM** vía *session upload progress* |
+
+Corregidas en 8.5.12, 8.4.27, 8.3.36 y 8.2.35. **Nos afectaba:** Ubuntu 24.04 con
+PHP 8.3 en FPM. El firewall no protege: es una petición web normal que Cloudflare
+deja pasar.
+
+⚠️ **En Ubuntu nunca aparece "8.3.36".** La corrección es el paquete
+**`8.3.6-0ubuntu0.24.04.13`** (USN-8948-1). **`php -v` dice "8.3.6" antes y
+después — no sirve para comprobar.** Se comprueba con `dpkg -l 'php8.3*'`.
+
+**Por qué no se parchó solo:** `unattended-upgrades` está activo (runbook,
+27-jul), pero con la configuración de fábrica de Ubuntu corre entre 6:00 y 7:00
+hora del servidor —Hermosillo— y el parche salió a las 7:00. Habría entrado hasta
+el día siguiente. **No verificado** que la `.12` haya llegado por esa vía; se
+comprueba con `zgrep -h php8.3 /var/log/unattended-upgrades/unattended-upgrades.log*`.
+
+**Lo que se hizo (21-oct, 13:10 MST):**
+
+```bash
+apt update && apt install --only-upgrade $(dpkg -l 'php8.3*' | awk '/^ii/{print $2}')
+echo 'session.upload_progress.enabled = 0' > /etc/php/8.3/fpm/conf.d/99-cve-2026-109619.ini
+systemctl restart php8.3-fpm
+```
+
+- Los 13 paquetes `php8.3-*` estaban en `.12` y se actualizaron de un jalón
+  (verificado `php8.3-fpm` en `.13`).
+- **`/etc/php/8.3/fpm/conf.d/99-cve-2026-109619.ini`** apaga el upload progress
+  de sesiones, como recomienda el propio aviso aun después de parchar. La app no
+  lo usa (cero usos en el repo). **Vive en el servidor, no en el repo**; si algún
+  día hiciera falta, se borra ese archivo y se reinicia FPM.
+- `needrestart` dejó diferidos `dbus`, `systemd-logind` y `unattended-upgrades`:
+  no tienen que ver con PHP y toman las librerías nuevas en el próximo reinicio
+  del servidor.
+
+**Verificado:** `php8.3-fpm 8.3.6-0ubuntu0.24.04.13` · FPM arrancado a las
+13:10:50 MST · `session.upload_progress.enabled => Off` · `/login` → `200`.
+
+**Revisión de intrusión, limpia:** sin caídas de workers (`exited on signal`),
+sin `.php` nuevos en 3 días en `/var/www` (fuera de `-src`), `/tmp` ni
+`/dev/shm`, sin crontab de `www-data`, sin procesos raros de `www-data`. No es
+prueba absoluta —el aviso lo advierte— pero no hay ninguna señal típica.
+
+### Pendientes
+1. **Revisar en Cloudflare que los 3 custom hostnames de OnTime sigan en Active.**
+   Si alguno está en Moved, darle Refresh **antes del 26-oct** (7 días desde el
+   19-oct).
+2. **Mover el DNS de OnTime a GoDaddy (Opción B)** — requiere la cuenta de GoDaddy
+   de OnTime — y actualizar `docs/dns_ontimecocinas_a_godaddy.md`.
+3. Medir la ventana exacta del 19-oct con el comando de nginx de arriba.
+4. Confirmar que `unattended-upgrades` sí instala los parches de PHP (el `zgrep`
+   de arriba). Si no aparece `php8.3` en su log, los parches de seguridad no se
+   están poniendo solos.
