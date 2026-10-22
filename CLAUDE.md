@@ -5670,11 +5670,23 @@ deja pasar.
 **`8.3.6-0ubuntu0.24.04.13`** (USN-8948-1). **`php -v` dice "8.3.6" antes y
 después — no sirve para comprobar.** Se comprueba con `dpkg -l 'php8.3*'`.
 
-**Por qué no se parchó solo:** `unattended-upgrades` está activo (runbook,
-27-jul), pero con la configuración de fábrica de Ubuntu corre entre 6:00 y 7:00
-hora del servidor —Hermosillo— y el parche salió a las 7:00. Habría entrado hasta
-el día siguiente. **No verificado** que la `.12` haya llegado por esa vía; se
-comprueba con `zgrep -h php8.3 /var/log/unattended-upgrades/unattended-upgrades.log*`.
+**Por qué no se parchó solo:** `unattended-upgrades` funciona —corre entre 6:00
+y 7:00 hora del servidor (Hermosillo)— y el parche salió a las 7:00. Habría
+entrado hasta el día siguiente.
+
+✅ **Verificado el 22-oct** con `zgrep -h php8.3 /var/log/unattended-upgrades/unattended-upgrades.log*`:
+las actualizaciones automáticas **sí instalan PHP**. Hay dos en el log:
+
+```
+2026-09-11 06:36  php8.3-* (junto con libc y python)
+2026-10-20 06:28  php8.3-* (junto con git y tzdata)  ← así llegó la .12
+```
+
+**No verificado:** si después de una actualización automática PHP-FPM **se
+reinicia solo**. Sin reinicio, el código viejo sigue corriendo aunque el paquete
+nuevo esté instalado. Se comprueba con
+`journalctl -u php8.3-fpm --since "2026-10-20 06:00" --until "2026-10-20 07:30" --no-pager`:
+si aparece un *Stopped/Started* hacia las 06:28, se reinicia solo.
 
 **Lo que se hizo (21-oct, 13:10 MST):**
 
@@ -5709,6 +5721,6 @@ prueba absoluta —el aviso lo advierte— pero no hay ninguna señal típica.
 2. **Mover el DNS de OnTime a GoDaddy (Opción B)** — requiere la cuenta de GoDaddy
    de OnTime — y actualizar `docs/dns_ontimecocinas_a_godaddy.md`.
 3. Medir la ventana exacta del 19-oct con el comando de nginx de arriba.
-4. Confirmar que `unattended-upgrades` sí instala los parches de PHP (el `zgrep`
-   de arriba). Si no aparece `php8.3` en su log, los parches de seguridad no se
-   están poniendo solos.
+4. ~~Confirmar que `unattended-upgrades` sí instala los parches de PHP~~ ✅
+   **Sí los instala** (11-sep y 20-oct, ver arriba). Falta saber si **reinicia
+   PHP-FPM** solo — el `journalctl` de arriba.
