@@ -5682,11 +5682,14 @@ las actualizaciones automáticas **sí instalan PHP**. Hay dos en el log:
 2026-10-20 06:28  php8.3-* (junto con git y tzdata)  ← así llegó la .12
 ```
 
-**No verificado:** si después de una actualización automática PHP-FPM **se
-reinicia solo**. Sin reinicio, el código viejo sigue corriendo aunque el paquete
-nuevo esté instalado. Se comprueba con
-`journalctl -u php8.3-fpm --since "2026-10-20 06:00" --until "2026-10-20 07:30" --no-pager`:
-si aparece un *Stopped/Started* hacia las 06:28, se reinicia solo.
+✅ **Y PHP-FPM se reinicia solo** después de la actualización automática —
+verificado con `journalctl -u php8.3-fpm --since "2026-10-20 06:00" --until "2026-10-20 07:30" --no-pager`:
+*Stopped/Started* a las **06:29:25** y otra vez a las **06:29:27** del 20-oct,
+un minuto después de instalar. O sea: **el servidor se parcha solo y completo**
+(instala y activa). La única exposición es la ventana entre que sale un parche y
+la siguiente corrida de las 6 am (hasta ~23 h). **Regla práctica: ante un aviso
+CRÍTICO (como el de Contabo del 21-oct) se hace a mano el mismo día; lo demás
+se pone solo.**
 
 **Lo que se hizo (21-oct, 13:10 MST):**
 
@@ -5722,5 +5725,5 @@ prueba absoluta —el aviso lo advierte— pero no hay ninguna señal típica.
    de OnTime — y actualizar `docs/dns_ontimecocinas_a_godaddy.md`.
 3. Medir la ventana exacta del 19-oct con el comando de nginx de arriba.
 4. ~~Confirmar que `unattended-upgrades` sí instala los parches de PHP~~ ✅
-   **Sí los instala** (11-sep y 20-oct, ver arriba). Falta saber si **reinicia
-   PHP-FPM** solo — el `journalctl` de arriba.
+   **Sí los instala y reinicia PHP-FPM solo** (20-oct: instaló 06:28, reinició
+   06:29). Ver arriba.
