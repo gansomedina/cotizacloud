@@ -4933,3 +4933,92 @@ que metiera cifras al tip no la detectaba ninguna prueba.
 - El reporte impreso probablemente pasa a 2 hojas (aceptado).
 - Opcionales no hechos: renglón bajo el termómetro, barra en el modal del
   reporte.
+
+## Sesión 9 noviembre 2026 — Descuento automático vencido: el encabezado decía otro total
+
+### El caso
+Cot 3931 (empresa 13): descuento automático del 9%, venció el 21-may. En el
+enlace del cliente el **"Total" del encabezado** decía **$104,340.60** (con
+descuento) y el **Resumen** de abajo **$114,660**. Al aceptar se cobró
+$114,660, que era lo correcto. La confusión estaba solo en el encabezado.
+
+### Causa (verificada en código y con datos)
+`guardar.php` mete el descuento en `cotizaciones.total` si está vigente al
+guardar. Cuando vence, **nadie lo saca**:
+- el encabezado leía el total guardado;
+- el Resumen y el aceptar recalculan, y ya no lo aplican.
+
+**Abrirla NO lo corregía**: 7 de las 11 cotizaciones abiertas de Hermosillo
+(empresa 12, $47,064.12 de descuento metido) se habían abierto después de
+vencer y seguían con el total viejo. **Guardarla sí** lo corrige.
+
+### Arreglo — sin migración y sin cron (CEO: "se corrige al abrirla")
+- **`cot_corregir_desc_vencido()`** (`core/Helpers.php:1109`). Se llama al abrir
+  el enlace (`public/cotizacion.php`) o el editor (`cotizaciones/ver.php`).
+  - Solo actúa en `enviada`/`vista` con el descuento vencido.
+  - Recalcula el total con la misma fórmula que guardar y aceptar: primero el
+    cupón guardado y después el IVA de la configuración **actual** de la
+    empresa.
+  - Pone `descuento_auto_amt = 0`.
+  - Corre una vez por cotización. El `WHERE` repite las guardas para que no
+    pise un aceptar o un rechazo que lleguen al mismo tiempo.
+- **No escribe en `cotizacion_log`** (abrir no cuenta como edición en la Mesa)
+  y deja `updated_at` como estaba.
+- **Conserva `descuento_auto_activo`, `_pct` y `_expira`**: son el indicador
+  de que el cliente lo tuvo (CEO).
+- **Enlace del cliente.** El encabezado (`#pTot`) y el precio grande de
+  inmuebles muestran `$total_visible`, que es lo mismo que el Resumen. Si ya
+  está aceptada o convertida, muestran el total guardado. `calc()` mueve el
+  encabezado en vivo: cuando el cliente teclea un cupón y cuando el reloj llega
+  a cero. Al llegar a cero, además de ocultar el cronómetro, ahora recalcula;
+  antes el Resumen seguía con descuento hasta recargar.
+- **Editor.** El descuento vencido se sigue viendo en Totales, tachado y en gris
+  (*"Descuento 9% · venció el 21/05/2026"*), y **no se resta** (CEO).
+- **Lista.** ⏱ **gris** "9% venció" cuando lo tuvo y venció sin usarse; el
+  tooltip trae la fecha. ⏱ **morado** cuando está vigente o cuando cerró con él.
+
+### Pruebas
+`tools/sim_desc_vencido.php` corre **51 comprobaciones contra MariaDB real**.
+Es obligatoria tras tocar el descuento automático. Cubre:
+- la cuenta con IVA sumado, IVA incluido, extras y cupón;
+- los estados que no se tocan y las carreras con aceptar y con rechazar;
+- que no escriba en `cotizacion_log` ni mueva `updated_at`;
+- los contratos de los 4 archivos.
+
+Se probaron 5 mutaciones y la prueba las cazó todas. Además se renderizó el
+enlace real en Chromium, la versión vieja contra la nueva: el encabezado quedó
+igual al Resumen con el descuento vencido, con un cupón tecleado y con el reloj
+llegando a cero.
+
+### Encontrado, NO tocado (preexistente)
+1. **`initAuto()` truena cuando no hay descuento vigente**: `#adcSec` no
+   existe, así que el `calc()` del arranque nunca corre en esas páginas.
+   Arreglarlo cambia cómo se ve el cupón del punto 2.
+2. **Cupón que asigna el asesor en el editor.** Se resta en el total guardado y
+   en el Resumen, pero el aceptar solo cobra el cupón que **teclea el cliente**
+   (`applied` nace en `null`). Resultado: se cobra sin el cupón del asesor.
+3. **Renovar un descuento vencido** pide apagar → guardar → prender → guardar.
+   `guardar.php:108-111` conserva la fecha vieja si ya estaba activo.
+4. **`convertir.php` recalcula con el IVA congelado de la cotización**, y el
+   aceptar y el enlace con el de la empresa hoy. Solo difiere si la empresa
+   cambió su IVA.
+5. **`convertir.php` no actualiza `cotizaciones.total`** en la rama del
+   descuento vencido. Si el descuento vence con el editor abierto y se
+   convierte sin recargar, la cotización queda con el total viejo. La venta sí
+   sale bien.
+6. **Lista y dashboard leen el total guardado.** Mientras nadie abra una
+   cotización con el descuento metido, ahí sigue saliendo el monto viejo.
+
+## Pendiente de decidir — Cloudflare Pro (9 nov 2026)
+Origen: un "Secure Connection Failed" de Firefox en `/superadmin/impersonar`.
+Los dos POST llegaron al servidor y respondieron 302 rápido, así que **no fue el
+servidor**.
+
+Al revisarlo salió lo de los colos, medido en el log de nginx por proveedor:
+- **Telmex** sale 100% por colos de EE.UU.
+- **Megacable** sale 46% por colos de otros continentes: SYD, CPH, MXP, OTP…
+  Las peticiones del CEO cayeron en SYD 26, OTP 23, CPH 20, MXP 7, KIX 7,
+  BOS 7, SJC 5 y MAN 5.
+
+La propuesta es probar Pro un mes y medir con el mismo comando. **Sin
+decisión.** No está verificado que Pro cambie el enrutamiento.
