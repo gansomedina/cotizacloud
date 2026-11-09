@@ -112,6 +112,7 @@ $rows = DB::query(
             c.radar_bucket, c.radar_score, c.radar_senales, c.suspendida,
             c.cupon_codigo, c.cupon_monto,
             c.descuento_auto_activo, c.descuento_auto_amt,
+            c.descuento_auto_pct, c.descuento_auto_expira,
             (SELECT di.estado FROM desc_int_activaciones di
              WHERE di.cotizacion_id = c.id ORDER BY di.id DESC LIMIT 1) AS di_estado,
             (SELECT di2.expira_at FROM desc_int_activaciones di2
@@ -422,7 +423,23 @@ foreach ($chips as $k => $lbl):
     $cupon_validos = (int)($c['cupon_validos'] ?? 0);
     $cupon_invalidos = (int)($c['cupon_invalidos'] ?? 0);
     $tiene_cupon = !empty($c['cupon_codigo']);
-    $tiene_desc = (float)($c['descuento_auto_amt'] ?? 0) > 0;
+    // Descuento automático. ⏱ morado = vigente, o con el que el cliente cerró.
+    // ⏱ gris = lo tuvo y venció sin usarse: se queda como indicador (CEO,
+    // 9-nov-2026), igual que el DI vencido. En una abierta el total guardado
+    // puede traerlo todavía (se corrige al abrirla), así que su monto ya no se
+    // presenta como descuento vigente.
+    $da_amt     = (float)($c['descuento_auto_amt'] ?? 0);
+    $da_pct     = (float)($c['descuento_auto_pct'] ?? 0);
+    $da_exp     = !empty($c['descuento_auto_expira']) ? strtotime($c['descuento_auto_expira']) : 0;
+    $da_vencio  = !empty($c['descuento_auto_activo']) && $da_exp && $da_exp <= time();
+    $da_cerrada = in_array($c['estado_real'] ?? $c['estado'], ['aceptada','aceptada_cliente','convertida'], true);
+    $tiene_desc = $da_amt > 0 && ($da_cerrada || !$da_vencio);
+    $da_html = '';
+    if (!$tiene_desc && $da_vencio && $da_pct > 0) {
+        $da_pct_txt = rtrim(rtrim(number_format($da_pct, 2), '0'), '.');
+        $da_ttl = 'Tuvo descuento automático del ' . $da_pct_txt . '% — venció el ' . date('d/m/Y H:i', $da_exp) . ' sin usarse';
+        $da_html = '<span title="' . e($da_ttl) . '" style="font:500 11px var(--num);color:#a8a29e;background:#f5f5f4;padding:2px 7px;border-radius:5px;white-space:nowrap">⏱ ' . e($da_pct_txt) . '% venció</span>';
+    }
     $cupon_html = '';
     if ($cupon_intentos > 0 || $cupon_validos > 0 || $cupon_invalidos > 0 || $tiene_cupon || $tiene_desc) {
         $parts = [];
@@ -432,7 +449,9 @@ foreach ($chips as $k => $lbl):
         if ($cupon_invalidos > 0) $parts[] = '❌×' . $cupon_invalidos;
         $title_parts = [];
         if ($tiene_cupon) $title_parts[] = 'Cupón: ' . $c['cupon_codigo'];
-        if ($tiene_desc) $title_parts[] = 'Descuento automático con temporizador';
+        if ($tiene_desc) $title_parts[] = $da_cerrada
+            ? 'Cerró con descuento automático'
+            : 'Descuento automático con temporizador' . ($da_exp ? ' — vence el ' . date('d/m/Y H:i', $da_exp) : '');
         if ($cupon_validos > 0) $title_parts[] = $cupon_validos . ' cupón válido';
         if ($cupon_invalidos > 0) $title_parts[] = $cupon_invalidos . ' cupón inválido';
         $cupon_title = implode(' · ', $title_parts);
@@ -513,6 +532,7 @@ foreach ($chips as $k => $lbl):
             <span class="cot-vistas" title="<?= $vistas ?> vista<?= $vistas != 1 ? 's' : '' ?> del cliente"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
           <?php endif ?>
           <?= $cupon_html ?>
+          <?= $da_html ?>
           <?= $di_html ?>
         </div>
       </div>
@@ -576,6 +596,7 @@ foreach ($chips as $k => $lbl):
           <span class="cot-vistas-badge" title="<?= $vistas ?> vista<?= $vistas != 1 ? 's' : '' ?> del cliente"><?= ico('eye',12,'#6a6a64') ?> <?= $vistas ?></span>
         <?php endif ?>
         <?= $cupon_html ?>
+        <?= $da_html ?>
         <?= $di_html ?>
       </div>
     </div>

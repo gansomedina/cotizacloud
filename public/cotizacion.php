@@ -130,6 +130,18 @@ if ($cot['impuesto_modo'] === 'suma') {
 } else {
     $total_base   = round($taxable, 2);
 }
+// Descuento automático vencido: sacarlo del total guardado al abrir (una vez,
+// sin crontab; ver cot_corregir_desc_vencido en Helpers.php). Corre con
+// cualquier visita —cliente o asesor—: es corregir un dato, no medir una visita.
+$cot_desc_corr = cot_corregir_desc_vencido($cot);
+if ($cot_desc_corr !== null) { $cot['total'] = $cot_desc_corr; $cot['descuento_auto_amt'] = 0; }
+// El "Total" del encabezado (y el precio grande de inmuebles) dice LO MISMO que
+// el Resumen: lo que el cliente pagaría al aceptar hoy. Antes leía el total
+// guardado y, con el descuento vencido, mostraba el precio con descuento
+// mientras el Resumen y el aceptar cobraban el completo. Ya aceptada, manda el
+// total que quedó al aceptar (incluye el DI si cerró con él).
+$total_visible = in_array($cot['estado'], ['aceptada', 'convertida'], true)
+    ? (float)$cot['total'] : (float)$total_base;
 // event_id de deduplicación para ViewContent (navegador ↔ CAPI). UNO por render:
 // el mismo id viaja en el fbq del navegador (:2145) y en el evento CAPI, para que
 // Meta los empareje y cuente como cubiertos (sube la "cobertura de eventos" del
@@ -944,7 +956,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
       </div>
       <div class="pill pill-m2">
         <div class="pill-label">Total</div>
-        <div class="pill-value"><?= fmt_pub((float)$cot['total']) ?></div>
+        <div class="pill-value" id="pTot"><?= fmt_pub($total_visible) ?></div>
       </div>
     </div>
   </div>
@@ -1537,6 +1549,9 @@ const SUB    = <?= (float)$subtotal ?>;
 const EXTRAS = <?= (float)$subtotal_extras ?>; // add-ons: no descontables, gravables si suma
 const TAX   = {modo:'<?= $cot['impuesto_modo'] ?>',pct:<?= (float)$cot['impuesto_pct'] ?>};
 const AUTO  = {on:<?= $adc_on?'true':'false' ?>,pct:<?= (float)$adc_pct ?>,exp:new Date(<?= $adc_exp ? ($adc_exp * 1000) : 0 ?>)};
+// Mientras no esté aceptada, el "Total" del encabezado sigue al del Resumen
+// (cupón que teclee el cliente, reloj que llegue a cero). Aceptada: no se toca.
+const TOT_VIVO = <?= in_array($estado, ['aceptada', 'convertida'], true) ? 'false' : 'true' ?>;
 <?php
 // Descuento Inteligente para el modal de aceptación (mismos números frozen del banner)
 $di_js = ($di_act && ($di_act['estado'] ?? '') === 'activo'
@@ -1588,7 +1603,10 @@ function initAuto(){
     }
     function tick(){
         const d = Math.max(0, Math.floor((AUTO.exp - new Date()) / 1000));
-        if (!d) { clearInterval(tmrInterval); document.getElementById('adcSec').style.display='none'; return; }
+        // Llegó a cero con la página abierta: además de ocultar el cronómetro,
+        // recalcular — si no, el Resumen y el encabezado seguían con el
+        // descuento hasta recargar (el aceptar ya cobraba el precio completo).
+        if (!d) { clearInterval(tmrInterval); document.getElementById('adcSec').style.display='none'; calc(); return; }
         document.getElementById('tD').textContent = pad(Math.floor(d/86400));
         document.getElementById('tH').textContent = pad(Math.floor((d%86400)/3600));
         document.getElementById('tM').textContent = pad(Math.floor((d%3600)/60));
@@ -1669,6 +1687,7 @@ function calc(){
     tot = (TAX.modo === 'suma') ? r2(taxable + r2(taxable * TAX.pct / 100)) : r2(taxable);
 
     document.getElementById('tTot').textContent = fmt(tot);
+    if (TOT_VIVO) { const pt = document.getElementById('pTot'); if (pt) pt.textContent = fmt(tot); }
     return {tot, aa, ca};
 }
 

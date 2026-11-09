@@ -5,7 +5,7 @@
 //  Included from cotizacion.php when empresa.giro === 'inmuebles'
 //
 //  Variables disponibles del caller (cotizacion.php):
-//    $cot, $lineas, $lineas_extra, $subtotal, $total_base,
+//    $cot, $lineas, $lineas_extra, $subtotal, $total_base, $total_visible,
 //    $desc_auto_amt, $cupon_monto_guardado, $impuesto_amt,
 //    $adc_on, $adc_pct, $adc_exp, $cupones, $adjuntos,
 //    $ini_emp, $estado, $es_activa, $badge_bg, $badge_color, $badge_lbl,
@@ -308,7 +308,7 @@ if ($encabezado_raw !== ''):
 <!-- PRECIO — separado para forzar scroll y activar Radar -->
 <div class="prop-price-section" id="totalsScreen">
   <div class="prop-price-lbl">Precio</div>
-  <div class="prop-price-amount"><?= fmt_pub((float)$cot['total']) ?></div>
+  <div class="prop-price-amount"><?= fmt_pub($total_visible) ?></div>
   <div class="prop-price-curr"><?= e($cot['moneda'] ?? 'MXN') ?> · <?= e($tipo_op) ?></div>
 </div>
 

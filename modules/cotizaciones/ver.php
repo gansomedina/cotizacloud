@@ -51,6 +51,12 @@ if ($snapshot_cot !== null) {
     );
 }
 
+// Descuento automático vencido: sacarlo del total guardado al abrir el editor
+// (mismo helper que el enlace del cliente). No escribe en cotizacion_log: abrir
+// no cuenta como edición en la Mesa.
+$cot_desc_corr = cot_corregir_desc_vencido($cot);
+if ($cot_desc_corr !== null) { $cot['total'] = $cot_desc_corr; $cot['descuento_auto_amt'] = 0; }
+
 // ─── Log / historial ─────────────────────────────────────
 $log = DB::query(
     "SELECT l.*, u.nombre AS usuario_nombre
@@ -256,6 +262,11 @@ $cot_js = json_encode([
     'descuento_auto_activo'=> (int)$cot['descuento_auto_activo'],
     'descuento_auto_pct'   => (float)$cot['descuento_auto_pct'],
     'descuento_auto_expira'=> $cot['descuento_auto_expira'] ?? null,
+    // Para saber en el navegador si el descuento ya venció sin depender de la
+    // zona horaria de la máquina del asesor: segundos que le quedaban al cargar.
+    'descuento_auto_seg'   => !empty($cot['descuento_auto_expira']) ? strtotime($cot['descuento_auto_expira']) - time() : null,
+    'descuento_auto_vence' => !empty($cot['descuento_auto_expira']) ? date('d/m/Y', strtotime($cot['descuento_auto_expira'])) : '',
+    'descuento_auto_amt'   => (float)($cot['descuento_auto_amt'] ?? 0),
     'notas_cliente'        => $cot['notas_cliente'] ?? '',
     'notas_internas'       => $cot['notas_internas'] ?? '',
     'estado'               => $cot['estado'],
@@ -917,6 +928,22 @@ let descAutoActivo = COT.descuento_auto_activo === 1;
 let descAutoPct    = COT.descuento_auto_pct;
 let descAutoDias   = COT.descuento_auto_dias || 3;
 
+// Descuento automático VENCIDO: se sigue viendo en Totales —avisa que el
+// cliente lo tuvo— pero NO se resta (CEO, 9-nov-2026), igual que en el enlace,
+// al aceptar y en guardar.php. Vencido solo puede estar el que ya venía
+// guardado: si el asesor lo quita y lo vuelve a poner sin guardar, guardar.php
+// conserva la fecha vieja y sigue vencido — el editor dice lo mismo.
+// Aceptada/convertida: manda lo que se cobró (descuento_auto_amt del snapshot).
+const DA_CERRADA = ['aceptada', 'convertida'].includes(COT.estado);
+const DA_EXP_AT  = (COT.descuento_auto_activo === 1 && COT.descuento_auto_seg !== null)
+    ? Date.now() + COT.descuento_auto_seg * 1000 : null;
+function descAutoVencio() { return DA_EXP_AT !== null && Date.now() >= DA_EXP_AT; }
+function descAutoAplica() {
+    if (!descAutoActivo || descAutoPct <= 0) return false;
+    if (DA_CERRADA) return COT.descuento_auto_amt > 0;
+    return !descAutoVencio();
+}
+
 function toggleDescAuto() {
     const on = document.getElementById('desc-auto-toggle').checked;
     document.getElementById('desc-auto-fields').style.display = on ? 'block' : 'none';
@@ -1129,7 +1156,10 @@ function calcularTotales(){
     // Descuentos/cupones solo aplican sobre artículos regulares
     let base=subRegular,cuponAmt=0,descAutoAmt=0;
     if(cuponSeleccionado){cuponAmt=subRegular*(cuponSeleccionado.pct/100);base-=cuponAmt;}
-    if(descAutoActivo&&descAutoPct>0){descAutoAmt=base*(descAutoPct/100);base-=descAutoAmt;}
+    const daAplica=descAutoAplica();
+    if(daAplica){descAutoAmt=base*(descAutoPct/100);base-=descAutoAmt;}
+    // Lo que habría sido: solo para el aviso, no se resta.
+    const daAviso=(!daAplica&&descAutoActivo&&descAutoPct>0)?base*(descAutoPct/100):0;
     // Extras: NO descontables pero SÍ gravables — el IVA cae sobre base+extras
     // (antes se sumaban crudos sin IVA → el editor mostraba menos de lo cobrado).
     let impAmt=0;
@@ -1141,7 +1171,21 @@ function calcularTotales(){
     else{total=taxable;}
     setText('total-subtotal',fmt(subRegular));
     const rdEl=document.getElementById('row-desc-auto');
-    if(rdEl){rdEl.style.display=descAutoAmt>0?'':'none';setText('total-desc-auto','-'+fmt(descAutoAmt));setText('lbl-desc-auto','Descuento '+descAutoPct+'%');}
+    if(rdEl){
+        const dv=document.getElementById('total-desc-auto');
+        if(descAutoAmt>0){
+            rdEl.style.display='';
+            setText('lbl-desc-auto','Descuento '+descAutoPct+'%');
+            setText('total-desc-auto','-'+fmt(descAutoAmt));
+            if(dv){dv.style.textDecoration='';dv.style.color='';}
+        }else if(daAviso>0){
+            // Se ve tachado y en gris: lo tuvo, ya no cuenta en el total.
+            rdEl.style.display='';
+            setText('lbl-desc-auto','Descuento '+descAutoPct+'% · '+(descAutoVencio()?'venció'+(COT.descuento_auto_vence?' el '+COT.descuento_auto_vence:''):'no se aplicó'));
+            setText('total-desc-auto','-'+fmt(daAviso));
+            if(dv){dv.style.textDecoration='line-through';dv.style.color='var(--t3)';}
+        }else rdEl.style.display='none';
+    }
     const extEl=document.getElementById('total-extras');
     if(extEl){extEl.textContent=fmt(subExtras);extEl.closest('.tot-row').style.display=subExtras>0?'':'none';}
     const impEl=document.getElementById('total-impuesto');

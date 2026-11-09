@@ -1093,6 +1093,61 @@ function snapshot_leer(array $cot): ?array
     return $d;
 }
 
+// ─── Descuento automático vencido: sacarlo del total GUARDADO ───
+// guardar.php ya no lo hornea si venció (:170-176) y el aceptar lo recalcula,
+// pero si nadie volvía a guardar, `total` seguía con el descuento vencido: lo
+// leían el encabezado del enlace, la lista del asesor y los reportes (caso
+// COT-2026-0081 de Obregón, 9-nov-2026: el encabezado dijo $104,340.60 casi
+// seis meses y se cobraron $114,660). Se corrige AL ABRIR —enlace o editor—,
+// una sola vez (después descuento_auto_amt queda en 0), sin crontab (CEO).
+// Misma cuenta que guardar.php con el descuento vencido: cupón guardado sobre
+// la base sin extras, extras gravables, IVA vigente de la empresa.
+// NO toca cotizacion_log ni updated_at → no cuenta como edición en la Mesa.
+// descuento_auto_activo/pct/expira se quedan: son el indicador de que el
+// cliente TUVO descuento (lista y editor lo siguen mostrando como vencido).
+// Devuelve el total nuevo, o null si no había nada que corregir.
+function cot_corregir_desc_vencido(array $cot): ?float
+{
+    if (!in_array($cot['estado'] ?? '', ['enviada', 'vista'], true)) return null;
+    if (empty($cot['descuento_auto_activo']) || (float)($cot['descuento_auto_amt'] ?? 0) <= 0) return null;
+    $exp = !empty($cot['descuento_auto_expira']) ? strtotime($cot['descuento_auto_expira']) : 0;
+    if (!$exp || $exp > time()) return null;   // sin fecha, o todavía vigente
+
+    try {
+        $cid = (int)$cot['id'];
+        $emp = DB::row("SELECT impuesto_modo, impuesto_pct FROM empresas WHERE id = ?", [(int)$cot['empresa_id']]);
+        if (!$emp) return null;
+        $base   = (float)DB::val("SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id = ? AND es_extra = 0", [$cid]);
+        $extras = (float)DB::val("SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id = ? AND es_extra = 1", [$cid]);
+        // Sin partidas no hay de dónde sacar el total: no se escribe un $0.
+        // (guardar.php exige al menos una con precio; esto solo cubre datos rotos.)
+        if ($base + $extras <= 0) return null;
+        $base   = max(0, $base - (float)($cot['cupon_monto'] ?? 0));
+        $taxable = $base + $extras;
+        $pct = (float)$emp['impuesto_pct'];
+        if ($emp['impuesto_modo'] === 'suma') {
+            $imp = round($taxable * ($pct / 100), 2); $total = round($taxable + $imp, 2);
+        } elseif ($emp['impuesto_modo'] === 'incluido') {
+            $imp = round($taxable - ($taxable / (1 + $pct / 100)), 2); $total = round($taxable, 2);
+        } else {
+            $imp = 0.0; $total = round($taxable, 2);
+        }
+        // El WHERE repite las condiciones: si el cliente aceptó entre la lectura
+        // y aquí, el aceptar ya dejó su total y esto no lo pisa.
+        $n = DB::execute(
+            "UPDATE cotizaciones
+                SET total = ?, impuesto_amt = ?, descuento_auto_amt = 0, updated_at = updated_at
+              WHERE id = ? AND estado IN ('enviada','vista') AND descuento_auto_amt > 0
+                AND descuento_auto_expira IS NOT NULL AND descuento_auto_expira <= NOW()",
+            [$total, $imp, $cid]
+        );
+        return $n > 0 ? $total : null;
+    } catch (\Throwable $e) {
+        error_log('[DescVencido] cot ' . ($cot['id'] ?? '?') . ': ' . $e->getMessage());
+        return null;
+    }
+}
+
 // ─── Configuración de notificaciones de la empresa ──────────
 function notif_config(int $empresa_id): array
 {
