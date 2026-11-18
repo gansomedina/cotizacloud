@@ -47,7 +47,7 @@ $abonos = DB::query(
 
 // ─── Catálogo de artículos (para sheet agregar) ──────────
 $catalogo = DB::query(
-    "SELECT id, titulo, sku, precio, unidad FROM articulos WHERE empresa_id=? AND activo=1 ORDER BY titulo ASC",
+    "SELECT id, titulo, sku, precio, unidad, descripcion FROM articulos WHERE empresa_id=? AND activo=1 ORDER BY titulo ASC",
     [$empresa_id]
 );
 $clientes_lista = DB::query(
@@ -1342,6 +1342,16 @@ const PUEDE_VER_CANT = <?= (Auth::es_admin() || Auth::puede('ver_cantidades')) ?
 const ES_INMUEBLES = <?= ($empresa['giro'] ?? 'servicios') === 'inmuebles' ? 'true' : 'false' ?>;
 const PUEDE_EXTRAS   = <?= $puede_extras ? 'true' : 'false' ?>;
 const PUEDE_ELIM_ITEMS = <?= (Auth::es_admin() || Auth::puede('eliminar_items_venta')) ? 'true' : 'false' ?>;
+// Con Descuento Inteligente el total es el precio congelado + extras
+// (ventas/guardar.php, rama DI): pasar una línea de principal a extra la
+// cobraría dos veces, y de extra a principal la dejaría sin cobrar. En esas
+// ventas no se ofrece el botón de mover a extra / principal.
+const TIENE_DI = <?= $desc_int_act ? 'true' : 'false' ?>;
+// Descripción del catálogo por artículo, para que lo que se agrega desde el
+// catálogo en la venta llegue con su descripción (antes llegaba vacía).
+// INVALID_UTF8_SUBSTITUTE + '{}': si json_encode fallara, aquí quedaría
+// "const CATALOGO_DESC = ;" y se caería todo el JavaScript de la venta.
+const CATALOGO_DESC = <?= json_encode((object)array_filter(array_column($catalogo ?: [], 'descripcion', 'id'), fn($d) => $d !== null && $d !== ''), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?: '{}' ?>;
 const MONEDA     = '<?= e($empresa['moneda']) ?>';
 const IMP_MODO   = '<?= e($impuesto_modo) ?>';
 const IMP_PCT    = <?= (float)$impuesto_pct ?>;
@@ -1397,7 +1407,7 @@ function renderLineas(){
   const extras    = lineas.filter(l => l.es_extra);
 
   function renderItem(l, i, esExtra) {
-    const toggleBtn = (ES_ADMIN || PUEDE_EXTRAS)
+    const toggleBtn = (ES_ADMIN || PUEDE_EXTRAS) && !TIENE_DI
       ? `<button onclick="toggleExtraVenta(${i},${esExtra?1:0})" class="line-toggle-btn" title="${esExtra?'Mover a principal':'Mover a extra'}" style="background:none;border:1px solid var(--border);border-radius:5px;width:24px;height:24px;cursor:pointer;color:var(--t3);display:inline-flex;align-items:center;justify-content:center;padding:0;margin-right:4px;font-size:11px">${esExtra?'↑':'↓'}</button>`
       : '';
     const acciones = esExtra
@@ -1644,7 +1654,7 @@ function doAgregarItem(){
     // Del catálogo — buscar en artSelData
     titulo   = artSelTitulo;
     sku      = artSelSku;
-    desc     = '';
+    desc     = CATALOGO_DESC[artSelId] || '';
     cantidad = parseFloat(document.getElementById('art-qty').value)||1;
     precio   = artSelPrecio;
   } else {
@@ -1822,6 +1832,10 @@ async function guardarCambios(){
       cantidad:    l.cantidad,
       precio_unit: l.precio_unit,
       subtotal:    l.subtotal,
+      // Sin esto ventas/guardar.php recibía todas las líneas como principales:
+      // cada "Guardar cambios" convertía los extras en artículos normales y el
+      // botón de mover a extra / principal nunca se guardaba.
+      es_extra:    l.es_extra ? 1 : 0,
     })),
     descuento_auto_amt: descAutoAmt,
     descuento_auto_pct: descAutoPct,

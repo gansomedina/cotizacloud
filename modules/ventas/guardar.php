@@ -55,7 +55,13 @@ try {
     foreach ($lineas_new as $orden => $l) {
         $titulo   = substr(trim($l['titulo'] ?? ''), 0, 255);
         $sku      = substr(trim($l['sku'] ?? ''), 0, 100);
-        $desc     = substr(trim($l['descripcion'] ?? ''), 0, 1000);
+        // Mismo tope que el catálogo (config/articulo.php:33), contado por letra.
+        // Antes era substr(…, 0, 1000): 1000 BYTES. Cada "Guardar cambios"
+        // dejaba todas las descripciones de la venta en ~950-1000 letras —el
+        // catálogo y la cotización guardan hasta 5,000— y podía partir una letra
+        // acentuada a la mitad. En producción, 43 líneas de ventas quedaron
+        // cortadas así (consulta del 18-nov-2026).
+        $desc     = mb_substr(trim($l['descripcion'] ?? ''), 0, 5000);
         $cantidad = max(0.001, (float)($l['cantidad'] ?? 1));
         $precio   = max(0, (float)($l['precio_unit'] ?? 0));
         $subtotal = round($cantidad * $precio, 2);

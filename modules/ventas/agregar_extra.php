@@ -21,7 +21,9 @@ if (!$venta_id) json_error('ID inválido', 400);
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
 $titulo = substr(trim($body['titulo'] ?? ''), 0, 255);
-$desc   = substr(trim($body['descripcion'] ?? ''), 0, 1000);
+// Mismo tope que el catálogo y que guardar la venta: 5,000 letras. Antes,
+// substr(…, 0, 1000) cortaba a 1000 BYTES y podía partir una letra acentuada.
+$desc   = mb_substr(trim($body['descripcion'] ?? ''), 0, 5000);
 $total  = round(max(0, (float)($body['total'] ?? 0)), 2);
 
 if (!$titulo) json_error('El nombre es requerido');
