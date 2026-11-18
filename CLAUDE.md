@@ -5022,3 +5022,110 @@ Al revisarlo salió lo de los colos, medido en el log de nginx por proveedor:
 
 La propuesta es probar Pro un mes y medir con el mismo comando. **Sin
 decisión.** No está verificado que Pro cambie el enrutamiento.
+
+## Sesión 10-18 noviembre 2026 — Cupones, descripciones de ventas y extras
+
+### Ventas: la descripción se cortaba a 1000 bytes (arreglado 18-nov)
+- **Causa:** `modules/ventas/guardar.php` hacía `substr(trim(descripcion), 0, 1000)`
+  en CADA "Guardar cambios" de la venta, para TODAS las líneas (es DELETE +
+  INSERT). Lo mismo `agregar_extra.php`. Son bytes, no letras: ~950-1000
+  caracteres, y podía partir una letra acentuada. El catálogo guarda 5,000
+  letras (`config/articulo.php:33`) y la cotización no corta.
+- **Datos (18-nov):** en cotizaciones sin venta, 765 de 3,355 líneas pasan de
+  1000 bytes y solo 3 caen en 990-1000; en las que tienen venta, 43 de 893 caen
+  en 990-1000. Al menos 40 ventas de Hermosillo, Obregón y Nogales; la más
+  reciente, del 17-nov. 66 líneas de ventas seguían largas (nadie las había
+  vuelto a guardar). La base de producción NO está en modo estricto
+  (`sql_mode` sin STRICT_TRANS_TABLES): el corte no daba error.
+- **Arreglo:** `mb_substr(trim(…), 0, 5000)` en `guardar.php` y
+  `agregar_extra.php` — mismo tope que el catálogo, por letra.
+- **De paso, también arreglado:**
+  1. **Guardar la venta convertía los extras en artículos normales.** El
+     payload de `ventas/ver.php` (`guardarCambios`) no mandaba `es_extra` y
+     `guardar.php` lo tomaba como 0. El botón de mover a extra / principal
+     nunca se guardó (desde el 9-abr). 33 ventas de 4 empresas perdieron la
+     marca; **ninguna con DI**, así que ningún cobro cambió (con cupón y
+     descuento en monto fijo el total sale igual). Con DI sí cobraba de menos:
+     el total es "contrato congelado + extras" y los extras quedaban en 0.
+  2. **Con DI ya no se ofrece mover a extra / principal** (`TIENE_DI` en
+     `ventas/ver.php`): pasar una línea a extra la cobraría dos veces sobre el
+     contrato congelado, y al revés la dejaría sin cobrar.
+  3. **Agregar un artículo del catálogo en la venta lo traía sin descripción**
+     (la consulta no la leía y `doAgregarItem` ponía `''`). Ahora usa
+     `CATALOGO_DESC` (JSON con `JSON_INVALID_UTF8_SUBSTITUTE` y `?: '{}'`: si
+     `json_encode` fallara se caería todo el JavaScript de la venta).
+- **Prueba permanente:** `tools/sim_venta_guardar.php` — 29 comprobaciones
+  contra MariaDB, corre los endpoints reales (mismo runner que `sim_metas`).
+  Regresar el corte de 1000 bytes la tumba con 11 fallas. **Obligatoria tras
+  tocar el guardado de la venta.** Además se renderizó `ventas/ver.php` real y
+  se manejó en Chromium: catálogo con descripción, `es_extra` en el payload, el
+  botón de mover persiste, y con DI no aparece.
+- **Recuperación de las descripciones cortadas:** el texto completo está en
+  `cotizaciones.lineas_snapshot` (la copia de las líneas al aceptar o
+  convertir). Se entregaron dos bloques SQL (JSON_TABLE, MariaDB ≥ 10.6):
+  la lista (R1 se restaura / R2 no se toca) y el de respaldo + restauración en
+  `respaldo_desc_ventas_20261118`. Restaura **solo** si la descripción actual
+  es exactamente el principio del original (comparación binaria), hay un único
+  original con ese título y la venta no está cancelada; idempotente. Correr
+  **después** de desplegar el arreglo. **No verificado si ya se corrió.**
+- **Pendiente visto de paso (no tocado):** el editor de la venta muestra las
+  etiquetas de formato tal cual (`escHtml`), p. ej. `<b>bisagras</b>`; el
+  enlace de la venta sí las interpreta.
+
+### Cupones y descuentos — mapa verificado leyendo TODO el código
+| Opción | Plazo | Al aceptar |
+|---|---|---|
+| Cupón que teclea el cliente | el del cupón | se cobra si está vigente (`quote_action.php:170-198`) |
+| Cupón que activa el asesor en el editor | el del cupón, pero nadie lo revisa | **NO se cobra** (`quote_action.php:69`) |
+| Cupón de compensación (Super Admin) | 180 días, "un solo uso" | se cobra si lo teclean; **`usos_max` no se revisa en ningún lado** |
+| Descuento automático (cronómetro) | N días desde que se prende | solo dentro del plazo |
+| Descuento Inteligente | 24 h desde que el cliente abre | precio congelado |
+| Descuento en la venta ("Agregar descuento") | sin plazo | entra al guardar la venta |
+
+- Vencimiento de un cupón: "No vence" / **"N días después de CREADA la
+  cotización"** (no desde que se aplica) / fecha fija (`config/index.php:1634`).
+  Para "N días desde hoy" la herramienta es el descuento automático (Ayuda:
+  "ideal para crear urgencia").
+- La Ayuda dice que el cupón del editor "aplica un % de descuento"
+  (`ayuda/index.php:659`): el punto 1 contradice lo que el sistema promete.
+- La venta lee el cupón **de la cotización** (`public/venta.php:21`,
+  `ventas/ver.php:21`) y `ventas/guardar.php:89-90` lo resta: si el aceptar no
+  lo cobró, el siguiente guardado de la venta lo aplica solo.
+- Los editores calculan los cupones de monto fijo como porcentaje
+  (`ver.php:1158`, `nueva.php:1108`); la tabla de Configuración los muestra
+  "-0%". Existen 3 de monto fijo, ninguno usado desde el editor.
+- La ruta `/ventas/:id/descuento` (`descuento_manual_amt`) no la llama ninguna
+  pantalla; el "Agregar descuento" de la venta guarda `descuento_auto_amt`.
+- **Caso COT-2026-0416** (Hermosillo, aceptada 4-nov): cupón MELAMINA (4%,
+  $780, vence a los 7 días de creada → 4-sep) puesto por la cuenta Super Admin;
+  el CEO lo había dado con 2 días para aceptar (eso no queda en el sistema). Se
+  cobró $19,500 porque el aceptar nunca cobra el cupón del asesor, no por el
+  plazo. Corrección entregada: quitar el cupón de la cotización con respaldo en
+  `respaldo_cupon_cot_20261110`. **No verificado si ya se corrió.**
+- **Pendiente de decidir (antes de arreglar el punto 1):** ¿el cupón del editor
+  se cobra igual que el tecleado (vigente por su regla) y deja de mostrarse al
+  vencer? ¿el editor solo ofrece cupones vigentes para esa cotización? ¿un
+  cupón por cotización? ¿hacer valer el "un solo uso" de las compensaciones?
+
+### Escudo: computadora nueva del superadmin
+- No hay paso manual: el login la registra (`login.php:305-308` pone `cz_vid`;
+  `login_post.php:99-104` lo marca interno en TODAS las empresas activas). Las
+  notificaciones son aparte (`dispositivos_push`).
+- El aviso "Activa tu Escudo Radar" no le sale al superadmin a propósito
+  (`layout.php:789`) y solo guarda una marca en el navegador.
+- La tarjeta "Escudo Radar — Activo" agrupa por tipo ("Mac · Firefox") y
+  muestra 5: dos computadoras iguales salen en un renglón.
+- `superadmin/impersonar.php` BORRA la sesión anterior y crea otra al entrar a
+  cada empresa: por eso casi no se ven sesiones de login del superadmin.
+- Verificado el 18-nov: su navegador nuevo `e7122d12…` quedó marcado en 9
+  empresas (hay 8 activas); misma huella que su iMac.
+
+### Errores míos de esta sesión (leer antes del próximo caso de cupones)
+1. **Opiné sin haber leído todo lo de cupones.** El CEO tuvo que decirme "hay
+   varias opciones de cupones, lee el código". Hay seis mecanismos de descuento.
+2. **Presenté una coincidencia como pista:** "el anticipo es el 25% de $18,720"
+   (también era el 24% de $19,500). Con eso planteé un cobro de más que no era.
+3. **Afirmé cuándo se puso el cupón** ("en octubre, ya vencido") sin dato: el
+   historial solo dice "editada", no qué cambió.
+4. **Dije que los 2 días "no estaban en ningún campo"** cuando solo podía
+   afirmarlo del estado final.
