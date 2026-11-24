@@ -5165,6 +5165,10 @@ decisión.** No está verificado que Pro cambie el enrutamiento.
 
 ## Sesión 24 noviembre 2026 — Quitar descuentos en la venta
 
+**Desplegado y verificado en el servidor el 24-nov** (`fc9f9da`). `grep` de
+`quitar-descuento` en `Router.php` y `acciones.php`, de `quitarDescuento(tipo)`
+en `ver.php` y de `$desc_vta` en `convertir.php`: 1, 1, 1 y 4.
+
 ### El caso
 Un cliente aceptó una cotización con descuento y la venta nació con él. Luego
 tardó una semana en reportarse, y el descuento "técnicamente ya no es válido".
