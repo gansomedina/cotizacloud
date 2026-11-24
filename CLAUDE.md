@@ -5025,7 +5025,7 @@ decisión.** No está verificado que Pro cambie el enrutamiento.
 
 ## Sesión 10-18 noviembre 2026 — Cupones, descripciones de ventas y extras
 
-### Ventas: la descripción se cortaba a 1000 bytes (arreglado 18-nov)
+### Ventas: la descripción se cortaba a 1000 bytes (arreglado 18-nov, confirmado en el servidor 24-nov)
 - **Causa:** `modules/ventas/guardar.php` hacía `substr(trim(descripcion), 0, 1000)`
   en CADA "Guardar cambios" de la venta, para TODAS las líneas (es DELETE +
   INSERT). Lo mismo `agregar_extra.php`. Son bytes, no letras: ~950-1000
@@ -5057,9 +5057,24 @@ decisión.** No está verificado que Pro cambie el enrutamiento.
 - **Prueba permanente:** `tools/sim_venta_guardar.php` — 29 comprobaciones
   contra MariaDB, corre los endpoints reales (mismo runner que `sim_metas`).
   Regresar el corte de 1000 bytes la tumba con 11 fallas. **Obligatoria tras
-  tocar el guardado de la venta.** Además se renderizó `ventas/ver.php` real y
-  se manejó en Chromium: catálogo con descripción, `es_extra` en el payload, el
-  botón de mover persiste, y con DI no aparece.
+  tocar el guardado de la venta.**
+- **Verificado de punta a punta (19-nov):** el editor REAL (`ventas/ver.php`)
+  en Chromium, guardando contra los endpoints REALES y una base con el mismo
+  `sql_mode` que producción. Con una descripción de 1,833 bytes (acentos, `<b>`,
+  saltos de línea) se hizo: guardar sin cambios, editarla, agregar un artículo
+  del catálogo, agregar un extra y volver a guardar. Resultado: las cuatro
+  descripciones completas, los extras siguen siendo extras y la pantalla muestra
+  el final de cada una. Con el código anterior, la misma prueba da 1000 bytes,
+  extras convertidos en normales y el artículo del catálogo sin descripción. Una
+  prueba previa, con el guardado interceptado, confirmó que con DI no aparece
+  el botón de mover. Ese banco de prueba no quedó en el repo.
+- **Todos los caminos revisados:** `ventas/acciones.php` (`agregar-item`,
+  `editar-linea`) y `cotizaciones/crear.php`, `guardar.php` y `clonar.php`
+  nunca cortaron. Ninguna pantalla (editor, enlace público, impresión) recorta
+  la descripción al mostrarla.
+- **En el servidor (24-nov):** los tres archivos desplegados traen el arreglo.
+  `grep` de `0, 5000)` en `guardar.php` y `agregar_extra.php`, y de
+  `es_extra:    l.es_extra ? 1 : 0` en `ver.php`: los tres dan 1.
 - **Recuperación de las descripciones cortadas:** el texto completo está en
   `cotizaciones.lineas_snapshot` (la copia de las líneas al aceptar o
   convertir). Se entregaron dos bloques SQL (JSON_TABLE, MariaDB ≥ 10.6):
@@ -5067,7 +5082,23 @@ decisión.** No está verificado que Pro cambie el enrutamiento.
   `respaldo_desc_ventas_20261118`. Restaura **solo** si la descripción actual
   es exactamente el principio del original (comparación binaria), hay un único
   original con ese título y la venta no está cancelada; idempotente. Correr
-  **después** de desplegar el arreglo. **No verificado si ya se corrió.**
+  **después** de desplegar el arreglo.
+  - **Bloque 1 (19-nov):** R1 = 39 líneas (Hermosillo 9, Obregón 22, Nogales 8)
+    y R2 = 4. **No verificado si se corrió el Bloque 2.** Es opcional: el CEO
+    dijo que los pasados "no es tan importante", lo que importa son las ventas
+    futuras.
+  - **Las 4 de R2 (diagnóstico R3, 19-nov):**
+    - Hermosillo VTA-2026-0012 y Nogales VTA-2026-0006 y 0011, ventas de
+      abril-mayo: su copia ya nació cortada. `migrations/backfill_lineas_snapshot.php`
+      (21-may) copió las líneas como estaban ese día, y el corte venía de marzo
+      (`ventas/guardar.php` nació con él).
+    - Nogales VTA-2026-0022 (25-jun): le cambiaron el título en la venta y por
+      eso la copia no empata por título.
+    - **Decisión CEO (19-nov): esas 4 se quedan así.**
+  - Si algún día se quieren completar: el catálogo tiene un solo artículo cuya
+    descripción empieza igual (47 en Hermosillo, 99 en Nogales), y hay una sola
+    versión en otras cotizaciones de la empresa. La de VTA-0022 podría estar en
+    su propia copia con el título viejo (no verificado).
 - **Pendiente visto de paso (no tocado):** el editor de la venta muestra las
   etiquetas de formato tal cual (`escHtml`), p. ej. `<b>bisagras</b>`; el
   enlace de la venta sí las interpreta.
