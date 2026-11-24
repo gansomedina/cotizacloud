@@ -27,6 +27,27 @@ if (!$venta) json_error('Venta no encontrada', 404);
 
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
+// Quién trabaja esta venta: el admin, quien ve todas las ventas, o su asesor.
+// Es el mismo acceso que las notas internas (acción 'notas', abajo). Quitar un
+// descuento lo puede hacer cualquiera de ellos, sin permiso de descuentos:
+// subir el precio no perjudica la venta (decisión CEO 24-nov-2026). Queda en el
+// historial quién lo quitó y de cuánto era.
+$trabaja_la_venta = Auth::puede('ver_todas_ventas')
+    || (int)$venta['usuario_id'] === (int)Auth::id()
+    || (int)($venta['vendedor_id'] ?? 0) === (int)Auth::id();
+
+// Saldo y estado tras cambiar el total: la misma regla que ventas/guardar.php.
+$saldo_y_estado = function (float $total, float $pagado, string $estado): array {
+    $saldo = max(0, round($total - $pagado, 2));
+    if ($saldo <= 0 && $pagado > 0) {
+        $estado = 'pagada';
+    } elseif ($saldo > 0 && $pagado > 0 && $saldo < $total) {
+        $estado = 'parcial';
+    }
+    return [$saldo, $estado];
+};
+$pct_txt = fn($p) => rtrim(rtrim(number_format((float)$p, 1), '0'), '.');
+
 // ════════════════════════════════════════════════════════════
 //  CAMBIAR ESTADO
 // ════════════════════════════════════════════════════════════
@@ -443,7 +464,10 @@ elseif ($accion === 'vendedor') {
 //  QUITAR DESCUENTO INTELIGENTE (restaura el precio lleno)
 // ════════════════════════════════════════════════════════════
 elseif ($accion === 'quitar-desc-int') {
-    if (!Auth::es_admin() && !Auth::puede('aplicar_descuentos')) json_error('Sin permiso', 403);
+    // Antes pedía permiso de descuentos; ahora basta con trabajar la venta (ver
+    // $trabaja_la_venta arriba). El enlace para llamarla vivía en el bloque de
+    // impresión de ventas/ver.php y nunca se vio en pantalla (13-jul → 24-nov).
+    if (!$trabaja_la_venta) json_error('Sin acceso a esta venta', 403);
     if ($venta['estado'] === 'cancelada') json_error('Venta cancelada', 422);
 
     // La activación 'utilizado' de esta cotización tiene el monto exacto que
@@ -456,12 +480,12 @@ elseif ($accion === 'quitar-desc-int') {
     // activación con WHERE estado='utilizado' garantizan una sola reversa.
     DB::beginTransaction();
     try {
-        $v = DB::row("SELECT total, pagado FROM ventas WHERE id=? AND empresa_id=? FOR UPDATE",
+        $v = DB::row("SELECT total, pagado, estado FROM ventas WHERE id=? AND empresa_id=? FOR UPDATE",
             [$venta_id, $empresa_id]);
         if (!$v) { DB::rollback(); json_error('Venta no encontrada', 404); }
 
         $act = DB::row(
-            "SELECT id, monto_desc FROM desc_int_activaciones
+            "SELECT id, pct, monto_desc FROM desc_int_activaciones
              WHERE cotizacion_id=? AND empresa_id=? AND estado='utilizado'
              ORDER BY id DESC LIMIT 1 FOR UPDATE",
             [(int)$venta['cotizacion_id'], $empresa_id]
@@ -474,18 +498,116 @@ elseif ($accion === 'quitar-desc-int') {
         if ($marcada < 1) { DB::rollback(); json_error('El descuento ya fue quitado', 422); }
 
         $nuevo_total = round((float)$v['total'] + (float)$act['monto_desc'], 2);
-        $nuevo_saldo = round($nuevo_total - (float)$v['pagado'], 2);
-        DB::execute("UPDATE ventas SET total=?, saldo=?, updated_at=NOW() WHERE id=?",
-            [$nuevo_total, $nuevo_saldo, $venta_id]);
+        [$nuevo_saldo, $nuevo_estado] = $saldo_y_estado($nuevo_total, (float)$v['pagado'], (string)$v['estado']);
+        DB::execute("UPDATE ventas SET total=?, saldo=?, estado=?, updated_at=NOW() WHERE id=?",
+            [$nuevo_total, $nuevo_saldo, $nuevo_estado, $venta_id]);
 
         VentaLog::registrar($venta_id, $empresa_id, 'descuento_quitado',
-            'Descuento inteligente quitado (+' . number_format((float)$act['monto_desc'], 2) . ')', Auth::id());
+            'Descuento inteligente (' . $pct_txt($act['pct']) . '%) · $' . number_format((float)$act['monto_desc'], 2)
+            . ' · total $' . number_format((float)$v['total'], 2) . ' → $' . number_format($nuevo_total, 2), Auth::id());
         DB::commit();
     } catch (\Throwable $e) {
         DB::rollback();
         json_error('No se pudo quitar el descuento', 500);
     }
     json_ok(['total'=>$nuevo_total, 'saldo'=>$nuevo_saldo]);
+}
+
+// ════════════════════════════════════════════════════════════
+//  QUITAR CUPÓN O DESCUENTO ESPECIAL (el inteligente va por quitar-desc-int)
+//
+//  'cupon'    → el cupón de la cotización (el que teclea el cliente o asigna
+//               el asesor). La venta lo lee de la cotización, así que se borra
+//               de las dos.
+//  'especial' → descuento_auto_amt: el del cronómetro y el de "Agregar
+//               descuento" en la venta (se guardan en la misma columna).
+//
+//  Cualquiera que trabaje la venta (decisión CEO 24-nov-2026). El total se
+//  recalcula con la misma fórmula que ventas/guardar.php y el historial anota
+//  quién lo quitó, de cuánto era y el total antes y después.
+// ════════════════════════════════════════════════════════════
+elseif ($accion === 'quitar-descuento') {
+    if (!$trabaja_la_venta) json_error('Sin acceso a esta venta', 403);
+    if ($venta['estado'] === 'cancelada') json_error('Venta cancelada', 422);
+    $tipo = (string)($body['tipo'] ?? '');
+    if (!in_array($tipo, ['cupon', 'especial'], true)) json_error('Tipo de descuento no válido', 400);
+    $cot_id = (int)$venta['cotizacion_id'];
+    if (!$cot_id) json_error('Esta venta no tiene cotización asociada', 422);
+
+    // Con Descuento Inteligente el total es el contrato congelado: el cupón y el
+    // descuento especial no entran en él (ventas/guardar.php, rama DI). Ahí lo que
+    // se quita es el inteligente.
+    $tiene_di = false;
+    try {
+        $tiene_di = (bool)DB::val("SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id=? AND estado='utilizado' LIMIT 1", [$cot_id]);
+    } catch (\Throwable $e) {} // tabla sin migrar → no hay DI
+    if ($tiene_di) json_error('Esta venta tiene Descuento Inteligente: ese es el descuento que se quita.', 422);
+
+    DB::beginTransaction();
+    try {
+        $v = DB::row("SELECT total, pagado, estado, descuento_auto_amt FROM ventas WHERE id=? AND empresa_id=? FOR UPDATE",
+            [$venta_id, $empresa_id]);
+        $c = DB::row("SELECT cupon_monto, cupon_codigo, cupon_pct, descuento_auto_pct, impuesto_pct, impuesto_modo, lineas_snapshot
+                      FROM cotizaciones WHERE id=? AND empresa_id=? FOR UPDATE", [$cot_id, $empresa_id]);
+        if (!$v || !$c) { DB::rollback(); json_error('Venta no encontrada', 404); }
+
+        $cupon = (float)$c['cupon_monto'];
+        $desc  = (float)$v['descuento_auto_amt'];
+
+        if ($tipo === 'cupon') {
+            if ($cupon <= 0) { DB::rollback(); json_error('Esta venta no tiene cupón', 422); }
+            $monto  = $cupon;
+            $nombre = 'Cupón' . (($c['cupon_codigo'] ?? '') !== '' ? ' ' . $c['cupon_codigo'] : '')
+                    . ((float)$c['cupon_pct'] > 0 ? ' (' . $pct_txt($c['cupon_pct']) . '%)' : '');
+            // La cotización aceptada lee el cupón de su copia congelada
+            // (public/cotizacion.php). Las copias anteriores al 24-nov no lo
+            // traen: se le agrega antes de borrarlo, para que siga mostrando el
+            // cupón con el que el cliente aceptó.
+            $snap = !empty($c['lineas_snapshot']) ? json_decode($c['lineas_snapshot'], true) : null;
+            if (is_array($snap) && !array_key_exists('cupon_monto', $snap)) {
+                $snap['cupon_monto']  = $cupon;
+                $snap['cupon_codigo'] = $c['cupon_codigo'];
+                $snap['cupon_pct']    = (float)$c['cupon_pct'];
+                DB::execute("UPDATE cotizaciones SET lineas_snapshot=? WHERE id=?",
+                    [json_encode($snap, JSON_UNESCAPED_UNICODE), $cot_id]);
+            }
+            DB::execute("UPDATE cotizaciones SET cupon_codigo=NULL, cupon_pct=0, cupon_monto=0 WHERE id=?", [$cot_id]);
+            DB::execute("UPDATE ventas SET cupon_monto=0 WHERE id=?", [$venta_id]);
+            $cupon = 0.0;
+        } else {
+            if ($desc <= 0) { DB::rollback(); json_error('Esta venta no tiene descuento especial', 422); }
+            $monto  = $desc;
+            $nombre = 'Descuento especial' . ((float)$c['descuento_auto_pct'] > 0 ? ' (' . $pct_txt($c['descuento_auto_pct']) . '%)' : '');
+            // Mismo efecto que la ✕ de antes (guardar.php con descuento en 0)
+            DB::execute("UPDATE cotizaciones SET descuento_auto_amt=0, descuento_auto_pct=0, descuento_auto_activo=0 WHERE id=?", [$cot_id]);
+            DB::execute("UPDATE ventas SET descuento_auto_amt=0 WHERE id=?", [$venta_id]);
+            $desc = 0.0;
+        }
+
+        // Total: la fórmula de ventas/guardar.php (sin DI). Base sin extras
+        // descontada; los extras entran a la base gravable.
+        $base_ne = (float)DB::val("SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=0", [$cot_id]);
+        $extras  = (float)DB::val("SELECT COALESCE(SUM(subtotal),0) FROM cotizacion_lineas WHERE cotizacion_id=? AND es_extra=1", [$cot_id]);
+        $imp_pct  = (float)($c['impuesto_pct'] ?? 0);
+        $imp_modo = $c['impuesto_modo'] ?? 'ninguno';
+        $taxable  = max(0, $base_ne - $cupon - $desc) + $extras;
+        $nuevo_total = ($imp_modo === 'suma')
+            ? round($taxable + round($taxable * $imp_pct / 100, 2), 2)
+            : round($taxable, 2);
+        [$nuevo_saldo, $nuevo_estado] = $saldo_y_estado($nuevo_total, (float)$v['pagado'], (string)$v['estado']);
+        DB::execute("UPDATE ventas SET total=?, saldo=?, estado=?, updated_at=NOW() WHERE id=?",
+            [$nuevo_total, $nuevo_saldo, $nuevo_estado, $venta_id]);
+
+        VentaLog::registrar($venta_id, $empresa_id, 'descuento_quitado',
+            $nombre . ' · $' . number_format($monto, 2)
+            . ' · total $' . number_format((float)$v['total'], 2) . ' → $' . number_format($nuevo_total, 2), Auth::id());
+        DB::commit();
+    } catch (\Throwable $e) {
+        DB::rollback();
+        error_log('[Venta quitar descuento] ' . $e->getMessage());
+        json_error('No se pudo quitar el descuento', 500);
+    }
+    json_ok(['total' => $nuevo_total, 'saldo' => $nuevo_saldo]);
 }
 
 else {

@@ -838,7 +838,8 @@ if (!$is_native_app_ayuda): ?>
     <ul>
       <li><b>Registrar abono</b> — Cobra un pago (ver arriba).</li>
       <li><b>Copiar URL del cliente</b> — Copia el link público de la venta para que el cliente vea su saldo y pagos.</li>
-      <li><b>Agregar descuento</b> — Aplica un descuento en pesos directo al total. <b>Se acumula</b> sobre el descuento que ya hubiera. Pon 0 para quitarlo. <i>(Necesita permiso de descuentos.)</i></li>
+      <li><b>Agregar descuento</b> — Aplica un descuento en pesos directo al total. <b>Se acumula</b> sobre el descuento que ya hubiera. <i>(Necesita permiso de descuentos. No aparece si la venta tiene Descuento Inteligente.)</i></li>
+      <li><b>Quitar un descuento</b> — En el <b>Resumen de montos</b>, cada descuento (cupón, descuento especial o del cronómetro, y Descuento Inteligente) trae <b>"Quitar"</b>. Lo puede hacer cualquiera que trabaje la venta, el total se recalcula al momento y el historial anota quién lo quitó y de cuánto era. La cotización aceptada sigue mostrando el descuento con el que el cliente aceptó.</li>
       <li><b>Agregar extra</b> — Suma un concepto extra (instalación, flete, accesorio) con su nombre y total. Aparece en sección aparte.</li>
       <li><b>Guardar cambios</b> — Aparece en verde solo cuando hay cambios pendientes en artículos o descuentos.</li>
       <li><b>🖨️ Imprimir / PDF</b> — Genera el comprobante completo de la venta (no es factura fiscal).</li>

@@ -67,6 +67,12 @@ $puede_descuento  = Auth::es_admin() || Auth::puede('aplicar_descuentos');
 $plan_vta         = trial_info(EMPRESA_ID);
 // Extras para TODOS los planes (decisión CEO 23-jul) — gate solo por permiso
 $puede_extras     = Auth::es_admin() || Auth::puede('agregar_extras');
+// Quitar un descuento (cupón, especial o inteligente): cualquiera que trabaje la
+// venta, sin permiso de descuentos — subir el precio no perjudica la venta
+// (decisión CEO 24-nov-2026). Mismo acceso que exige ventas/acciones.php.
+$puede_quitar_desc = $venta['estado'] !== 'cancelada' && (Auth::puede('ver_todas_ventas')
+    || (int)$venta['usuario_id'] === (int)Auth::id()
+    || (int)($venta['vendedor_id'] ?? 0) === (int)Auth::id());
 $folio        = $venta['numero'] ?? 'VTA-' . $venta_id;
 $pct          = $venta['total'] > 0 ? min(100, round($venta['pagado'] / $venta['total'] * 100)) : 0;
 
@@ -88,7 +94,7 @@ $desc_manual_amt  = (float)($venta['descuento_manual_amt'] ?? 0);
 $desc_int_act = null;
 try {
     $desc_int_act = DB::row(
-        "SELECT id, pct, monto_desc, regla FROM desc_int_activaciones
+        "SELECT id, pct, monto_desc, nuevo_total, regla FROM desc_int_activaciones
          WHERE cotizacion_id=? AND empresa_id=? AND estado='utilizado' ORDER BY id DESC LIMIT 1",
         [(int)$venta['cotizacion_id'], $empresa_id]);
 } catch (\Throwable $e) {}
@@ -239,6 +245,7 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
 .tot-row.final-row{background:var(--bg)}
 .tot-row.final-row .tot-lbl{font:700 17px var(--body);color:var(--text)}
 .tot-row.final-row .tot-val{font:700 17px var(--num);color:var(--g)}
+.tot-quitar{margin-left:8px;padding:0;border:none;background:none;cursor:pointer;font:600 12px var(--body);color:var(--danger);text-decoration:underline}
 
 /* ── ABONOS ── */
 .abono-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border)}
@@ -747,7 +754,10 @@ function closeRec(){
   <button class="action-btn" onclick="openSheet('shAbono')"><?= ico('money',14) ?> Registrar abono</button>
   <?php endif ?>
   <button class="action-btn" id="btn-copiar" onclick="copiarUrl()"><?= ico('link',14) ?> Copiar URL del cliente</button>
-  <?php if ($puede_descuento && $venta['estado'] !== 'cancelada'): ?>
+  <?php // Con Descuento Inteligente no se agrega otro: el inteligente no se junta
+        // con otros descuentos y guardar.php lo ignoraba (se veía aplicado y al
+        // recargar desaparecía). Mismo criterio que la acción 'descuento'. ?>
+  <?php if ($puede_descuento && $venta['estado'] !== 'cancelada' && !$desc_int_act): ?>
   <button class="action-btn" onclick="openSheet('shDescuento')"><?= ico('tag',14) ?> Agregar descuento</button>
   <?php endif ?>
   <?php if ($puede_extras && $venta['estado'] !== 'cancelada'): ?>
@@ -878,7 +888,7 @@ function closeRec(){
       <div class="fac-tot-row"><span class="fac-tot-lbl">Descuento<?= $desc_auto_pct > 0 ? ' ('.$desc_auto_pct.'%)' : '' ?></span><span class="fac-tot-val" style="color:#c05">-<?= format_money($desc_auto_amt, $empresa['moneda']) ?></span></div>
       <?php endif; ?>
       <?php if ($desc_int_act): ?>
-      <div class="fac-tot-row"><span class="fac-tot-lbl">✨ Descuento inteligente (<?= (float)$desc_int_act['pct'] ?>%)<?php if ($puede_descuento && $venta['estado'] !== 'cancelada'): ?> <a href="#" onclick="quitarDescInt(event)" class="no-print" style="font-size:10px;color:#c05;text-decoration:underline;margin-left:4px">quitar</a><?php endif; ?></span><span class="fac-tot-val" style="color:#c05">-<?= format_money((float)$desc_int_act['monto_desc'], $empresa['moneda']) ?></span></div>
+      <div class="fac-tot-row"><span class="fac-tot-lbl">✨ Descuento inteligente (<?= (float)$desc_int_act['pct'] ?>%)</span><span class="fac-tot-val" style="color:#c05">-<?= format_money((float)$desc_int_act['monto_desc'], $empresa['moneda']) ?></span></div>
       <?php endif; ?>
       <div class="fac-tot-row final"><span class="fac-tot-lbl">Total</span><span class="fac-tot-val"><?= format_money($total, $empresa['moneda']) ?></span></div>
       <div class="fac-saldo-box">
@@ -1266,7 +1276,7 @@ $moneda_edc           = $empresa['moneda'] ?? 'MXN';
     <div class="sh-field">
       <div class="sh-lbl">Importe del descuento *</div>
       <input class="sh-input" type="number" id="disc-monto" placeholder="0.00" step="0.01" min="0" value="<?= $desc_manual_amt > 0 ? $desc_manual_amt : '' ?>">
-      <div class="sh-note">Se aplica directo al total de la venta. Escribe 0 para quitar el descuento.</div>
+      <div class="sh-note">Se aplica directo al total de la venta y se suma al descuento que ya hubiera. Para quitar un descuento, toca «Quitar» junto a él en el Resumen de montos.</div>
     </div>
     <div class="sh-field">
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 13px;font-size:13px;color:var(--t2)">
@@ -1347,6 +1357,12 @@ const PUEDE_ELIM_ITEMS = <?= (Auth::es_admin() || Auth::puede('eliminar_items_ve
 // cobraría dos veces, y de extra a principal la dejaría sin cobrar. En esas
 // ventas no se ofrece el botón de mover a extra / principal.
 const TIENE_DI = <?= $desc_int_act ? 'true' : 'false' ?>;
+// Descuento Inteligente aplicado: el total es el contrato congelado (nuevo_total,
+// ya con IVA y sin extras) + los extras con su IVA — igual que ventas/guardar.php.
+const DI = <?= $desc_int_act ? json_encode(['pct' => (float)$desc_int_act['pct'], 'monto' => (float)$desc_int_act['monto_desc'], 'nuevo_total' => (float)$desc_int_act['nuevo_total']]) : 'null' ?>;
+// Quitar descuentos: cualquiera que trabaje la venta (ventas/acciones.php)
+const PUEDE_QUITAR_DESC = <?= $puede_quitar_desc ? 'true' : 'false' ?>;
+const TOTAL_GUARDADO = <?= (float)$venta['total'] ?>;
 // Descripción del catálogo por artículo, para que lo que se agrega desde el
 // catálogo en la venta llegue con su descripción (antes llegaba vacía).
 // INVALID_UTF8_SUBSTITUTE + '{}': si json_encode fallara, aquí quedaría
@@ -1386,16 +1402,28 @@ let dirty         = false;
 function fmtMoney(n){
   return '$' + parseFloat(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
-function calcTotales(){
+// opt.sinCupon / opt.sinDesc: el total que quedaría al quitar ese descuento
+function calcTotales(opt){
+  opt = opt || {};
   const sub = lineas.reduce((s,l) => s + l.subtotal, 0);
-  const cupon = CUPON_AMT;
-  const desc  = descAutoAmt;
+  if(TIENE_DI){
+    // Antes el resumen ignoraba el DI: mostraba el precio lleno como total.
+    // Cupón y descuento especial no entran en el contrato congelado.
+    const ext = lineas.filter(l => l.es_extra).reduce((s,l) => s + l.subtotal, 0);
+    const extFinal = IMP_MODO === 'suma' ? ext * (1 + IMP_PCT/100) : ext;
+    let imp = 0;
+    if(IMP_MODO === 'suma')     imp = sub * IMP_PCT / 100;
+    if(IMP_MODO === 'incluido') imp = sub - (sub / (1 + IMP_PCT/100));
+    return {sub, cupon: 0, desc: 0, imp, di: DI.monto, total: Math.max(0, DI.nuevo_total + extFinal)};
+  }
+  const cupon = opt.sinCupon ? 0 : CUPON_AMT;
+  const desc  = opt.sinDesc  ? 0 : descAutoAmt;
   let base = sub - cupon - desc;
   let imp = 0;
   if(IMP_MODO === 'suma')     imp = base * IMP_PCT / 100;
   if(IMP_MODO === 'incluido') imp = base - (base / (1 + IMP_PCT/100));
   const total = IMP_MODO === 'suma' ? base + imp : base;
-  return {sub, cupon, desc, imp, total: Math.max(0, total)};
+  return {sub, cupon, desc, imp, di: 0, total: Math.max(0, total)};
 }
 
 function renderLineas(){
@@ -1477,12 +1505,13 @@ function renderTotales(){
   const el = document.getElementById('totales-card');
   if(!el) return;
   const t = calcTotales();
+  const quitar = tipo => PUEDE_QUITAR_DESC ? `<button class="tot-quitar" onclick="quitarDescuento('${tipo}')">Quitar</button>` : '';
   let html = `<div class="tot-row"><span class="tot-lbl">Subtotal artículos</span><span class="tot-val">${fmtMoney(t.sub)}</span></div>`;
-  if(t.cupon > 0) html += `<div class="tot-row disc"><span class="tot-lbl">Cupón ${CUPON_COD ? '('+CUPON_COD+')' : ''} ${CUPON_PCT > 0 ? '('+CUPON_PCT+'%)' : ''}</span><span class="tot-val">-${fmtMoney(t.cupon)}</span></div>`;
-  if(t.desc > 0)  html += `<div class="tot-row disc"><span class="tot-lbl">Descuento especial${descAutoPct > 0 ? ' ('+descAutoPct+'%)' : ''}
-    ${ES_ADMIN ? '<button onclick="uiEliminarDescuento()" style="margin-left:6px;border:none;background:none;cursor:pointer;font-size:11px;color:var(--danger);opacity:.7" title="Eliminar descuento">✕</button>' : ''}
-  </span><span class="tot-val">-${fmtMoney(t.desc)}</span></div>`;
+  if(t.cupon > 0) html += `<div class="tot-row disc"><span class="tot-lbl">Cupón ${CUPON_COD ? '('+CUPON_COD+')' : ''} ${CUPON_PCT > 0 ? '('+CUPON_PCT+'%)' : ''}${quitar('cupon')}</span><span class="tot-val">-${fmtMoney(t.cupon)}</span></div>`;
+  if(t.desc > 0)  html += `<div class="tot-row disc"><span class="tot-lbl">Descuento especial${descAutoPct > 0 ? ' ('+descAutoPct+'%)' : ''}${quitar('especial')}</span><span class="tot-val">-${fmtMoney(t.desc)}</span></div>`;
   if(IMP_MODO !== 'ninguno' && t.imp > 0) html += `<div class="tot-row"><span class="tot-lbl">IVA (${IMP_PCT}%)</span><span class="tot-val">${fmtMoney(t.imp)}</span></div>`;
+  // El DI ya trae el IVA (es sobre el precio con IVA): va después del IVA
+  if(t.di > 0)    html += `<div class="tot-row disc"><span class="tot-lbl">✨ Descuento inteligente (${DI.pct}%)${quitar('inteligente')}</span><span class="tot-val">-${fmtMoney(t.di)}</span></div>`;
   html += `<div class="tot-row final-row"><span class="tot-lbl">Total</span><span class="tot-val">${fmtMoney(t.total)}</span></div>`;
   el.innerHTML = html;
 }
@@ -1529,12 +1558,37 @@ function uiEditarLinea(idx){
   openSheet('shEditLinea');
 }
 
-function uiEliminarDescuento(){
-  if(!confirm('¿Eliminar el descuento de '+fmtMoney(descAutoAmt)+'?')) return;
-  descAutoAmt = 0;
-  descAutoPct = 0;
-  markDirty(true);
-  render();
+// ── Quitar un descuento (cupón, especial o inteligente) ──
+// Se guarda al momento —no espera a «Guardar cambios»— y queda en el historial
+// quién lo quitó y de cuánto era. Lo puede hacer cualquiera que trabaje la venta.
+async function quitarDescuento(tipo){
+  if(dirty){ alert('Primero guarda los cambios pendientes con «Guardar cambios» y luego quita el descuento.'); return; }
+  const t = calcTotales();
+  let nombre, monto, nuevo, url;
+  if(tipo === 'cupon'){
+    nombre = 'el cupón' + (CUPON_COD ? ' ' + CUPON_COD : '');
+    monto  = t.cupon;
+    nuevo  = calcTotales({sinCupon: true}).total;
+    url    = '/ventas/'+VENTA_ID+'/quitar-descuento';
+  } else if(tipo === 'especial'){
+    nombre = 'el descuento especial';
+    monto  = t.desc;
+    nuevo  = calcTotales({sinDesc: true}).total;
+    url    = '/ventas/'+VENTA_ID+'/quitar-descuento';
+  } else {
+    nombre = 'el descuento inteligente';
+    monto  = DI.monto;
+    nuevo  = TOTAL_GUARDADO + DI.monto; // lo mismo que hace quitar-desc-int
+    url    = '/ventas/'+VENTA_ID+'/quitar-desc-int';
+  }
+  if(!confirm('¿Quitar ' + nombre + ' de ' + fmtMoney(monto) + '?\n\nEl total de la venta pasa de '
+      + fmtMoney(TOTAL_GUARDADO) + ' a ' + fmtMoney(nuevo) + '. Queda anotado en el historial.')) return;
+  try {
+    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN}, body: JSON.stringify({tipo})});
+    const d = await r.json();
+    if(d.ok) location.reload();
+    else alert(d.error || 'No se pudo quitar el descuento');
+  } catch(e){ alert('Error de conexión'); }
 }
 
 // ── Sheets ──
@@ -1603,16 +1657,6 @@ async function doCancelarVenta(){
   const d=await r.json();
   if(d.ok){closeSheet('shCancelar');location.reload();}
   else alert(d.error||'Error: '+d.error);
-}
-
-// ── Quitar descuento inteligente (restaura el precio lleno) ──
-async function quitarDescInt(ev){
-  ev.preventDefault();
-  if(!confirm('¿Quitar el descuento inteligente de esta venta? El total volverá al precio lleno.'))return;
-  const r=await fetch('/ventas/'+VENTA_ID+'/quitar-desc-int',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:'{}'});
-  const d=await r.json();
-  if(d.ok){location.reload();}
-  else alert(d.error||'Error al quitar el descuento');
 }
 
 // ── Tab catálogo/manual ──
@@ -1717,7 +1761,7 @@ async function eliminarExtra(lineaId){
 // ── Descuento ──
 function doDescuento(){
   const monto=parseFloat(document.getElementById('disc-monto').value)||0;
-  if(monto <= 0){ alert('Ingresa un monto mayor a 0'); return; }
+  if(monto <= 0){ alert('Ingresa un monto mayor a 0. Para quitar un descuento, toca «Quitar» junto a él en el Resumen de montos.'); return; }
   descAutoAmt = descAutoAmt + monto; // ACUMULA sobre el descuento existente
   descAutoPct = 0;
   document.getElementById('disc-monto').value = '';

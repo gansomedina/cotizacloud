@@ -1062,7 +1062,7 @@ function upload_archivo(array $file, int $empresa_id, string $sub = 'adjuntos'):
 function snapshot_cotizacion(int $cot_id): void
 {
     $row = DB::row(
-        "SELECT lineas_snapshot, descuento_auto_amt FROM cotizaciones WHERE id = ?",
+        "SELECT lineas_snapshot, descuento_auto_amt, cupon_monto, cupon_codigo, cupon_pct FROM cotizaciones WHERE id = ?",
         [$cot_id]
     );
     if (!$row) return;
@@ -1072,9 +1072,15 @@ function snapshot_cotizacion(int $cot_id): void
         "SELECT * FROM cotizacion_lineas WHERE cotizacion_id = ? ORDER BY orden ASC",
         [$cot_id]
     );
+    // El cupón también se congela (24-nov-2026): la venta lo lee de la cotización
+    // y ahora se puede quitar desde la venta; la cotización aceptada sigue
+    // mostrando el cupón con el que el cliente aceptó (public/cotizacion.php).
     $snap = [
         'lineas'             => $lineas,
         'descuento_auto_amt' => (float)($row['descuento_auto_amt'] ?? 0),
+        'cupon_monto'        => (float)($row['cupon_monto'] ?? 0),
+        'cupon_codigo'       => $row['cupon_codigo'] ?? null,
+        'cupon_pct'          => (float)($row['cupon_pct'] ?? 0),
     ];
     DB::execute(
         "UPDATE cotizaciones SET lineas_snapshot = ? WHERE id = ?",

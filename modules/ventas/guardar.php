@@ -24,15 +24,40 @@ if ($venta['estado'] === 'cancelada') json_error('Venta cancelada', 422);
 $lineas_new       = $body['lineas'] ?? [];
 $desc_auto_amt    = round(max(0, (float)($body['descuento_auto_amt'] ?? 0)), 2);
 $desc_auto_pct    = round(max(0, (float)($body['descuento_auto_pct'] ?? 0)), 2);
-if (($desc_auto_amt > 0 || $desc_auto_pct > 0) && !Auth::es_admin() && !Auth::puede('aplicar_descuentos')) {
-    json_error('Sin permiso para aplicar descuentos', 403);
-}
 $nuevo_cliente_id = isset($body['cliente_id']) && $body['cliente_id'] ? (int)$body['cliente_id'] : null;
 
 if (empty($lineas_new)) json_error('Debe haber al menos un artículo');
 
 $cot_id = (int)$venta['cotizacion_id'];
 if (!$cot_id) json_error('Esta venta no tiene cotización asociada');
+
+// ── DI 'utilizado' (se lee antes de escribir nada) ──
+// DB::val() (PDO fetchColumn) devuelve FALSE —no null— cuando NO hay fila.
+// `nuevo_total` es NOT NULL en el schema, así que una fila real siempre trae
+// número. Sin este `!== false`, una venta SIN DI entraba a la rama DI con
+// $di_nuevo_total=0.0 y colapsaba su total a $0 (regresión SEV-1).
+$di_nuevo_total = null;
+try {
+    $v = DB::val(
+        "SELECT nuevo_total FROM desc_int_activaciones
+         WHERE cotizacion_id = ? AND estado = 'utilizado'
+         ORDER BY id DESC LIMIT 1", [$cot_id]);
+    if ($v !== false && $v !== null) $di_nuevo_total = (float)$v;
+} catch (\Throwable $e) {}
+// Con DI el descuento especial no entra al total (contrato congelado, abajo).
+// Antes se escribía igual en la cotización: "Agregar descuento" se veía
+// aplicado, desaparecía al recargar y dejaba el monto viejo en la cotización.
+if ($di_nuevo_total !== null) { $desc_auto_amt = 0.0; $desc_auto_pct = 0.0; }
+
+// El permiso de descuentos se pide solo para SUBIR el descuento. Antes se pedía
+// con cualquier descuento > 0: un asesor sin ese permiso no podía guardar
+// NINGÚN cambio en una venta que ya traía descuento ("Sin permiso para aplicar
+// descuentos" al mover un artículo). Bajarlo o quitarlo lo puede hacer
+// cualquiera — subir el precio no perjudica la venta (decisión CEO 24-nov-2026).
+$desc_guardado = round((float)($venta['descuento_auto_amt'] ?? 0), 2);
+if ($desc_auto_amt - $desc_guardado > 0.004 && !Auth::es_admin() && !Auth::puede('aplicar_descuentos')) {
+    json_error('Sin permiso para aplicar descuentos', 403);
+}
 
 // ── Leer estado ANTES del save (para comparar en log) ──
 $cot_antes = DB::row(
@@ -107,18 +132,7 @@ try {
     // editar nada movía el total ($1,044 → $1,025.44 con IVA suma). Editar el
     // precio base de una venta con DII no debe romper el precio que aceptó el
     // cliente; para cambiarlo, se quita el DI de la venta (acciones.php).
-    $di_nuevo_total = null;
-    try {
-        $v = DB::val(
-            "SELECT nuevo_total FROM desc_int_activaciones
-             WHERE cotizacion_id = ? AND estado = 'utilizado'
-             ORDER BY id DESC LIMIT 1", [$cot_id]);
-        // DB::val() (PDO fetchColumn) devuelve FALSE —no null— cuando NO hay fila.
-        // `nuevo_total` es NOT NULL en el schema, así que una fila real siempre
-        // trae número. Sin este `!== false`, una venta SIN DI entraba a la rama DI
-        // con $di_nuevo_total=0.0 y colapsaba su total a $0 (regresión SEV-1).
-        if ($v !== false && $v !== null) $di_nuevo_total = (float)$v;
-    } catch (\Throwable $e) {}
+    // $di_nuevo_total se lee arriba, antes de la transacción.
     // Extras (add-ons): NO descontables pero SÍ gravables (IVA si el modo es suma).
     $extras_final = ($imp_modo === 'suma')
         ? round($extras_lineas + round($extras_lineas * $imp_pct / 100, 2), 2)
@@ -182,8 +196,10 @@ try {
 $desc_anterior = (float)($cot_antes['descuento_auto_amt'] ?? 0);
 $lineas_anterior = $lineas_count_antes;
 
-// 1. Descuento
-if ($desc_anterior == 0 && $desc_auto_amt > 0) {
+// 1. Descuento (en ventas con DI no aplica: ahí el descuento es el inteligente)
+if ($di_nuevo_total !== null) {
+    // nada
+} elseif ($desc_anterior == 0 && $desc_auto_amt > 0) {
     VentaLog::registrar($venta_id, $empresa_id, 'descuento_agregado',
         '$' . number_format($desc_auto_amt, 2), Auth::id());
 } elseif ($desc_anterior > 0 && $desc_auto_amt == 0) {

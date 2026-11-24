@@ -69,6 +69,13 @@ try {
     //    Antes convertir era CIEGO al DI: cobraba precio completo y dejaba el
     //    contrato 'activo' colgado (la caja del editor prometía un cobro falso). ──
     $total_vta = (float)$cot['total'];
+    // Lo que ese total ya trae descontado, para guardarlo en la venta. Antes la
+    // venta nacía sin descuento_auto_amt ni cupon_monto: el descuento del
+    // cronómetro no se veía en la venta (no se podía quitar) y el primer
+    // «Guardar cambios» lo borraba sin avisar, subiendo el total. El aceptar
+    // (api/quote_action.php) siempre los guardó.
+    $desc_vta  = (float)($cot['descuento_auto_amt'] ?? 0);
+    $cupon_vta = (float)($cot['cupon_monto'] ?? 0);
 
     // ── Descuento automático VENCIDO horneado en cot.total (gemelo del fix de
     //    guardar.php): guardar ya no lo hornea al editar, pero una cotización
@@ -89,6 +96,12 @@ try {
         $total_vta  = ($imp_modo_c === 'suma')
             ? round($taxable_c + round($taxable_c * $imp_pct_c / 100, 2), 2)
             : round($taxable_c, 2);
+        // El descuento vencido no se cobró: la venta nace sin él y la cotización
+        // queda igual (total sin descuento y monto en 0, como hace
+        // cot_corregir_desc_vencido). Si no, la cotización convertida seguía
+        // mostrando un descuento que la venta no tiene.
+        $desc_vta = 0.0;
+        DB::execute("UPDATE cotizaciones SET total = ?, descuento_auto_amt = 0 WHERE id = ?", [$total_vta, $cot_id]);
     }
 
     try {
@@ -102,6 +115,9 @@ try {
                 ? round($extras_di + round($extras_di * (float)($cot['impuesto_pct'] ?? 0) / 100, 2), 2)
                 : $extras_di;
             $total_vta = round((float)$di_vig['nuevo_total'] + $extras_di_final, 2);
+            // El inteligente no se junta con otros descuentos: la venta no los lleva
+            $desc_vta  = 0.0;
+            $cupon_vta = 0.0;
             // WHERE estado='activo' evita doble-uso y carrera con un accept simultáneo
             DB::execute("UPDATE desc_int_activaciones SET estado='utilizado' WHERE id=? AND estado='activo'",
                 [(int)$di_vig['id']]);
@@ -121,8 +137,8 @@ try {
         "INSERT INTO ventas
          (empresa_id, cotizacion_id, cliente_id, usuario_id, vendedor_id,
           numero, titulo, slug, token,
-          total, pagado, saldo, estado)
-         VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)",
+          total, pagado, saldo, descuento_auto_amt, cupon_monto, estado)
+         VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,?,?)",
         [
             $empresa_id,
             $cot_id,
@@ -135,6 +151,8 @@ try {
             $token_vta,
             $total_vta,
             $total_vta,   // saldo inicial = total (con DI aplicado si estaba vigente)
+            $desc_vta,
+            $cupon_vta,
             'pendiente',
         ]
     );

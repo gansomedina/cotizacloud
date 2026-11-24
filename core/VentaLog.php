@@ -58,6 +58,7 @@ class VentaLog
             'item_eliminado'      => [ico('x',14,'#dc2626'),  'Artículo eliminado'],
             'descuento_agregado'  => [ico('tag',14,'#7c3aed'), 'Descuento agregado'],
             'descuento_eliminado' => [ico('x',14,'#dc2626'),  'Descuento eliminado'],
+            'descuento_quitado'   => [ico('x',14,'#dc2626'),  'Se quitó el descuento'],
             'cliente_cambiado'    => [ico('eye',14,'#2563eb'), 'Cliente cambiado'],
             'cotizacion_guardada' => [ico('check',14,'#16a34a'), 'Cotización guardada'],
             'venta_creada'        => [ico('check',14,'#16a34a'), 'Venta creada'],

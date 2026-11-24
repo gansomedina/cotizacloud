@@ -78,6 +78,14 @@ $snapshot_cot = snapshot_leer($cot);
 if ($snapshot_cot !== null) {
     $todas_lineas = $snapshot_cot['lineas'];
     $cot['descuento_auto_amt'] = $snapshot_cot['descuento_auto_amt'] ?? $cot['descuento_auto_amt'];
+    // El cupón con el que se aceptó (copias desde el 24-nov-2026, o las que
+    // completó ventas/acciones.php al quitar el cupón en la venta). Sin la
+    // llave, el cupón vivo de la cotización, como siempre.
+    if (array_key_exists('cupon_monto', $snapshot_cot)) {
+        $cot['cupon_monto']  = $snapshot_cot['cupon_monto'];
+        $cot['cupon_codigo'] = $snapshot_cot['cupon_codigo'] ?? null;
+        $cot['cupon_pct']    = $snapshot_cot['cupon_pct'] ?? 0;
+    }
 } else {
     $todas_lineas = DB::query(
         "SELECT * FROM cotizacion_lineas WHERE cotizacion_id = ? ORDER BY orden ASC",
@@ -505,6 +513,17 @@ if ($di_act === null && $interno_detectado) {
 // solo lectura; si no hay DI devuelve null y no se muestra nada.
 if ($di_act === null && in_array($cot['estado'], ['aceptada', 'convertida'], true)) {
     try { $di_act = DescuentoInteligente::vigente((int)$cot['id']); } catch (\Throwable $die) {}
+    // Quitado en la venta (o venta cancelada): la cotización aceptada sigue
+    // mostrando el descuento con el que se aceptó. 'cancelado' solo nace de un
+    // 'utilizado' (ventas/acciones.php: cancelar y quitar-desc-int), así que aquí
+    // siempre fue un descuento aceptado. Solo lectura: no toca la activación.
+    if ($di_act === null) {
+        try {
+            $di_act = DB::row(
+                "SELECT * FROM desc_int_activaciones WHERE cotizacion_id = ? AND estado = 'cancelado'
+                 ORDER BY id DESC LIMIT 1", [(int)$cot['id']]) ?: null;
+        } catch (\Throwable $die) {}
+    }
 }
 
 // ── Cupón bloqueado si TIENE O TUVO un DI (decisión CEO 16-jul): el descuento
@@ -1101,7 +1120,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,sans-serif;background:var(--b
     $di_res_activo = $di_act && ($di_act['estado'] ?? '') === 'activo'
         && in_array($cot['estado'], ['enviada','vista'])
         && strtotime($di_act['expira_at']) > time();
-    $di_res_util = $di_act && ($di_act['estado'] ?? '') === 'utilizado'
+    $di_res_util = $di_act && in_array($di_act['estado'] ?? '', ['utilizado', 'cancelado'], true)
         && in_array($cot['estado'], ['aceptada','convertida']);
     if ($di_res_activo || $di_res_util): ?>
     <div class="tr td">

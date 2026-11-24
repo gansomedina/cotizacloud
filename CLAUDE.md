@@ -5002,10 +5002,12 @@ llegando a cero.
 4. **`convertir.php` recalcula con el IVA congelado de la cotización**, y el
    aceptar y el enlace con el de la empresa hoy. Solo difiere si la empresa
    cambió su IVA.
-5. **`convertir.php` no actualiza `cotizaciones.total`** en la rama del
-   descuento vencido. Si el descuento vence con el editor abierto y se
-   convierte sin recargar, la cotización queda con el total viejo. La venta sí
-   sale bien.
+5. ✅ **Arreglado el 24-nov-2026.** ~~`convertir.php` no actualiza
+   `cotizaciones.total` en la rama del descuento vencido. Si el descuento vence
+   con el editor abierto y se convierte sin recargar, la cotización queda con el
+   total viejo. La venta sí sale bien.~~ Ahora esa rama deja la cotización con
+   el total sin descuento y `descuento_auto_amt = 0`, igual que la venta (ver
+   la sesión del 24-nov).
 6. **Lista y dashboard leen el total guardado.** Mientras nadie abra una
    cotización con el descuento metido, ahí sigue saliendo el monto viejo.
 
@@ -5160,3 +5162,127 @@ decisión.** No está verificado que Pro cambie el enrutamiento.
    historial solo dice "editada", no qué cambió.
 4. **Dije que los 2 días "no estaban en ningún campo"** cuando solo podía
    afirmarlo del estado final.
+
+## Sesión 24 noviembre 2026 — Quitar descuentos en la venta
+
+### El caso
+Un cliente aceptó una cotización con descuento y la venta nació con él. Luego
+tardó una semana en reportarse, y el descuento "técnicamente ya no es válido".
+El asesor no tenía forma de quitarlo en la venta. No se identificó la venta ni
+el tipo de descuento: el CEO pidió que **cualquiera de los tres** se pueda
+quitar.
+
+### Cómo estaba (probado en Chromium con el editor real, 3 roles)
+| Descuento en la venta | Admin | Asesor con permiso de descuentos | Asesor sin permiso |
+|---|---|---|---|
+| Cupón (el del campo) | no había forma | no había forma | no había forma |
+| Cronómetro / "Agregar descuento" | la ✕ (solo admin) | sin ✕; "pon 0" daba "Ingresa un monto mayor a 0" | nada, y **no podía guardar ningún cambio** en esa venta ("Sin permiso para aplicar descuentos") |
+| Inteligente | enlace invisible | enlace invisible | — |
+
+- El enlace "quitar" del DI existía desde el 13-jul (`23a7734`) pero quedó
+  dentro del bloque `print-only` de `ventas/ver.php`: **nunca se vio en
+  pantalla**. El endpoint `quitar-desc-int` sí funcionaba.
+- El "Resumen de montos" de las ventas con DI ignoraba el DI: mostraba el
+  precio lleno como Total.
+- **Ventas de "Convertir a venta"**: `convertir.php` no llenaba
+  `ventas.descuento_auto_amt` ni `cupon_monto`. El descuento del cronómetro no se
+  veía, y el primer "Guardar cambios" lo borraba sin avisar: subía el total y
+  el historial anotaba "Descuento eliminado" a nombre de quien guardó.
+  **Medido el 24-nov en producción: 0 ventas convertidas con el descuento
+  escondido y 0 "Descuento eliminado" en convertidas.** No hubo que reparar
+  datos.
+- "Agregar descuento" en una venta con DI se veía aplicado y guardaba sin
+  error, pero al recargar desaparecía. La venta no cambiaba, la cotización se
+  quedaba con el monto y el historial no anotaba nada.
+
+### Decisiones del CEO (24-nov)
+1. **Quitar un descuento lo puede hacer cualquiera, sin permiso de
+   descuentos:** "eso no afecta la venta". Se implementó como *cualquiera que
+   trabaje la venta*: el admin, quien tiene `ver_todas_ventas` o el asesor de
+   la venta (`usuario_id`/`vendedor_id`). Es el mismo acceso que las notas
+   internas. Otro asesor no ve el botón y el endpoint le responde 403. Si se
+   quiere literalmente cualquiera de la empresa, es `$trabaja_la_venta` en
+   `acciones.php` y `$puede_quitar_desc` en `ver.php`.
+2. **Que quede en el historial** → evento `descuento_quitado`, con la etiqueta
+   "Se quitó el descuento". El detalle dice qué descuento, de cuánto era y el
+   total antes y después: `Cupón PROMO10 (10%) · $1,000.00 · total $10,440.00 →
+   $11,600.00`.
+3. La pregunta de si la cotización aceptada debía reflejar que se quitó **no se
+   contestó**. Se aplicó lo recomendado: **la cotización aceptada sigue
+   mostrando el descuento con el que se aceptó**. El que cambia es el documento
+   vivo, la venta.
+
+### Lo que cambió
+- **`ventas/ver.php`**
+  - Cada descuento del Resumen trae **Quitar**. Pide confirmación con el total
+    nuevo y se guarda al momento, sin depender de "Guardar cambios" (la página
+    no avisa al salir con cambios sin guardar).
+  - Si hay cambios pendientes, pide guardarlos antes.
+  - En ventas con DI, el Resumen muestra el DI y el total real.
+  - En ventas con DI ya no se ofrece "Agregar descuento".
+  - Se quitaron la ✕ de solo admin, el enlace muerto del bloque de impresión y
+    el "escribe 0".
+- **`ventas/acciones.php`**
+  - Acción nueva `quitar-descuento` (`tipo` = `cupon` | `especial`). Usa el
+    recálculo de `guardar.php`, bloquea con `FOR UPDATE` y deja saldo y estado
+    como `guardar.php` (una venta pagada que pierde el descuento pasa a
+    parcial).
+  - `quitar-desc-int` ya no pide permiso de descuentos, actualiza el estado y
+    escribe el mismo detalle en el historial.
+  - El cupón se borra de la cotización **y** de la venta, porque la venta lo lee
+    de la cotización. Si la copia congelada no traía el cupón, se le agrega
+    antes de borrarlo.
+- **`core/Router.php`**: ruta `/ventas/:id/quitar-descuento`.
+- **`core/VentaLog.php`**: etiqueta "Se quitó el descuento".
+- **`ventas/guardar.php`**
+  - El permiso de descuentos se pide **solo para subirlo**.
+  - Con DI, el descuento especial se fuerza a 0 antes de escribir, así la
+    cotización no se queda con un monto viejo, y no se anota descuento.
+- **`cotizaciones/convertir.php`**
+  - La venta nace con el `descuento_auto_amt` y el `cupon_monto` que trae su
+    total. Con DI, los dos van en 0.
+  - Rama del descuento vencido: la cotización queda con el total sin descuento
+    y el monto en 0 (era el pendiente 5 de la sesión del 9-nov).
+- **`snapshot_cotizacion()`** (`core/Helpers.php`) también congela el cupón
+  (monto, código y %).
+- **`public/cotizacion.php`**
+  - En aceptada/convertida usa el cupón de la copia congelada, cuando existe.
+  - Muestra un DI `cancelado` como el que se aceptó. `cancelado` solo nace de
+    un `utilizado`: al cancelar la venta o al quitar el DI.
+- **Ayuda**: se quitó "Pon 0 para quitarlo" y se explica "Quitar".
+
+### Pruebas
+- **`tools/sim_venta_guardar.php`**: 71 comprobaciones contra MariaDB. Corre
+  `acciones.php`, `guardar.php` y `convertir.php` reales; el runner nuevo de
+  convertir carga los Helpers reales y CSRF con token. Prueba roles con
+  `CZ_ROL`, `CZ_UID` y `CZ_PERM`. Se metieron 5 errores a propósito y la prueba
+  detectó los cinco:
+  1. `guardar.php` vuelve a pedir el permiso con cualquier descuento.
+  2. `convertir.php` no copia el descuento a la venta.
+  3. Quitar el cupón no completa la copia congelada.
+  4. Cualquiera de la empresa puede quitar el descuento.
+  5. El recálculo olvida los extras.
+- **Chromium con el editor real**
+  - Admin y el asesor de la venta sin permisos ven Quitar en los tres
+    descuentos.
+  - El aviso de cambios sin guardar funciona.
+  - La confirmación dice "pasa de $10,440.00 a $11,600.00".
+  - Después de quitarlo, el Resumen y la base dan $11,600 y el historial
+    muestra "Se quitó el descuento · Asesor Demo".
+  - Otro asesor no ve el botón.
+- **Liga de la cotización aceptada** (`public/cotizacion.php` real): antes y
+  después de quitar el descuento en la venta se ve igual con el cupón, el DI y
+  el especial. Como control, sin completar la copia congelada el cupón
+  desaparecía: $11,600 en el Resumen contra $10,440 en el encabezado.
+- El resto de `tools/` pasa. `test_radar_fix` necesita el `config.php` del
+  servidor.
+
+### Visto y NO tocado
+- El **Estado de cuenta** imprimible (`ventas/ver.php`) no muestra el DI en
+  "Ajustes".
+- `initAuto()` sigue tronando en el enlace sin cronómetro (pendiente 1 del
+  9-nov).
+- En una venta con DI donde el asesor había puesto un cupón en el editor,
+  `public/venta.php` muestra la fila del cupón aunque no se cobre.
+- La ruta `/ventas/:id/descuento` (`descuento_manual_amt`) sigue sin pantalla
+  que la llame.
