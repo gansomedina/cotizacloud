@@ -5308,11 +5308,38 @@ quitar.
 
 - **13 pagos en efectivo con nota**: esa nota ya no sale en los recibos ni en
   las listas de pagos (regla del CEO); sigue en el historial de la venta.
-- **8 recibos sin forma guardada.** Ningún INSERT del repo los crea así: los
-  tres (`abono.php` y los dos de `create_review_user.php`) guardan la forma
-  desde el primer commit (23-mar-2026). Vienen de fuera del código; de dónde,
-  no verificado. Antes `/r/` les ponía "Efectivo" sin saberlo; ahora la forma
-  se deduce de la nota si empieza con una, y si no, sale "—".
+- **8 recibos sin forma guardada** (`forma_pago` es `varchar(60) NULL`; los 8
+  son NULL). Origen **verificado con el código de esos días**: son
+  REC-2026-0001 a 0008 de Closet Factory Hermosillo, creados el 17-mar.
+  `abono.php` no guardó la forma hasta `17f5f39` (20-mar, "Fix: save
+  forma_pago/usuario_id in recibos"). Ese día ya armaba la nota igual que hoy,
+  y lo único que toca `notas` después es `cancelar_recibo.php` (agrega
+  `" [Cancelado: motivo]"`). Por eso la forma real de cada uno es segura:
+  - ids 22, 23, 26 y 28: transferencia;
+  - id 25: tarjeta;
+  - id 24 (nota vacía): efectivo;
+  - ids 27 y 29 (pruebas de $100 canceladas): efectivo.
+
+  Antes `/r/` les ponía "Efectivo" a todos sin saberlo. Con `recibo_forma()`,
+  5 se ven bien por la nota, pero el 24 sale "—" y el 27 y el 29 muestran
+  "[Cancelado: …]" como referencia. Se entregó un SQL que respalda en
+  `respaldo_forma_pago_20261125` y les llena la forma, probado contra MariaDB
+  con esos 8 recibos (si se corre dos veces, se detiene en el respaldo).
+  **No verificado si ya se corrió.**
+- **Error mío:** primero escribí aquí que los tres INSERT guardaban la forma
+  "desde el primer commit (23-mar-2026)". Mi copia del repo estaba recortada
+  (shallow); el repo empieza el 10-mar.
+
+### Error en `recibo_forma()` con recibos cancelados (pendiente de decidir)
+`cancelar_recibo.php:43` agrega `" [Cancelado: motivo]"` a la nota. La función
+solo quita la forma de adelante si le sigue " · " o nada. Por eso un recibo
+cancelado de tarjeta, o de transferencia sin referencia, sale con la forma dos
+veces en la liga del cliente: "Tarjeta · Tarjeta [Cancelado: error]". Antes
+decía "Tarjeta [Cancelado: error]".
+
+Además quedó disparejo: en efectivo el motivo no sale y en tarjeta sí. El
+editor no lista cancelados. El motivo también queda en el historial de la
+venta (`cancelar_recibo.php:80`).
 
 ### El caso
 El CEO pidió poner el método de pago en los recibos de venta "sin que arruine
