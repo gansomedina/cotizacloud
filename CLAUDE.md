@@ -5333,6 +5333,11 @@ quitar.
   (shallow); el repo empieza el 10-mar.
 
 ### Recibos cancelados: el motivo en todas las formas (arreglado 25-nov)
+**Desplegado y verificado en el servidor el 25-nov** (`3dbdaf0`). `grep` de
+`$motivo = trim($m[2]);` en `Helpers.php`, de `'motivo_cancel' => $motivo_cancel`
+y `rec-motivo-row` en `public/venta.php`, y de `Motivo de cancelación` en
+`public/recibo.php`: 1, 1, 2 y 1.
+
 **El error, mío, del primer cambio:** `cancelar_recibo.php:43` agrega
 `" [Cancelado: motivo]"` a la nota, y `recibo_forma()` solo quitaba la forma
 de adelante si le seguía " · " o nada. Un recibo cancelado de tarjeta, o de
