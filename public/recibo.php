@@ -62,8 +62,9 @@ if ($es_cancelado) {
 // Forma y referencia desde recibo_forma() (Helpers.php): la misma regla que el
 // recibo impreso y la liga de la venta. Antes "Referencia" mostraba las notas
 // completas, que fuera de efectivo traen la forma por delante: un pago con
-// tarjeta decía "Tarjeta" dos veces.
-[, $forma_lbl, $forma_ref] = recibo_forma($rec);
+// tarjeta decía "Tarjeta" dos veces. Si el recibo está cancelado, también trae
+// el motivo, y se muestra en todas las formas (CEO, 25-nov).
+[, $forma_lbl, $forma_ref, $motivo_cancel] = recibo_forma($rec);
 $emp_ciudad = trim((string)($rec['emp_ciudad'] ?? ''));
 
 $ini_emp = ini_r($rec['emp_nombre']);
@@ -215,6 +216,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <div class="det-row"><span class="det-lbl">Forma de pago</span><span class="det-val"><?= e($forma_lbl ?: '—') ?></span></div>
     <?php if ($forma_ref !== ''): ?>
     <div class="det-row"><span class="det-lbl">Referencia</span><span class="det-val"><?= e($forma_ref) ?></span></div>
+    <?php endif; ?>
+    <?php if ($motivo_cancel !== ''): ?>
+    <div class="det-row"><span class="det-lbl">Motivo de cancelación</span><span class="det-val"><?= e($motivo_cancel) ?></span></div>
     <?php endif; ?>
     <div class="det-row section-title"><span class="det-lbl">Referencia de venta</span></div>
     <div class="det-row"><span class="det-lbl">Venta</span><span class="det-val"><?= e($rec['venta_numero']) ?></span></div>

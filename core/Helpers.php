@@ -1331,8 +1331,10 @@ function wa_texto_cotizacion(string $nombre, string $url): string
 }
 
 // ─── Forma de pago de un recibo, lista para mostrarse ───────────
-// Devuelve [clave, etiqueta, referencia], p. ej.
-//   ['tarjeta', 'Tarjeta', '']   ['transferencia', 'Transferencia bancaria', 'SPEI 123']
+// Devuelve [clave, etiqueta, referencia, motivo_de_cancelación], p. ej.
+//   ['tarjeta', 'Tarjeta', '', '']
+//   ['transferencia', 'Transferencia bancaria', 'SPEI 123', '']
+//   ['efectivo', 'Efectivo', '', 'error']          ← recibo cancelado
 //
 // La forma vive en recibos.forma_pago: ventas/abono.php la valida contra
 // efectivo / transferencia / tarjeta y siempre la guarda. La referencia viaja en
@@ -1347,8 +1349,15 @@ function wa_texto_cotizacion(string $nombre, string $url): string
 // efectivo trae notas sueltas; siguen en la base y en el historial de la venta
 // (abono.php:104), pero no salen junto a la forma de pago.
 //
-// Recibo sin forma_pago (ningún camino actual lo crea): se deduce de las notas
-// si empiezan con una forma; si no, la etiqueta queda vacía. No se inventa.
+// Recibo cancelado: cancelar_recibo.php:43 le agrega " [Cancelado: motivo]" a
+// la nota. El motivo se separa ANTES de leer la forma y la referencia (si no, la
+// forma salía dos veces: "Tarjeta · Tarjeta [Cancelado: error]") y se devuelve
+// aparte. Se muestra en todas las formas, también en efectivo (CEO, 25-nov-2026).
+// Sin el corchete de cierre también cuenta: la base no es estricta y una nota
+// larga puede quedar cortada.
+//
+// Recibo sin forma_pago (los 8 de marzo, antes de 17f5f39): se deduce de las
+// notas si empiezan con una forma; si no, la etiqueta queda vacía. No se inventa.
 function recibo_forma(array $r): array
 {
     static $etiquetas = [
@@ -1356,13 +1365,18 @@ function recibo_forma(array $r): array
         'transferencia' => 'Transferencia bancaria',
         'tarjeta'       => 'Tarjeta',
     ];
-    $clave = strtolower(trim((string)($r['forma_pago'] ?? '')));
-    $notas = trim((string)($r['notas'] ?? ''));
+    $clave  = strtolower(trim((string)($r['forma_pago'] ?? '')));
+    $notas  = trim((string)($r['notas'] ?? ''));
+    $motivo = '';
+    if (preg_match('/^(.*?)\s*\[Cancelado:\s*(.*?)\]?\s*$/su', $notas, $m) === 1) {
+        $notas  = trim($m[1]);
+        $motivo = trim($m[2]);
+    }
     if ($clave === '') {
         $primero = strtolower(trim(explode('·', $notas, 2)[0]));
         if (isset($etiquetas[$primero])) $clave = $primero;
     }
-    if ($clave === 'efectivo') return ['efectivo', $etiquetas['efectivo'], ''];
+    if ($clave === 'efectivo') return ['efectivo', $etiquetas['efectivo'], '', $motivo];
 
     $ref = $notas;
     if ($clave !== '') {
@@ -1371,7 +1385,7 @@ function recibo_forma(array $r): array
         $sin = preg_replace('/^' . preg_quote($clave, '/') . '(?:\s*·\s*|\s*$)/iu', '', $ref, 1);
         if ($sin !== null) $ref = $sin;   // null = UTF-8 roto: la nota se deja tal cual
     }
-    return [$clave, $etiquetas[$clave] ?? ($clave !== '' ? ucfirst($clave) : ''), trim($ref)];
+    return [$clave, $etiquetas[$clave] ?? ($clave !== '' ? ucfirst($clave) : ''), trim($ref), $motivo];
 }
 
 // ─── Íconos SVG inline (reemplazo de emojis para WebView iOS) ──

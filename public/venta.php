@@ -516,8 +516,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         $es_cancelacion = false; // columna tipo no existe, nunca es cancelacion
         // Forma de pago desde recibos.forma_pago, no desde las notas (ver recibo_forma
         // en Helpers.php). Antes un pago en efectivo con nota decía "Forma de pago: <nota>".
-        [$forma, $forma_lbl, $ref_nota] = recibo_forma($r);
-        $forma_linea    = implode(' · ', array_filter([$forma_lbl, $ref_nota], 'strlen'));
+        // Cancelado: el motivo va al final de la línea en todas las formas (CEO, 25-nov)
+        [$forma, $forma_lbl, $ref_nota, $motivo_cancel] = recibo_forma($r);
+        $forma_linea    = implode(' · ', array_filter([$forma_lbl, $ref_nota,
+                              $motivo_cancel !== '' ? 'Cancelado: ' . $motivo_cancel : ''], 'strlen'));
         $ico_cls        = $forma === 'tarjeta' ? 'ico-ta' : ($forma === 'transferencia' ? 'ico-tr' : 'ico-ef');
         $ico_emoji      = $ico_forma[$forma] ?? '💵';
 
@@ -528,6 +530,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
             'monto'     => fmt_v(abs((float)$r['monto'])),
             'forma'     => $forma_lbl ?: '—',
             'ref'       => $ref_nota ?: '—',
+            'motivo_cancel' => $motivo_cancel,
             'fecha'     => date('d M Y, g:i A', strtotime($r['created_at'])),
             'prev'      => '—',
             'saldo'     => '—',
@@ -667,8 +670,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="fac-pago-row <?= $es_c?'fac-pago-cancelado':'' ?>">
         <div>
           <div class="fac-pago-lbl"><?= e($r['concepto'] ?? 'Pago') ?> — <?= e($r['numero']) ?><?= $es_c?' (cancelado)':'' ?></div>
-           <?php [, $r_forma, $r_ref] = recibo_forma($r); ?>
-           <div class="fac-pago-sub"><?= e(implode(' · ', array_filter([date('d M Y', strtotime($r['created_at'])), $r_forma, $r_ref], 'strlen'))) ?></div>
+           <?php [, $r_forma, $r_ref, $r_motivo] = recibo_forma($r); ?>
+           <div class="fac-pago-sub"><?= e(implode(' · ', array_filter([date('d M Y', strtotime($r['created_at'])), $r_forma, $r_ref,
+                                         $r_motivo !== '' ? 'Cancelado: ' . $r_motivo : ''], 'strlen'))) ?></div>
         </div>
         <div class="fac-pago-monto"><?= fmt_v(abs($r['monto'])) ?></div>
       </div>
@@ -749,6 +753,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="rec-row"><span class="rec-lbl">Proyecto</span><span class="rec-val"><?= e(mb_substr($venta['titulo'],0,50)) ?></span></div>
       <div class="rec-row"><span class="rec-lbl">Forma de pago</span><span class="rec-val" id="rec-forma">—</span></div>
       <div class="rec-row"><span class="rec-lbl">Referencia</span><span class="rec-val" id="rec-ref">—</span></div>
+      <div class="rec-row" id="rec-motivo-row" style="display:none"><span class="rec-lbl">Motivo de cancelación</span><span class="rec-val" id="rec-motivo">—</span></div>
       <div class="rec-divider"></div>
       <div class="rec-row"><span class="rec-lbl">Total de la venta</span><span class="rec-val"><?= fmt_v($total) ?></span></div>
       <div class="rec-row"><span class="rec-lbl">Pagado anteriormente</span><span class="rec-val" id="rec-prev">—</span></div>
@@ -775,6 +780,9 @@ function openRec(d){
     document.getElementById('rec-monto').textContent    = r.monto;
     document.getElementById('rec-forma').textContent    = r.forma;
     document.getElementById('rec-ref').textContent      = r.ref;
+    // Recibo cancelado: su motivo; en uno vigente el renglón no aparece
+    document.getElementById('rec-motivo').textContent   = r.motivo_cancel || '';
+    document.getElementById('rec-motivo-row').style.display = r.motivo_cancel ? '' : 'none';
     document.getElementById('rec-fecha').textContent    = r.fecha;
     document.getElementById('rec-prev').textContent     = r.prev;
     document.getElementById('rec-saldo').textContent    = r.saldo;

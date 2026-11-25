@@ -5325,21 +5325,61 @@ quitar.
   "[Cancelado: …]" como referencia. Se entregó un SQL que respalda en
   `respaldo_forma_pago_20261125` y les llena la forma, probado contra MariaDB
   con esos 8 recibos (si se corre dos veces, se detiene en el respaldo).
-  **No verificado si ya se corrió.**
+  **Corrido en el servidor el 25-nov: 8 respaldados, 8 actualizados**, cada
+  uno con la forma de la lista. Para deshacerlo:
+  `UPDATE recibos r JOIN respaldo_forma_pago_20261125 b ON b.id = r.id SET r.forma_pago = b.forma_pago;`
 - **Error mío:** primero escribí aquí que los tres INSERT guardaban la forma
   "desde el primer commit (23-mar-2026)". Mi copia del repo estaba recortada
   (shallow); el repo empieza el 10-mar.
 
-### Error en `recibo_forma()` con recibos cancelados (pendiente de decidir)
-`cancelar_recibo.php:43` agrega `" [Cancelado: motivo]"` a la nota. La función
-solo quita la forma de adelante si le sigue " · " o nada. Por eso un recibo
-cancelado de tarjeta, o de transferencia sin referencia, sale con la forma dos
-veces en la liga del cliente: "Tarjeta · Tarjeta [Cancelado: error]". Antes
-decía "Tarjeta [Cancelado: error]".
+### Recibos cancelados: el motivo en todas las formas (arreglado 25-nov)
+**El error, mío, del primer cambio:** `cancelar_recibo.php:43` agrega
+`" [Cancelado: motivo]"` a la nota, y `recibo_forma()` solo quitaba la forma
+de adelante si le seguía " · " o nada. Un recibo cancelado de tarjeta, o de
+transferencia sin referencia, salía con la forma dos veces en la liga del
+cliente: "Tarjeta · Tarjeta [Cancelado: error]". Antes de ese cambio decía
+"Tarjeta [Cancelado: error]". Además quedó disparejo: en efectivo el motivo
+no salía y en tarjeta sí.
 
-Además quedó disparejo: en efectivo el motivo no sale y en tarjeta sí. El
-editor no lista cancelados. El motivo también queda en el historial de la
-venta (`cancelar_recibo.php:80`).
+**Decisión del CEO (25-nov): mostrar el motivo en todos los recibos
+cancelados, también en efectivo** (la otra opción era no mostrarlo en
+ninguno). En producción hay 16 cancelados: 14 en efectivo, 1 con tarjeta y 1
+con transferencia.
+
+**Lo que cambió:**
+- **`recibo_forma()`** devuelve un 4.º elemento: el motivo. Lo separa de la
+  nota antes de leer la forma y la referencia, así la forma ya no sale dos
+  veces. Si a la nota le falta el "]" final, también lo separa: la base no
+  es estricta y una nota larga puede quedar cortada.
+- **Liga del cliente** (`public/venta.php`):
+  - El historial termina en "· Cancelado: motivo": "Efectivo · Cancelado:
+    prueba", "Tarjeta · Cancelado: error".
+  - La ventana "Ver recibo" tiene un renglón "Motivo de cancelación" que solo
+    aparece en los cancelados.
+  - La impresión pone el motivo junto a la fecha.
+- **`/r/`** (`public/recibo.php`): renglón "Motivo de cancelación" en los
+  cancelados.
+- El editor no lista cancelados (`ver.php:44`, `cancelado = 0`), así que ahí
+  no cambia nada. El motivo sigue también en el historial de la venta
+  (`cancelar_recibo.php:80`).
+
+**Pruebas:**
+- `tools/test_recibo_forma.php`: 72 comprobaciones, con una sección de
+  cancelados en las tres formas.
+  - Incluye un motivo con corchetes, una nota cortada y los recibos de marzo
+    sin forma guardada.
+  - Contratos: que `cancelar_recibo.php:43` siga armando la marca igual.
+  - Se metieron 5 errores a propósito y los detectó todos.
+- **Chromium contra la versión en producción**, con su `Helpers.php`:
+  - Reproduce "Tarjeta · Tarjeta [Cancelado: error]" en el historial, y
+    "Referencia: Tarjeta [Cancelado: error]" en la ventana y en `/r/`.
+  - Con el código nuevo sale bien en las tres pantallas; los recibos vigentes
+    quedan igual, cada recibo sigue en una hoja y no hay errores de JavaScript.
+
+**Visto y NO tocado:** la ventana "Ver recibo" de un cancelado sigue titulada
+"Recibo de pago", con el monto en verde como "Este pago". El único indicio de
+la cancelación ahí es el renglón nuevo del motivo. `isCancel` (`:775`) lee
+`cancelacion`, que siempre va en `false` (`public/venta.php:537`).
 
 ### El caso
 El CEO pidió poner el método de pago en los recibos de venta "sin que arruine
@@ -5375,7 +5415,8 @@ la referencia va en su propio renglón, sin repetir la forma.
 
 ### Lo que cambió
 - **`recibo_forma()`** en `core/Helpers.php`, fuente única. Devuelve
-  `[clave, etiqueta, referencia]`.
+  `[clave, etiqueta, referencia, motivo_de_cancelación]` (el 4.º, desde el
+  arreglo de cancelados del mismo 25-nov).
   - Etiquetas: las que ya usaba `/r/` (Efectivo · Transferencia bancaria ·
     Tarjeta).
   - Quita la forma que `abono.php` puso por delante, solo como palabra
@@ -5413,7 +5454,8 @@ Sin migración. Formato igual: con los cuatro casos impresos a PDF, cada
 recibo con sus dos copias sigue en una hoja, y el estado de cuenta también.
 
 ### Pruebas
-- **`tools/test_recibo_forma.php`**: 49 comprobaciones, sin base de datos.
+- **`tools/test_recibo_forma.php`**: 49 comprobaciones, sin base de datos
+  (72 desde el arreglo de cancelados).
   - Los casos de `abono.php`, todos los de efectivo con nota y los recibos
     viejos.
   - Contratos de las tres pantallas y que `abono.php:70` siga armando las
