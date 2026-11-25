@@ -5290,3 +5290,103 @@ quitar.
   `public/venta.php` muestra la fila del cupón aunque no se cobre.
 - La ruta `/ventas/:id/descuento` (`descuento_manual_amt`) sigue sin pantalla
   que la llame.
+
+## Sesión 25 noviembre 2026 — Forma de pago en los recibos
+
+### El caso
+El CEO pidió poner el método de pago en los recibos de venta "sin que arruine
+el formato". El recibo impreso del editor (🖨 PDF, dos copias) traía un
+renglón "Forma", pero imprimía las **notas** del pago, no la forma.
+
+### Causa (verificada en código y en el navegador)
+La forma se guarda bien, en `recibos.forma_pago`: `ventas/abono.php` la valida
+contra efectivo/transferencia/tarjeta y siempre la llena. Pero las pantallas
+leían `notas`, y `abono.php:70` arma las notas distinto según la forma:
+- **fuera de efectivo**, con la forma por delante: "Tarjeta",
+  "Transferencia · SPEI 123";
+- **en efectivo**, solo lo que se tecleó en "Referencia / nota (opcional)"
+  (`ver.php:1105`, el campo sale con cualquier forma).
+
+Resultado en el recibo impreso:
+- Tarjeta → "Forma: Tarjeta". Salía bien por casualidad.
+- Efectivo → sin renglón.
+- Efectivo con nota → "Forma: Caja 2".
+- Transferencia → "Forma: Transferencia · SPEI 88213".
+
+El mismo error estaba en el historial de pagos del editor, en la venta
+impresa y en la liga del cliente (`public/venta.php`): ahí un efectivo con
+nota decía "Forma de pago: Caja 2" y la transferencia repetía la referencia.
+En `/r/` la forma salía bien, pero "Referencia" repetía las notas: con tarjeta
+decía "Tarjeta" dos veces.
+
+### Regla del CEO (25-nov)
+**Un pago en efectivo dice "Efectivo", sin la nota** ("no me gusta lo de
+caja 2, que diga efectivo"). La nota sigue en la base y en el historial de
+la venta (`abono.php:104`); solo no sale junto a la forma. Fuera de efectivo
+la referencia va en su propio renglón, sin repetir la forma.
+
+### Lo que cambió
+- **`recibo_forma()`** en `core/Helpers.php`, fuente única. Devuelve
+  `[clave, etiqueta, referencia]`.
+  - Etiquetas: las que ya usaba `/r/` (Efectivo · Transferencia bancaria ·
+    Tarjeta).
+  - Quita la forma que `abono.php` puso por delante, solo como palabra
+    completa: "Tarjetas Banorte" se queda entera.
+  - Si `forma_pago` viene vacía, la deduce de las notas, y si no puede, no la
+    inventa.
+  - Si las notas traen UTF-8 roto, se dejan tal cual. `abono.php` las corta
+    con `substr` en bytes y `preg_replace /u` devolvería `null`.
+- **`ventas/ver.php`**
+  - Recibo impreso: "Forma de pago" siempre, y "Referencia" aparte cuando hay
+    una.
+  - El encabezado ya no empieza con "· teléfono" cuando la empresa no tiene
+    ciudad.
+  - Historial de pagos: "Efectivo", "Transferencia bancaria · SPEI 123", etc.
+  - El ícono del historial toma el color del método. `icono_forma` y
+    `bg_forma` (`:117-122`) ya tenían los colores, pero recibían el concepto
+    ("ANTICIPO", "Transferencia" con mayúscula) en vez de la forma, así que
+    todos salían grises.
+  - Venta impresa: la forma va junto a la fecha.
+  - Estado de cuenta: "ANTICIPO · Tarjeta", con la forma en gris. No se repite
+    si el concepto ya es la forma.
+- **`public/venta.php`**
+  - Historial y ventana "Ver recibo" leen la forma de la función.
+  - Venta impresa: la forma va junto a la fecha.
+  - El encabezado de la ventana ya no deja el punto suelto.
+  - El historial imprimía las notas **sin `e()`** (`:551`), así que lo que el
+    asesor tecleaba entraba tal cual a la página del cliente. Ya se escapa.
+- **`public/recibo.php`**
+  - Forma y referencia salen de la función.
+  - Ni el encabezado ni el pie dejan el punto suelto.
+  - Con `forma_pago` vacía, antes decía "Efectivo". Ahora la deduce de las
+    notas o muestra "—".
+
+Sin migración. Formato igual: con los cuatro casos impresos a PDF, cada
+recibo con sus dos copias sigue en una hoja, y el estado de cuenta también.
+
+### Pruebas
+- **`tools/test_recibo_forma.php`**: 49 comprobaciones, sin base de datos.
+  - Los casos de `abono.php`, todos los de efectivo con nota y los recibos
+    viejos.
+  - Contratos de las tres pantallas y que `abono.php:70` siga armando las
+    notas igual.
+  - Se metieron 5 errores a propósito y los detectó todos.
+- **Chromium contra el código real** (`modules/ventas/ver.php`,
+  `public/venta.php` y `public/recibo.php`), con la versión anterior como
+  control y los datos de On Time Obregón (ciudad vacía): los cuatro pagos de
+  la tabla en las tres pantallas. Sin errores de JavaScript.
+- El resto de `tools/` y las simulaciones pasan. `test_radar_fix` necesita el
+  `config.php` del servidor.
+
+### Visto y NO tocado
+- En la página de la venta (`public/venta.php`), el mismo punto suelto cuando
+  la empresa no tiene ciudad, fuera de los recibos:
+  - `:583`, pie de la página;
+  - `:599-600`, encabezado de la impresión;
+  - `:713`, pie de la impresión.
+- `ventas/ver.php` tiene una ventana "Ver recibo" (`:663-690`, `openRec`) que
+  ninguna pantalla abre.
+- `modules/ventas/recibo.php` tiene ruta (`/ventas/recibos/:id`) pero ninguna
+  pantalla la enlaza. Lee `$recibo['referencia']`, que ningún INSERT llena.
+- `public/recibo.php` y el dashboard leen `$rec['tipo']`. `public/venta.php:517`
+  dice que esa columna no existe. No verificado en la base.

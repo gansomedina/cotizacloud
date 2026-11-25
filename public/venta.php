@@ -512,17 +512,13 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   <div class="slabel">Historial de pagos</div>
   <div class="card">
     <?php foreach ($recibos as $r):
-        // notas guarda forma+referencia ej: "Transferencia · REF123" o solo concepto
         $es_cancelado   = (bool)$r['cancelado'];
         $es_cancelacion = false; // columna tipo no existe, nunca es cancelacion
-        $notas_r        = $r['notas'] ?? '';
-        // Detectar forma desde notas (primer token antes de ' · ' o default efectivo)
-        $partes_nota    = explode(' · ', $notas_r, 2);
-        $forma_raw      = strtolower(trim($partes_nota[0]));
-        $formas_validas = ['efectivo','transferencia','tarjeta'];
-        $forma          = in_array($forma_raw, $formas_validas) ? $forma_raw : 'efectivo';
-        $ref_nota       = $partes_nota[1] ?? '';
-        $ico_cls        = $forma === 'efectivo' ? 'ico-ef' : ($forma === 'tarjeta' ? 'ico-ta' : 'ico-tr');
+        // Forma de pago desde recibos.forma_pago, no desde las notas (ver recibo_forma
+        // en Helpers.php). Antes un pago en efectivo con nota decía "Forma de pago: <nota>".
+        [$forma, $forma_lbl, $ref_nota] = recibo_forma($r);
+        $forma_linea    = implode(' · ', array_filter([$forma_lbl, $ref_nota], 'strlen'));
+        $ico_cls        = $forma === 'tarjeta' ? 'ico-ta' : ($forma === 'transferencia' ? 'ico-tr' : 'ico-ef');
         $ico_emoji      = $ico_forma[$forma] ?? '💵';
 
         // Datos para el modal
@@ -530,7 +526,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
             'folio'     => $r['numero'],
             'concepto'  => $r['concepto'] ?? 'Pago',
             'monto'     => fmt_v(abs((float)$r['monto'])),
-            'forma'     => $notas_r ?: ucfirst($forma),
+            'forma'     => $forma_lbl ?: '—',
             'ref'       => $ref_nota ?: '—',
             'fecha'     => date('d M Y, g:i A', strtotime($r['created_at'])),
             'prev'      => '—',
@@ -548,7 +544,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
           <?php if ($es_cancelacion): ?><span class="badge badge-k">Cancelación</span><?php endif; ?>
         </div>
         <div class="abo-fecha"><?= date('d M Y · g:i A', strtotime($r['created_at'])) ?></div>
-        <div class="abo-forma"><?= $notas_r ?: ucfirst($forma) ?></div>
+        <?php if ($forma_linea !== ''): ?><div class="abo-forma"><?= e($forma_linea) ?></div><?php endif; ?>
         <div class="abo-btns">
           <div class="abo-folio <?= $es_cancelacion?'abo-folio-cancel':'' ?>"
                data-rec="<?= e($rec_data) ?>" onclick="openRec(JSON.parse(this.dataset.rec))">
@@ -671,7 +667,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       <div class="fac-pago-row <?= $es_c?'fac-pago-cancelado':'' ?>">
         <div>
           <div class="fac-pago-lbl"><?= e($r['concepto'] ?? 'Pago') ?> — <?= e($r['numero']) ?><?= $es_c?' (cancelado)':'' ?></div>
-           <div class="fac-pago-sub"><?= date('d M Y', strtotime($r['created_at'])) ?><?= ($r['notas'] ?? '') ? ' · '.e($r['notas']) : '' ?></div>
+           <?php [, $r_forma, $r_ref] = recibo_forma($r); ?>
+           <div class="fac-pago-sub"><?= e(implode(' · ', array_filter([date('d M Y', strtotime($r['created_at'])), $r_forma, $r_ref], 'strlen'))) ?></div>
         </div>
         <div class="fac-pago-monto"><?= fmt_v(abs($r['monto'])) ?></div>
       </div>
@@ -739,7 +736,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
         <?php endif; ?>
         <div style="text-align:right">
           <div class="rec-emp-name"><?= e($venta['emp_nombre']) ?></div>
-          <div class="rec-emp-sub"><?= e($venta['emp_ciudad']??'') ?><?php if($venta['emp_tel']): ?> · <?= e($venta['emp_tel']) ?><?php endif; ?></div>
+          <div class="rec-emp-sub"><?= e(implode(' · ', array_filter([trim((string)($venta['emp_ciudad'] ?? '')), trim((string)($venta['emp_tel'] ?? ''))], 'strlen'))) ?></div>
         </div>
       </div>
       <div class="rec-h-type" id="rec-type">Recibo de pago</div>

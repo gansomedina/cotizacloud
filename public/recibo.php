@@ -59,11 +59,12 @@ if ($es_cancelado) {
     $tipo_lbl = 'Recibo de pago';
 }
 
-$forma_lbl = [
-    'efectivo'     => 'Efectivo',
-    'transferencia'=> 'Transferencia bancaria',
-    'tarjeta'      => 'Tarjeta',
-][$rec['forma_pago'] ?? 'efectivo'] ?? ucfirst($rec['forma_pago'] ?? '');
+// Forma y referencia desde recibo_forma() (Helpers.php): la misma regla que el
+// recibo impreso y la liga de la venta. Antes "Referencia" mostraba las notas
+// completas, que fuera de efectivo traen la forma por delante: un pago con
+// tarjeta decía "Tarjeta" dos veces.
+[, $forma_lbl, $forma_ref] = recibo_forma($rec);
+$emp_ciudad = trim((string)($rec['emp_ciudad'] ?? ''));
 
 $ini_emp = ini_r($rec['emp_nombre']);
 ?>
@@ -177,8 +178,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <div class="emp-logo"><?= e($ini_emp) ?></div>
     <div class="emp-nombre"><?= e($rec['emp_nombre']) ?></div>
     <div class="emp-contact">
-      <?= e($rec['emp_ciudad'] ?? '') ?>
-      <?php if ($rec['emp_tel']): ?> · <a href="tel:<?= e($rec['emp_tel']) ?>"><?= e($rec['emp_tel']) ?></a><?php endif; ?>
+      <?= e($emp_ciudad) ?>
+      <?php if ($rec['emp_tel']): ?><?= $emp_ciudad !== '' ? ' · ' : '' ?><a href="tel:<?= e($rec['emp_tel']) ?>"><?= e($rec['emp_tel']) ?></a><?php endif; ?>
       <?php if ($rec['emp_email']): ?><br><a href="mailto:<?= e($rec['emp_email']) ?>"><?= e($rec['emp_email']) ?></a><?php endif; ?>
     </div>
   </div>
@@ -211,9 +212,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <div class="det-row"><span class="det-lbl">Teléfono</span><span class="det-val"><?= e($rec['cli_tel']) ?></span></div>
     <?php endif; ?>
     <div class="det-row"><span class="det-lbl">Concepto</span><span class="det-val"><?= e($rec['concepto'] ?? 'Pago') ?></span></div>
-    <div class="det-row"><span class="det-lbl">Forma de pago</span><span class="det-val"><?= $forma_lbl ?></span></div>
-    <?php if ($rec['notas'] ?? ''): ?>
-    <div class="det-row"><span class="det-lbl">Referencia</span><span class="det-val"><?= e($rec['notas']) ?></span></div>
+    <div class="det-row"><span class="det-lbl">Forma de pago</span><span class="det-val"><?= e($forma_lbl ?: '—') ?></span></div>
+    <?php if ($forma_ref !== ''): ?>
+    <div class="det-row"><span class="det-lbl">Referencia</span><span class="det-val"><?= e($forma_ref) ?></span></div>
     <?php endif; ?>
     <div class="det-row section-title"><span class="det-lbl">Referencia de venta</span></div>
     <div class="det-row"><span class="det-lbl">Venta</span><span class="det-val"><?= e($rec['venta_numero']) ?></span></div>
@@ -274,7 +275,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
   <?php endif; ?>
 
   <div class="pie">
-    <?= e($rec['emp_nombre']) ?> · <?= e($rec['emp_ciudad'] ?? '') ?><br>
+    <?= e($rec['emp_nombre']) ?><?= $emp_ciudad !== '' ? ' · ' . e($emp_ciudad) : '' ?><br>
     <?php if ($rec['emp_tel']): ?><a href="tel:<?= e($rec['emp_tel']) ?>"><?= e($rec['emp_tel']) ?></a><?php if ($rec['emp_email']): ?> · <?php endif; ?><?php endif; ?>
     <?php if ($rec['emp_email']): ?><a href="mailto:<?= e($rec['emp_email']) ?>"><?= e($rec['emp_email']) ?></a><?php endif; ?><br>
     Este recibo es un comprobante de pago. No es una factura fiscal.

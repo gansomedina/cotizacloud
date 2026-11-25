@@ -589,19 +589,23 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
     <?php if (empty($abonos)): ?>
     <div style="padding:20px 16px;text-align:center;font:400 13px var(--body);color:var(--t3)">Sin pagos registrados</div>
     <?php else: ?>
-    <?php foreach ($abonos as $ab): ?>
+    <?php foreach ($abonos as $ab):
+        // Forma de pago desde recibos.forma_pago, no desde las notas (ver recibo_forma)
+        [$ab_fp, $ab_forma, $ab_ref] = recibo_forma($ab);
+        $ab_linea = implode(' · ', array_filter([$ab_forma, $ab_ref], 'strlen')); ?>
     <div class="abono-row">
-      <div class="abono-ico" style="background:<?= bg_forma($ab['concepto'] ?? '') ?>"><?= icono_forma($ab['concepto'] ?? '') ?></div>
+      <div class="abono-ico" style="background:<?= bg_forma($ab_fp) ?>"><?= icono_forma($ab_fp) ?></div>
       <div class="abono-info">
         <div class="abono-forma"><?= e($ab['concepto'] ?: 'Abono') ?></div>
         <div class="abono-fecha"><?= date('d M Y, g:i A', strtotime($ab['created_at'])) ?></div>
-        <?php if ($ab['notas'] ?? ''): ?><div class="abono-nota"><?= e($ab['notas']) ?></div><?php endif ?>
+        <?php if ($ab_linea !== ''): ?><div class="abono-nota"><?= e($ab_linea) ?></div><?php endif ?>
         <button class="abono-rec" onclick="imprimirRecibo(<?= htmlspecialchars(json_encode([
             'numero'   => $ab['numero'],
             'concepto' => $ab['concepto'] ?? 'Pago',
             'monto'    => (float)$ab['monto'],
             'fecha'    => date('d M Y · g:i A', strtotime($ab['created_at'])),
-            'notas'    => $ab['notas'] ?? '',
+            'forma'    => $ab_forma,
+            'ref'      => $ab_ref,
             'cliente'  => $venta['cliente_nombre'] ?? '',
             'venta'    => $venta['numero'],
             'empresa'  => $empresa['nombre'],
@@ -873,7 +877,8 @@ function closeRec(){
       <div class="fac-pago-row <?= $es_c?'fac-pago-cancelado':'' ?>">
         <div>
           <div class="fac-pago-lbl"><?= e($r['concepto'] ?? 'Pago') ?> — <?= e($r['numero']) ?><?= $es_c?' (cancelado)':'' ?></div>
-          <div class="fac-pago-sub"><?= date('d M Y', strtotime($r['created_at'])) ?><?= ($r['notas']??'') ? ' · '.e($r['notas']) : '' ?></div>
+          <?php [, $r_forma, $r_ref] = recibo_forma($r); ?>
+          <div class="fac-pago-sub"><?= e(implode(' · ', array_filter([date('d M Y', strtotime($r['created_at'])), $r_forma, $r_ref], 'strlen'))) ?></div>
         </div>
         <div class="fac-pago-monto"><?= format_money(abs((float)$r['monto']), $empresa['moneda']) ?></div>
       </div>
@@ -1033,10 +1038,13 @@ $moneda_edc           = $empresa['moneda'] ?? 'MXN';
     <table class="edc-tbl">
       <thead><tr><th>Fecha</th><th>Concepto</th><th>Folio</th><th class="r">Monto</th></tr></thead>
       <tbody>
-      <?php foreach ($abonos as $r): ?>
+      <?php foreach ($abonos as $r):
+          // Sin concepto, abono.php guarda la forma como concepto ("Efectivo"): no se repite
+          [$r_fp, $r_forma] = recibo_forma($r);
+          $r_c = mb_strtolower(trim((string)($r['concepto'] ?? ''))); ?>
       <tr class="pago-row">
         <td><?= date('d M Y', strtotime($r['fecha'] ?? $r['created_at'])) ?></td>
-        <td><?= e($r['concepto'] ?? 'Pago') ?></td>
+        <td><?= e($r['concepto'] ?? 'Pago') ?><?php if ($r_forma !== '' && !in_array($r_c, [mb_strtolower($r_forma), $r_fp], true)): ?><span style="color:#666"> · <?= e($r_forma) ?></span><?php endif ?></td>
         <td><?= e($r['numero']) ?></td>
         <td class="r">- <?= format_money(abs((float)$r['monto']), $moneda_edc) ?></td>
       </tr>
@@ -1911,7 +1919,7 @@ function imprimirRecibo(d){
   const bloque = `
     <div class="rp-header">
       <div class="rp-empresa">${escHtml(d.empresa)}</div>
-      <div class="rp-sub">${escHtml(d.ciudad)}${d.tel?' · '+escHtml(d.tel):''}</div>
+      <div class="rp-sub">${[d.ciudad, d.tel].map(s => String(s || '').trim()).filter(Boolean).map(escHtml).join(' · ')}</div>
       <div class="rp-tipo">Recibo de pago</div>
       <div class="rp-folio">${escHtml(d.numero)}</div>
     </div>
@@ -1920,7 +1928,8 @@ function imprimirRecibo(d){
       <tr><td>Venta</td><td>${escHtml(d.venta)}</td></tr>
       <tr><td>Fecha</td><td>${escHtml(d.fecha)}</td></tr>
       <tr><td>Concepto</td><td>${escHtml(d.concepto)}</td></tr>
-      ${d.notas?'<tr><td>Forma</td><td>'+escHtml(d.notas)+'</td></tr>':''}
+      ${d.forma?'<tr><td>Forma de pago</td><td>'+escHtml(d.forma)+'</td></tr>':''}
+      ${d.ref?'<tr><td>Referencia</td><td>'+escHtml(d.ref)+'</td></tr>':''}
     </table>
     <div class="rp-monto-box">
       <div class="rp-monto-lbl">Total pagado</div>

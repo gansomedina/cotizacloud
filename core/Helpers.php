@@ -1330,6 +1330,50 @@ function wa_texto_cotizacion(string $nombre, string $url): string
         : "Hola, aquí está tu cotización: {$url}";
 }
 
+// ─── Forma de pago de un recibo, lista para mostrarse ───────────
+// Devuelve [clave, etiqueta, referencia], p. ej.
+//   ['tarjeta', 'Tarjeta', '']   ['transferencia', 'Transferencia bancaria', 'SPEI 123']
+//
+// La forma vive en recibos.forma_pago: ventas/abono.php la valida contra
+// efectivo / transferencia / tarjeta y siempre la guarda. La referencia viaja en
+// `notas`, y abono.php:70 la arma distinto según la forma: fuera de efectivo le
+// pone la forma por delante ("Transferencia · SPEI 123", "Tarjeta"); en efectivo
+// guarda solo lo que se tecleó. Las pantallas leían `notas` como si fuera la
+// forma: el efectivo salía sin forma de pago, y con nota salía la nota
+// ("Forma: Caja 2").
+//
+// En efectivo NO se devuelve referencia (CEO, 25-nov-2026: "que diga
+// efectivo"). El campo del formulario es "Referencia / nota (opcional)" y en
+// efectivo trae notas sueltas; siguen en la base y en el historial de la venta
+// (abono.php:104), pero no salen junto a la forma de pago.
+//
+// Recibo sin forma_pago (ningún camino actual lo crea): se deduce de las notas
+// si empiezan con una forma; si no, la etiqueta queda vacía. No se inventa.
+function recibo_forma(array $r): array
+{
+    static $etiquetas = [
+        'efectivo'      => 'Efectivo',
+        'transferencia' => 'Transferencia bancaria',
+        'tarjeta'       => 'Tarjeta',
+    ];
+    $clave = strtolower(trim((string)($r['forma_pago'] ?? '')));
+    $notas = trim((string)($r['notas'] ?? ''));
+    if ($clave === '') {
+        $primero = strtolower(trim(explode('·', $notas, 2)[0]));
+        if (isset($etiquetas[$primero])) $clave = $primero;
+    }
+    if ($clave === 'efectivo') return ['efectivo', $etiquetas['efectivo'], ''];
+
+    $ref = $notas;
+    if ($clave !== '') {
+        // Se quita la forma que abono.php puso por delante, solo como palabra
+        // completa: "Tarjeta · 1234" → "1234", pero "Tarjetas Banorte" se queda.
+        $sin = preg_replace('/^' . preg_quote($clave, '/') . '(?:\s*·\s*|\s*$)/iu', '', $ref, 1);
+        if ($sin !== null) $ref = $sin;   // null = UTF-8 roto: la nota se deja tal cual
+    }
+    return [$clave, $etiquetas[$clave] ?? ($clave !== '' ? ucfirst($clave) : ''), trim($ref)];
+}
+
 // ─── Íconos SVG inline (reemplazo de emojis para WebView iOS) ──
 function ico(string $name, int $size = 16, string $color = 'currentColor'): string
 {
