@@ -5293,6 +5293,27 @@ quitar.
 
 ## Sesión 25 noviembre 2026 — Forma de pago en los recibos
 
+**Desplegado y verificado en el servidor el 25-nov** (`8e70513`). `grep` de
+`function recibo_forma` en `Helpers.php`, `recibo_forma($ab)` en `ver.php`,
+`recibo_forma($r)` en `public/venta.php` y `recibo_forma($rec)` en
+`public/recibo.php`: 1, 1, 2 y 1.
+
+### Datos de producción (25-nov)
+| `forma_pago` | Recibos | Con nota |
+|---|---|---|
+| (vacía) | 8 | 7 |
+| efectivo | 161 | 13 |
+| tarjeta | 283 | 283 |
+| transferencia | 282 | 281 |
+
+- **13 pagos en efectivo con nota**: esa nota ya no sale en los recibos ni en
+  las listas de pagos (regla del CEO); sigue en el historial de la venta.
+- **8 recibos sin forma guardada.** Ningún INSERT del repo los crea así: los
+  tres (`abono.php` y los dos de `create_review_user.php`) guardan la forma
+  desde el primer commit (23-mar-2026). Vienen de fuera del código; de dónde,
+  no verificado. Antes `/r/` les ponía "Efectivo" sin saberlo; ahora la forma
+  se deduce de la nota si empieza con una, y si no, sale "—".
+
 ### El caso
 El CEO pidió poner el método de pago en los recibos de venta "sin que arruine
 el formato". El recibo impreso del editor (🖨 PDF, dos copias) traía un
