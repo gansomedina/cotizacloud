@@ -18,6 +18,11 @@
 //     efectivo. Cancelar agrega " [Cancelado: motivo]" a la nota, y eso hacía
 //     que la forma saliera dos veces: "Tarjeta · Tarjeta [Cancelado: error]".
 //
+// Y del 26-nov-2026: un recibo cancelado SE VE cancelado. La ventana "Ver
+// recibo" de la liga decía "Recibo de pago" con el monto en verde como "Este
+// pago"; ahora se ve como /r/ (título, aviso rojo, monto tachado). Y /r/ ya no
+// le pone el "Desglose de saldo" ("+ Este pago", "Venta pagada completamente").
+//
 // recibo_forma() devuelve [clave, etiqueta, referencia, motivo_de_cancelación].
 //
 // Correr: php tools/test_recibo_forma.php   → debe terminar en OK
@@ -176,6 +181,29 @@ chk('recibo: ya no imprime las notas crudas',   str_contains($recibo, "e(\$rec['
 chk('recibo: forma escapada',                   str_contains($recibo, "<?= e(\$forma_lbl ?: '—') ?>"), true);
 chk('recibo: renglón "Motivo de cancelación" escapado',
     str_contains($recibo, '<?php if ($motivo_cancel !== \'\'): ?>') && str_contains($recibo, '<span class="det-lbl">Motivo de cancelación</span><span class="det-val"><?= e($motivo_cancel) ?></span>'), true);
+
+echo "\n5b) UN RECIBO CANCELADO SE VE CANCELADO (CEO, 26-nov)\n";
+$aviso_r = 'Este recibo fue cancelado y no representa un pago válido.';
+chk('venta: la ventana recibe si el recibo está cancelado', str_contains($venta, "'cancelado' => \$es_cancelado,"), true);
+chk('venta: el aviso de la ventana dice lo mismo que /r/',
+    str_contains($venta, '<div class="rec-cancel-aviso" id="rec-cancel-aviso">⚠ ' . $aviso_r . '</div>') && str_contains($recibo, $aviso_r), true);
+chk('venta: el aviso nace oculto (solo se ve en un cancelado)', str_contains($venta, '.rec-cancel-aviso{display:none;'), true);
+chk('venta: la ventana lee la marca de cancelado', str_contains($venta, 'const esCancelado = !!r.cancelado;'), true);
+chk('venta: título "Recibo cancelado" y folio "· CANCELADO"',
+    str_contains($venta, "esCancelado ? 'Recibo cancelado' :") && str_contains($venta, "r.folio + (esCancelado ? ' · CANCELADO' : '')"), true);
+chk('venta: el aviso se prende y se apaga según el recibo',
+    str_contains($venta, "document.getElementById('rec-cancel-aviso').style.display = esCancelado ? 'block' : 'none';"), true);
+chk('venta: "Pago cancelado" en rojo, no "Este pago" en verde',
+    str_contains($venta, "esCancelado ? 'Pago cancelado' :") && str_contains($venta, "const c = esCancelado ? 'var(--danger)' :"), true);
+chk('venta: monto tachado, y un vigente abierto después regresa a normal',
+    str_contains($venta, "style.textDecoration = esCancelado ? 'line-through' : '';")
+    && str_contains($venta, "style.opacity        = esCancelado ? '.5' : '';"), true);
+$ini_desglose = strpos($recibo, '<?php if (!$es_cancelado): ?>' . "\n" . '  <div class="saldo-card">');
+$fin_desglose = $ini_desglose === false ? false : strpos($recibo, "  </div>\n  <?php endif; ?>\n\n  <!-- SELLO DIGITAL -->", $ini_desglose);
+chk('recibo: el "Desglose de saldo" solo sale en recibos vigentes', $ini_desglose !== false && $fin_desglose !== false, true);
+chk('recibo: "Venta pagada completamente" vive dentro de ese bloque',
+    $ini_desglose !== false && $fin_desglose !== false
+    && ($p = strpos($recibo, '✓ Venta pagada completamente</span>')) > $ini_desglose && $p < $fin_desglose, true);
 
 echo "\n6) abono.php Y cancelar_recibo.php SIGUEN ARMANDO LAS NOTAS IGUAL\n";
 // recibo_forma depende de estos formatos. Si cambian, revisar la función.

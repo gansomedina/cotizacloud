@@ -265,6 +265,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 .rec-monto-box{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:12px 14px;border-radius:var(--r-sm);border:1px solid}
 .rec-monto-lbl{font:600 11px var(--body)}
 .rec-monto-val{font:300 24px var(--num)}
+.rec-cancel-aviso{display:none;margin:2px 0 10px;padding:10px 12px;background:var(--danger-bg);border:1px solid #fca5a5;border-radius:var(--r-sm);font-size:12px;color:var(--danger);text-align:center;line-height:1.5}
 .rec-foot{margin-top:10px;font-size:10px;color:var(--t3);text-align:center;line-height:1.6}
 .rec-sello{margin-top:7px;padding:6px;background:var(--bg);border-radius:var(--r-sm);font:400 9px var(--num);color:var(--t3);text-align:center}
 .rec-nodl{margin-top:8px;padding:8px;background:var(--bg);border-radius:var(--r-sm);font-size:11px;color:var(--t3);text-align:center}
@@ -531,6 +532,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
             'forma'     => $forma_lbl ?: '—',
             'ref'       => $ref_nota ?: '—',
             'motivo_cancel' => $motivo_cancel,
+            'cancelado' => $es_cancelado,   // la ventana lo muestra como /r/ (CEO, 26-nov)
             'fecha'     => date('d M Y, g:i A', strtotime($r['created_at'])),
             'prev'      => '—',
             'saldo'     => '—',
@@ -745,6 +747,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
       </div>
       <div class="rec-h-type" id="rec-type">Recibo de pago</div>
       <div class="rec-h-folio" id="rec-folio">—</div>
+      <div class="rec-cancel-aviso" id="rec-cancel-aviso">⚠ Este recibo fue cancelado y no representa un pago válido.</div>
       <div class="rec-divider"></div>
       <div class="rec-row"><span class="rec-lbl">Cliente</span><span class="rec-val"><?= e($venta['cliente_nombre'] ?? '—') ?></span></div>
       <div class="rec-row"><span class="rec-lbl">Fecha</span><span class="rec-val" id="rec-fecha">—</span></div>
@@ -773,9 +776,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
 function openRec(d){
     const r = (typeof d === 'string') ? JSON.parse(d) : d;
     const isCancel = r.cancelacion;
+    // Recibo cancelado (CEO, 26-nov-2026): se ve como en /r/ — título, aviso rojo
+    // y el monto tachado. Antes decía "Recibo de pago" y ponía el monto en verde
+    // como "Este pago", igual que uno vigente.
+    const esCancelado = !!r.cancelado;
     document.getElementById('rec-sh-title').textContent = r.folio;
-    document.getElementById('rec-folio').textContent    = r.folio;
-    document.getElementById('rec-type').textContent     = isCancel ? 'Recibo de cancelación' : 'Recibo de pago';
+    document.getElementById('rec-folio').textContent    = r.folio + (esCancelado ? ' · CANCELADO' : '');
+    document.getElementById('rec-type').textContent     = esCancelado ? 'Recibo cancelado' : (isCancel ? 'Recibo de cancelación' : 'Recibo de pago');
+    document.getElementById('rec-cancel-aviso').style.display = esCancelado ? 'block' : 'none';
     document.getElementById('rec-concepto').textContent = r.concepto;
     document.getElementById('rec-monto').textContent    = r.monto;
     document.getElementById('rec-forma').textContent    = r.forma;
@@ -787,13 +795,17 @@ function openRec(d){
     document.getElementById('rec-prev').textContent     = r.prev;
     document.getElementById('rec-saldo').textContent    = r.saldo;
     document.getElementById('rec-sello').textContent    = '✓ ' + r.folio + ' · ' + r.fecha;
-    document.getElementById('rec-monto-lbl').textContent = isCancel ? 'Monto cancelado' : 'Este pago';
+    document.getElementById('rec-monto-lbl').textContent = esCancelado ? 'Pago cancelado' : (isCancel ? 'Monto cancelado' : 'Este pago');
     const box = document.getElementById('rec-monto-box');
-    const c = isCancel ? 'var(--purple)' : 'var(--g)';
-    box.style.background  = isCancel ? 'var(--purple-bg)' : 'var(--g-bg)';
-    box.style.borderColor = isCancel ? 'var(--purple)' : 'var(--g-border)';
+    const c = esCancelado ? 'var(--danger)' : (isCancel ? 'var(--purple)' : 'var(--g)');
+    box.style.background  = esCancelado ? 'var(--danger-bg)' : (isCancel ? 'var(--purple-bg)' : 'var(--g-bg)');
+    box.style.borderColor = esCancelado ? '#fca5a5' : (isCancel ? 'var(--purple)' : 'var(--g-border)');
     document.getElementById('rec-monto').style.color       = c;
     document.getElementById('rec-monto-lbl').style.color   = c;
+    // Tachado como en /r/ (.monto-tachado). La ventana se reusa: un recibo
+    // vigente abierto después de uno cancelado regresa a como estaba.
+    document.getElementById('rec-monto').style.textDecoration = esCancelado ? 'line-through' : '';
+    document.getElementById('rec-monto').style.opacity        = esCancelado ? '.5' : '';
     document.getElementById('modalOverlay').classList.add('open');
     document.body.style.overflow = 'hidden';
 }

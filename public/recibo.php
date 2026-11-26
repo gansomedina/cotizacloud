@@ -229,7 +229,10 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     <?php endif; ?>
   </div>
 
-  <!-- DESGLOSE SALDO -->
+  <!-- DESGLOSE SALDO — solo en recibos vigentes (CEO, 26-nov-2026). En uno
+       cancelado decía "+ Este pago" y, si ese pago liquidaba la venta,
+       "✓ Venta pagada completamente": lo contrario del aviso de arriba. -->
+  <?php if (!$es_cancelado): ?>
   <div class="saldo-card">
     <div class="det-row section-title"><span class="det-lbl">Desglose de saldo</span></div>
     <div class="sal-row antes">
@@ -256,6 +259,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font
     </div>
     <?php endif; ?>
   </div>
+  <?php endif; ?>
 
   <!-- SELLO DIGITAL -->
   <div class="sello">
