@@ -5485,3 +5485,131 @@ recibo con sus dos copias sigue en una hoja, y el estado de cuenta también.
   pantalla la enlaza. Lee `$recibo['referencia']`, que ningún INSERT llena.
 - `public/recibo.php` y el dashboard leen `$rec['tipo']`. `public/venta.php:517`
   dice que esa columna no existe. No verificado en la base.
+
+### Pendiente de decidir (25-nov): cómo se ve un recibo cancelado
+En la liga de la venta, "Ver recibo" de un recibo cancelado dice "Recibo de
+pago" y pone el monto en verde como "Este pago". Propuesta, sin respuesta del
+CEO, sin tocar:
+- que se vea como `/r/` (título "Recibo cancelado", aviso rojo, monto tachado);
+- quitar en `/r/` el "Desglose de saldo" de los cancelados, que sigue diciendo
+  "+ Este pago" y, si ese pago liquidaba la venta, "✓ Venta pagada
+  completamente" (`public/recibo.php:233-258`).
+
+## Sesión 26 noviembre 2026 — Eliminar una venta cancelada y regresar la cotización
+
+### El caso
+Cancelar una venta dejaba la cotización "aceptada", y la única forma de borrar
+la venta era borrar la cotización completa. Mientras existiera la venta
+cancelada, la cotización no se podía volver a aceptar ni convertir:
+- el aceptar no crea venta si ya hay una, aunque esté cancelada
+  (`api/quote_action.php:248`);
+- convertir la rechaza (`cotizaciones/convertir.php:46`).
+
+El propio código lo tenía anotado como decisión de producto pendiente.
+
+### Datos de producción (SQL del 26-nov)
+- **6 ventas canceladas** en 4 empresas: 2 en la 2, 1 en la 12, 2 en la 13 y
+  1 en la 14. Las 6 tienen la cotización todavía aceptada y su copia congelada;
+  ninguna tiene pagos ni gastos.
+- Las 2 de la empresa 2 son de cotizaciones que **el cliente nunca abrió**.
+- La de la 12 tuvo Descuento Inteligente y cambios en la venta; una de la 13
+  tuvo cambios en la venta; la de la 14 tiene cupón.
+- **Llaves de la base:**
+  - recibos, gastos_venta y venta_log se borran en cascada con la venta;
+  - `cotizacion_lineas.venta_id` queda en NULL;
+  - ventas → cotizaciones es RESTRICT.
+- `ventas.cancelado_at`, `cancelado_motivo` y `cancelado_por_id` existían y
+  nadie las llenaba.
+
+### Decisiones del CEO (26-nov)
+1. **Estado original**: «Vista» si el cliente la abrió (`vista_at` o
+   `visitas`), «Enviada» si nunca. Con las mismas visitas y todo el historial.
+2. **Partidas**: las de la copia congelada al aceptar.
+3. **Solo ventas que nunca tuvieron pagos**: ningún recibo, ni cancelado.
+
+Dos puntos no los contestó; se aplicaron como recomendé, y se le avisó:
+- **Solo el admin**, como cancelar una venta o borrar una cotización. No lleva
+  migración.
+- **Los gastos de la venta no se borran**: pasan a gastos generales
+  (`venta_id` NULL). Hoy ninguna de las 6 tiene gastos.
+
+### Cómo quedó
+- **Dónde vive:** en `core/Helpers.php` (`venta_bloqueo_eliminar`,
+  `venta_motivo_cancelacion`, `venta_eliminar_y_regresar`,
+  `cot_regresar_antes_de_aceptar`), no en una clase nueva, porque el repo no
+  tiene autoloader. Acción `eliminar` en `ventas/acciones.php`, solo admin;
+  ruta `POST /ventas/:id/eliminar`.
+- **Una sola transacción:**
+  - bloquea la venta y la cotización;
+  - suelta los gastos antes de borrar (la llave los borraría en cascada);
+  - borra la venta, y también otras canceladas sin pagos de la misma
+    cotización (hoy no hay);
+  - regresa la cotización;
+  - anota en `cotizacion_log`: evento `regresada`, con el folio, el motivo, el
+    estado, los gastos, el cupón y el DI.
+- **La cotización:**
+  - `aceptada_at`, `accion_at` y `lineas_snapshot` quedan en NULL;
+  - partidas de la copia congelada, con su `articulo_id` (guardar la venta lo
+    perdía, `ventas/guardar.php:98`, y en inmuebles la liga se quedaba sin la
+    propiedad);
+  - DI `utilizado` → `cancelado`; si no, `vigente()` lo seguiría cobrando al
+    volver a aceptar;
+  - el cupón que tecleó el cliente se quita y se le devuelve el uso; el del
+    asesor (`cupon_id`) se queda;
+  - el cronómetro regresa con la configuración de la copia. Desde hoy
+    `snapshot_cotizacion()` la guarda (`descuento_auto_activo/pct/expira`);
+    con las copias viejas se queda la actual, y con 0 % no hay descuento;
+  - total con la cuenta de `cotizaciones/guardar.php` y el IVA de la empresa;
+  - visitas, sesiones, Mesa, adjuntos e historial no se tocan.
+- **Cancelar** ahora llena `cancelado_at/_motivo/_por_id` y lo sigue anotando
+  en las notas internas. El aviso rojo de la venta ya muestra el motivo; en las
+  canceladas antes de hoy lo saca de las notas internas.
+- **Pantallas:**
+  - la venta cancelada tiene el botón "✕ Eliminar venta y regresar la
+    cotización" y una hoja que dice qué va a pasar. Si tuvo pagos, explica por
+    qué no se puede;
+  - la cotización aceptada con su venta cancelada muestra un aviso con el
+    motivo y el mismo botón (admin);
+  - el historial muestra "Venta eliminada" con su detalle;
+  - Ayuda actualizada.
+
+### Pruebas
+- **`tools/sim_venta_eliminar.php`**: 82 comprobaciones contra MariaDB, con
+  las mismas llaves que producción. Corre los archivos reales: `quote_action`,
+  `acciones` (cancelar y eliminar), `ventas/guardar` y `convertir`. Se metieron
+  10 errores a propósito y los detectó todos. **Obligatoria** tras tocar esto.
+- **Chromium, con las pantallas reales:**
+  - venta → hoja → eliminar → cotización en «Vista», con las partidas
+    originales y el historial;
+  - la venta con pago no muestra el botón y dice por qué;
+  - el asesor no ve el botón;
+  - desde la cotización regresa a «Enviada»;
+  - sin errores de JavaScript ni avisos de PHP.
+- **El resto de `tools/` pasa.** `test_radar_fix` necesita el `config.php` del
+  servidor. `factlint_tips.php` (la v1) ya fallaba antes (`Class "Mesa" not
+  found`); la v2 pasa.
+
+### Consecuencias conocidas (avisadas al CEO)
+- Vuelve a contar como cotización abierta: regresa a la Mesa y el Radar la
+  recalcula en su siguiente pasada.
+- En el termómetro, cuenta como dormida si el cliente lleva más de 7 días sin
+  verla. Si regresa como «Enviada» y tiene más de 5 días, cuenta como sin
+  abrir, y la operativa de Activación del asesor se va a cero. Eso aplica a las
+  2 de la empresa 2, si esa empresa usa el termómetro.
+- El DI no regresa, y con DI no hay cupón ni descuento manual (regla del
+  16-jul): si se vuelve a aceptar, es a precio lleno.
+- La liga `/v/` de la venta borrada deja de abrir. Su folio no se reutiliza.
+- Sigue abierto el pendiente del 9-nov: la liga muestra el cupón del asesor,
+  pero el aceptar no lo cobra.
+
+### Visto y NO tocado
+1. **Historial sin nombre de evento.** El historial de cambios del editor solo
+   pinta `evento`, pero editar, enviar, convertir, clonar y "correo enviado"
+   escriben en `accion`. En la prueba esos renglones salen sin nombre; en
+   producción no lo he visto en pantalla.
+2. **"Convertir a venta" sin botón.** La Ayuda lo describe
+   (`ayuda/index.php:723`), pero `convertirAVenta()`
+   (`cotizaciones/ver.php`) no tiene quien la llame. La ruta sí funciona.
+3. **Borrar una cotización** (`cotizaciones/eliminar.php`) sigue borrando los
+   gastos y los recibos cancelados de su venta. Con eso se puede repetir un
+   folio de recibo: `abono.php:51` numera a partir del último.
