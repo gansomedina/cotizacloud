@@ -1062,7 +1062,9 @@ function upload_archivo(array $file, int $empresa_id, string $sub = 'adjuntos'):
 function snapshot_cotizacion(int $cot_id): void
 {
     $row = DB::row(
-        "SELECT lineas_snapshot, descuento_auto_amt, cupon_monto, cupon_codigo, cupon_pct FROM cotizaciones WHERE id = ?",
+        "SELECT lineas_snapshot, descuento_auto_amt, cupon_monto, cupon_codigo, cupon_pct,
+                descuento_auto_activo, descuento_auto_pct, descuento_auto_expira
+           FROM cotizaciones WHERE id = ?",
         [$cot_id]
     );
     if (!$row) return;
@@ -1075,12 +1077,18 @@ function snapshot_cotizacion(int $cot_id): void
     // El cupón también se congela (24-nov-2026): la venta lo lee de la cotización
     // y ahora se puede quitar desde la venta; la cotización aceptada sigue
     // mostrando el cupón con el que el cliente aceptó (public/cotizacion.php).
+    // Y la configuración del cronómetro (26-nov-2026): la venta puede cambiarla
+    // (ventas/guardar.php la reescribe) y, si se elimina la venta, la cotización
+    // regresa con la que tenía al aceptar (cot_regresar_antes_de_aceptar).
     $snap = [
         'lineas'             => $lineas,
         'descuento_auto_amt' => (float)($row['descuento_auto_amt'] ?? 0),
         'cupon_monto'        => (float)($row['cupon_monto'] ?? 0),
         'cupon_codigo'       => $row['cupon_codigo'] ?? null,
         'cupon_pct'          => (float)($row['cupon_pct'] ?? 0),
+        'descuento_auto_activo' => (int)($row['descuento_auto_activo'] ?? 0),
+        'descuento_auto_pct'    => (float)($row['descuento_auto_pct'] ?? 0),
+        'descuento_auto_expira' => $row['descuento_auto_expira'] ?? null,
     ];
     DB::execute(
         "UPDATE cotizaciones SET lineas_snapshot = ? WHERE id = ?",
@@ -1152,6 +1160,253 @@ function cot_corregir_desc_vencido(array $cot): ?float
         error_log('[DescVencido] cot ' . ($cot['id'] ?? '?') . ': ' . $e->getMessage());
         return null;
     }
+}
+
+// ─── Eliminar una venta cancelada y regresar su cotización ─────────
+// Decisión CEO (26-nov-2026). Cancelar la venta deja la cotización "aceptada"
+// y, mientras la venta exista, la cotización no se puede volver a aceptar —el
+// aceptar no crea venta si ya hay una, aunque esté cancelada
+// (api/quote_action.php:248)— ni convertir (cotizaciones/convertir.php:46). La
+// única salida era eliminar la cotización completa. Ahora:
+//   · solo se elimina una venta CANCELADA que NUNCA tuvo pagos;
+//   · la cotización regresa a su estado original («Vista» si el cliente la
+//     abrió, «Enviada» si nunca), con las partidas de la copia congelada al
+//     aceptar, sus visitas, su seguimiento y su historial.
+// Solo el admin (ventas/acciones.php, acción 'eliminar'), igual que cancelar
+// una venta y eliminar una cotización.
+//
+// Viven aquí y no en una clase nueva: el repo no tiene autoloader (ver la nota
+// de planes_log) y Helpers.php siempre está cargado.
+
+// Por qué no se puede eliminar la venta, o null si se puede.
+function venta_bloqueo_eliminar(array $venta): ?string
+{
+    if (($venta['estado'] ?? '') !== 'cancelada') return 'Primero cancela la venta.';
+    // Cualquier recibo, también los cancelados: son comprobantes que el cliente
+    // pudo recibir, y el folio del recibo siguiente sale del último de la
+    // empresa (ventas/abono.php:51): borrarlo podría repetir un folio.
+    if ((int)DB::val("SELECT COUNT(*) FROM recibos WHERE venta_id = ?", [(int)$venta['id']]) > 0) {
+        return 'Esta venta tuvo pagos (aunque estén cancelados), así que no se puede eliminar: sus recibos son comprobantes que el cliente ya pudo recibir.';
+    }
+    $cid = (int)($venta['cotizacion_id'] ?? 0);
+    if ($cid > 0) {
+        // Otra venta de la misma cotización que no se puede eliminar (no pasa
+        // hoy): mientras exista, la cotización no se puede volver a aceptar.
+        $otra = DB::val(
+            "SELECT COALESCE(v.numero, CONCAT('#', v.id)) FROM ventas v
+              WHERE v.cotizacion_id = ? AND v.id <> ?
+                AND (v.estado <> 'cancelada' OR EXISTS (SELECT 1 FROM recibos r WHERE r.venta_id = v.id))
+              LIMIT 1",
+            [$cid, (int)$venta['id']]
+        );
+        if ($otra !== false && $otra !== null) {
+            return 'La cotización tiene otra venta (' . $otra . ') que no se puede eliminar.';
+        }
+    }
+    return null;
+}
+
+// Motivo con que se canceló la venta. Cancelar lo guarda en cancelado_motivo
+// desde el 26-nov-2026; antes solo lo agregaba a las notas internas como
+// "[Cancelada: motivo]", y por eso el aviso rojo de la venta nunca lo mostraba.
+function venta_motivo_cancelacion(array $venta): string
+{
+    $m = trim((string)($venta['cancelado_motivo'] ?? ''));
+    if ($m !== '') return $m;
+    if (preg_match_all('/\[Cancelada: (.*?)\]/su', (string)($venta['notas_internas'] ?? ''), $mm) && $mm[1]) {
+        return trim((string)end($mm[1]));
+    }
+    return '';
+}
+
+// Elimina la venta y regresa su cotización, todo en una transacción. Devuelve
+// ['error' => motivo] si no se puede, o ['cotizacion_id', 'estado', 'gastos',
+// 'ventas']. Solo lanza si falla la base (el llamador responde 500).
+function venta_eliminar_y_regresar(int $venta_id, int $empresa_id, ?int $usuario_id): array
+{
+    DB::beginTransaction();
+    try {
+        $v = DB::row("SELECT * FROM ventas WHERE id = ? AND empresa_id = ? FOR UPDATE", [$venta_id, $empresa_id]);
+        if (!$v) { DB::rollback(); return ['error' => 'Venta no encontrada']; }
+        $cid = (int)($v['cotizacion_id'] ?? 0);
+        $cot = $cid > 0
+            ? DB::row("SELECT * FROM cotizaciones WHERE id = ? AND empresa_id = ? FOR UPDATE", [$cid, $empresa_id])
+            : null;
+        $bloqueo = venta_bloqueo_eliminar($v);
+        if ($bloqueo !== null) { DB::rollback(); return ['error' => $bloqueo]; }
+
+        // Esta venta y, si la cotización tuviera otras canceladas sin pagos (no
+        // pasa hoy), también: la que quedara seguiría impidiendo aceptarla.
+        $ventas = $cot
+            ? DB::query("SELECT id, numero FROM ventas WHERE cotizacion_id = ? AND empresa_id = ? ORDER BY id FOR UPDATE",
+                [$cid, $empresa_id])
+            : [['id' => $venta_id, 'numero' => $v['numero'] ?? null]];
+        $gastos = 0;
+        $folios = [];
+        foreach ($ventas as $vx) {
+            // La llave de gastos_venta borra en cascada: sin esto se perdería
+            // dinero que sí se gastó. Quedan como gasto general, sin venta.
+            $gastos += DB::execute("UPDATE gastos_venta SET venta_id = NULL WHERE venta_id = ? AND empresa_id = ?",
+                [(int)$vx['id'], $empresa_id]);
+            // En cascada se va su venta_log; cotizacion_lineas.venta_id queda en NULL.
+            DB::execute("DELETE FROM ventas WHERE id = ? AND empresa_id = ?", [(int)$vx['id'], $empresa_id]);
+            $folios[] = $vx['numero'] ?: '#' . $vx['id'];
+        }
+
+        $regreso = null;
+        if ($cot && in_array($cot['estado'], ['aceptada', 'convertida', 'aceptada_cliente'], true)) {
+            $regreso = cot_regresar_antes_de_aceptar($cot, $empresa_id);
+        }
+
+        // Queda en el historial de la cotización: quién, cuándo y qué venta.
+        if ($cot) {
+            $motivo = venta_motivo_cancelacion($v);
+            $partes = ['Se eliminó la venta ' . implode(', ', $folios)
+                . ' (cancelada' . ($motivo !== '' ? ': ' . mb_substr($motivo, 0, 80) : '') . ')'];
+            if ($regreso) {
+                $partes[] = 'Regresó a «' . ($regreso['estado'] === 'vista' ? 'Vista' : 'Enviada') . '»'
+                    . ($regreso['partidas'] ? ' con las partidas que el cliente aceptó' : '');
+                foreach ($regreso['notas'] as $n) $partes[] = $n;
+            }
+            if ($gastos > 0) {
+                $partes[] = $gastos === 1 ? '1 gasto pasó a gastos generales' : $gastos . ' gastos pasaron a gastos generales';
+            }
+            DB::execute(
+                "INSERT INTO cotizacion_log (cotizacion_id, usuario_id, evento, detalle, ip) VALUES (?, ?, ?, ?, ?)",
+                [$cid, $usuario_id, $regreso ? 'regresada' : 'venta_eliminada',
+                 mb_substr(implode('. ', $partes) . '.', 0, 250), ip_real()]
+            );
+        }
+
+        DB::commit();
+        return ['cotizacion_id' => $cot ? $cid : null, 'estado' => $regreso['estado'] ?? null,
+                'gastos' => $gastos, 'ventas' => $folios];
+    } catch (\Throwable $e) {
+        DB::rollback();
+        throw $e;
+    }
+}
+
+// Regresa una cotización aceptada o convertida a como estaba antes de
+// aceptarse. La llama venta_eliminar_y_regresar dentro de su transacción, con
+// la cotización ya bloqueada. No toca visitas, sesiones, seguimiento de la
+// Mesa, adjuntos ni historial. Devuelve ['estado', 'partidas', 'notas'].
+function cot_regresar_antes_de_aceptar(array $cot, int $empresa_id): array
+{
+    $cid   = (int)$cot['id'];
+    $notas = [];
+
+    // Estado original. «Enviada» quiere decir que el cliente nunca la abrió.
+    $estado = (!empty($cot['vista_at']) || (int)($cot['visitas'] ?? 0) > 0) ? 'vista' : 'enviada';
+
+    // Partidas: las de la copia congelada al aceptar o convertir. La venta
+    // comparte cotizacion_lineas: editarla las cambia, y guardarla las reescribe
+    // sin articulo_id (ventas/guardar.php:98) — la liga de un inmueble perdería
+    // su propiedad.
+    $snap = json_decode((string)($cot['lineas_snapshot'] ?? ''), true);
+    if (!is_array($snap)) $snap = null;
+    $con_copia = $snap !== null && !empty($snap['lineas']) && is_array($snap['lineas']);
+    if ($con_copia) {
+        DB::execute("DELETE FROM cotizacion_lineas WHERE cotizacion_id = ?", [$cid]);
+        foreach (array_values($snap['lineas']) as $i => $l) {
+            if (!is_array($l)) continue;
+            DB::execute(
+                "INSERT INTO cotizacion_lineas
+                   (cotizacion_id, articulo_id, orden, sku, titulo, descripcion, cantidad, precio_unit, subtotal, es_extra)
+                 VALUES (?,?,?,?,?,?,?,?,?,?)",
+                [$cid, !empty($l['articulo_id']) ? (int)$l['articulo_id'] : null,
+                 isset($l['orden']) ? (int)$l['orden'] : $i + 1,
+                 (string)($l['sku'] ?? ''), (string)($l['titulo'] ?? ''), (string)($l['descripcion'] ?? ''),
+                 (float)($l['cantidad'] ?? 1), (float)($l['precio_unit'] ?? 0),
+                 (float)($l['subtotal'] ?? 0), (int)($l['es_extra'] ?? 0)]
+            );
+        }
+    }
+
+    // Descuento Inteligente: uno por cotización, y ya se usó. Si quedó
+    // 'utilizado' (ventas canceladas antes de que cancelar lo liberara),
+    // DescuentoInteligente::vigente() lo seguiría devolviendo y el siguiente
+    // aceptar cobraría otra vez ese precio.
+    $tuvo_di = false;
+    try {
+        DB::execute("UPDATE desc_int_activaciones SET estado = 'cancelado' WHERE cotizacion_id = ? AND estado = 'utilizado'", [$cid]);
+        $tuvo_di = (bool)DB::val("SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id = ? LIMIT 1", [$cid]);
+    } catch (\Throwable $e) {} // tabla sin migrar → no hay DI
+    if ($tuvo_di) $notas[] = 'Tuvo Descuento Inteligente: no regresa';
+
+    // Cupón. El que puso el asesor en el editor trae cupon_id (crear.php,
+    // guardar.php) y se queda. El que el cliente tecleó al aceptar se guarda sin
+    // cupon_id (api/quote_action.php:235): se quita y se le devuelve el uso que
+    // le sumó el aceptar (:237). Con DI no hay cupón (regla del 16-jul).
+    $asesor = !empty($cot['cupon_id'])
+        ? DB::row("SELECT id, codigo, porcentaje, monto_fijo, activo FROM cupones WHERE id = ? AND empresa_id = ?",
+            [(int)$cot['cupon_id'], $empresa_id])
+        : null;
+    $cod = trim((string)($cot['cupon_codigo'] ?? ''));
+    if ($cod !== '' && (float)($cot['cupon_monto'] ?? 0) > 0
+        && (!$asesor || strcasecmp($cod, (string)$asesor['codigo']) !== 0)) {
+        DB::execute("UPDATE cupones SET usos = usos - 1 WHERE empresa_id = ? AND codigo = ? AND usos > 0 LIMIT 1",
+            [$empresa_id, $cod]);
+        $notas[] = 'Se quitó el cupón ' . $cod . ' que el cliente tecleó al aceptar';
+    }
+    $cupon = ($asesor && (int)$asesor['activo'] === 1 && !$tuvo_di) ? $asesor : null;
+
+    // Descuento automático (cronómetro): la configuración con que se aceptó. La
+    // copia congelada la guarda desde el 26-nov-2026; con las anteriores se queda
+    // la que tiene la cotización. Solo resta si sigue vigente, como en
+    // cotizaciones/guardar.php; con 0 % no es descuento.
+    $cfg = fn(string $k) => ($snap !== null && array_key_exists($k, $snap)) ? $snap[$k] : ($cot[$k] ?? null);
+    $d_pct    = max(0.0, (float)$cfg('descuento_auto_pct'));
+    $d_activo = (!empty($cfg('descuento_auto_activo')) && $d_pct > 0) ? 1 : 0;
+    $d_expira = $d_activo ? ($cfg('descuento_auto_expira') ?: null) : null;
+
+    // Totales: la misma cuenta que cotizaciones/guardar.php, con el IVA de la
+    // empresa hoy (el que cobra el aceptar).
+    $subtotal = 0.0; $extras = 0.0;
+    foreach (DB::query("SELECT subtotal, es_extra FROM cotizacion_lineas WHERE cotizacion_id = ?", [$cid]) as $l) {
+        $subtotal += (float)$l['subtotal'];
+        if ((int)$l['es_extra']) $extras += (float)$l['subtotal'];
+    }
+    $base = $subtotal - $extras;
+    $cupon_monto = 0.0;
+    if ($cupon) {
+        $fijo = !empty($cupon['monto_fijo']) ? (float)$cupon['monto_fijo'] : null;
+        $cupon_monto = $fijo !== null ? min($fijo, $base) : $base * ((float)$cupon['porcentaje'] / 100);
+        $base -= $cupon_monto;
+    }
+    $d_amt = 0.0;
+    if ($d_activo && !$tuvo_di) {
+        $exp = $d_expira ? strtotime((string)$d_expira) : 0;
+        if (!$exp || $exp > time()) { $d_amt = $base * ($d_pct / 100); $base -= $d_amt; }
+    }
+    $base = max(0, $base);
+    $emp  = DB::row("SELECT impuesto_modo, impuesto_pct FROM empresas WHERE id = ?", [$empresa_id]) ?? [];
+    $modo = (string)($emp['impuesto_modo'] ?? $cot['impuesto_modo'] ?? 'ninguno');
+    $ivap = (float)($emp['impuesto_pct'] ?? $cot['impuesto_pct'] ?? 0);
+    $taxable = $base + $extras;
+    if ($modo === 'suma')         { $imp = round($taxable * $ivap / 100, 2); $total = round($taxable + $imp, 2); }
+    elseif ($modo === 'incluido') { $imp = round($taxable - $taxable / (1 + $ivap / 100), 2); $total = round($taxable, 2); }
+    else                          { $imp = 0.0; $total = round($taxable, 2); }
+    // Sin partidas no hay de dónde sacar el total (datos rotos): se deja el que
+    // tenía, como en cot_corregir_desc_vencido.
+    if ($subtotal <= 0) { $total = (float)$cot['total']; $imp = (float)($cot['impuesto_amt'] ?? 0); }
+
+    DB::execute(
+        "UPDATE cotizaciones SET
+            estado = ?, aceptada_at = NULL, accion_at = NULL, lineas_snapshot = NULL,
+            cupon_id = ?, cupon_codigo = ?, cupon_pct = ?, cupon_monto = ?,
+            descuento_auto_activo = ?, descuento_auto_pct = ?, descuento_auto_expira = ?, descuento_auto_amt = ?,
+            impuesto_modo = ?, impuesto_pct = ?, impuesto_amt = ?, subtotal = ?, total = ?,
+            updated_at = NOW()
+          WHERE id = ?",
+        [$estado,
+         $cupon ? (int)$cupon['id'] : null, $cupon ? $cupon['codigo'] : null,
+         $cupon ? (float)$cupon['porcentaje'] : 0, round($cupon_monto, 2),
+         $d_activo, $d_activo ? $d_pct : 0, $d_expira, round($d_amt, 2),
+         $modo, $ivap, $imp, round($subtotal, 2), $total,
+         $cid]
+    );
+    return ['estado' => $estado, 'partidas' => $con_copia, 'notas' => $notas];
 }
 
 // ─── Configuración de notificaciones de la empresa ──────────

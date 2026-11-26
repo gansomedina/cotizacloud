@@ -211,6 +211,21 @@ $es_editable = in_array($cot['estado'], ['borrador', 'enviada', 'vista']) && emp
 $es_suspendida = !empty($cot['suspendida']);
 $puede_suspender = in_array($cot['estado'], ['borrador', 'enviada', 'vista', 'rechazada']) || $es_suspendida;
 
+// Aceptada con su venta cancelada (26-nov-2026): se avisa, y el admin puede
+// eliminar la venta y regresar la cotización a como estaba antes de aceptarse
+// (solo si la venta nunca tuvo pagos).
+$venta_cancelada = null;
+$bloqueo_eliminar_vta = null;
+if (in_array($cot['estado'], ['aceptada', 'convertida', 'aceptada_cliente'], true)) {
+    $venta_cancelada = DB::row(
+        "SELECT * FROM ventas WHERE cotizacion_id = ? AND empresa_id = ? ORDER BY id DESC LIMIT 1",
+        [$cot_id, $empresa_id]
+    );
+    if ($venta_cancelada && $venta_cancelada['estado'] !== 'cancelada') $venta_cancelada = null;
+    if ($venta_cancelada) $bloqueo_eliminar_vta = venta_bloqueo_eliminar($venta_cancelada);
+}
+$puede_regresar = $venta_cancelada && Auth::es_admin() && $bloqueo_eliminar_vta === null;
+
 // JSON para JS
 $articulos_js = json_encode(array_map(function($a) use ($es_inmuebles) {
     $r = ['id'=>(int)$a['id'],'sku'=>$a['sku']??'','titulo'=>$a['titulo'],'descripcion'=>$a['descripcion']??'','precio'=>(float)$a['precio']];
@@ -436,6 +451,17 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
         <span style="margin-left:auto;font:400 12px var(--body);color:var(--t3)">Solo lectura</span>
     <?php endif; ?>
 </div>
+
+<?php if ($venta_cancelada): $vc_motivo = venta_motivo_cancelacion($venta_cancelada); ?>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 18px 0;padding:11px 14px;background:var(--danger-bg);border:1px solid #fca5a5;border-radius:var(--r-sm);font:500 13px var(--body);color:var(--danger);line-height:1.5">
+    <span style="flex:1;min-width:220px"><?= ico('alert', 14, '#c53030') ?> La venta <a href="/ventas/<?= (int)$venta_cancelada['id'] ?>" style="color:inherit;font-weight:700"><?= e($venta_cancelada['numero'] ?: '#' . $venta_cancelada['id']) ?></a> de esta cotización está cancelada<?= $vc_motivo !== '' ? ': ' . e($vc_motivo) : '' ?>.</span>
+    <?php if ($puede_regresar): ?>
+        <button class="accion-btn danger" onclick="regresarCotizacion(<?= (int)$venta_cancelada['id'] ?>)">Eliminar la venta y regresar la cotización</button>
+    <?php elseif (Auth::es_admin() && $bloqueo_eliminar_vta !== null): ?>
+        <span style="flex-basis:100%;font:400 12px var(--body);color:var(--t3)"><?= e($bloqueo_eliminar_vta) ?></span>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <?php
 // A partir de aquí reutilizamos el mismo HTML del builder
@@ -768,11 +794,20 @@ $page_title = e($cot['numero']) . ' — ' . e($cot['titulo']);
         <!-- Log interno -->
         <div class="panel-section">
             <div class="panel-lbl">Historial de cambios</div>
-            <?php foreach ($log as $entry): ?>
-            <div class="log-row">
-                <span class="log-evento"><?= e(ucfirst($entry['evento'])) ?></span>
+            <?php foreach ($log as $entry):
+                // Eliminar la venta y regresar la cotización (26-nov-2026): se
+                // muestra con su detalle — qué venta se eliminó y a qué estado
+                // regresó. Los demás eventos, como siempre.
+                $ev_log = (string)($entry['evento'] ?? '');
+                $ev_vta = in_array($ev_log, ['regresada', 'venta_eliminada'], true);
+            ?>
+            <div class="log-row"<?= $ev_vta ? ' style="flex-wrap:wrap"' : '' ?>>
+                <span class="log-evento"><?= e($ev_vta ? 'Venta eliminada' : ucfirst($ev_log)) ?></span>
                 <span class="log-detalle"><?= e($entry['usuario_nombre'] ?? 'Cliente') ?></span>
                 <span class="log-ts"><?= tiempo_relativo($entry['created_at']) ?></span>
+                <?php if ($ev_vta && !empty($entry['detalle'])): ?>
+                <span style="flex-basis:100%;color:var(--t3);font:400 11px var(--body);line-height:1.5"><?= e($entry['detalle']) ?></span>
+                <?php endif; ?>
             </div>
             <?php endforeach; ?>
         </div>
@@ -1274,6 +1309,20 @@ async function suspenderCotizacion(){
         else alert(data.error||'Error');
     }catch(e){alert('Error de conexión');}
 }
+
+<?php if ($puede_regresar): ?>
+// Eliminar la venta cancelada y regresar la cotización (26-nov-2026)
+async function regresarCotizacion(ventaId){
+    const est = <?= json_encode((!empty($cot['vista_at']) || (int)$cot['visitas'] > 0) ? 'Vista' : 'Enviada') ?>;
+    if(!confirm('Se elimina la venta cancelada y esta cotización regresa a «' + est + '», como estaba antes de que el cliente la aceptara: con las partidas que aceptó, sus visitas y su historial. Después se puede volver a aceptar.\n\nNo se puede deshacer. ¿Continuar?'))return;
+    try{
+        const r=await fetch('/ventas/'+ventaId+'/eliminar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:'{}'});
+        const d=await r.json();
+        if(d.ok)window.location.reload();
+        else alert(d.error||'No se pudo eliminar la venta');
+    }catch(e){alert('Error de conexión');}
+}
+<?php endif; ?>
 
 async function eliminarCotizacion(){
     if(!confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.'))return;

@@ -3,6 +3,7 @@
 //  CotizaApp — modules/ventas/acciones.php
 //  POST /ventas/:id/estado
 //  POST /ventas/:id/cancelar
+//  POST /ventas/:id/eliminar
 //  POST /ventas/:id/agregar-item
 //  POST /ventas/:id/notas
 // ============================================================
@@ -90,15 +91,19 @@ elseif ($accion === 'cancelar') {
     // La venta y su Descuento Inteligente se liberan JUNTOS: sin esto la
     // activación queda 'utilizado' huérfana (quitar-desc-int rechaza ventas
     // canceladas) y el cliente queda bloqueado de DI para siempre por
-    // uk_cliente_vivo. OJO: esto NO regresa la cotización a la mesa — sigue
-    // con estado 'aceptada'/'convertida' y accion_at seteado (fuera del
-    // universo de Mesa::armar); revertir el estado de la cotización al
-    // cancelar la venta es una decisión de producto pendiente.
+    // uk_cliente_vivo. OJO: esto NO regresa la cotización — sigue 'aceptada'/
+    // 'convertida'. Se regresa aparte, eliminando la venta (acción 'eliminar',
+    // abajo), solo si nunca tuvo pagos (decisión CEO 26-nov-2026).
+    //
+    // El motivo va también a cancelado_motivo/at/por_id (las columnas existían y
+    // nadie las llenaba): el aviso rojo de la venta lo lee de ahí y nunca lo
+    // mostraba. Se sigue agregando a las notas internas, como siempre.
     DB::beginTransaction();
     try {
         DB::execute(
-            "UPDATE ventas SET estado='cancelada', notas_internas=CONCAT(COALESCE(notas_internas,''), '\n[Cancelada: ', ?, ']'), updated_at=NOW() WHERE id=?",
-            [$motivo, $venta_id]
+            "UPDATE ventas SET estado='cancelada', cancelado_at=NOW(), cancelado_motivo=?, cancelado_por_id=?,
+                    notas_internas=CONCAT(COALESCE(notas_internas,''), '\n[Cancelada: ', ?, ']'), updated_at=NOW() WHERE id=?",
+            [mb_substr($motivo, 0, 255), Auth::id(), $motivo, $venta_id]
         );
         if (!empty($venta['cotizacion_id'])) {
             try {
@@ -121,6 +126,24 @@ elseif ($accion === 'cancelar') {
     }
 
     json_ok(['estado' => 'cancelada']);
+}
+
+// ════════════════════════════════════════════════════════════
+//  ELIMINAR UNA VENTA CANCELADA Y REGRESAR SU COTIZACIÓN (26-nov-2026)
+//  Solo admin, igual que cancelar. Solo ventas canceladas que nunca tuvieron
+//  pagos. La cotización regresa a su estado original, con las partidas que el
+//  cliente aceptó (venta_eliminar_y_regresar, en core/Helpers.php).
+// ════════════════════════════════════════════════════════════
+elseif ($accion === 'eliminar') {
+    if (!Auth::es_admin()) json_error('Solo el administrador puede eliminar una venta', 403);
+    try {
+        $res = venta_eliminar_y_regresar($venta_id, $empresa_id, (int)Auth::id());
+    } catch (\Throwable $e) {
+        error_log('[Venta eliminar] ' . $e->getMessage());
+        json_error('No se pudo eliminar la venta', 500);
+    }
+    if (isset($res['error'])) json_error($res['error'], 422);
+    json_ok($res);
 }
 
 // ════════════════════════════════════════════════════════════

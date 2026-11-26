@@ -107,6 +107,23 @@ $ini_emp    = strtoupper(substr($empresa['nombre'] ?? '?', 0, 2));
 $est_lbl    = ucfirst($venta['estado']);
 $es_c       = $venta['estado'] === 'cancelada';
 
+// Venta cancelada: el motivo para el aviso rojo, y si el admin puede eliminarla
+// y regresar su cotización (solo si nunca tuvo pagos — CEO 26-nov-2026).
+$motivo_cancel    = $es_c ? venta_motivo_cancelacion($venta) : '';
+$bloqueo_eliminar = $es_c ? venta_bloqueo_eliminar($venta) : null;
+$cot_regreso = null; $vta_gastos = 0; $vta_tuvo_di = false;
+if ($es_c && $puede_admin && $bloqueo_eliminar === null) {
+    $cot_regreso = DB::row(
+        "SELECT numero, estado, visitas, vista_at FROM cotizaciones
+          WHERE id = ? AND empresa_id = ? AND estado IN ('aceptada','convertida','aceptada_cliente')",
+        [(int)$venta['cotizacion_id'], $empresa_id]
+    );
+    $vta_gastos = (int)DB::val("SELECT COUNT(*) FROM gastos_venta WHERE venta_id = ? AND empresa_id = ?", [$venta_id, $empresa_id]);
+    try {
+        $vta_tuvo_di = (bool)DB::val("SELECT 1 FROM desc_int_activaciones WHERE cotizacion_id = ? LIMIT 1", [(int)$venta['cotizacion_id']]);
+    } catch (\Throwable $e) {}
+}
+
 // Subtotal calculado desde líneas si cot_subtotal es 0
 if ($cot_subtotal <= 0) {
     $cot_subtotal = array_sum(array_column($lineas, 'subtotal'));
@@ -492,7 +509,7 @@ body { font-size: 16px !important; font-family: var(--body) !important; overflow
 
 <?php if ($venta['estado'] === 'cancelada'): ?>
 <div style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:var(--r);padding:11px 16px;font:600 13px var(--body);color:var(--danger);margin-bottom:14px">
-  <?= ico('alert',14,'#c53030') ?> Venta cancelada<?= $venta['cancelado_motivo'] ? ' — '.e($venta['cancelado_motivo']) : '' ?>
+  <?= ico('alert',14,'#c53030') ?> Venta cancelada<?= $motivo_cancel !== '' ? ' — '.e($motivo_cancel) : '' ?>
 </div>
 <?php endif ?>
 
@@ -809,6 +826,14 @@ function closeRec(){
   <button class="action-btn danger" onclick="openSheet('shCancelar')">✕ Cancelar venta</button>
   <?php else: ?>
   <div style="font:400 12px var(--body);color:var(--t3);padding:8px 2px">Para cancelar la venta primero cancela los <?= count($abonos) ?> pago(s) registrado(s).</div>
+  <?php endif ?>
+  <?php endif ?>
+
+  <?php if ($puede_admin && $venta['estado'] === 'cancelada'): ?>
+  <?php if ($bloqueo_eliminar === null): ?>
+  <button class="action-btn danger" onclick="openSheet('shEliminarVta')">✕ Eliminar venta y regresar la cotización</button>
+  <?php else: ?>
+  <div style="font:400 12px var(--body);color:var(--t3);padding:8px 2px"><?= e($bloqueo_eliminar) ?></div>
   <?php endif ?>
   <?php endif ?>
 
@@ -1350,6 +1375,33 @@ $moneda_edc           = $empresa['moneda'] ?? 'MXN';
   </div>
 </div>
 
+<?php if ($puede_admin && $venta['estado'] === 'cancelada' && $bloqueo_eliminar === null): ?>
+<!-- ══ SHEET: ELIMINAR VENTA CANCELADA (y regresar la cotización) ══ -->
+<div class="sh-overlay" id="ov-shEliminarVta" onclick="closeSheet('shEliminarVta')"></div>
+<div class="bottom-sheet" id="shEliminarVta">
+  <div class="sh-handle"></div>
+  <div class="sh-header"><div class="sh-title">Eliminar venta</div><button class="sh-close" onclick="closeSheet('shEliminarVta')">✕</button></div>
+  <div class="sh-body">
+    <div class="sh-field">
+      <div style="background:var(--danger-bg);border:1px solid #fca5a5;border-radius:var(--r-sm);padding:12px;font-size:13px;color:var(--danger);line-height:1.6">
+        <?= ico('alert',14,'#c53030') ?> Se elimina <strong><?= e($folio) ?></strong>. No se puede deshacer.
+      </div>
+    </div>
+    <?php if ($cot_regreso): $est_regreso = (!empty($cot_regreso['vista_at']) || (int)$cot_regreso['visitas'] > 0) ? 'Vista' : 'Enviada'; ?>
+    <div class="sh-field" style="font-size:13px;line-height:1.6;color:var(--t2)">
+      La cotización <strong><?= e($cot_regreso['numero']) ?></strong> regresa a <strong>«<?= $est_regreso ?>»</strong>, como estaba antes de que el cliente la aceptara: con las partidas que aceptó, sus visitas y su historial. Después se puede volver a aceptar.
+      <?php if ($vta_tuvo_di): ?><br>Tuvo Descuento Inteligente: ese descuento no regresa.<?php endif ?>
+      <?php if ($vta_gastos > 0): ?><br><?= $vta_gastos === 1 ? 'Su gasto no se borra: pasa' : 'Sus ' . $vta_gastos . ' gastos no se borran: pasan' ?> a gastos generales.<?php endif ?>
+    </div>
+    <?php endif ?>
+  </div>
+  <div class="sh-footer">
+    <button class="sh-btn-cancel" onclick="closeSheet('shEliminarVta')">No eliminar</button>
+    <button class="sh-btn-save" style="background:var(--danger)" id="btn-eliminar-vta" onclick="doEliminarVenta()">Eliminar</button>
+  </div>
+</div>
+<?php endif ?>
+
 
 <script>
 const VENTA_ID   = <?= $venta_id ?>;
@@ -1665,6 +1717,19 @@ async function doCancelarVenta(){
   const d=await r.json();
   if(d.ok){closeSheet('shCancelar');location.reload();}
   else alert(d.error||'Error: '+d.error);
+}
+
+// ── Eliminar la venta cancelada y regresar la cotización (26-nov-2026) ──
+async function doEliminarVenta(){
+  const b=document.getElementById('btn-eliminar-vta');
+  if(b){b.disabled=true;b.textContent='Eliminando…';}
+  try{
+    const r=await fetch('/ventas/'+VENTA_ID+'/eliminar',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},body:'{}'});
+    const d=await r.json();
+    if(d.ok){const cid=d.data&&d.data.cotizacion_id;location.href=cid?'/cotizaciones/'+cid:'/ventas';return;}
+    alert(d.error||'No se pudo eliminar la venta');
+  }catch(e){alert('Error de conexión');}
+  if(b){b.disabled=false;b.textContent='Eliminar';}
 }
 
 // ── Tab catálogo/manual ──

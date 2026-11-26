@@ -190,6 +190,7 @@ class Router
         self::post('/ventas/:id/abono',               fn($p) => self::app('ventas', 'abono',          $p));
         self::post('/ventas/:id/estado',              fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'estado']));
         self::post('/ventas/:id/cancelar',            fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'cancelar']));
+        self::post('/ventas/:id/eliminar',            fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'eliminar']));
         self::post('/ventas/:id/agregar-item',        fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'agregar-item']));
         self::post('/ventas/:id/notas',               fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'notas']));
         self::post('/ventas/:id/titulo',              fn($p) => self::app_extra('ventas', 'acciones', $p, ['accion'=>'titulo']));

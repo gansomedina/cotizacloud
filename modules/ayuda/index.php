@@ -845,6 +845,7 @@ if (!$is_native_app_ayuda): ?>
       <li><b>🖨️ Imprimir / PDF</b> — Genera el comprobante completo de la venta (no es factura fiscal).</li>
       <li><b>📋 Estado de cuenta</b> — Imprime un desglose claro: conceptos, extras, ajustes, pagos y saldo. Ideal para mandárselo al cliente.</li>
       <li><b>✕ Cancelar venta</b> — Anula la venta (admin). Solo se permite si <b>no tiene pagos</b>; si los tiene, primero cancela los recibos.</li>
+      <li><b>✕ Eliminar venta y regresar la cotización</b> — Aparece en una venta <b>cancelada que nunca tuvo pagos</b> (admin). Elimina la venta y la cotización regresa a como estaba antes de que el cliente la aceptara: «Vista» si la abrió, «Enviada» si nunca; con las partidas que aceptó, sus visitas y su historial. Después el cliente la puede volver a aceptar desde su liga. Si tuvo Descuento Inteligente, ese descuento no regresa. Los gastos de la venta no se borran: pasan a gastos generales. El mismo botón está en la cotización, en el aviso de venta cancelada.</li>
     </ul>
   </div>
 
