@@ -5381,10 +5381,9 @@ con transferencia.
   - Con el código nuevo sale bien en las tres pantallas; los recibos vigentes
     quedan igual, cada recibo sigue en una hoja y no hay errores de JavaScript.
 
-**Visto y NO tocado:** la ventana "Ver recibo" de un cancelado sigue titulada
-"Recibo de pago", con el monto en verde como "Este pago". El único indicio de
-la cancelación ahí es el renglón nuevo del motivo. `isCancel` (`:775`) lee
-`cancelacion`, que siempre va en `false` (`public/venta.php:537`).
+~~**Visto y NO tocado:** la ventana "Ver recibo" de un cancelado sigue titulada
+"Recibo de pago", con el monto en verde como "Este pago".~~ ✅ **Arreglado el
+26-nov** — ver "Recibo cancelado: se ve cancelado", más abajo.
 
 ### El caso
 El CEO pidió poner el método de pago en los recibos de venta "sin que arruine
@@ -5486,14 +5485,40 @@ recibo con sus dos copias sigue en una hoja, y el estado de cuenta también.
 - `public/recibo.php` y el dashboard leen `$rec['tipo']`. `public/venta.php:517`
   dice que esa columna no existe. No verificado en la base.
 
-### Pendiente de decidir (25-nov): cómo se ve un recibo cancelado
-En la liga de la venta, "Ver recibo" de un recibo cancelado dice "Recibo de
-pago" y pone el monto en verde como "Este pago". Propuesta, sin respuesta del
-CEO, sin tocar:
-- que se vea como `/r/` (título "Recibo cancelado", aviso rojo, monto tachado);
-- quitar en `/r/` el "Desglose de saldo" de los cancelados, que sigue diciendo
-  "+ Este pago" y, si ese pago liquidaba la venta, "✓ Venta pagada
-  completamente" (`public/recibo.php:233-258`).
+### Recibo cancelado: se ve cancelado (CEO aprobó el 26-nov: "hazlo")
+**Cómo estaba:** en la liga de la venta, "Ver recibo" de un recibo cancelado
+decía "Recibo de pago" y ponía el monto en verde como "Este pago", igual que
+uno vigente. `isCancel` (`public/venta.php`) lee `cancelacion`, que siempre va
+en `false`. Y `/r/` de un cancelado traía el "Desglose de saldo", con
+"+ Este pago" y, si ese pago liquidaba la venta, "✓ Venta pagada
+completamente": lo contrario del aviso que tiene arriba.
+
+**Lo que cambió (sin migración):**
+- **Ventana "Ver recibo"** (`public/venta.php`), igual que `/r/`:
+  - recibe `'cancelado' => $es_cancelado`;
+  - título "Recibo cancelado" y folio "· CANCELADO";
+  - el mismo aviso rojo de `/r/`: "Este recibo fue cancelado y no representa
+    un pago válido.";
+  - el monto en rojo, tachado y con opacidad, con la etiqueta "Pago cancelado".
+
+  La ventana se reusa: un recibo vigente abierto después de uno cancelado
+  regresa a "Recibo de pago" en verde.
+- **`/r/`** (`public/recibo.php`): el "Desglose de saldo" solo sale en los
+  recibos vigentes.
+- **No se tocó:** el sello "✓ folio · fecha" (en `/r/` dice "Verificado en
+  Cotiza.cloud", es de autenticidad, no de validez) ni la etiqueta "Monto
+  pagado" tachada de `/r/`.
+
+**Pruebas:**
+- **`tools/test_recibo_forma.php`:** 82 comprobaciones, 10 nuevas en la sección
+  5b. Se metieron 5 errores a propósito y los detectó todos.
+- **Chromium, contra la versión anterior** (`8000928`) y con recibos de
+  tarjeta, transferencia y efectivo cancelados:
+  - antes, los siete salían "Recibo de pago" en verde, y `/r/` de los
+    cancelados traía el desglose con "Venta pagada completamente";
+  - ahora los cancelados salen como cancelados y los vigentes quedan igual,
+    también al abrirlos después de uno cancelado;
+  - sin errores de JavaScript ni avisos de PHP.
 
 ## Sesión 26 noviembre 2026 — Eliminar una venta cancelada y regresar la cotización
 
