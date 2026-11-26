@@ -5497,6 +5497,13 @@ CEO, sin tocar:
 
 ## Sesión 26 noviembre 2026 — Eliminar una venta cancelada y regresar la cotización
 
+**Desplegado y verificado en el servidor el 26-nov** (`6eebdef`). `grep` de
+`function venta_eliminar_y_regresar` en `Helpers.php`, de
+`'/ventas/:id/eliminar'` en `Router.php`, de `accion === 'eliminar'` y
+`cancelado_motivo=?` en `ventas/acciones.php`, de `shEliminarVta` en
+`ventas/ver.php` y de `regresarCotizacion` en `cotizaciones/ver.php`: 1, 1, 1,
+1, 5 y 2.
+
 ### El caso
 Cancelar una venta dejaba la cotización "aceptada", y la única forma de borrar
 la venta era borrar la cotización completa. Mientras existiera la venta
