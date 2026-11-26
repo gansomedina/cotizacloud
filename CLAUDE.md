@@ -5486,6 +5486,16 @@ recibo con sus dos copias sigue en una hoja, y el estado de cuenta también.
   dice que esa columna no existe. No verificado en la base.
 
 ### Recibo cancelado: se ve cancelado (CEO aprobó el 26-nov: "hazlo")
+**Desplegado y verificado en el servidor el 26-nov** (`c472d2f`). `grep` de
+`const esCancelado =` y de `rec-cancel-aviso` en `public/venta.php`, y de
+`solo en recibos vigentes` en `public/recibo.php`: 1, 3 y 1.
+
+**Error mío al verificar:** el primer `grep` que di dio 0 con el código ya
+desplegado. Puse el texto entre comillas dobles y llevaba `!!`; dentro de
+comillas dobles, la terminal cambia `!!` por el comando anterior, así que grep
+buscó un texto que no existe. **Los comandos de verificación van entre comillas
+simples y sin `!`.**
+
 **Cómo estaba:** en la liga de la venta, "Ver recibo" de un recibo cancelado
 decía "Recibo de pago" y ponía el monto en verde como "Este pago", igual que
 uno vigente. `isCancel` (`public/venta.php`) lee `cancelacion`, que siempre va
